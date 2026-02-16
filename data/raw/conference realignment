@@ -1,0 +1,148 @@
+# Format: "team_name,conference_name,effective_year_start"
+
+team_name,conference_name,effective_year_start
+Washington,Pacific,2026
+Washington State,Pacific,2026
+Oregon,Pacific,2026
+Oregon State,Pacific,2026
+California,Pacific,2026
+Stanford,Pacific,2026
+USC,Pacific,2026
+UCLA,Pacific,2026
+San Jose State,Pacific,2026
+Fresno State,Pacific,2026
+San Diego State,Pacific,2026
+Hawai'i,Pacific,2026
+Nevada,Pacific,2026
+UNLV,Pacific,2026
+Arizona,Pacific,2026
+Arizona State,Pacific,2026
+Sacramento State,Pacific,2026
+
+BYU,Mountain,2026
+Utah,Mountain,2026
+Utah State,Mountain,2026
+Boise State,Mountain,2026
+Colorado,Mountain,2026
+Colorado State,Mountain,2026
+Wyoming,Mountain,2026
+Air Force,Mountain,2026
+New Mexico,Mountain,2026
+New Mexico State,Mountain,2026
+UTEP,Mountain,2026
+Kansas,Mountain,2026
+Kansas State,Mountain,2026
+Nebraska,Mountain,2026
+Iowa State,Mountain,2026
+Oklahoma State,Mountain,2026
+Tulsa,Mountain,2026
+
+Texas,Texas-Gulf,2026
+Texas A&M,Texas-Gulf,2026
+Baylor,Texas-Gulf,2026
+TCU,Texas-Gulf,2026
+Texas Tech,Texas-Gulf,2026
+Houston,Texas-Gulf,2026
+Rice,Texas-Gulf,2026
+SMU,Texas-Gulf,2026
+North Texas,Texas-Gulf,2026
+UTSA,Texas-Gulf,2026
+Texas State,Texas-Gulf,2026
+Sam Houston,Texas-Gulf,2026
+Louisiana Tech,Texas-Gulf,2026
+Tulane,Texas-Gulf,2026
+Louisiana,Texas-Gulf,2026
+Memphis,Texas-Gulf,2026
+FIU,Texas-Gulf,2026
+
+Oklahoma,Plains,2026
+Arkansas,Plains,2026
+Missouri,Plains,2026
+Cincinnati,Plains,2026
+Louisville,Plains,2026
+Arkansas State,Plains,2026
+ULM,Plains,2026
+North Dakota State,Plains,2026
+FAU,Plains,2026
+Georgia Southern,Plains,2026
+Georgia State,Plains,2026
+Jacksonville State,Plains,2026
+Kennesaw State,Plains,2026
+Middle Tennessee,Plains,2026
+Missouri State,Plains,2026
+South Alabama,Plains,2026
+Southern Miss,Plains,2026
+
+Michigan,Great Lakes,2026
+Michigan State,Great Lakes,2026
+Ohio State,Great Lakes,2026
+Indiana,Great Lakes,2026
+Purdue,Great Lakes,2026
+Illinois,Great Lakes,2026
+Northwestern,Great Lakes,2026
+Wisconsin,Great Lakes,2026
+Minnesota,Great Lakes,2026
+Iowa,Great Lakes,2026
+Notre Dame,Great Lakes,2026
+Toledo,Great Lakes,2026
+Ball State,Great Lakes,2026
+Western Michigan,Great Lakes,2026
+Bowling Green,Great Lakes,2026
+Central Michigan,Great Lakes,2026
+Eastern Michigan,Great Lakes,2026
+Northern Illinois,Great Lakes,2026
+
+Penn State,Mid-Atlantic,2026
+Pittsburgh,Mid-Atlantic,2026
+West Virginia,Mid-Atlantic,2026
+Maryland,Mid-Atlantic,2026
+Virginia,Mid-Atlantic,2026
+Virginia Tech,Mid-Atlantic,2026
+NC State,Mid-Atlantic,2026
+Wake Forest,Mid-Atlantic,2026
+Duke,Mid-Atlantic,2026
+North Carolina,Mid-Atlantic,2026
+James Madison,Mid-Atlantic,2026
+Old Dominion,Mid-Atlantic,2026
+Marshall,Mid-Atlantic,2026
+East Carolina,Mid-Atlantic,2026
+Coastal Carolina,Mid-Atlantic,2026
+Appalachian State,Mid-Atlantic,2026
+Charlotte,Mid-Atlantic,2026
+
+Rutgers,Northeast,2026
+Syracuse,Northeast,2026
+Boston College,Northeast,2026
+UConn,Northeast,2026
+Temple,Northeast,2026
+Army,Northeast,2026
+Navy,Northeast,2026
+UMass,Northeast,2026
+Buffalo,Northeast,2026
+Akron,Northeast,2026
+Kent State,Northeast,2026
+Ohio,Northeast,2026
+Miami (OH),Northeast,2026
+Delaware,Northeast,2026
+Liberty,Northeast,2026
+Western Kentucky,Northeast,2026
+Troy,Northeast,2026
+
+Alabama,Southeast,2026
+Auburn,Southeast,2026
+Georgia,Southeast,2026
+Georgia Tech,Southeast,2026
+Florida,Southeast,2026
+Florida State,Southeast,2026
+Miami (FL),Southeast,2026
+South Carolina,Southeast,2026
+Clemson,Southeast,2026
+Tennessee,Southeast,2026
+Vanderbilt,Southeast,2026
+Kentucky,Southeast,2026
+LSU,Southeast,2026
+Mississippi State,Southeast,2026
+Ole Miss,Southeast,2026
+UCF,Southeast,2026
+South Florida,Southeast,2026
+UAB,Southeast,2026
