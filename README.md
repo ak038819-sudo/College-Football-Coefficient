@@ -19,3 +19,7 @@ A full-scale rebuild of the college football landscape driven by history, tradit
 - SQLite
 - Python
 - GitHub
+
+## Data Flow
+- Built a pipeline from scratch that took raw game results and added them to a CSV file which was then able to be interpreted.
+- Compiled a large data set from scratch comprising every FBS game played from 2014-2016 with the exception of the 2020-2021 season.
