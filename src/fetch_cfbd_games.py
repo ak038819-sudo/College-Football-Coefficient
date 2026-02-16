@@ -31,19 +31,26 @@ def to_bool01(x):
 
 
 def classify_game(g: dict, season_type_val: str) -> str:
-    """
-    Map CFBD game to our loader's game_type: regular | playoff
-    For historical era, we label CFP games as "playoff" using postseason + notes.
-    Other bowls remain "regular" (NIT doesn't exist pre-2026).
-    """
+
+
     season_type_val = (season_type_val or "").lower()
+
+    # --- First: trust API playoff flag ---
+    is_playoff_flag = pick(g, "playoff", "is_playoff", "isPlayoff", default=False)
+    if to_bool01(is_playoff_flag) == 1:
+        return "playoff"
+
+    # --- Second: fallback detection using notes ---
     notes = (pick(g, "notes", default="") or "").lower()
 
     if season_type_val == "postseason":
-        # CFP markers are reliably present in notes
-        if ("cfp" in notes) or ("college football playoff" in notes) or ("national championship" in notes):
+        if (
+            "semifinal" in notes
+            or "national championship" in notes
+            or "college football playoff" in notes
+            or "cfp" in notes
+        ):
             return "playoff"
-        return "regular"
 
     return "regular"
 

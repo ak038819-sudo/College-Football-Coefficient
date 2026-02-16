@@ -120,8 +120,10 @@ def main(csv_path: str):
             game_type = (row.get("game_type") or "").lower()
             week = int(row.get("week") or 0)
             season_year = int(row.get("season_year") or 0)
-            is_playoff = 1 if (season_year >= 2014 and game_type == "postseason" and week >= 16) else 0
+            game_type = (row.get("game_type") or "").strip().lower()
+            is_playoff = 1 if game_type == "playoff" else 0
             is_nit = 0
+
 
 
             home_id = team_id(cur, home_name)
