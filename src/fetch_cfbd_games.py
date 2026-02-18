@@ -128,13 +128,17 @@ def main(year: int):
             # Use the season_type loop value so we don't depend on CFBD field naming quirks
             game_type = classify_game(g, season_type)
 
+            season_type_val = (pick(g, "season_type", "seasonType", default="regular") or "regular").lower()
+            game_type = classify_game(g, season_type_val)
+
+
             w.writerow(
                 {
                     "game_id": game_id,
                     "season_year": year,
                     "week": week_val,
                     "date": date_str,
-                    "season_type": season_type,
+                    "season_type": season_type_val,
                     "home_team": home,
                     "away_team": away,
                     "home_score": int(home_pts),
