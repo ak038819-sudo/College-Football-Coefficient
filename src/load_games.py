@@ -97,12 +97,25 @@ def main(csv_path: str):
             week_raw = norm(row["week"])
             week = int(week_raw) if week_raw else None
 
-            # date is required; keep strict format YYYY-MM-DD
             game_date = norm(row["date"])
             datetime.strptime(game_date, "%Y-%m-%d")
 
-            # neutral_site is OPTIONAL (defaults to 0)
             neutral_site = parse_bool01(row.get("neutral_site", "0"), "neutral_site")
+            went_ot = parse_bool01(row["went_ot"], "went_ot")
+
+            game_type = (row.get("game_type") or "").strip().lower()
+            if game_type not in ("regular", "playoff"):
+                raise ValueError(f"Invalid game_type: {game_type}")
+            is_playoff = 1 if game_type == "playoff" else 0
+            phase = (row.get("game_phase") or "").strip().lower()
+            if not phase:
+                raise ValueError("CSV missing game_phase value")
+            if phase not in ("regular", "bowl", "cfp"):
+                raise ValueError(f"Invalid game_phase: {phase}")
+
+
+
+            is_nit = 0  # keep 0 for your project right now
 
             try:
                 home_name = resolve_team_name(cur, row["home_team"])
@@ -111,18 +124,20 @@ def main(csv_path: str):
                 skipped_non_fbs += 1
                 continue
 
-
             home_score = int(row["home_score"])
             away_score = int(row["away_score"])
 
+
             went_ot = parse_bool01(row["went_ot"], "went_ot")
 
-            game_type = (row.get("game_type") or "").lower()
-            week = int(row.get("week") or 0)
-            season_year = int(row.get("season_year") or 0)
             game_type = (row.get("game_type") or "").strip().lower()
             is_playoff = 1 if game_type == "playoff" else 0
+
             is_nit = 0
+
+            if week is None:
+                week = 0
+
 
 
 
@@ -130,15 +145,18 @@ def main(csv_path: str):
             away_id = team_id(cur, away_name)
 
             try:
+                phase = (row.get("game_phase") or "regular").strip().lower()
+
                 cur.execute(
                     """
                     INSERT INTO games (
                         season_year, week, game_date, neutral_site,
                         home_team_id, away_team_id,
                         home_score, away_score,
-                        went_ot, is_playoff, is_nit
+                        went_ot, is_playoff, is_nit,
+                        game_phase
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         season_year,
@@ -152,12 +170,11 @@ def main(csv_path: str):
                         went_ot,
                         is_playoff,
                         is_nit,
+                        phase
                     ),
                 )
-                inserted += 1
-            except sqlite3.IntegrityError:
-                skipped_dupes += 1
 
+                inserted += 1
             except sqlite3.IntegrityError:
                 skipped_dupes += 1
 
