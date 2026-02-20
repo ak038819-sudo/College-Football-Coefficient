@@ -23,3 +23,13 @@ A full-scale rebuild of the college football landscape driven by history, tradit
 ## Data Flow
 - Built a pipeline from scratch that took raw game results and added them to a CSV file which was then able to be interpreted.
 - Compiled a large data set from scratch comprising every FBS game played from 2014-2016 with the exception of the 2020-2021 season.
+
+## Quick Start
+1. export CFBD_API_KEY=...
+2. python src/fetch_cfbd_games.py YEAR
+3. python src/load_games.py data/raw/games_YEAR.csv
+4. python src/fetch_cfbd_team_memberships.py 2014 2025
+5. python src/build_playoff_field.py YEAR
+
+## Common Errors
+- 
