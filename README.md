@@ -9,6 +9,14 @@ A full-scale rebuild of the college football landscape driven by history, tradit
 - Replace the super conference dynamic with 8 regional leagues, which all have the opportunity to compete on equal footing.
 - Implement an objective, criteria-driven 24-team playoff structure.
 
+## Project Status
+
+v0.1 – Foundation Complete
+- Full FBS historical ingestion (2014–2025, excluding 2020)
+- Canonical team resolution system
+- Conference membership mapping by season
+- Deterministic CFP bracket reconstruction
+
 ## Methodology
 - Historical analysis beginning with the College Football Playoff's (CFP) implementation in 2014 and concluding with the most recent iteration in the 20-26 season.
 - Historical analysis will exclude the 2020-2021 season due to scheduling irregularities and teams canceling their season altogether.
