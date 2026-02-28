@@ -204,3 +204,16 @@ Bracket auto-advancement engine
 Conference tier evolution logic
 
 Automated validation testing suite
+
+## UI Viewer
+
+Run locally:
+
+streamlit run ui/app.py
+
+Displays:
+- 24-team playoff field
+- Pot distribution
+- Champion auto-bids
+- Bye teams (derived from pot 0)
+- 5-year rolling coefficient metrics
