@@ -38,6 +38,16 @@ from pathlib import Path
 # Massachusetts (UMass): FBS independent, should exist regardless of year.
 NEW_TEAMS = ["Idaho", "Massachusetts"]
 
+# Dead/unused duplicate entries found in the original backup's 138 teams --
+# each has ZERO games across the entire loaded dataset (2010-2025 at time
+# of discovery). UMass was a duplicate of "Massachusetts" (the actual team
+# with real games); North Dakota State and Sacramento State are FCS
+# programs that never should have been in an FBS-only teams table. This
+# was originally fixed as a one-off manual SQL command, which meant it
+# didn't survive a fresh bootstrap -- folded in here permanently so a
+# --force rebuild can't silently resurrect them.
+DEAD_TEAMS = ["UMass", "North Dakota State", "Sacramento State"]
+
 # alias -> canonical team_name already in the backup's teams table
 NEW_ALIASES = {
     "App State": "Appalachian State",
@@ -85,8 +95,22 @@ def main() -> None:
 
     print(f"Copied from backup: {n_teams} teams, {n_aliases} aliases, {n_membership} membership rows")
 
-    # Add genuinely-missing teams
+    # Remove dead/duplicate teams before anything else touches them
     cur = dst.cursor()
+    removed = 0
+    for name in DEAD_TEAMS:
+        row = cur.execute("SELECT team_id FROM teams WHERE team_name = ?", (name,)).fetchone()
+        if not row:
+            continue
+        tid = row[0]
+        cur.execute("DELETE FROM team_aliases WHERE team_name = ?", (name,))
+        cur.execute("DELETE FROM team_membership_by_season WHERE team_id = ?", (tid,))
+        cur.execute("DELETE FROM teams WHERE team_id = ?", (tid,))
+        removed += 1
+    dst.commit()
+    print(f"Removed {removed} dead/duplicate teams: {DEAD_TEAMS}")
+
+    # Add genuinely-missing teams
     added_teams = 0
     for name in NEW_TEAMS:
         cur.execute("SELECT 1 FROM teams WHERE team_name = ?", (name,))

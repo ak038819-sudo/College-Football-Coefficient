@@ -32,10 +32,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+import datetime
+
 DB_PATH = Path("db/league.db")
 BACKUP_PATH = Path("db/league_backup_before_playoff_migration.db")
-SEASONS = list(range(2010, 2026))
-MEMBERSHIP_SEASONS = list(range(2014, 2026))  # only years with conference membership
+CURRENT_YEAR = datetime.date.today().year
+SEASONS = list(range(2010, CURRENT_YEAR + 1))
+MEMBERSHIP_SEASONS = list(range(2014, CURRENT_YEAR + 1))  # only years with conference membership
 
 
 def run(cmd: list[str], label: str) -> None:

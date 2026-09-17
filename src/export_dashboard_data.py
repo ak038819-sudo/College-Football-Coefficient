@@ -32,8 +32,10 @@ from draw_playoff_bracket_v2 import (  # noqa: E402
 from simulate_bracket import run_simulation, DEFAULT_TEMPERATURE  # noqa: E402
 import random
 
+import datetime
+
 DATA_DIR = Path("data/processed")
-MEMBERSHIP_YEARS = list(range(2014, 2026))
+MEMBERSHIP_YEARS = list(range(2014, datetime.date.today().year + 1))
 
 
 def load_csv_by_year(filename: str, year_field: str) -> dict:
