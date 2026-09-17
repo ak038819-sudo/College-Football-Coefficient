@@ -180,6 +180,31 @@
   .rk { font-family: var(--font-mono); color: var(--ink-dim); width: 2.4em; display: inline-block; }
   .coe-val { font-family: var(--font-mono); font-weight: 600; color: var(--amber); }
 
+  .logo-img {
+    width: 24px; height: 24px;
+    object-fit: contain;
+    flex: 0 0 auto;
+    vertical-align: middle;
+  }
+  .logo-img.lg { width: 40px; height: 40px; }
+  .logo-img.sm { width: 18px; height: 18px; }
+  .monogram {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 10px;
+    color: #fff;
+    flex: 0 0 auto;
+    vertical-align: middle;
+  }
+  .monogram.lg { width: 40px; height: 40px; font-size: 15px; }
+  .monogram.sm { width: 18px; height: 18px; font-size: 8px; }
+  .name-cell { display: flex; align-items: center; gap: 8px; }
+
   .field-conf-group {
     margin-bottom: 16px;
     padding-bottom: 14px;
@@ -253,7 +278,8 @@
     font-size: 13px;
   }
   .game-matchup { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .team-chip { display: flex; flex-direction: column; min-width: 130px; }
+  .team-chip { display: flex; align-items: center; gap: 8px; min-width: 130px; }
+  .team-chip > div { display: flex; flex-direction: column; }
   .team-chip .name { font-weight: 600; font-size: 14px; }
   .team-chip .conf { font-family: var(--font-mono); font-size: 10px; color: var(--ink-dim); }
   .team-chip.home .name { color: var(--amber); }
@@ -320,8 +346,33 @@
 <script id="dashboard-data" type="application/json">
 __DATA_JSON__
 </script>
+<script id="logo-assets" type="application/json">
+__LOGO_ASSETS_JSON__
+</script>
 <script>
 const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
+const LOGOS = JSON.parse(document.getElementById('logo-assets').textContent);
+
+function hashHue(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return h % 360;
+}
+function initials(name) {
+  const words = name.replace(/[()]/g, '').split(/\s+/).filter(Boolean);
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
+function logoMarkup(name, kind, size) {
+  const sizeClass = size ? ' ' + size : '';
+  const src = kind === 'conf' ? LOGOS.conferences[name] : LOGOS.teams[name];
+  if (src) {
+    return '<img class="logo-img' + sizeClass + '" src="' + src + '" alt="" loading="lazy">';
+  }
+  const hue = hashHue(name);
+  return '<span class="monogram' + sizeClass + '" style="background:hsl(' + hue + ',48%,38%)">' + initials(name) + '</span>';
+}
+
 
 let state = { tab: 'teams', year: DATA.years_all[DATA.years_all.length - 1] };
 
@@ -342,11 +393,11 @@ function renderYearRow() {
   document.getElementById('year-caption').textContent = 'VIEWING ' + state.year;
 }
 
-function rankTable(rows, valueKey, labelKey, valueLabel) {
+function rankTable(rows, valueKey, labelKey, valueLabel, kind) {
   if (!rows || !rows.length) return '<div class="empty-note">No data for this season.</div>';
   let html = '<table class="rank-table"><thead><tr><th></th><th>' + labelKey + '</th><th class="num">' + valueLabel + '</th></tr></thead><tbody>';
   rows.forEach((r, i) => {
-    html += '<tr><td class="rk">' + (i + 1) + '</td><td>' + r.name + '</td><td class="num coe-val">' + fmt(r.value) + '</td></tr>';
+    html += '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + logoMarkup(r.name, kind, 'sm') + '<span>' + r.name + '</span></div></td><td class="num coe-val">' + fmt(r.value) + '</td></tr>';
   });
   html += '</tbody></table>';
   return html;
@@ -356,8 +407,8 @@ function renderTeams() {
   const single = (DATA.team_ratings_by_year[state.year] || []).map(r => ({ name: r.team, value: r.rating }));
   const rolling = (DATA.team_rolling_by_year[state.year] || []).map(r => ({ name: r.team, value: r.coeff_5yr }));
   return '<div class="grid-2">' +
-    '<div class="panel"><h2 class="section-title">Single-Season Rating</h2>' + rankTable(single, 'value', 'Team', 'Rating') + '</div>' +
-    '<div class="panel"><h2 class="section-title">5-Year Rolling CoE</h2>' + rankTable(rolling, 'value', 'Team', 'CoE') + '</div>' +
+    '<div class="panel"><h2 class="section-title">Single-Season Rating</h2>' + rankTable(single, 'value', 'Team', 'Rating', 'team') + '</div>' +
+    '<div class="panel"><h2 class="section-title">5-Year Rolling CoE</h2>' + rankTable(rolling, 'value', 'Team', 'CoE', 'team') + '</div>' +
     '</div>';
 }
 
@@ -365,8 +416,8 @@ function renderConferences() {
   const single = (DATA.conference_ratings_by_year[state.year] || []).map(r => ({ name: r.conference, value: r.rating }));
   const rolling = (DATA.conference_rolling_by_year[state.year] || []).map(r => ({ name: r.conference, value: r.coeff_5yr }));
   return '<div class="grid-2">' +
-    '<div class="panel"><h2 class="section-title">Single-Season Rating</h2>' + rankTable(single, 'value', 'Conference', 'Rating') + '</div>' +
-    '<div class="panel"><h2 class="section-title">5-Year Rolling CoE</h2>' + rankTable(rolling, 'value', 'Conference', 'CoE') + '</div>' +
+    '<div class="panel"><h2 class="section-title">Single-Season Rating</h2>' + rankTable(single, 'value', 'Conference', 'Rating', 'conf') + '</div>' +
+    '<div class="panel"><h2 class="section-title">5-Year Rolling CoE</h2>' + rankTable(rolling, 'value', 'Conference', 'CoE', 'conf') + '</div>' +
     '</div>';
 }
 
@@ -383,12 +434,12 @@ function renderField() {
   Object.keys(byConf).sort((a, b) => a - b).forEach(rank => {
     const g = byConf[rank];
     html += '<div class="field-conf-group">' +
-      '<div class="field-conf-head"><span>#' + rank + ' &middot; ' + g.conference + '</span>' +
+      '<div class="field-conf-head"><span class="name-cell">' + logoMarkup(g.conference, 'conf', 'sm') + '#' + rank + ' &middot; ' + g.conference + '</span>' +
       '<span class="bids">' + g.teams.length + ' bid' + (g.teams.length > 1 ? 's' : '') + '</span></div>';
     g.teams.forEach(t => {
       const potTag = t.pot === 'bye' ? '<span class="tag bye">Bye</span>' : '<span class="tag pot' + t.pot + '">Pot ' + t.pot + '</span>';
       const bidTag = t.bid_type === 'champion' ? '<span class="tag champ">Champion</span>' : '';
-      html += '<div class="qual-row"><span class="qual-team">' + t.team + ' ' + bidTag + '</span>' +
+      html += '<div class="qual-row"><span class="qual-team name-cell">' + logoMarkup(t.team, 'team', 'sm') + t.team + ' ' + bidTag + '</span>' +
         '<span>' + potTag + ' <span class="coe-mini">' + fmt(t.team_coe_5yr) + '</span></span></div>';
     });
     html += '</div>';
@@ -403,14 +454,14 @@ function renderBracket() {
 
   let html = '<div class="panel">';
   html += '<div class="bracket-section-label">Byes &rarr; Round of 16 (' + pf.byes.length + ')</div>';
-  html += '<div class="bye-strip">' + pf.byes.map(t => '<div class="bye-chip">' + t + '</div>').join('') + '</div>';
+  html += '<div class="bye-strip">' + pf.byes.map(t => '<div class="bye-chip">' + logoMarkup(t, 'team', 'sm') + ' ' + t + '</div>').join('') + '</div>';
 
   html += '<div class="bracket-section-label">Round of 24 (' + pf.round_of_24.length + ' games)</div>';
   pf.round_of_24.forEach((g, i) => {
     html += '<div class="game-card"><div class="game-num">G' + (i + 1) + '</div><div class="game-matchup">' +
-      '<div class="team-chip"><span class="name">' + g.away + '</span><span class="conf">' + g.away_conf + '</span></div>' +
+      '<div class="team-chip">' + logoMarkup(g.away, 'team') + '<div><span class="name">' + g.away + '</span><span class="conf">' + g.away_conf + '</span></div></div>' +
       '<div class="at">@</div>' +
-      '<div class="team-chip home"><span class="name">' + g.home + '</span><span class="conf">' + g.home_conf + '</span></div>' +
+      '<div class="team-chip home">' + logoMarkup(g.home, 'team') + '<div><span class="name">' + g.home + '</span><span class="conf">' + g.home_conf + '</span></div></div>' +
       '<div class="coe-mini">' + fmt(g.away_coe) + ' vs ' + fmt(g.home_coe) + '</div>' +
       '</div></div>';
   });

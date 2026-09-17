@@ -19,6 +19,7 @@ from pathlib import Path
 
 SHELL_PATH = Path("ui/dashboard_shell.html")
 DATA_PATH = Path("ui/dashboard_data.json")
+LOGO_ASSETS_PATH = Path("ui/logo_assets.json")
 OUT_PATH = Path("ui/dashboard.html")
 
 
@@ -33,10 +34,16 @@ def main() -> None:
          "--draw-seed", str(args.draw_seed), "--out", str(DATA_PATH)],
         check=True,
     )
+    subprocess.run(
+        [sys.executable, "src/build_logo_assets.py", "--db", args.db, "--out", str(LOGO_ASSETS_PATH)],
+        check=True,
+    )
 
     shell = SHELL_PATH.read_text()
     data = DATA_PATH.read_text()
-    OUT_PATH.write_text(shell.replace("__DATA_JSON__", data))
+    logo_assets = LOGO_ASSETS_PATH.read_text()
+    final = shell.replace("__DATA_JSON__", data).replace("__LOGO_ASSETS_JSON__", logo_assets)
+    OUT_PATH.write_text(final)
 
     print(f"\nBuilt {OUT_PATH} ({OUT_PATH.stat().st_size:,} bytes)")
     print("Open it directly in a browser, or publish it wherever you host static pages.")
