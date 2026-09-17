@@ -286,8 +286,44 @@
   .at { font-family: var(--font-display); color: var(--ink-dim); font-size: 13px; }
   .coe-mini { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); margin-left: auto; }
 
+  /* Bracket tree (R16 -> QF -> SF -> Final), standard flexbox bracket recipe */
+  .bracket-tree { display: flex; overflow-x: auto; padding: 10px 0 20px; }
+  .bracket-round-col { display: flex; flex-direction: column; justify-content: space-around; padding: 0 22px; min-width: 168px; }
+  .bracket-round-title {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--ink-dim); text-align: center; margin-bottom: 10px;
+  }
+  .bracket-list { display: flex; flex-direction: column; flex-grow: 1; justify-content: space-around; }
+  .bracket-item { position: relative; padding: 7px 0; }
+  .bracket-item .bslot {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--panel-2); border-radius: 3px; padding: 6px 9px;
+    font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .bracket-item .bslot.tbd { color: var(--ink-dim); font-style: italic; }
+  .bracket-item .seed { font-family: var(--font-mono); font-size: 10px; color: var(--ink-dim); width: 1.4em; flex: 0 0 auto; }
+  .bracket-item:after {
+    position: absolute; content: ''; width: 14px; right: -14px; top: 50%;
+    border-bottom: 2px solid var(--line);
+  }
+  .bracket-item:nth-child(odd):before {
+    position: absolute; content: ''; border-right: 2px solid var(--line);
+    right: -14px; top: 50%; height: calc(50% + 1px);
+  }
+  .bracket-item:nth-child(even):before {
+    position: absolute; content: ''; border-right: 2px solid var(--line);
+    right: -14px; bottom: 50%; height: calc(50% + 1px);
+  }
+  .bracket-round-col:last-child .bracket-item:after,
+  .bracket-round-col:last-child .bracket-item:before { display: none; }
+  .champion-slot {
+    display: flex; align-items: center; gap: 8px; font-family: var(--font-display);
+    font-size: 15px; color: var(--amber); padding: 10px 12px; background: var(--panel-2); border-radius: 3px;
+  }
+
   footer.foot {
     margin-top: 40px;
+
     padding-top: 16px;
     border-top: 1px solid var(--line);
     font-size: 12px;
@@ -326,6 +362,7 @@
     <button data-tab="conferences">Conferences</button>
     <button data-tab="field">Playoff Field</button>
     <button data-tab="bracket">Bracket Draw</button>
+    <button data-tab="history">Playoff History</button>
   </nav>
 
   <div class="year-row" id="year-row"></div>
@@ -380,6 +417,11 @@ function fmt(n) { return Number(n).toFixed(3); }
 
 function renderYearRow() {
   const row = document.getElementById('year-row');
+  if (state.tab === 'history') {
+    row.innerHTML = '';
+    document.getElementById('year-caption').textContent = 'ALL SEASONS, ' + DATA.years_playoff[0] + '\u2013' + DATA.years_playoff[DATA.years_playoff.length - 1];
+    return;
+  }
   const years = state.tab === 'field' || state.tab === 'bracket' ? DATA.years_playoff : DATA.years_all;
   row.innerHTML = '';
   years.forEach(y => {
@@ -448,11 +490,72 @@ function renderField() {
   return html;
 }
 
+function buildBracketSeeds(pf) {
+  // Seeds 1-8: byes, ranked by 5yr rolling team CoE (highest first).
+  // Seeds 9-16: the 8 Round-of-24 games, in draw order, as "Winner of Game N" placeholders.
+  const byesSorted = [...pf.byes].sort((a, b) => (pf._byeCoe[b] || 0) - (pf._byeCoe[a] || 0));
+  const seeds = byesSorted.map((t, i) => ({ seed: i + 1, isTeam: true, team: t }));
+  pf.round_of_24.forEach((g, i) => {
+    seeds.push({ seed: 9 + i, isTeam: false, label: 'Winner of Game ' + (i + 1) });
+  });
+  return seeds;
+}
+
+function slotHtml(seedObj) {
+  if (seedObj.isTeam) {
+    return '<div class="bslot"><span class="seed">' + seedObj.seed + '</span>' + logoMarkup(seedObj.team, 'team', 'sm') + '<span>' + seedObj.team + '</span></div>';
+  }
+  return '<div class="bslot tbd"><span class="seed">' + seedObj.seed + '</span><span>' + seedObj.label + '</span></div>';
+}
+
+function renderBracketTree(pf) {
+  pf._byeCoe = {};
+  pf.qualifiers.forEach(q => { pf._byeCoe[q.team] = q.team_coe_5yr; });
+
+  const seeds = buildBracketSeeds(pf); // 16 seeds, ranked 1-16
+  // Standard bracket pairing order for display: 1v16, 2v15, 3v14 ... 8v9
+  const byRank = {};
+  seeds.forEach(s => { byRank[s.seed] = s; });
+  const r16List = [];
+  for (let i = 1; i <= 8; i++) {
+    r16List.push(byRank[i]);
+    r16List.push(byRank[17 - i]);
+  }
+
+  let html = '<div class="bracket-tree">';
+
+  html += '<div class="bracket-round-col"><div class="bracket-round-title">Round of 16</div><div class="bracket-list">';
+  r16List.forEach(s => { html += '<div class="bracket-item">' + slotHtml(s) + '</div>'; });
+  html += '</div></div>';
+
+  html += '<div class="bracket-round-col"><div class="bracket-round-title">Quarterfinals</div><div class="bracket-list">';
+  for (let i = 0; i < 4; i++) html += '<div class="bracket-item"><div class="bslot tbd">TBD</div></div>';
+  html += '</div></div>';
+
+  html += '<div class="bracket-round-col"><div class="bracket-round-title">Semifinals</div><div class="bracket-list">';
+  for (let i = 0; i < 2; i++) html += '<div class="bracket-item"><div class="bslot tbd">TBD</div></div>';
+  html += '</div></div>';
+
+  html += '<div class="bracket-round-col"><div class="bracket-round-title">Final</div><div class="bracket-list">';
+  html += '<div class="bracket-item"><div class="bslot tbd">TBD</div></div>';
+  html += '</div></div>';
+
+  html += '<div class="bracket-round-col"><div class="bracket-round-title">Champion</div><div class="bracket-list">';
+  html += '<div class="champion-slot">&#127942; TBD</div>';
+  html += '</div></div>';
+
+  html += '</div>';
+  return html;
+}
+
 function renderBracket() {
   const pf = DATA.playoff_by_year[state.year];
   if (!pf) return '<div class="empty-note">No bracket for this season.</div>';
 
   let html = '<div class="panel">';
+  html += '<div class="bracket-section-label">Bracket (seeded by 5yr CoE; Quarterfinals onward are structural placeholders \u2014 outcomes aren\'t simulated yet)</div>';
+  html += renderBracketTree(pf);
+
   html += '<div class="bracket-section-label">Byes &rarr; Round of 16 (' + pf.byes.length + ')</div>';
   html += '<div class="bye-strip">' + pf.byes.map(t => '<div class="bye-chip">' + logoMarkup(t, 'team', 'sm') + ' ' + t + '</div>').join('') + '</div>';
 
@@ -469,12 +572,27 @@ function renderBracket() {
   return html;
 }
 
+function renderHistory() {
+  const rows = DATA.playoff_appearances || [];
+  if (!rows.length) return '<div class="empty-note">No playoff history data.</div>';
+  let html = '<div class="panel"><h2 class="section-title">Playoff Appearances, ' + DATA.years_playoff[0] + '\u2013' + DATA.years_playoff[DATA.years_playoff.length - 1] + ' (' + DATA.years_playoff.length + ' seasons simulated)</h2>';
+  html += '<table class="rank-table"><thead><tr><th></th><th>Team</th><th class="num">Appearances</th><th class="num">Byes</th><th>Years</th></tr></thead><tbody>';
+  rows.forEach((r, i) => {
+    html += '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + logoMarkup(r.team, 'team', 'sm') + '<span>' + r.team + '</span></div></td>' +
+      '<td class="num coe-val">' + r.appearances + '</td><td class="num">' + r.byes + '</td>' +
+      '<td style="font-family:var(--font-mono);font-size:11px;color:var(--ink-dim)">' + r.years.join(', ') + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  return html;
+}
+
 function render() {
   renderYearRow();
   const content = document.getElementById('content');
   if (state.tab === 'teams') content.innerHTML = renderTeams();
   else if (state.tab === 'conferences') content.innerHTML = renderConferences();
   else if (state.tab === 'field') content.innerHTML = renderField();
+  else if (state.tab === 'history') content.innerHTML = renderHistory();
   else content.innerHTML = renderBracket();
 }
 

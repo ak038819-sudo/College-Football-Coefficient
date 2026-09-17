@@ -103,8 +103,9 @@ def main() -> None:
     conf_ratings = load_csv_by_year("conference_ratings_by_season.csv", "season_year")
     conf_rolling = load_csv_by_year("conference_coeff_5yr.csv", "end_year")
 
-    def top(rows, key, n=25):
-        return sorted(rows, key=lambda r: -float(r[key]))[:n]
+    def top(rows, key, n=None):
+        rows_sorted = sorted(rows, key=lambda r: -float(r[key]))
+        return rows_sorted if n is None else rows_sorted[:n]
 
     out = {
         "years_all": sorted(team_ratings.keys()),
@@ -137,6 +138,21 @@ def main() -> None:
     for year in MEMBERSHIP_YEARS:
         print(f"Building playoff data for {year}...")
         out["playoff_by_year"][str(year)] = build_playoff_data(args.db, year, args.draw_seed)
+
+    # Aggregate playoff appearances (and bye counts) across every simulated season
+    appearances: dict[str, dict] = {}
+    for year in MEMBERSHIP_YEARS:
+        pf = out["playoff_by_year"][str(year)]
+        for q in pf["qualifiers"]:
+            rec = appearances.setdefault(q["team"], {"team": q["team"], "appearances": 0, "byes": 0, "years": []})
+            rec["appearances"] += 1
+            rec["years"].append(year)
+            if q["pot"] == "bye":
+                rec["byes"] += 1
+
+    out["playoff_appearances"] = sorted(
+        appearances.values(), key=lambda r: (-r["appearances"], -r["byes"], r["team"])
+    )
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
