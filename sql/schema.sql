@@ -48,6 +48,22 @@ CREATE TABLE new_alignment (
 );
 
 -- ==========================================
+-- NAME RESOLUTION
+-- ==========================================
+
+-- Maps a raw/alternate spelling of a team name (as it appears in a raw
+-- games CSV, e.g. from CFBD) to the canonical teams.team_name. Used by
+-- load_games.py's resolve_team_name(). This table existed in practice
+-- (in db/league_backup_before_playoff_migration.db) before it was ever
+-- defined in schema.sql -- adding it here so a fresh schema build
+-- actually supports game loading without a manual CREATE TABLE.
+CREATE TABLE team_aliases (
+    alias TEXT PRIMARY KEY,
+    team_name TEXT NOT NULL,
+    FOREIGN KEY (team_name) REFERENCES teams(team_name)
+);
+
+-- ==========================================
 -- GAME RESULTS (RAW EVENTS)
 -- ==========================================
 
