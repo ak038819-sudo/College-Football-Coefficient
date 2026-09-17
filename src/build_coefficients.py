@@ -139,12 +139,111 @@ def per_season_iterative_ratings(games: List[sqlite3.Row], iterations: int = ITE
     return ratings
 
 
+def fetch_team_conference_map(conn: sqlite3.Connection, year: int) -> Dict[str, str]:
+    """
+    Maps team_name -> conference_real for a given season, via
+    team_membership_by_season (joined through teams for the name).
+    Teams with no membership row for that season (or no conference)
+    are simply absent from the map.
+    """
+    rows = conn.execute(
+        """
+        SELECT t.team_name AS team_name, m.conference_real AS conference
+        FROM team_membership_by_season m
+        JOIN teams t ON t.team_id = m.team_id
+        WHERE m.season_year = ? AND m.conference_real IS NOT NULL
+        """,
+        (year,),
+    ).fetchall()
+    return {r["team_name"]: r["conference"] for r in rows}
+
+
 def within_window_weight(end_year: int, year: int) -> float:
     """Weight for a year within the rolling window ending at end_year."""
     if not USE_WITHIN_WINDOW_DECAY:
         return 1.0
     age = end_year - year  # 0 for end_year, 1 for end_year-1, ...
     return WITHIN_WINDOW_DECAY_BASE ** age
+
+
+def compute_conference_ratings_by_season(
+    all_ratings: Dict[Tuple[int, str], float],
+    team_conf_by_year: Dict[int, Dict[str, str]],
+) -> Dict[Tuple[int, str], float]:
+    """
+    Conference rating per season = SUM of that season's ratings for every
+    team whose membership places them in that conference that year.
+    """
+    conf_ratings: Dict[Tuple[int, str], float] = {}
+    for (year, team), rating in all_ratings.items():
+        conf = team_conf_by_year.get(year, {}).get(team)
+        if conf is None:
+            continue
+        key = (year, conf)
+        conf_ratings[key] = conf_ratings.get(key, 0.0) + rating
+    return conf_ratings
+
+
+def write_conference_ratings_by_season(conf_ratings: Dict[Tuple[int, str], float]) -> Path:
+    out_path = OUT_DIR / "conference_ratings_by_season.csv"
+    rows = [
+        {"season_year": yr, "conference_name": conf, "rating": round(val, 6)}
+        for (yr, conf), val in conf_ratings.items()
+    ]
+    rows.sort(key=lambda r: (r["season_year"], -r["rating"], r["conference_name"]))
+    with out_path.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=["season_year", "conference_name", "rating"])
+        w.writeheader()
+        w.writerows(rows)
+    return out_path
+
+
+def write_conference_rolling_5yr(
+    conf_ratings: Dict[Tuple[int, str], float], years: List[int]
+) -> Path:
+    """
+    Same window/decay logic as write_rolling_5yr, but for conferences.
+    A conference's rolling coefficient is the decay-weighted sum of its
+    OWN per-season sums, which is equivalent to summing its member
+    teams' rolling coefficients (sum and weighted-sum commute).
+    """
+    out_path = OUT_DIR / "conference_coeff_5yr.csv"
+    years = sorted(years)
+    rows_out = []
+
+    for end_year in years:
+        start_year = end_year - (ROLLING_YEARS - 1)
+        window_years = [y for y in years if start_year <= y <= end_year]
+        if len(window_years) < ROLLING_YEARS:
+            continue
+
+        confs = set(conf for (yr, conf) in conf_ratings.keys() if yr in window_years)
+
+        for conf in confs:
+            coeff = 0.0
+            for y in window_years:
+                coeff += conf_ratings.get((y, conf), 0.0) * within_window_weight(end_year, y)
+
+            rows_out.append(
+                {
+                    "end_year": end_year,
+                    "window_start": start_year,
+                    "window_end": end_year,
+                    "conference_name": conf,
+                    "coeff_5yr": round(coeff, 6),
+                }
+            )
+
+    rows_out.sort(key=lambda r: (r["end_year"], -r["coeff_5yr"], r["conference_name"]))
+    with out_path.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(
+            f,
+            fieldnames=["end_year", "window_start", "window_end", "conference_name", "coeff_5yr"],
+        )
+        w.writeheader()
+        w.writerows(rows_out)
+
+    return out_path
 
 
 def write_team_ratings_by_season(all_ratings: Dict[Tuple[int, str], float]) -> Path:
@@ -214,12 +313,15 @@ def main() -> None:
     years = fetch_years(conn)
 
     all_ratings: Dict[Tuple[int, str], float] = {}
+    team_conf_by_year: Dict[int, Dict[str, str]] = {}
 
     for y in years:
         games = fetch_games_for_year(conn, y)
         ratings = per_season_iterative_ratings(games, iterations=ITERATIONS)
         for team, val in ratings.items():
             all_ratings[(y, team)] = float(val)
+
+        team_conf_by_year[y] = fetch_team_conference_map(conn, y)
 
         # quick console peek (top 5 each season)
         top5 = sorted(ratings.items(), key=lambda x: -x[1])[:5]
@@ -229,8 +331,14 @@ def main() -> None:
     p1 = write_team_ratings_by_season(all_ratings)
     p2 = write_rolling_5yr(all_ratings, years)
 
+    conf_ratings = compute_conference_ratings_by_season(all_ratings, team_conf_by_year)
+    p3 = write_conference_ratings_by_season(conf_ratings)
+    p4 = write_conference_rolling_5yr(conf_ratings, years)
+
     print(f"\nWrote: {p1}")
     print(f"Wrote: {p2}")
+    print(f"Wrote: {p3}")
+    print(f"Wrote: {p4}")
 
     # Show latest season + latest 5-year window leaders
     latest = max(years)
