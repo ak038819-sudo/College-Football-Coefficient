@@ -26,6 +26,11 @@ identical; the ruleset distinction is kept in the code for clarity and
 in case the two diverge again later (e.g. once the NIT-winner bonus
 bid is implemented).
 
+Conference rank 5's 3rd-place qualifier goes to Pot 1 (not Pot 2, as
+the original spec's seeding table said) -- also a project decision, to
+balance Pot 1 and Pot 2 at 8 teams each. Unequal pots (7 vs 9 under the
+original table) can't support a clean 1-to-1 Pot1-vs-Pot2 draw pairing.
+
 Team-level seeding source: 5-year rolling team coefficient
 (data/processed/team_coeff_5yr.csv), per project decision.
 
@@ -163,13 +168,12 @@ def assign_pots(qualifiers: list) -> list:
                 else:
                     q["pot"] = 2
         elif coe_rank == 5:
+            # Champ bye; runner-up AND 3rd -> Pot1 (changed from original
+            # spec's "3rd -> Pot2" to balance Pot1/Pot2 at 8/8 each --
+            # project decision, since unequal pots break the 1-to-1
+            # Pot1-vs-Pot2 draw pairing)
             for q in teams:
-                if q["conf_standing_rank"] == 1:
-                    q["pot"] = "bye"
-                elif q["conf_standing_rank"] == 2:
-                    q["pot"] = 1
-                else:
-                    q["pot"] = 2
+                q["pot"] = "bye" if q["conf_standing_rank"] == 1 else 1
         elif coe_rank == 6:
             # Sole qualifier (champion only, both rulesets) always gets the bye
             for q in teams:
