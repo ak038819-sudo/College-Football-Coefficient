@@ -36,6 +36,8 @@ from select_playoff_field_v2 import (
     select_qualifiers,
     assign_pots,
     assign_homefield,
+    get_independent_teams_with_coe,
+    apply_independent_threshold,
 )
 
 
@@ -114,7 +116,14 @@ def main() -> None:
     qualifiers = select_qualifiers(conn, args.year, conf_ranked, bid_table)
     qualifiers = assign_pots(qualifiers)
     assign_homefield(qualifiers, team_coe)
+    independents = get_independent_teams_with_coe(conn, args.year, team_coe)
+    qualifiers, replacements = apply_independent_threshold(qualifiers, independents)
     conn.close()
+
+    if replacements:
+        print(f"Independent threshold: " + "; ".join(
+            f"{r['independent']} replaces {r['replaced_team']} [{r['replaced_conference']}]" for r in replacements
+        ))
 
     byes = [q["team_name"] for q in qualifiers if q["pot"] == "bye"]
     pot1 = [q["team_name"] for q in qualifiers if q["pot"] == 1]

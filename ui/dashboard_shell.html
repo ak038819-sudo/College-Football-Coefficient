@@ -362,6 +362,7 @@
     <button data-tab="conferences">Conferences</button>
     <button data-tab="field">Playoff Field</button>
     <button data-tab="bracket">Bracket Draw</button>
+    <button data-tab="odds">Title Odds</button>
     <button data-tab="history">Playoff History</button>
   </nav>
 
@@ -422,7 +423,7 @@ function renderYearRow() {
     document.getElementById('year-caption').textContent = 'ALL SEASONS, ' + DATA.years_playoff[0] + '\u2013' + DATA.years_playoff[DATA.years_playoff.length - 1];
     return;
   }
-  const years = state.tab === 'field' || state.tab === 'bracket' ? DATA.years_playoff : DATA.years_all;
+  const years = (state.tab === 'field' || state.tab === 'bracket' || state.tab === 'odds') ? DATA.years_playoff : DATA.years_all;
   row.innerHTML = '';
   years.forEach(y => {
     const b = document.createElement('button');
@@ -468,11 +469,31 @@ function renderField() {
   if (!pf) return '<div class="empty-note">No playoff field for this season.</div>';
 
   const byConf = {};
+  const independentQuals = [];
   pf.qualifiers.forEach(q => {
+    if (q.conf_coe_rank === null) { independentQuals.push(q); return; }
     (byConf[q.conf_coe_rank] = byConf[q.conf_coe_rank] || { conference: q.conference, teams: [] }).teams.push(q);
   });
 
   let html = '<div class="panel">';
+
+  if (independentQuals.length) {
+    html += '<div class="field-conf-group">' +
+      '<div class="field-conf-head"><span class="name-cell">' + logoMarkup('FBS Independents', 'conf', 'sm') + 'Independent (via CoE threshold)</span>' +
+      '<span class="bids">' + independentQuals.length + ' bid' + (independentQuals.length > 1 ? 's' : '') + '</span></div>';
+    independentQuals.forEach(t => {
+      const potTag = t.pot === 'bye' ? '<span class="tag bye">Bye</span>' : '<span class="tag pot' + t.pot + '">Pot ' + t.pot + '</span>';
+      html += '<div class="qual-row"><span class="qual-team name-cell">' + logoMarkup(t.team, 'team', 'sm') + t.team + '</span>' +
+        '<span>' + potTag + ' <span class="coe-mini">' + fmt(t.team_coe_5yr) + '</span></span></div>';
+    });
+    if (pf.independent_replacements && pf.independent_replacements.length) {
+      pf.independent_replacements.forEach(r => {
+        html += '<div class="qual-row" style="color:var(--ink-dim);font-size:12px;font-style:italic">displaced ' + r.replaced_team + ' (' + r.replaced_conference + ', CoE ' + fmt(r.replaced_coe) + ')</div>';
+      });
+    }
+    html += '</div>';
+  }
+
   Object.keys(byConf).sort((a, b) => a - b).forEach(rank => {
     const g = byConf[rank];
     html += '<div class="field-conf-group">' +
@@ -586,6 +607,24 @@ function renderHistory() {
   return html;
 }
 
+function renderOdds() {
+  const pf = DATA.playoff_by_year[state.year];
+  if (!pf || !pf.simulation) return '<div class="empty-note">No simulation data for this season.</div>';
+  const meta = pf.sim_meta || {};
+  let html = '<div class="panel"><h2 class="section-title">Title Odds &mdash; Monte Carlo, ' +
+    (meta.n_sims || '?').toLocaleString() + ' simulated brackets (temperature=' + meta.temperature + ')</h2>';
+  html += '<table class="rank-table"><thead><tr><th></th><th>Team</th><th class="num">CoE</th>' +
+    '<th class="num">R16</th><th class="num">QF</th><th class="num">SF</th><th class="num">Final</th><th class="num">Champion</th></tr></thead><tbody>';
+  pf.simulation.forEach((r, i) => {
+    html += '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + logoMarkup(r.team, 'team', 'sm') + '<span>' + r.team + '</span></div></td>' +
+      '<td class="num">' + fmt(r.coe) + '</td>' +
+      '<td class="num">' + r.r16_pct + '%</td><td class="num">' + r.qf_pct + '%</td><td class="num">' + r.sf_pct + '%</td>' +
+      '<td class="num">' + r.final_pct + '%</td><td class="num coe-val">' + r.champion_pct + '%</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  return html;
+}
+
 function render() {
   renderYearRow();
   const content = document.getElementById('content');
@@ -593,6 +632,7 @@ function render() {
   else if (state.tab === 'conferences') content.innerHTML = renderConferences();
   else if (state.tab === 'field') content.innerHTML = renderField();
   else if (state.tab === 'history') content.innerHTML = renderHistory();
+  else if (state.tab === 'odds') content.innerHTML = renderOdds();
   else content.innerHTML = renderBracket();
 }
 

@@ -191,6 +191,76 @@ def assign_homefield(qualifiers: list, team_coe: dict) -> None:
         q["team_coe_5yr"] = team_coe.get(q["team_name"], 0.0)
 
 
+def get_independent_teams_with_coe(conn: sqlite3.Connection, season_year: int, team_coe: dict) -> list:
+    """
+    FBS Independents for this season, sorted strongest-first by 5yr
+    rolling team CoE. Independents don't belong to any bid-eligible
+    conference (see module docstring), so they're never in the normal
+    conference-standings qualifier pool -- they only enter the field via
+    apply_independent_threshold().
+    """
+    rows = conn.execute(
+        """
+        SELECT t.team_name FROM team_membership_by_season m
+        JOIN teams t ON t.team_id = m.team_id
+        WHERE m.season_year = ? AND m.conference_real = 'FBS Independents'
+        """,
+        (season_year,),
+    ).fetchall()
+    return sorted(
+        [(r[0], team_coe.get(r[0], 0.0)) for r in rows], key=lambda x: -x[1]
+    )
+
+
+def apply_independent_threshold(qualifiers: list, independents: list) -> tuple[list, list]:
+    """
+    Project decision: Independents are evaluated on their own team CoE,
+    not a conference bid table (they have no conference standings). If
+    an independent's 5yr CoE exceeds the field's weakest AT-LARGE
+    qualifier (never a conference champion -- rule 7 protects those
+    unconditionally), it replaces that qualifier, inheriting its exact
+    pot assignment. Checked independent-by-independent, strongest first,
+    always against the current weakest remaining at-large qualifier
+    (which can change after each replacement) -- so more than one
+    independent can qualify in the same season if the field is weak
+    enough at the bottom.
+
+    Returns (updated_qualifiers, replacement_log) where each log entry
+    records exactly what displaced what, for transparency.
+    """
+    replacements = []
+    for indep_name, indep_coe in independents:
+        if any(q["team_name"] == indep_name for q in qualifiers):
+            continue  # already in field somehow; skip
+        at_large = [q for q in qualifiers if q["bid_type"] == "at_large"]
+        if not at_large:
+            break
+        weakest = min(at_large, key=lambda q: q["team_coe_5yr"])
+        if indep_coe > weakest["team_coe_5yr"]:
+            qualifiers.remove(weakest)
+            qualifiers.append(
+                {
+                    "team_name": indep_name,
+                    "conference": "FBS Independents",
+                    "conf_coe_rank": None,
+                    "conf_standing_rank": None,
+                    "bid_type": "independent",
+                    "pot": weakest["pot"],
+                    "team_coe_5yr": indep_coe,
+                }
+            )
+            replacements.append(
+                {
+                    "independent": indep_name,
+                    "independent_coe": round(indep_coe, 3),
+                    "replaced_team": weakest["team_name"],
+                    "replaced_conference": weakest["conference"],
+                    "replaced_coe": round(weakest["team_coe_5yr"], 3),
+                }
+            )
+    return qualifiers, replacements
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--db", default="db/league.db")
@@ -213,16 +283,40 @@ def main() -> None:
     qualifiers = assign_pots(qualifiers)
     assign_homefield(qualifiers, team_coe)
 
+    independents = get_independent_teams_with_coe(conn, args.year, team_coe)
+    qualifiers, replacements = apply_independent_threshold(qualifiers, independents)
+
+    if independents:
+        print(f"\nIndependents this season: " + ", ".join(f"{n} ({c:.3f})" for n, c in independents))
+    if replacements:
+        print("Independent threshold triggered:")
+        for r in replacements:
+            print(
+                f"  {r['independent']} ({r['independent_coe']:.3f}) replaces "
+                f"{r['replaced_team']} [{r['replaced_conference']}] ({r['replaced_coe']:.3f})"
+            )
+    elif independents:
+        print("No independent exceeded the weakest at-large qualifier -- field unchanged.")
+
     n_bye = sum(1 for q in qualifiers if q["pot"] == "bye")
     n_pot1 = sum(1 for q in qualifiers if q["pot"] == 1)
     n_pot2 = sum(1 for q in qualifiers if q["pot"] == 2)
     print(f"\nTotal qualifiers: {len(qualifiers)} (byes={n_bye}, pot1={n_pot1}, pot2={n_pot2})")
 
-    print(f"\n{'Team':<20} {'Conf':<18} {'CoE Rk':>6} {'Std Rk':>6} {'Bid':<10} {'Pot':<6} {'Team CoE 5yr':>12}")
-    for q in sorted(qualifiers, key=lambda x: (x["conf_coe_rank"], x["conf_standing_rank"])):
+    def sort_key(q):
+        # Independents have no conf_coe_rank/conf_standing_rank -- sort them
+        # after everything else, by their own team CoE descending.
+        if q["conf_coe_rank"] is None:
+            return (999, -q["team_coe_5yr"])
+        return (q["conf_coe_rank"], q["conf_standing_rank"])
+
+    print(f"\n{'Team':<20} {'Conf':<18} {'CoE Rk':>6} {'Std Rk':>6} {'Bid':<12} {'Pot':<6} {'Team CoE 5yr':>12}")
+    for q in sorted(qualifiers, key=sort_key):
+        coe_rk = q["conf_coe_rank"] if q["conf_coe_rank"] is not None else "-"
+        std_rk = q["conf_standing_rank"] if q["conf_standing_rank"] is not None else "-"
         print(
-            f"{q['team_name']:<20} {q['conference']:<18} {q['conf_coe_rank']:>6} "
-            f"{q['conf_standing_rank']:>6} {q['bid_type']:<10} {str(q['pot']):<6} {q['team_coe_5yr']:>12.3f}"
+            f"{q['team_name']:<20} {q['conference']:<18} {str(coe_rk):>6} "
+            f"{str(std_rk):>6} {q['bid_type']:<12} {str(q['pot']):<6} {q['team_coe_5yr']:>12.3f}"
         )
 
     conn.close()

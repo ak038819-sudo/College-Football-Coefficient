@@ -24,10 +24,12 @@ sys.path.insert(0, str(Path(__file__).parent / "coefficients"))
 from select_playoff_field_v2 import (  # noqa: E402
     YEAR1_BIDS, YEAR2_BIDS, load_conference_coe_rank, load_team_coe_5yr,
     select_qualifiers, assign_pots, assign_homefield,
+    get_independent_teams_with_coe, apply_independent_threshold,
 )
 from draw_playoff_bracket_v2 import (  # noqa: E402
     backtrack_pairings, choose_home_away, build_conf_map,
 )
+from simulate_bracket import run_simulation, DEFAULT_TEMPERATURE  # noqa: E402
 import random
 
 DATA_DIR = Path("data/processed")
@@ -42,7 +44,7 @@ def load_csv_by_year(filename: str, year_field: str) -> dict:
     return out
 
 
-def build_playoff_data(db_path: str, year: int, draw_seed: int) -> dict:
+def build_playoff_data(db_path: str, year: int, draw_seed: int, sims: int, temperature: float) -> dict:
     bid_table = YEAR1_BIDS if year == 2014 else YEAR2_BIDS
     conn = sqlite3.connect(db_path)
     conf_ranked = load_conference_coe_rank(year)
@@ -50,6 +52,8 @@ def build_playoff_data(db_path: str, year: int, draw_seed: int) -> dict:
     qualifiers = select_qualifiers(conn, year, conf_ranked, bid_table)
     qualifiers = assign_pots(qualifiers)
     assign_homefield(qualifiers, team_coe)
+    independents = get_independent_teams_with_coe(conn, year, team_coe)
+    qualifiers, replacements = apply_independent_threshold(qualifiers, independents)
     conn.close()
 
     byes = [q["team_name"] for q in qualifiers if q["pot"] == "bye"]
@@ -73,10 +77,35 @@ def build_playoff_data(db_path: str, year: int, draw_seed: int) -> dict:
             "away_coe": round(team_coe.get(away, 0.0), 3),
         })
 
+    counts, n_sims, sim_conf_of, sim_team_coe = run_simulation(db_path, year, draw_seed, sims, temperature)
+    simulation = [
+        {
+            "team": team,
+            "conference": sim_conf_of.get(team, ""),
+            "coe": round(sim_team_coe.get(team, 0.0), 3),
+            "r16_pct": round(100 * c["r16"] / n_sims, 1),
+            "qf_pct": round(100 * c["qf"] / n_sims, 1),
+            "sf_pct": round(100 * c["sf"] / n_sims, 1),
+            "final_pct": round(100 * c["final"] / n_sims, 1),
+            "champion_pct": round(100 * c["champion"] / n_sims, 1),
+        }
+        for team, c in counts.items()
+    ]
+    simulation.sort(key=lambda r: -r["champion_pct"])
+
+    def sort_key(q):
+        if q["conf_coe_rank"] is None:
+            return (999, -q["team_coe_5yr"])
+        return (q["conf_coe_rank"], q["conf_standing_rank"])
+
     return {
         "conference_ranking": [
             {"conference": c, "coeff_5yr": round(v, 3)} for c, v in conf_ranked
         ],
+        "independents": [{"team": n, "coe": round(c, 3)} for n, c in independents],
+        "independent_replacements": replacements,
+        "simulation": simulation,
+        "sim_meta": {"n_sims": n_sims, "temperature": temperature},
         "qualifiers": [
             {
                 "team": q["team_name"], "conference": q["conference"],
@@ -84,7 +113,7 @@ def build_playoff_data(db_path: str, year: int, draw_seed: int) -> dict:
                 "bid_type": q["bid_type"], "pot": str(q["pot"]),
                 "team_coe_5yr": round(q["team_coe_5yr"], 3),
             }
-            for q in sorted(qualifiers, key=lambda x: (x["conf_coe_rank"], x["conf_standing_rank"]))
+            for q in sorted(qualifiers, key=sort_key)
         ],
         "byes": sorted(byes, key=lambda t: -team_coe.get(t, 0.0)),
         "round_of_24": games,
@@ -95,6 +124,8 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--db", default="db/league.db")
     p.add_argument("--draw-seed", type=int, default=1)
+    p.add_argument("--sims", type=int, default=10000)
+    p.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE)
     p.add_argument("--out", default="ui/dashboard_data.json")
     args = p.parse_args()
 
@@ -137,7 +168,7 @@ def main() -> None:
 
     for year in MEMBERSHIP_YEARS:
         print(f"Building playoff data for {year}...")
-        out["playoff_by_year"][str(year)] = build_playoff_data(args.db, year, args.draw_seed)
+        out["playoff_by_year"][str(year)] = build_playoff_data(args.db, year, args.draw_seed, args.sims, args.temperature)
 
     # Aggregate playoff appearances (and bye counts) across every simulated season
     appearances: dict[str, dict] = {}

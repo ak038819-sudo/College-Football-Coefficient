@@ -27,11 +27,14 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--db", default="db/league.db")
     p.add_argument("--draw-seed", type=int, default=1)
+    p.add_argument("--sims", type=int, default=10000)
+    p.add_argument("--temperature", type=float, default=6.0)
     args = p.parse_args()
 
     subprocess.run(
         [sys.executable, "src/export_dashboard_data.py", "--db", args.db,
-         "--draw-seed", str(args.draw_seed), "--out", str(DATA_PATH)],
+         "--draw-seed", str(args.draw_seed), "--sims", str(args.sims),
+         "--temperature", str(args.temperature), "--out", str(DATA_PATH)],
         check=True,
     )
     subprocess.run(
