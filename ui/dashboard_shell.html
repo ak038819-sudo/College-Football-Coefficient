@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CoE Playoff Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e1512;
+    --panel: #161f1a;
+    --panel-2: #1c2621;
+    --line: #2a352e;
+    --ink: #eef1ec;
+    --ink-dim: #a8b3ac;
+    --amber: #e8a33d;
+    --amber-dim: #7a5a26;
+    --red: #c4453c;
+    --green-hl: #6fae5a;
+    --font-display: 'Oswald', sans-serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f2f0e8;
+      --panel: #ffffff;
+      --panel-2: #eae7dc;
+      --line: #d8d4c6;
+      --ink: #1a1f1b;
+      --ink-dim: #5c6259;
+      --amber: #b5741a;
+      --amber-dim: #e8c68f;
+      --red: #a3352c;
+      --green-hl: #3f7a30;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f2f0e8;
+    --panel: #ffffff;
+    --panel-2: #eae7dc;
+    --line: #d8d4c6;
+    --ink: #1a1f1b;
+    --ink-dim: #5c6259;
+    --amber: #b5741a;
+    --amber-dim: #e8c68f;
+    --red: #a3352c;
+    --green-hl: #3f7a30;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 80px; }
+
+  header.top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    border-bottom: 3px solid var(--ink);
+    padding-bottom: 16px;
+    margin-bottom: 22px;
+  }
+  .title-block h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(28px, 5vw, 44px);
+    letter-spacing: 0.5px;
+    margin: 0;
+    line-height: 1;
+  }
+  .title-block h1 span { color: var(--amber); }
+  .title-block p {
+    margin: 6px 0 0;
+    color: var(--ink-dim);
+    font-size: 14px;
+    max-width: 46ch;
+  }
+  .scope-note {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-dim);
+    text-align: right;
+    line-height: 1.5;
+  }
+
+  nav.tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  nav.tabs button {
+    font-family: var(--font-display);
+    font-size: 15px;
+    letter-spacing: 0.3px;
+    background: transparent;
+    color: var(--ink-dim);
+    border: 2px solid var(--line);
+    padding: 8px 18px;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  nav.tabs button.active {
+    color: var(--bg);
+    background: var(--amber);
+    border-color: var(--amber);
+  }
+  nav.tabs button:hover:not(.active) { border-color: var(--amber-dim); color: var(--ink); }
+
+  .year-row {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    margin-bottom: 26px;
+  }
+  .year-row button {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 13px;
+    flex: 0 0 auto;
+    background: var(--panel);
+    color: var(--ink-dim);
+    border: 1px solid var(--line);
+    padding: 6px 12px;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  .year-row button.active {
+    color: var(--ink);
+    border-color: var(--amber);
+    box-shadow: inset 0 -3px 0 var(--amber);
+  }
+  .year-row button.no-playoff { opacity: 0.45; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 20px;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  @media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  h2.section-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    letter-spacing: 0.4px;
+    margin: 0 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  table.rank-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.rank-table th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    font-weight: 600;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  table.rank-table th.num, table.rank-table td.num { text-align: right; }
+  table.rank-table td { padding: 6px 8px; border-bottom: 1px solid var(--panel-2); }
+  table.rank-table tr:hover td { background: var(--panel-2); }
+  .rk { font-family: var(--font-mono); color: var(--ink-dim); width: 2.4em; display: inline-block; }
+  .coe-val { font-family: var(--font-mono); font-weight: 600; color: var(--amber); }
+
+  .field-conf-group {
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--panel-2);
+  }
+  .field-conf-group:last-child { border-bottom: none; }
+  .field-conf-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: var(--font-display);
+    font-size: 15px;
+    margin-bottom: 6px;
+  }
+  .field-conf-head .bids {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+  }
+  .qual-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 14px;
+    border-bottom: 1px dotted var(--panel-2);
+  }
+  .qual-row:last-child { border-bottom: none; }
+  .qual-team { display: flex; align-items: baseline; gap: 8px; }
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    padding: 1px 6px;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+  .tag.bye { background: var(--green-hl); color: #fff; }
+  .tag.pot1 { background: var(--amber); color: var(--bg); }
+  .tag.pot2 { background: var(--line); color: var(--ink); }
+  .tag.champ { border: 1px solid var(--amber-dim); color: var(--amber); background: transparent; }
+
+  .bracket-section-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    margin: 22px 0 10px;
+  }
+  .bye-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+  .bye-chip {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: var(--panel-2);
+    border-left: 3px solid var(--green-hl);
+    padding: 6px 10px;
+  }
+  .game-card {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 10px;
+    align-items: center;
+    background: var(--panel-2);
+    border-radius: 3px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+  }
+  .game-num {
+    font-family: var(--font-mono);
+    color: var(--ink-dim);
+    font-size: 13px;
+  }
+  .game-matchup { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .team-chip { display: flex; flex-direction: column; min-width: 130px; }
+  .team-chip .name { font-weight: 600; font-size: 14px; }
+  .team-chip .conf { font-family: var(--font-mono); font-size: 10px; color: var(--ink-dim); }
+  .team-chip.home .name { color: var(--amber); }
+  .at { font-family: var(--font-display); color: var(--ink-dim); font-size: 13px; }
+  .coe-mini { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); margin-left: auto; }
+
+  footer.foot {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--ink-dim);
+    font-family: var(--font-mono);
+    line-height: 1.6;
+  }
+  footer.foot a { color: var(--amber); }
+
+  .empty-note {
+    color: var(--ink-dim);
+    font-size: 14px;
+    font-style: italic;
+    padding: 30px 0;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="title-block">
+      <h1>CoE <span>Playoff Model</span></h1>
+      <p>An iterative, opponent-strength coefficient replacing the poll — conference standings decide who qualifies, CoE decides seeding and home field.</p>
+    </div>
+    <div class="scope-note">
+      RATINGS: 2010–2025<br>
+      PLAYOFF FIELD: 2014–2025<br>
+      <span id="year-caption">—</span>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="teams" class="active">Team Ratings</button>
+    <button data-tab="conferences">Conferences</button>
+    <button data-tab="field">Playoff Field</button>
+    <button data-tab="bracket">Bracket Draw</button>
+  </nav>
+
+  <div class="year-row" id="year-row"></div>
+
+  <div id="content"></div>
+
+  <footer class="foot">
+    Team rating = iterative opponent-strength model (winner += opponent_rating × phase_weight; loser retains a
+    0.15× loss penalty; renormalized each iteration; 5yr rolling window uses 0.92^age recency decay).
+    Conference rating = sum of member teams' ratings. Bid counts by conference 5yr-rolling rank: ranks 1–4 get 4 bids,
+    rank 5 gets 3, ranks 6–10 get 1 (champion only). "FBS Independents" excluded from bid eligibility.
+    Conference standings derived locally from loaded game results, not an official league record.
+    Round of 24 draw is seeded and reproducible; home field goes to the higher 5yr rolling team CoE.
+  </footer>
+
+</div>
+
+<script id="dashboard-data" type="application/json">
+__DATA_JSON__
+</script>
+<script>
+const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
+
+let state = { tab: 'teams', year: DATA.years_all[DATA.years_all.length - 1] };
+
+function fmt(n) { return Number(n).toFixed(3); }
+
+function renderYearRow() {
+  const row = document.getElementById('year-row');
+  const years = state.tab === 'field' || state.tab === 'bracket' ? DATA.years_playoff : DATA.years_all;
+  row.innerHTML = '';
+  years.forEach(y => {
+    const b = document.createElement('button');
+    b.textContent = y;
+    if (y === state.year) b.classList.add('active');
+    b.addEventListener('click', () => { state.year = y; render(); });
+    row.appendChild(b);
+  });
+  if (!years.includes(state.year)) state.year = years[years.length - 1];
+  document.getElementById('year-caption').textContent = 'VIEWING ' + state.year;
+}
+
+function rankTable(rows, valueKey, labelKey, valueLabel) {
+  if (!rows || !rows.length) return '<div class="empty-note">No data for this season.</div>';
+  let html = '<table class="rank-table"><thead><tr><th></th><th>' + labelKey + '</th><th class="num">' + valueLabel + '</th></tr></thead><tbody>';
+  rows.forEach((r, i) => {
+    html += '<tr><td class="rk">' + (i + 1) + '</td><td>' + r.name + '</td><td class="num coe-val">' + fmt(r.value) + '</td></tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderTeams() {
+  const single = (DATA.team_ratings_by_year[state.year] || []).map(r => ({ name: r.team, value: r.rating }));
+  const rolling = (DATA.team_rolling_by_year[state.year] || []).map(r => ({ name: r.team, value: r.coeff_5yr }));
+  return '<div class="grid-2">' +
+    '<div class="panel"><h2 class="section-title">Single-Season Rating</h2>' + rankTable(single, 'value', 'Team', 'Rating') + '</div>' +
+    '<div class="panel"><h2 class="section-title">5-Year Rolling CoE</h2>' + rankTable(rolling, 'value', 'Team', 'CoE') + '</div>' +
+    '</div>';
+}
+
+function renderConferences() {
+  const single = (DATA.conference_ratings_by_year[state.year] || []).map(r => ({ name: r.conference, value: r.rating }));
+  const rolling = (DATA.conference_rolling_by_year[state.year] || []).map(r => ({ name: r.conference, value: r.coeff_5yr }));
+  return '<div class="grid-2">' +
+    '<div class="panel"><h2 class="section-title">Single-Season Rating</h2>' + rankTable(single, 'value', 'Conference', 'Rating') + '</div>' +
+    '<div class="panel"><h2 class="section-title">5-Year Rolling CoE</h2>' + rankTable(rolling, 'value', 'Conference', 'CoE') + '</div>' +
+    '</div>';
+}
+
+function renderField() {
+  const pf = DATA.playoff_by_year[state.year];
+  if (!pf) return '<div class="empty-note">No playoff field for this season.</div>';
+
+  const byConf = {};
+  pf.qualifiers.forEach(q => {
+    (byConf[q.conf_coe_rank] = byConf[q.conf_coe_rank] || { conference: q.conference, teams: [] }).teams.push(q);
+  });
+
+  let html = '<div class="panel">';
+  Object.keys(byConf).sort((a, b) => a - b).forEach(rank => {
+    const g = byConf[rank];
+    html += '<div class="field-conf-group">' +
+      '<div class="field-conf-head"><span>#' + rank + ' &middot; ' + g.conference + '</span>' +
+      '<span class="bids">' + g.teams.length + ' bid' + (g.teams.length > 1 ? 's' : '') + '</span></div>';
+    g.teams.forEach(t => {
+      const potTag = t.pot === 'bye' ? '<span class="tag bye">Bye</span>' : '<span class="tag pot' + t.pot + '">Pot ' + t.pot + '</span>';
+      const bidTag = t.bid_type === 'champion' ? '<span class="tag champ">Champion</span>' : '';
+      html += '<div class="qual-row"><span class="qual-team">' + t.team + ' ' + bidTag + '</span>' +
+        '<span>' + potTag + ' <span class="coe-mini">' + fmt(t.team_coe_5yr) + '</span></span></div>';
+    });
+    html += '</div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+function renderBracket() {
+  const pf = DATA.playoff_by_year[state.year];
+  if (!pf) return '<div class="empty-note">No bracket for this season.</div>';
+
+  let html = '<div class="panel">';
+  html += '<div class="bracket-section-label">Byes &rarr; Round of 16 (' + pf.byes.length + ')</div>';
+  html += '<div class="bye-strip">' + pf.byes.map(t => '<div class="bye-chip">' + t + '</div>').join('') + '</div>';
+
+  html += '<div class="bracket-section-label">Round of 24 (' + pf.round_of_24.length + ' games)</div>';
+  pf.round_of_24.forEach((g, i) => {
+    html += '<div class="game-card"><div class="game-num">G' + (i + 1) + '</div><div class="game-matchup">' +
+      '<div class="team-chip"><span class="name">' + g.away + '</span><span class="conf">' + g.away_conf + '</span></div>' +
+      '<div class="at">@</div>' +
+      '<div class="team-chip home"><span class="name">' + g.home + '</span><span class="conf">' + g.home_conf + '</span></div>' +
+      '<div class="coe-mini">' + fmt(g.away_coe) + ' vs ' + fmt(g.home_coe) + '</div>' +
+      '</div></div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+function render() {
+  renderYearRow();
+  const content = document.getElementById('content');
+  if (state.tab === 'teams') content.innerHTML = renderTeams();
+  else if (state.tab === 'conferences') content.innerHTML = renderConferences();
+  else if (state.tab === 'field') content.innerHTML = renderField();
+  else content.innerHTML = renderBracket();
+}
+
+document.getElementById('tabs').addEventListener('click', e => {
+  if (e.target.tagName !== 'BUTTON') return;
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  state.tab = e.target.dataset.tab;
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
