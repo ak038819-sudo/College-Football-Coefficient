@@ -2,9 +2,6 @@
 -- CORE ENTITIES
 -- ==========================================
 
-DROP TABLE IF EXISTS playoff_field_by_year;
-DROP TABLE IF EXISTS conference_coefficient_by_year;
-DROP TABLE IF EXISTS team_coefficient_by_year;
 DROP TABLE IF EXISTS games;
 DROP TABLE IF EXISTS new_alignment;
 DROP TABLE IF EXISTS team_membership_by_season;
@@ -34,7 +31,6 @@ CREATE TABLE conferences_new (
 -- MEMBERSHIP (BY SEASON)
 -- ==========================================
 
--- Real-world conferences (2014–2025)
 CREATE TABLE team_membership_by_season (
     team_id INTEGER NOT NULL,
     season_year INTEGER NOT NULL,
@@ -44,7 +40,6 @@ CREATE TABLE team_membership_by_season (
     FOREIGN KEY (team_id) REFERENCES teams(team_id)
 );
 
--- Your rebuilt 8-conference alignment (starting 2026)
 CREATE TABLE new_alignment (
     team_id INTEGER NOT NULL,
     conference_name TEXT NOT NULL,
@@ -75,42 +70,11 @@ CREATE TABLE games (
     FOREIGN KEY (away_team_id) REFERENCES teams(team_id)
 );
 
--- ==========================================
--- COE CALCULATIONS (DERIVED DATA)
--- ==========================================
-
-CREATE TABLE team_coefficient_by_year (
-    team_id INTEGER NOT NULL,
-    season_year INTEGER NOT NULL,
-    coe_total REAL,
-    coe_points_per_game REAL,
-    coe_rolling_5yr REAL,
-    PRIMARY KEY (team_id, season_year),
-    FOREIGN KEY (team_id) REFERENCES teams(team_id)
-);
-
-CREATE TABLE conference_coefficient_by_year (
-    conference_name TEXT NOT NULL,
-    season_year INTEGER NOT NULL,
-    coe_total REAL,
-    coe_points_per_game REAL,
-    coe_rolling_5yr REAL,
-    PRIMARY KEY (conference_name, season_year)
-);
-
--- ==========================================
--- PLAYOFF OUTPUT
--- ==========================================
-
-CREATE TABLE playoff_field_by_year (
-    season_year INTEGER NOT NULL,
-    team_id INTEGER NOT NULL,
-    conference_name TEXT NOT NULL,
-    seed INTEGER,
-    entry_round TEXT,  -- 'R24', 'R16', 'Bye'
-    PRIMARY KEY (season_year, team_id),
-    FOREIGN KEY (team_id) REFERENCES teams(team_id)
-);
+-- NOTE: team_coefficient_by_year, conference_coefficient_by_year, and
+-- playoff_field_by_year are intentionally NOT defined here anymore.
+-- They live in team_coe_tables.sql, coe_tables.sql, and
+-- playoff_field_by_year.sql. Run those files (see docs/COMMANDS.md)
+-- after this one.
 
 -- Helpful index
 CREATE UNIQUE INDEX IF NOT EXISTS idx_teams_team_name ON teams(team_name);
