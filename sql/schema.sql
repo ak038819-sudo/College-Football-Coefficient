@@ -60,13 +60,17 @@ CREATE TABLE games (
     game_id INTEGER PRIMARY KEY,
     season_year INTEGER NOT NULL,
     week INTEGER,
+    game_date TEXT,
     home_team_id INTEGER NOT NULL,
     away_team_id INTEGER NOT NULL,
     home_score INTEGER,
     away_score INTEGER,
     went_ot INTEGER NOT NULL CHECK (went_ot IN (0,1)),
+    neutral_site INTEGER NOT NULL DEFAULT 0 CHECK (neutral_site IN (0,1)),
     is_playoff INTEGER NOT NULL CHECK (is_playoff IN (0,1)),
     is_nit INTEGER NOT NULL CHECK (is_nit IN (0,1)),
+    game_phase TEXT NOT NULL CHECK (game_phase IN ('regular','bowl','cfp')),
+    game_phase_check TEXT,
     FOREIGN KEY (home_team_id) REFERENCES teams(team_id),
     FOREIGN KEY (away_team_id) REFERENCES teams(team_id)
 );
