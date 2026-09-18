@@ -321,6 +321,40 @@
     font-size: 15px; color: var(--amber); padding: 10px 12px; background: var(--panel-2); border-radius: 3px;
   }
 
+  .sim-button-row { display: flex; justify-content: center; margin-bottom: 18px; }
+  .simulate-btn {
+    font-family: var(--font-display); font-size: 16px; letter-spacing: 0.5px;
+    background: linear-gradient(135deg, var(--amber), #c47f1f);
+    color: var(--bg); border: none; padding: 12px 28px; border-radius: 6px;
+    cursor: pointer; box-shadow: 0 2px 12px rgba(232,163,61,0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .simulate-btn:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 4px 18px rgba(232,163,61,0.5); }
+  .simulate-btn:active { transform: translateY(0) scale(0.98); }
+
+  .bslot.filled { background: var(--panel-2); border-left: 3px solid var(--green-hl); }
+
+  .bracket-round-col.pending { opacity: 0; transform: translateY(10px); }
+  .bracket-round-col.revealed {
+    opacity: 1; transform: translateY(0);
+    transition: opacity 0.45s ease, transform 0.45s ease;
+  }
+
+  @keyframes champion-pop {
+    0%   { transform: scale(0.7); opacity: 0; }
+    60%  { transform: scale(1.12); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes champion-glow {
+    0%, 100% { box-shadow: 0 0 0px rgba(232,163,61,0.0); }
+    50%      { box-shadow: 0 0 26px rgba(232,163,61,0.85); }
+  }
+  .champion-slot.champion-pop {
+    font-size: 19px;
+    animation: champion-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) both,
+               champion-glow 1.4s ease-in-out 0.5s 2;
+  }
+
   footer.foot {
     margin-top: 40px;
 
@@ -412,7 +446,7 @@ function logoMarkup(name, kind, size) {
 }
 
 
-let state = { tab: 'teams', year: DATA.years_all[DATA.years_all.length - 1] };
+let state = { tab: 'teams', year: DATA.years_all[DATA.years_all.length - 1], simResult: null, simYear: null };
 
 function fmt(n) { return Number(n).toFixed(3); }
 
@@ -511,6 +545,45 @@ function renderField() {
   return html;
 }
 
+function winProbability(coeA, coeB, temperature) {
+  temperature = temperature || 6.0;
+  return 1 / (1 + Math.exp(-(coeA - coeB) / temperature));
+}
+function simulateGame(a, b, teamCoe) {
+  const pA = winProbability(teamCoe[a] || 0, teamCoe[b] || 0);
+  return Math.random() < pA ? a : b;
+}
+
+function runBracketSimulation(pf) {
+  const teamCoe = {};
+  pf.qualifiers.forEach(q => { teamCoe[q.team] = q.team_coe_5yr; });
+
+  const seeds = buildBracketSeeds(pf);
+  const byRank = {};
+  seeds.forEach(s => { byRank[s.seed] = s; });
+  const r16Order = [];
+  for (let i = 1; i <= 8; i++) { r16Order.push(byRank[i]); r16Order.push(byRank[17 - i]); }
+
+  const r16Field = r16Order.map(slot => {
+    if (slot.isTeam) return slot.team;
+    const game = pf.round_of_24[slot.seed - 9];
+    return simulateGame(game.home, game.away, teamCoe);
+  });
+
+  const qfField = [];
+  for (let i = 0; i < 16; i += 2) qfField.push(simulateGame(r16Field[i], r16Field[i + 1], teamCoe));
+
+  const sfField = [];
+  for (let i = 0; i < 8; i += 2) sfField.push(simulateGame(qfField[i], qfField[i + 1], teamCoe));
+
+  const finalField = [];
+  for (let i = 0; i < 4; i += 2) finalField.push(simulateGame(sfField[i], sfField[i + 1], teamCoe));
+
+  const champion = simulateGame(finalField[0], finalField[1], teamCoe);
+
+  return { r16Field, qfField, sfField, finalField, champion };
+}
+
 function buildBracketSeeds(pf) {
   // Seeds 1-8: byes, ranked by 5yr rolling team CoE (highest first).
   // Seeds 9-16: the 8 Round-of-24 games, in draw order, as "Winner of Game N" placeholders.
@@ -529,12 +602,15 @@ function slotHtml(seedObj) {
   return '<div class="bslot tbd"><span class="seed">' + seedObj.seed + '</span><span>' + seedObj.label + '</span></div>';
 }
 
-function renderBracketTree(pf) {
+function filledSlotHtml(teamName) {
+  return '<div class="bslot filled">' + logoMarkup(teamName, 'team', 'sm') + '<span>' + teamName + '</span></div>';
+}
+
+function renderBracketTree(pf, sim) {
   pf._byeCoe = {};
   pf.qualifiers.forEach(q => { pf._byeCoe[q.team] = q.team_coe_5yr; });
 
   const seeds = buildBracketSeeds(pf); // 16 seeds, ranked 1-16
-  // Standard bracket pairing order for display: 1v16, 2v15, 3v14 ... 8v9
   const byRank = {};
   seeds.forEach(s => { byRank[s.seed] = s; });
   const r16List = [];
@@ -545,37 +621,77 @@ function renderBracketTree(pf) {
 
   let html = '<div class="bracket-tree">';
 
-  html += '<div class="bracket-round-col"><div class="bracket-round-title">Round of 16</div><div class="bracket-list">';
+  html += '<div class="bracket-round-col" data-round="r16"><div class="bracket-round-title">Round of 16</div><div class="bracket-list">';
   r16List.forEach(s => { html += '<div class="bracket-item">' + slotHtml(s) + '</div>'; });
   html += '</div></div>';
 
-  html += '<div class="bracket-round-col"><div class="bracket-round-title">Quarterfinals</div><div class="bracket-list">';
-  for (let i = 0; i < 4; i++) html += '<div class="bracket-item"><div class="bslot tbd">TBD</div></div>';
+  const qfClass = sim ? 'bracket-round-col pending' : 'bracket-round-col';
+  html += '<div class="' + qfClass + '" data-round="qf"><div class="bracket-round-title">Quarterfinals</div><div class="bracket-list">';
+  for (let i = 0; i < 4; i++) {
+    html += '<div class="bracket-item">' + (sim ? filledSlotHtml(sim.qfField[i]) : '<div class="bslot tbd">TBD</div>') + '</div>';
+  }
   html += '</div></div>';
 
-  html += '<div class="bracket-round-col"><div class="bracket-round-title">Semifinals</div><div class="bracket-list">';
-  for (let i = 0; i < 2; i++) html += '<div class="bracket-item"><div class="bslot tbd">TBD</div></div>';
+  const sfClass = sim ? 'bracket-round-col pending' : 'bracket-round-col';
+  html += '<div class="' + sfClass + '" data-round="sf"><div class="bracket-round-title">Semifinals</div><div class="bracket-list">';
+  for (let i = 0; i < 2; i++) {
+    html += '<div class="bracket-item">' + (sim ? filledSlotHtml(sim.sfField[i]) : '<div class="bslot tbd">TBD</div>') + '</div>';
+  }
   html += '</div></div>';
 
-  html += '<div class="bracket-round-col"><div class="bracket-round-title">Final</div><div class="bracket-list">';
-  html += '<div class="bracket-item"><div class="bslot tbd">TBD</div></div>';
+  const finalClass = sim ? 'bracket-round-col pending' : 'bracket-round-col';
+  html += '<div class="' + finalClass + '" data-round="final"><div class="bracket-round-title">Final</div><div class="bracket-list">';
+  html += '<div class="bracket-item">' + (sim ? filledSlotHtml(sim.finalField[0]) + filledSlotHtml(sim.finalField[1]) : '<div class="bslot tbd">TBD</div>') + '</div>';
   html += '</div></div>';
 
-  html += '<div class="bracket-round-col"><div class="bracket-round-title">Champion</div><div class="bracket-list">';
-  html += '<div class="champion-slot">&#127942; TBD</div>';
+  const champClass = sim ? 'bracket-round-col pending' : 'bracket-round-col';
+  html += '<div class="' + champClass + '" data-round="champion"><div class="bracket-round-title">Champion</div><div class="bracket-list">';
+  html += sim
+    ? '<div class="champion-slot">' + logoMarkup(sim.champion, 'team', 'lg') + '&#127942; ' + sim.champion + '</div>'
+    : '<div class="champion-slot">&#127942; TBD</div>';
   html += '</div></div>';
 
   html += '</div>';
   return html;
 }
 
+function revealBracketSequence() {
+  const order = ['qf', 'sf', 'final', 'champion'];
+  order.forEach((round, i) => {
+    setTimeout(() => {
+      const col = document.querySelector('.bracket-round-col[data-round="' + round + '"]');
+      if (!col) return;
+      col.classList.remove('pending');
+      col.classList.add('revealed');
+      if (round === 'champion') {
+        const slot = col.querySelector('.champion-slot');
+        if (slot) slot.classList.add('champion-pop');
+      }
+    }, i * 450);
+  });
+}
+
+function runSimulationAndAnimate() {
+  const pf = DATA.playoff_by_year[state.year];
+  if (!pf) return;
+  state.simResult = runBracketSimulation(pf);
+  state.simYear = state.year;
+  document.getElementById('content').innerHTML = renderBracket();
+  revealBracketSequence();
+}
+
 function renderBracket() {
   const pf = DATA.playoff_by_year[state.year];
   if (!pf) return '<div class="empty-note">No bracket for this season.</div>';
 
+  const sim = (state.simYear === state.year) ? state.simResult : null;
+
   let html = '<div class="panel">';
-  html += '<div class="bracket-section-label">Bracket (seeded by 5yr CoE; Quarterfinals onward are structural placeholders \u2014 outcomes aren\'t simulated yet)</div>';
-  html += renderBracketTree(pf);
+  html += '<div class="bracket-section-label">Bracket (seeded by 5yr CoE' +
+    (sim ? '; Quarterfinals onward are from your last simulation run' : '; Quarterfinals onward are TBD until you simulate') + ')</div>';
+  html += '<div class="sim-button-row"><button id="simulate-btn" class="simulate-btn">' +
+    (sim ? '\u{1F3B2} Simulate Again' : '\u{1F3B2} Simulate the Bracket!') + '</button></div>';
+  html += renderBracketTree(pf, sim);
 
   html += '<div class="bracket-section-label">Byes &rarr; Round of 16 (' + pf.byes.length + ')</div>';
   html += '<div class="bye-strip">' + pf.byes.map(t => '<div class="bye-chip">' + logoMarkup(t, 'team', 'sm') + ' ' + t + '</div>').join('') + '</div>';
@@ -642,6 +758,12 @@ document.getElementById('tabs').addEventListener('click', e => {
   e.target.classList.add('active');
   state.tab = e.target.dataset.tab;
   render();
+});
+
+document.getElementById('content').addEventListener('click', e => {
+  if (e.target.id === 'simulate-btn') {
+    runSimulationAndAnimate();
+  }
 });
 
 render();
