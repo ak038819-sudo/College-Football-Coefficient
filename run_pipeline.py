@@ -37,7 +37,15 @@ import datetime
 DB_PATH = Path("db/league.db")
 BACKUP_PATH = Path("db/league_backup_before_playoff_migration.db")
 CURRENT_YEAR = datetime.date.today().year
-SEASONS = list(range(2010, CURRENT_YEAR + 1))
+# Team RATINGS only need game results, not conference membership -- so this
+# can go back much further than MEMBERSHIP_SEASONS below, which is bounded
+# by when real conference-membership data actually exists (2014-). CFBD's
+# API data gets noticeably less reliable before ~2000, so that's the
+# recommended starting point; fetch_cfbd_games.py will just return fewer
+# rows for thinner years rather than erroring, so this is safe to try
+# further back if you're curious.
+EARLIEST_GAME_YEAR = 2000
+SEASONS = list(range(EARLIEST_GAME_YEAR, CURRENT_YEAR + 1))
 MEMBERSHIP_SEASONS = list(range(2014, CURRENT_YEAR + 1))  # only years with conference membership
 
 

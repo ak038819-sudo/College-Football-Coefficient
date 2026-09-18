@@ -118,29 +118,21 @@
 
   .year-row {
     display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    padding-bottom: 4px;
     margin-bottom: 26px;
   }
-  .year-row button {
+  .year-select {
     font-family: var(--font-mono);
     font-weight: 600;
-    font-size: 13px;
-    flex: 0 0 auto;
+    font-size: 15px;
     background: var(--panel);
-    color: var(--ink-dim);
-    border: 1px solid var(--line);
-    padding: 6px 12px;
+    color: var(--ink);
+    border: 1px solid var(--amber);
+    padding: 8px 14px;
     cursor: pointer;
     border-radius: 3px;
+    min-width: 100px;
   }
-  .year-row button.active {
-    color: var(--ink);
-    border-color: var(--amber);
-    box-shadow: inset 0 -3px 0 var(--amber);
-  }
-  .year-row button.no-playoff { opacity: 0.45; }
+  .year-select:focus { outline: 2px solid var(--amber); outline-offset: 1px; }
 
   .panel {
     background: var(--panel);
@@ -505,15 +497,21 @@ function renderYearRow() {
     return;
   }
   const years = (state.tab === 'field' || state.tab === 'bracket' || state.tab === 'odds') ? DATA.years_playoff : DATA.years_all;
-  row.innerHTML = '';
-  years.forEach(y => {
-    const b = document.createElement('button');
-    b.textContent = y;
-    if (y === state.year) b.classList.add('active');
-    b.addEventListener('click', () => { state.year = y; render(); });
-    row.appendChild(b);
-  });
   if (!years.includes(state.year)) state.year = years[years.length - 1];
+
+  const select = document.createElement('select');
+  select.className = 'year-select';
+  years.forEach(y => {
+    const opt = document.createElement('option');
+    opt.value = y;
+    opt.textContent = y;
+    if (y === state.year) opt.selected = true;
+    select.appendChild(opt);
+  });
+  select.addEventListener('change', () => { state.year = parseInt(select.value, 10); render(); });
+
+  row.innerHTML = '';
+  row.appendChild(select);
   document.getElementById('year-caption').textContent = 'VIEWING ' + state.year;
 }
 
