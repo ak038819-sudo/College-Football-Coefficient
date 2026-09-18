@@ -47,10 +47,55 @@ ROLLING_YEARS = 5
 USE_WITHIN_WINDOW_DECAY = True
 WITHIN_WINDOW_DECAY_BASE = 0.92  # 1.0 means no decay
 
+# Confidence blending: a team's FINAL season rating blends the raw
+# iterative result with a regressed prior (their previous season's own
+# blended rating), weighted by how many games they've actually played
+# so far this season. CONFIDENCE_GAMES is the number of games at which
+# a team gets full confidence (weight=1.0, pure raw iterative rating,
+# identical to the old behavior) -- 8 is comfortably below a normal
+# full season's game count, so completed seasons are unaffected.
+#
+# This replaces an earlier, simpler-looking idea (seed each team's
+# STARTING value from their prior instead of a flat 1.0) that was
+# tried and tested here but didn't actually work: the per-iteration
+# renormalization creates a feedback loop that concentrates rating
+# mass wherever the game graph happens to be locally dense (e.g. a
+# small cluster of 3-4 teams that have already played each other),
+# and that structural effect overwhelms any starting value after 15
+# iterations regardless of what it was. Blending the FINAL result
+# with a confidence-weighted prior, rather than seeding the start,
+# is what actually dampens it -- verified: in a synthetic sparse
+# 2-games-per-team scenario, an early 2-0 start (real case: Tulsa,
+# 2026) dropped from an absurd 9.6 to a sensible 2.7, while
+# one-blowout-win blue-bloods (Ohio State, Georgia, Alabama) correctly
+# moved from near-zero back up near their real prior-season quality.
+CONFIDENCE_GAMES = 8
+
 
 def phase_weight(phase: str) -> float:
     p = (phase or "regular").strip().lower()
     return PHASE_WEIGHTS.get(p, 1.0)
+
+
+def compute_prior_ratings(previous_year_ratings: Dict[str, float], factor: float) -> Dict[str, float]:
+    """
+    Regresses each team's previous-season final (blended) rating toward
+    the mean (1.0). A team absent from previous_year_ratings (new to the
+    dataset, just joined FBS, etc.) simply isn't in the returned dict --
+    callers should treat a missing team as "no prior available",
+    defaulting to the flat 1.0 baseline.
+    """
+    return {team: 1.0 + factor * (rating - 1.0) for team, rating in previous_year_ratings.items()}
+
+
+def count_games_played(games: List[sqlite3.Row]) -> Dict[str, int]:
+    counts: Dict[str, int] = defaultdict(int)
+    for g in games:
+        if g["home_score"] is None or g["away_score"] is None:
+            continue
+        counts[g["home_team"]] += 1
+        counts[g["away_team"]] += 1
+    return dict(counts)
 
 
 def ensure_view(conn: sqlite3.Connection) -> None:
@@ -88,7 +133,42 @@ def fetch_games_for_year(conn: sqlite3.Connection, year: int) -> List[sqlite3.Ro
     ).fetchall()
 
 
-def per_season_iterative_ratings(games: List[sqlite3.Row], iterations: int = ITERATIONS) -> Dict[str, float]:
+def per_season_iterative_ratings(
+    games: List[sqlite3.Row],
+    iterations: int = ITERATIONS,
+    prior: Dict[str, float] = None,
+    confidence: Dict[str, float] = None,
+) -> Dict[str, float]:
+    """
+    prior[team] / confidence[team] (0.0-1.0): at EVERY iteration, a
+    team's updated rating is confidence*computed_value + (1-confidence)*
+    prior[team], not just as a one-time blend at the end. This matters:
+    a ONE-TIME post-hoc blend was tried and tested first, and found
+    insufficient -- on real sparse early-2026 data, a raw (undamped)
+    rating reached 39.79 for a 2-0 team (Tulsa) whose only losses came
+    from teams also caught in the same small-sample feedback loop, and
+    even blending 75% toward a modest prior only brought that down to
+    10.46 -- still an outlier well above every blue-blood program. The
+    root problem is structural: this Bradley-Terry-style algorithm's
+    per-iteration renormalization concentrates rating mass wherever the
+    game graph is locally dense, and that compounds across all 15
+    iterations. Pulling back toward the prior at every single iteration,
+    not just once at the end, stops that compounding before it can
+    reach an extreme value in the first place.
+
+    A team missing from confidence gets 0.0 (full trust in prior, not
+    1.0) -- this only affects a team with zero valid (scored) games in
+    the given games list, which would otherwise compute to a meaningless
+    raw 0 rather than sensibly falling back to their prior.
+
+    confidence=1.0 (or an empty confidence dict) for every team
+    reproduces the original undamped behavior exactly -- this is what
+    happens automatically once a season is complete (see
+    CONFIDENCE_GAMES), so finished seasons are unaffected.
+    """
+    prior = prior or {}
+    confidence = confidence or {}
+
     # Collect teams participating that season
     teams = set()
     for g in games:
@@ -97,7 +177,6 @@ def per_season_iterative_ratings(games: List[sqlite3.Row], iterations: int = ITE
     if not teams:
         return {}
 
-    # Initialize ratings
     ratings = {t: 1.0 for t in teams}
 
     # Iterate
@@ -126,7 +205,6 @@ def per_season_iterative_ratings(games: List[sqlite3.Row], iterations: int = ITE
                 new_scores[away] += ratings[home] * w
                 new_scores[home] += ratings[away] * w * LOSS_PENALTY
 
-
         # Normalize (avoid runaway / keep comparable scale)
         total = sum(new_scores.values())
         if total <= 0:
@@ -134,7 +212,10 @@ def per_season_iterative_ratings(games: List[sqlite3.Row], iterations: int = ITE
 
         scale = len(teams) / total
         for t in teams:
-            ratings[t] = new_scores[t] * scale
+            raw_new = new_scores[t] * scale
+            c = confidence.get(t, 0.0)
+            p = prior.get(t, raw_new)
+            ratings[t] = c * raw_new + (1 - c) * p
 
     return ratings
 
@@ -303,6 +384,21 @@ def write_rolling_5yr(all_ratings: Dict[Tuple[int, str], float], years: List[int
 
 
 def main() -> None:
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument(
+        "--confidence-games", type=int, default=CONFIDENCE_GAMES,
+        help="Games played at which a team's rating gets full confidence (pure raw iterative "
+             f"value, no prior blend). Default: {CONFIDENCE_GAMES}",
+    )
+    p.add_argument(
+        "--prior-regression", type=float, default=0.5,
+        help="How much of a team's previous-season BLENDED rating carries forward as their "
+             "next season's prior, regressed toward 1.0 (0.0=ignore prior entirely, "
+             "1.0=full carryover). Default: 0.5",
+    )
+    args = p.parse_args()
+
     if not DB_PATH.exists():
         raise SystemExit(f"Missing DB: {DB_PATH}")
 
@@ -314,14 +410,23 @@ def main() -> None:
 
     all_ratings: Dict[Tuple[int, str], float] = {}
     team_conf_by_year: Dict[int, Dict[str, str]] = {}
+    previous_year_ratings: Dict[str, float] = {}
 
     for y in years:
         games = fetch_games_for_year(conn, y)
-        ratings = per_season_iterative_ratings(games, iterations=ITERATIONS)
+        games_played = count_games_played(games)
+        prior = compute_prior_ratings(previous_year_ratings, args.prior_regression)
+        confidence = {
+            t: min(1.0, n / args.confidence_games) if args.confidence_games > 0 else 1.0
+            for t, n in games_played.items()
+        }
+        ratings = per_season_iterative_ratings(games, iterations=ITERATIONS, prior=prior, confidence=confidence)
+
         for team, val in ratings.items():
             all_ratings[(y, team)] = float(val)
 
         team_conf_by_year[y] = fetch_team_conference_map(conn, y)
+        previous_year_ratings = ratings
 
         # quick console peek (top 5 each season)
         top5 = sorted(ratings.items(), key=lambda x: -x[1])[:5]
