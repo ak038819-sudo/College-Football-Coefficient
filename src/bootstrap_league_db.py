@@ -39,14 +39,22 @@ from pathlib import Path
 NEW_TEAMS = ["Idaho", "Massachusetts"]
 
 # Dead/unused duplicate entries found in the original backup's 138 teams --
-# each has ZERO games across the entire loaded dataset (2010-2025 at time
-# of discovery). UMass was a duplicate of "Massachusetts" (the actual team
-# with real games); North Dakota State and Sacramento State are FCS
-# programs that never should have been in an FBS-only teams table. This
-# was originally fixed as a one-off manual SQL command, which meant it
-# didn't survive a fresh bootstrap -- folded in here permanently so a
-# --force rebuild can't silently resurrect them.
-DEAD_TEAMS = ["UMass", "North Dakota State", "Sacramento State"]
+# each had ZERO games across the entire 2010-2025 dataset at time of
+# discovery. UMass was (and still is) a duplicate of "Massachusetts" (the
+# actual team with real games) -- genuinely dead, stays removed.
+#
+# North Dakota State and Sacramento State were ALSO correctly diagnosed as
+# dead at the time (zero games, FCS programs with no business in an
+# FBS-only table) -- but that diagnosis is now outdated: both are real,
+# legitimate FBS debutants starting the 2026 season (NDSU -> Mountain
+# West, Sacramento State -> MAC; confirmed via NCAA Division I Cabinet
+# coverage, June-July 2026). They're kept here (not deleted) since they
+# already exist as rows in the backup's 138 teams -- no need to also add
+# them via NEW_TEAMS below, just stop removing them. Their 2026 games and
+# membership come through normally via the already-established data load
+# and membership-snapshot mechanisms once the team rows themselves aren't
+# being wrongly deleted first.
+DEAD_TEAMS = ["UMass"]
 
 # alias -> canonical team_name already in the backup's teams table
 NEW_ALIASES = {
