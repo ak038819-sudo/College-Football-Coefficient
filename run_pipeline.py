@@ -96,6 +96,14 @@ def main() -> None:
             [python, "src/patch_known_membership_gaps.py", "--db", str(DB_PATH)],
             "Patch known conference-membership gaps",
         )
+
+        for snapshot_path in sorted(Path("data/raw").glob("membership_*.csv")):
+            year_str = snapshot_path.stem.replace("membership_", "")
+            if year_str.isdigit():
+                run(
+                    [python, "src/load_membership_snapshot.py", str(snapshot_path), "--db", str(DB_PATH), "--year", year_str],
+                    f"Load committed membership snapshot: {year_str}",
+                )
     else:
         print(">>> --skip-load: assuming db/league.db is already bootstrapped and loaded")
 

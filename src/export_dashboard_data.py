@@ -3,9 +3,12 @@
 Exports everything the dashboard needs into one JSON file:
   - team ratings by season (all years with data)
   - team 5yr rolling CoE (years with a computed window)
-  - conference ratings by season (2014-2025, membership-dependent)
+  - conference ratings by season (years with membership data, detected dynamically)
   - conference 5yr rolling CoE
-  - playoff field + Round-of-24 bracket draw for every season 2014-2025
+  - playoff field + Round-of-24 bracket draw for every season that has
+    both membership data AND enough of it to actually build a 24-team
+    field (a year can have membership but still fail, e.g. too few
+    teams overall -- see the try/except around build_playoff_data)
 
 Usage:
     python src/export_dashboard_data.py --draw-seed 1 --out ui/dashboard_data.json
@@ -32,10 +35,30 @@ from draw_playoff_bracket_v2 import (  # noqa: E402
 from simulate_bracket import run_simulation, DEFAULT_TEMPERATURE  # noqa: E402
 import random
 
-import datetime
-
 DATA_DIR = Path("data/processed")
-MEMBERSHIP_YEARS = list(range(2014, datetime.date.today().year + 1))
+
+
+def years_with_membership_data(db_path: str) -> list[int]:
+    """
+    Which years actually have conference-membership data in the DB right
+    now -- NOT a static range. This matters because the current season's
+    membership can only come from a LIVE CFBD API fetch (a manual step
+    with your own API key), which isn't captured in any committed file.
+    A fresh --force rebuild (e.g. in CI, with no API key) will have games
+    for the current year but zero membership rows for it, exactly like
+    2010-2013 already correctly have no membership at all. Treating this
+    dynamically means a year silently degrades to "ratings only, no
+    playoff field" instead of crashing the whole export.
+    """
+    conn = sqlite3.connect(db_path)
+    years = sorted(
+        int(r[0])
+        for r in conn.execute(
+            "SELECT DISTINCT season_year FROM team_membership_by_season WHERE season_year >= 2014"
+        )
+    )
+    conn.close()
+    return years
 
 
 def load_csv_by_year(filename: str, year_field: str) -> dict:
@@ -136,13 +159,15 @@ def main() -> None:
     conf_ratings = load_csv_by_year("conference_ratings_by_season.csv", "season_year")
     conf_rolling = load_csv_by_year("conference_coeff_5yr.csv", "end_year")
 
+    membership_years = years_with_membership_data(args.db)
+
     def top(rows, key, n=None):
         rows_sorted = sorted(rows, key=lambda r: -float(r[key]))
         return rows_sorted if n is None else rows_sorted[:n]
 
     out = {
         "years_all": sorted(team_ratings.keys()),
-        "years_playoff": MEMBERSHIP_YEARS,
+        "years_playoff": membership_years,
         "team_ratings_by_year": {
             str(y): [{"team": r["team_name"], "rating": round(float(r["rating"]), 3)} for r in top(rows, "rating")]
             for y, rows in team_ratings.items()
@@ -168,13 +193,23 @@ def main() -> None:
         "playoff_by_year": {},
     }
 
-    for year in MEMBERSHIP_YEARS:
+    usable_years = []
+    for year in membership_years:
         print(f"Building playoff data for {year}...")
-        out["playoff_by_year"][str(year)] = build_playoff_data(args.db, year, args.draw_seed, args.sims, args.temperature)
+        try:
+            out["playoff_by_year"][str(year)] = build_playoff_data(
+                args.db, year, args.draw_seed, args.sims, args.temperature
+            )
+            usable_years.append(year)
+        except Exception as e:
+            print(f"  SKIPPED {year}: {e!r} (membership present but field couldn't be built -- "
+                  f"likely incomplete data for this year)")
+
+    out["years_playoff"] = usable_years
 
     # Aggregate playoff appearances (and bye counts) across every simulated season
     appearances: dict[str, dict] = {}
-    for year in MEMBERSHIP_YEARS:
+    for year in usable_years:
         pf = out["playoff_by_year"][str(year)]
         for q in pf["qualifiers"]:
             rec = appearances.setdefault(q["team"], {"team": q["team"], "appearances": 0, "byes": 0, "years": []})

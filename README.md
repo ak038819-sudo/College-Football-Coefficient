@@ -133,6 +133,30 @@ Most tests run against your real `db/league.db` (skip cleanly if it doesn't exis
 - The Round-of-24 draw never produces a same-conference matchup, checked across 20 different seeds per season (240 checks total)
 - The draw is reproducible (same seed → identical pairing) and home field always goes to the higher-CoE team
 
+## Keeping the Current Season Reproducible
+
+Historical seasons (2014–2025) have their conference membership baked into the old backup database, so they're reproducible from git alone. The **current season is different**: its membership only exists because you fetched it live from the CFBD API with your own key, and that fetch was never captured in any committed file — so a fresh `--force` rebuild (or CI, which has no API key) would have that season's games but zero membership for it, and the playoff field for that year just wouldn't build.
+
+The fix: after fetching fresh membership for the current season, export a snapshot and commit it alongside your games CSV:
+
+```bash
+python src/fetch_cfbd_team_memberships.py 2026 2026   # your existing manual step
+python src/export_membership_snapshot.py --year 2026   # NEW: snapshot it
+git add data/raw/membership_2026.csv data/raw/games_2026.csv
+git commit -m "Update 2026 season data"
+git push
+```
+
+`run_pipeline.py` automatically finds and loads any `data/raw/membership_*.csv` it finds (via `load_membership_snapshot.py`), so both a local `--force` rebuild and the CI workflow below will pick this up with no further steps.
+
+## Continuous Integration / Auto-Deploy
+
+`.github/workflows/ci-and-deploy.yml` runs the full test suite on every push and pull request. On a push to `main` specifically, it also rebuilds the dashboard from whatever's currently committed and pushes the result back — which GitHub Pages then deploys automatically within a minute or two.
+
+This never touches the CFBD API itself (no key is configured in CI) — it only rebuilds from committed source, which is exactly why the membership-snapshot step above matters: without it, CI can only ever show the current season's ratings, not its playoff field.
+
+The rebuild is fully deterministic given the same input data, so an unrelated change (e.g. a docs edit) reruns the pipeline but produces byte-identical output — `git` has nothing new to commit, so no extra push happens and there's no risk of an infinite loop.
+
 ## Project Status
 
 ✅ Real historical data loaded and verified (2010–2025, ~12,000 games)
