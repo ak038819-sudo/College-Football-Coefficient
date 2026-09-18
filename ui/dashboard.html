@@ -286,36 +286,61 @@
   .at { font-family: var(--font-display); color: var(--ink-dim); font-size: 13px; }
   .coe-mini { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); margin-left: auto; }
 
-  /* Bracket tree (R16 -> QF -> SF -> Final), standard flexbox bracket recipe */
+  /* Bracket tree: CSS Grid with explicitly computed row-spans (see
+     renderBracketTree's gridRow() JS helper), not flexbox space-around.
+     space-around only produces correct connector alignment when every
+     column has similarly-sized/spaced items -- it breaks down once
+     columns vary from 16 items down to 1 (Champion), which is exactly
+     why earlier attempts produced misaligned/disconnected lines.
+     Grid removes the guesswork: every item's row-span is calculated so
+     it's mathematically centered between its two feeders (verified
+     algebraically for every round, not just visually approximated),
+     so a plain vertical bar spanning an item's own full cell height
+     is GUARANTEED to reach exactly to both feeders -- no odd/even
+     special-casing needed at all. */
   .bracket-tree { display: flex; overflow-x: auto; padding: 10px 0 20px; }
-  .bracket-round-col { display: flex; flex-direction: column; justify-content: space-around; padding: 0 22px; min-width: 168px; }
+  .bracket-round-col { padding: 0 22px; min-width: 168px; }
   .bracket-round-title {
     font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
     color: var(--ink-dim); text-align: center; margin-bottom: 10px;
   }
-  .bracket-list { display: flex; flex-direction: column; flex-grow: 1; justify-content: space-around; }
-  .bracket-item { position: relative; padding: 7px 0; }
+  .bracket-list { display: grid; grid-template-rows: repeat(16, 40px); }
+  .bracket-item { position: relative; display: flex; align-items: center; box-sizing: border-box; }
   .bracket-item .bslot {
-    display: flex; align-items: center; gap: 6px;
+    display: flex; align-items: center; gap: 6px; width: 100%;
     background: var(--panel-2); border-radius: 3px; padding: 6px 9px;
     font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .bracket-item .bslot.tbd { color: var(--ink-dim); font-style: italic; }
   .bracket-item .seed { font-family: var(--font-mono); font-size: 10px; color: var(--ink-dim); width: 1.4em; flex: 0 0 auto; }
+
+  /* Plain stub going right from every item's own center -- into the
+     gap toward the next column. Every round has this except the last. */
   .bracket-item:after {
-    position: absolute; content: ''; width: 14px; right: -14px; top: 50%;
-    border-bottom: 2px solid var(--line);
+    position: absolute; content: ''; width: 22px; right: -22px; top: 50%;
+    border-bottom: 3px solid var(--amber);
   }
+  /* Merge connector: drawn by the FEEDER items (not the receiver) --
+     each of a pair contributes half the vertical bar (top half from
+     the "odd" DOM-position feeder, bottom half from "even"), meeting
+     at the midpoint which -- because grid guarantees each item's cell
+     is exactly sized to its allotted half-reach -- lines up exactly
+     with the receiving item's own center. This is the same proven
+     approach used before any of this was touched; grid just makes its
+     precondition (correct relative sizing) exact instead of approximate. */
   .bracket-item:nth-child(odd):before {
-    position: absolute; content: ''; border-right: 2px solid var(--line);
-    right: -14px; top: 50%; height: calc(50% + 1px);
+    position: absolute; content: ''; border-right: 3px solid var(--amber);
+    right: -22px; top: 50%; height: calc(50% + 1.5px);
   }
   .bracket-item:nth-child(even):before {
-    position: absolute; content: ''; border-right: 2px solid var(--line);
-    right: -14px; bottom: 50%; height: calc(50% + 1px);
+    position: absolute; content: ''; border-right: 3px solid var(--amber);
+    right: -22px; bottom: 50%; height: calc(50% + 1.5px);
   }
   .bracket-round-col:last-child .bracket-item:after,
   .bracket-round-col:last-child .bracket-item:before { display: none; }
+  .champion-cell {
+    position: relative; display: flex; align-items: center; justify-content: center;
+  }
   .champion-slot {
     display: flex; align-items: center; gap: 8px; font-family: var(--font-display);
     font-size: 15px; color: var(--amber); padding: 10px 12px; background: var(--panel-2); border-radius: 3px;
@@ -331,6 +356,28 @@
   }
   .simulate-btn:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 4px 18px rgba(232,163,61,0.5); }
   .simulate-btn:active { transform: translateY(0) scale(0.98); }
+
+  /* Round of 24 -> Round of 16 is a plain 1-to-1 feed (same row index
+     in both columns, by construction), not a merge -- just a straight
+     stub, no vertical bar needed on either side. */
+  .r24-col { min-width: 210px; }
+  /* R24 -> R16 is a plain 1-to-1 feed (same grid-row in both columns),
+     not a 2-to-1 merge -- suppress the merge-hook entirely and widen
+     the plain stub to span the full gap, since R16 contributes nothing
+     back for this relationship (unlike a real merge, where both
+     feeder and receiver's columns jointly complete the connector). */
+  .r24-item:before { display: none !important; }
+  .r24-item:after { width: 44px !important; right: -44px !important; border-bottom-width: 3px; }
+  /* Bye positions in R24 have no real game -- suppress the line so it
+     doesn't misleadingly imply a Round-of-24 game feeds that bye slot. */
+  .r24-item.r24-blank-row:after { display: none !important; }
+  .bslot.r24-matchup {
+    flex-direction: column; align-items: stretch; gap: 3px; padding: 5px 8px;
+  }
+  .bslot.r24-blank { background: transparent; padding: 0; min-height: 1px; }
+  .r24-team { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+  .r24-team.r24-home { color: var(--amber); font-weight: 600; }
+  .r24-at { font-family: var(--font-mono); font-size: 9px; color: var(--ink-dim); text-align: center; }
 
   .bslot.filled { background: var(--panel-2); border-left: 3px solid var(--green-hl); }
 
@@ -606,6 +653,18 @@ function filledSlotHtml(teamName) {
   return '<div class="bslot filled">' + logoMarkup(teamName, 'team', 'sm') + '<span>' + teamName + '</span></div>';
 }
 
+function r24MatchupHtml(seedObj, pf) {
+  if (seedObj.isTeam) {
+    return '<div class="bslot r24-blank"></div>';
+  }
+  const g = pf.round_of_24[seedObj.seed - 9];
+  return '<div class="bslot r24-matchup">' +
+    '<div class="r24-team">' + logoMarkup(g.away, 'team', 'sm') + '<span>' + g.away + '</span></div>' +
+    '<div class="r24-at">@</div>' +
+    '<div class="r24-team r24-home">' + logoMarkup(g.home, 'team', 'sm') + '<span>' + g.home + '</span></div>' +
+    '</div>';
+}
+
 function renderBracketTree(pf, sim) {
   pf._byeCoe = {};
   pf.qualifiers.forEach(q => { pf._byeCoe[q.team] = q.team_coe_5yr; });
@@ -619,36 +678,62 @@ function renderBracketTree(pf, sim) {
     r16List.push(byRank[17 - i]);
   }
 
+  // Grid-row spans, verified algebraically so every item centers exactly
+  // between its two feeders (see CSS comment above .bracket-list):
+  //   R24/R16 item i:  row [i+1, i+2)          -- 1-to-1, direct
+  //   QF item i:        row [2i+1, 2i+3)        -- centers R16 items 2i,2i+1
+  //   SF item i:        row [4i+1, 4i+5)        -- centers QF items 2i,2i+1
+  //   Final item i:     row [8i+1, 8i+9)        -- centers SF items 2i,2i+1
+  //   Champion:         row [1, 17)             -- centers Final items 0,1
+  const gridRow = (start, end) => ' style="grid-row: ' + start + ' / ' + end + '"';
+
   let html = '<div class="bracket-tree">';
 
+  html += '<div class="bracket-round-col r24-col" data-round="r24"><div class="bracket-round-title">Round of 24</div><div class="bracket-list">';
+  r16List.forEach((s, i) => {
+    const blankClass = s.isTeam ? ' r24-blank-row' : '';
+    html += '<div class="bracket-item r24-item' + blankClass + '"' + gridRow(i + 1, i + 2) + '>' + r24MatchupHtml(s, pf) + '</div>';
+  });
+  html += '</div></div>';
+
   html += '<div class="bracket-round-col" data-round="r16"><div class="bracket-round-title">Round of 16</div><div class="bracket-list">';
-  r16List.forEach(s => { html += '<div class="bracket-item">' + slotHtml(s) + '</div>'; });
+  r16List.forEach((s, i) => {
+    const slot = (sim && !s.isTeam) ? filledSlotHtml(sim.r16Field[i]) : slotHtml(s);
+    html += '<div class="bracket-item"' + gridRow(i + 1, i + 2) + '>' + slot + '</div>';
+  });
   html += '</div></div>';
 
   const qfClass = sim ? 'bracket-round-col pending' : 'bracket-round-col';
   html += '<div class="' + qfClass + '" data-round="qf"><div class="bracket-round-title">Quarterfinals</div><div class="bracket-list">';
-  for (let i = 0; i < 4; i++) {
-    html += '<div class="bracket-item">' + (sim ? filledSlotHtml(sim.qfField[i]) : '<div class="bslot tbd">TBD</div>') + '</div>';
+  for (let i = 0; i < 8; i++) {
+    html += '<div class="bracket-item"' + gridRow(2 * i + 1, 2 * i + 3) + '>' +
+      (sim ? filledSlotHtml(sim.qfField[i]) : '<div class="bslot tbd">TBD</div>') + '</div>';
   }
   html += '</div></div>';
 
   const sfClass = sim ? 'bracket-round-col pending' : 'bracket-round-col';
   html += '<div class="' + sfClass + '" data-round="sf"><div class="bracket-round-title">Semifinals</div><div class="bracket-list">';
-  for (let i = 0; i < 2; i++) {
-    html += '<div class="bracket-item">' + (sim ? filledSlotHtml(sim.sfField[i]) : '<div class="bslot tbd">TBD</div>') + '</div>';
+  for (let i = 0; i < 4; i++) {
+    html += '<div class="bracket-item"' + gridRow(4 * i + 1, 4 * i + 5) + '>' +
+      (sim ? filledSlotHtml(sim.sfField[i]) : '<div class="bslot tbd">TBD</div>') + '</div>';
   }
   html += '</div></div>';
 
   const finalClass = sim ? 'bracket-round-col pending' : 'bracket-round-col';
   html += '<div class="' + finalClass + '" data-round="final"><div class="bracket-round-title">Final</div><div class="bracket-list">';
-  html += '<div class="bracket-item">' + (sim ? filledSlotHtml(sim.finalField[0]) + filledSlotHtml(sim.finalField[1]) : '<div class="bslot tbd">TBD</div>') + '</div>';
+  for (let i = 0; i < 2; i++) {
+    html += '<div class="bracket-item"' + gridRow(8 * i + 1, 8 * i + 9) + '>' +
+      (sim ? filledSlotHtml(sim.finalField[i]) : '<div class="bslot tbd">TBD</div>') + '</div>';
+  }
   html += '</div></div>';
 
-  const champClass = sim ? 'bracket-round-col pending' : 'bracket-round-col';
+  const champClass = sim ? 'bracket-round-col pending champion-col' : 'bracket-round-col champion-col';
   html += '<div class="' + champClass + '" data-round="champion"><div class="bracket-round-title">Champion</div><div class="bracket-list">';
+  html += '<div class="champion-cell"' + gridRow(1, 17) + '>';
   html += sim
     ? '<div class="champion-slot">' + logoMarkup(sim.champion, 'team', 'lg') + '&#127942; ' + sim.champion + '</div>'
     : '<div class="champion-slot">&#127942; TBD</div>';
+  html += '</div>';
   html += '</div></div>';
 
   html += '</div>';
