@@ -116,6 +116,23 @@ python src/coefficients/draw_playoff_bracket_v2.py --year 2025 --draw-seed 1
 - `conference_ratings_by_season.csv` — every conference's rating (sum of member teams), every season
 - `conference_coeff_5yr.csv` — 5-year rolling conference CoE
 
+## Testing
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Most tests run against your real `db/league.db` (skip cleanly if it doesn't exist yet — build it with `run_pipeline.py` first) since the things worth checking here are properties of the actual data and algorithms, not synthetic toy cases. What's covered:
+
+- The full SQL schema chain builds with no conflicts (would have caught the `team_aliases`-missing-from-schema bug and the duplicate-table-definition conflicts found earlier in this project)
+- A fresh bootstrap never resurrects the three known-dead duplicate teams, and does include the real late additions (Idaho, Massachusetts)
+- A completed season's ratings are stable regardless of the confidence-blending settings (`--confidence-games`, `--prior-regression`) — guards against an early-season fix accidentally changing historical years
+- Every season's playoff field has exactly 8 byes, equal-sized Pot 1/Pot 2, and 24 total qualifiers (this test suite actually caught a real bug on its first run: the Pac-12 collapsing to 2 teams by 2024 while still ranking high enough for 3 bids — see `select_qualifiers()`'s carried-destiny fix)
+- The independent-CoE-threshold rule never displaces a conference champion, even when directly provoked with a synthetic case designed to try
+- The Round-of-24 draw never produces a same-conference matchup, checked across 20 different seeds per season (240 checks total)
+- The draw is reproducible (same seed → identical pairing) and home field always goes to the higher-CoE team
+
 ## Project Status
 
 ✅ Real historical data loaded and verified (2010–2025, ~12,000 games)

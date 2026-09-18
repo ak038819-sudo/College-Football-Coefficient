@@ -100,13 +100,52 @@ def load_team_coe_5yr(season_year: int) -> dict[str, float]:
     return out
 
 
+def tier_pot_template(coe_rank: int) -> list:
+    """
+    The pot destiny for each of a tier's OWN slots, in conf_standing_rank
+    order (1st place first). Length always equals bid_count_for_rank for
+    that tier under the current bid tables (both Year1 and Year2+, which
+    are now identical -- see module docstring).
+    """
+    if coe_rank in (1, 2):
+        return ["bye", "bye", 1, 2]
+    if coe_rank in (3, 4):
+        return ["bye", 1, 1, 2]
+    if coe_rank == 5:
+        return ["bye", 1, 1]
+    if coe_rank == 6:
+        return ["bye"]
+    if 7 <= coe_rank <= 10:
+        return [2]
+    return []
+
+
 def select_qualifiers(conn: sqlite3.Connection, season_year: int, conf_ranked: list, bid_table: dict):
     """
-    Returns list of dicts: {team_name, conference, conf_coe_rank, conf_standing_rank, bid_type}
+    Returns list of dicts: {team_name, conference, conf_coe_rank,
+    conf_standing_rank, bid_type, pot} -- pot is assigned HERE, directly
+    during selection (not as a separate pass -- see assign_pots, now a
+    no-op kept for callers that still invoke it).
+
+    Project decision: if a conference ranks highly enough to earn
+    multiple bids but doesn't actually have enough member teams to fill
+    them (e.g. the Pac-12 collapsing to 2 teams by 2024 while still
+    ranking #5 by conference CoE, which would normally mean 3 bids: bye,
+    Pot1, Pot1), the SPECIFIC missing slot's pot destiny -- not just a
+    bare count -- carries forward to the next-ranked conference,
+    cascading further if that conference also can't absorb it. This
+    preserves the exact pot-1/pot-2/bye balance regardless of which real
+    conference ends up filling a given slot. This is a real, previously
+    undiscovered edge case (caught by the test suite, not anticipated by
+    the original rules).
     """
     qualifiers = []
+    carried_destinies: list = []
+
     for coe_rank, (conf, coeff) in enumerate(conf_ranked, start=1):
-        n_bids = bid_count_for_rank(coe_rank, bid_table)
+        own_template = tier_pot_template(coe_rank)
+        full_destinies = own_template + carried_destinies
+        n_bids = len(full_destinies)
         if n_bids == 0:
             continue
 
@@ -122,7 +161,7 @@ def select_qualifiers(conn: sqlite3.Connection, season_year: int, conf_ranked: l
             (season_year, conf, n_bids),
         ).fetchall()
 
-        for team_name, conf_rank in rows:
+        for (team_name, conf_rank), pot in zip(rows, full_destinies):
             qualifiers.append(
                 {
                     "team_name": team_name,
@@ -130,57 +169,23 @@ def select_qualifiers(conn: sqlite3.Connection, season_year: int, conf_ranked: l
                     "conf_coe_rank": coe_rank,
                     "conf_standing_rank": conf_rank,
                     "bid_type": "champion" if conf_rank == 1 else "at_large",
+                    "pot": pot,
                 }
             )
+
+        carried_destinies = full_destinies[len(rows):]
+
     return qualifiers
 
 
 def assign_pots(qualifiers: list) -> list:
     """
-    Assigns pot: 'bye', 1, or 2, per the seeding tables. Year 1 and
-    Year 2+ use the SAME structure here (see module docstring re: the
-    unresolved conference-6 ambiguity) -- this keeps byes at exactly 8,
-    satisfying rule 8.
+    No-op: pot is now assigned directly in select_qualifiers (see its
+    docstring for why -- the old two-step approach couldn't correctly
+    carry a specific pot destiny forward when a conference came up
+    short on real teams). Kept so existing callers don't need updating.
     """
-    by_conf_rank: dict[int, list] = {}
-    for q in qualifiers:
-        by_conf_rank.setdefault(q["conf_coe_rank"], []).append(q)
-    for rank, teams in by_conf_rank.items():
-        teams.sort(key=lambda q: q["conf_standing_rank"])
-
-    for coe_rank, teams in by_conf_rank.items():
-        if coe_rank in (1, 2):
-            # 1st & 2nd get byes, 3rd -> Pot1, 4th -> Pot2
-            for q in teams:
-                if q["conf_standing_rank"] in (1, 2):
-                    q["pot"] = "bye"
-                elif q["conf_standing_rank"] == 3:
-                    q["pot"] = 1
-                else:
-                    q["pot"] = 2
-        elif coe_rank in (3, 4):
-            # champ bye, runner-up + 3rd -> Pot1, 4th -> Pot2
-            for q in teams:
-                if q["conf_standing_rank"] == 1:
-                    q["pot"] = "bye"
-                elif q["conf_standing_rank"] in (2, 3):
-                    q["pot"] = 1
-                else:
-                    q["pot"] = 2
-        elif coe_rank == 5:
-            # Champ bye; runner-up AND 3rd -> Pot1 (changed from original
-            # spec's "3rd -> Pot2" to balance Pot1/Pot2 at 8/8 each --
-            # project decision, since unequal pots break the 1-to-1
-            # Pot1-vs-Pot2 draw pairing)
-            for q in teams:
-                q["pot"] = "bye" if q["conf_standing_rank"] == 1 else 1
-        elif coe_rank == 6:
-            # Sole qualifier (champion only, both rulesets) always gets the bye
-            for q in teams:
-                q["pot"] = "bye"
-        else:  # 7-10
-            for q in teams:
-                q["pot"] = 2
+    return qualifiers
 
     return qualifiers
 
