@@ -2,12 +2,12 @@
   "_comment": "CoE 2.0 model parameters. None of these are hardcoded in the scripts that use them -- change values here to run experiments without touching code. The 'elo' section is the only one build_elo.py reads right now; 'hybrid' and 'coe' are placeholders for later phases (build_hybrid_coefficients.py), documented here now so the full intended structure is visible from day one.",
 
   "elo": {
-    "_comment": "mov_c/mov_d follow the well-known FiveThirtyEight NFL Elo margin-of-victory formula as a defensible, non-arbitrary starting point -- NOT yet calibrated for college football. home_field, k, and offseason_retention are similarly reasonable starting guesses, not backtested. Calibration (comparing out-of-sample prediction accuracy across parameter grids) is a deliberately separate, later step (calibrate_elo.py) -- see rollout plan.",
+    "_comment": "k, home_field, and offseason_retention were calibrated via calibrate_elo.py's grid search (K in [10,15,...,40], HFA in [0,25,...,100], retention in [0.5,0.6,...,1.0]) against the full 2000-2026 dataset (18969 games), optimizing out-of-sample Brier score. Best found: K=35, HFA=50, retention=0.8 (Brier=0.18359, vs 0.18684 for the original placeholder guess -- ~1.7% relative improvement). Full 210-row results in data/processed/elo_calibration_results.csv. mov_c/mov_d are still the UNCALIBRATED FiveThirtyEight-NFL-derived placeholder -- MOV-constant tuning is a separate, later step, not part of this grid.",
     "initial_rating": 1500,
     "scale": 400,
-    "k": 20,
-    "home_field": 55,
-    "offseason_retention": 0.75,
+    "k": 35,
+    "home_field": 50,
+    "offseason_retention": 0.8,
     "mov_c": 2.2,
     "mov_d": 0.001
   },
