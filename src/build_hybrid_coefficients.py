@@ -114,62 +114,32 @@ def zscore_stats(values: list) -> tuple:
     return mean, (stdev if stdev != 0 else 1.0)
 
 
-def main() -> None:
-    p = argparse.ArgumentParser()
-    p.add_argument("--db", default="db/league.db")
-    p.add_argument("--config", default="config/model_config.json")
-    p.add_argument("--schema", default="sql/hybrid_tables.sql")
-    p.add_argument("--team-ratings-csv", default="data/processed/team_ratings_by_season.csv")
-    args = p.parse_args()
+def tie_game_coe(p_this: float, tie_delta: float) -> float:
+    """
+    Spec section 14's own suggested starting formula for a tie: symmetric
+    around 1.0 (halfway between a loss's 0 and roughly the low end of a
+    win's range), using SIGNED deviation from 0.5 since a tie has no
+    winner to disproportionately reward -- an underdog (p_this < 0.5)
+    tying a favorite gets a BONUS (> 1); a favorite (p_this > 0.5)
+    settling for a tie gets a mild PENALTY (< 1). tie_delta is a
+    genuinely separate tunable from alpha (the spec uses a distinct
+    symbol) -- not yet independently calibrated.
+    """
+    return 1.0 + tie_delta * (0.5 - p_this)
 
-    cfg = load_config(args.config)
-    elo_home_field = cfg["elo"]["home_field"]
-    hybrid_cfg = cfg["hybrid"]
-    coe_cfg = cfg["coe"]
-    decay_base = 0.92  # matches CoE v1's WITHIN_WINDOW_DECAY_BASE, kept consistent intentionally
 
-    conn = sqlite3.connect(args.db)
-    conn.row_factory = sqlite3.Row
-    conn.executescript(Path(args.schema).read_text())
-    conn.execute("DELETE FROM team_coe_5yr_by_season")
-    conn.execute("DELETE FROM hybrid_game_ratings")
-
-    team_ratings = load_team_ratings_by_season(args.team_ratings_csv)
-    years = sorted(set(yr for (yr, _) in team_ratings))
-
-    frozen_5yr = compute_frozen_5yr_coe(team_ratings, years, decay_base)
-
-    team_name_to_id = {row["team_name"]: row["team_id"] for row in conn.execute("SELECT team_id, team_name FROM teams")}
-    team_id_to_name = {v: k for k, v in team_name_to_id.items()}
-
-    frozen_rows = [
-        (team_name_to_id[team], y, val)
-        for (y, team), val in frozen_5yr.items()
-        if team in team_name_to_id
-    ]
-    conn.executemany(
-        "INSERT INTO team_coe_5yr_by_season (team_id, season_year, coe_5yr) VALUES (?, ?, ?)",
-        frozen_rows,
-    )
-    conn.commit()
-    seasons_covered = sorted(set(y for y, _ in frozen_5yr)) if frozen_5yr else []
-    if seasons_covered:
-        print(f"Wrote {len(frozen_rows)} frozen entering-season 5yr CoE rows "
-              f"(seasons {seasons_covered[0]}-{seasons_covered[-1]})")
-    else:
-        print("No frozen 5yr CoE computed")
-
-    elo_rows = conn.execute(
-        """
-        SELECT e.game_id, e.team_id, e.pregame_elo, e.opponent_pregame_elo,
-               g.season_year, g.home_team_id, g.away_team_id,
-               g.home_score, g.away_score, g.neutral_site, g.went_ot
-        FROM elo_game_history e
-        JOIN games g ON g.game_id = e.game_id
-        ORDER BY g.season_year, g.game_date, g.game_id
-        """
-    ).fetchall()
-
+def compute_hybrid_rows(elo_rows, frozen_5yr: dict, team_id_to_name: dict, elo_home_field: float,
+                         hybrid_cfg: dict, coe_cfg: dict):
+    """
+    Pure function (no DB writes): given elo_game_history rows (joined
+    with games), the frozen 5yr CoE map, and config, returns the list of
+    hybrid_rows tuples plus a skipped-bootstrap count. Shared by
+    build_hybrid_coefficients.py (writes these to the DB) and
+    calibrate_hybrid_weight.py (scores them against actual results) --
+    kept as ONE function so a future fix (like the home-field asymmetry
+    bug already caught once) can't silently diverge between two
+    unsynced copies of the same logic.
+    """
     elo_by_season = defaultdict(list)
     for r in elo_rows:
         elo_by_season[r["season_year"]].append(r["pregame_elo"])
@@ -187,6 +157,7 @@ def main() -> None:
     ot_loss_coe = coe_cfg["ot_loss"]
     reg_loss_coe = coe_cfg["regulation_loss"]
     alpha = coe_cfg["difficulty_alpha"]
+    tie_delta = coe_cfg.get("tie_delta", alpha)  # spec section 14's own suggested starting point: reuse alpha's value
 
     hybrid_rows = []
     skipped_bootstrap = 0
@@ -264,9 +235,73 @@ def main() -> None:
             else:
                 result_type, game_coe = "LOSS", reg_loss_coe
         else:
-            result_type, game_coe = "TIE", None  # spec section 14: deferred, not solved yet
+            result_type = "TIE"
+            game_coe = tie_game_coe(p_this, tie_delta)
 
         hybrid_rows.append((game_id, team_id, elo_z, coe_z, os_strength, hybrid_rating, p_this, result_type, game_coe))
+
+    return hybrid_rows, skipped_bootstrap
+
+
+def main() -> None:
+    p = argparse.ArgumentParser()
+    p.add_argument("--db", default="db/league.db")
+    p.add_argument("--config", default="config/model_config.json")
+    p.add_argument("--schema", default="sql/hybrid_tables.sql")
+    p.add_argument("--team-ratings-csv", default="data/processed/team_ratings_by_season.csv")
+    args = p.parse_args()
+
+    cfg = load_config(args.config)
+    elo_home_field = cfg["elo"]["home_field"]
+    hybrid_cfg = cfg["hybrid"]
+    coe_cfg = cfg["coe"]
+    decay_base = 0.92  # matches CoE v1's WITHIN_WINDOW_DECAY_BASE, kept consistent intentionally
+
+    conn = sqlite3.connect(args.db)
+    conn.row_factory = sqlite3.Row
+    conn.executescript(Path(args.schema).read_text())
+    conn.execute("DELETE FROM team_coe_5yr_by_season")
+    conn.execute("DELETE FROM hybrid_game_ratings")
+
+    team_ratings = load_team_ratings_by_season(args.team_ratings_csv)
+    years = sorted(set(yr for (yr, _) in team_ratings))
+
+    frozen_5yr = compute_frozen_5yr_coe(team_ratings, years, decay_base)
+
+    team_name_to_id = {row["team_name"]: row["team_id"] for row in conn.execute("SELECT team_id, team_name FROM teams")}
+    team_id_to_name = {v: k for k, v in team_name_to_id.items()}
+
+    frozen_rows = [
+        (team_name_to_id[team], y, val)
+        for (y, team), val in frozen_5yr.items()
+        if team in team_name_to_id
+    ]
+    conn.executemany(
+        "INSERT INTO team_coe_5yr_by_season (team_id, season_year, coe_5yr) VALUES (?, ?, ?)",
+        frozen_rows,
+    )
+    conn.commit()
+    seasons_covered = sorted(set(y for y, _ in frozen_5yr)) if frozen_5yr else []
+    if seasons_covered:
+        print(f"Wrote {len(frozen_rows)} frozen entering-season 5yr CoE rows "
+              f"(seasons {seasons_covered[0]}-{seasons_covered[-1]})")
+    else:
+        print("No frozen 5yr CoE computed")
+
+    elo_rows = conn.execute(
+        """
+        SELECT e.game_id, e.team_id, e.pregame_elo, e.opponent_pregame_elo,
+               g.season_year, g.home_team_id, g.away_team_id,
+               g.home_score, g.away_score, g.neutral_site, g.went_ot
+        FROM elo_game_history e
+        JOIN games g ON g.game_id = e.game_id
+        ORDER BY g.season_year, g.game_date, g.game_id
+        """
+    ).fetchall()
+
+    hybrid_rows, skipped_bootstrap = compute_hybrid_rows(
+        elo_rows, frozen_5yr, team_id_to_name, elo_home_field, hybrid_cfg, coe_cfg
+    )
 
     conn.executemany(
         """
@@ -282,6 +317,8 @@ def main() -> None:
     print(f"Wrote {len(hybrid_rows)} hybrid game-rating rows "
           f"({skipped_bootstrap} team-game rows skipped -- bootstrap era, no frozen 5yr CoE yet)")
 
+    win_base = coe_cfg["win_base"]
+    alpha = coe_cfg["difficulty_alpha"]
     win_coes = [row[8] for row in hybrid_rows if row[8] is not None and row[7] in ("WIN", "OT_WIN")]
     if win_coes:
         print(f"Win CoE range this run: min={min(win_coes):.3f} max={max(win_coes):.3f} "

@@ -39,12 +39,15 @@ BACKUP_PATH = Path("db/league_backup_before_playoff_migration.db")
 CURRENT_YEAR = datetime.date.today().year
 # Team RATINGS only need game results, not conference membership -- so this
 # can go back much further than MEMBERSHIP_SEASONS below, which is bounded
-# by when real conference-membership data actually exists (2014-). CFBD's
-# API data gets noticeably less reliable before ~2000, so that's the
-# recommended starting point; fetch_cfbd_games.py will just return fewer
+# by when real conference-membership data actually exists (2014-). Extended
+# to 1980 once tie-handling was solved (see build_elo.py's run_elo() and
+# build_hybrid_coefficients.py's tie_game_coe() -- NCAA football had no
+# overtime rule until 1996, so pre-1996 games can genuinely end in a tie,
+# which the Elo/hybrid layers now handle correctly instead of just
+# assuming ties can't happen). fetch_cfbd_games.py will just return fewer
 # rows for thinner years rather than erroring, so this is safe to try
 # further back if you're curious.
-EARLIEST_GAME_YEAR = 2000
+EARLIEST_GAME_YEAR = 1980
 SEASONS = list(range(EARLIEST_GAME_YEAR, CURRENT_YEAR + 1))
 MEMBERSHIP_SEASONS = list(range(2014, CURRENT_YEAR + 1))  # only years with conference membership
 

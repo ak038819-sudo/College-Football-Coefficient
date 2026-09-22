@@ -52,7 +52,7 @@ jobs:
           python3 src/bootstrap_league_db.py \
             --backup db/league_backup_before_playoff_migration.db \
             --out db/league.db
-          for year in $(seq 2000 $(date +%Y)); do
+          for year in $(seq 1980 $(date +%Y)); do
             if [ -f "data/raw/games_${year}.csv" ]; then
               python3 src/load_games.py "data/raw/games_${year}.csv"
             fi

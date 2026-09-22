@@ -156,13 +156,28 @@ def run_elo(games, cfg: dict):
 
         point_diff = abs(hs - aws)
         if hs == aws:
-            winner_advantage = 0.0  # unused -- M=0 for a tie regardless
+            winner_advantage = 0.0  # no winner, so "winner's advantage" is meaningless -- unused
         elif hs > aws:
             winner_advantage = eff_home - eff_away
         else:
             winner_advantage = eff_away - eff_home
 
-        m = mov_multiplier(point_diff, winner_advantage, mov_c, mov_d)
+        if hs == aws:
+            # A tie has no margin at all (point_diff=0), so the margin
+            # formula's ln(0+1)=0 isn't a real judgment that upsets don't
+            # matter for ties -- it's an incidental artifact of a formula
+            # built to scale a margin that doesn't exist here. Left as
+            # M=0, a tie would ALWAYS produce zero rating change for
+            # either team regardless of how surprising it was (e.g. a
+            # heavy underdog tying a top team should still move ratings
+            # somewhat). Using M=1.0 (no margin scaling, since there's
+            # no margin to scale by) lets K*(S-E) drive the change
+            # directly, same as any other result. Ties were structurally
+            # impossible in the 2000-2026 dataset (post-1996 overtime
+            # rule) so this never mattered before extending back further.
+            m = 1.0
+        else:
+            m = mov_multiplier(point_diff, winner_advantage, mov_c, mov_d)
 
         delta_home = k * (s_home - e_home) * m
         # Zero-sum by construction: away's change is exactly -delta_home

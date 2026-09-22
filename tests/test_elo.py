@@ -86,18 +86,47 @@ def test_higher_quality_opponent_means_bigger_win_swing():
     assert win_change_vs_strong > win_change_vs_weak
 
 
-def test_tie_produces_zero_change_current_dataset_edge_case():
+def test_tie_produces_nonzero_zero_sum_change():
     """
-    Documented edge case: a tie (point_diff=0) makes the MOV multiplier
-    zero, so the rating change is zero regardless of how surprising the
-    tie was. Irrelevant for 2000-2026 (ties are structurally impossible
-    post-1996), but worth pinning down explicitly so it's a known,
-    intentional behavior rather than a silent surprise later.
+    A tie no longer produces zero rating change (a prior version did --
+    see build_elo.py's run_elo() for why that was an unintended artifact
+    of the margin formula, not a real design choice, once ties stopped
+    being structurally impossible after extending the dataset before
+    1996's overtime rule). Two equally-rated teams tying should produce
+    exactly zero change (S=E=0.5 for both, so K*(S-E)*M=0 regardless of
+    M) -- this test instead uses UNEQUAL ratings so a real, nonzero,
+    zero-sum change is expected: the favorite (expected to win) settles
+    for a tie and should lose rating; the underdog gains.
     """
-    games = [_game(1, 2020, 1, 2, 21, 21)]
+    games = [
+        _game(0, 2019, 1, 99, 50, 0),  # team 1 beats a filler team to become a big favorite
+        _game(1, 2020, 1, 2, 21, 21),  # then ties team 2, who is unrated (weaker)
+    ]
+    rows, ratings, _ = run_elo(games, DEFAULT_CFG)
+    tie_rows = [r for r in rows if r[0] == 1]
+    changes = {r[1]: r[6] for r in tie_rows}
+    assert changes[1] != 0.0, "Favorite tying an underdog should still move ratings"
+    assert abs(changes[1] + changes[2]) < 1e-9, "Zero-sum must still hold for a tie"
+    assert changes[1] < 0, "The favorite (team 1) should LOSE rating by only tying"
+    assert changes[2] > 0, "The underdog (team 2) should GAIN rating by tying a favorite"
+
+
+def test_equally_rated_teams_tying_at_neutral_site_produces_zero_change():
+    """
+    When both teams are equally rated AND at a neutral site (so home
+    field doesn't create an expectation gap), E=0.5=S for both, so even
+    with M=1 for the tie, the change is exactly zero. A non-neutral
+    version of this test would be wrong: home field alone makes the
+    home team's EFFECTIVE rating higher even with identical base
+    ratings, so E != 0.5 and a tie would correctly produce a nonzero
+    change there (the home team underperformed its home-field-boosted
+    expectation) -- caught by this test actually failing first with
+    neutral=0, before adding it explicitly.
+    """
+    games = [_game(1, 2020, 1, 2, 21, 21, neutral=1)]
     rows, ratings, _ = run_elo(games, DEFAULT_CFG)
     for r in rows:
-        assert r[6] == 0.0  # elo_change
+        assert abs(r[6]) < 1e-9
 
 
 def test_offseason_regression_pulls_toward_initial_rating_not_population_mean():

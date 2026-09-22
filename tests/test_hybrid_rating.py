@@ -1,15 +1,30 @@
 """
 Tests for build_hybrid_coefficients.py covering the remaining CoE-2.0
 properties from the design doc's section 30 not already covered by
-test_elo.py: Win CoE floor/ceiling, regulation-loss CoE, the frozen
-5yr CoE's anti-circularity guarantee, and pregame-only Elo usage.
+test_elo.py: Win CoE floor/ceiling, regulation-loss CoE, tie handling,
+the frozen 5yr CoE's anti-circularity guarantee, and pregame-only Elo
+usage.
 
 Most run directly against the real db (skip cleanly if it hasn't been
 built yet), since these are properties of the actual computed data.
 """
 import pytest
 
-from build_hybrid_coefficients import compute_frozen_5yr_coe, zscore_stats
+from build_hybrid_coefficients import compute_frozen_5yr_coe, zscore_stats, tie_game_coe
+
+
+def test_tie_underdog_gets_bonus():
+    """An underdog (p_this < 0.5) settling for a tie should score ABOVE 1.0."""
+    assert tie_game_coe(p_this=0.2, tie_delta=2.0) > 1.0
+
+
+def test_tie_favorite_gets_penalty():
+    """A favorite (p_this > 0.5) settling for a tie should score BELOW 1.0."""
+    assert tie_game_coe(p_this=0.8, tie_delta=2.0) < 1.0
+
+
+def test_tie_even_matchup_scores_exactly_one():
+    assert tie_game_coe(p_this=0.5, tie_delta=2.0) == 1.0
 
 
 def test_frozen_5yr_coe_never_includes_the_season_itself():

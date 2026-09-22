@@ -13,17 +13,18 @@
   },
 
   "hybrid": {
-    "_comment": "Not used yet -- placeholder for build_hybrid_coefficients.py.",
-    "elo_weight": 0.50,
-    "coe_weight": 0.50,
+    "_comment": "elo_weight/coe_weight calibrated via calibrate_hybrid_weight.py's grid search (0.25 through 1.00 in steps, an initial coarse pass at [0.25,0.40,0.50,0.60,0.75] showed monotonic improvement all the way to the edge, so the grid was extended to find the real optimum) against the full dataset, optimizing out-of-sample Brier score (same walk-forward methodology as calibrate_elo.py). Best found: elo_weight=0.85, coe_weight=0.15 (Brier=0.18718). Notably, pure Elo (elo_weight=1.0) scored WORSE (Brier=0.18814) than this blend -- confirming the frozen 5yr CoE component adds real predictive signal on top of Elo alone, even at a small weight, which validates the hybrid architecture's core premise. Full 10-row results in data/processed/hybrid_weight_calibration_results.csv. difficulty_alpha (below) is deliberately NOT tuned this way -- see calibrate_hybrid_weight.py's docstring for why (CoE measures achievement, not prediction accuracy, per spec section 32).",
+    "elo_weight": 0.85,
+    "coe_weight": 0.15,
     "rating_scale": 200
   },
 
   "coe": {
-    "_comment": "Not used yet -- placeholder for build_hybrid_coefficients.py's Game CoE 2.0 calculation.",
+    "_comment": "win_base/ot_loss/regulation_loss/difficulty_alpha are the Game CoE 2.0 formula constants, deliberately NOT tuned via Brier score/prediction accuracy (see calibrate_hybrid_weight.py's docstring for why -- CoE measures achievement, not prediction). tie_delta is the spec's own suggested starting formula for a tie (G_tie = 1 + tie_delta*(0.5 - p_this), symmetric around 1.0, rewarding an underdog for tying and mildly penalizing a favorite for settling for one) -- defaulted to match difficulty_alpha's value as a reasonable placeholder, not yet independently calibrated. Only matters once the dataset extends before 1996's overtime rule; ties were structurally impossible in 2000-2026.",
     "win_base": 2.0,
     "ot_loss": 1.0,
     "regulation_loss": 0.0,
-    "difficulty_alpha": 2.0
+    "difficulty_alpha": 2.0,
+    "tie_delta": 2.0
   }
 }
