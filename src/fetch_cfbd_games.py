@@ -174,6 +174,26 @@ def fetch_final_cfp_top4(year: int, headers: Dict[str, str]) -> Optional[Set[str
 
     return None
 
+def compute_went_ot(g: dict) -> int:
+    """
+    CFBD's /games endpoint has NO top-level overtime boolean field at
+    all (confirmed against the authoritative API schema,
+    api.collegefootballdata.com/api/games -- the Game object's only
+    relevant fields are homeLineScores/awayLineScores). A previous
+    version searched for "overtime"/"overtimes"/"overTime", which don't
+    exist on this endpoint -- went_ot was silently 0 for every game in
+    the entire dataset as a result (a real, previously undiscovered
+    gap, caught while building an Elo model that actually depended on
+    this field). The correct signal: a regulation game's line-score
+    array has exactly 4 entries (one per quarter); each overtime period
+    adds one more entry.
+    """
+    line_scores = pick(g, "home_line_scores", "homeLineScores", default=None)
+    if line_scores is None:
+        line_scores = pick(g, "away_line_scores", "awayLineScores", default=None)
+    return 1 if (isinstance(line_scores, list) and len(line_scores) > 4) else 0
+
+
 def game_phase(season_type_val: str, game_type: str) -> str:
     if season_type_val == "regular":
         return "regular"
@@ -300,8 +320,7 @@ def main(year: int) -> int:
             # THEN derive phase
             phase = game_phase(season_type_val, game_type)
 
-            ot_raw = pick(g, "overtime", "overtimes", "overTime", default=0)
-            went_ot = 1 if (str(ot_raw).isdigit() and int(ot_raw) > 0) else to_bool01(ot_raw)
+            went_ot = compute_went_ot(g)
 
             neutral_site = to_bool01(pick(g, "neutral_site", "neutralSite", default=False))
 
