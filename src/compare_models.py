@@ -15,6 +15,21 @@ Conference-level CoE 2.0 (external-games-only, per spec section 16) is a
 natural follow-up, not built here yet -- keeping this first pass focused
 and tractable rather than doing everything at once.
 
+Filters out any team-season with fewer than CONFIDENCE_GAMES games played
+that season (same threshold already established for CoE v1's own
+early-season confidence blending -- reused here for consistency, not
+re-derived). Without this, comparing a raw cumulative Season CoE 2.0 sum
+(which has NO early-season adjustment yet, unlike v1's already-blended
+values) against a team with only 1-2 games played produces wild, entirely
+spurious "disagreements" that look like interesting signal but are really
+just an artifact of comparing a full season against a fraction of one --
+confirmed on real data: Indiana and Massachusetts both showed 70+ rank
+swings in the 2026 season, and both turned out to have played exactly 1
+game. This also correctly handles 2020's uneven COVID-shortened schedules
+(some teams played as few as 3 games that year), not just the current
+in-progress season -- filtering by actual games played generalizes better
+than excluding a hardcoded "current year".
+
 Usage:
     python src/compare_models.py [--db db/league.db] [--team-ratings-csv data/processed/team_ratings_by_season.csv] [--out data/processed/model_comparison.csv]
 """
@@ -25,6 +40,8 @@ import csv
 import sqlite3
 from collections import defaultdict
 
+CONFIDENCE_GAMES = 8  # matches build_coefficients.py's own threshold
+
 
 def load_v1_ratings(csv_path: str) -> dict:
     ratings = {}
@@ -32,6 +49,20 @@ def load_v1_ratings(csv_path: str) -> dict:
         for row in csv.DictReader(f):
             ratings[(int(row["season_year"]), row["team_name"])] = float(row["rating"])
     return ratings
+
+
+def load_games_played(conn: sqlite3.Connection) -> dict:
+    """Returns {(season_year, team_name): games_played}, counting only games with a recorded score."""
+    rows = conn.execute(
+        """
+        SELECT g.season_year, t.team_name, COUNT(*) as n
+        FROM games g
+        JOIN teams t ON t.team_id IN (g.home_team_id, g.away_team_id)
+        WHERE g.home_score IS NOT NULL AND g.away_score IS NOT NULL
+        GROUP BY g.season_year, t.team_name
+        """
+    ).fetchall()
+    return {(r["season_year"], r["team_name"]): r["n"] for r in rows}
 
 
 def load_v2_season_coe(conn: sqlite3.Connection) -> dict:
@@ -68,6 +99,7 @@ def main() -> None:
     p.add_argument("--team-ratings-csv", default="data/processed/team_ratings_by_season.csv")
     p.add_argument("--out", default="data/processed/model_comparison.csv")
     p.add_argument("--top-disagreements", type=int, default=15)
+    p.add_argument("--confidence-games", type=int, default=CONFIDENCE_GAMES)
     args = p.parse_args()
 
     conn = sqlite3.connect(args.db)
@@ -75,10 +107,19 @@ def main() -> None:
 
     v1 = load_v1_ratings(args.team_ratings_csv)
     v2 = load_v2_season_coe(conn)
+    games_played = load_games_played(conn)
     conn.close()
 
+    # Filter OUT of the ranking population entirely -- not just the
+    # output rows -- any team-season with too few games played, so a
+    # thin-schedule team can't distort other teams' ranks by occupying
+    # a rank slot it shouldn't meaningfully hold.
+    v1 = {k: v for k, v in v1.items() if games_played.get(k, 0) >= args.confidence_games}
+    v2 = {k: v for k, v in v2.items() if games_played.get(k, 0) >= args.confidence_games}
+
     years_v2 = sorted(set(y for y, _ in v2))
-    print(f"Comparing {len(years_v2)} seasons with CoE 2.0 data: {years_v2[0]}-{years_v2[-1]}")
+    print(f"Comparing {len(years_v2)} seasons with CoE 2.0 data: {years_v2[0]}-{years_v2[-1]} "
+          f"(team-seasons with fewer than {args.confidence_games} games played excluded)")
 
     all_rows = []
     for year in years_v2:
