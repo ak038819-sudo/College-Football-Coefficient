@@ -86,10 +86,16 @@ def test_win_coe_never_reaches_ceiling(db_conn):
 
 
 def test_regulation_loss_is_always_zero(db_conn):
-    row = db_conn.execute(
+    rows = db_conn.execute(
         "SELECT DISTINCT game_coe FROM hybrid_game_ratings WHERE result_type='LOSS'"
     ).fetchall()
-    assert row == [(0.0,)], f"Regulation losses should always score exactly 0, found: {row}"
+    # sqlite3.Row objects don't compare equal to plain tuples via == in
+    # this environment even when the underlying values match -- convert
+    # explicitly rather than comparing Row objects directly (a false
+    # test failure from this exact pattern was caught on real CI output:
+    # the data was genuinely correct, only the comparison was wrong).
+    values = [tuple(r) for r in rows]
+    assert values == [(0.0,)], f"Regulation losses should always score exactly 0, found: {values}"
 
 
 def test_ot_loss_is_always_one(db_conn):
@@ -109,7 +115,8 @@ def test_ot_loss_is_always_one(db_conn):
     ).fetchall()
     if not rows:
         pytest.skip("No OT_LOSS rows exist yet -- known went_ot data gap, not yet fixed")
-    assert rows == [(1.0,)], f"OT losses should always score exactly 1 in this prototype, found: {rows}"
+    values = [tuple(r) for r in rows]  # see test_regulation_loss_is_always_zero for why
+    assert values == [(1.0,)], f"OT losses should always score exactly 1 in this prototype, found: {values}"
 
 
 def test_hybrid_expectations_sum_to_one_per_game(db_conn):
