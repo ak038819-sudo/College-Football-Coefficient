@@ -1,0 +1,29 @@
+{
+  "_comment": "CoE 2.0 model parameters. None of these are hardcoded in the scripts that use them -- change values here to run experiments without touching code. The 'elo' section is the only one build_elo.py reads right now; 'hybrid' and 'coe' are placeholders for later phases (build_hybrid_coefficients.py), documented here now so the full intended structure is visible from day one.",
+
+  "elo": {
+    "_comment": "mov_c/mov_d follow the well-known FiveThirtyEight NFL Elo margin-of-victory formula as a defensible, non-arbitrary starting point -- NOT yet calibrated for college football. home_field, k, and offseason_retention are similarly reasonable starting guesses, not backtested. Calibration (comparing out-of-sample prediction accuracy across parameter grids) is a deliberately separate, later step (calibrate_elo.py) -- see rollout plan.",
+    "initial_rating": 1500,
+    "scale": 400,
+    "k": 20,
+    "home_field": 55,
+    "offseason_retention": 0.75,
+    "mov_c": 2.2,
+    "mov_d": 0.001
+  },
+
+  "hybrid": {
+    "_comment": "Not used yet -- placeholder for build_hybrid_coefficients.py.",
+    "elo_weight": 0.50,
+    "coe_weight": 0.50,
+    "rating_scale": 200
+  },
+
+  "coe": {
+    "_comment": "Not used yet -- placeholder for build_hybrid_coefficients.py's Game CoE 2.0 calculation.",
+    "win_base": 2.0,
+    "ot_loss": 1.0,
+    "regulation_loss": 0.0,
+    "difficulty_alpha": 2.0
+  }
+}
