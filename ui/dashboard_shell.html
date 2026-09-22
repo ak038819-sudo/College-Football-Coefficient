@@ -460,9 +460,13 @@ __DATA_JSON__
 <script id="logo-assets" type="application/json">
 __LOGO_ASSETS_JSON__
 </script>
+<script id="dated-logo-assets" type="application/json">
+__DATED_LOGO_ASSETS_JSON__
+</script>
 <script>
 const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
 const LOGOS = JSON.parse(document.getElementById('logo-assets').textContent);
+const DATED_LOGOS = JSON.parse(document.getElementById('dated-logo-assets').textContent);
 
 function hashHue(name) {
   let h = 0;
@@ -474,9 +478,37 @@ function initials(name) {
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
   return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
-function logoMarkup(name, kind, size) {
+function pickDatedLogo(name, year) {
+  const entries = DATED_LOGOS[name];
+  if (!entries) return null;
+  // Entries are sorted by start year; find the one whose [start, end) range
+  // contains `year`. An entry with end===null means "still current, no
+  // upper bound" (an open-ended range like "TeamName(2020-).png").
+  for (const e of entries) {
+    if (year >= e.start && (e.end === null || year < e.end)) return e.data;
+  }
+  // Defensive fallback: no exact range matched (shouldn't normally happen --
+  // real coverage has zero gaps as verified when this was built), use the
+  // closest available entry rather than falling all the way to a monogram.
+  if (year < entries[0].start) return entries[0].data;
+  return entries[entries.length - 1].data;
+}
+
+function logoMarkup(name, kind, size, yearOverride) {
   const sizeClass = size ? ' ' + size : '';
-  const src = kind === 'conf' ? LOGOS.conferences[name] : LOGOS.teams[name];
+  let src;
+  if (kind === 'conf') {
+    src = LOGOS.conferences[name];
+  } else {
+    // Team logos: prefer the date-accurate historical logo for the
+    // currently-viewed season (or an explicit override, for cross-era
+    // views like the Playoff Appearances history table where there's no
+    // single "current year" in scope) -- falls back to the old static
+    // single-logo set, then the monogram badge, exactly matching the
+    // existing 3-tier fallback pattern.
+    const year = (yearOverride !== undefined) ? yearOverride : state.year;
+    src = pickDatedLogo(name, year) || LOGOS.teams[name];
+  }
   if (src) {
     return '<img class="logo-img' + sizeClass + '" src="' + src + '" alt="" loading="lazy">';
   }
@@ -798,7 +830,7 @@ function renderHistory() {
   let html = '<div class="panel"><h2 class="section-title">Playoff Appearances, ' + DATA.years_playoff[0] + '\u2013' + DATA.years_playoff[DATA.years_playoff.length - 1] + ' (' + DATA.years_playoff.length + ' seasons simulated)</h2>';
   html += '<table class="rank-table"><thead><tr><th></th><th>Team</th><th class="num">Appearances</th><th class="num">Byes</th><th>Years</th></tr></thead><tbody>';
   rows.forEach((r, i) => {
-    html += '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + logoMarkup(r.team, 'team', 'sm') + '<span>' + r.team + '</span></div></td>' +
+    html += '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + logoMarkup(r.team, 'team', 'sm', DATA.years_all[DATA.years_all.length - 1]) + '<span>' + r.team + '</span></div></td>' +
       '<td class="num coe-val">' + r.appearances + '</td><td class="num">' + r.byes + '</td>' +
       '<td style="font-family:var(--font-mono);font-size:11px;color:var(--ink-dim)">' + r.years.join(', ') + '</td></tr>';
   });
