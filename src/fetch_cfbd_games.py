@@ -278,6 +278,7 @@ def main(year: int) -> int:
                 "season_year", "week", "date",
                 "season_type",
                 "home_team", "away_team",
+                "home_conference", "away_conference",
                 "home_score", "away_score",
                 "went_ot",
                 "game_type",
@@ -322,6 +323,21 @@ def main(year: int) -> int:
 
             went_ot = compute_went_ot(g)
 
+            # Per-game conference, per the authoritative /games schema
+            # (home_conference/away_conference) -- this is the SAME field
+            # source that home_line_scores/away_line_scores came from for
+            # the went_ot fix, and it's been sitting in every game we've
+            # already fetched this whole time. Lets team-conference
+            # membership be DERIVED directly from real historical games
+            # instead of needing a separate membership data source --
+            # potentially extending real membership data back to 1980
+            # (currently bounded at 2014, the earliest year we had an
+            # explicit membership source for). None when CFBD doesn't
+            # have it for a given historical game (independents, or gaps
+            # in older data).
+            home_conf = pick(g, "home_conference", "homeConference", default=None)
+            away_conf = pick(g, "away_conference", "awayConference", default=None)
+
             neutral_site = to_bool01(pick(g, "neutral_site", "neutralSite", default=False))
 
             w.writerow({
@@ -332,6 +348,8 @@ def main(year: int) -> int:
                 "season_type": season_type_val,
                 "home_team": home,
                 "away_team": away,
+                "home_conference": home_conf or "",
+                "away_conference": away_conf or "",
                 "home_score": int(home_pts),
                 "away_score": int(away_pts),
                 "went_ot": went_ot,
