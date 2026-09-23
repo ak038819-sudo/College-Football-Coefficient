@@ -23,6 +23,15 @@ REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT / "src" / "coefficients"))
 
+from bootstrap_league_db import DEAD_TEAMS  # noqa: E402 -- the real, authoritative list; a
+# separate hardcoded copy here previously drifted out of sync with it (still listed
+# North Dakota State and Sacramento State as dead well after bootstrap_league_db.py's
+# real list was fixed to treat them as real 2026 FBS debutants, not dead data -- this
+# silently failed CI's "test" job on every commit since, which meant the dependent
+# "rebuild-and-deploy" job never ran either, leaving the live site stuck on stale data
+# through dozens of otherwise-successful-looking pushes). Importing directly instead of
+# duplicating means this can't drift out of sync again.
+
 DB_PATH = REPO_ROOT / "db" / "league.db"
 BACKUP_DB_PATH = REPO_ROOT / "db" / "league_backup_before_playoff_migration.db"
 
@@ -31,10 +40,6 @@ BACKUP_DB_PATH = REPO_ROOT / "db" / "league_backup_before_playoff_migration.db"
 # dynamically computed from the DB) so a test failure due to missing data
 # is obvious, rather than a test that silently checks zero years.
 PLAYOFF_YEARS = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
-
-# Teams that must NEVER reappear after a bootstrap -- see
-# bootstrap_league_db.py's DEAD_TEAMS for why each one is dead.
-DEAD_TEAMS = ["UMass", "North Dakota State", "Sacramento State"]
 
 
 @pytest.fixture(scope="session")

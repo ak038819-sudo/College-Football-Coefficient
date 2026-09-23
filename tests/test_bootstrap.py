@@ -1,9 +1,15 @@
 """
-A fresh bootstrap must never resurrect the three known-dead duplicate
-teams. This is a regression test for a real bug: this cleanup was
-originally a one-off manual SQL command that didn't survive a fresh
---force rebuild, and North Dakota State actually reappeared as a 2026
-Mountain West "champion" in the real playoff field before being caught.
+A fresh bootstrap must never resurrect any team still listed as dead in
+bootstrap_league_db.py's DEAD_TEAMS (currently just UMass -- North Dakota
+State and Sacramento State were removed from that list once they were
+confirmed as real 2026 FBS debutants, not dead/duplicate data; this test
+now imports DEAD_TEAMS directly from bootstrap_league_db.py rather than
+keeping its own copy, specifically so it can't drift out of sync with
+that list again the way it silently did before). This is a regression
+test for a real bug: this cleanup was originally a one-off manual SQL
+command that didn't survive a fresh --force rebuild, and North Dakota
+State actually reappeared as a 2026 Mountain West "champion" in the real
+playoff field before being caught.
 """
 import sqlite3
 import subprocess
