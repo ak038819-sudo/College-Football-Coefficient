@@ -93,6 +93,12 @@ jobs:
       - name: Run full pipeline (bootstrap, load, ratings, standings)
         run: python3 run_pipeline.py --force
 
+      - name: Build Elo, hybrid, and conference CoE 2.0 tables
+        run: |
+          python3 src/build_elo.py
+          python3 src/build_hybrid_coefficients.py
+          python3 src/build_conference_coe2.py
+
       - name: Rebuild the dashboard
         run: python3 build_dashboard.py --draw-seed 1
 
