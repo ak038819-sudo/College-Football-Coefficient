@@ -210,6 +210,40 @@
   .monogram.sm { width: 63px; height: 63px; font-size: 28px; }
   .name-cell { display: flex; align-items: center; gap: 14px; }
 
+  /* ---- Clickable teams (Milestone 1) ---- */
+  a.team-link, .team-link-static {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: inherit; text-decoration: none; border-radius: 6px; min-width: 0;
+  }
+  a.team-link { cursor: pointer; }
+  .name-cell > .team-link { gap: 14px; }
+  .r24-team > .team-link { gap: 5px; }
+  .bslot > .team-link { gap: 6px; }
+  a.team-link.team-chip { display: flex; }
+  a.team-link .logo-chip, a.team-link .monogram { transition: box-shadow 0.12s ease; }
+  a.team-link:hover .logo-chip, a.team-link:hover .monogram,
+  a.team-link:focus-visible .logo-chip, a.team-link:focus-visible .monogram { box-shadow: 0 0 0 2px var(--amber); }
+  a.team-link:hover .team-link-name, a.team-link:hover .name {
+    color: var(--amber); text-decoration: underline; text-underline-offset: 3px;
+  }
+  a.team-link:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+
+  /* ---- Team page (Milestone 1 shell) ---- */
+  .back-link { display: inline-block; margin-bottom: 14px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-dim); text-decoration: none; }
+  .back-link:hover, .back-link:focus-visible { color: var(--amber); }
+  .team-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+  .team-header-main { display: flex; align-items: center; gap: 20px; min-width: 0; }
+  .team-title { font-family: var(--font-display); font-size: 38px; line-height: 1.05; margin: 0 0 6px; }
+  .team-sub { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-dim); }
+  .team-stats { display: grid; grid-template-columns: repeat(4, minmax(110px, 1fr)); gap: 10px; }
+  @media (max-width: 760px) { .team-stats { grid-template-columns: repeat(2, 1fr); width: 100%; } .team-title { font-size: 30px; } }
+  .team-stat { background: var(--panel-2); border-radius: 3px; padding: 10px 12px; }
+  .team-stat .lbl { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.5px; color: var(--ink-dim); text-transform: uppercase; }
+  .team-stat .val { font-family: var(--font-display); font-size: 22px; color: var(--amber); margin-top: 2px; }
+  .team-stat .sub { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); margin-top: 2px; }
+  .team-section { margin-bottom: 18px; }
+  .grid-2.team-section > .panel { margin-bottom: 0; }
+
   .field-conf-group {
     margin-bottom: 16px;
     padding-bottom: 14px;
@@ -538,12 +572,68 @@ function logoMarkup(name, kind, size, yearOverride) {
 }
 
 
-let state = { tab: 'teams', year: DATA.years_all[DATA.years_all.length - 1], simResult: null, simYear: null };
+// ---------------- Team index, links & routing (Milestone 1) ----------------
+// DATA.teams comes from export_dashboard_data.build_team_index(): stable
+// team_id, canonical name, URL slug, latest conference. Indexes are built
+// once here rather than scanned on every render.
+const TEAMS = DATA.teams || [];
+const TEAM_BY_ID = new Map(TEAMS.map(t => [String(t.id), t]));
+const TEAM_BY_SLUG = new Map(TEAMS.map(t => [t.slug, t]));
+const TEAM_BY_NAME = new Map(TEAMS.map(t => [t.name, t]));
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Mirror of export_dashboard_data.slugify(). Only used to resolve
+// hand-typed URLs like #team=Indiana; links always use the exported slug.
+function slugify(name) {
+  return String(name).normalize('NFKD').replace(/[^\x00-\x7F]/g, '').toLowerCase()
+    .replace(/'/g, '').replace(/&/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+// Accepts an exported slug, a numeric team_id, or a team name.
+function resolveTeam(value) {
+  if (value == null) return null;
+  const v = String(value).trim();
+  return TEAM_BY_SLUG.get(v) || TEAM_BY_ID.get(v) || TEAM_BY_SLUG.get(slugify(v)) || null;
+}
+
+function teamHref(name) {
+  const t = TEAM_BY_NAME.get(name);
+  return t ? '#team=' + t.slug : null;
+}
+
+// Wraps inner markup in a link to the team's page. The link's accessible
+// name is "<Team> team page"; the logo image inside stays decorative
+// (alt="") so screen readers don't announce the name twice. A team missing
+// from the index renders as plain, non-link text.
+function teamAnchor(name, innerHtml, extraClass) {
+  const href = teamHref(name);
+  const cls = 'team-link' + (extraClass ? ' ' + extraClass : '');
+  if (!href) return '<span class="' + cls + ' team-link-static">' + innerHtml + '</span>';
+  return '<a class="' + cls + '" href="' + href + '" aria-label="' + esc(name) + ' team page">' + innerHtml + '</a>';
+}
+
+// Logo + name as one clickable unit. namePrefix lets the champion slot keep its trophy.
+function teamLink(name, size, yearOverride, namePrefix) {
+  return teamAnchor(name, logoMarkup(name, 'team', size, yearOverride) +
+    '<span class="team-link-name">' + (namePrefix || '') + name + '</span>');
+}
+
+const TAB_NAMES = new Set([...document.querySelectorAll('#tabs button')].map(b => b.dataset.tab));
+
+let state = { tab: 'teams', year: DATA.years_all[DATA.years_all.length - 1], simResult: null, simYear: null, view: 'tab', teamParam: null };
 
 function fmt(n) { return Number(n).toFixed(3); }
 
 function renderYearRow() {
   const row = document.getElementById('year-row');
+  if (state.view === 'team') {
+    row.innerHTML = '';
+    document.getElementById('year-caption').textContent = 'TEAM PAGE';
+    return;
+  }
   if (state.tab === 'history') {
     row.innerHTML = '';
     document.getElementById('year-caption').textContent = 'ALL SEASONS, ' + DATA.years_playoff[0] + '\u2013' + DATA.years_playoff[DATA.years_playoff.length - 1];
@@ -572,7 +662,7 @@ function rankTable(rows, valueKey, labelKey, valueLabel, kind) {
   if (!rows || !rows.length) return '<div class="empty-note">No data for this season.</div>';
   let html = '<table class="rank-table"><thead><tr><th></th><th>' + labelKey + '</th><th class="num">' + valueLabel + '</th></tr></thead><tbody>';
   rows.forEach((r, i) => {
-    html += '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + logoMarkup(r.name, kind, 'sm') + '<span>' + r.name + '</span></div></td><td class="num coe-val">' + fmt(r.value) + '</td></tr>';
+    html += '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + (kind === 'team' ? teamLink(r.name, 'sm') : logoMarkup(r.name, kind, 'sm') + '<span>' + r.name + '</span>') + '</div></td><td class="num coe-val">' + fmt(r.value) + '</td></tr>';
   });
   html += '</tbody></table>';
   return html;
@@ -622,7 +712,7 @@ function renderField() {
       '<span class="bids">' + independentQuals.length + ' bid' + (independentQuals.length > 1 ? 's' : '') + '</span></div>';
     independentQuals.forEach(t => {
       const potTag = t.pot === 'bye' ? '<span class="tag bye">Bye</span>' : '<span class="tag pot' + t.pot + '">Pot ' + t.pot + '</span>';
-      html += '<div class="qual-row"><span class="qual-team name-cell">' + logoMarkup(t.team, 'team', 'sm') + t.team + '</span>' +
+      html += '<div class="qual-row"><span class="qual-team name-cell">' + teamLink(t.team, 'sm') + '</span>' +
         '<span>' + potTag + ' <span class="coe-mini">' + fmt(t.team_coe_5yr) + '</span></span></div>';
     });
     if (pf.independent_replacements && pf.independent_replacements.length) {
@@ -641,7 +731,7 @@ function renderField() {
     g.teams.forEach(t => {
       const potTag = t.pot === 'bye' ? '<span class="tag bye">Bye</span>' : '<span class="tag pot' + t.pot + '">Pot ' + t.pot + '</span>';
       const bidTag = t.bid_type === 'champion' ? '<span class="tag champ">Champion</span>' : '';
-      html += '<div class="qual-row"><span class="qual-team name-cell">' + logoMarkup(t.team, 'team', 'sm') + t.team + ' ' + bidTag + '</span>' +
+      html += '<div class="qual-row"><span class="qual-team name-cell">' + teamLink(t.team, 'sm') + ' ' + bidTag + '</span>' +
         '<span>' + potTag + ' <span class="coe-mini">' + fmt(t.team_coe_5yr) + '</span></span></div>';
     });
     html += '</div>';
@@ -702,13 +792,13 @@ function buildBracketSeeds(pf) {
 
 function slotHtml(seedObj) {
   if (seedObj.isTeam) {
-    return '<div class="bslot"><span class="seed">' + seedObj.seed + '</span>' + logoMarkup(seedObj.team, 'team', 'sm') + '<span>' + seedObj.team + '</span></div>';
+    return '<div class="bslot"><span class="seed">' + seedObj.seed + '</span>' + teamLink(seedObj.team, 'sm') + '</div>';
   }
   return '<div class="bslot tbd"><span class="seed">' + seedObj.seed + '</span><span>' + seedObj.label + '</span></div>';
 }
 
 function filledSlotHtml(teamName) {
-  return '<div class="bslot filled">' + logoMarkup(teamName, 'team', 'sm') + '<span>' + teamName + '</span></div>';
+  return '<div class="bslot filled">' + teamLink(teamName, 'sm') + '</div>';
 }
 
 function r24MatchupHtml(seedObj, pf) {
@@ -717,9 +807,9 @@ function r24MatchupHtml(seedObj, pf) {
   }
   const g = pf.round_of_24[seedObj.seed - 9];
   return '<div class="bslot r24-matchup">' +
-    '<div class="r24-team">' + logoMarkup(g.away, 'team', 'sm') + '<span>' + g.away + '</span></div>' +
+    '<div class="r24-team">' + teamLink(g.away, 'sm') + '</div>' +
     '<div class="r24-at">@</div>' +
-    '<div class="r24-team r24-home">' + logoMarkup(g.home, 'team', 'sm') + '<span>' + g.home + '</span></div>' +
+    '<div class="r24-team r24-home">' + teamLink(g.home, 'sm') + '</div>' +
     '</div>';
 }
 
@@ -789,7 +879,7 @@ function renderBracketTree(pf, sim) {
   html += '<div class="' + champClass + '" data-round="champion"><div class="bracket-round-title">Champion</div><div class="bracket-list">';
   html += '<div class="champion-cell"' + gridRow(1, 17) + '>';
   html += sim
-    ? '<div class="champion-slot">' + logoMarkup(sim.champion, 'team', 'lg') + '&#127942; ' + sim.champion + '</div>'
+    ? '<div class="champion-slot">' + teamLink(sim.champion, 'lg', undefined, '&#127942; ') + '</div>'
     : '<div class="champion-slot">&#127942; TBD</div>';
   html += '</div>';
   html += '</div></div>';
@@ -837,14 +927,14 @@ function renderBracket() {
   html += renderBracketTree(pf, sim);
 
   html += '<div class="bracket-section-label">Byes &rarr; Round of 16 (' + pf.byes.length + ')</div>';
-  html += '<div class="bye-strip">' + pf.byes.map(t => '<div class="bye-chip">' + logoMarkup(t, 'team', 'sm') + ' ' + t + '</div>').join('') + '</div>';
+  html += '<div class="bye-strip">' + pf.byes.map(t => '<div class="bye-chip">' + teamLink(t, 'sm') + '</div>').join('') + '</div>';
 
   html += '<div class="bracket-section-label">Round of 24 (' + pf.round_of_24.length + ' games)</div>';
   pf.round_of_24.forEach((g, i) => {
     html += '<div class="game-card"><div class="game-num">G' + (i + 1) + '</div><div class="game-matchup">' +
-      '<div class="team-chip">' + logoMarkup(g.away, 'team') + '<div><span class="name">' + g.away + '</span><span class="conf">' + g.away_conf + '</span></div></div>' +
+      teamAnchor(g.away, logoMarkup(g.away, 'team') + '<div><span class="name">' + g.away + '</span><span class="conf">' + g.away_conf + '</span></div>', 'team-chip') +
       '<div class="at">@</div>' +
-      '<div class="team-chip home">' + logoMarkup(g.home, 'team') + '<div><span class="name">' + g.home + '</span><span class="conf">' + g.home_conf + '</span></div></div>' +
+      teamAnchor(g.home, logoMarkup(g.home, 'team') + '<div><span class="name">' + g.home + '</span><span class="conf">' + g.home_conf + '</span></div>', 'team-chip home') +
       '<div class="coe-mini">' + fmt(g.away_coe) + ' vs ' + fmt(g.home_coe) + '</div>' +
       '</div></div>';
   });
@@ -858,7 +948,7 @@ function renderHistory() {
   let html = '<div class="panel"><h2 class="section-title">Playoff Appearances, ' + DATA.years_playoff[0] + '\u2013' + DATA.years_playoff[DATA.years_playoff.length - 1] + ' (' + DATA.years_playoff.length + ' seasons simulated)</h2>';
   html += '<table class="rank-table"><thead><tr><th></th><th>Team</th><th class="num">Appearances</th><th class="num">Byes</th><th>Years</th></tr></thead><tbody>';
   rows.forEach((r, i) => {
-    html += '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + logoMarkup(r.team, 'team', 'sm', DATA.years_all[DATA.years_all.length - 1]) + '<span>' + r.team + '</span></div></td>' +
+    html += '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + teamLink(r.team, 'sm', DATA.years_all[DATA.years_all.length - 1]) + '</div></td>' +
       '<td class="num coe-val">' + r.appearances + '</td><td class="num">' + r.byes + '</td>' +
       '<td style="font-family:var(--font-mono);font-size:11px;color:var(--ink-dim)">' + r.years.join(', ') + '</td></tr>';
   });
@@ -875,7 +965,7 @@ function renderOdds() {
   html += '<table class="rank-table"><thead><tr><th></th><th>Team</th><th class="num">CoE</th>' +
     '<th class="num">R16</th><th class="num">QF</th><th class="num">SF</th><th class="num">Final</th><th class="num">Champion</th></tr></thead><tbody>';
   pf.simulation.forEach((r, i) => {
-    html += '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + logoMarkup(r.team, 'team', 'sm') + '<span>' + r.team + '</span></div></td>' +
+    html += '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + teamLink(r.team, 'sm') + '</div></td>' +
       '<td class="num">' + fmt(r.coe) + '</td>' +
       '<td class="num">' + r.r16_pct + '%</td><td class="num">' + r.qf_pct + '%</td><td class="num">' + r.sf_pct + '%</td>' +
       '<td class="num">' + r.final_pct + '%</td><td class="num coe-val">' + r.champion_pct + '%</td></tr>';
@@ -884,9 +974,105 @@ function renderOdds() {
   return html;
 }
 
+// ---------------- Team page (Milestone 1 shell) ----------------
+// Rank = position in an authoritative, already-sorted export (never re-sorted
+// here). Built once per dataset+season, then cached.
+const _rankCache = {};
+function rankLookup(datasetKey, valueKey, year, name) {
+  const ck = datasetKey + '|' + year;
+  if (!_rankCache[ck]) {
+    const rows = (DATA[datasetKey] || {})[year] || [];
+    const m = new Map();
+    rows.forEach((r, i) => m.set(r.team, { value: r[valueKey], rank: i + 1, of: rows.length }));
+    _rankCache[ck] = m;
+  }
+  return _rankCache[ck].get(name) || null;
+}
+
+// Most recent season in which the team has an Elo entry (i.e. completed games).
+function latestSeasonFor(name) {
+  for (let i = DATA.years_all.length - 1; i >= 0; i--) {
+    if (rankLookup('team_elo_by_year', 'elo', DATA.years_all[i], name)) return DATA.years_all[i];
+  }
+  return null;
+}
+
+function teamStat(label, value, sub) {
+  return '<div class="team-stat"><div class="lbl">' + label + '</div><div class="val">' + value +
+    '</div><div class="sub">' + (sub || '&nbsp;') + '</div></div>';
+}
+function rankSub(hit) { return hit ? '#' + hit.rank + ' of ' + hit.of : 'N/A'; }
+
+function renderTeamPage(param) {
+  const back = '<a class="back-link" href="#tab=' + state.tab + '">&larr; Back to dashboard</a>';
+  const team = resolveTeam(param);
+  if (!team) {
+    return back + '<div class="panel"><h2 class="section-title">Team not found</h2>' +
+      '<div class="empty-note">No team matches &ldquo;' + esc(param || '') + '&rdquo;. ' +
+      'Click any team on a leaderboard to open its page.</div></div>';
+  }
+  const season = latestSeasonFor(team.name);
+  const elo = season ? rankLookup('team_elo_by_year', 'elo', season, team.name) : null;
+  const coe = season ? rankLookup('team_ratings_by_year', 'rating', season, team.name) : null;
+  const coe5 = season ? rankLookup('team_rolling_by_year', 'coeff_5yr', season, team.name) : null;
+  const rec = season ? ((DATA.team_records_by_year || {})[season] || {})[team.id] : null;
+  const recStr = rec ? rec[0] + '\u2013' + rec[1] + (rec[2] ? '\u2013' + rec[2] : '') : 'N/A';
+
+  const header =
+    '<div class="panel team-header">' +
+      '<div class="team-header-main">' + logoMarkup(team.name, 'team', 'lg', season || undefined) +
+        '<div><h1 class="team-title">' + team.name + '</h1>' +
+        '<div class="team-sub">' + (team.conference || 'No conference data') +
+          (season ? ' &middot; ' + season + ' season' : '') + '</div></div>' +
+      '</div>' +
+      '<div class="team-stats">' +
+        teamStat('Elo', elo ? Number(elo.value).toFixed(1) : 'N/A', rankSub(elo)) +
+        teamStat('CoE (season)', coe ? fmt(coe.value) : 'N/A', rankSub(coe)) +
+        teamStat('CoE (5-yr)', coe5 ? fmt(coe5.value) : 'N/A', rankSub(coe5)) +
+        teamStat('Record', recStr, 'vs FBS opponents') +
+      '</div>' +
+    '</div>';
+
+  const soon = title => '<div class="panel team-section"><h2 class="section-title">' + title +
+    '</h2><div class="empty-note">Coming soon.</div></div>';
+  return back + header +
+    soon('Historical Elo') +
+    '<div class="grid-2 team-section">' + soon('Upcoming Schedule') + soon('Advanced Analytics') + '</div>' +
+    '<div class="grid-2 team-section">' + soon('Biggest Elo Gains') + soon('Biggest Elo Losses') + '</div>' +
+    soon('Program History');
+}
+
+// ---------------- Router ----------------
+// #team=<slug> opens a team page; #tab=<name> selects a tab; no hash = default
+// tab. Real anchors + hashchange give direct links and back/forward for free.
+const BASE_TITLE = document.title;
+function applyRoute() {
+  const params = new URLSearchParams(location.hash.slice(1));
+  if (params.has('team')) {
+    state.view = 'team';
+    state.teamParam = params.get('team');
+  } else {
+    state.view = 'tab';
+    const tab = params.get('tab');
+    if (tab && TAB_NAMES.has(tab)) state.tab = tab;
+  }
+  document.querySelectorAll('#tabs button').forEach(b =>
+    b.classList.toggle('active', state.view === 'tab' && b.dataset.tab === state.tab));
+  render();
+  if (state.view === 'team') {
+    const t = resolveTeam(state.teamParam);
+    document.title = (t ? t.name : 'Team not found') + ' \u00b7 ' + BASE_TITLE;
+    window.scrollTo(0, 0);
+  } else {
+    document.title = BASE_TITLE;
+  }
+}
+window.addEventListener('hashchange', applyRoute);
+
 function render() {
   renderYearRow();
   const content = document.getElementById('content');
+  if (state.view === 'team') { content.innerHTML = renderTeamPage(state.teamParam); return; }
   if (state.tab === 'teams') content.innerHTML = renderTeams();
   else if (state.tab === 'elo') content.innerHTML = renderElo();
   else if (state.tab === 'conferences') content.innerHTML = renderConferences();
@@ -898,10 +1084,9 @@ function render() {
 
 document.getElementById('tabs').addEventListener('click', e => {
   if (e.target.tagName !== 'BUTTON') return;
-  document.querySelectorAll('#tabs button').forEach(b => b.classList.remove('active'));
-  e.target.classList.add('active');
-  state.tab = e.target.dataset.tab;
-  render();
+  const target = 'tab=' + e.target.dataset.tab;
+  if (location.hash.slice(1) === target) applyRoute();  // same hash: no hashchange event fires
+  else location.hash = target;
 });
 
 document.getElementById('content').addEventListener('click', e => {
@@ -910,7 +1095,7 @@ document.getElementById('content').addEventListener('click', e => {
   }
 });
 
-render();
+applyRoute();
 </script>
 </body>
 </html>

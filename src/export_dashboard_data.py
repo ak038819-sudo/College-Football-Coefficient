@@ -18,7 +18,9 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import sqlite3
+import unicodedata
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -76,6 +78,91 @@ def load_elo_by_season(db_path: str) -> dict:
     for year in by_year:
         by_year[year].sort(key=lambda x: -x["elo"])
     return dict(by_year)
+
+
+def slugify(name: str) -> str:
+    """
+    URL slug for a team page (#team=<slug>). The dashboard's JS has a
+    mirror of this function (slugify() in dashboard_shell.html) used only
+    to resolve hand-typed URLs like #team=Indiana; tests/test_team_index.py
+    and the Node check keep the two in agreement.
+      "Miami (FL)" -> "miami-fl", "Texas A&M" -> "texas-am", "Hawai'i" -> "hawaii"
+    """
+    s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii")
+    s = s.lower().replace("'", "").replace("&", "")
+    return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+
+
+def build_team_index(db_path: str) -> list[dict]:
+    """
+    One small row per team for the team-page router: stable team_id (the
+    internal key everywhere new), canonical team_name, URL slug, and the
+    team's most recent conference in team_membership_by_season. Raises if
+    two teams would share a slug, since that would make a URL ambiguous.
+    """
+    conn = sqlite3.connect(db_path)
+    teams = conn.execute("SELECT team_id, team_name FROM teams ORDER BY team_name").fetchall()
+    latest_conf = {
+        tid: (yr, conf)
+        for tid, yr, conf in conn.execute(
+            """
+            SELECT m.team_id, m.season_year, m.conference_real
+            FROM team_membership_by_season m
+            JOIN (
+                SELECT team_id, MAX(season_year) AS y
+                FROM team_membership_by_season
+                WHERE conference_real IS NOT NULL
+                GROUP BY team_id
+            ) last ON last.team_id = m.team_id AND last.y = m.season_year
+            """
+        )
+    }
+    conn.close()
+
+    index, seen = [], {}
+    for tid, name in teams:
+        slug = slugify(name)
+        if slug in seen:
+            raise ValueError(f"Slug collision: {name!r} and {seen[slug]!r} both -> {slug!r}")
+        seen[slug] = name
+        yr_conf = latest_conf.get(tid)
+        index.append({
+            "id": tid,
+            "name": name,
+            "slug": slug,
+            "conference": yr_conf[1] if yr_conf else None,
+            "conference_year": yr_conf[0] if yr_conf else None,
+        })
+    return index
+
+
+def load_team_records_by_year(db_path: str) -> dict:
+    """
+    {season: {team_id: [wins, losses, ties]}} from COMPLETED games only
+    (both scores present). The games table only holds FBS-vs-FBS games
+    (load_games.py skips non-FBS opponents), so these are records vs FBS
+    opponents and the dashboard labels them that way.
+    """
+    conn = sqlite3.connect(db_path)
+    rec: dict = defaultdict(lambda: defaultdict(lambda: [0, 0, 0]))
+    for y, h, a, hs, as_ in conn.execute(
+        """
+        SELECT season_year, home_team_id, away_team_id, home_score, away_score
+        FROM games
+        WHERE home_score IS NOT NULL AND away_score IS NOT NULL
+        """
+    ):
+        if hs > as_:
+            rec[y][h][0] += 1
+            rec[y][a][1] += 1
+        elif hs < as_:
+            rec[y][a][0] += 1
+            rec[y][h][1] += 1
+        else:
+            rec[y][h][2] += 1
+            rec[y][a][2] += 1
+    conn.close()
+    return {str(y): {str(t): v for t, v in d.items()} for y, d in rec.items()}
 
 
 def years_with_membership_data(db_path: str) -> list[int]:
@@ -235,6 +322,10 @@ def main() -> None:
             for y, rows in conf_rolling.items()
         },
         "playoff_by_year": {},
+        # Team-page router data (Milestone 1). Keyed by stable team_id; the
+        # existing name-keyed exports above are left as-is.
+        "teams": build_team_index(args.db),
+        "team_records_by_year": load_team_records_by_year(args.db),
     }
 
     usable_years = []
