@@ -98,11 +98,29 @@ def extract_secondary_color(img: Image.Image) -> str:
     Quantizes opaque pixels to reduce anti-aliasing noise, excludes
     near-white/near-black/near-gray (poor, generic chip colors, and
     common as outline/shading rather than genuine brand color), then
-    returns the SECOND most common qualifying color -- the most common
-    one is often a huge single-color fill (e.g. a solid background
-    shape or a helmet color covering half the image), while the second
-    tends to be a genuine accent/secondary brand color, which is what
-    was asked for specifically.
+    looks for a genuine SECOND color distinct from the dominant one.
+
+    A logo that is essentially monochrome (one dominant fill color plus
+    anti-aliasing noise around its edges) was found to break a naive
+    "just take the 2nd most common color" approach: the noise variants
+    are similar-but-not-identical to the dominant color, so they still
+    show up as distinct quantization buckets, and the most common OF
+    THOSE noise buckets would get chosen as the "secondary" color --
+    producing a muted, arbitrary shade that gives poor or no real
+    contrast against the dominant color that actually fills most of the
+    visible logo (confirmed on a real case: WAC's logo is 98%+ one
+    maroon shade, and the naive 2nd-most-common pick was a similar
+    muted mauve from edge noise, visually blending the chip and logo
+    together almost entirely).
+
+    Fixed by requiring a genuine candidate to have at least 10% of the
+    dominant color's pixel count to count as a real second color (edge
+    noise is reliably far below this). When no such candidate exists
+    (a genuinely monochrome logo), falls back to a substantially
+    DARKENED version of the dominant color instead of reusing it
+    outright -- a darker shade of the same hue is guaranteed visually
+    distinct from the brighter, more saturated logo fill sitting on
+    top of it, while still relating to the team's actual color.
     """
     img = img.convert("RGBA")
     counts = Counter()
@@ -124,15 +142,22 @@ def extract_secondary_color(img: Image.Image) -> str:
             key = (r // 16 * 16, g // 16 * 16, b // 16 * 16)
             counts[key] += 1
 
-    ranked = counts.most_common(2)
-    if len(ranked) < 2:
-        # No qualifying secondary color (e.g. a strictly black/white/gray
-        # logo) -- fall back to whatever qualifying color exists, or a
-        # neutral default if there's truly none at all.
-        chosen = ranked[0][0] if ranked else (110, 110, 110)
-    else:
-        chosen = ranked[1][0]
-    return "#{:02x}{:02x}{:02x}".format(*chosen)
+    ranked = counts.most_common()
+    if not ranked:
+        return "#6e6e6e"  # no qualifying color at all (e.g. a strictly black/white logo)
+
+    dominant, dominant_count = ranked[0]
+    # A genuine second color should be a meaningfully distinct part of
+    # the logo, not edge noise around the dominant fill -- require at
+    # least 10% of the dominant color's pixel count.
+    for color, count in ranked[1:]:
+        if count >= dominant_count * 0.10:
+            return "#{:02x}{:02x}{:02x}".format(*color)
+
+    # No genuine second color -- darken the dominant color substantially
+    # so the chip is guaranteed distinct from the logo's own fill.
+    darkened = tuple(int(c * 0.45) for c in dominant)
+    return "#{:02x}{:02x}{:02x}".format(*darkened)
 
 
 def encode_resized(path: Path, target_size: int) -> tuple:
@@ -190,6 +215,14 @@ CONF_NAME_MAP = {
     "Southern": "socon",  # "Southern Conference" -- CFBD's historical value for this defunct conference
     "Southland": "southland_conference",
     "Western Athletic": "wac",
+    "PCAA": "big_west",  # Pacific Coast Athletic Association was renamed the Big West Conference
+                         # in 1988 -- same conference, confirmed real history, not a naming
+                         # coincidence. NOTE: SWAC (Southwestern Athletic Conference, an HBCU/FCS
+                         # conference -- Jackson State, Grambling, Alcorn, etc.) is NOT the same
+                         # as "Southwest" (the actual pre-1996 Southwest Conference -- Texas,
+                         # Arkansas, TCU, Baylor, SMU, Rice, Houston) despite the similar name;
+                         # confirmed by inspecting the actual SWAC logo image. Southwest remains
+                         # a genuine gap, not mapped to anything.
 }
 
 
