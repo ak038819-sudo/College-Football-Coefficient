@@ -38,6 +38,46 @@ import random
 DATA_DIR = Path("data/processed")
 
 
+def load_elo_by_season(db_path: str) -> dict:
+    """
+    Each team's END-OF-SEASON Elo rating: their postgame_elo from their
+    LAST game (by date, game_id as tiebreak) within that season_year.
+    elo_game_history is a per-GAME audit trail (build_elo.py, CoE 2.0
+    Phase 2) with no season_year column of its own, so this joins
+    through games for that and picks the season's final row per team
+    via a window function. Elo itself is a single continuously-carried
+    rating (unlike CoE's discrete per-season sums), so "end of season"
+    is the natural snapshot for a season-by-season display -- there's
+    no equivalent of CoE's 5yr rolling window for Elo, it's already a
+    single running number.
+    """
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        """
+        SELECT season_year, team_name, postgame_elo FROM (
+            SELECT g.season_year, t.team_name, e.postgame_elo,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY g.season_year, e.team_id
+                       ORDER BY g.game_date DESC, e.game_id DESC
+                   ) AS rn
+            FROM elo_game_history e
+            JOIN games g ON g.game_id = e.game_id
+            JOIN teams t ON t.team_id = e.team_id
+        )
+        WHERE rn = 1
+        """
+    ).fetchall()
+    conn.close()
+
+    by_year = defaultdict(list)
+    for r in rows:
+        by_year[r["season_year"]].append({"team": r["team_name"], "elo": round(r["postgame_elo"], 1)})
+    for year in by_year:
+        by_year[year].sort(key=lambda x: -x["elo"])
+    return dict(by_year)
+
+
 def years_with_membership_data(db_path: str) -> list[int]:
     """
     Which years actually have conference-membership data in the DB right
@@ -158,6 +198,7 @@ def main() -> None:
     team_rolling = load_csv_by_year("team_coeff_5yr.csv", "end_year")
     conf_ratings = load_csv_by_year("conference_ratings_by_season.csv", "season_year")
     conf_rolling = load_csv_by_year("conference_coeff_5yr.csv", "end_year")
+    team_elo = load_elo_by_season(args.db)
 
     membership_years = years_with_membership_data(args.db)
 
@@ -175,6 +216,9 @@ def main() -> None:
         "team_rolling_by_year": {
             str(y): [{"team": r["team_name"], "coeff_5yr": round(float(r["coeff_5yr"]), 3)} for r in top(rows, "coeff_5yr")]
             for y, rows in team_rolling.items()
+        },
+        "team_elo_by_year": {
+            str(y): rows for y, rows in team_elo.items()
         },
         "conference_ratings_by_year": {
             str(y): sorted(

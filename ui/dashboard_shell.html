@@ -445,6 +445,7 @@
 
   <nav class="tabs" id="tabs">
     <button data-tab="teams" class="active">Team Ratings</button>
+    <button data-tab="elo">Elo Ratings</button>
     <button data-tab="conferences">Conferences</button>
     <button data-tab="field">Playoff Field</button>
     <button data-tab="bracket">Bracket Draw</button>
@@ -584,6 +585,13 @@ function renderTeams() {
     '<div class="panel"><h2 class="section-title">Single-Season Rating</h2>' + rankTable(single, 'value', 'Team', 'Rating', 'team') + '</div>' +
     '<div class="panel"><h2 class="section-title">5-Year Rolling CoE</h2>' + rankTable(rolling, 'value', 'Team', 'CoE', 'team') + '</div>' +
     '</div>';
+}
+
+function renderElo() {
+  const rows = (DATA.team_elo_by_year[state.year] || []).map(r => ({ name: r.team, value: r.elo }));
+  if (!rows.length) return '<div class="empty-note">No Elo data for this season.</div>';
+  return '<div class="panel"><h2 class="section-title">End-of-Season Elo Rating</h2>' +
+    rankTable(rows, 'value', 'Team', 'Elo', 'team') + '</div>';
 }
 
 function renderConferences() {
@@ -880,6 +888,7 @@ function render() {
   renderYearRow();
   const content = document.getElementById('content');
   if (state.tab === 'teams') content.innerHTML = renderTeams();
+  else if (state.tab === 'elo') content.innerHTML = renderElo();
   else if (state.tab === 'conferences') content.innerHTML = renderConferences();
   else if (state.tab === 'field') content.innerHTML = renderField();
   else if (state.tab === 'history') content.innerHTML = renderHistory();
