@@ -49,7 +49,14 @@ CURRENT_YEAR = datetime.date.today().year
 # further back if you're curious.
 EARLIEST_GAME_YEAR = 1980
 SEASONS = list(range(EARLIEST_GAME_YEAR, CURRENT_YEAR + 1))
-MEMBERSHIP_SEASONS = list(range(2014, CURRENT_YEAR + 1))  # only years with conference membership
+# Extended from 2014 to 1980 once conference membership could be DERIVED
+# directly from real historical games (CFBD's /games endpoint carries
+# home_conference/away_conference on every game, confirmed populated
+# with zero gaps back to 1980 -- see src/derive_membership_from_games.py).
+# 2014-2013 previously used an explicit external membership source;
+# that data is left as-is, only 1980-2013 is newly derived.
+EARLIEST_MEMBERSHIP_YEAR = 1980
+MEMBERSHIP_SEASONS = list(range(EARLIEST_MEMBERSHIP_YEAR, CURRENT_YEAR + 1))
 
 
 def run(cmd: list[str], label: str) -> None:
