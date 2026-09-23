@@ -18,7 +18,7 @@ from select_nit_field import select_nit_qualifiers, seed_nit_bracket
 
 def _build_main_and_nit(db_conn, year):
     bid_table = YEAR1_BIDS if year == 2014 else YEAR2_BIDS
-    conf_ranked = load_conference_coe_rank(year)
+    conf_ranked = load_conference_coe_rank(db_conn, year)
     team_coe = load_team_coe_5yr(year)
 
     main_q = select_qualifiers(db_conn, year, conf_ranked, bid_table)

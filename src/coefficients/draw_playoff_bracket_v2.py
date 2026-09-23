@@ -111,7 +111,7 @@ def main() -> None:
     bid_table = YEAR1_BIDS if args.year == 2014 else YEAR2_BIDS
 
     conn = sqlite3.connect(args.db)
-    conf_ranked = load_conference_coe_rank(args.year)
+    conf_ranked = load_conference_coe_rank(conn, args.year)
     team_coe = load_team_coe_5yr(args.year)
     qualifiers = select_qualifiers(conn, args.year, conf_ranked, bid_table)
     qualifiers = assign_pots(qualifiers)

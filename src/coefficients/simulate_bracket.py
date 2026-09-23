@@ -63,7 +63,7 @@ def build_field(db_path: str, year: int) -> tuple[list, list, dict, dict]:
     """Returns (byes, round_of_24_pairs, team_coe, conf_of)."""
     bid_table = YEAR1_BIDS if year == 2014 else YEAR2_BIDS
     conn = sqlite3.connect(db_path)
-    conf_ranked = load_conference_coe_rank(year)
+    conf_ranked = load_conference_coe_rank(conn, year)
     team_coe = load_team_coe_5yr(year)
     qualifiers = select_qualifiers(conn, year, conf_ranked, bid_table)
     qualifiers = assign_pots(qualifiers)

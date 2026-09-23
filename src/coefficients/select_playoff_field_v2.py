@@ -73,17 +73,49 @@ def bid_count_for_rank(coe_rank: int, table: dict) -> int:
     return 0
 
 
-def load_conference_coe_rank(season_year: int) -> list[tuple[str, float]]:
+def load_conference_coe_rank(conn: sqlite3.Connection, season_year: int) -> list[tuple[str, float]]:
     """
     Returns [(conference_name, coeff_5yr), ...] sorted strongest-first,
-    EXCLUDING 'FBS Independents' (not bid-eligible -- see module docstring).
+    EXCLUDING 'FBS Independents' (not bid-eligible -- see module docstring)
+    AND excluding any conference with zero actual member teams in
+    season_year itself, even if it has a nonzero 5yr rolling CoE value.
+
+    This second exclusion matters once historical membership data covers
+    enough years for a genuine realignment to fall inside a trailing
+    5yr window: conference_coeff_5yr.csv's "end_year == season_year" row
+    for a conference reflects games from up to 5 PRIOR years, so a
+    conference that was real in some of those years but has since
+    dissolved or renamed (Big East, Western Athletic/WAC football, Pac-10
+    before the Pac-12 rename) can still show up with a real rolling CoE
+    value for a season in which it no longer exists at all. Before this
+    project's game/membership history extended back past 2014, this was
+    never actually reachable -- there was no membership data for any
+    year before the window's own end_year, so a trailing window could
+    never include a since-dissolved conference in the first place.
+    Confirmed as a real regression once 2010-2013 got real derived
+    membership: 2014's own conf_ranked started including Big East,
+    Western Athletic and Pac-10 (each with zero actual 2014 teams),
+    which silently inflated the NIT bid count via the carry-forward
+    mechanism (an empty conference's un-fillable allocation carries to
+    the next conference in rank order, as if it were a real-but-small
+    conference rather than a defunct one that should occupy no slot at
+    all in a given year's bid sequence).
     """
+    real_confs_this_year = {
+        row[0] for row in conn.execute(
+            "SELECT DISTINCT conference FROM conference_standings_by_year WHERE season_year = ?",
+            (season_year,),
+        )
+    }
+
     rows = []
     with open(DATA_DIR / "conference_coeff_5yr.csv", newline="") as f:
         for r in csv.DictReader(f):
             if int(r["end_year"]) != season_year:
                 continue
             if r["conference_name"] == "FBS Independents":
+                continue
+            if r["conference_name"] not in real_confs_this_year:
                 continue
             rows.append((r["conference_name"], float(r["coeff_5yr"])))
     rows.sort(key=lambda x: -x[1])
@@ -276,7 +308,7 @@ def main() -> None:
     bid_table = YEAR1_BIDS if ruleset == "year1" else YEAR2_BIDS
 
     conn = sqlite3.connect(args.db)
-    conf_ranked = load_conference_coe_rank(args.year)
+    conf_ranked = load_conference_coe_rank(conn, args.year)
     team_coe = load_team_coe_5yr(args.year)
 
     print(f"=== {args.year} ({ruleset}) conference CoE ranking ===")

@@ -112,7 +112,7 @@ def load_csv_by_year(filename: str, year_field: str) -> dict:
 def build_playoff_data(db_path: str, year: int, draw_seed: int, sims: int, temperature: float) -> dict:
     bid_table = YEAR1_BIDS if year == 2014 else YEAR2_BIDS
     conn = sqlite3.connect(db_path)
-    conf_ranked = load_conference_coe_rank(year)
+    conf_ranked = load_conference_coe_rank(conn, year)
     team_coe = load_team_coe_5yr(year)
     qualifiers = select_qualifiers(conn, year, conf_ranked, bid_table)
     qualifiers = assign_pots(qualifiers)

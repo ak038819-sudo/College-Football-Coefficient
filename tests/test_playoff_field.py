@@ -18,7 +18,7 @@ from select_playoff_field_v2 import (
 
 def _build_field(db_conn, year):
     bid_table = YEAR1_BIDS if year == 2014 else YEAR2_BIDS
-    conf_ranked = load_conference_coe_rank(year)
+    conf_ranked = load_conference_coe_rank(db_conn, year)
     team_coe = load_team_coe_5yr(year)
     qualifiers = select_qualifiers(db_conn, year, conf_ranked, bid_table)
     qualifiers = assign_pots(qualifiers)
@@ -56,7 +56,7 @@ def test_total_field_is_24(db_conn, year):
 @pytest.mark.parametrize("year", PLAYOFF_YEARS)
 def test_independent_threshold_never_displaces_a_champion_on_real_data(db_conn, year):
     """Sanity check on real data: every replacement's target must have been an at-large qualifier."""
-    conf_ranked = load_conference_coe_rank(year)
+    conf_ranked = load_conference_coe_rank(db_conn, year)
     bid_table = YEAR1_BIDS if year == 2014 else YEAR2_BIDS
     team_coe = load_team_coe_5yr(year)
     qualifiers_before = select_qualifiers(db_conn, year, conf_ranked, bid_table)
