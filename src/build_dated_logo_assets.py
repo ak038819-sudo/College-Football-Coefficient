@@ -178,15 +178,18 @@ def candidate_filenames_team(team_name: str) -> list:
 # the same lowercase/underscore space before comparing, rather than
 # doing an exact-string lookup like teams do.
 CONF_NAME_MAP = {
-    "SEC": "southeastern_conference",
+    "SEC": "sec",
     "Pac-12": "pac_12",
-    "Mid-American": "mid_american",
-    "Big 12": "big_12",
-    "Big Ten": "big_ten",
-    "Conference USA": "conference_usa",
-    "American Athletic": "american_athletic",
-    "Mountain West": "mountain_west",
-    "Sun Belt": "sun_belt",
+    "Pac-10": "pac_12",  # same filename group covers both eras -- CFBD's historical data calls
+                          # the pre-2011 era "Pac-10" and post-2011 "Pac-12" as separate distinct
+                          # conference_real values, but the logo source only splits by date under
+                          # one "PAC_12" filename group; date-range matching picks the right era
+                          # regardless of which of the two canonical names is looked up.
+    "Mid-American": "mac",
+    "American Athletic": "aac",
+    "Southern": "socon",  # "Southern Conference" -- CFBD's historical value for this defunct conference
+    "Southland": "southland_conference",
+    "Western Athletic": "wac",
 }
 
 
