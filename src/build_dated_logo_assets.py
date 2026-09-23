@@ -32,9 +32,68 @@ import re
 import sqlite3
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 TARGET_SIZE = 96  # px, per user decision -- these display as small inline icons, not full artwork
+
+
+def is_whiteish(px, thresh=235) -> bool:
+    return px[0] >= thresh and px[1] >= thresh and px[2] >= thresh
+
+
+def remove_white_background(img: Image.Image, thresh: int = 30, step: int = 2) -> Image.Image:
+    """
+    Flood-fills any white-ish background to transparent. Seeds from a
+    DENSE set of points along the entire image border (every `step`
+    pixels), not just the 4 corners -- a naive corner-only version was
+    tried and found to fail on irregular/spiky logo shapes (e.g.
+    Clemson's paw print splits its white background into several
+    disconnected pockets, most of which don't touch any of the 4
+    corners at all) -- confirmed via a direct alpha-channel pixel check
+    after the fix, not just a visual preview (transparency renders as
+    plain white in some simple image viewers, which can look like
+    nothing changed even when the fix worked correctly).
+
+    Only affects background CONNECTED to the border -- an enclosed
+    white area fully inside the logo (unreachable from any border
+    point) is left alone, though in practice an enclosed white "hole"
+    (e.g. the loop of a letter B) is usually intended to read as
+    background too and does get caught if it connects to the outside
+    via even a single thin gap, which is typically the case.
+
+    Found 49 of 532 source files (about 9%) with a fully opaque white
+    background and zero real transparency -- this fixes those, and is
+    a safe no-op for files that already have a transparent background
+    (flood-filling from an already-transparent border pixel does
+    nothing further).
+    """
+    img = img.convert("RGBA")
+    w, h = img.size
+    seeds = set()
+    for x in range(0, w, step):
+        seeds.add((x, 0))
+        seeds.add((x, h - 1))
+    for y in range(0, h, step):
+        seeds.add((0, y))
+        seeds.add((w - 1, y))
+
+    for x, y in seeds:
+        px = img.getpixel((x, y))
+        if is_whiteish(px):
+            ImageDraw.floodfill(img, (x, y), (255, 255, 255, 0), thresh=thresh)
+
+    return img
+
+
+def encode_resized(path: Path, target_size: int) -> str:
+    img = Image.open(path)
+    img = remove_white_background(img)
+    img.thumbnail((target_size, target_size), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    data = base64.b64encode(buf.getvalue()).decode("ascii")
+    return f"data:image/png;base64,{data}"
+
 
 FILENAME_PATTERN = re.compile(r"^(.+?)\((\d{4})-?(\d{4})?\)+\.png$", re.IGNORECASE)
 
@@ -58,15 +117,6 @@ def candidate_filenames_team(team_name: str) -> list:
         return [NAME_MAP[team_name]]
     v1 = team_name.replace(" (", "_").replace(")", "").replace(" ", "_")
     return [v1, v1.replace("'", "")]
-
-
-def encode_resized(path: Path, target_size: int) -> str:
-    img = Image.open(path).convert("RGBA")
-    img.thumbnail((target_size, target_size), Image.LANCZOS)
-    buf = io.BytesIO()
-    img.save(buf, format="PNG", optimize=True)
-    data = base64.b64encode(buf.getvalue()).decode("ascii")
-    return f"data:image/png;base64,{data}"
 
 
 def main() -> None:
