@@ -172,30 +172,40 @@
   .rk { font-family: var(--font-mono); color: var(--ink-dim); width: 2.4em; display: inline-block; }
   .coe-val { font-family: var(--font-mono); font-weight: 600; color: var(--amber); }
 
-  .logo-img {
-    width: 24px; height: 24px;
-    object-fit: contain;
+  .logo-chip {
+    width: 84px; height: 84px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     flex: 0 0 auto;
     vertical-align: middle;
+    padding: 6px;
+    box-sizing: border-box;
   }
-  .logo-img.lg { width: 40px; height: 40px; }
-  .logo-img.sm { width: 18px; height: 18px; }
+  .logo-chip.lg { width: 140px; height: 140px; padding: 10px; }
+  .logo-chip.sm { width: 63px; height: 63px; padding: 4px; }
+  .logo-chip .logo-img {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    display: block;
+  }
   .monogram {
-    width: 24px; height: 24px;
+    width: 84px; height: 84px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     font-family: var(--font-display);
     font-weight: 600;
-    font-size: 10px;
+    font-size: 35px;
     color: #fff;
     flex: 0 0 auto;
     vertical-align: middle;
   }
-  .monogram.lg { width: 40px; height: 40px; font-size: 15px; }
-  .monogram.sm { width: 18px; height: 18px; font-size: 8px; }
-  .name-cell { display: flex; align-items: center; gap: 8px; }
+  .monogram.lg { width: 140px; height: 140px; font-size: 52px; }
+  .monogram.sm { width: 63px; height: 63px; font-size: 28px; }
+  .name-cell { display: flex; align-items: center; gap: 14px; }
 
   .field-conf-group {
     margin-bottom: 16px;
@@ -457,16 +467,16 @@
 <script id="dashboard-data" type="application/json">
 __DATA_JSON__
 </script>
-<script id="logo-assets" type="application/json">
-__LOGO_ASSETS_JSON__
-</script>
 <script id="dated-logo-assets" type="application/json">
 __DATED_LOGO_ASSETS_JSON__
 </script>
+<script id="dated-conference-logo-assets" type="application/json">
+__DATED_CONFERENCE_LOGO_ASSETS_JSON__
+</script>
 <script>
 const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
-const LOGOS = JSON.parse(document.getElementById('logo-assets').textContent);
 const DATED_LOGOS = JSON.parse(document.getElementById('dated-logo-assets').textContent);
+const DATED_CONFERENCE_LOGOS = JSON.parse(document.getElementById('dated-conference-logo-assets').textContent);
 
 function hashHue(name) {
   let h = 0;
@@ -478,39 +488,46 @@ function initials(name) {
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
   return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
-function pickDatedLogo(name, year) {
-  const entries = DATED_LOGOS[name];
+function pickDatedLogoEntry(dataSource, name, year) {
+  const entries = dataSource[name];
   if (!entries) return null;
   // Entries are sorted by start year; find the one whose [start, end) range
   // contains `year`. An entry with end===null means "still current, no
-  // upper bound" (an open-ended range like "TeamName(2020-).png").
+  // upper bound" (an open-ended range like "Name(2020-).png").
   for (const e of entries) {
-    if (year >= e.start && (e.end === null || year < e.end)) return e.data;
+    if (year >= e.start && (e.end === null || year < e.end)) return e;
   }
   // Defensive fallback: no exact range matched (shouldn't normally happen --
-  // real coverage has zero gaps as verified when this was built), use the
-  // closest available entry rather than falling all the way to a monogram.
-  if (year < entries[0].start) return entries[0].data;
-  return entries[entries.length - 1].data;
+  // real coverage has zero gaps as verified when this was built, though a
+  // couple of single-year conference gaps exist e.g. Pac-12's 2025-2026
+  // boundary and Sun Belt's 2020-2021 one -- this fallback covers those
+  // too), use the closest available entry rather than falling all the way
+  // to a monogram.
+  if (year < entries[0].start) return entries[0];
+  return entries[entries.length - 1];
 }
 
 function logoMarkup(name, kind, size, yearOverride) {
   const sizeClass = size ? ' ' + size : '';
-  let src;
-  if (kind === 'conf') {
-    src = LOGOS.conferences[name];
-  } else {
-    // Team logos: prefer the date-accurate historical logo for the
-    // currently-viewed season (or an explicit override, for cross-era
-    // views like the Playoff Appearances history table where there's no
-    // single "current year" in scope) -- falls back to the old static
-    // single-logo set, then the monogram badge, exactly matching the
-    // existing 3-tier fallback pattern.
-    const year = (yearOverride !== undefined) ? yearOverride : state.year;
-    src = pickDatedLogo(name, year) || LOGOS.teams[name];
-  }
-  if (src) {
-    return '<img class="logo-img' + sizeClass + '" src="' + src + '" alt="" loading="lazy">';
+  // Both team and conference logos are now sourced entirely from their
+  // respective date-accurate sets (100% coverage confirmed for both --
+  // UCF for teams, all 10 active conferences for conferences). The old
+  // static single-logo system is fully retired for both, no fallback to
+  // it at all.
+  const year = (yearOverride !== undefined) ? yearOverride : state.year;
+  const dataSource = (kind === 'conf') ? DATED_CONFERENCE_LOGOS : DATED_LOGOS;
+  const entry = pickDatedLogoEntry(dataSource, name, year);
+  if (entry) {
+    // A colored chip (drawn from the logo's own secondary/accent color,
+    // computed at build time -- see build_dated_logo_assets.py's
+    // extract_secondary_color()) sits behind the logo image. Some logos
+    // are nearly invisible against the dashboard's dark background once
+    // their background is transparent (dark-colored or thin-lined
+    // marks especially) -- a chip in the logo's own color gives every
+    // logo real contrast without an arbitrary/unrelated backdrop color.
+    return '<span class="logo-chip' + sizeClass + '" style="background:' + entry.bg + '">'
+      + '<img class="logo-img" src="' + entry.data + '" alt="" loading="lazy">'
+      + '</span>';
   }
   const hue = hashHue(name);
   return '<span class="monogram' + sizeClass + '" style="background:hsl(' + hue + ',48%,38%)">' + initials(name) + '</span>';
