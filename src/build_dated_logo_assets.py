@@ -160,10 +160,10 @@ def extract_secondary_color(img: Image.Image) -> str:
     return "#{:02x}{:02x}{:02x}".format(*darkened)
 
 
-def encode_resized(path: Path, target_size: int) -> tuple:
+def encode_resized(path: Path, target_size: int, bg_color_override: str = None) -> tuple:
     img = Image.open(path)
     img = remove_white_background(img)
-    bg_color = extract_secondary_color(img)
+    bg_color = bg_color_override or extract_secondary_color(img)
     img.thumbnail((target_size, target_size), Image.LANCZOS)
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)
@@ -293,6 +293,11 @@ def main() -> None:
         candidate_fn = candidate_filenames_conf
     conn.close()
 
+    color_overrides = {}
+    if args.kind == "teams":
+        from team_chip_color_overrides import TEAM_CHIP_COLOR_OVERRIDES
+        color_overrides = TEAM_CHIP_COLOR_OVERRIDES
+
     result = {}
     unmatched = []
 
@@ -308,8 +313,9 @@ def main() -> None:
 
         ranges = sorted(parsed_by_key[hit], key=lambda r: r[0])
         entries = []
+        override = color_overrides.get(name)
         for start, end, path in ranges:
-            data, bg_color = encode_resized(path, args.size)
+            data, bg_color = encode_resized(path, args.size, bg_color_override=override)
             entries.append({"start": start, "end": end, "data": data, "bg": bg_color})
         result[name] = entries
 
