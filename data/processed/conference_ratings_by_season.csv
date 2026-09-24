@@ -8,8 +8,8 @@ season_year,conference_name,rating
 1980,Western Athletic,7.546067
 1980,ACC,6.979399
 1980,Mid-American,2.435542
+1980,PCAA,1.189195
 1980,Missouri Valley,0.619216
-1980,PCAA,0.414362
 1980,Southland,0.275331
 1980,Southern,0.112969
 1981,FBS Independents,22.381627
@@ -21,8 +21,8 @@ season_year,conference_name,rating
 1981,ACC,6.768545
 1981,Western Athletic,6.668562
 1981,Mid-American,2.496972
+1981,PCAA,1.331923
 1981,Southland,0.863639
-1981,PCAA,0.750177
 1981,Missouri Valley,0.73024
 1981,Southern,0.707695
 1982,Pac-10,17.501845
@@ -33,8 +33,8 @@ season_year,conference_name,rating
 1982,Southwest,8.565301
 1982,Big 8,7.575917
 1982,ACC,5.964328
+1982,PCAA,2.326683
 1982,Mid-American,1.961087
-1982,PCAA,1.534325
 1982,Missouri Valley,1.017072
 1983,FBS Independents,21.562309
 1983,SEC,19.430557
@@ -45,7 +45,7 @@ season_year,conference_name,rating
 1983,Southwest,7.451559
 1983,ACC,5.453323
 1983,Mid-American,2.259244
-1983,PCAA,1.291534
+1983,PCAA,1.731506
 1983,Missouri Valley,0.932494
 1984,FBS Independents,23.020231
 1984,Big Ten,15.694349
@@ -56,7 +56,7 @@ season_year,conference_name,rating
 1984,Big 8,7.525044
 1984,Western Athletic,6.83418
 1984,Mid-American,2.519343
-1984,PCAA,1.498592
+1984,PCAA,1.827522
 1984,Missouri Valley,0.318578
 1985,Big Ten,16.728009
 1985,Pac-10,16.048314
@@ -67,7 +67,7 @@ season_year,conference_name,rating
 1985,Big 8,9.688528
 1985,ACC,6.165258
 1985,Mid-American,3.387352
-1985,PCAA,1.515948
+1985,PCAA,1.724138
 1985,Missouri Valley,0.417122
 1986,FBS Independents,19.870751
 1986,Pac-10,17.458705
@@ -78,7 +78,7 @@ season_year,conference_name,rating
 1986,ACC,6.922737
 1986,Big 8,6.764411
 1986,Mid-American,4.28575
-1986,PCAA,1.151399
+1986,PCAA,2.154343
 1987,FBS Independents,27.980743
 1987,SEC,15.302848
 1987,Big Ten,12.463597
@@ -88,7 +88,7 @@ season_year,conference_name,rating
 1987,Big 8,7.522414
 1987,Western Athletic,4.963413
 1987,Mid-American,4.036736
-1987,PCAA,1.023237
+1987,PCAA,1.533974
 1988,FBS Independents,26.918863
 1988,Pac-10,16.091085
 1988,SEC,12.946102
@@ -98,7 +98,7 @@ season_year,conference_name,rating
 1988,ACC,7.760363
 1988,Southwest,5.877108
 1988,Mid-American,2.438121
-1988,Big West,1.046107
+1988,Big West,1.316168
 1989,FBS Independents,24.778045
 1989,Pac-10,15.763382
 1989,SEC,13.95085
@@ -108,7 +108,7 @@ season_year,conference_name,rating
 1989,Western Athletic,6.926201
 1989,Big 8,6.879748
 1989,Mid-American,1.855351
-1989,Big West,1.270456
+1989,Big West,1.767947
 1990,FBS Independents,21.511281
 1990,Pac-10,19.780558
 1990,Big Ten,12.847897
@@ -117,8 +117,8 @@ season_year,conference_name,rating
 1990,Big 8,9.215629
 1990,Southwest,8.858283
 1990,ACC,8.22145
+1990,Big West,1.820949
 1990,Mid-American,1.637515
-1990,Big West,0.986865
 1991,FBS Independents,16.822812
 1991,Pac-10,15.590879
 1991,SEC,14.057515
@@ -129,7 +129,7 @@ season_year,conference_name,rating
 1991,Big 8,6.807361
 1991,Western Athletic,6.665563
 1991,Mid-American,3.590298
-1991,Big West,1.391391
+1991,Big West,1.703789
 1992,SEC,18.75484
 1992,Pac-10,16.709772
 1992,Western Athletic,12.048239
@@ -140,7 +140,7 @@ season_year,conference_name,rating
 1992,Big 8,7.05273
 1992,Big East,6.512249
 1992,Mid-American,3.9501
-1992,Big West,1.512416
+1992,Big West,2.047499
 1993,Pac-10,18.426875
 1993,Big Ten,17.695879
 1993,SEC,12.246951
@@ -150,7 +150,7 @@ season_year,conference_name,rating
 1993,Western Athletic,8.16437
 1993,FBS Independents,7.481087
 1993,Southwest,5.627138
-1993,Big West,2.963365
+1993,Big West,3.31035
 1993,Mid-American,2.784315
 1994,Pac-10,16.400037
 1994,Big Ten,15.574924
@@ -161,7 +161,7 @@ season_year,conference_name,rating
 1994,Southwest,8.373406
 1994,Big East,7.811691
 1994,FBS Independents,6.352302
-1994,Big West,2.828676
+1994,Big West,3.135222
 1994,Mid-American,1.857401
 1995,Big Ten,17.6498
 1995,SEC,17.299878
@@ -173,11 +173,11 @@ season_year,conference_name,rating
 1995,Big East,8.146154
 1995,Western Athletic,6.710689
 1995,Mid-American,4.533033
-1995,Big West,2.693828
+1995,Big West,2.978941
 1996,Big Ten,18.155923
 1996,SEC,17.369205
 1996,Big 12,14.899153
-1996,Western Athletic,12.488375
+1996,Western Athletic,12.927581
 1996,Pac-10,12.296161
 1996,ACC,9.748216
 1996,Big East,7.946899
@@ -189,7 +189,7 @@ season_year,conference_name,rating
 1997,Pac-10,16.109262
 1997,Big 12,14.849378
 1997,Big Ten,13.670553
-1997,Western Athletic,12.050606
+1997,Western Athletic,12.669199
 1997,ACC,9.358946
 1997,Mid-American,6.382483
 1997,Big East,5.143867
@@ -200,7 +200,7 @@ season_year,conference_name,rating
 1998,Big Ten,16.308636
 1998,SEC,15.539164
 1998,Pac-10,13.679673
-1998,Western Athletic,12.72434
+1998,Western Athletic,13.323363
 1998,ACC,10.899573
 1998,Big East,8.071131
 1998,Mid-American,5.193605
@@ -215,7 +215,7 @@ season_year,conference_name,rating
 1999,Mountain West,7.180675
 1999,Conference USA,7.156754
 1999,Big East,7.000984
-1999,Western Athletic,6.086491
+1999,Western Athletic,6.613487
 1999,Mid-American,4.66115
 1999,Big West,3.967818
 1999,FBS Independents,3.436546
@@ -228,7 +228,7 @@ season_year,conference_name,rating
 2000,Mid-American,7.231785
 2000,Conference USA,6.885178
 2000,Mountain West,6.399522
-2000,Western Athletic,5.248404
+2000,Western Athletic,6.090345
 2000,FBS Independents,3.770894
 2000,Big West,2.585991
 2001,SEC,20.853793
@@ -237,7 +237,7 @@ season_year,conference_name,rating
 2001,ACC,14.288701
 2001,Pac-10,12.06901
 2001,Big East,10.107384
-2001,Western Athletic,6.496549
+2001,Western Athletic,6.921099
 2001,Mid-American,5.963414
 2001,Conference USA,5.778015
 2001,Mountain West,5.269657
@@ -250,8 +250,8 @@ season_year,conference_name,rating
 2002,Pac-10,13.113047
 2002,Big East,9.323562
 2002,Conference USA,8.138502
+2002,Western Athletic,7.108486
 2002,Mountain West,6.533666
-2002,Western Athletic,6.434648
 2002,Mid-American,5.967046
 2002,FBS Independents,4.28364
 2002,Sun Belt,3.268147
@@ -262,7 +262,7 @@ season_year,conference_name,rating
 2003,ACC,13.709296
 2003,Big East,8.99133
 2003,Mountain West,8.405967
-2003,Western Athletic,6.836106
+2003,Western Athletic,7.10727
 2003,Conference USA,6.815836
 2003,Mid-American,6.810703
 2003,FBS Independents,2.872278
@@ -273,7 +273,7 @@ season_year,conference_name,rating
 2004,SEC,13.818332
 2004,Big Ten,13.138639
 2004,Conference USA,10.119833
-2004,Western Athletic,8.767858
+2004,Western Athletic,9.094435
 2004,Mountain West,7.64767
 2004,Big East,6.677064
 2004,Mid-American,5.142333
@@ -288,7 +288,7 @@ season_year,conference_name,rating
 2005,Conference USA,8.867581
 2005,Big East,6.139186
 2005,Mid-American,5.98301
-2005,Western Athletic,4.338467
+2005,Western Athletic,4.551636
 2005,FBS Independents,3.264771
 2005,Sun Belt,2.807696
 2006,SEC,20.058135
@@ -298,9 +298,9 @@ season_year,conference_name,rating
 2006,Big Ten,10.665772
 2006,Big East,10.053442
 2006,Conference USA,8.515771
+2006,Western Athletic,6.426014
 2006,Mid-American,6.106036
 2006,Mountain West,6.085268
-2006,Western Athletic,5.654559
 2006,Sun Belt,3.87495
 2006,FBS Independents,3.138582
 2007,SEC,18.17411
@@ -312,8 +312,8 @@ season_year,conference_name,rating
 2007,Mountain West,8.857434
 2007,Conference USA,7.128139
 2007,Mid-American,5.618635
+2007,Western Athletic,4.157673
 2007,Sun Belt,3.846682
-2007,Western Athletic,3.820564
 2007,FBS Independents,2.040519
 2008,ACC,22.085596
 2008,SEC,19.541068
@@ -324,7 +324,7 @@ season_year,conference_name,rating
 2008,Conference USA,8.576359
 2008,Mountain West,7.761774
 2008,Mid-American,6.659703
-2008,Western Athletic,5.148925
+2008,Western Athletic,5.604758
 2008,Sun Belt,3.926646
 2008,FBS Independents,2.827084
 2009,SEC,19.471622
@@ -335,7 +335,7 @@ season_year,conference_name,rating
 2009,Big East,9.624975
 2009,Conference USA,8.02403
 2009,Mountain West,8.003304
-2009,Western Athletic,5.952934
+2009,Western Athletic,6.260855
 2009,Mid-American,5.882993
 2009,Sun Belt,3.956684
 2009,FBS Independents,2.667231
@@ -347,7 +347,7 @@ season_year,conference_name,rating
 2010,Conference USA,9.181144
 2010,Big East,8.649575
 2010,Mountain West,8.353142
-2010,Western Athletic,6.719712
+2010,Western Athletic,6.996722
 2010,Mid-American,5.48291
 2010,Sun Belt,4.835515
 2010,FBS Independents,3.539707
@@ -361,7 +361,7 @@ season_year,conference_name,rating
 2011,Mid-American,7.116555
 2011,Mountain West,5.041043
 2011,Sun Belt,4.50496
-2011,Western Athletic,3.448913
+2011,Western Athletic,3.939454
 2011,FBS Independents,3.238804
 2012,SEC,20.71974
 2012,Big 12,16.99283
@@ -374,14 +374,14 @@ season_year,conference_name,rating
 2012,Sun Belt,6.60316
 2012,Mountain West,5.195537
 2012,FBS Independents,4.661833
-2012,Western Athletic,2.549727
+2012,Western Athletic,3.556777
 2013,SEC,21.794184
 2013,Pac-12,21.690035
 2013,ACC,17.321836
 2013,Big Ten,13.254287
 2013,Big 12,13.107571
 2013,Conference USA,7.770851
-2013,Mountain West,6.880798
+2013,Mountain West,7.601145
 2013,American Athletic,6.836167
 2013,Mid-American,5.59411
 2013,FBS Independents,5.366848
