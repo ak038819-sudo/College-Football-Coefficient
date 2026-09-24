@@ -284,6 +284,12 @@
   .hist-row { display: flex; justify-content: space-between; gap: 14px; padding: 7px 0; border-bottom: 1px dotted var(--panel-2); font-size: 14px; }
   .hist-row .v { font-family: var(--font-mono); color: var(--amber); text-align: right; }
   .hist-row .v .dim { color: var(--ink-dim); }
+  /* ---- National titles (Milestone 6) ---- */
+  .title-list { list-style: none; margin: 2px 0 6px; padding: 0; }
+  .title-list li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; font-family: var(--font-mono); font-size: 12px; }
+  .title-list .yr { color: var(--amber); }
+  .title-list .sys { color: var(--ink-dim); text-align: right; }
+  .title-list li.vacated .yr { color: var(--ink-dim); text-decoration: line-through; }
 
   /* ---- Upcoming schedule (Milestone 3) ---- */
   .up-note { font-size: 12px; color: var(--ink-dim); margin: 0 0 6px; line-height: 1.45; }
@@ -1142,7 +1148,7 @@ function renderTeamPage(param) {
 // the first time a team page opens. It's a <script> (not fetch) so it also
 // works when dashboard.html is opened straight from disk. Every number shown
 // here was computed in Python; this code only indexes, filters and draws.
-const TEAM_PAGES_VERSION = '7e77acd59c4d';
+const TEAM_PAGES_VERSION = 'efc9f5d6ff17';
 let TP = null;
 let _teamPagesPromise = null;
 let teamPageState = { teamId: null, chartSeason: 'all', season: null };
@@ -1167,7 +1173,7 @@ function indexTeamPages(raw) {
     if (o.coe2 != null) coe2PerSeason.set(o.season, (coe2PerSeason.get(o.season) || 0) + 1);
   });
   return { gamesById, eloByTeam, seasonsByTeam, teamsPerSeason, coe2PerSeason,
-    swings: raw.swings, history: raw.history, cfpFirst: raw.cfp_first_season };
+    swings: raw.swings, history: raw.history, cfpFirst: raw.cfp_first_season, titlesSince: raw.titles_since };
 }
 
 function loadTeamPages() {
@@ -1440,6 +1446,26 @@ function fillSwingPanels(tp, team) {
   fill('tp-losses', 'Biggest Elo Losses', sw.losses, 'No losses in the dataset yet.');
 }
 
+// ---- National titles (Milestone 6): one line per season, systems named ----
+const TITLE_SYSTEM = { cfp: 'CFP', bcs: 'BCS', ap: 'AP poll', coaches: 'Coaches poll' };
+function titleList(titles) {
+  if (!titles.length) return '';
+  const seasons = [];
+  titles.forEach(([season, system, status, shared]) => {
+    let s = seasons.find(x => x.season === season);
+    if (!s) seasons.push(s = { season, awarded: [], vacated: [], shared: false });
+    (status === 'awarded' ? s.awarded : s.vacated).push(TITLE_SYSTEM[system] || system);
+    if (status === 'awarded' && shared) s.shared = true;
+  });
+  return '<ul class="title-list">' + seasons.map(s => {
+    const parts = [];
+    if (s.awarded.length) parts.push(s.awarded.join(', ') + (s.shared ? ' \u00b7 shared' : ''));
+    if (s.vacated.length) parts.push(s.vacated.join(', ') + ' vacated');
+    return '<li class="' + (s.awarded.length ? '' : 'vacated') + '"><span class="yr">' + s.season + '</span>' +
+      '<span class="sys">' + parts.join('; ') + '</span></li>';
+  }).join('') + '</ul>';
+}
+
 // ---- Program history: REAL results and CoE MODEL results, never mixed ----
 function fillHistoryPanel(tp, team) {
   const el = document.getElementById('tp-history');
@@ -1457,7 +1483,9 @@ function fillHistoryPanel(tp, team) {
       row('Bowl games', h.bowl[0] ? h.bowl[0] + ' (' + recStr(h.bowl[1], h.bowl[2], bowlTies) + ')' : '0') +
       row('CFP appearances (' + tp.cfpFirst + '+)', h.cfp_appearances
         ? h.cfp_appearances + ' (' + recStr(h.cfp_record[0], h.cfp_record[1], 0) + ') &middot; ' + h.cfp_seasons.join(', ') : '0') +
-      row('National championships', '<span class="dim">not yet tracked</span>');
+      row('National championships', h.title_count ? String(h.title_count)
+        : '<span class="dim">none' + (tp.titlesSince ? ' since ' + tp.titlesSince : '') + '</span>') +
+      titleList(h.titles || []);
   }
   real += '</div>';
   const sim = '<div class="hist-block"><h3>CoE model</h3><div class="hist-tag">Simulated &middot; not real results' +
@@ -1466,7 +1494,12 @@ function fillHistoryPanel(tp, team) {
     row('First-round byes', model ? model.byes : 0) +
     row('Seasons', model && model.years.length ? model.years.join(', ') : '&mdash;') +
     '</div>';
-  el.innerHTML = '<h2 class="section-title">Program History</h2><div class="hist-cols">' + real + sim + '</div>';
+  el.innerHTML = '<h2 class="section-title">Program History</h2><div class="hist-cols">' + real + sim + '</div>' +
+    '<details class="help"><summary>How national titles are counted</summary><ul>' +
+      '<li>Titles come from a hand-maintained reference list (<code>data/reference/national_champions.csv</code>), never inferred from game results.</li>' +
+      '<li><b>2014 on:</b> CFP champion. <b>1998&ndash;2013:</b> BCS title game winner, plus the AP champion where it differed (2003) or survived a BCS vacating (2004). <b>1980&ndash;1997:</b> final AP and Coaches polls; when they disagreed, both teams are credited and the season is marked <i>shared</i>.</li>' +
+      '<li>Vacated titles are listed (struck through) but not counted. Seasons before ' + (tp.titlesSince || 1980) + ' aren\'t included.</li>' +
+    '</ul></details>';
 }
 
 // ---- Upcoming schedule (Milestone 3) ----

@@ -92,7 +92,8 @@ def test_history_contains_only_real_results(synthetic):
     # Model (simulated) playoff data lives in dashboard_data.json; it must never leak in here.
     for h in synthetic["history"].values():
         assert set(h) == {"first_season", "last_season", "seasons", "record", "bowl",
-                          "cfp_appearances", "cfp_seasons", "cfp_record"}
+                          "cfp_appearances", "cfp_seasons", "cfp_record",
+                          "titles", "title_count"}   # titles: Milestone 6 reference list (real history)
 
 
 # ---------------- invariants on the real database ----------------

@@ -34,14 +34,71 @@ labeled heading so the two can never be mixed.
 from __future__ import annotations
 
 import argparse
+import csv
 import json
+import sys
 from collections import defaultdict
 from pathlib import Path
 import sqlite3
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from load_games import resolve_team_name, team_id as canonical_team_id  # noqa: E402
+
+CHAMPIONS_PATH = Path(__file__).resolve().parent.parent / "data" / "reference" / "national_champions.csv"
+SYSTEMS = {"cfp": "championship_game", "bcs": "championship_game", "ap": "final_poll", "coaches": "final_poll"}
+
 PHASE_CODE = {"regular": 0, "bowl": 1, "cfp": 2}
 CFP_FIRST_SEASON = 2014   # 4-team CFP began with the 2014 season
 SWING_COUNT = 10
+
+
+def load_national_champions(conn: sqlite3.Connection, path: Path = CHAMPIONS_PATH) -> list[dict]:
+    """
+    Reads the hand-maintained data/reference/national_champions.csv (Milestone 6)
+    and validates it, failing loudly rather than silently dropping a bad row:
+    team must resolve through the canonical/alias lookup, system and title_type
+    must agree, CFP rows only from 2014, BCS rows only 1998-2013.
+    Titles are NEVER inferred from game results -- see data/reference/README.md.
+    """
+    cur = conn.cursor()
+    out = []
+    with open(path, newline="", encoding="utf-8") as f:
+        for n, r in enumerate(csv.DictReader(f), start=2):
+            where = f"{path.name} line {n}"
+            season, system = int(r["season_year"]), r["system"].strip()
+            if SYSTEMS.get(system) != r["title_type"].strip():
+                raise ValueError(f"{where}: system {system!r} / title_type {r['title_type']!r} mismatch")
+            if r["status"].strip() not in ("awarded", "vacated"):
+                raise ValueError(f"{where}: status must be awarded or vacated")
+            if system == "cfp" and season < CFP_FIRST_SEASON or system == "bcs" and not 1998 <= season <= 2013:
+                raise ValueError(f"{where}: {system} title outside its era ({season})")
+            try:
+                tid = canonical_team_id(cur, resolve_team_name(cur, r["team_name"]))
+            except ValueError as e:
+                raise ValueError(f"{where}: {e}") from None
+            out.append({"season": season, "team_id": tid, "system": system,
+                        "status": r["status"].strip(), "notes": r["notes"].strip()})
+    return out
+
+
+def title_history(champions: list[dict]) -> dict:
+    """
+    {team_id: {"titles": [[season, system, status, shared, notes], ...] newest first,
+               "title_count": distinct seasons with an AWARDED row}}.
+    A season is "shared" when more than one team holds an awarded title in it.
+    """
+    holders: dict = defaultdict(set)
+    for c in champions:
+        if c["status"] == "awarded":
+            holders[c["season"]].add(c["team_id"])
+    by_team: dict = defaultdict(lambda: {"titles": [], "title_count": 0})
+    order = {"cfp": 0, "bcs": 1, "ap": 2, "coaches": 3}
+    for c in sorted(champions, key=lambda c: (-c["season"], order[c["system"]])):
+        by_team[c["team_id"]]["titles"].append(
+            [c["season"], c["system"], c["status"], len(holders[c["season"]]) > 1, c["notes"]])
+    for tid, rec in by_team.items():
+        rec["title_count"] = len({t[0] for t in rec["titles"] if t[2] == "awarded"})
+    return dict(by_team)
 
 
 def load_completed_games(conn: sqlite3.Connection) -> list[tuple]:
@@ -107,7 +164,7 @@ def rank_desc(values: dict) -> dict:
     return ranks
 
 
-def build_team_pages(conn: sqlite3.Connection) -> dict:
+def build_team_pages(conn: sqlite3.Connection, champions: list[dict] | None = None) -> dict:
     games = load_completed_games(conn)
     game_by_id = {g[0]: g for g in games}
     elo_rows = load_elo_rows(conn)
@@ -160,6 +217,7 @@ def build_team_pages(conn: sqlite3.Connection) -> dict:
                             "losses": [r[0] for r in losses[:SWING_COUNT]]}
 
     # ---- REAL postseason history (dataset years, FBS-vs-FBS games) ----
+    titles = title_history(champions or [])
     history = {}
     for tid in by_team:
         rec = [0, 0, 0]
@@ -190,10 +248,14 @@ def build_team_pages(conn: sqlite3.Connection) -> dict:
             "record": rec, "bowl": bowl,
             "cfp_appearances": len(cfp["seasons"]), "cfp_seasons": cfp["seasons"],
             "cfp_record": [cfp["w"], cfp["l"]],
+            # Milestone 6: from the hand-maintained reference file, never from results.
+            "titles": titles.get(tid, {}).get("titles", []),
+            "title_count": titles.get(tid, {}).get("title_count", 0),
         }
 
     return {
         "cfp_first_season": CFP_FIRST_SEASON,
+        "titles_since": min((c["season"] for c in champions), default=None) if champions else None,
         "games": [[g[0], g[1], g[2], g[3], g[4], g[5], g[6], g[7], g[8],
                    PHASE_CODE.get(g[9], 0), g[10]] for g in games],
         "elo": [[r[0], r[1], round(r[2], 1), round(r[3], 1), round(r[4], 3), round(r[5], 1), round(r[6], 1)]
@@ -208,10 +270,11 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--db", default="db/league.db")
     p.add_argument("--out", default="ui/data/team_pages.js")
+    p.add_argument("--champions", default=str(CHAMPIONS_PATH))
     args = p.parse_args()
 
     conn = sqlite3.connect(args.db)
-    data = build_team_pages(conn)
+    data = build_team_pages(conn, load_national_champions(conn, Path(args.champions)))
     conn.close()
 
     out = Path(args.out)
