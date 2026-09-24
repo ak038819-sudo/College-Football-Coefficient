@@ -25,6 +25,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import subprocess
 import sys
 from pathlib import Path
@@ -34,11 +35,12 @@ DATA_PATH = Path("ui/dashboard_data.json")
 DATED_LOGO_ASSETS_PATH = Path("ui/dated_logo_assets.json")
 DATED_CONFERENCE_LOGO_ASSETS_PATH = Path("ui/dated_conference_logo_assets.json")
 OUT_PATH = Path("ui/dashboard.html")
+TEAM_PAGES_PATH = Path("ui/data/team_pages.js")
 
 
 def _read_or_empty(path: Path) -> str:
     if path.exists():
-        return path.read_text()
+        return path.read_text(encoding="utf-8")
     print(f"NOTE: {path} not found -- its logos will be empty for this build "
           f"(run src/build_dated_logo_assets.py once against the matching raw source folder)")
     return "{}"
@@ -58,17 +60,27 @@ def main() -> None:
          "--temperature", str(args.temperature), "--out", str(DATA_PATH)],
         check=True,
     )
+    # Team-page data (Milestone 2): loaded by the dashboard only when a team
+    # page opens. Its content hash is stamped into the page so a browser or
+    # GitHub Pages cache can never pair a new dashboard with an old data file.
+    subprocess.run(
+        [sys.executable, "src/export_team_pages.py", "--db", args.db, "--out", str(TEAM_PAGES_PATH)],
+        check=True,
+    )
+    team_pages_version = hashlib.sha256(TEAM_PAGES_PATH.read_bytes()).hexdigest()[:12]
 
-    shell = SHELL_PATH.read_text()
-    data = DATA_PATH.read_text()
+    # Explicit UTF-8: on Windows the default would be the legacy cp1252 codepage.
+    shell = SHELL_PATH.read_text(encoding="utf-8")
+    data = DATA_PATH.read_text(encoding="utf-8")
     dated_logo_assets = _read_or_empty(DATED_LOGO_ASSETS_PATH)
     dated_conference_logo_assets = _read_or_empty(DATED_CONFERENCE_LOGO_ASSETS_PATH)
 
     final = (shell
              .replace("__DATA_JSON__", data)
              .replace("__DATED_LOGO_ASSETS_JSON__", dated_logo_assets)
-             .replace("__DATED_CONFERENCE_LOGO_ASSETS_JSON__", dated_conference_logo_assets))
-    OUT_PATH.write_text(final)
+             .replace("__DATED_CONFERENCE_LOGO_ASSETS_JSON__", dated_conference_logo_assets)
+             .replace("__TEAM_PAGES_VERSION__", team_pages_version))
+    OUT_PATH.write_text(final, encoding="utf-8")
 
     print(f"\nBuilt {OUT_PATH} ({OUT_PATH.stat().st_size:,} bytes)")
     print("Open it directly in a browser, or publish it wherever you host static pages.")

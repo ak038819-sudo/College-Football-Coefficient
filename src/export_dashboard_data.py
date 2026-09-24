@@ -165,6 +165,32 @@ def load_team_records_by_year(db_path: str) -> dict:
     return {str(y): {str(t): v for t, v in d.items()} for y, d in rec.items()}
 
 
+def build_conference_board(db_path: str, membership_years: list[int]) -> dict:
+    """
+    {"season": S, "rows": [[conference, coeff_5yr], ...]} strongest first, for the
+    latest season whose bid ranking can actually be computed (a season with no
+    standings yet, e.g. before any games, falls back one year).
+    """
+    conn = sqlite3.connect(db_path)
+    try:
+        for season in sorted(membership_years, reverse=True)[:2]:
+            ranked = load_conference_coe_rank(conn, season)
+            if ranked:
+                return {"season": season, "rows": [[c, round(v, 3)] for c, v in ranked]}
+    finally:
+        conn.close()
+    return {"season": None, "rows": []}
+
+
+def _build_upcoming(db_path: str) -> dict:
+    from predict_upcoming import build_upcoming, elo_config
+    conn = sqlite3.connect(db_path)
+    try:
+        return build_upcoming(conn, elo_config())
+    finally:
+        conn.close()
+
+
 def years_with_membership_data(db_path: str) -> list[int]:
     """
     Which years actually have conference-membership data in the DB right
@@ -326,6 +352,13 @@ def main() -> None:
         # existing name-keyed exports above are left as-is.
         "teams": build_team_index(args.db),
         "team_records_by_year": load_team_records_by_year(args.db),
+        # Milestone 3: not-yet-final games with Elo predictions from the engine's
+        # own functions, plus the current Elo board they're based on.
+        "upcoming": _build_upcoming(args.db),
+        # Milestone 4 (homepage): conference leaderboard in the exact order that
+        # sets playoff bids -- the same load_conference_coe_rank() the playoff
+        # field uses, so defunct conferences can never appear.
+        "conference_board": build_conference_board(args.db, membership_years),
     }
 
     usable_years = []

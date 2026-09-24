@@ -75,6 +75,9 @@ jobs:
             python3 src/coefficients/compute_conference_team_records.py --year "$year" --no-validation
             python3 src/coefficients/derive_conference_standings_local.py --year "$year"
           done
+          # Build Elo + hybrid tables so real-data invariant tests run instead of skipping.
+          python3 src/build_elo.py
+          python3 src/build_hybrid_coefficients.py
 
       - name: Run tests
         run: pytest -v
@@ -106,6 +109,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add ui/dashboard.html ui/dashboard_data.json data/processed/
+          git add ui/dashboard.html ui/dashboard_data.json ui/data/ data/processed/
           git diff --staged --quiet || git commit -m "Auto-rebuild dashboard [skip ci]"
           git push

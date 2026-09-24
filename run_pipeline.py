@@ -110,6 +110,13 @@ def main() -> None:
             if csv_path.exists():
                 run([python, "src/load_games.py", str(csv_path)], f"Load games: {year}")
 
+        # Not-yet-final games (Milestone 3) go to their own scheduled_games
+        # table, which no rating engine reads. Loaded after games so any
+        # game that has since been played is skipped.
+        for sched_path in sorted(Path("data/raw").glob("schedule_*.csv")):
+            run([python, "src/load_schedule.py", str(sched_path), "--db", str(DB_PATH)],
+                f"Load schedule: {sched_path.stem.replace('schedule_', '')}")
+
         run(
             [python, "src/patch_known_membership_gaps.py", "--db", str(DB_PATH)],
             "Patch known conference-membership gaps",

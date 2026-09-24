@@ -194,6 +194,45 @@ def compute_went_ot(g: dict) -> int:
     return 1 if (isinstance(line_scores, list) and len(line_scores) > 4) else 0
 
 
+def is_completed(g: dict) -> bool:
+    """
+    A game is final only if both scores exist AND CFBD doesn't mark it as
+    unfinished. CFBD's `completed` flag is False for games in progress, which
+    can already carry partial scores -- a fetch run during a Saturday must
+    never turn a halftime score into a final result in the games table (and
+    from there into Elo/CoE). Older payloads without the flag fall back to
+    "both scores present", which is how every historical game was classified.
+    """
+    if pick(g, "home_points", "homePoints") is None or pick(g, "away_points", "awayPoints") is None:
+        return False
+    return g.get("completed") is not False
+
+
+SCHEDULE_FIELDS = [
+    "game_id", "season_year", "week", "kickoff_utc", "start_time_tbd", "season_type",
+    "home_team", "away_team", "neutral_site", "game_phase", "notes",
+]
+
+
+def schedule_row(g: dict, year: int, cfp_top4) -> dict:
+    """A not-yet-final game for data/raw/schedule_<year>.csv. Deliberately has no score fields."""
+    season_type_val = (pick(g, "season_type", "seasonType", default="regular") or "regular").strip().lower()
+    week_val = pick(g, "week")
+    return {
+        "game_id": pick(g, "id", "game_id", "gameId"),
+        "season_year": year,
+        "week": "" if week_val is None else str(week_val),
+        "kickoff_utc": pick(g, "start_date", "startDate", default="") or "",
+        "start_time_tbd": to_bool01(pick(g, "start_time_tbd", "startTimeTBD", default=False)),
+        "season_type": season_type_val,
+        "home_team": pick(g, "home_team", "homeTeam"),
+        "away_team": pick(g, "away_team", "awayTeam"),
+        "neutral_site": to_bool01(pick(g, "neutral_site", "neutralSite", default=False)),
+        "game_phase": game_phase(season_type_val, classify_game(g, season_type_val, cfp_top4)),
+        "notes": pick(g, "notes", default="") or "",
+    }
+
+
 def game_phase(season_type_val: str, game_type: str) -> str:
     if season_type_val == "regular":
         return "regular"
@@ -269,6 +308,7 @@ def main(year: int) -> int:
         r.raise_for_status()
         all_games.extend(r.json())
 
+    scheduled: List[dict] = []
     out_path = OUT_DIR / f"games_{year}.csv"
     with out_path.open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(
@@ -300,8 +340,12 @@ def main(year: int) -> int:
             home_pts = pick(g, "home_points", "homePoints")
             away_pts = pick(g, "away_points", "awayPoints")
 
-            # Skip games without scores (rare for historical, common for future schedules)
-            if home is None or away is None or home_pts is None or away_pts is None:
+            if home is None or away is None:
+                continue
+            # Not final yet (no scores, or CFBD says in progress): goes to the
+            # schedule file instead, never the games file.
+            if not is_completed(g):
+                scheduled.append(schedule_row(g, year, cfp_top4))
                 continue
 
             start_date = pick(g, "start_date", "startDate")
@@ -361,6 +405,14 @@ def main(year: int) -> int:
 
 
     print(f"Wrote {out_path} ({out_path.stat().st_size} bytes)")
+
+    # Always written (even when empty) so a finished season's stale schedule gets cleared.
+    sched_path = OUT_DIR / f"schedule_{year}.csv"
+    with sched_path.open("w", newline="", encoding="utf-8") as f:
+        sw = csv.DictWriter(f, fieldnames=SCHEDULE_FIELDS)
+        sw.writeheader()
+        sw.writerows(scheduled)
+    print(f"Wrote {sched_path} ({len(scheduled)} not-yet-final FBS games)")
     if cfp_top4:
         pretty = ", ".join(sorted(cfp_top4))
         print(f"CFP Top-4 (normalized) used for fallback: {pretty}")

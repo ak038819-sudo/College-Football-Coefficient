@@ -244,6 +244,87 @@
   .team-section { margin-bottom: 18px; }
   .grid-2.team-section > .panel { margin-bottom: 0; }
 
+  /* ---- Team page sections (Milestone 2) ---- */
+  .logo-chip.xs, .monogram.xs { width: 30px; height: 30px; }
+  .logo-chip.xs { padding: 2px; }
+  .monogram.xs { font-size: 12px; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin: 0 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  .section-head h2.section-title { margin: 0; padding: 0; border: 0; }
+  .year-select.mini { font-size: 12px; padding: 4px 8px; }
+  .elo-chart { position: relative; width: 100%; }
+  .elo-chart svg { display: block; overflow: visible; touch-action: pan-y; }
+  .elo-tip { position: absolute; display: none; pointer-events: none; z-index: 5; min-width: 190px;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px;
+    font-size: 12px; line-height: 1.5; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+  .elo-tip .tip-date { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); }
+  .elo-tip .tip-main { font-weight: 600; }
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); }
+  .chart-legend .sw { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+  .an-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .an-grid .team-stat .val { font-size: 19px; }
+  details.help { margin-top: 12px; font-size: 12.5px; color: var(--ink-dim); }
+  details.help summary { cursor: pointer; font-family: var(--font-mono); font-size: 11px; }
+  details.help ul { margin: 8px 0 0; padding-left: 18px; line-height: 1.5; }
+  .swing-list { list-style: none; margin: 0; padding: 0; }
+  .swing-row { display: grid; grid-template-columns: 78px 1fr; gap: 3px 12px; padding: 10px 0; border-bottom: 1px solid var(--panel-2); }
+  .swing-row:last-child { border-bottom: 0; }
+  .swing-delta { grid-row: span 2; align-self: center; font-family: var(--font-display); font-size: 20px; }
+  .swing-delta.pos { color: var(--green-hl); }
+  .swing-delta.neg { color: var(--red); }
+  .swing-main { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 14px; }
+  .swing-where { font-family: var(--font-mono); font-size: 12px; color: var(--ink-dim); }
+  .swing-score { font-family: var(--font-mono); font-weight: 600; }
+  .swing-meta { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); }
+  .hist-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 760px) { .hist-cols, .an-grid { grid-template-columns: 1fr; } }
+  .hist-block h3 { font-family: var(--font-display); font-size: 15px; letter-spacing: 0.4px; margin: 0 0 2px; }
+  .hist-tag { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
+  .hist-row { display: flex; justify-content: space-between; gap: 14px; padding: 7px 0; border-bottom: 1px dotted var(--panel-2); font-size: 14px; }
+  .hist-row .v { font-family: var(--font-mono); color: var(--amber); text-align: right; }
+  .hist-row .v .dim { color: var(--ink-dim); }
+
+  /* ---- Upcoming schedule (Milestone 3) ---- */
+  .up-note { font-size: 12px; color: var(--ink-dim); margin: 0 0 6px; line-height: 1.45; }
+  .up-list { list-style: none; margin: 0; padding: 0; }
+  .up-row { display: grid; grid-template-columns: 1fr auto; gap: 3px 12px; padding: 10px 0; border-bottom: 1px solid var(--panel-2); }
+  .up-row:last-child { border-bottom: 0; }
+  .up-when { grid-column: 1 / -1; font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); }
+  .up-main { grid-column: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 14px; }
+  .up-meta { grid-column: 1; font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); }
+  .up-prob { grid-column: 2; grid-row: 2 / span 2; align-self: center; text-align: right;
+    font-family: var(--font-display); font-size: 22px; color: var(--amber); }
+  .up-prob small { display: block; font-family: var(--font-mono); font-size: 10px; color: var(--ink-dim); }
+
+  /* ---- Home (Milestone 4) ---- */
+  .home-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+  @media (max-width: 960px) { .home-grid { grid-template-columns: 1fr; } }
+  .home-side .panel { margin-bottom: 18px; }
+  .home-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+  .home-controls label { font-family: var(--font-mono); font-size: 12px; color: var(--ink-dim); display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .game-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 700px) { .game-grid { grid-template-columns: 1fr; } }
+  .hg-card { background: var(--panel-2); border-radius: 4px; padding: 10px 12px 8px; }  /* not .game-card: the bracket already owns that name */
+  .gc-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto 44px; align-items: center; gap: 8px; padding: 3px 0; }
+  .gc-rank { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); text-align: right; }
+  .gc-team { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 14px; }
+  .gc-team .team-link-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gc-at { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); }
+  .gc-elo { font-family: var(--font-mono); font-size: 12px; color: var(--ink-dim); }
+  .gc-prob { font-family: var(--font-display); font-size: 17px; text-align: right; color: var(--ink-dim); }
+  .gc-row.fav .gc-prob { color: var(--amber); }
+  .gc-foot { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); }
+  .mini-board { list-style: none; margin: 0; padding: 0; }
+  .mini-board li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--panel-2); font-size: 13.5px; }
+  .mini-board li:last-child { border-bottom: 0; }
+  .mini-board .rk { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); text-align: right; }
+  .mini-board .v { font-family: var(--font-mono); font-size: 12px; color: var(--amber); }
+  .mini-board .nm { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .side-link { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); text-decoration: none; }
+  .side-link:hover, .side-link:focus-visible { color: var(--amber); }
+  .side-note { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-dim); margin: 8px 0 0; line-height: 1.45; }
+
   .field-conf-group {
     margin-bottom: 16px;
     padding-bottom: 14px;
@@ -478,7 +559,8 @@
   </header>
 
   <nav class="tabs" id="tabs">
-    <button data-tab="teams" class="active">Team Ratings</button>
+    <button data-tab="home" class="active">Home</button>
+    <button data-tab="teams">Team Ratings</button>
     <button data-tab="elo">Elo Ratings</button>
     <button data-tab="conferences">Conferences</button>
     <button data-tab="field">Playoff Field</button>
@@ -623,7 +705,7 @@ function teamLink(name, size, yearOverride, namePrefix) {
 
 const TAB_NAMES = new Set([...document.querySelectorAll('#tabs button')].map(b => b.dataset.tab));
 
-let state = { tab: 'teams', year: DATA.years_all[DATA.years_all.length - 1], simResult: null, simYear: null, view: 'tab', teamParam: null };
+let state = { tab: 'home', year: DATA.years_all[DATA.years_all.length - 1], simResult: null, simYear: null, view: 'tab', teamParam: null, homeGroup: null, homeTop25: false };
 
 function fmt(n) { return Number(n).toFixed(3); }
 
@@ -632,6 +714,11 @@ function renderYearRow() {
   if (state.view === 'team') {
     row.innerHTML = '';
     document.getElementById('year-caption').textContent = 'TEAM PAGE';
+    return;
+  }
+  if (state.tab === 'home') {
+    row.innerHTML = '';
+    document.getElementById('year-caption').textContent = 'CURRENT SEASON' + (UPCOMING.season ? ' \u00b7 ' + UPCOMING.season : '');
     return;
   }
   if (state.tab === 'history') {
@@ -1033,13 +1120,540 @@ function renderTeamPage(param) {
       '</div>' +
     '</div>';
 
-  const soon = title => '<div class="panel team-section"><h2 class="section-title">' + title +
-    '</h2><div class="empty-note">Coming soon.</div></div>';
+  const loading = (id, title) => '<div class="panel team-section" id="' + id + '"><h2 class="section-title">' + title +
+    '</h2><div class="empty-note">Loading&hellip;</div></div>';
   return back + header +
-    soon('Historical Elo') +
-    '<div class="grid-2 team-section">' + soon('Upcoming Schedule') + soon('Advanced Analytics') + '</div>' +
-    '<div class="grid-2 team-section">' + soon('Biggest Elo Gains') + soon('Biggest Elo Losses') + '</div>' +
-    soon('Program History');
+    loading('tp-elo', 'Historical Elo') +
+    '<div class="grid-2 team-section">' + renderUpcomingCard(team) + loading('tp-analytics', 'Advanced Analytics') + '</div>' +
+    '<div class="grid-2 team-section">' + loading('tp-gains', 'Biggest Elo Gains') + loading('tp-losses', 'Biggest Elo Losses') + '</div>' +
+    loading('tp-history', 'Program History');
+}
+
+// ---------------- Team page data & sections (Milestone 2) ----------------
+// data/team_pages.js is produced by src/export_team_pages.py and loaded only
+// the first time a team page opens. It's a <script> (not fetch) so it also
+// works when dashboard.html is opened straight from disk. Every number shown
+// here was computed in Python; this code only indexes, filters and draws.
+const TEAM_PAGES_VERSION = '__TEAM_PAGES_VERSION__';
+let TP = null;
+let _teamPagesPromise = null;
+let teamPageState = { teamId: null, chartSeason: 'all', season: null };
+
+function indexTeamPages(raw) {
+  const gamesById = new Map();
+  raw.games.forEach(g => gamesById.set(g[0], { id: g[0], season: g[1], date: g[2], week: g[3], home: g[4],
+    away: g[5], hs: g[6], as: g[7], neutral: g[8] === 1, phase: g[9], ot: g[10] === 1 }));
+  const eloByTeam = new Map();   // already grouped by team and chronological in the export
+  raw.elo.forEach(r => {
+    if (!eloByTeam.has(r[1])) eloByTeam.set(r[1], []);
+    eloByTeam.get(r[1]).push({ gid: r[0], tid: r[1], pre: r[2], oppPre: r[3], exp: r[4], chg: r[5], post: r[6] });
+  });
+  const seasonsByTeam = new Map(), teamsPerSeason = new Map(), coe2PerSeason = new Map();
+  raw.team_seasons.forEach(s => {
+    const o = { tid: s[0], season: s[1], games: s[2], w: s[3], l: s[4], t: s[5], startElo: s[6], endElo: s[7],
+      eloChange: s[8], sos: s[9], sosRank: s[10], expWins: s[11], actWins: s[12], aboveExp: s[13],
+      coe2: s[14], coe2Rank: s[15] };
+    if (!seasonsByTeam.has(o.tid)) seasonsByTeam.set(o.tid, new Map());
+    seasonsByTeam.get(o.tid).set(o.season, o);
+    teamsPerSeason.set(o.season, (teamsPerSeason.get(o.season) || 0) + 1);
+    if (o.coe2 != null) coe2PerSeason.set(o.season, (coe2PerSeason.get(o.season) || 0) + 1);
+  });
+  return { gamesById, eloByTeam, seasonsByTeam, teamsPerSeason, coe2PerSeason,
+    swings: raw.swings, history: raw.history, cfpFirst: raw.cfp_first_season };
+}
+
+function loadTeamPages() {
+  if (TP) return Promise.resolve(TP);
+  if (!_teamPagesPromise) {
+    _teamPagesPromise = new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = 'data/team_pages.js?v=' + encodeURIComponent(TEAM_PAGES_VERSION);
+      el.onload = () => {
+        if (!window.__TEAM_PAGES__) { _teamPagesPromise = null; reject(new Error('data file was empty')); return; }
+        TP = indexTeamPages(window.__TEAM_PAGES__);
+        resolve(TP);
+      };
+      el.onerror = () => { _teamPagesPromise = null; el.remove(); reject(new Error('could not load data/team_pages.js')); };
+      document.head.appendChild(el);
+    });
+  }
+  return _teamPagesPromise;
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function fmtDate(iso) {
+  if (!iso) return '';
+  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);   // no Date(): avoids timezone shifts
+  return MONTHS[m - 1] + ' ' + d + ', ' + y;
+}
+function signed(n, digits) {
+  return (n > 0 ? '+' : n < 0 ? '\u2212' : '\u00b1') + Math.abs(n).toFixed(digits);
+}
+function fmtWins(n) { return Number.isInteger(n) ? String(n) : n.toFixed(1); }
+function recStr(w, l, t) { return w + '\u2013' + l + (t ? '\u2013' + t : ''); }
+
+// One game from a given team's point of view.
+function gameFor(team, g) {
+  const home = g.home === team.id;
+  const oppId = home ? g.away : g.home;
+  const mine = home ? g.hs : g.as, theirs = home ? g.as : g.hs;
+  return { opp: TEAM_BY_ID.get(String(oppId)) || null, mine, theirs,
+    result: mine > theirs ? 'W' : mine < theirs ? 'L' : 'T',
+    where: (g.neutral || home) ? 'vs' : 'at', neutral: g.neutral };
+}
+function phaseLabel(tp, g) {
+  if (g.phase === 2 && g.season >= tp.cfpFirst) return 'CFP';
+  if (g.phase >= 1) return 'Bowl';   // pre-2014 "cfp"-phase games were BCS title bowls
+  return '';
+}
+function oppLink(name, season) {
+  return teamAnchor(name, logoMarkup(name, 'team', 'xs', season) + '<span class="team-link-name">' + name + '</span>');
+}
+function panelHead(title, controlHtml) {
+  return '<div class="section-head"><h2 class="section-title">' + title + '</h2>' + (controlHtml || '') + '</div>';
+}
+function seasonSelect(id, seasons, selected, includeAll) {
+  let h = '<select class="year-select mini" id="' + id + '" aria-label="Season">';
+  if (includeAll) h += '<option value="all"' + (selected === 'all' ? ' selected' : '') + '>All time</option>';
+  seasons.forEach(s => { h += '<option value="' + s + '"' + (String(selected) === String(s) ? ' selected' : '') + '>' + s + '</option>'; });
+  return h + '</select>';
+}
+function teamSeasonsList(tp, team) {
+  const m = tp.seasonsByTeam.get(team.id);
+  return m ? Array.from(m.keys()).sort((a, b) => b - a) : [];
+}
+function niceStep(raw) {
+  const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  for (const k of [1, 2, 2.5, 5, 10]) if (k * p >= raw) return k * p;
+  return 10 * p;
+}
+
+// ---- Historical Elo chart (inline SVG; postgame Elo per game) ----
+function fillEloPanel(tp, team) {
+  const el = document.getElementById('tp-elo');
+  if (!el) return;
+  const seasons = teamSeasonsList(tp, team);
+  const allTime = teamPageState.chartSeason === 'all';
+  el.innerHTML = panelHead('Historical Elo', seasons.length ? seasonSelect('tp-elo-season', seasons, teamPageState.chartSeason, true) : '') +
+    '<div class="elo-chart" id="tp-elo-chart"></div>' +
+    '<div class="chart-legend">' +
+      '<span>Line = postgame Elo</span>' +
+      (allTime
+        ? '<span><i class="sw" style="background:var(--green-hl)"></i>CFP game</span><span><i class="sw" style="background:var(--ink-dim)"></i>Bowl game</span><span>Gaps = offseason (ratings regress toward 1500)</span>'
+        : '<span><i class="sw" style="background:var(--green-hl)"></i>Win</span><span><i class="sw" style="background:var(--red)"></i>Loss</span><span>First point = season-opening Elo</span>') +
+      '<span>Dashed = 1500 baseline</span>' +
+    '</div>';
+  const sel = document.getElementById('tp-elo-season');
+  if (sel) sel.addEventListener('change', () => { teamPageState.chartSeason = sel.value; fillEloPanel(tp, team); });
+  drawEloChart(tp, team);
+}
+
+function drawEloChart(tp, team) {
+  const box = document.getElementById('tp-elo-chart');
+  if (!box) return;
+  const mode = teamPageState.chartSeason;
+  const all = tp.eloByTeam.get(team.id) || [];
+  const rows = mode === 'all' ? all : all.filter(r => String(tp.gamesById.get(r.gid).season) === String(mode));
+  if (!rows.length) { box.innerHTML = '<div class="empty-note">No completed games in the dataset yet.</div>'; return; }
+
+  const pts = [];
+  if (mode !== 'all') pts.push({ kind: 'start', y: rows[0].pre, row: rows[0], g: tp.gamesById.get(rows[0].gid) });
+  rows.forEach(r => pts.push({ kind: 'game', y: r.post, row: r, g: tp.gamesById.get(r.gid) }));
+
+  const W = Math.max(280, Math.floor(box.clientWidth)), H = W < 560 ? 220 : 290;
+  const m = { l: 46, r: 14, t: 12, b: 26 };
+  const pw = W - m.l - m.r, ph = H - m.t - m.b;
+  let lo = Infinity, hi = -Infinity;
+  pts.forEach(p => { lo = Math.min(lo, p.y); hi = Math.max(hi, p.y); });
+  const pad = Math.max(20, (hi - lo) * 0.08);
+  const step = niceStep((hi - lo + 2 * pad) / 4);
+  lo = Math.floor((lo - pad) / step) * step;
+  hi = Math.ceil((hi + pad) / step) * step;
+  const X = i => m.l + (pts.length === 1 ? pw / 2 : i * pw / (pts.length - 1));
+  const Y = v => m.t + (hi - v) / (hi - lo) * ph;
+
+  const peak = rows.reduce((a, r) => (r.post > a.post ? r : a), rows[0]);
+  const first = tp.gamesById.get(rows[0].gid).season, last = tp.gamesById.get(rows[rows.length - 1].gid).season;
+  const summary = 'Elo history for ' + team.name + ', ' + (first === last ? first : first + ' to ' + last) +
+    ': ' + rows[0].pre.toFixed(1) + ' to ' + rows[rows.length - 1].post.toFixed(1) +
+    ', peak ' + peak.post.toFixed(1) + ' in ' + tp.gamesById.get(peak.gid).season + '.';
+
+  let svg = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(summary) + '">';
+  for (let v = lo; v <= hi + 1e-9; v += step) {
+    svg += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" style="stroke:var(--line);stroke-width:1"/>' +
+      '<text x="' + (m.l - 6) + '" y="' + (Y(v) + 3).toFixed(1) + '" text-anchor="end" style="font-family:var(--font-mono);font-size:10px;fill:var(--ink-dim)">' + Math.round(v) + '</text>';
+  }
+  if (1500 > lo && 1500 < hi) {
+    svg += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(1500).toFixed(1) + '" y2="' + Y(1500).toFixed(1) + '" style="stroke:var(--ink-dim);stroke-width:1;stroke-dasharray:4 4;opacity:0.7"/>';
+  }
+
+  // x-axis: season boundaries (all time) or game numbers (single season)
+  const gap = pts.length > 1 ? pw / (pts.length - 1) : pw;
+  if (mode === 'all') {
+    const starts = [];
+    pts.forEach((p, i) => { if (i === 0 || p.g.season !== pts[i - 1].g.season) starts.push({ i, season: p.g.season }); });
+    const perSeason = pw / Math.max(1, starts.length);
+    const every = Math.max(1, Math.ceil(40 / perSeason));
+    starts.forEach((s, k) => {
+      const bx = s.i === 0 ? m.l : X(s.i) - gap / 2;
+      if (s.i > 0) svg += '<line x1="' + bx.toFixed(1) + '" x2="' + bx.toFixed(1) + '" y1="' + m.t + '" y2="' + (H - m.b) + '" style="stroke:var(--line);stroke-width:1;opacity:0.6"/>';
+      if (k % every === 0) svg += '<text x="' + (bx + 2).toFixed(1) + '" y="' + (H - 8) + '" style="font-family:var(--font-mono);font-size:10px;fill:var(--ink-dim)">' + s.season + '</text>';
+    });
+  } else {
+    const every = Math.max(1, Math.ceil(22 / gap));
+    pts.forEach((p, i) => {
+      if (i % every !== 0) return;
+      svg += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" style="font-family:var(--font-mono);font-size:10px;fill:var(--ink-dim)">' + (p.kind === 'start' ? 'Start' : i) + '</text>';
+    });
+  }
+
+  // the line, broken at each offseason in all-time view
+  let d = '';
+  pts.forEach((p, i) => {
+    const brk = i === 0 || (mode === 'all' && p.g.season !== pts[i - 1].g.season);
+    d += (brk ? 'M' : 'L') + X(i).toFixed(1) + ' ' + Y(p.y).toFixed(1) + ' ';
+  });
+  svg += '<path d="' + d + '" style="fill:none;stroke:var(--amber);stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round"/>';
+
+  pts.forEach((p, i) => {
+    const cx = X(i).toFixed(1), cy = Y(p.y).toFixed(1);
+    if (p.kind === 'start') {
+      svg += '<circle cx="' + cx + '" cy="' + cy + '" r="4" style="fill:var(--panel);stroke:var(--amber);stroke-width:1.5"/>';
+    } else if (mode === 'all') {
+      const ph = phaseLabel(tp, p.g);
+      if (ph) svg += '<circle cx="' + cx + '" cy="' + cy + '" r="3.2" style="fill:' + (ph === 'CFP' ? 'var(--green-hl)' : 'var(--ink-dim)') + '"/>';
+    } else {
+      const res = gameFor(team, p.g).result;
+      svg += '<circle cx="' + cx + '" cy="' + cy + '" r="4.2" style="fill:' + (res === 'W' ? 'var(--green-hl)' : res === 'L' ? 'var(--red)' : 'var(--ink-dim)') + '"/>';
+    }
+  });
+  svg += '<circle id="tp-hover-dot" r="6" style="fill:none;stroke:var(--ink);stroke-width:2;display:none"/></svg>';
+  box.innerHTML = svg + '<div class="elo-tip" id="tp-tip" role="status"></div>';
+
+  const svgEl = box.querySelector('svg'), tip = box.querySelector('#tp-tip'), dot = box.querySelector('#tp-hover-dot');
+  const show = ev => {
+    const rect = svgEl.getBoundingClientRect();
+    const px = (ev.clientX - rect.left) * (W / rect.width);
+    let i = pts.length === 1 ? 0 : Math.round((px - m.l) / gap);
+    i = Math.max(0, Math.min(pts.length - 1, i));
+    const p = pts[i];
+    dot.setAttribute('cx', X(i)); dot.setAttribute('cy', Y(p.y)); dot.style.display = '';
+    tip.innerHTML = eloTipHtml(tp, team, p);
+    tip.style.display = 'block';
+    const bx = X(i) * rect.width / W, by = Y(p.y) * rect.height / H;
+    let left = bx + 14;
+    if (left + tip.offsetWidth > rect.width) left = bx - tip.offsetWidth - 14;
+    let top = by - tip.offsetHeight - 10;
+    if (top < 0) top = by + 14;
+    tip.style.left = Math.max(0, left) + 'px';
+    tip.style.top = top + 'px';
+  };
+  svgEl.addEventListener('pointermove', show);
+  svgEl.addEventListener('pointerdown', show);
+  svgEl.addEventListener('pointerleave', () => { tip.style.display = 'none'; dot.style.display = 'none'; });
+}
+
+function eloTipHtml(tp, team, p) {
+  if (p.kind === 'start') {
+    return '<div class="tip-date">' + p.g.season + ' season start</div>' +
+      '<div class="tip-main">Opening Elo ' + p.row.pre.toFixed(1) + '</div>' +
+      '<div>after offseason regression toward 1500</div>';
+  }
+  const v = gameFor(team, p.g), r = p.row, ph = phaseLabel(tp, p.g);
+  return '<div class="tip-date">' + fmtDate(p.g.date) + (ph ? ' &middot; ' + ph : '') + '</div>' +
+    '<div class="tip-main">' + v.where + ' ' + (v.opp ? v.opp.name : 'Unknown') + (v.neutral ? ' (N)' : '') + '</div>' +
+    '<div>' + v.result + ' ' + v.mine + '&ndash;' + v.theirs + (p.g.ot ? ' (OT)' : '') + '</div>' +
+    '<div>Elo ' + r.pre.toFixed(1) + ' &rarr; ' + r.post.toFixed(1) + ' (' + signed(r.chg, 1) + ')</div>' +
+    '<div>Pregame win prob ' + Math.round(r.exp * 100) + '% &middot; opp. ' + r.oppPre.toFixed(0) + '</div>';
+}
+
+// ---- Advanced analytics (all values computed in export_team_pages.py) ----
+function fillAnalyticsPanel(tp, team) {
+  const el = document.getElementById('tp-analytics');
+  if (!el) return;
+  const seasons = teamSeasonsList(tp, team);
+  if (!seasons.length) {
+    el.innerHTML = panelHead('Advanced Analytics') + '<div class="empty-note">No completed games in the dataset yet.</div>';
+    return;
+  }
+  if (!seasons.includes(Number(teamPageState.season))) teamPageState.season = seasons[0];
+  const s = tp.seasonsByTeam.get(team.id).get(Number(teamPageState.season));
+  const eloR = rankLookup('team_elo_by_year', 'elo', s.season, team.name);
+  const coe = rankLookup('team_ratings_by_year', 'rating', s.season, team.name);
+  const coe5 = rankLookup('team_rolling_by_year', 'coeff_5yr', s.season, team.name);
+  el.innerHTML = panelHead('Advanced Analytics', seasonSelect('tp-an-season', seasons, s.season, false)) +
+    '<div class="an-grid">' +
+      teamStat('Record', recStr(s.w, s.l, s.t), 'vs FBS opponents') +
+      teamStat('Season Elo', s.endElo.toFixed(1), 'opened ' + s.startElo.toFixed(1) + ' &middot; ' + signed(s.eloChange, 1)) +
+      teamStat('End-of-season Elo rank', eloR ? '#' + eloR.rank : 'N/A', eloR ? 'of ' + eloR.of + ' teams' : '') +
+      teamStat('Strength of schedule', s.sos.toFixed(1), '#' + s.sosRank + ' of ' + tp.teamsPerSeason.get(s.season) + ' (1 = toughest)') +
+      teamStat('Expected wins', s.expWins.toFixed(2), 'sum of pregame win probabilities') +
+      teamStat('Actual wins', fmtWins(s.actWins), s.t ? 'ties count as &frac12;' : '&nbsp;') +
+      teamStat('Wins vs. expectation', signed(s.aboveExp, 2), s.aboveExp >= 0 ? 'won more than Elo odds implied' : 'won fewer than Elo odds implied') +
+      teamStat('CoE v1 (season / 5-yr)', coe ? fmt(coe.value) : 'N/A',
+        (coe ? '#' + coe.rank : 'N/A') + ' &middot; 5-yr ' + (coe5 ? fmt(coe5.value) + ' (#' + coe5.rank + ')' : 'N/A')) +
+      teamStat('Game CoE 2.0 (season)', s.coe2 != null ? s.coe2.toFixed(2) : 'N/A',
+        s.coe2 != null ? '#' + s.coe2Rank + ' of ' + tp.coe2PerSeason.get(s.season) + ' &middot; experimental' : 'not computed for this season') +
+    '</div>' +
+    '<details class="help"><summary>How these are calculated</summary><ul>' +
+      '<li><b>Strength of schedule</b>: average of opponents\' <i>pregame</i> Elo (their rating entering each game). Higher = tougher.</li>' +
+      '<li><b>Expected wins</b>: sum of the team\'s pregame Elo win probabilities, home field included exactly as the Elo model applies it. Never uses ratings from after a game.</li>' +
+      '<li><b>Wins vs. expectation</b>: actual wins minus expected wins. A positive number can mean real improvement the ratings hadn\'t caught up to yet, close-game results, or luck; it doesn\'t by itself say which.</li>' +
+      '<li>All records and stats cover games against FBS opponents only; the database doesn\'t store FCS games.</li>' +
+      '<li><b>CoE v1</b> drives the playoff model. <b>Game CoE 2.0</b> is the experimental hybrid layer (not used for bids), shown only for seasons where it has been computed.</li>' +
+    '</ul></details>';
+  const sel = document.getElementById('tp-an-season');
+  if (sel) sel.addEventListener('change', () => { teamPageState.season = Number(sel.value); fillAnalyticsPanel(tp, team); });
+}
+
+// ---- Biggest single-game Elo swings (lists precomputed in the export) ----
+function fillSwingPanels(tp, team) {
+  const sw = tp.swings[String(team.id)] || { gains: [], losses: [] };
+  const rowsById = new Map((tp.eloByTeam.get(team.id) || []).map(r => [r.gid, r]));
+  const fill = (id, title, ids, emptyMsg) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const items = ids.map(gid => rowsById.get(gid)).filter(Boolean).map(r => {
+      const g = tp.gamesById.get(r.gid), v = gameFor(team, g), ph = phaseLabel(tp, g);
+      return '<li class="swing-row">' +
+        '<div class="swing-delta ' + (r.chg >= 0 ? 'pos' : 'neg') + '">' + signed(r.chg, 1) + '</div>' +
+        '<div class="swing-main"><span class="swing-where">' + v.where + '</span>' +
+          (v.opp ? oppLink(v.opp.name, g.season) : 'Unknown') + (v.neutral ? '<span class="swing-where">(N)</span>' : '') +
+          '<span class="swing-score">' + v.result + ' ' + v.mine + '&ndash;' + v.theirs + (g.ot ? ' OT' : '') + '</span></div>' +
+        '<div class="swing-meta">' + fmtDate(g.date) + (ph ? ' &middot; ' + ph : '') +
+          ' &middot; Elo ' + r.pre.toFixed(0) + ' vs ' + r.oppPre.toFixed(0) +
+          ' &middot; pregame win prob ' + Math.round(r.exp * 100) + '%</div>' +
+      '</li>';
+    });
+    el.innerHTML = '<h2 class="section-title">' + title + '</h2>' +
+      (items.length ? '<ol class="swing-list">' + items.join('') + '</ol>' : '<div class="empty-note">' + emptyMsg + '</div>');
+  };
+  fill('tp-gains', 'Biggest Elo Gains', sw.gains, 'No wins in the dataset yet.');
+  fill('tp-losses', 'Biggest Elo Losses', sw.losses, 'No losses in the dataset yet.');
+}
+
+// ---- Program history: REAL results and CoE MODEL results, never mixed ----
+function fillHistoryPanel(tp, team) {
+  const el = document.getElementById('tp-history');
+  if (!el) return;
+  const h = tp.history[String(team.id)];
+  const model = (DATA.playoff_appearances || []).find(r => r.team === team.name);
+  const yrs = DATA.years_playoff || [];
+  const row = (k, v) => '<div class="hist-row"><span>' + k + '</span><span class="v">' + v + '</span></div>';
+  let real = '<div class="hist-block"><h3>Real history</h3><div class="hist-tag">Actual results &middot; ' +
+    (h ? h.first_season + '&ndash;' + h.last_season + ' in dataset &middot; FBS games only' : 'no games in dataset') + '</div>';
+  if (h) {
+    const bowlTies = h.bowl[0] - h.bowl[1] - h.bowl[2];
+    real += row('Seasons in dataset', h.seasons) +
+      row('Record', recStr(h.record[0], h.record[1], h.record[2])) +
+      row('Bowl games', h.bowl[0] ? h.bowl[0] + ' (' + recStr(h.bowl[1], h.bowl[2], bowlTies) + ')' : '0') +
+      row('CFP appearances (' + tp.cfpFirst + '+)', h.cfp_appearances
+        ? h.cfp_appearances + ' (' + recStr(h.cfp_record[0], h.cfp_record[1], 0) + ') &middot; ' + h.cfp_seasons.join(', ') : '0') +
+      row('National championships', '<span class="dim">not yet tracked</span>');
+  }
+  real += '</div>';
+  const sim = '<div class="hist-block"><h3>CoE model</h3><div class="hist-tag">Simulated &middot; not real results' +
+      (yrs.length ? ' &middot; ' + yrs[0] + '&ndash;' + yrs[yrs.length - 1] : '') + '</div>' +
+    row('Model playoff appearances', model ? model.appearances : 0) +
+    row('First-round byes', model ? model.byes : 0) +
+    row('Seasons', model && model.years.length ? model.years.join(', ') : '&mdash;') +
+    '</div>';
+  el.innerHTML = '<h2 class="section-title">Program History</h2><div class="hist-cols">' + real + sim + '</div>';
+}
+
+// ---- Upcoming schedule (Milestone 3) ----
+// DATA.upcoming comes from src/predict_upcoming.py: probabilities are computed
+// in Python with the Elo engine's own functions and current ratings. Nothing
+// here recalculates Elo. Once a game is played it leaves this list, and the
+// team's history shows that game's stored PREGAME odds instead.
+const UPCOMING = DATA.upcoming || { games: [], current_elo: [], ratings_as_of: null };
+const UPCOMING_GAMES = (UPCOMING.games || []).map(g => ({ id: g[0], season: g[1], week: g[2], kickoff: g[3],
+  tbd: g[4] === 1, home: g[5], away: g[6], neutral: g[7] === 1, phase: g[8], homeElo: g[9], awayElo: g[10],
+  pHome: g[11], homeProv: g[12] === 1, awayProv: g[13] === 1 }));
+const CURRENT_ELO = new Map((UPCOMING.current_elo || []).map(r => [r[0], { elo: r[1], rank: r[2] }]));
+
+// One rounding rule everywhere: round the home side, give the away side the exact
+// remainder, so a matchup always sums to 100% on every page.
+function probPct(pHome) {
+  const h = Math.round(pHome * 100);
+  return { home: h, away: 100 - h };
+}
+
+function fmtKickoff(iso, tbd) {
+  if (!iso) return 'Date TBA';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return 'Date TBA';
+  if (tbd) {
+    // CFBD stores a placeholder clock time when kickoff is TBA; take the date as of US Eastern.
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/New_York' }) + ' \u00b7 Time TBA';
+  }
+  return d.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+}
+
+function renderUpcomingCard(team) {
+  const games = UPCOMING_GAMES.filter(g => g.home === team.id || g.away === team.id);
+  let body;
+  if (!games.length) {
+    body = '<div class="empty-note">No upcoming games on the schedule.</div>';
+  } else {
+    body = '<p class="up-note">Win probabilities use each team\'s current Elo' +
+      (UPCOMING.ratings_as_of ? ' (as of ' + fmtDate(UPCOMING.ratings_as_of) + ')' : '') +
+      ', home field included exactly as the Elo model applies it. Against FBS opponents only.</p><ol class="up-list">' +
+      games.map(g => {
+        const home = g.home === team.id;
+        const oppId = home ? g.away : g.home;
+        const opp = TEAM_BY_ID.get(String(oppId));
+        const myElo = home ? g.homeElo : g.awayElo, oppElo = home ? g.awayElo : g.homeElo;
+        const myProv = home ? g.homeProv : g.awayProv, oppProv = home ? g.awayProv : g.homeProv;
+        const pct = probPct(g.pHome), myPct = home ? pct.home : pct.away;
+        const oppRank = CURRENT_ELO.get(oppId);
+        const tag = g.phase === 2 ? ' \u00b7 CFP' : g.phase === 1 ? ' \u00b7 Bowl' : '';
+        return '<li class="up-row">' +
+          '<div class="up-when">' + (g.week != null ? 'Week ' + g.week + ' \u00b7 ' : '') + fmtKickoff(g.kickoff, g.tbd) + tag + '</div>' +
+          '<div class="up-main"><span class="swing-where">' + (g.neutral || home ? 'vs' : 'at') + '</span>' +
+            (opp ? oppLink(opp.name, g.season) : 'Unknown') +
+            (oppRank ? '<span class="swing-where">#' + oppRank.rank + '</span>' : '') +
+            (g.neutral ? '<span class="swing-where">(N)</span>' : '') + '</div>' +
+          '<div class="up-meta">Elo ' + myElo.toFixed(0) + (myProv ? ' (no games yet)' : '') +
+            ' vs ' + oppElo.toFixed(0) + (oppProv ? ' (no games yet)' : '') + '</div>' +
+          '<div class="up-prob">' + myPct + '%<small>win prob</small></div>' +
+        '</li>';
+      }).join('') + '</ol>';
+  }
+  return '<div class="panel team-section" id="tp-upcoming"><h2 class="section-title">Upcoming Schedule</h2>' + body + '</div>';
+}
+
+function hydrateTeamPage() {
+  const team = resolveTeam(state.teamParam);
+  if (!team) return;
+  if (teamPageState.teamId !== team.id) teamPageState = { teamId: team.id, chartSeason: 'all', season: null };
+  loadTeamPages().then(tp => {
+    const cur = resolveTeam(state.teamParam);
+    if (state.view !== 'team' || !cur || cur.id !== team.id) return;   // user navigated away meanwhile
+    fillEloPanel(tp, team);
+    fillAnalyticsPanel(tp, team);
+    fillSwingPanels(tp, team);
+    fillHistoryPanel(tp, team);
+  }).catch(err => {
+    ['tp-elo', 'tp-analytics', 'tp-gains', 'tp-losses', 'tp-history'].forEach(id => {
+      const note = document.querySelector('#' + id + ' .empty-note');
+      if (note) note.textContent = 'Team history is unavailable (' + err.message + ').';
+    });
+  });
+}
+
+let _chartResizeTimer = null;
+window.addEventListener('resize', () => {
+  if (state.view !== 'team' || !TP) return;
+  clearTimeout(_chartResizeTimer);
+  _chartResizeTimer = setTimeout(() => {
+    const t = resolveTeam(state.teamParam);
+    if (t) drawEloChart(TP, t);
+  }, 150);
+});
+
+// ---------------- Home (Milestone 4) ----------------
+// Everything here reads authoritative exports: DATA.upcoming (games, predictions
+// and the current Elo board, all from src/predict_upcoming.py) and
+// DATA.conference_board (the bid-setting order). Nothing is re-ranked or
+// re-predicted in the browser.
+function upcomingGroups() {
+  // Postseason weeks restart at 1 in CFBD, so bowls/CFP get their own group.
+  const groups = new Map();
+  UPCOMING_GAMES.forEach(g => {
+    const key = g.season + '|' + (g.phase > 0 ? 'post' : (g.week == null ? 'tba' : g.week));
+    if (!groups.has(key)) {
+      const label = g.phase > 0 ? g.season + ' Postseason' : g.week == null ? 'Date TBA' : 'Week ' + g.week;
+      groups.set(key, { key, label, games: [] });
+    }
+    groups.get(key).games.push(g);
+  });
+  return Array.from(groups.values());   // UPCOMING_GAMES is already in kickoff order
+}
+
+function eloRankBadge(id) {
+  const r = CURRENT_ELO.get(id);
+  return r && r.rank <= 25 ? '#' + r.rank : '';
+}
+
+function gameCard(g) {
+  const pct = probPct(g.pHome);
+  const side = (id, elo, pctVal, prov, isHome) => {
+    const t = TEAM_BY_ID.get(String(id));
+    return '<div class="gc-row' + (pctVal >= 50 ? ' fav' : '') + '">' +
+      '<span class="gc-rank">' + eloRankBadge(id) + '</span>' +
+      '<span class="gc-team">' + (isHome && !g.neutral ? '<span class="gc-at">@</span>' : '') +
+        (t ? oppLink(t.name, g.season) : 'Unknown') + '</span>' +
+      '<span class="gc-elo">' + elo.toFixed(0) + (prov ? '*' : '') + '</span>' +
+      '<span class="gc-prob">' + pctVal + '%</span></div>';
+  };
+  const tags = [fmtKickoff(g.kickoff, g.tbd)];
+  if (g.neutral) tags.push('Neutral site');
+  if (g.phase === 2) tags.push('CFP'); else if (g.phase === 1) tags.push('Bowl');
+  return '<div class="hg-card">' +
+    side(g.away, g.awayElo, pct.away, g.awayProv, false) +
+    side(g.home, g.homeElo, pct.home, g.homeProv, true) +
+    '<div class="gc-foot">' + tags.join(' \u00b7 ') + '</div></div>';
+}
+
+function renderUpcomingPanel() {
+  const groups = upcomingGroups();
+  if (!groups.length) {
+    return '<div class="panel"><h2 class="section-title">Upcoming Games</h2>' +
+      '<div class="empty-note">No upcoming games on the schedule.</div></div>';
+  }
+  if (!groups.some(gr => gr.key === state.homeGroup)) state.homeGroup = groups[0].key;
+  const group = groups.find(gr => gr.key === state.homeGroup);
+  let games = group.games;
+  if (state.homeTop25) games = games.filter(g => eloRankBadge(g.home) || eloRankBadge(g.away));
+  const controls = '<div class="home-controls">' +
+    '<label><input type="checkbox" id="home-top25"' + (state.homeTop25 ? ' checked' : '') + '> Top 25 only</label>' +
+    '<select class="year-select mini" id="home-group" aria-label="Week">' +
+      groups.map(gr => '<option value="' + gr.key + '"' + (gr.key === group.key ? ' selected' : '') + '>' + gr.label + '</option>').join('') +
+    '</select></div>';
+  const anyProv = games.some(g => g.homeProv || g.awayProv);
+  return '<div class="panel">' + panelHead('Upcoming Games', controls) +
+    '<p class="up-note">Win probabilities from current Elo' +
+      (UPCOMING.ratings_as_of ? ' (as of ' + fmtDate(UPCOMING.ratings_as_of) + ')' : '') +
+      ', home field included exactly as the Elo model applies it. # = Elo rank (top 25). Kickoffs in your local time.</p>' +
+    (games.length ? '<div class="game-grid">' + games.map(gameCard).join('') + '</div>'
+                  : '<div class="empty-note">No games involving an Elo Top 25 team this week.</div>') +
+    (anyProv ? '<p class="side-note">* No completed games yet: starting rating.</p>' : '') +
+  '</div>';
+}
+
+function renderEloTop25() {
+  const rows = (UPCOMING.current_elo || []).slice(0, 25);
+  const body = rows.length
+    ? '<ol class="mini-board">' + rows.map(([id, elo, rank]) => {
+        const t = TEAM_BY_ID.get(String(id));
+        return '<li><span class="rk">' + rank + '</span><span class="nm">' +
+          (t ? teamAnchor(t.name, logoMarkup(t.name, 'team', 'xs') + '<span class="team-link-name">' + t.name + '</span>') : id) +
+          '</span><span class="v">' + elo.toFixed(1) + '</span></li>';
+      }).join('') + '</ol>'
+    : '<div class="empty-note">No Elo ratings yet.</div>';
+  return '<div class="panel">' + panelHead('Elo Top 25', '<a class="side-link" href="#tab=elo">All ratings &rarr;</a>') + body +
+    '<p class="side-note">Current ratings' + (UPCOMING.ratings_as_of ? ' as of ' + fmtDate(UPCOMING.ratings_as_of) : '') + '.</p></div>';
+}
+
+function renderConferenceBoard() {
+  const b = DATA.conference_board || { rows: [] };
+  const body = b.rows.length
+    ? '<ol class="mini-board">' + b.rows.map(([conf, coe], i) =>
+        '<li><span class="rk">' + (i + 1) + '</span><span class="nm">' + logoMarkup(conf, 'conf', 'xs', b.season) +
+        '<span>' + conf + '</span></span><span class="v">' + fmt(coe) + '</span></li>').join('') + '</ol>'
+    : '<div class="empty-note">No conference ratings yet.</div>';
+  return '<div class="panel">' + panelHead('Conference CoE', '<a class="side-link" href="#tab=conferences">Details &rarr;</a>') + body +
+    '<p class="side-note">5-year rolling CoE' + (b.season ? ', ' + b.season : '') + ': the order that sets playoff bids.</p></div>';
+}
+
+function renderPollsPanel() {
+  return '<div class="panel"><h2 class="section-title">AP / CFP Top 25</h2><div class="empty-note">Coming soon.</div></div>';
+}
+
+function renderHome() {
+  return '<div class="home-grid"><div class="home-main">' + renderUpcomingPanel() + '</div>' +
+    '<aside class="home-side" aria-label="Rankings">' + renderEloTop25() + renderConferenceBoard() + renderPollsPanel() + '</aside></div>';
 }
 
 // ---------------- Router ----------------
@@ -1069,11 +1683,19 @@ function applyRoute() {
 }
 window.addEventListener('hashchange', applyRoute);
 
+// Home controls (week picker, Top 25 filter) re-render only the Home view.
+document.getElementById('content').addEventListener('change', e => {
+  if (state.view !== 'tab' || state.tab !== 'home') return;
+  if (e.target.id === 'home-group') { state.homeGroup = e.target.value; render(); }
+  else if (e.target.id === 'home-top25') { state.homeTop25 = e.target.checked; render(); }
+});
+
 function render() {
   renderYearRow();
   const content = document.getElementById('content');
-  if (state.view === 'team') { content.innerHTML = renderTeamPage(state.teamParam); return; }
-  if (state.tab === 'teams') content.innerHTML = renderTeams();
+  if (state.view === 'team') { content.innerHTML = renderTeamPage(state.teamParam); hydrateTeamPage(); return; }
+  if (state.tab === 'home') content.innerHTML = renderHome();
+  else if (state.tab === 'teams') content.innerHTML = renderTeams();
   else if (state.tab === 'elo') content.innerHTML = renderElo();
   else if (state.tab === 'conferences') content.innerHTML = renderConferences();
   else if (state.tab === 'field') content.innerHTML = renderField();
