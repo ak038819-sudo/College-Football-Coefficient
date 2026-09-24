@@ -483,6 +483,11 @@ def main(year: int) -> int:
             rw.writerows(ranking_rows)
         releases = {(r["poll"], r["season_type"], r["week"]) for r in ranking_rows}
         print(f"Wrote {rank_path} ({len(ranking_rows)} rows across {len(releases)} AP/CFP releases)")
+
+    # Advanced season stats for the same season (Milestone 7): display-only;
+    # failures only warn. Imported here to keep the two scripts independent.
+    import fetch_cfbd_advanced
+    fetch_cfbd_advanced.write_advanced(year, headers, OUT_DIR)
     if cfp_top4:
         pretty = ", ".join(sorted(cfp_top4))
         print(f"CFP Top-4 (normalized) used for fallback: {pretty}")

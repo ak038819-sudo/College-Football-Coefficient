@@ -101,6 +101,56 @@ def title_history(champions: list[dict]) -> dict:
     return dict(by_team)
 
 
+# Advanced stats shown on team pages (Milestone 7): (column, side, label, higher_is_better, format).
+# Display only -- nothing here feeds a rating engine.
+ADVANCED_DISPLAY = [
+    ("off_ppa", "offense", "EPA / play", True, "epa"),
+    ("off_success_rate", "offense", "Success rate", True, "pct"),
+    ("off_explosiveness", "offense", "Explosiveness", True, "dec2"),
+    ("off_pts_per_opp", "offense", "Points / scoring opp.", True, "dec2"),
+    ("off_line_yards", "offense", "Line yards / rush", True, "dec2"),
+    ("def_ppa", "defense", "EPA / play allowed", False, "epa"),
+    ("def_success_rate", "defense", "Success rate allowed", False, "pct"),
+    ("def_explosiveness", "defense", "Explosiveness allowed", False, "dec2"),
+    ("def_pts_per_opp", "defense", "Points / opp. allowed", False, "dec2"),
+    ("def_havoc", "defense", "Havoc rate", True, "pct"),
+]
+
+
+def build_advanced(conn: sqlite3.Connection) -> dict | None:
+    """
+    {"metrics": [...], "first_season", "teams": {team_id: {season: [[value, rank, n], ...]}}}
+    Ranks are competition ranks among teams with a REPORTED value that season,
+    pointed the right way per metric (lower EPA allowed = #1; higher havoc = #1).
+    A NULL value stays null with no rank -- the page shows N/A, never 0.
+    """
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='team_season_advanced'").fetchone():
+        return None
+    cols = [m[0] for m in ADVANCED_DISPLAY]
+    rows = conn.execute(f"SELECT team_id, season_year, {', '.join(cols)} FROM team_season_advanced").fetchall()
+    if not rows:
+        return None
+    ranks: dict = {}
+    for i, (_, _, _, higher, _) in enumerate(ADVANCED_DISPLAY):
+        for season in {r[1] for r in rows}:
+            vals = {r[0]: r[2 + i] for r in rows if r[1] == season and r[2 + i] is not None}
+            ordered = rank_desc(vals if higher else {t: -v for t, v in vals.items()})
+            for t, rk in ordered.items():
+                ranks[(i, t, season)] = (rk, len(vals))
+    teams: dict = defaultdict(dict)
+    for r in rows:
+        tid, season = r[0], r[1]
+        cells = []
+        for i in range(len(ADVANCED_DISPLAY)):
+            v = r[2 + i]
+            rk, n = ranks.get((i, tid, season), (None, None))
+            cells.append([None if v is None else round(v, 4), rk, n])
+        teams[str(tid)][str(season)] = cells
+    first = conn.execute("SELECT MIN(season_year) FROM team_season_advanced").fetchone()[0]
+    return {"metrics": [list(m[1:]) for m in ADVANCED_DISPLAY], "first_season": min(first, 2001),
+            "teams": dict(teams)}
+
+
 def load_completed_games(conn: sqlite3.Connection) -> list[tuple]:
     # Same ordering build_elo.py uses, so the chart can never disagree with the engine.
     return conn.execute(
@@ -256,6 +306,7 @@ def build_team_pages(conn: sqlite3.Connection, champions: list[dict] | None = No
     return {
         "cfp_first_season": CFP_FIRST_SEASON,
         "titles_since": min((c["season"] for c in champions), default=None) if champions else None,
+        "advanced": build_advanced(conn),
         "games": [[g[0], g[1], g[2], g[3], g[4], g[5], g[6], g[7], g[8],
                    PHASE_CODE.get(g[9], 0), g[10]] for g in games],
         "elo": [[r[0], r[1], round(r[2], 1), round(r[3], 1), round(r[4], 3), round(r[5], 1), round(r[6], 1)]

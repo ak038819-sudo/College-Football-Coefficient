@@ -290,6 +290,16 @@
   .title-list .yr { color: var(--amber); }
   .title-list .sys { color: var(--ink-dim); text-align: right; }
   .title-list li.vacated .yr { color: var(--ink-dim); text-decoration: line-through; }
+  /* ---- CFBD advanced stats (Milestone 7) ---- */
+  .adv-title { font-family: var(--font-display); font-size: 15px; margin: 16px 0 2px; }
+  .adv-sub { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-dim); margin-bottom: 8px; }
+  .adv-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 520px) { .adv-cols { grid-template-columns: 1fr; } }
+  .adv-side h4 { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--ink-dim); margin: 0 0 4px; }
+  .adv-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: baseline; padding: 4px 0; border-bottom: 1px dotted var(--panel-2); font-size: 13px; }
+  .adv-row .val { font-family: var(--font-mono); color: var(--amber); text-align: right; }
+  .adv-row .val.na { color: var(--ink-dim); }
+  .adv-row .rk { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); text-align: right; min-width: 64px; }
 
   /* ---- Upcoming schedule (Milestone 3) ---- */
   .up-note { font-size: 12px; color: var(--ink-dim); margin: 0 0 6px; line-height: 1.45; }
@@ -1173,7 +1183,8 @@ function indexTeamPages(raw) {
     if (o.coe2 != null) coe2PerSeason.set(o.season, (coe2PerSeason.get(o.season) || 0) + 1);
   });
   return { gamesById, eloByTeam, seasonsByTeam, teamsPerSeason, coe2PerSeason,
-    swings: raw.swings, history: raw.history, cfpFirst: raw.cfp_first_season, titlesSince: raw.titles_since };
+    swings: raw.swings, history: raw.history, cfpFirst: raw.cfp_first_season, titlesSince: raw.titles_since,
+    advanced: raw.advanced || null };
 }
 
 function loadTeamPages() {
@@ -1381,6 +1392,36 @@ function eloTipHtml(tp, team, p) {
     '<div>Pregame win prob ' + Math.round(r.exp * 100) + '% &middot; opp. ' + r.oppPre.toFixed(0) + '</div>';
 }
 
+// ---- CFBD advanced stats (Milestone 7): display only; ranks computed in Python ----
+function fmtAdvanced(v, kind) {
+  if (v == null) return null;
+  if (kind === 'pct') return (v * 100).toFixed(1) + '%';
+  if (kind === 'epa') return (v > 0 ? '+' : v < 0 ? '\u2212' : '') + Math.abs(v).toFixed(3);
+  return v.toFixed(2);
+}
+function advancedBlock(tp, team, season) {
+  const A = tp.advanced;
+  let body;
+  const cells = A && (A.teams[String(team.id)] || {})[String(season)];
+  if (!A) {
+    body = '<div class="empty-note">Advanced stats haven\'t been loaded.</div>';
+  } else if (!cells) {
+    body = '<div class="empty-note">Not available for ' + season +
+      (season < A.first_season ? ' (CFBD\'s play-by-play stats begin in ' + A.first_season + ')' : '') + '.</div>';
+  } else {
+    const side = which => '<div class="adv-side"><h4>' + (which === 'offense' ? 'Offense' : 'Defense') + '</h4>' +
+      A.metrics.map((m, i) => [m, cells[i]]).filter(([m]) => m[0] === which).map(([m, c]) => {
+        const shown = fmtAdvanced(c[0], m[3]);
+        return '<div class="adv-row"><span>' + m[1] + '</span>' +
+          '<span class="val' + (shown == null ? ' na' : '') + '">' + (shown == null ? 'N/A' : shown) + '</span>' +
+          '<span class="rk">' + (c[1] != null ? '#' + c[1] + ' of ' + c[2] : '') + '</span></div>';
+      }).join('') + '</div>';
+    body = '<div class="adv-cols">' + side('offense') + side('defense') + '</div>';
+  }
+  return '<h3 class="adv-title">Play-by-play efficiency</h3>' +
+    '<div class="adv-sub">CollegeFootballData.com &middot; garbage time excluded &middot; ranks among FBS teams (#1 = best)</div>' + body;
+}
+
 // ---- Advanced analytics (all values computed in export_team_pages.py) ----
 function fillAnalyticsPanel(tp, team) {
   const el = document.getElementById('tp-analytics');
@@ -1409,7 +1450,13 @@ function fillAnalyticsPanel(tp, team) {
       teamStat('Game CoE 2.0 (season)', s.coe2 != null ? s.coe2.toFixed(2) : 'N/A',
         s.coe2 != null ? '#' + s.coe2Rank + ' of ' + tp.coe2PerSeason.get(s.season) + ' &middot; experimental' : 'not computed for this season') +
     '</div>' +
+    advancedBlock(tp, team, s.season) +
     '<details class="help"><summary>How these are calculated</summary><ul>' +
+      '<li><b>Play-by-play efficiency</b> comes from CollegeFootballData.com and is display-only: it never feeds Elo, CoE or the playoff model. ' +
+        '<b>EPA/play</b>: average expected points added per play. <b>Success rate</b>: share of plays that gain enough yardage for the down and distance. ' +
+        '<b>Explosiveness</b>: average EPA on successful plays. <b>Points / scoring opp.</b>: points per drive that reaches the opponent\'s 40. ' +
+        '<b>Line yards</b>: rushing yardage credited to the offensive line. <b>Havoc</b>: share of plays with a tackle for loss, forced fumble, interception or pass breakup. ' +
+        'Defensive rows are what the defense allowed, so lower is better, except havoc. N/A means CFBD didn\'t report it (never zero); coverage begins in 2001.</li>' +
       '<li><b>Strength of schedule</b>: average of opponents\' <i>pregame</i> Elo (their rating entering each game). Higher = tougher.</li>' +
       '<li><b>Expected wins</b>: sum of the team\'s pregame Elo win probabilities, home field included exactly as the Elo model applies it. Never uses ratings from after a game.</li>' +
       '<li><b>Wins vs. expectation</b>: actual wins minus expected wins. A positive number can mean real improvement the ratings hadn\'t caught up to yet, close-game results, or luck; it doesn\'t by itself say which.</li>' +

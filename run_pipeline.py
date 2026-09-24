@@ -122,6 +122,11 @@ def main() -> None:
             run([python, "src/load_rankings.py", str(rank_path), "--db", str(DB_PATH)],
                 f"Load AP/CFP rankings: {rank_path.stem.replace('rankings_', '')}")
 
+        # CFBD advanced season stats (Milestone 7): display data only, read by no model.
+        for adv_path in sorted(Path("data/raw").glob("advanced_*.csv")):
+            run([python, "src/load_advanced.py", str(adv_path), "--db", str(DB_PATH)],
+                f"Load advanced stats: {adv_path.stem.replace('advanced_', '')}")
+
         run(
             [python, "src/patch_known_membership_gaps.py", "--db", str(DB_PATH)],
             "Patch known conference-membership gaps",
