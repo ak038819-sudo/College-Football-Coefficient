@@ -1,35 +1,42 @@
 name: Test, Rebuild Dashboard, and Deploy
 
-# Runs the test suite on every push and PR (as a gate). On a push to
-# main specifically, ALSO rebuilds the dashboard from whatever source
-# data is currently committed (data/raw/*.csv, sql/*, ui/team_logos/*,
-# etc.) and commits the result back to main -- which GitHub Pages
-# (already configured to deploy from main's root) then picks up
-# automatically within a minute or two, with no separate deploy step
-# needed here.
+# One workflow, three ways in:
 #
-# This never re-fetches from the CFBD API itself -- that stays a manual
-# step you run locally (needs your API key as a secret, which isn't
-# set up here). The current season's conference membership specifically
-# only comes from that live fetch, so it's captured as a committed
-# data/raw/membership_<year>.csv snapshot (see
-# export_membership_snapshot.py) -- run that after fetching fresh
-# membership locally, commit the CSV, and both this workflow and any
-# fresh --force rebuild will pick it up automatically via
-# load_membership_snapshot.py.
+#   1. Push to main    -> run tests, rebuild the dashboard from the committed
+#                         data, commit the built files back to main.
+#   2. Schedule        -> (Milestone 8) ALSO fetch fresh games, schedule, AP/CFP
+#                         polls and advanced stats from CFBD first, run the full
+#                         test suite against that fresh data, then commit both
+#                         the new data and the rebuilt site.
+#   3. Manual run      -> same as the schedule: Actions tab -> this workflow ->
+#                         "Run workflow".
 #
-# This workflow only rebuilds from whatever's already committed, so
-# pushing freshly-fetched data is what triggers a real rebuild; pushing
-# an unrelated doc change just reruns a no-op (byte-identical output
-# means git has nothing to commit, so no extra push happens -- the
-# pipeline is fully deterministic given the same input data, so this
-# can't loop).
+# GitHub Pages is configured to deploy from main's root, so a commit to main is
+# what publishes the site. Fetched data has to be committed too: data/raw/*.csv
+# is the source of truth every rebuild starts from, so a refresh that published
+# new results without committing the data would be undone by the next push.
+# At most ONE commit per run, and only when something actually changed.
+#
+# The CFBD key lives only in the repository secret CFBD_API_KEY and is handed to
+# the single fetch step; GitHub masks secret values in logs, and no script
+# prints it. If the fetch fails, a test fails, or the secret is missing, the run
+# stops before committing and the live site stays on its last good version.
+#
+# Optional repository VARIABLE (not secret) FETCH_ADVANCED_STATS=0 skips the
+# advanced-stats request. Setup notes: docs/automated-refresh.md
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    # Times are UTC. Edit these two lines to change the refresh schedule.
+    #   Sunday 20:00 UTC (3 PM Central): after Saturday's games AND the AP poll's Sunday release.
+    #   Wednesday 12:00 UTC (7 AM Central): picks up Tuesday-night CFP rankings and midweek games.
+    - cron: "0 20 * * 0"
+    - cron: "0 12 * * 3"
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -84,8 +91,15 @@ jobs:
 
   rebuild-and-deploy:
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Never let two runs (e.g. a push and a scheduled refresh) build and push at once.
+    concurrency:
+      group: rebuild-and-deploy-main
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 
@@ -97,6 +111,20 @@ jobs:
       # imports a third-party package fails here even though tests pass.
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+
+      - name: Fetch fresh data from CFBD (scheduled and manual runs only)
+        if: github.event_name != 'push'
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          CFBD_FETCH_ADVANCED: ${{ vars.FETCH_ADVANCED_STATS || '1' }}
+        run: |
+          if [ -z "$CFBD_API_KEY" ]; then
+            echo "::error::Repository secret CFBD_API_KEY is not set (Settings > Secrets and variables > Actions). Nothing was changed."
+            exit 1
+          fi
+          SEASON=$(python3 src/current_season.py)
+          echo "Refreshing season $SEASON"
+          python3 src/fetch_cfbd_games.py "$SEASON"
 
       - name: Run full pipeline (bootstrap, load, ratings, standings)
         run: python3 run_pipeline.py --force
@@ -110,10 +138,28 @@ jobs:
       - name: Rebuild the dashboard
         run: python3 build_dashboard.py --draw-seed 1
 
+      # Pushes were already tested by the `test` job against the committed data.
+      # Scheduled/manual runs just fetched NEW data, so test that before publishing.
+      - name: Test the freshly fetched data before publishing (scheduled and manual runs only)
+        if: github.event_name != 'push'
+        run: pytest -q
+
       - name: Commit and push if anything actually changed
+        env:
+          EVENT: ${{ github.event_name }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add ui/dashboard.html ui/dashboard_data.json ui/data/ data/processed/
-          git diff --staged --quiet || git commit -m "Auto-rebuild dashboard [skip ci]"
-          git push
+          git add data/raw/ ui/dashboard.html ui/dashboard_data.json ui/data/ data/processed/
+          if git diff --staged --quiet; then
+            echo "Nothing changed; no commit."
+            exit 0
+          fi
+          if [ "$EVENT" = "push" ]; then
+            git commit -m "Auto-rebuild dashboard [skip ci]"
+          else
+            git commit -m "Scheduled data refresh: season $(python3 src/current_season.py) [skip ci]"
+          fi
+          # If you pushed while this ran, replay this commit on top of yours rather than failing.
+          git pull --rebase origin main
+          git push origin HEAD:main

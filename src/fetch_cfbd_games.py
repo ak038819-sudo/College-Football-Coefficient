@@ -486,8 +486,13 @@ def main(year: int) -> int:
 
     # Advanced season stats for the same season (Milestone 7): display-only;
     # failures only warn. Imported here to keep the two scripts independent.
-    import fetch_cfbd_advanced
-    fetch_cfbd_advanced.write_advanced(year, headers, OUT_DIR)
+    # Set CFBD_FETCH_ADVANCED=0 to skip (the scheduled refresh reads this from
+    # the repository variable FETCH_ADVANCED_STATS).
+    if os.getenv("CFBD_FETCH_ADVANCED", "1").strip() != "0":
+        import fetch_cfbd_advanced
+        fetch_cfbd_advanced.write_advanced(year, headers, OUT_DIR)
+    else:
+        print("Advanced stats fetch skipped (CFBD_FETCH_ADVANCED=0).")
     if cfp_top4:
         pretty = ", ".join(sorted(cfp_top4))
         print(f"CFP Top-4 (normalized) used for fallback: {pretty}")
