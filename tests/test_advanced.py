@@ -33,12 +33,21 @@ def test_flattening_keeps_zero_and_blanks_unreported():
 
 
 def test_pre_2001_seasons_never_call_the_api():
-    original = fa.requests.get
-    fa.requests.get = lambda *a, **k: (_ for _ in ()).throw(AssertionError("API called for a pre-2001 season"))
+    import requests
+    original = requests.get
+    requests.get = lambda *a, **k: (_ for _ in ()).throw(AssertionError("API called for a pre-2001 season"))
     try:
         assert fa.fetch_advanced(2000, {}) is None
     finally:
-        fa.requests.get = original
+        requests.get = original
+
+
+def test_loading_advanced_stats_never_needs_the_http_library():
+    """Regression: CI's rebuild step has no `requests`; load_advanced must still import."""
+    import subprocess, sys
+    code = ("import sys; sys.modules['requests'] = None; sys.path.insert(0, 'src'); import load_advanced")
+    result = subprocess.run([sys.executable, "-c", code], cwd=str(REPO), capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
 
 
 def _league(tmp_path):

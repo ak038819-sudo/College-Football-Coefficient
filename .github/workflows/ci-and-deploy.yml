@@ -93,6 +93,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      # Same packages as the test job. Without this, any pipeline step that
+      # imports a third-party package fails here even though tests pass.
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
       - name: Run full pipeline (bootstrap, load, ratings, standings)
         run: python3 run_pipeline.py --force
 
