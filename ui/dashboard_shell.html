@@ -324,6 +324,14 @@
   .side-link { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); text-decoration: none; }
   .side-link:hover, .side-link:focus-visible { color: var(--amber); }
   .side-note { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-dim); margin: 8px 0 0; line-height: 1.45; }
+  /* ---- AP / CFP poll card (Milestone 5) ---- */
+  .poll-toggle { display: inline-flex; border: 1px solid var(--amber); border-radius: 3px; overflow: hidden; }
+  .poll-toggle button { font-family: var(--font-mono); font-size: 11px; padding: 3px 10px; background: transparent;
+    color: var(--ink-dim); border: 0; cursor: pointer; }
+  .poll-toggle button.on { background: var(--amber); color: var(--bg); }
+  .poll-toggle button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .mini-board .fpv { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-dim); }
+  .mini-board .elo-rk { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); }
 
   .field-conf-group {
     margin-bottom: 16px;
@@ -705,7 +713,7 @@ function teamLink(name, size, yearOverride, namePrefix) {
 
 const TAB_NAMES = new Set([...document.querySelectorAll('#tabs button')].map(b => b.dataset.tab));
 
-let state = { tab: 'home', year: DATA.years_all[DATA.years_all.length - 1], simResult: null, simYear: null, view: 'tab', teamParam: null, homeGroup: null, homeTop25: false };
+let state = { tab: 'home', year: DATA.years_all[DATA.years_all.length - 1], simResult: null, simYear: null, view: 'tab', teamParam: null, homeGroup: null, homeTop25: false, homePoll: null };
 
 function fmt(n) { return Number(n).toFixed(3); }
 
@@ -1647,8 +1655,42 @@ function renderConferenceBoard() {
     '<p class="side-note">5-year rolling CoE' + (b.season ? ', ' + b.season : '') + ': the order that sets playoff bids.</p></div>';
 }
 
+// ---- AP / CFP Top 25 (Milestone 5) ----
+// DATA.polls holds the latest release of each poll this season (display data
+// only; no model reads polls). A poll not yet released is null, never empty.
+function pollLabel(key, rel) {
+  return (key === 'cfp' ? 'CFP Rankings' : 'AP Top 25') + ' \u00b7 ' +
+    (rel.season_type === 'postseason' ? 'Final' : 'Week ' + rel.week);
+}
+
 function renderPollsPanel() {
-  return '<div class="panel"><h2 class="section-title">AP / CFP Top 25</h2><div class="empty-note">Coming soon.</div></div>';
+  const P = DATA.polls || {};
+  const avail = ['cfp', 'ap'].filter(k => P[k] && P[k].rows && P[k].rows.length);
+  if (!avail.length) {
+    return '<div class="panel"><h2 class="section-title">AP / CFP Top 25</h2>' +
+      '<div class="empty-note">No AP or CFP poll released yet' + (P.season ? ' for ' + P.season : '') + '.</div></div>';
+  }
+  if (!avail.includes(state.homePoll)) state.homePoll = avail[0];   // CFP leads once it exists
+  const rel = P[state.homePoll];
+  const control = avail.length > 1
+    ? '<div class="poll-toggle" role="group" aria-label="Poll">' + avail.map(k =>
+        '<button type="button" data-poll="' + k + '" aria-pressed="' + (k === state.homePoll) + '"' +
+        (k === state.homePoll ? ' class="on"' : '') + '>' + (k === 'cfp' ? 'CFP' : 'AP') + '</button>').join('') + '</div>'
+    : '';
+  const title = avail.length > 1 ? 'AP / CFP Top 25' : (avail[0] === 'cfp' ? 'CFP Rankings' : 'AP Top 25');
+  const body = '<ol class="mini-board">' + rel.rows.map(([rank, tid, school, fpv]) => {
+    const t = tid != null ? TEAM_BY_ID.get(String(tid)) : null;
+    const name = t ? teamAnchor(t.name, logoMarkup(t.name, 'team', 'xs') + '<span class="team-link-name">' + t.name + '</span>')
+                   : '<span>' + esc(school) + '</span>';
+    const elo = t ? CURRENT_ELO.get(t.id) : null;
+    return '<li><span class="rk">' + rank + '</span><span class="nm">' + name +
+      (fpv ? '<span class="fpv">(' + fpv + ')</span>' : '') + '</span>' +
+      '<span class="elo-rk">' + (elo ? 'Elo #' + elo.rank : '') + '</span></li>';
+  }).join('') + '</ol>';
+  return '<div class="panel">' + panelHead(title, control) + body +
+    '<p class="side-note">' + pollLabel(state.homePoll, rel) +
+    (state.homePoll === 'ap' ? ' \u00b7 (n) = first-place votes' : '') +
+    '. Elo # = this model\'s current rank, for comparison.</p></div>';
 }
 
 function renderHome() {
@@ -1682,6 +1724,16 @@ function applyRoute() {
   }
 }
 window.addEventListener('hashchange', applyRoute);
+
+// AP / CFP toggle on Home.
+document.getElementById('content').addEventListener('click', e => {
+  const b = e.target.closest('[data-poll]');
+  if (!b || state.view !== 'tab' || state.tab !== 'home') return;
+  state.homePoll = b.dataset.poll;
+  render();
+  const again = document.querySelector('[data-poll="' + state.homePoll + '"]');
+  if (again) again.focus();   // keep keyboard focus on the toggle after re-render
+});
 
 // Home controls (week picker, Top 25 filter) re-render only the Home view.
 document.getElementById('content').addEventListener('change', e => {

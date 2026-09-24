@@ -117,6 +117,11 @@ def main() -> None:
             run([python, "src/load_schedule.py", str(sched_path), "--db", str(DB_PATH)],
                 f"Load schedule: {sched_path.stem.replace('schedule_', '')}")
 
+        # AP / CFP polls (Milestone 5): display data only, read by no model.
+        for rank_path in sorted(Path("data/raw").glob("rankings_*.csv")):
+            run([python, "src/load_rankings.py", str(rank_path), "--db", str(DB_PATH)],
+                f"Load AP/CFP rankings: {rank_path.stem.replace('rankings_', '')}")
+
         run(
             [python, "src/patch_known_membership_gaps.py", "--db", str(DB_PATH)],
             "Patch known conference-membership gaps",

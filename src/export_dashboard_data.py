@@ -182,6 +182,37 @@ def build_conference_board(db_path: str, membership_years: list[int]) -> dict:
     return {"season": None, "rows": []}
 
 
+def build_polls(db_path: str, season) -> dict:
+    """
+    {"season": S, "ap": release|None, "cfp": release|None}, where release =
+    {"season_type", "week", "rows": [[rank, team_id|None, school, first_place_votes|None, points|None]]}
+    -- the latest release of each poll in `season` (postseason finals count as
+    later than any regular-season week). A poll with no release this season is
+    None, never an empty list, so the page can say "not released yet" honestly.
+    """
+    out = {"season": season, "ap": None, "cfp": None}
+    if season is None:
+        return out
+    conn = sqlite3.connect(db_path)
+    try:
+        if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='poll_rankings'").fetchone():
+            return out
+        for poll in ("ap", "cfp"):
+            latest = conn.execute(
+                """SELECT season_type, week FROM poll_rankings WHERE season_year = ? AND poll = ?
+                   ORDER BY (season_type = 'postseason') DESC, week DESC LIMIT 1""", (season, poll)).fetchone()
+            if not latest:
+                continue
+            rows = conn.execute(
+                """SELECT rank, team_id, school, first_place_votes, points FROM poll_rankings
+                   WHERE season_year = ? AND poll = ? AND season_type = ? AND week = ?
+                   ORDER BY rank, school""", (season, poll, latest[0], latest[1])).fetchall()
+            out[poll] = {"season_type": latest[0], "week": latest[1], "rows": [list(r) for r in rows]}
+    finally:
+        conn.close()
+    return out
+
+
 def _build_upcoming(db_path: str) -> dict:
     from predict_upcoming import build_upcoming, elo_config
     conn = sqlite3.connect(db_path)
@@ -389,6 +420,9 @@ def main() -> None:
     out["playoff_appearances"] = sorted(
         appearances.values(), key=lambda r: (-r["appearances"], -r["byes"], r["team"])
     )
+
+    # Milestone 5: latest AP / CFP releases for the current season (display only).
+    out["polls"] = build_polls(args.db, out["upcoming"]["season"])
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)

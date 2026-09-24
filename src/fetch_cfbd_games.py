@@ -174,6 +174,64 @@ def fetch_final_cfp_top4(year: int, headers: Dict[str, str]) -> Optional[Set[str
 
     return None
 
+RANKINGS_FIELDS = ["season_year", "season_type", "week", "poll", "rank", "school", "conference",
+                   "first_place_votes", "points"]
+
+
+def poll_key(poll_name: str) -> Optional[str]:
+    """Normalize CFBD poll names to 'ap' / 'cfp'; every other poll (Coaches, FCS, ...) -> None."""
+    n = (poll_name or "").strip().lower()
+    if n == "ap top 25":
+        return "ap"
+    if ("playoff" in n and "committee" in n) or n in ("cfp", "college football playoff"):
+        return "cfp"
+    return None
+
+
+def _blank_if_none(v):
+    return "" if v is None else v
+
+
+def rankings_rows(payload, year: int) -> List[dict]:
+    """Flatten a CFBD /rankings payload into AP + CFP rows (Milestone 5). Display data only."""
+    rows = []
+    for wobj in (payload if isinstance(payload, list) else [payload] if payload else []):
+        season_type = (pick(wobj, "seasonType", "season_type", default="regular") or "regular").strip().lower()
+        week = pick(wobj, "week")
+        for poll in pick(wobj, "polls", default=[]) or []:
+            key = poll_key(pick(poll, "poll", default=""))
+            if key is None or week is None:
+                continue
+            for r in pick(poll, "ranks", default=[]) or []:
+                school = pick(r, "school", "team", "name")
+                if pick(r, "rank") is None or not school:
+                    continue
+                rows.append({
+                    "season_year": year, "season_type": season_type, "week": int(week), "poll": key,
+                    "rank": int(pick(r, "rank")), "school": school,
+                    "conference": pick(r, "conference", default="") or "",
+                    # None -> blank (not reported, e.g. the CFP poll); a real 0 stays 0.
+                    "first_place_votes": _blank_if_none(pick(r, "firstPlaceVotes", "first_place_votes")),
+                    "points": _blank_if_none(pick(r, "points")),
+                })
+    return rows
+
+
+def fetch_rankings(year: int, headers: Dict[str, str]) -> Optional[List[dict]]:
+    """Every AP + CFP release for the season (regular + postseason). None if the request failed."""
+    rows = []
+    try:
+        for season_type in ("regular", "postseason"):
+            r = requests.get(f"{BASE}/rankings", params={"year": year, "seasonType": season_type},
+                             headers=headers, timeout=60)
+            r.raise_for_status()
+            rows.extend(rankings_rows(r.json(), year))
+    except Exception as e:   # rankings are display-only; never let them break the games fetch
+        print(f"WARNING: could not fetch {year} rankings ({e}); keeping any existing rankings file.")
+        return None
+    return rows
+
+
 def compute_went_ot(g: dict) -> int:
     """
     CFBD's /games endpoint has NO top-level overtime boolean field at
@@ -413,6 +471,18 @@ def main(year: int) -> int:
         sw.writeheader()
         sw.writerows(scheduled)
     print(f"Wrote {sched_path} ({len(scheduled)} not-yet-final FBS games)")
+
+    # Full AP + CFP polls (Milestone 5). Only written when the request succeeded,
+    # so a network hiccup can't replace good data with an empty file.
+    ranking_rows = fetch_rankings(year, headers)
+    if ranking_rows is not None:
+        rank_path = OUT_DIR / f"rankings_{year}.csv"
+        with rank_path.open("w", newline="", encoding="utf-8") as f:
+            rw = csv.DictWriter(f, fieldnames=RANKINGS_FIELDS)
+            rw.writeheader()
+            rw.writerows(ranking_rows)
+        releases = {(r["poll"], r["season_type"], r["week"]) for r in ranking_rows}
+        print(f"Wrote {rank_path} ({len(ranking_rows)} rows across {len(releases)} AP/CFP releases)")
     if cfp_top4:
         pretty = ", ".join(sorted(cfp_top4))
         print(f"CFP Top-4 (normalized) used for fallback: {pretty}")
