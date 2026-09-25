@@ -1,26 +1,17 @@
 #!/usr/bin/env python3
 """
-Builds ui/dashboard.html -- a single self-contained, publishable HTML
-file with all ratings/standings/playoff/bracket data embedded inline.
+Build ui/dashboard.html from ui/dashboard_shell.html and the static exports.
+Ratings and manifest data are embedded; navigation, logos, team histories and
+season game files remain separate assets served beside the page.
 
-Runs src/export_dashboard_data.py to regenerate ui/dashboard_data.json,
-then injects it into ui/dashboard_shell.html (the page template) in
-place of the __DATA_JSON__ placeholder.
-
-ui/dated_logo_assets.json (team logos) and
-ui/dated_conference_logo_assets.json (conference logos) are read as-is,
-NOT regenerated here -- both are built from raw historical-PNG source
-folders too large to commit to the repo (build them once with
-src/build_dated_logo_assets.py --kind teams|conferences whenever that
-source set changes; the resulting encoded JSON files ARE committed and
-just get read here). If either is missing, falls back to an empty
-object so the dashboard still builds -- every logo just falls back
-further, to the monogram badge (the old static single-logo system for
-both teams and conferences has been fully retired; there's no other
-fallback tier anymore).
+Normal build: regenerate exports from an existing league database, export logo
+files from the committed dated-logo sources, and render the dashboard.
+UI preview: use --reuse-exports to render only, without recomputing model data.
+Run from the repository root.
 
 Usage:
     python build_dashboard.py --draw-seed 1
+    python build_dashboard.py --reuse-exports
 """
 from __future__ import annotations
 
@@ -36,14 +27,25 @@ OUT_PATH = Path("ui/dashboard.html")
 TEAM_PAGES_PATH = Path("ui/data/team_pages.js")
 LOGO_MANIFEST_PATH = Path("ui/logo_manifest.json")
 STATIC_MANIFEST_PATH = Path("ui/data/static_manifest.json")
+NAVIGATION_PATH = Path("ui/navigation.js")
 
 
-def _read_or_empty(path: Path) -> str:
-    if path.exists():
-        return path.read_text(encoding="utf-8")
-    print(f"NOTE: {path} not found -- its logos will be empty for this build "
-          f"(run src/build_dated_logo_assets.py once against the matching raw source folder)")
-    return "{}"
+def render_from_exports() -> None:
+    """Render the template from existing exports, without touching model data."""
+    required = [SHELL_PATH, DATA_PATH, TEAM_PAGES_PATH, LOGO_MANIFEST_PATH,
+                STATIC_MANIFEST_PATH, NAVIGATION_PATH]
+    missing = [str(path) for path in required if not path.exists()]
+    if missing:
+        raise SystemExit("Missing dashboard inputs: " + ", ".join(missing) +
+                         ". Run the normal build to generate exports first.")
+    final = (SHELL_PATH.read_text(encoding="utf-8")
+             .replace("__DATA_JSON__", DATA_PATH.read_text(encoding="utf-8"))
+             .replace("__LOGO_MANIFEST_JSON__", LOGO_MANIFEST_PATH.read_text(encoding="utf-8"))
+             .replace("__STATIC_MANIFEST_JSON__", STATIC_MANIFEST_PATH.read_text(encoding="utf-8"))
+             .replace("__TEAM_PAGES_VERSION__", hashlib.sha256(TEAM_PAGES_PATH.read_bytes()).hexdigest()[:12])
+             .replace("__NAVIGATION_VERSION__", hashlib.sha256(NAVIGATION_PATH.read_bytes()).hexdigest()[:12]))
+    OUT_PATH.write_text(final, encoding="utf-8")
+    print(f"\nBuilt {OUT_PATH} ({OUT_PATH.stat().st_size:,} bytes)")
 
 
 def main() -> None:
@@ -52,7 +54,13 @@ def main() -> None:
     p.add_argument("--draw-seed", type=int, default=1)
     p.add_argument("--sims", type=int, default=10000)
     p.add_argument("--temperature", type=float, default=6.0)
+    p.add_argument("--reuse-exports", action="store_true",
+                   help="Preview UI changes using existing exports; do not rebuild the database or data.")
     args = p.parse_args()
+
+    if args.reuse_exports:
+        render_from_exports()
+        return
 
     subprocess.run(
         [sys.executable, "src/export_dashboard_data.py", "--db", args.db,
@@ -72,23 +80,8 @@ def main() -> None:
     subprocess.run([sys.executable, "src/export_logo_files.py"], check=True)
     # Per-season game files + search index, loaded on demand (data foundation step).
     subprocess.run([sys.executable, "src/export_static_data.py", "--db", args.db], check=True)
-    team_pages_version = hashlib.sha256(TEAM_PAGES_PATH.read_bytes()).hexdigest()[:12]
-
-    # Explicit UTF-8: on Windows the default would be the legacy cp1252 codepage.
-    shell = SHELL_PATH.read_text(encoding="utf-8")
-    data = DATA_PATH.read_text(encoding="utf-8")
-    logo_manifest = _read_or_empty(LOGO_MANIFEST_PATH)
-    static_manifest = _read_or_empty(STATIC_MANIFEST_PATH)
-
-    final = (shell
-             .replace("__DATA_JSON__", data)
-             .replace("__LOGO_MANIFEST_JSON__", logo_manifest)
-             .replace("__STATIC_MANIFEST_JSON__", static_manifest)
-             .replace("__TEAM_PAGES_VERSION__", team_pages_version))
-    OUT_PATH.write_text(final, encoding="utf-8")
-
-    print(f"\nBuilt {OUT_PATH} ({OUT_PATH.stat().st_size:,} bytes)")
-    print("Open it directly in a browser, or publish it wherever you host static pages.")
+    render_from_exports()
+    print("Open ui/dashboard.html, or publish it together with its neighboring static assets.")
 
 
 if __name__ == "__main__":
