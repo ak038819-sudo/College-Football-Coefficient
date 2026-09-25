@@ -39,15 +39,19 @@
     const season = (config.gameSeasons || []).find(s => s.season === year);
     const status = ['upcoming', 'completed'].includes(p.get('status')) ? p.get('status')
       : season && season.scheduled > 0 ? 'upcoming' : 'completed';
+    // Games may point at one game (search results; game pages build on this later). Digits only.
+    const gameParam = p.get('game');
+    const game = section === 'games' && /^\d{1,12}$/.test(gameParam || '') ? Number(gameParam) : null;
     const route = { section, subview, year, status,
       query: section === 'teams' ? (p.get('q') || '').trim().slice(0, 150) : '',
-      view: 'tab', teamParam: null, returnTo: '' };
+      game, view: 'tab', teamParam: null, returnTo: '' };
     // Existing team URLs remain valid. A team page belongs to the Teams section.
     if (p.has('team')) {
       route.view = 'team';
       route.section = 'teams';
       route.subview = '';
       route.query = '';
+      route.game = null;
       route.year = latest(config.yearsAll || []);
       route.teamParam = p.get('team');
       // Only accept a section URL as the return target; never an external URL.
@@ -72,6 +76,7 @@
       if (route.year != null && (route.section === 'games' || route.section === 'rankings' ||
           (route.section === 'playoff' && route.subview !== 'history'))) p.set('season', route.year);
       if (route.section === 'games') p.set('status', route.status);
+      if (route.section === 'games' && route.game != null) p.set('game', route.game);
       if (route.section === 'teams' && route.query) p.set('q', route.query);
     }
     return '#' + p.toString();

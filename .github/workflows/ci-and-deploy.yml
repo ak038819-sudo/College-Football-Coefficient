@@ -93,8 +93,8 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Test dashboard navigation
-        run: node --test tests/navigation.test.cjs
+      - name: Test dashboard navigation and search
+        run: node --test tests/navigation.test.cjs tests/search.test.cjs
 
   rebuild-and-deploy:
     needs: test

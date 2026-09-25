@@ -118,6 +118,20 @@
   nav.tabs a:hover:not(.active) { border-color: var(--amber-dim); color: var(--ink); }
   a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
   .skip-link { position: absolute; left: -10000px; }
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* ---- Global search (Milestone A2) ---- */
+  .global-search { position: relative; flex: 1 1 280px; max-width: 440px; align-self: center; }
+  .global-search input { width: 100%; box-sizing: border-box; padding: 11px 12px; background: var(--panel-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 3px; font: inherit; }
+  .search-results { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20; max-height: 70vh; overflow-y: auto;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); padding: 6px 0; }
+  .search-group h3 { font: 10.5px var(--font-mono); letter-spacing: 0.5px; text-transform: uppercase; color: var(--ink-dim); margin: 8px 12px 4px; }
+  .search-hit { display: flex; align-items: center; gap: 8px; padding: 8px 12px; color: var(--ink); text-decoration: none; min-width: 0; }
+  .search-hit:hover, .search-hit:focus-visible { background: var(--panel-2); outline: none; box-shadow: inset 3px 0 0 var(--amber); }
+  .search-hit small { color: var(--ink-dim); margin-left: auto; font: 11px var(--font-mono); white-space: nowrap; }
+  .search-hit .hit-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .search-note { color: var(--ink-dim); font-size: 13px; padding: 8px 12px; margin: 0; }
+  .listing-game.is-target { border-color: var(--amber); box-shadow: inset 0 0 0 1px var(--amber); }
   .skip-link:focus { position: fixed; left: 12px; top: 12px; z-index: 10; background: var(--panel); padding: 12px; color: var(--ink); }
   .subnav { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
   .subnav:empty, .year-row:empty { display: none; }
@@ -612,6 +626,14 @@
       <h1>CoE <span>Playoff Model</span></h1>
       <p>An iterative, opponent-strength coefficient replacing the poll — conference standings decide who qualifies, CoE decides seeding and home field.</p>
     </div>
+    <div class="global-search" role="search">
+      <label class="visually-hidden" for="global-search">Search teams, games and seasons</label>
+      <input type="search" id="global-search" autocomplete="off" spellcheck="false" maxlength="150"
+             placeholder="Search teams, games, seasons  ( / )"
+             aria-controls="search-results" aria-expanded="false" aria-describedby="search-status">
+      <div id="search-results" class="search-results" hidden></div>
+      <p id="search-status" class="visually-hidden" aria-live="polite"></p>
+    </div>
     <div class="scope-note">
       <span id="coverage-caption"></span><br>
       <span id="year-caption">—</span>
@@ -651,7 +673,8 @@
 <script id="static-manifest" type="application/json">
 {"seasons":[{"season":1980,"completed":532,"scheduled":0,"src":"data/games/1980.js?v=6c38d64248"},{"season":1981,"completed":538,"scheduled":0,"src":"data/games/1981.js?v=f7b0d8ff55"},{"season":1982,"completed":503,"scheduled":0,"src":"data/games/1982.js?v=896b3fd058"},{"season":1983,"completed":510,"scheduled":0,"src":"data/games/1983.js?v=7841969f9c"},{"season":1984,"completed":525,"scheduled":0,"src":"data/games/1984.js?v=dbf45ad952"},{"season":1985,"completed":529,"scheduled":0,"src":"data/games/1985.js?v=b40b6b76be"},{"season":1986,"completed":531,"scheduled":0,"src":"data/games/1986.js?v=72332a25b5"},{"season":1987,"completed":531,"scheduled":0,"src":"data/games/1987.js?v=55b623d86f"},{"season":1988,"completed":528,"scheduled":0,"src":"data/games/1988.js?v=ff4863b8af"},{"season":1989,"completed":553,"scheduled":0,"src":"data/games/1989.js?v=d2ed350bcc"},{"season":1990,"completed":553,"scheduled":0,"src":"data/games/1990.js?v=edcc49d4dc"},{"season":1991,"completed":559,"scheduled":0,"src":"data/games/1991.js?v=4523ae21d3"},{"season":1992,"completed":571,"scheduled":0,"src":"data/games/1992.js?v=693a49d9f7"},{"season":1993,"completed":575,"scheduled":0,"src":"data/games/1993.js?v=d2b12e890c"},{"season":1994,"completed":584,"scheduled":0,"src":"data/games/1994.js?v=d6d97c8f3b"},{"season":1995,"completed":586,"scheduled":0,"src":"data/games/1995.js?v=36bc79172b"},{"season":1996,"completed":614,"scheduled":0,"src":"data/games/1996.js?v=cec47a86c1"},{"season":1997,"completed":628,"scheduled":0,"src":"data/games/1997.js?v=57cb7a0ad5"},{"season":1998,"completed":627,"scheduled":0,"src":"data/games/1998.js?v=a2b5de446a"},{"season":1999,"completed":633,"scheduled":0,"src":"data/games/1999.js?v=e4a1c4f6f4"},{"season":2000,"completed":646,"scheduled":0,"src":"data/games/2000.js?v=e61b59c792"},{"season":2001,"completed":652,"scheduled":0,"src":"data/games/2001.js?v=d79e5f1932"},{"season":2002,"completed":707,"scheduled":0,"src":"data/games/2002.js?v=440bffdf97"},{"season":2003,"completed":699,"scheduled":0,"src":"data/games/2003.js?v=9706b572d1"},{"season":2004,"completed":657,"scheduled":0,"src":"data/games/2004.js?v=e46ef4837d"},{"season":2005,"completed":664,"scheduled":0,"src":"data/games/2005.js?v=3806b4a0b8"},{"season":2006,"completed":714,"scheduled":0,"src":"data/games/2006.js?v=7c1c54f01c"},{"season":2007,"completed":712,"scheduled":0,"src":"data/games/2007.js?v=30ece88234"},{"season":2008,"completed":717,"scheduled":0,"src":"data/games/2008.js?v=27b2ec9745"},{"season":2009,"completed":714,"scheduled":0,"src":"data/games/2009.js?v=876776574f"},{"season":2010,"completed":718,"scheduled":0,"src":"data/games/2010.js?v=5cc5970bf6"},{"season":2011,"completed":715,"scheduled":0,"src":"data/games/2011.js?v=65ceaa010d"},{"season":2012,"completed":732,"scheduled":0,"src":"data/games/2012.js?v=0272b101ad"},{"season":2013,"completed":737,"scheduled":0,"src":"data/games/2013.js?v=48fd6494a1"},{"season":2014,"completed":760,"scheduled":0,"src":"data/games/2014.js?v=710e768d7a"},{"season":2015,"completed":765,"scheduled":0,"src":"data/games/2015.js?v=feedf1d9eb"},{"season":2016,"completed":760,"scheduled":0,"src":"data/games/2016.js?v=23204b4866"},{"season":2017,"completed":776,"scheduled":0,"src":"data/games/2017.js?v=e3eeb6e364"},{"season":2018,"completed":772,"scheduled":0,"src":"data/games/2018.js?v=7de53cc1ea"},{"season":2019,"completed":774,"scheduled":0,"src":"data/games/2019.js?v=f559195e3e"},{"season":2020,"completed":534,"scheduled":0,"src":"data/games/2020.js?v=fb5400c6bd"},{"season":2021,"completed":770,"scheduled":0,"src":"data/games/2021.js?v=50c8c73d74"},{"season":2022,"completed":776,"scheduled":0,"src":"data/games/2022.js?v=988c535a34"},{"season":2023,"completed":792,"scheduled":0,"src":"data/games/2023.js?v=09298d896f"},{"season":2024,"completed":798,"scheduled":0,"src":"data/games/2024.js?v=39feb5c912"},{"season":2025,"completed":808,"scheduled":0,"src":"data/games/2025.js?v=4afa4de039"},{"season":2026,"completed":157,"scheduled":604,"src":"data/games/2026.js?v=5098a0b9af"}],"search_index":"data/search_index.js?v=11ec7473a1","game_fields":["game_id","week","date","kickoff_utc","completed","phase","neutral","ot","home_id","away_id","home_score","away_score","home_pre_elo","away_pre_elo","p_home","home_post_elo","away_post_elo","home_elo_change","home_game_coe","away_game_coe","home_provisional","away_provisional"]}
 </script>
-<script src="navigation.js?v=3c4a24042463"></script>
+<script src="navigation.js?v=b8556688d9bb"></script>
+<script src="search.js?v=91368091dfb0"></script>
 <script>
 const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
 // Logo manifest (data foundation step): the same {name: [{start, end, bg, ...}]}
@@ -831,7 +854,7 @@ const SUBVIEWS = {
   playoff: [['field', 'Field'], ['bracket', 'Bracket & Simulator'], ['odds', 'Title Odds'], ['history', 'History']]
 };
 
-function routeHref(changes) { return CfbNavigation.hashFor({ ...state, ...changes }); }
+function routeHref(changes) { return CfbNavigation.hashFor({ ...state, game: null, ...changes }); }
 function navigate(changes) {
   const target = routeHref(changes);
   if (location.hash === target) applyRoute();
@@ -1272,7 +1295,7 @@ function renderTeamPage(param) {
 // the first time a team page opens. It's a <script> (not fetch) so it also
 // works when dashboard.html is opened straight from disk. Every number shown
 // here was computed in Python; this code only indexes, filters and draws.
-const TEAM_PAGES_VERSION = '228507142541';
+const TEAM_PAGES_VERSION = '5b7c2cd648bf';
 let TP = null;
 let _teamPagesPromise = null;
 let teamPageState = { teamId: null, chartSeason: 'all', season: null };
@@ -1982,12 +2005,31 @@ function hydrateGames(version) {
     if (version !== renderVersion) return;
     const games = data.games.filter(g => Boolean(g.completed) === (status === 'completed'));
     const target = document.getElementById('games-results');
-    target.innerHTML = '<p class="section-note">' + season + ' · ' + games.length + ' ' + status +
+    if (state.game != null) {
+      const wanted = data.byId.get(state.game);
+      if (wanted && Boolean(wanted.completed) !== (status === 'completed')) {
+        // The search index doesn't know upcoming vs completed; the season file does.
+        history.replaceState(null, '', routeHref({ status: wanted.completed ? 'completed' : 'upcoming', game: state.game }));
+        applyRoute();
+        return;
+      }
+    }
+    target.innerHTML = (state.game != null && !data.byId.has(state.game)
+      ? '<p class="empty-note">That game isn\'t in the ' + season + ' list.</p>' : '') +
+      '<p class="section-note">' + season + ' · ' + games.length + ' ' + status +
       ' games · Earliest first.' + (status === 'upcoming' ? ' Predictions use the latest exported pregame ratings.' : '') + '</p>' +
       (games.length ? '<ul class="games-grid">' + games.map(g => listingGame(g, season)).join('') + '</ul>' :
         '<p class="empty-note">No ' + status + ' games available for this season. ' +
         '<a class="side-link" href="' + esc(routeHref({ status: status === 'upcoming' ? 'completed' : 'upcoming' })) + '">View ' +
         (status === 'upcoming' ? 'completed' : 'upcoming') + ' games</a>.</p>');
+    const hit = state.game != null && target.querySelector('[data-game-id="' + state.game + '"]');
+    if (hit) {
+      hit.classList.add('is-target');
+      hit.tabIndex = -1;
+      hit.setAttribute('aria-label', 'Searched game');
+      hit.scrollIntoView({ block: 'center' });
+      hit.focus({ preventScroll: true });
+    }
   }).catch(() => {
     if (version !== renderVersion) return;
     document.getElementById('games-results').innerHTML = '<p class="empty-note">Could not load this season. <button class="action-button" id="retry-games">Retry</button></p>';
@@ -2040,6 +2082,104 @@ function applyRoute() {
   hasRendered = true;
 }
 window.addEventListener('hashchange', applyRoute);
+
+// ---------------- Global search (Milestone A2) ----------------
+// Header search over teams (+aliases), games and seasons. The index loads on
+// first use (src/export_static_data.py -> data/search_index.js); matching lives
+// in search.js so it's testable without a browser. Results are ordinary links,
+// so every result is a shareable URL and Back works.
+const SEARCH = { input: document.getElementById('global-search'), panel: document.getElementById('search-results'),
+  status: document.getElementById('search-status'), searcher: null, timer: null, seq: 0 };
+
+function closeSearch() {
+  SEARCH.panel.hidden = true;
+  SEARCH.input.setAttribute('aria-expanded', 'false');
+}
+function openSearch(html, statusText) {
+  SEARCH.panel.innerHTML = html;
+  SEARCH.panel.hidden = false;
+  SEARCH.input.setAttribute('aria-expanded', 'true');
+  SEARCH.status.textContent = statusText || '';
+}
+function searchTeamName(id) { const t = TEAM_BY_ID.get(String(id)); return t ? t.name : 'Unknown team'; }
+
+function searchResultsHtml(r) {
+  const groups = [];
+  if (r.teams.length) {
+    groups.push('<div class="search-group" role="group" aria-label="Teams"><h3>Teams</h3>' + r.teams.map(t => {
+      const team = TEAM_BY_ID.get(String(t.id));
+      const conf = team && team.conference ? team.conference : '';
+      return '<a class="search-hit" href="' + esc(teamHref(t.name) || '#section=teams') + '">' +
+        logoMarkup(t.name, 'team', 'xs', team && team.conference_year || state.year) +
+        '<span class="hit-text">' + esc(t.name) + '</span>' + (conf ? '<small>' + esc(conf) + '</small>' : '') + '</a>';
+    }).join('') + (r.teamsTotal > r.teams.length ? '<p class="search-note">+' + (r.teamsTotal - r.teams.length) + ' more teams — keep typing to narrow.</p>' : '') + '</div>');
+  }
+  if (r.games.length) {
+    groups.push('<div class="search-group" role="group" aria-label="Games"><h3>Games</h3>' + r.games.map(g => {
+      const href = CfbNavigation.hashFor({ ...CfbNavigation.readRoute('#section=games&season=' + g.season, ROUTE_CONFIG), game: g.game_id });
+      return '<a class="search-hit" href="' + esc(href) + '"><span class="hit-text">' + esc(searchTeamName(g.away_id)) +
+        ' vs. ' + esc(searchTeamName(g.home_id)) + '</span><small>' + g.season + '</small></a>';
+    }).join('') + (r.gamesTotal > r.games.length ? '<p class="search-note">Showing the ' + r.games.length + ' most relevant of ' + r.gamesTotal + ' games.</p>' : '') + '</div>');
+  }
+  if (r.seasons.length) {
+    groups.push('<div class="search-group" role="group" aria-label="Seasons"><h3>Seasons</h3>' + r.seasons.map(y =>
+      '<a class="search-hit" href="' + esc(CfbNavigation.hashFor(CfbNavigation.readRoute('#section=games&season=' + y, ROUTE_CONFIG))) + '">' +
+      '<span class="hit-text">' + y + ' season</span><small>games</small></a>' +
+      '<a class="search-hit" href="' + esc(CfbNavigation.hashFor(CfbNavigation.readRoute('#section=rankings&view=elo&season=' + y, ROUTE_CONFIG))) + '">' +
+      '<span class="hit-text">' + y + ' rankings</span><small>Elo</small></a>').join('') + '</div>');
+  }
+  return groups.join('');
+}
+
+function runSearch() {
+  const query = SEARCH.input.value.trim();
+  const seq = ++SEARCH.seq;
+  if (!query) { closeSearch(); SEARCH.status.textContent = ''; return; }
+  if (!SEARCH.searcher) openSearch('<p class="search-note">Loading search…</p>', 'Loading search');
+  loadSearchIndex().then(idx => {
+    SEARCH.searcher = SEARCH.searcher || CfbSearch.buildSearcher(idx);
+    if (seq !== SEARCH.seq) return;                       // a newer keystroke already ran
+    const r = SEARCH.searcher.search(query);
+    const count = r.teams.length + r.games.length + r.seasons.length * 2;
+    openSearch(count ? searchResultsHtml(r)
+      : '<p class="search-note">No matches for “' + esc(query) + '”. Try a team name, an alias, a year, or two teams.</p>',
+      count ? count + ' result' + (count === 1 ? '' : 's') + '. Press Down to browse.' : 'No matches');
+  }).catch(() => {
+    if (seq !== SEARCH.seq) return;
+    openSearch('<p class="search-note">Search is unavailable right now. <button class="action-button" id="search-retry">Retry</button></p>', 'Search unavailable');
+  });
+}
+
+SEARCH.input.addEventListener('input', () => { clearTimeout(SEARCH.timer); SEARCH.timer = setTimeout(runSearch, 90); });
+SEARCH.input.addEventListener('focus', () => { if (SEARCH.input.value.trim() && SEARCH.panel.innerHTML) { SEARCH.panel.hidden = false; SEARCH.input.setAttribute('aria-expanded', 'true'); } });
+SEARCH.input.addEventListener('keydown', e => {
+  const hits = [...SEARCH.panel.querySelectorAll('.search-hit')];
+  if (e.key === 'ArrowDown' && hits.length && !SEARCH.panel.hidden) { e.preventDefault(); hits[0].focus(); }
+  else if (e.key === 'Enter') {
+    e.preventDefault();
+    clearTimeout(SEARCH.timer);
+    if (hits.length && !SEARCH.panel.hidden) hits[0].click(); else runSearch();
+  } else if (e.key === 'Escape') { if (!SEARCH.panel.hidden) { e.preventDefault(); closeSearch(); } }
+});
+SEARCH.panel.addEventListener('keydown', e => {
+  const hits = [...SEARCH.panel.querySelectorAll('.search-hit')];
+  const i = hits.indexOf(document.activeElement);
+  if (e.key === 'ArrowDown') { e.preventDefault(); (hits[i + 1] || hits[0]).focus(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); i <= 0 ? SEARCH.input.focus() : hits[i - 1].focus(); }
+  else if (e.key === 'Escape') { e.preventDefault(); closeSearch(); SEARCH.input.focus(); }
+});
+SEARCH.panel.addEventListener('click', e => {
+  if (e.target.id === 'search-retry') { runSearch(); return; }
+  if (e.target.closest('.search-hit')) { closeSearch(); SEARCH.input.value = ''; SEARCH.status.textContent = ''; }
+});
+document.addEventListener('click', e => { if (!e.target.closest('.global-search')) closeSearch(); });
+document.addEventListener('keydown', e => {
+  // "/" jumps to search from anywhere, unless the visitor is already typing in a field.
+  if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')) {
+    e.preventDefault();
+    SEARCH.input.focus();
+  }
+});
 document.querySelector('.skip-link').addEventListener('click', e => {
   e.preventDefault();
   document.getElementById('content').focus();

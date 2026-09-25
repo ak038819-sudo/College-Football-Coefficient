@@ -68,3 +68,15 @@ test('no-season exports stay usable without inventing a year', () => {
   assert.equal(route.year, null);
   assert.equal(hashFor(route), '#section=games&status=completed');
 });
+
+test('a games URL can point at one game; anything but digits is dropped', () => {
+  const r = read('#section=games&season=2019&status=completed&game=401112233');
+  assert.equal(r.game, 401112233);
+  assert.deepEqual(read(hashFor(r)), r);
+  for (const bad of ['abc', '12e4', '-5', '1234567890123', '<script>', '']) {
+    assert.equal(read('#section=games&season=2019&game=' + encodeURIComponent(bad)).game, null);
+  }
+  assert.equal(read('#section=rankings&game=401112233').game, null);     // only Games keeps it
+  assert.equal(read('#team=byu&game=401112233').game, null);
+  assert.equal(hashFor(read('#section=games&season=2019&game=5')).includes('game=5'), true);
+});

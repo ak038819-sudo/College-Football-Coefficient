@@ -22,3 +22,6 @@ def test_preview_uses_existing_exports_without_recomputing(tmp_path, monkeypatch
     assert "__DATA_JSON__" not in html
     version = hashlib.sha256(builder.NAVIGATION_PATH.read_bytes()).hexdigest()[:12]
     assert f'navigation.js?v={version}' in html
+    assert "__SEARCH_VERSION__" not in html
+    search_version = hashlib.sha256(builder.SEARCH_PATH.read_bytes()).hexdigest()[:12]
+    assert f'search.js?v={search_version}' in html
