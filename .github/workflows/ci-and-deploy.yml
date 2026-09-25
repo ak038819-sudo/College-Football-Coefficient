@@ -150,7 +150,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/raw/ ui/dashboard.html ui/dashboard_data.json ui/data/ data/processed/
+          git add data/raw/ ui/dashboard.html ui/dashboard_data.json ui/data/ ui/assets/ ui/logo_manifest.json data/processed/
           if git diff --staged --quiet; then
             echo "Nothing changed; no commit."
             exit 0

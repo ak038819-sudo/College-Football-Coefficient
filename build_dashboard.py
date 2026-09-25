@@ -32,10 +32,10 @@ from pathlib import Path
 
 SHELL_PATH = Path("ui/dashboard_shell.html")
 DATA_PATH = Path("ui/dashboard_data.json")
-DATED_LOGO_ASSETS_PATH = Path("ui/dated_logo_assets.json")
-DATED_CONFERENCE_LOGO_ASSETS_PATH = Path("ui/dated_conference_logo_assets.json")
 OUT_PATH = Path("ui/dashboard.html")
 TEAM_PAGES_PATH = Path("ui/data/team_pages.js")
+LOGO_MANIFEST_PATH = Path("ui/logo_manifest.json")
+STATIC_MANIFEST_PATH = Path("ui/data/static_manifest.json")
 
 
 def _read_or_empty(path: Path) -> str:
@@ -67,18 +67,23 @@ def main() -> None:
         [sys.executable, "src/export_team_pages.py", "--db", args.db, "--out", str(TEAM_PAGES_PATH)],
         check=True,
     )
+    # Logos as static files + a small manifest (data foundation step) instead of
+    # ~7 MB of base64 embedded in the page.
+    subprocess.run([sys.executable, "src/export_logo_files.py"], check=True)
+    # Per-season game files + search index, loaded on demand (data foundation step).
+    subprocess.run([sys.executable, "src/export_static_data.py", "--db", args.db], check=True)
     team_pages_version = hashlib.sha256(TEAM_PAGES_PATH.read_bytes()).hexdigest()[:12]
 
     # Explicit UTF-8: on Windows the default would be the legacy cp1252 codepage.
     shell = SHELL_PATH.read_text(encoding="utf-8")
     data = DATA_PATH.read_text(encoding="utf-8")
-    dated_logo_assets = _read_or_empty(DATED_LOGO_ASSETS_PATH)
-    dated_conference_logo_assets = _read_or_empty(DATED_CONFERENCE_LOGO_ASSETS_PATH)
+    logo_manifest = _read_or_empty(LOGO_MANIFEST_PATH)
+    static_manifest = _read_or_empty(STATIC_MANIFEST_PATH)
 
     final = (shell
              .replace("__DATA_JSON__", data)
-             .replace("__DATED_LOGO_ASSETS_JSON__", dated_logo_assets)
-             .replace("__DATED_CONFERENCE_LOGO_ASSETS_JSON__", dated_conference_logo_assets)
+             .replace("__LOGO_MANIFEST_JSON__", logo_manifest)
+             .replace("__STATIC_MANIFEST_JSON__", static_manifest)
              .replace("__TEAM_PAGES_VERSION__", team_pages_version))
     OUT_PATH.write_text(final, encoding="utf-8")
 

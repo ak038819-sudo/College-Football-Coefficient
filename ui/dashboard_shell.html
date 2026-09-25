@@ -611,16 +611,74 @@
 <script id="dashboard-data" type="application/json">
 __DATA_JSON__
 </script>
-<script id="dated-logo-assets" type="application/json">
-__DATED_LOGO_ASSETS_JSON__
+<script id="logo-manifest" type="application/json">
+__LOGO_MANIFEST_JSON__
 </script>
-<script id="dated-conference-logo-assets" type="application/json">
-__DATED_CONFERENCE_LOGO_ASSETS_JSON__
+<script id="static-manifest" type="application/json">
+__STATIC_MANIFEST_JSON__
 </script>
 <script>
 const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
-const DATED_LOGOS = JSON.parse(document.getElementById('dated-logo-assets').textContent);
-const DATED_CONFERENCE_LOGOS = JSON.parse(document.getElementById('dated-conference-logo-assets').textContent);
+// Logo manifest (data foundation step): the same {name: [{start, end, bg, ...}]}
+// shape as before, but each entry points at an image FILE (src) instead of
+// carrying the image inline, so the browser only fetches logos it displays.
+// Built by src/export_logo_files.py.
+const LOGO_MANIFEST = JSON.parse(document.getElementById('logo-manifest').textContent);
+const DATED_LOGOS = LOGO_MANIFEST.teams || {};
+const DATED_CONFERENCE_LOGOS = LOGO_MANIFEST.conferences || {};
+
+// ---------------- Static data loaders (data foundation step) ----------------
+// STATIC_MANIFEST lists what exists (seasons, counts, content-versioned file
+// paths) without downloading any of it. Season game files and the search index
+// are fetched only when first asked for, then cached for the rest of the visit.
+// Built by src/export_static_data.py; every value in them comes from an
+// authoritative table (nothing is recomputed in the browser).
+const STATIC_MANIFEST = JSON.parse(document.getElementById('static-manifest').textContent);
+const _dataScripts = new Map();
+function loadDataScript(src) {
+  if (!_dataScripts.has(src)) {
+    _dataScripts.set(src, new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = src;
+      el.onload = () => resolve();
+      el.onerror = () => { _dataScripts.delete(src); el.remove(); reject(new Error('could not load ' + src.split('?')[0])); };
+      document.head.appendChild(el);
+    }));
+  }
+  return _dataScripts.get(src);
+}
+
+const _seasonGames = new Map();
+// Resolves to {season, games: [objects, oldest first], byId: Map, conferences, phaseCodes, gameCoeModel}.
+function loadSeasonGames(season) {
+  season = Number(season);
+  if (_seasonGames.has(season)) return Promise.resolve(_seasonGames.get(season));
+  const entry = (STATIC_MANIFEST.seasons || []).find(s => s.season === season);
+  if (!entry) return Promise.reject(new Error('no games file for season ' + season));
+  return loadDataScript(entry.src).then(() => {
+    const raw = (window.__CFB_GAMES__ || {})[season];
+    if (!raw) throw new Error('games file for ' + season + ' was empty');
+    const games = raw.games.map(r => Object.fromEntries(raw.fields.map((f, i) => [f, r[i]])));
+    const data = { season, games, byId: new Map(games.map(g => [g.game_id, g])), conferences: raw.conferences,
+                   phaseCodes: raw.phase_codes, gameCoeModel: raw.game_coe_model };
+    _seasonGames.set(season, data);
+    return data;
+  });
+}
+
+let _searchIndex = null;
+// Resolves to {teams: [{id, name, slug, aliases}], seasons: [..], games: [[game_id, season, home_id, away_id]]}.
+function loadSearchIndex() {
+  if (_searchIndex) return Promise.resolve(_searchIndex);
+  if (!STATIC_MANIFEST.search_index) return Promise.reject(new Error('no search index'));
+  return loadDataScript(STATIC_MANIFEST.search_index).then(() => {
+    const raw = window.__CFB_SEARCH__;
+    if (!raw) throw new Error('search index was empty');
+    _searchIndex = { teams: raw.teams.map(([id, name, slug, aliases]) => ({ id, name, slug, aliases })),
+                     seasons: raw.seasons, games: raw.games };
+    return _searchIndex;
+  });
+}
 
 function hashHue(name) {
   let h = 0;
@@ -670,7 +728,7 @@ function logoMarkup(name, kind, size, yearOverride) {
     // marks especially) -- a chip in the logo's own color gives every
     // logo real contrast without an arbitrary/unrelated backdrop color.
     return '<span class="logo-chip' + sizeClass + '" style="background:' + entry.bg + '">'
-      + '<img class="logo-img" src="' + entry.data + '" alt="" loading="lazy">'
+      + '<img class="logo-img" src="' + entry.src + '" alt="" loading="lazy">'
       + '</span>';
   }
   const hue = hashHue(name);
