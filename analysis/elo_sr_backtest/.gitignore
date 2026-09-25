@@ -1,0 +1,4 @@
+# Local CFBD download cache for the Success Rate backtest (about 10 MB).
+# Re-created on demand by fetch_game_success_rates.py; not committed.
+cache/
+__pycache__/

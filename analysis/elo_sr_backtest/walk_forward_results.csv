@@ -1,0 +1,209 @@
+model,test_season,config_chosen_on_prior_seasons,games,brier,log_loss,accuracy
+Current MOV Elo,2011,MOV_production,715,0.179771,0.53247,0.72448
+Current MOV Elo,2012,MOV_production,732,0.175247,0.520957,0.72814
+Current MOV Elo,2013,MOV_production,737,0.165928,0.496364,0.75577
+Current MOV Elo,2014,MOV_production,760,0.189172,0.555084,0.69868
+Current MOV Elo,2015,MOV_production,765,0.173099,0.515016,0.73856
+Current MOV Elo,2016,MOV_production,760,0.19326,0.563989,0.69868
+Current MOV Elo,2017,MOV_production,776,0.191564,0.560546,0.69201
+Current MOV Elo,2018,MOV_production,772,0.177968,0.526614,0.72927
+Current MOV Elo,2019,MOV_production,774,0.176326,0.523913,0.7261
+Current MOV Elo,2020,MOV_production,534,0.193072,0.570122,0.71536
+Current MOV Elo,2021,MOV_production,770,0.189011,0.555442,0.69351
+Current MOV Elo,2022,MOV_production,776,0.205218,0.596777,0.67397
+Current MOV Elo,2023,MOV_production,792,0.186233,0.551399,0.70833
+Current MOV Elo,2024,MOV_production,798,0.199885,0.580833,0.67794
+Current MOV Elo,2025,MOV_production,808,0.185532,0.54673,0.70916
+Current MOV Elo,2026,MOV_production,157,0.158461,0.495002,0.77707
+"MOV, K walk-forward",2011,MOV_K35,715,0.179771,0.53247,0.72448
+"MOV, K walk-forward",2012,MOV_K35,732,0.175247,0.520957,0.72814
+"MOV, K walk-forward",2013,MOV_K35,737,0.165928,0.496364,0.75577
+"MOV, K walk-forward",2014,MOV_K40,760,0.190381,0.558076,0.70132
+"MOV, K walk-forward",2015,MOV_K35,765,0.173099,0.515016,0.73856
+"MOV, K walk-forward",2016,MOV_K40,760,0.193589,0.565062,0.69474
+"MOV, K walk-forward",2017,MOV_K35,776,0.191564,0.560546,0.69201
+"MOV, K walk-forward",2018,MOV_K35,772,0.177968,0.526614,0.72927
+"MOV, K walk-forward",2019,MOV_K35,774,0.176326,0.523913,0.7261
+"MOV, K walk-forward",2020,MOV_K35,534,0.193072,0.570122,0.71536
+"MOV, K walk-forward",2021,MOV_K35,770,0.189011,0.555442,0.69351
+"MOV, K walk-forward",2022,MOV_K35,776,0.205218,0.596777,0.67397
+"MOV, K walk-forward",2023,MOV_K35,792,0.186233,0.551399,0.70833
+"MOV, K walk-forward",2024,MOV_K35,798,0.199885,0.580833,0.67794
+"MOV, K walk-forward",2025,MOV_K35,808,0.185532,0.54673,0.70916
+"MOV, K walk-forward",2026,MOV_K35,157,0.158461,0.495002,0.77707
+Pure W/L Elo,2011,PURE_K80,715,0.183877,0.541624,0.71189
+Pure W/L Elo,2012,PURE_K80,732,0.181061,0.535524,0.72814
+Pure W/L Elo,2013,PURE_K90,737,0.169686,0.504858,0.74084
+Pure W/L Elo,2014,PURE_K90,760,0.192304,0.564174,0.70263
+Pure W/L Elo,2015,PURE_K90,765,0.176758,0.523988,0.73072
+Pure W/L Elo,2016,PURE_K90,760,0.19685,0.573747,0.68684
+Pure W/L Elo,2017,PURE_K90,776,0.197042,0.574094,0.69201
+Pure W/L Elo,2018,PURE_K90,772,0.183626,0.539897,0.72021
+Pure W/L Elo,2019,PURE_K90,774,0.181546,0.536473,0.72093
+Pure W/L Elo,2020,PURE_K90,534,0.198145,0.581472,0.6985
+Pure W/L Elo,2021,PURE_K90,770,0.191679,0.560786,0.7013
+Pure W/L Elo,2022,PURE_K90,776,0.210206,0.609022,0.66495
+Pure W/L Elo,2023,PURE_K80,792,0.191092,0.563102,0.70328
+Pure W/L Elo,2024,PURE_K80,798,0.207686,0.599005,0.65414
+Pure W/L Elo,2025,PURE_K80,808,0.189267,0.556029,0.70668
+Pure W/L Elo,2026,PURE_K80,157,0.165088,0.511914,0.75159
+Linear SRDiff [normalized K],2011,linear_b5_dz0.00|norm,715,0.180876,0.534131,0.72448
+Linear SRDiff [normalized K],2012,linear_b5_dz0.00|norm,732,0.178501,0.528669,0.74317
+Linear SRDiff [normalized K],2013,linear_b5_dz0.00|norm,737,0.16737,0.499296,0.74084
+Linear SRDiff [normalized K],2014,linear_b5_dz0.00|norm,760,0.186522,0.54731,0.71053
+Linear SRDiff [normalized K],2015,linear_b5_dz0.00|norm,765,0.171037,0.512439,0.75294
+Linear SRDiff [normalized K],2016,linear_b6_dz0.00|norm,760,0.192155,0.561949,0.70658
+Linear SRDiff [normalized K],2017,linear_b6_dz0.00|norm,776,0.193713,0.566072,0.69072
+Linear SRDiff [normalized K],2018,linear_b5_dz0.00|norm,772,0.177308,0.526425,0.73575
+Linear SRDiff [normalized K],2019,linear_b5_dz0.00|norm,774,0.177442,0.525622,0.72997
+Linear SRDiff [normalized K],2020,linear_b5_dz0.00|norm,534,0.194047,0.57273,0.70225
+Linear SRDiff [normalized K],2021,linear_b5_dz0.00|norm,770,0.188268,0.55255,0.69481
+Linear SRDiff [normalized K],2022,linear_b5_dz0.00|norm,776,0.205986,0.600904,0.67139
+Linear SRDiff [normalized K],2023,linear_b5_dz0.00|norm,792,0.18878,0.556931,0.70707
+Linear SRDiff [normalized K],2024,linear_b5_dz0.00|norm,798,0.204737,0.592562,0.66541
+Linear SRDiff [normalized K],2025,linear_b5_dz0.00|norm,808,0.185629,0.545798,0.7203
+Linear SRDiff [normalized K],2026,linear_b5_dz0.00|norm,157,0.159307,0.4994,0.78344
+Linear SRDiff [fixed K],2011,linear_b10_dz0.00|fixed,715,0.181837,0.537863,0.72448
+Linear SRDiff [fixed K],2012,linear_b10_dz0.00|fixed,732,0.18274,0.538397,0.71721
+Linear SRDiff [fixed K],2013,linear_b10_dz0.00|fixed,737,0.170135,0.508185,0.73677
+Linear SRDiff [fixed K],2014,linear_b10_dz0.00|fixed,760,0.184745,0.543245,0.72368
+Linear SRDiff [fixed K],2015,linear_b10_dz0.00|fixed,765,0.172307,0.518169,0.75817
+Linear SRDiff [fixed K],2016,linear_b10_dz0.00|fixed,760,0.192671,0.563151,0.70658
+Linear SRDiff [fixed K],2017,linear_b10_dz0.00|fixed,776,0.195027,0.5693,0.69845
+Linear SRDiff [fixed K],2018,linear_b10_dz0.00|fixed,772,0.17873,0.532249,0.73187
+Linear SRDiff [fixed K],2019,linear_b10_dz0.00|fixed,774,0.178156,0.528846,0.73256
+Linear SRDiff [fixed K],2020,linear_b10_dz0.00|fixed,534,0.193882,0.570937,0.69663
+Linear SRDiff [fixed K],2021,linear_b10_dz0.00|fixed,770,0.189612,0.555998,0.7
+Linear SRDiff [fixed K],2022,linear_b10_dz0.00|fixed,776,0.204964,0.597258,0.66495
+Linear SRDiff [fixed K],2023,linear_b10_dz0.00|fixed,792,0.191959,0.564162,0.70328
+Linear SRDiff [fixed K],2024,linear_b10_dz0.00|fixed,798,0.206264,0.595783,0.66917
+Linear SRDiff [fixed K],2025,linear_b10_dz0.00|fixed,808,0.188903,0.554046,0.71163
+Linear SRDiff [fixed K],2026,linear_b10_dz0.00|fixed,157,0.159361,0.496462,0.78981
+Dead-zone SRDiff [normalized K],2011,linear_b8_dz0.05|norm,715,0.181918,0.536861,0.72308
+Dead-zone SRDiff [normalized K],2012,linear_b6_dz0.02|norm,732,0.178453,0.528283,0.7418
+Dead-zone SRDiff [normalized K],2013,linear_b6_dz0.03|norm,737,0.166679,0.497642,0.73677
+Dead-zone SRDiff [normalized K],2014,linear_b7_dz0.04|norm,760,0.186224,0.546448,0.70132
+Dead-zone SRDiff [normalized K],2015,linear_b9_dz0.05|norm,765,0.170964,0.512193,0.74771
+Dead-zone SRDiff [normalized K],2016,linear_b8_dz0.04|norm,760,0.191978,0.561596,0.70132
+Dead-zone SRDiff [normalized K],2017,linear_b8_dz0.04|norm,776,0.193479,0.565298,0.68814
+Dead-zone SRDiff [normalized K],2018,linear_b8_dz0.05|norm,772,0.177094,0.526055,0.73575
+Dead-zone SRDiff [normalized K],2019,linear_b8_dz0.05|norm,774,0.17794,0.526706,0.73643
+Dead-zone SRDiff [normalized K],2020,linear_b8_dz0.05|norm,534,0.194302,0.57358,0.70412
+Dead-zone SRDiff [normalized K],2021,linear_b8_dz0.05|norm,770,0.188719,0.553425,0.69351
+Dead-zone SRDiff [normalized K],2022,linear_b7_dz0.04|norm,776,0.205321,0.599264,0.66753
+Dead-zone SRDiff [normalized K],2023,linear_b7_dz0.04|norm,792,0.188326,0.55563,0.70581
+Dead-zone SRDiff [normalized K],2024,linear_b7_dz0.05|norm,798,0.204463,0.591904,0.67419
+Dead-zone SRDiff [normalized K],2025,linear_b7_dz0.05|norm,808,0.185366,0.545406,0.71906
+Dead-zone SRDiff [normalized K],2026,linear_b7_dz0.05|norm,157,0.159206,0.498111,0.78981
+Dead-zone SRDiff [fixed K],2011,linear_b10_dz0.01|fixed,715,0.18196,0.538157,0.72448
+Dead-zone SRDiff [fixed K],2012,linear_b10_dz0.01|fixed,732,0.182752,0.538379,0.71721
+Dead-zone SRDiff [fixed K],2013,linear_b10_dz0.01|fixed,737,0.170095,0.508408,0.73677
+Dead-zone SRDiff [fixed K],2014,linear_b10_dz0.01|fixed,760,0.184735,0.543378,0.725
+Dead-zone SRDiff [fixed K],2015,linear_b10_dz0.01|fixed,765,0.172561,0.518832,0.75817
+Dead-zone SRDiff [fixed K],2016,linear_b10_dz0.01|fixed,760,0.192673,0.563247,0.70526
+Dead-zone SRDiff [fixed K],2017,linear_b10_dz0.01|fixed,776,0.194865,0.568823,0.69845
+Dead-zone SRDiff [fixed K],2018,linear_b10_dz0.01|fixed,772,0.178763,0.532341,0.73057
+Dead-zone SRDiff [fixed K],2019,linear_b10_dz0.01|fixed,774,0.178258,0.529179,0.73256
+Dead-zone SRDiff [fixed K],2020,linear_b10_dz0.01|fixed,534,0.193968,0.570926,0.69288
+Dead-zone SRDiff [fixed K],2021,linear_b10_dz0.01|fixed,770,0.189535,0.555744,0.6974
+Dead-zone SRDiff [fixed K],2022,linear_b10_dz0.01|fixed,776,0.204533,0.595918,0.66881
+Dead-zone SRDiff [fixed K],2023,linear_b10_dz0.01|fixed,792,0.191629,0.563279,0.70328
+Dead-zone SRDiff [fixed K],2024,linear_b10_dz0.01|fixed,798,0.206056,0.59501,0.66792
+Dead-zone SRDiff [fixed K],2025,linear_b10_dz0.01|fixed,808,0.188817,0.553931,0.71163
+Dead-zone SRDiff [fixed K],2026,linear_b10_dz0.01|fixed,157,0.159311,0.496074,0.79618
+Bounded SRDiff [normalized K],2011,linear_b6_dz0.02_f0.75-c2.50|norm,715,0.18068,0.533728,0.72308
+Bounded SRDiff [normalized K],2012,linear_b8_dz0.01_f0.75-c2.50|norm,732,0.177425,0.526536,0.74317
+Bounded SRDiff [normalized K],2013,linear_b8_dz0.01_f0.75-c2.50|norm,737,0.16706,0.498318,0.73134
+Bounded SRDiff [normalized K],2014,linear_b9_dz0.03_f0.75-c2.50|norm,760,0.186419,0.547434,0.71053
+Bounded SRDiff [normalized K],2015,linear_b10_dz0.04_f0.75-c2.50|norm,765,0.17093,0.511753,0.75294
+Bounded SRDiff [normalized K],2016,linear_b9_dz0.03_f0.75-c2.50|norm,760,0.191785,0.560988,0.71053
+Bounded SRDiff [normalized K],2017,linear_b9_dz0.04_f0.70-c2.50|norm,776,0.194613,0.56784,0.6933
+Bounded SRDiff [normalized K],2018,linear_b9_dz0.04_f0.75-c2.50|norm,772,0.178216,0.528336,0.72927
+Bounded SRDiff [normalized K],2019,linear_b8_dz0.04_f0.60-c2.50|norm,774,0.177813,0.526471,0.73773
+Bounded SRDiff [normalized K],2020,linear_b7_dz0.01_f0.75-c2.50|norm,534,0.194218,0.5733,0.70225
+Bounded SRDiff [normalized K],2021,linear_b6_dz0.01_f0.75-c2.50|norm,770,0.188912,0.55435,0.6961
+Bounded SRDiff [normalized K],2022,linear_b6_dz0.01_f0.70-c2.50|norm,776,0.20597,0.600139,0.66624
+Bounded SRDiff [normalized K],2023,linear_b7_dz0.03_f0.60-c2.50|norm,792,0.188617,0.556492,0.71212
+Bounded SRDiff [normalized K],2024,linear_b8_dz0.04_f0.75-c2.50|norm,798,0.204001,0.590491,0.67168
+Bounded SRDiff [normalized K],2025,linear_b8_dz0.04_f0.75-c2.50|norm,808,0.186211,0.547424,0.71535
+Bounded SRDiff [normalized K],2026,linear_b6_dz0.02_f0.75-c2.50|norm,157,0.159861,0.500601,0.78344
+Bounded SRDiff [fixed K],2011,linear_b10_dz0.00_f0.75-c2.50|fixed,715,0.180444,0.534711,0.73427
+Bounded SRDiff [fixed K],2012,linear_b10_dz0.00_f0.75-c2.50|fixed,732,0.181263,0.536165,0.72678
+Bounded SRDiff [fixed K],2013,linear_b10_dz0.00_f0.75-c2.50|fixed,737,0.170508,0.510278,0.73541
+Bounded SRDiff [fixed K],2014,linear_b10_dz0.00_f0.75-c2.50|fixed,760,0.185844,0.547251,0.72368
+Bounded SRDiff [fixed K],2015,linear_b10_dz0.00_f0.75-c2.50|fixed,765,0.174446,0.522939,0.74902
+Bounded SRDiff [fixed K],2016,linear_b10_dz0.00_f0.75-c2.50|fixed,760,0.193513,0.565161,0.70395
+Bounded SRDiff [fixed K],2017,linear_b10_dz0.00_f0.75-c2.50|fixed,776,0.195485,0.570078,0.68686
+Bounded SRDiff [fixed K],2018,linear_b10_dz0.00_f0.75-c2.50|fixed,772,0.180248,0.535698,0.72927
+Bounded SRDiff [fixed K],2019,linear_b10_dz0.00_f0.75-c2.50|fixed,774,0.177735,0.528613,0.73385
+Bounded SRDiff [fixed K],2020,linear_b10_dz0.00_f0.75-c2.50|fixed,534,0.194843,0.572644,0.6985
+Bounded SRDiff [fixed K],2021,linear_b10_dz0.00_f0.75-c2.50|fixed,770,0.189174,0.555466,0.69481
+Bounded SRDiff [fixed K],2022,linear_b10_dz0.00_f0.75-c2.50|fixed,776,0.205471,0.597153,0.66881
+Bounded SRDiff [fixed K],2023,linear_b10_dz0.00_f0.75-c2.50|fixed,792,0.190732,0.561626,0.69697
+Bounded SRDiff [fixed K],2024,linear_b10_dz0.00_f0.75-c2.50|fixed,798,0.205029,0.592068,0.66792
+Bounded SRDiff [fixed K],2025,linear_b10_dz0.00_f0.75-c2.50|fixed,808,0.188995,0.554982,0.71411
+Bounded SRDiff [fixed K],2026,linear_b10_dz0.00_f0.75-c2.50|fixed,157,0.161427,0.50174,0.78344
+Nonlinear SRDiff [normalized K],2011,exp_b5_dz0.03|norm,715,0.183414,0.540888,0.71608
+Nonlinear SRDiff [normalized K],2012,exp_b4_dz0.00|norm,732,0.178406,0.528127,0.73907
+Nonlinear SRDiff [normalized K],2013,exp_b4_dz0.01|norm,737,0.166105,0.496283,0.74491
+Nonlinear SRDiff [normalized K],2014,exp_b4_dz0.01|norm,760,0.186051,0.546043,0.71316
+Nonlinear SRDiff [normalized K],2015,exp_b4_dz0.01|norm,765,0.170818,0.511516,0.74902
+Nonlinear SRDiff [normalized K],2016,exp_b4_dz0.00|norm,760,0.19207,0.561838,0.70789
+Nonlinear SRDiff [normalized K],2017,exp_b4_dz0.00|norm,776,0.192732,0.563814,0.68686
+Nonlinear SRDiff [normalized K],2018,exp_b4_dz0.01|norm,772,0.177408,0.527329,0.73705
+Nonlinear SRDiff [normalized K],2019,exp_b4_dz0.00|norm,774,0.177661,0.52602,0.73127
+Nonlinear SRDiff [normalized K],2020,exp_b4_dz0.00|norm,534,0.193064,0.570268,0.70412
+Nonlinear SRDiff [normalized K],2021,exp_b4_dz0.00|norm,770,0.189131,0.554841,0.7026
+Nonlinear SRDiff [normalized K],2022,exp_b4_dz0.00|norm,776,0.205675,0.60049,0.6701
+Nonlinear SRDiff [normalized K],2023,exp_b4_dz0.01|norm,792,0.187723,0.553921,0.71212
+Nonlinear SRDiff [normalized K],2024,exp_b4_dz0.01|norm,798,0.204212,0.591711,0.67669
+Nonlinear SRDiff [normalized K],2025,exp_b4_dz0.02|norm,808,0.185317,0.545264,0.71782
+Nonlinear SRDiff [normalized K],2026,exp_b4_dz0.02|norm,157,0.158799,0.497057,0.79618
+Nonlinear SRDiff [fixed K],2011,exp_b6_dz0.00|fixed,715,0.185478,0.546729,0.71329
+Nonlinear SRDiff [fixed K],2012,exp_b6_dz0.00|fixed,732,0.182375,0.536858,0.72131
+Nonlinear SRDiff [fixed K],2013,exp_b6_dz0.00|fixed,737,0.16784,0.501522,0.74084
+Nonlinear SRDiff [fixed K],2014,exp_b6_dz0.00|fixed,760,0.184791,0.542369,0.71842
+Nonlinear SRDiff [fixed K],2015,exp_b6_dz0.00|fixed,765,0.171866,0.515366,0.74902
+Nonlinear SRDiff [fixed K],2016,exp_b6_dz0.00|fixed,760,0.193246,0.565762,0.7
+Nonlinear SRDiff [fixed K],2017,exp_b6_dz0.00|fixed,776,0.193554,0.566519,0.69459
+Nonlinear SRDiff [fixed K],2018,exp_b6_dz0.00|fixed,772,0.17877,0.533071,0.72539
+Nonlinear SRDiff [fixed K],2019,exp_b6_dz0.00|fixed,774,0.179938,0.532283,0.7261
+Nonlinear SRDiff [fixed K],2020,exp_b6_dz0.00|fixed,534,0.19419,0.573522,0.70225
+Nonlinear SRDiff [fixed K],2021,exp_b5_dz0.00|fixed,770,0.190265,0.557333,0.69481
+Nonlinear SRDiff [fixed K],2022,exp_b5_dz0.00|fixed,776,0.204473,0.595999,0.66495
+Nonlinear SRDiff [fixed K],2023,exp_b5_dz0.00|fixed,792,0.189948,0.558783,0.70581
+Nonlinear SRDiff [fixed K],2024,exp_b5_dz0.00|fixed,798,0.205425,0.593799,0.6792
+Nonlinear SRDiff [fixed K],2025,exp_b5_dz0.00|fixed,808,0.187995,0.552059,0.71535
+Nonlinear SRDiff [fixed K],2026,exp_b5_dz0.00|fixed,157,0.157966,0.491986,0.78981
+Any SR model [normalized K],2011,exp_b5_dz0.03|norm,715,0.183414,0.540888,0.71608
+Any SR model [normalized K],2012,linear_b8_dz0.01_f0.75-c2.50|norm,732,0.177425,0.526536,0.74317
+Any SR model [normalized K],2013,linear_b8_dz0.01_f0.75-c2.50|norm,737,0.16706,0.498318,0.73134
+Any SR model [normalized K],2014,linear_b9_dz0.03_f0.75-c2.50|norm,760,0.186419,0.547434,0.71053
+Any SR model [normalized K],2015,exp_b4_dz0.01|norm,765,0.170818,0.511516,0.74902
+Any SR model [normalized K],2016,exp_b4_dz0.00|norm,760,0.19207,0.561838,0.70789
+Any SR model [normalized K],2017,exp_b4_dz0.00|norm,776,0.192732,0.563814,0.68686
+Any SR model [normalized K],2018,exp_b4_dz0.01|norm,772,0.177408,0.527329,0.73705
+Any SR model [normalized K],2019,exp_b4_dz0.00|norm,774,0.177661,0.52602,0.73127
+Any SR model [normalized K],2020,exp_b4_dz0.00|norm,534,0.193064,0.570268,0.70412
+Any SR model [normalized K],2021,exp_b4_dz0.00|norm,770,0.189131,0.554841,0.7026
+Any SR model [normalized K],2022,exp_b4_dz0.00|norm,776,0.205675,0.60049,0.6701
+Any SR model [normalized K],2023,exp_b4_dz0.01|norm,792,0.187723,0.553921,0.71212
+Any SR model [normalized K],2024,exp_b4_dz0.01|norm,798,0.204212,0.591711,0.67669
+Any SR model [normalized K],2025,exp_b4_dz0.02|norm,808,0.185317,0.545264,0.71782
+Any SR model [normalized K],2026,exp_b4_dz0.02|norm,157,0.158799,0.497057,0.79618
+Any SR model [fixed K],2011,exp_b6_dz0.00|fixed,715,0.185478,0.546729,0.71329
+Any SR model [fixed K],2012,exp_b6_dz0.00|fixed,732,0.182375,0.536858,0.72131
+Any SR model [fixed K],2013,exp_b6_dz0.00|fixed,737,0.16784,0.501522,0.74084
+Any SR model [fixed K],2014,exp_b6_dz0.00|fixed,760,0.184791,0.542369,0.71842
+Any SR model [fixed K],2015,exp_b6_dz0.00|fixed,765,0.171866,0.515366,0.74902
+Any SR model [fixed K],2016,exp_b6_dz0.00|fixed,760,0.193246,0.565762,0.7
+Any SR model [fixed K],2017,exp_b6_dz0.00|fixed,776,0.193554,0.566519,0.69459
+Any SR model [fixed K],2018,exp_b6_dz0.00|fixed,772,0.17877,0.533071,0.72539
+Any SR model [fixed K],2019,exp_b6_dz0.00|fixed,774,0.179938,0.532283,0.7261
+Any SR model [fixed K],2020,exp_b6_dz0.00|fixed,534,0.19419,0.573522,0.70225
+Any SR model [fixed K],2021,exp_b5_dz0.00|fixed,770,0.190265,0.557333,0.69481
+Any SR model [fixed K],2022,exp_b5_dz0.00|fixed,776,0.204473,0.595999,0.66495
+Any SR model [fixed K],2023,exp_b5_dz0.00|fixed,792,0.189948,0.558783,0.70581
+Any SR model [fixed K],2024,exp_b5_dz0.00|fixed,798,0.205425,0.593799,0.6792
+Any SR model [fixed K],2025,exp_b5_dz0.00|fixed,808,0.187995,0.552059,0.71535
+Any SR model [fixed K],2026,exp_b5_dz0.00|fixed,157,0.157966,0.491986,0.78981

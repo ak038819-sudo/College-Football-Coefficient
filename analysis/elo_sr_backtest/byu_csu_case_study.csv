@@ -1,0 +1,4 @@
+source,team,team_sr,opponent_sr,team_srdiff,pregame_elo,opponent_pregame_elo,expected_win_prob_with_hfa,actual,mov_multiplier,mov_elo_change,lead_sr_config,sr_K,sr_multiplier,sr_elo_change
+supplied,BYU,0.62,0.45,0.17,1744.6,1328.8,0.8915,1.0,2.5246,9.59,exp_b4_dz0.02|norm,59.42,1.8221,11.75
+CFBD garbage time excluded,BYU,0.6585,0.3571,0.3014,1744.6,1328.8,0.8915,1.0,2.5246,9.59,exp_b4_dz0.02|norm,59.42,3.082,19.88
+CFBD all plays,BYU,0.6102,0.3731,0.237,1744.6,1328.8,0.8915,1.0,2.5246,9.59,exp_b4_dz0.02|norm,59.42,2.3825,15.37

@@ -1,0 +1,4 @@
+source,team,team_sr,opponent_sr,team_srdiff,pregame_elo,opponent_pregame_elo,expected_win_prob_with_hfa,actual,mov_multiplier,mov_elo_change,lead_sr_config,sr_K,sr_multiplier,sr_elo_change
+supplied,Marshall,0.55,0.58,-0.03,1459.5,1388.0,0.5309,1.0,1.9271,31.64,exp_b4_dz0.02|norm,59.42,0.9608,26.78
+CFBD garbage time excluded,Marshall,0.5068,0.5625,-0.0557,1459.5,1388.0,0.5309,1.0,1.9271,31.64,exp_b4_dz0.02|norm,59.42,0.8671,24.17
+CFBD all plays,Marshall,0.5068,0.5625,-0.0557,1459.5,1388.0,0.5309,1.0,1.9271,31.64,exp_b4_dz0.02|norm,59.42,0.8671,24.17
