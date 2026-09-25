@@ -98,7 +98,7 @@
     flex-wrap: wrap;
     margin-bottom: 18px;
   }
-  nav.tabs button {
+  nav.tabs a {
     font-family: var(--font-display);
     font-size: 15px;
     letter-spacing: 0.3px;
@@ -108,13 +108,49 @@
     padding: 8px 18px;
     cursor: pointer;
     border-radius: 3px;
+    text-decoration: none;
   }
-  nav.tabs button.active {
+  nav.tabs a.active {
     color: var(--bg);
     background: var(--amber);
     border-color: var(--amber);
   }
-  nav.tabs button:hover:not(.active) { border-color: var(--amber-dim); color: var(--ink); }
+  nav.tabs a:hover:not(.active) { border-color: var(--amber-dim); color: var(--ink); }
+  a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+  .skip-link { position: absolute; left: -10000px; }
+  .skip-link:focus { position: fixed; left: 12px; top: 12px; z-index: 10; background: var(--panel); padding: 12px; color: var(--ink); }
+  .subnav { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+  .subnav:empty, .year-row:empty { display: none; }
+  .subnav a { color: var(--ink-dim); padding: 9px 12px; border-bottom: 2px solid transparent; text-decoration: none; }
+  .subnav a[aria-current="page"] { color: var(--amber); border-color: var(--amber); }
+  .view-title { font-family: var(--font-display); font-size: 26px; margin: 0 0 12px; }
+  .directory-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .directory-form label { width: 100%; }
+  .directory-form input { flex: 1; min-width: 0; max-width: 480px; padding: 11px; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); font: inherit; border-radius: 3px; }
+  .action-button { padding: 10px 14px; background: var(--amber); color: var(--bg); border: 1px solid var(--amber); border-radius: 3px; font: inherit; cursor: pointer; }
+  .directory-grid { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(245px, 100%), 1fr)); gap: 12px; }
+  .directory-card { display: block; color: var(--ink); text-decoration: none; background: var(--panel-2); border: 1px solid var(--line); padding: 14px; border-radius: 4px; }
+  .directory-card:hover { border-color: var(--amber); }
+  .directory-card .name-cell { font-weight: 600; }
+  .directory-card small { display: block; color: var(--ink-dim); margin-top: 8px; }
+  .games-grid { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(295px, 100%), 1fr)); gap: 12px; }
+  .listing-game { background: var(--panel-2); border: 1px solid var(--line); padding: 14px; border-radius: 4px; }
+  .listing-game .game-side { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; margin: 10px 0; }
+  .listing-game .game-side > span { display: flex; align-items: center; gap: 4px; min-width: 0; }
+  .listing-game .game-side strong { font-family: var(--font-mono); }
+  .listing-game .game-label { font: 11px var(--font-mono); color: var(--ink-dim); line-height: 1.5; }
+  .section-note { color: var(--ink-dim); font-size: 13px; line-height: 1.5; margin: 0 0 16px; }
+  #content, .panel { min-width: 0; }
+  .table-scroll { max-width: 100%; overflow-x: auto; }
+  .home-links { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
+  .home-links a { color: var(--amber); }
+  @media (max-width: 520px) {
+    .wrap { padding: 20px 12px 60px; }
+    nav.tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
+    nav.tabs a { padding: 9px 3px; font-size: 13px; text-align: center; }
+    .panel { padding: 14px; }
+    .subnav a { padding: 9px 8px; font-size: 14px; }
+  }
 
   .year-row {
     display: flex;
@@ -568,6 +604,7 @@
 </style>
 </head>
 <body>
+<a class="skip-link" href="#content">Skip to content</a>
 <div class="wrap">
 
   <header class="top">
@@ -576,26 +613,23 @@
       <p>An iterative, opponent-strength coefficient replacing the poll — conference standings decide who qualifies, CoE decides seeding and home field.</p>
     </div>
     <div class="scope-note">
-      RATINGS: 2010–2025<br>
-      PLAYOFF FIELD: 2014–2025<br>
+      <span id="coverage-caption"></span><br>
       <span id="year-caption">—</span>
     </div>
   </header>
 
-  <nav class="tabs" id="tabs">
-    <button data-tab="home" class="active">Home</button>
-    <button data-tab="teams">Team Ratings</button>
-    <button data-tab="elo">Elo Ratings</button>
-    <button data-tab="conferences">Conferences</button>
-    <button data-tab="field">Playoff Field</button>
-    <button data-tab="bracket">Bracket Draw</button>
-    <button data-tab="odds">Title Odds</button>
-    <button data-tab="history">Playoff History</button>
+  <nav class="tabs" id="tabs" aria-label="Primary">
+    <a data-section="home" href="#section=home">Home</a>
+    <a data-section="games" href="#section=games">Games</a>
+    <a data-section="teams" href="#section=teams">Teams</a>
+    <a data-section="rankings" href="#section=rankings">Rankings</a>
+    <a data-section="playoff" href="#section=playoff">Playoff</a>
   </nav>
 
+  <nav class="subnav" id="subnav" aria-label="Section views"></nav>
   <div class="year-row" id="year-row"></div>
 
-  <div id="content"></div>
+  <main id="content" tabindex="-1"></main>
 
   <footer class="foot">
     Team rating = iterative opponent-strength model (winner += opponent_rating × phase_weight; loser retains a
@@ -617,6 +651,7 @@ __LOGO_MANIFEST_JSON__
 <script id="static-manifest" type="application/json">
 __STATIC_MANIFEST_JSON__
 </script>
+<script src="navigation.js?v=__NAVIGATION_VERSION__"></script>
 <script>
 const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
 // Logo manifest (data foundation step): the same {name: [{start, end, bg, ...}]}
@@ -765,7 +800,8 @@ function resolveTeam(value) {
 
 function teamHref(name) {
   const t = TEAM_BY_NAME.get(name);
-  return t ? '#team=' + t.slug : null;
+  return t ? CfbNavigation.hashFor({ view: 'team', teamParam: t.slug,
+    returnTo: state.view === 'team' ? state.returnTo : CfbNavigation.hashFor(state) }) : null;
 }
 
 // Wraps inner markup in a link to the team's page. The link's accessible
@@ -785,34 +821,48 @@ function teamLink(name, size, yearOverride, namePrefix) {
     '<span class="team-link-name">' + (namePrefix || '') + name + '</span>');
 }
 
-const TAB_NAMES = new Set([...document.querySelectorAll('#tabs button')].map(b => b.dataset.tab));
+const ROUTE_CONFIG = { yearsAll: DATA.years_all, playoffYears: DATA.years_playoff,
+  gameSeasons: STATIC_MANIFEST.seasons || [] };
+let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult: null, simYear: null,
+  homeGroup: null, homeTop25: false, homePoll: null };
+const SECTION_LABELS = { home: 'Home', games: 'Games', teams: 'Teams', rankings: 'Rankings', playoff: 'Playoff' };
+const SUBVIEWS = {
+  rankings: [['elo', 'Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'], ['ap', 'AP'], ['cfp', 'CFP']],
+  playoff: [['field', 'Field'], ['bracket', 'Bracket & Simulator'], ['odds', 'Title Odds'], ['history', 'History']]
+};
 
-let state = { tab: 'home', year: DATA.years_all[DATA.years_all.length - 1], simResult: null, simYear: null, view: 'tab', teamParam: null, homeGroup: null, homeTop25: false, homePoll: null };
+function routeHref(changes) { return CfbNavigation.hashFor({ ...state, ...changes }); }
+function navigate(changes) {
+  const target = routeHref(changes);
+  if (location.hash === target) applyRoute();
+  else location.hash = target;
+}
 
 function fmt(n) { return Number(n).toFixed(3); }
 
 function renderYearRow() {
   const row = document.getElementById('year-row');
-  if (state.view === 'team') {
+  if (state.view === 'team' || state.section === 'teams') {
     row.innerHTML = '';
-    document.getElementById('year-caption').textContent = 'TEAM PAGE';
+    document.getElementById('year-caption').textContent = state.view === 'team' ? 'TEAM PAGE' : 'TEAM DIRECTORY';
     return;
   }
-  if (state.tab === 'home') {
+  if (state.section === 'home') {
     row.innerHTML = '';
     document.getElementById('year-caption').textContent = 'CURRENT SEASON' + (UPCOMING.season ? ' \u00b7 ' + UPCOMING.season : '');
     return;
   }
-  if (state.tab === 'history') {
+  if (state.section === 'playoff' && state.subview === 'history') {
     row.innerHTML = '';
     document.getElementById('year-caption').textContent = 'ALL SEASONS, ' + DATA.years_playoff[0] + '\u2013' + DATA.years_playoff[DATA.years_playoff.length - 1];
     return;
   }
-  const years = (state.tab === 'field' || state.tab === 'bracket' || state.tab === 'odds') ? DATA.years_playoff : DATA.years_all;
-  if (!years.includes(state.year)) state.year = years[years.length - 1];
+  const years = CfbNavigation.seasonsFor(state.section, ROUTE_CONFIG);
 
   const select = document.createElement('select');
   select.className = 'year-select';
+  select.id = 'season-select';
+  select.setAttribute('aria-label', 'Season');
   years.forEach(y => {
     const opt = document.createElement('option');
     opt.value = y;
@@ -820,7 +870,11 @@ function renderYearRow() {
     if (y === state.year) opt.selected = true;
     select.appendChild(opt);
   });
-  select.addEventListener('change', () => { state.year = parseInt(select.value, 10); render(); });
+  select.addEventListener('change', () => {
+    const year = Number(select.value);
+    const entry = ROUTE_CONFIG.gameSeasons.find(s => s.season === year);
+    navigate({ year, status: state.section === 'games' && !entry?.scheduled ? 'completed' : state.status });
+  });
 
   row.innerHTML = '';
   row.appendChild(select);
@@ -837,7 +891,7 @@ function rankTable(rows, valueKey, labelKey, valueLabel, kind) {
   return html;
 }
 
-function renderTeams() {
+function renderTeamCoeRankings() {
   const single = (DATA.team_ratings_by_year[state.year] || []).map(r => ({ name: r.team, value: r.rating }));
   const rolling = (DATA.team_rolling_by_year[state.year] || []).map(r => ({ name: r.team, value: r.coeff_5yr }));
   return '<div class="grid-2">' +
@@ -849,7 +903,8 @@ function renderTeams() {
 function renderElo() {
   const rows = (DATA.team_elo_by_year[state.year] || []).map(r => ({ name: r.team, value: r.elo }));
   if (!rows.length) return '<div class="empty-note">No Elo data for this season.</div>';
-  return '<div class="panel"><h2 class="section-title">End-of-Season Elo Rating</h2>' +
+  return '<div class="panel"><h2 class="section-title">Elo Rating · ' + state.year + '</h2>' +
+    '<p class="section-note">Latest exported rating within the selected season.</p>' +
     rankTable(rows, 'value', 'Team', 'Elo', 'team') + '</div>';
 }
 
@@ -1078,7 +1133,7 @@ function runSimulationAndAnimate() {
   if (!pf) return;
   state.simResult = runBracketSimulation(pf);
   state.simYear = state.year;
-  document.getElementById('content').innerHTML = renderBracket();
+  document.getElementById('content').innerHTML = playoffIntro() + renderBracket();
   revealBracketSequence();
 }
 
@@ -1173,12 +1228,13 @@ function teamStat(label, value, sub) {
 function rankSub(hit) { return hit ? '#' + hit.rank + ' of ' + hit.of : 'N/A'; }
 
 function renderTeamPage(param) {
-  const back = '<a class="back-link" href="#tab=' + state.tab + '">&larr; Back to dashboard</a>';
+  const backSection = CfbNavigation.readRoute(state.returnTo, ROUTE_CONFIG).section;
+  const back = '<a class="back-link" href="' + esc(state.returnTo) + '">&larr; Back to ' + SECTION_LABELS[backSection] + '</a>';
   const team = resolveTeam(param);
   if (!team) {
     return back + '<div class="panel"><h2 class="section-title">Team not found</h2>' +
       '<div class="empty-note">No team matches &ldquo;' + esc(param || '') + '&rdquo;. ' +
-      'Click any team on a leaderboard to open its page.</div></div>';
+      '<a href="#section=teams">Browse the Teams directory</a>.</div></div>';
   }
   const season = latestSeasonFor(team.name);
   const elo = season ? rankLookup('team_elo_by_year', 'elo', season, team.name) : null;
@@ -1616,6 +1672,7 @@ const UPCOMING = DATA.upcoming || { games: [], current_elo: [], ratings_as_of: n
 const UPCOMING_GAMES = (UPCOMING.games || []).map(g => ({ id: g[0], season: g[1], week: g[2], kickoff: g[3],
   tbd: g[4] === 1, home: g[5], away: g[6], neutral: g[7] === 1, phase: g[8], homeElo: g[9], awayElo: g[10],
   pHome: g[11], homeProv: g[12] === 1, awayProv: g[13] === 1 }));
+const UPCOMING_BY_ID = new Map(UPCOMING_GAMES.map(g => [g.id, g]));
 const CURRENT_ELO = new Map((UPCOMING.current_elo || []).map(r => [r[0], { elo: r[1], rank: r[2] }]));
 
 // One rounding rule everywhere: round the home side, give the away side the exact
@@ -1778,7 +1835,7 @@ function renderEloTop25() {
           '</span><span class="v">' + elo.toFixed(1) + '</span></li>';
       }).join('') + '</ol>'
     : '<div class="empty-note">No Elo ratings yet.</div>';
-  return '<div class="panel">' + panelHead('Elo Top 25', '<a class="side-link" href="#tab=elo">All ratings &rarr;</a>') + body +
+  return '<div class="panel">' + panelHead('Elo Top 25', '<a class="side-link" href="#section=rankings&view=elo">All ratings &rarr;</a>') + body +
     '<p class="side-note">Current ratings' + (UPCOMING.ratings_as_of ? ' as of ' + fmtDate(UPCOMING.ratings_as_of) : '') + '.</p></div>';
 }
 
@@ -1789,7 +1846,7 @@ function renderConferenceBoard() {
         '<li><span class="rk">' + (i + 1) + '</span><span class="nm">' + logoMarkup(conf, 'conf', 'xs', b.season) +
         '<span>' + conf + '</span></span><span class="v">' + fmt(coe) + '</span></li>').join('') + '</ol>'
     : '<div class="empty-note">No conference ratings yet.</div>';
-  return '<div class="panel">' + panelHead('Conference CoE', '<a class="side-link" href="#tab=conferences">Details &rarr;</a>') + body +
+  return '<div class="panel">' + panelHead('Conference CoE', '<a class="side-link" href="#section=rankings&view=conference-coe&season=' + b.season + '">Details &rarr;</a>') + body +
     '<p class="side-note">5-year rolling CoE' + (b.season ? ', ' + b.season : '') + ': the order that sets playoff bids.</p></div>';
 }
 
@@ -1832,81 +1889,224 @@ function renderPollsPanel() {
 }
 
 function renderHome() {
-  return '<div class="home-grid"><div class="home-main">' + renderUpcomingPanel() + '</div>' +
+  return '<h2 class="view-title">Home</h2><div class="home-links">' +
+    '<a href="#section=games">Browse games &rarr;</a><a href="#section=teams">Find a team &rarr;</a>' +
+    '<a href="#section=rankings">Explore rankings &rarr;</a></div>' +
+    '<div class="home-grid"><div class="home-main">' + renderUpcomingPanel() + '</div>' +
     '<aside class="home-side" aria-label="Rankings">' + renderEloTop25() + renderConferenceBoard() + renderPollsPanel() + '</aside></div>';
 }
 
+// ---------------- Milestone A1 landing views ----------------
+let renderVersion = 0;
+
+function renderNavigation() {
+  document.querySelectorAll('#tabs a').forEach(a => {
+    const selected = a.dataset.section === state.section;
+    a.classList.toggle('active', selected);
+    if (selected) a.setAttribute('aria-current', 'page');
+    else a.removeAttribute('aria-current');
+  });
+  const items = state.view === 'team' ? [] : SUBVIEWS[state.section] || [];
+  document.getElementById('subnav').innerHTML = items.map(([view, label]) =>
+    '<a href="' + esc(routeHref({ subview: view })) + '"' +
+    (view === state.subview ? ' aria-current="page"' : '') + '>' + label + '</a>').join('');
+}
+
+function renderTeamDirectory() {
+  return '<div class="panel"><h2 class="view-title">Teams</h2>' +
+    '<p class="section-note">Browse every program in this dataset. Conference labels show each team\'s latest available membership.</p>' +
+    '<form class="directory-form" id="directory-form"><label for="team-query">Search by team name or alias</label>' +
+    '<input type="search" id="team-query" name="q" maxlength="150" placeholder="BYU, Florida Atlantic, Miami…" value="' + esc(state.query) + '">' +
+    '<button class="action-button" type="submit">Search</button>' +
+    (state.query ? '<a class="side-link" href="#section=teams">Clear</a>' : '') + '</form>' +
+    '<div id="directory-results" aria-live="polite"></div></div>';
+}
+
+function fillDirectoryResults(aliasTeams, message) {
+  const target = document.getElementById('directory-results');
+  if (!target) return;
+  const aliasMap = new Map((aliasTeams || []).map(t => [String(t.id), t.aliases || []]));
+  const q = CfbNavigation.normalizeSearch(state.query);
+  const teams = TEAMS.filter(t => !q || [t.name, t.slug, ...(aliasMap.get(String(t.id)) || [])]
+    .some(s => CfbNavigation.normalizeSearch(s).includes(q))).sort((a, b) => a.name.localeCompare(b.name));
+  target.innerHTML = '<p class="section-note">' + teams.length + ' team' + (teams.length === 1 ? '' : 's') +
+    (state.query ? ' matching “' + esc(state.query) + '”' : '') + '.</p>' + (message || '') +
+    (teams.length ? '<ul class="directory-grid">' + teams.map(t => '<li><a class="directory-card" href="' + esc(teamHref(t.name)) + '">' +
+      '<span class="name-cell">' + logoMarkup(t.name, 'team', 'sm', t.conference_year || state.year) + '<span>' + esc(t.name) + '</span></span>' +
+      '<small>' + esc(t.conference || 'Conference unavailable') + (t.conference_year ? ' · ' + t.conference_year : '') + '</small></a></li>').join('') + '</ul>'
+      : '<p class="empty-note">No matching teams. Try another name or clear your search.</p>');
+}
+
+function hydrateDirectory(version) {
+  fillDirectoryResults(_searchIndex?.teams, _searchIndex ? '' : '<p class="section-note">Loading team aliases…</p>');
+  loadSearchIndex().then(idx => {
+    if (version === renderVersion) fillDirectoryResults(idx.teams, '');
+  }).catch(() => {
+    if (version === renderVersion) fillDirectoryResults([], '<p class="section-note">Aliases could not be loaded. Team-name search is still available. <button class="action-button" id="retry-directory">Retry aliases</button></p>');
+  });
+}
+
+function renderGames() {
+  const tabs = [['upcoming', 'Upcoming'], ['completed', 'Completed']].map(([status, label]) =>
+    '<a href="' + esc(routeHref({ status })) + '"' + (state.status === status ? ' aria-current="page"' : '') + '>' + label + '</a>').join('');
+  return '<div class="panel"><h2 class="view-title">Games</h2>' +
+    '<nav class="subnav" aria-label="Game status">' + tabs + '</nav>' +
+    '<div id="games-results" aria-live="polite"><p class="empty-note">Loading ' + state.year + ' games…</p></div></div>';
+}
+
+function listingGame(g, season) {
+  const knownDate = g.date && g.date !== '1900-01-01';
+  const scheduled = UPCOMING_BY_ID.get(g.game_id);
+  const when = g.completed ? (knownDate ? fmtDate(g.date) : 'Date unavailable')
+    : g.kickoff_utc ? fmtKickoff(g.kickoff_utc, Boolean(scheduled?.tbd)) : 'Kickoff TBA';
+  const phase = g.phase === 2 ? 'CFP' : g.phase === 1 ? 'Bowl' : g.week != null ? 'Week ' + g.week : 'Week TBA';
+  const status = g.completed ? 'Final' + (g.ot ? ' / OT' : '') : 'Upcoming';
+  const side = (id, score, isHome) => {
+    const t = TEAM_BY_ID.get(String(id));
+    return '<div class="game-side"><span>' + (isHome && !g.neutral ? '<span class="gc-at">@ </span>' : '') +
+      (t ? teamLink(t.name, 'sm', season) : 'Unknown team') + '</span>' +
+      (g.completed ? '<strong>' + (score == null ? '—' : score) + '</strong>' : '') + '</div>';
+  };
+  const pct = g.p_home == null ? null : probPct(g.p_home);
+  const prediction = !g.completed && g.p_home != null
+    ? '<p class="side-note">Pregame win chance · Away ' + pct.away + '% · Home ' + pct.home + '%</p>'
+    : !g.completed ? '<p class="side-note">Pregame win chance unavailable.</p>' : '';
+  return '<li class="listing-game" data-game-id="' + g.game_id + '"><div class="game-label">' +
+    status + ' · ' + phase + (g.neutral ? ' · Neutral site' : '') + '<br>' + esc(when) + '</div>' +
+    side(g.away_id, g.away_score, false) + side(g.home_id, g.home_score, true) + prediction + '</li>';
+}
+
+function hydrateGames(version) {
+  const season = state.year, status = state.status;
+  loadSeasonGames(season).then(data => {
+    if (version !== renderVersion) return;
+    const games = data.games.filter(g => Boolean(g.completed) === (status === 'completed'));
+    const target = document.getElementById('games-results');
+    target.innerHTML = '<p class="section-note">' + season + ' · ' + games.length + ' ' + status +
+      ' games · Earliest first.' + (status === 'upcoming' ? ' Predictions use the latest exported pregame ratings.' : '') + '</p>' +
+      (games.length ? '<ul class="games-grid">' + games.map(g => listingGame(g, season)).join('') + '</ul>' :
+        '<p class="empty-note">No ' + status + ' games available for this season. ' +
+        '<a class="side-link" href="' + esc(routeHref({ status: status === 'upcoming' ? 'completed' : 'upcoming' })) + '">View ' +
+        (status === 'upcoming' ? 'completed' : 'upcoming') + ' games</a>.</p>');
+  }).catch(() => {
+    if (version !== renderVersion) return;
+    document.getElementById('games-results').innerHTML = '<p class="empty-note">Could not load this season. <button class="action-button" id="retry-games">Retry</button></p>';
+  });
+}
+
+function renderRankingPoll(key) {
+  const polls = DATA.polls || {};
+  const release = polls[key];
+  const title = key === 'ap' ? 'AP Top 25' : 'CFP Rankings';
+  if (state.year !== polls.season || !release?.rows?.length) {
+    return '<div class="panel"><h2 class="section-title">' + title + '</h2><p class="empty-note">' +
+      (state.year === polls.season ? 'No ' + title + ' release available for ' + state.year + '.' :
+        'Historical ' + title + ' releases for ' + state.year + ' are not included in this export.') + '</p></div>';
+  }
+  return '<div class="panel"><h2 class="section-title">' + title + '</h2><p class="section-note">' +
+    polls.season + ' · ' + pollLabel(key, release) + ' · Latest available release. Polls do not affect model ratings.</p>' +
+    '<table class="rank-table"><thead><tr><th scope="col">Rank</th><th scope="col">Team</th><th scope="col" class="num">First-place votes</th></tr></thead><tbody>' +
+    release.rows.map(([rank, id, school, votes]) => {
+      const t = id != null ? TEAM_BY_ID.get(String(id)) : null;
+      return '<tr><td class="rk">' + rank + '</td><td>' + (t ? teamLink(t.name, 'sm', polls.season) : esc(school)) +
+        '</td><td class="num">' + (votes == null ? '—' : votes) + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+}
+
+function playoffIntro() {
+  return '<h2 class="view-title">Playoff</h2><p class="section-note">CoE model postseason. Fields, brackets, title odds, and history reflect this project\'s model, not official CFP results.</p>';
+}
+
 // ---------------- Router ----------------
-// #team=<slug> opens a team page; #tab=<name> selects a tab; no hash = default
-// tab. Real anchors + hashchange give direct links and back/forward for free.
+// Canonical #section URLs coexist with the original #tab and #team URLs.
+// URL parsing is independent of previous state, so reload and Back/Forward agree.
 const BASE_TITLE = document.title;
+let hasRendered = false;
+let pendingFocus = null;
 function applyRoute() {
-  const params = new URLSearchParams(location.hash.slice(1));
-  if (params.has('team')) {
-    state.view = 'team';
-    state.teamParam = params.get('team');
-  } else {
-    state.view = 'tab';
-    const tab = params.get('tab');
-    if (tab && TAB_NAMES.has(tab)) state.tab = tab;
-  }
-  document.querySelectorAll('#tabs button').forEach(b =>
-    b.classList.toggle('active', state.view === 'tab' && b.dataset.tab === state.tab));
+  const wasSeason = document.activeElement?.id === 'season-select';
+  Object.assign(state, CfbNavigation.readRoute(location.hash, ROUTE_CONFIG));
+  const canonical = CfbNavigation.hashFor(state);
+  if (location.hash !== canonical) history.replaceState(null, '', canonical);
   render();
-  if (state.view === 'team') {
-    const t = resolveTeam(state.teamParam);
-    document.title = (t ? t.name : 'Team not found') + ' \u00b7 ' + BASE_TITLE;
-    window.scrollTo(0, 0);
-  } else {
-    document.title = BASE_TITLE;
+  const t = state.view === 'team' ? resolveTeam(state.teamParam) : null;
+  document.title = (state.view === 'team' ? t?.name || 'Team not found' : SECTION_LABELS[state.section]) + ' · ' + BASE_TITLE;
+  if (hasRendered) {
+    const focus = document.getElementById(pendingFocus || (wasSeason ? 'season-select' : 'content'));
+    if (focus) focus.focus({ preventScroll: true });
+    if (!wasSeason) window.scrollTo(0, 0);
   }
+  pendingFocus = null;
+  hasRendered = true;
 }
 window.addEventListener('hashchange', applyRoute);
+document.querySelector('.skip-link').addEventListener('click', e => {
+  e.preventDefault();
+  document.getElementById('content').focus();
+  document.getElementById('content').scrollIntoView();
+});
 
-// AP / CFP toggle on Home.
+// Home controls retain their existing behavior.
 document.getElementById('content').addEventListener('click', e => {
   const b = e.target.closest('[data-poll]');
-  if (!b || state.view !== 'tab' || state.tab !== 'home') return;
-  state.homePoll = b.dataset.poll;
-  render();
-  const again = document.querySelector('[data-poll="' + state.homePoll + '"]');
-  if (again) again.focus();   // keep keyboard focus on the toggle after re-render
+  if (b && state.view === 'tab' && state.section === 'home') {
+    state.homePoll = b.dataset.poll;
+    render();
+    document.querySelector('[data-poll="' + state.homePoll + '"]')?.focus();
+  }
+  if (e.target.id === 'simulate-btn' && state.section === 'playoff' && state.subview === 'bracket') runSimulationAndAnimate();
+  if (e.target.id === 'retry-games' || e.target.id === 'retry-directory') render();
 });
-
-// Home controls (week picker, Top 25 filter) re-render only the Home view.
 document.getElementById('content').addEventListener('change', e => {
-  if (state.view !== 'tab' || state.tab !== 'home') return;
+  if (state.view !== 'tab' || state.section !== 'home') return;
   if (e.target.id === 'home-group') { state.homeGroup = e.target.value; render(); }
   else if (e.target.id === 'home-top25') { state.homeTop25 = e.target.checked; render(); }
+  document.getElementById(e.target.id)?.focus();
+});
+document.getElementById('content').addEventListener('submit', e => {
+  if (e.target.id !== 'directory-form') return;
+  e.preventDefault();
+  pendingFocus = 'team-query';
+  navigate({ query: document.getElementById('team-query').value.trim() });
 });
 
+function wrapWideTables() {
+  document.querySelectorAll('#content .rank-table').forEach(table => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll';
+    wrapper.tabIndex = 0;
+    wrapper.setAttribute('role', 'region');
+    wrapper.setAttribute('aria-label', 'Scrollable ' + SECTION_LABELS[state.section] + ' table');
+    table.replaceWith(wrapper);
+    wrapper.appendChild(table);
+  });
+}
+
 function render() {
+  const version = ++renderVersion;
+  renderNavigation();
   renderYearRow();
   const content = document.getElementById('content');
   if (state.view === 'team') { content.innerHTML = renderTeamPage(state.teamParam); hydrateTeamPage(); return; }
-  if (state.tab === 'home') content.innerHTML = renderHome();
-  else if (state.tab === 'teams') content.innerHTML = renderTeams();
-  else if (state.tab === 'elo') content.innerHTML = renderElo();
-  else if (state.tab === 'conferences') content.innerHTML = renderConferences();
-  else if (state.tab === 'field') content.innerHTML = renderField();
-  else if (state.tab === 'history') content.innerHTML = renderHistory();
-  else if (state.tab === 'odds') content.innerHTML = renderOdds();
-  else content.innerHTML = renderBracket();
+  if (state.section === 'home') content.innerHTML = renderHome();
+  else if (state.section === 'teams') { content.innerHTML = renderTeamDirectory(); hydrateDirectory(version); }
+  else if (state.section === 'games') { content.innerHTML = renderGames(); hydrateGames(version); }
+  else if (state.section === 'rankings') {
+    const views = { elo: renderElo, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferences,
+      ap: () => renderRankingPoll('ap'), cfp: () => renderRankingPoll('cfp') };
+    content.innerHTML = '<h2 class="view-title">Rankings</h2>' + views[state.subview]();
+  } else if (state.section === 'playoff') {
+    const views = { field: renderField, bracket: renderBracket, odds: renderOdds, history: renderHistory };
+    content.innerHTML = playoffIntro() + views[state.subview]();
+    // A simulation restored after navigating away should already be visible.
+    content.querySelectorAll('.bracket-round-col.pending').forEach(el => el.classList.remove('pending'));
+  }
+  wrapWideTables();
 }
 
-document.getElementById('tabs').addEventListener('click', e => {
-  if (e.target.tagName !== 'BUTTON') return;
-  const target = 'tab=' + e.target.dataset.tab;
-  if (location.hash.slice(1) === target) applyRoute();  // same hash: no hashchange event fires
-  else location.hash = target;
-});
-
-document.getElementById('content').addEventListener('click', e => {
-  if (e.target.id === 'simulate-btn') {
-    runSimulationAndAnimate();
-  }
-});
-
+function coverageRange(years) { return years?.length ? Math.min(...years) + '–' + Math.max(...years) : 'unavailable'; }
+document.getElementById('coverage-caption').textContent = 'RATINGS: ' + coverageRange(DATA.years_all) +
+  ' · PLAYOFF: ' + coverageRange(DATA.years_playoff);
 applyRoute();
 </script>
 </body>

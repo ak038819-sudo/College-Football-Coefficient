@@ -1,0 +1,86 @@
+/* Shared URL contract for the static dashboard. No framework or build dependency. */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.CfbNavigation = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+  const views = {
+    home: [], games: [], teams: [],
+    rankings: ['elo', 'team-coe', 'conference-coe', 'ap', 'cfp'],
+    playoff: ['field', 'bracket', 'odds', 'history']
+  };
+  const legacy = {
+    home: ['home', ''], teams: ['rankings', 'team-coe'],
+    elo: ['rankings', 'elo'], conferences: ['rankings', 'conference-coe'],
+    field: ['playoff', 'field'], bracket: ['playoff', 'bracket'],
+    odds: ['playoff', 'odds'], history: ['playoff', 'history']
+  };
+  const has = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+  const latest = years => years.length ? Math.max(...years) : null;
+
+  function seasonsFor(section, config) {
+    const years = section === 'games' ? (config.gameSeasons || []).map(s => s.season)
+      : section === 'playoff' ? config.playoffYears : config.yearsAll;
+    return [...new Set((years || []).map(Number).filter(Number.isInteger))].sort((a, b) => a - b);
+  }
+
+  function readRoute(hash, config) {
+    const p = new URLSearchParams(String(hash || '').replace(/^#/, ''));
+    let section = p.get('section');
+    let subview = p.get('view');
+    if (!p.has('section') && has(legacy, p.get('tab'))) [section, subview] = legacy[p.get('tab')];
+    if (!has(views, section)) section = 'home';
+    if (!views[section].includes(subview)) subview = views[section][0] || '';
+    const years = seasonsFor(section, config);
+    let year = Number(p.get('season'));
+    if (!p.has('season') || !years.includes(year)) year = latest(years);
+    if (section === 'home' || section === 'teams') year = latest(config.yearsAll || []);
+    const season = (config.gameSeasons || []).find(s => s.season === year);
+    const status = ['upcoming', 'completed'].includes(p.get('status')) ? p.get('status')
+      : season && season.scheduled > 0 ? 'upcoming' : 'completed';
+    const route = { section, subview, year, status,
+      query: section === 'teams' ? (p.get('q') || '').trim().slice(0, 150) : '',
+      view: 'tab', teamParam: null, returnTo: '' };
+    // Existing team URLs remain valid. A team page belongs to the Teams section.
+    if (p.has('team')) {
+      route.view = 'team';
+      route.section = 'teams';
+      route.subview = '';
+      route.query = '';
+      route.year = latest(config.yearsAll || []);
+      route.teamParam = p.get('team');
+      // Only accept a section URL as the return target; never an external URL.
+      const from = p.get('from');
+      if (from && from.startsWith('#section=')) {
+        const back = new URLSearchParams(from.slice(1));
+        if (!back.has('team')) route.returnTo = hashFor(readRoute(from, config));
+      }
+      if (!route.returnTo) route.returnTo = '#section=teams';
+    }
+    return route;
+  }
+
+  function hashFor(route) {
+    const p = new URLSearchParams();
+    if (route.view === 'team') {
+      p.set('team', route.teamParam || '');
+      if (route.returnTo && route.returnTo !== '#section=teams') p.set('from', route.returnTo);
+    } else {
+      p.set('section', route.section);
+      if (route.subview) p.set('view', route.subview);
+      if (route.year != null && (route.section === 'games' || route.section === 'rankings' ||
+          (route.section === 'playoff' && route.subview !== 'history'))) p.set('season', route.year);
+      if (route.section === 'games') p.set('status', route.status);
+      if (route.section === 'teams' && route.query) p.set('q', route.query);
+    }
+    return '#' + p.toString();
+  }
+
+  function normalizeSearch(value) {
+    return String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+
+  return { readRoute, hashFor, seasonsFor, normalizeSearch };
+});

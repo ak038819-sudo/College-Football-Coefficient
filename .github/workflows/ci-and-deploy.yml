@@ -89,6 +89,13 @@ jobs:
       - name: Run tests
         run: pytest -v
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Test dashboard navigation
+        run: node --test tests/navigation.test.cjs
+
   rebuild-and-deploy:
     needs: test
     if: >-
