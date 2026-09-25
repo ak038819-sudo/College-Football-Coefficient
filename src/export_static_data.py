@@ -23,9 +23,12 @@ Every value is copied from an authoritative table; nothing is recomputed:
   scheduled games  current ratings and prediction from predict_upcoming.build_upcoming
                    (the engine's own functions). No score, no postgame Elo, no Game CoE
                    -- a scheduled game can't have them.
-Dates follow the database convention: the UTC date of CFBD's start time (a late
-Saturday-night Eastern kickoff carries Sunday's date). Scheduled games also keep
-their exact kickoff_utc so pages can show local time.
+`date` is the database's game_date (the UTC date of CFBD's start time, which also
+orders games for Elo and is never changed here). `kickoff_utc` is CFBD's full start
+time -- for scheduled games always, for completed games once fetch_kickoffs.py has
+been run -- and `time_tbd` marks a placeholder clock time. Pages show the date as
+US Eastern from kickoff_utc when it exists (so a late Saturday game reads Saturday),
+otherwise `date`.
 """
 from __future__ import annotations
 
@@ -47,7 +50,8 @@ PHASE_CODE = {"regular": 0, "bowl": 1, "cfp": 2}
 FIELDS = ["game_id", "week", "date", "kickoff_utc", "completed", "phase", "neutral", "ot",
           "home_id", "away_id", "home_score", "away_score",
           "home_pre_elo", "away_pre_elo", "p_home", "home_post_elo", "away_post_elo", "home_elo_change",
-          "home_game_coe", "away_game_coe", "home_provisional", "away_provisional"]
+          "home_game_coe", "away_game_coe", "home_provisional", "away_provisional",
+          "time_tbd"]      # appended last so existing positions never move
 SEARCH_GAME_FIELDS = ["game_id", "season", "home_id", "away_id"]
 
 
@@ -62,24 +66,32 @@ def build_season_payloads(conn: sqlite3.Connection, upcoming: dict) -> dict:
     has_hybrid = conn.execute("SELECT 1 FROM sqlite_master WHERE name='hybrid_game_ratings'").fetchone()
     coe = {(g, t): c for g, t, c in conn.execute("SELECT game_id, team_id, game_coe FROM hybrid_game_ratings")} \
         if has_hybrid else {}
+    has_kickoffs = conn.execute("SELECT 1 FROM sqlite_master WHERE name='game_kickoffs'").fetchone()
+    # A date-only season's midnight-UTC stamp is not a time: send no kickoff, so the page
+    # shows the stored date (see sql/kickoff_tables.sql).
+    ko_cols = {r[1] for r in conn.execute("PRAGMA table_info(game_kickoffs)")} if has_kickoffs else set()
+    kickoff = {g: ((None, 1) if d else (k, tbd)) for g, k, tbd, d in conn.execute(
+        "SELECT game_id, kickoff_utc, time_tbd, " + ("date_only" if "date_only" in ko_cols else "0") +
+        " FROM game_kickoffs")} if has_kickoffs else {}
     rows = defaultdict(list)
 
     for (gid, season, week, date, home, away, hs, as_, neutral, ot, phase) in conn.execute(
             """SELECT game_id, season_year, week, game_date, home_team_id, away_team_id, home_score, away_score,
                       neutral_site, went_ot, game_phase FROM games WHERE home_score IS NOT NULL"""):
         he, ae = elo.get((gid, home)), elo.get((gid, away))
+        ko, ko_tbd = kickoff.get(gid, (None, None))                 # display only; null when not fetched
         rows[season].append([
-            gid, week, str(date)[:10], None, 1, PHASE_CODE.get(phase, 0), int(bool(neutral)), int(bool(ot)),
+            gid, week, str(date)[:10], ko, 1, PHASE_CODE.get(phase, 0), int(bool(neutral)), int(bool(ot)),
             home, away, hs, as_,
             _r(he[0], 1) if he else None, _r(ae[0], 1) if ae else None, _r(he[1], 4) if he else None,
             _r(he[3], 1) if he else None, _r(ae[3], 1) if ae else None, _r(he[2], 2) if he else None,
-            _r(coe.get((gid, home)), 3), _r(coe.get((gid, away)), 3), 0, 0])
+            _r(coe.get((gid, home)), 3), _r(coe.get((gid, away)), 3), 0, 0, ko_tbd])
 
     for g in upcoming.get("games", []):
         gid, season, week, kickoff, _tbd, home, away, neutral, phase, h_elo, a_elo, p, h_prov, a_prov = g
         rows[season].append([
             gid, week, (kickoff or "1900-01-01")[:10], kickoff, 0, phase, neutral, 0, home, away, None, None,
-            h_elo, a_elo, p, None, None, None, None, None, h_prov, a_prov])
+            h_elo, a_elo, p, None, None, None, None, None, h_prov, a_prov, int(bool(_tbd))])
 
     conf = defaultdict(dict)
     for tid, season, c in conn.execute("SELECT team_id, season_year, conference_real FROM team_membership_by_season"):

@@ -122,6 +122,11 @@ def main() -> None:
             run([python, "src/load_rankings.py", str(rank_path), "--db", str(DB_PATH)],
                 f"Load AP/CFP rankings: {rank_path.stem.replace('rankings_', '')}")
 
+        # Kickoff times: display data only (dates shown as US Eastern); read by no model.
+        for ko_path in sorted(Path("data/raw").glob("kickoffs_*.csv")):
+            run([python, "src/load_kickoffs.py", str(ko_path), "--db", str(DB_PATH)],
+                f"Load kickoff times: {ko_path.stem.replace('kickoffs_', '')}")
+
         # CFBD advanced season stats (Milestone 7): display data only, read by no model.
         for adv_path in sorted(Path("data/raw").glob("advanced_*.csv")):
             run([python, "src/load_advanced.py", str(adv_path), "--db", str(DB_PATH)],

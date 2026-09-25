@@ -1726,6 +1726,16 @@ function probPct(pHome) {
   return { home: h, away: 100 - h };
 }
 
+// A completed game's date as US Eastern from CFBD's kickoff time -- the same convention as
+// fmtKickoff's TBA branch -- so a 10:30 PM Eastern Saturday game (already Sunday in UTC) reads
+// Saturday for every visitor. Falls back to the stored date when no kickoff time was fetched.
+function fmtGameDate(g) {
+  if (g.kickoff_utc) {
+    const d = new Date(g.kickoff_utc);
+    if (!isNaN(d.getTime())) return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' });
+  }
+  return g.date && g.date !== '1900-01-01' ? fmtDate(g.date) : 'Date unavailable';
+}
 function fmtKickoff(iso, tbd) {
   if (!iso) return 'Date TBA';
   const d = new Date(iso);
@@ -2002,10 +2012,9 @@ function renderGames() {
 // One game card. Every number is the stored point-in-time value from the season file:
 // pregame Elo and pregame win probability as they were BEFORE kickoff, never today's ratings.
 function listingGame(g, season) {
-  const knownDate = g.date && g.date !== '1900-01-01';
   const scheduled = UPCOMING_BY_ID.get(g.game_id);
-  const when = g.completed ? (knownDate ? fmtDate(g.date) : 'Date unavailable')
-    : g.kickoff_utc ? fmtKickoff(g.kickoff_utc, Boolean(scheduled?.tbd)) : 'Kickoff TBA';
+  const when = g.completed ? fmtGameDate(g)
+    : g.kickoff_utc ? fmtKickoff(g.kickoff_utc, Boolean(g.time_tbd ?? scheduled?.tbd)) : 'Kickoff TBA';
   const pct = g.p_home == null ? null : probPct(g.p_home);
   const tie = g.completed && g.home_score === g.away_score;
   const homeWon = g.completed && g.home_score > g.away_score;

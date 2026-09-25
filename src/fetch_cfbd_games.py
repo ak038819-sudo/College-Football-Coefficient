@@ -493,6 +493,10 @@ def main(year: int) -> int:
         fetch_cfbd_advanced.write_advanced(year, headers, OUT_DIR)
     else:
         print("Advanced stats fetch skipped (CFBD_FETCH_ADVANCED=0).")
+
+    # Kickoff times for the same season (display only; failures only warn).
+    import fetch_kickoffs
+    fetch_kickoffs.write_kickoffs(year, headers, OUT_DIR)
     if cfp_top4:
         pretty = ", ".join(sorted(cfp_top4))
         print(f"CFP Top-4 (normalized) used for fallback: {pretty}")
