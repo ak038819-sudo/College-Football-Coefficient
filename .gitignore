@@ -210,3 +210,12 @@ db/league.db
 db/*.db
 db/*.sqlite
 db/*backup*
+# ------------------------------------------------------------
+# Local development / coding-agent artifacts
+# ------------------------------------------------------------
+
+# Temporary patch files used for code-agent handoffs
+*.patch
+
+# Local repository snapshots
+repo-snapshot*.zip
