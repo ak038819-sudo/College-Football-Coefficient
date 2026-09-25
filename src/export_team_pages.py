@@ -303,12 +303,16 @@ def build_team_pages(conn: sqlite3.Connection, champions: list[dict] | None = No
             "title_count": titles.get(tid, {}).get("title_count", 0),
         }
 
+    from export_static_data import kickoff_map
+    kickoffs = kickoff_map(conn)
     return {
         "cfp_first_season": CFP_FIRST_SEASON,
         "titles_since": min((c["season"] for c in champions), default=None) if champions else None,
         "advanced": build_advanced(conn),
+        # kickoff_utc appended LAST (position 11) so existing positions never move; null for
+        # date-only seasons or when kickoff times haven't been fetched (see export_static_data.kickoff_map).
         "games": [[g[0], g[1], g[2], g[3], g[4], g[5], g[6], g[7], g[8],
-                   PHASE_CODE.get(g[9], 0), g[10]] for g in games],
+                   PHASE_CODE.get(g[9], 0), g[10], kickoffs.get(g[0], (None, None))[0]] for g in games],
         "elo": [[r[0], r[1], round(r[2], 1), round(r[3], 1), round(r[4], 3), round(r[5], 1), round(r[6], 1)]
                 for r in elo_rows if r[0] in game_by_id],
         "team_seasons": team_seasons,

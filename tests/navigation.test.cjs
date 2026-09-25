@@ -111,3 +111,39 @@ test('the school filter never turns a Games URL into a team page', () => {
   assert.equal(r.view, 'tab'); assert.equal(r.section, 'games'); assert.equal(r.team, 'byu');
   assert.equal(hashFor(r).includes('team='), false);
 });
+
+test('#game=<id> opens a game page in the Games section; the list highlight is unchanged', () => {
+  const r = read('#game=401110869&season=2025');
+  assert.equal(r.view, 'game'); assert.equal(r.section, 'games'); assert.equal(r.gameParam, 401110869);
+  assert.equal(r.year, 2025); assert.equal(r.returnTo, '#section=games');
+  assert.deepEqual(read(hashFor(r)), r);
+  const list = read('#section=games&season=2025&status=completed&game=401110869');
+  assert.equal(list.view, 'tab'); assert.equal(list.game, 401110869);
+});
+
+test('game pages: bad ids and seasons are dropped, return links stay safe', () => {
+  assert.equal(read('#game=abc').gameParam, null);
+  assert.equal(read('#game=401110869&season=1066').year, null);
+  const from = '#section=games&season=2025&status=completed&week=post';
+  const r = read('#game=5&from=' + encodeURIComponent(from));
+  assert.equal(r.returnTo, from);
+  assert.deepEqual(read(hashFor(r)), r);
+  for (const bad of ['https://example.com', 'javascript:alert(1)', '#section=teams&team=byu', '#team=']) {
+    assert.equal(read('#game=5&from=' + encodeURIComponent(bad)).returnTo, '#section=games');
+  }
+  assert.equal(read('#team=byu&game=5').view, 'team');           // a team link always wins
+});
+
+test('game and team pages return to each other, one level deep (URLs can never nest)', () => {
+  const game = read('#game=7&season=2025&from=' + encodeURIComponent('#team=byu&from=' + encodeURIComponent('#section=rankings&view=elo&season=2020')));
+  assert.equal(game.returnTo, '#team=byu');                       // the team page's own return is dropped
+  const team = read('#team=byu&from=' + encodeURIComponent(hashFor(game)));
+  assert.equal(team.returnTo, '#game=7&season=2025');             // ...and the game page's too
+  let h = '#game=7&season=2025';
+  for (let i = 0; i < 20; i++) {                                  // click back and forth 20 times
+    const t = hashFor({ ...read('#team=byu'), returnTo: h });
+    h = hashFor({ ...read('#game=7&season=2025'), returnTo: hashFor(read(t)) });
+  }
+  assert.ok(h.length < 120, 'return URLs stay short: ' + h.length);
+  assert.equal(read('#team=byu&from=' + encodeURIComponent('#game=abc')).returnTo, '#section=teams');
+});
