@@ -26,5 +26,14 @@
     "regulation_loss": 0.0,
     "difficulty_alpha": 2.0,
     "tie_delta": 2.0
+  },
+
+  "hfa": {
+    "_comment": "Team-specific home-field advantage (src/hfa.py, src/build_hfa.py). ANALYSIS ONLY: build_elo.py still uses the flat 'elo.home_field' above; nothing here changes production Elo. Every value is an untuned placeholder to be chosen by out-of-sample backtesting (log loss / Brier), not by intuition. half_life_years: L in the recency weight w = 2^(-age_years / L). shrinkage_k: K in lambda = N_eff / (N_eff + K). fcs_prior_weight: alpha in prior = alpha * H_FCS + (1 - alpha) * H_FBS -- currently inert because the database stores FBS-vs-FBS games only, so every prior falls back to the FBS baseline. effective_n_method: 'sum_weights' (N_eff = sum of w, the starting definition) or 'kish' ((sum w)^2 / sum w^2); pluggable in src/hfa.py. point_bounds: search interval, in Elo points, when converting an HFA estimate into an equivalent home bonus; a result at a bound is flagged rather than trusted.",
+    "half_life_years": 10.0,
+    "shrinkage_k": 30.0,
+    "fcs_prior_weight": 0.5,
+    "effective_n_method": "sum_weights",
+    "point_bounds": [-400.0, 400.0]
   }
 }
