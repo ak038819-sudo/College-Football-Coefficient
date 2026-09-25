@@ -80,3 +80,34 @@ test('a games URL can point at one game; anything but digits is dropped', () => 
   assert.equal(read('#team=byu&game=401112233').game, null);
   assert.equal(hashFor(read('#section=games&season=2019&game=5')).includes('game=5'), true);
 });
+
+test('games filters: week, postseason, team, conference and "all" survive round trips', () => {
+  for (const hash of ['#section=games&season=2025&status=all&week=7',
+    '#section=games&season=2025&status=completed&week=post',
+    '#section=games&season=2025&status=completed&school=texas-am&conf=SEC',
+    '#section=games&season=2025&status=completed&conf=Big%2012&week=3&school=byu']) {
+    const r = read(hash);
+    assert.deepEqual(read(hashFor(r)), r);
+  }
+  const r = read('#section=games&season=2025&status=all&week=post&school=byu&conf=Mountain%20West');
+  assert.equal(r.status, 'all'); assert.equal(r.week, 'post'); assert.equal(r.team, 'byu'); assert.equal(r.conf, 'Mountain West');
+});
+
+test('malformed games filters are dropped, and filters never leak into other sections', () => {
+  const bad = read('#section=games&season=2025&week=abc&school=' + encodeURIComponent('<b>x</b>') +
+    '&conf=' + encodeURIComponent('SEC"><script>') + '&status=weird');
+  assert.equal(bad.week, null); assert.equal(bad.team, null); assert.equal(bad.conf, null);
+  assert.equal(bad.status, 'completed');
+  assert.equal(read('#section=games&season=2025&week=123').week, null);
+  assert.equal(read('#section=games&season=2025&conf=' + 'x'.repeat(61)).conf, null);
+  const other = read('#section=rankings&week=3&school=byu&conf=SEC');
+  assert.equal(other.week, null); assert.equal(other.team, null); assert.equal(other.conf, null);
+  const team = read('#team=byu&week=3');
+  assert.equal(team.week, null);
+});
+
+test('the school filter never turns a Games URL into a team page', () => {
+  const r = read('#section=games&season=2025&status=completed&school=byu');
+  assert.equal(r.view, 'tab'); assert.equal(r.section, 'games'); assert.equal(r.team, 'byu');
+  assert.equal(hashFor(r).includes('team='), false);
+});

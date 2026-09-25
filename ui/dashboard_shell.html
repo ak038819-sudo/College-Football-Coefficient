@@ -149,10 +149,30 @@
   .directory-card small { display: block; color: var(--ink-dim); margin-top: 8px; }
   .games-grid { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(295px, 100%), 1fr)); gap: 12px; }
   .listing-game { background: var(--panel-2); border: 1px solid var(--line); padding: 14px; border-radius: 4px; }
-  .listing-game .game-side { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; margin: 10px 0; }
-  .listing-game .game-side > span { display: flex; align-items: center; gap: 4px; min-width: 0; }
-  .listing-game .game-side strong { font-family: var(--font-mono); }
-  .listing-game .game-label { font: 11px var(--font-mono); color: var(--ink-dim); line-height: 1.5; }
+  /* ---- Games explorer cards + filters (Milestone B) ---- */
+  .listing-game { display: flex; flex-direction: column; gap: 8px; }
+  .gl-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .gl-when { font: 11px var(--font-mono); color: var(--ink-dim); margin-left: auto; }
+  .gbadge { font: 10.5px var(--font-mono); letter-spacing: 0.4px; text-transform: uppercase; padding: 2px 6px; border-radius: 3px;
+    border: 1px solid var(--line); color: var(--ink-dim); }
+  .gbadge.final { color: var(--ink); border-color: var(--ink-dim); }
+  .gbadge.upcoming { color: var(--amber); border-color: var(--amber-dim); }
+  .gbadge.post { color: var(--bg); background: var(--amber); border-color: var(--amber); }
+  .gbadge.upset { color: var(--amber); border-color: var(--amber); }
+  .gl-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; }
+  .gl-team { display: flex; align-items: center; gap: 4px; min-width: 0; }
+  .gl-aux { font: 11px var(--font-mono); color: var(--ink-dim); text-align: right; min-width: 38px; }
+  .gl-main { font: 600 15px var(--font-mono); text-align: right; min-width: 34px; }
+  .gl-main.fav { color: var(--amber); }
+  .gl-row.lost .gl-team, .gl-row.lost .gl-main { opacity: 0.55; }
+  .gl-row.won .gl-main { color: var(--amber); }
+  .gl-foot { font: 11px var(--font-mono); color: var(--ink-dim); border-top: 1px dotted var(--line); padding-top: 6px; }
+  .games-filters form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; margin: 0 0 14px; }
+  .games-filters label { display: flex; flex-direction: column; gap: 4px; font: 11px var(--font-mono); color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.4px; }
+  .games-filters select { padding: 8px; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 3px; font: 14px var(--font-body, inherit); max-width: 240px; }
+  .games-week { margin: 0 0 18px; }
+  .games-week h3 { font-family: var(--font-display); font-size: 17px; margin: 0 0 8px; display: flex; align-items: baseline; gap: 8px; }
+  .games-week h3 small { font: 11px var(--font-mono); color: var(--ink-dim); }
   .section-note { color: var(--ink-dim); font-size: 13px; line-height: 1.5; margin: 0 0 16px; }
   #content, .panel { min-width: 0; }
   .table-scroll { max-width: 100%; overflow-x: auto; }
@@ -896,7 +916,8 @@ function renderYearRow() {
   select.addEventListener('change', () => {
     const year = Number(select.value);
     const entry = ROUTE_CONFIG.gameSeasons.find(s => s.season === year);
-    navigate({ year, status: state.section === 'games' && !entry?.scheduled ? 'completed' : state.status });
+    navigate({ year, status: state.section === 'games' && !entry?.scheduled && state.status === 'upcoming' ? 'completed' : state.status,
+               week: null });
   });
 
   row.innerHTML = '';
@@ -1970,58 +1991,131 @@ function hydrateDirectory(version) {
 }
 
 function renderGames() {
-  const tabs = [['upcoming', 'Upcoming'], ['completed', 'Completed']].map(([status, label]) =>
+  const tabs = [['upcoming', 'Upcoming'], ['completed', 'Completed'], ['all', 'All']].map(([status, label]) =>
     '<a href="' + esc(routeHref({ status })) + '"' + (state.status === status ? ' aria-current="page"' : '') + '>' + label + '</a>').join('');
   return '<div class="panel"><h2 class="view-title">Games</h2>' +
     '<nav class="subnav" aria-label="Game status">' + tabs + '</nav>' +
+    '<div id="games-filters" class="games-filters"></div>' +
     '<div id="games-results" aria-live="polite"><p class="empty-note">Loading ' + state.year + ' games…</p></div></div>';
 }
 
+// One game card. Every number is the stored point-in-time value from the season file:
+// pregame Elo and pregame win probability as they were BEFORE kickoff, never today's ratings.
 function listingGame(g, season) {
   const knownDate = g.date && g.date !== '1900-01-01';
   const scheduled = UPCOMING_BY_ID.get(g.game_id);
   const when = g.completed ? (knownDate ? fmtDate(g.date) : 'Date unavailable')
     : g.kickoff_utc ? fmtKickoff(g.kickoff_utc, Boolean(scheduled?.tbd)) : 'Kickoff TBA';
-  const phase = g.phase === 2 ? 'CFP' : g.phase === 1 ? 'Bowl' : g.week != null ? 'Week ' + g.week : 'Week TBA';
-  const status = g.completed ? 'Final' + (g.ot ? ' / OT' : '') : 'Upcoming';
-  const side = (id, score, isHome) => {
-    const t = TEAM_BY_ID.get(String(id));
-    return '<div class="game-side"><span>' + (isHome && !g.neutral ? '<span class="gc-at">@ </span>' : '') +
-      (t ? teamLink(t.name, 'sm', season) : 'Unknown team') + '</span>' +
-      (g.completed ? '<strong>' + (score == null ? '—' : score) + '</strong>' : '') + '</div>';
-  };
   const pct = g.p_home == null ? null : probPct(g.p_home);
-  const prediction = !g.completed && g.p_home != null
-    ? '<p class="side-note">Pregame win chance · Away ' + pct.away + '% · Home ' + pct.home + '%</p>'
-    : !g.completed ? '<p class="side-note">Pregame win chance unavailable.</p>' : '';
-  return '<li class="listing-game" data-game-id="' + g.game_id + '"><div class="game-label">' +
-    status + ' · ' + phase + (g.neutral ? ' · Neutral site' : '') + '<br>' + esc(when) + '</div>' +
-    side(g.away_id, g.away_score, false) + side(g.home_id, g.home_score, true) + prediction + '</li>';
+  const tie = g.completed && g.home_score === g.away_score;
+  const homeWon = g.completed && g.home_score > g.away_score;
+  const winnerP = g.completed && !tie && g.p_home != null ? (homeWon ? g.p_home : 1 - g.p_home) : null;
+  const badges = [g.completed ? '<span class="gbadge final">Final' + (g.ot ? ' · OT' : '') + (tie ? ' · Tie' : '') + '</span>'
+                              : '<span class="gbadge upcoming">Upcoming</span>'];
+  if (g.phase === 2) badges.push('<span class="gbadge post">CFP</span>');
+  else if (g.phase === 1) badges.push('<span class="gbadge post">Bowl</span>');
+  if (g.neutral) badges.push('<span class="gbadge">Neutral site</span>');
+  if (winnerP != null && winnerP < 0.35) {
+    badges.push('<span class="gbadge upset" title="The winner had a ' + Math.round(winnerP * 100) +
+      '% pregame win chance">Upset</span>');
+  }
+  const row = (id, isHome) => {
+    const t = TEAM_BY_ID.get(String(id));
+    const score = isHome ? g.home_score : g.away_score;
+    const p = pct ? (isHome ? pct.home : pct.away) : null;
+    const elo = isHome ? g.home_pre_elo : g.away_pre_elo;
+    const won = g.completed && !tie && (isHome === homeWon);
+    const lost = g.completed && !tie && !won;
+    const aux = g.completed
+      ? '<span class="gl-aux">' + (p == null ? '' : p + '%<span class="visually-hidden"> pregame win chance</span>') + '</span>'
+      : '<span class="gl-aux">' + (elo == null ? '' : '<span class="visually-hidden">Elo </span>' + Math.round(elo)) + '</span>';
+    const main = g.completed
+      ? '<span class="gl-main">' + (score == null ? '—' : score) + '</span>'
+      : '<span class="gl-main' + (p != null && p > 50 ? ' fav' : '') + '">' + (p == null ? '—' : p + '%') + '</span>';
+    return '<div class="gl-row' + (won ? ' won' : lost ? ' lost' : '') + '"><span class="gl-team">' +
+      (isHome && !g.neutral ? '<span class="gc-at">@</span> ' : '') + (t ? teamLink(t.name, 'sm', season) : 'Unknown team') +
+      '</span>' + aux + main + '</div>';
+  };
+  const foot = g.completed
+    ? (g.home_elo_change != null ? 'Elo swing ' + Math.abs(g.home_elo_change).toFixed(1) + ' · small % = pregame win chance' : 'Elo unavailable for this game')
+    : (pct ? 'Elo ratings entering the game · win chance' : 'Pregame win chance unavailable');
+  return '<li class="listing-game" data-game-id="' + g.game_id + '"><div class="gl-top">' + badges.join('') +
+    '<span class="gl-when">' + esc(when) + '</span></div>' + row(g.away_id, false) + row(g.home_id, true) +
+    '<div class="gl-foot">' + foot + '</div></li>';
 }
 
+// Games explorer (Milestone B): status + week/postseason + school + conference filters,
+// all held in the URL, applied to the season file; results grouped by week, oldest first.
+let gamesFocusAfterLoad = null;
 function hydrateGames(version) {
   const season = state.year, status = state.status;
   loadSeasonGames(season).then(data => {
     if (version !== renderVersion) return;
-    const games = data.games.filter(g => Boolean(g.completed) === (status === 'completed'));
-    const target = document.getElementById('games-results');
     if (state.game != null) {
       const wanted = data.byId.get(state.game);
-      if (wanted && Boolean(wanted.completed) !== (status === 'completed')) {
+      if (wanted && status !== 'all' && Boolean(wanted.completed) !== (status === 'completed')) {
         // The search index doesn't know upcoming vs completed; the season file does.
         history.replaceState(null, '', routeHref({ status: wanted.completed ? 'completed' : 'upcoming', game: state.game }));
         applyRoute();
         return;
       }
     }
-    target.innerHTML = (state.game != null && !data.byId.has(state.game)
-      ? '<p class="empty-note">That game isn\'t in the ' + season + ' list.</p>' : '') +
-      '<p class="section-note">' + season + ' · ' + games.length + ' ' + status +
-      ' games · Earliest first.' + (status === 'upcoming' ? ' Predictions use the latest exported pregame ratings.' : '') + '</p>' +
-      (games.length ? '<ul class="games-grid">' + games.map(g => listingGame(g, season)).join('') + '</ul>' :
-        '<p class="empty-note">No ' + status + ' games available for this season. ' +
-        '<a class="side-link" href="' + esc(routeHref({ status: status === 'upcoming' ? 'completed' : 'upcoming' })) + '">View ' +
-        (status === 'upcoming' ? 'completed' : 'upcoming') + ' games</a>.</p>');
+    const notes = [];
+    const confOf = id => (data.conferences || {})[String(id)] || null;
+    const teamIds = [...new Set(data.games.flatMap(g => [g.home_id, g.away_id]))];
+    const seasonTeams = teamIds.map(id => TEAM_BY_ID.get(String(id))).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
+    const conferences = [...new Set(teamIds.map(confOf).filter(Boolean))].sort();
+    const weeks = [...new Set(data.games.filter(g => !g.phase && g.week != null).map(g => g.week))].sort((a, b) => a - b);
+    const hasPost = data.games.some(g => g.phase);
+
+    // Validate each filter against THIS season; an inapplicable one is ignored and said so.
+    let week = state.week, school = state.team ? TEAM_BY_SLUG.get(state.team) : null, conf = state.conf;
+    if (week === 'post' && !hasPost) { notes.push('No postseason games in ' + season + '.'); week = null; }
+    else if (typeof week === 'number' && !weeks.includes(week)) { notes.push('No week ' + week + ' in ' + season + '.'); week = null; }
+    if (state.team && (!school || !teamIds.includes(school.id))) {
+      notes.push((school ? school.name : 'That school') + ' has no games in ' + season + '.'); school = null;
+    }
+    if (conf && !conferences.includes(conf)) { notes.push('No ' + conf + ' teams in ' + season + '.'); conf = null; }
+
+    const opt = (value, label, selected) => '<option value="' + esc(String(value)) + '"' + (selected ? ' selected' : '') + '>' + esc(label) + '</option>';
+    const active = week != null || school || conf;
+    document.getElementById('games-filters').innerHTML = '<form id="games-filter-form" aria-label="Filter games">' +
+      '<label>Week<select id="gf-week" data-filter="week">' + opt('', 'All weeks', week == null) +
+        weeks.map(w => opt(w, 'Week ' + w, week === w)).join('') + (hasPost ? opt('post', 'Postseason', week === 'post') : '') + '</select></label>' +
+      '<label>School<select id="gf-school" data-filter="team">' + opt('', 'All schools', !school) +
+        seasonTeams.map(t => opt(t.slug, t.name, school && school.id === t.id)).join('') + '</select></label>' +
+      '<label>Conference<select id="gf-conf" data-filter="conf">' + opt('', 'All conferences', !conf) +
+        conferences.map(c => opt(c, c, conf === c)).join('') + '</select></label>' +
+      (active ? '<a class="side-link" href="' + esc(routeHref({ week: null, team: null, conf: null })) + '">Clear filters</a>' : '') +
+      '</form>';
+    if (gamesFocusAfterLoad) { document.getElementById(gamesFocusAfterLoad)?.focus(); gamesFocusAfterLoad = null; }
+
+    const games = data.games.filter(g =>
+      (status === 'all' || Boolean(g.completed) === (status === 'completed')) &&
+      (week == null || (week === 'post' ? g.phase > 0 : !g.phase && g.week === week)) &&
+      (!school || g.home_id === school.id || g.away_id === school.id) &&
+      (!conf || confOf(g.home_id) === conf || confOf(g.away_id) === conf));
+
+    const groups = new Map();
+    games.forEach(g => {
+      const key = g.phase ? 'Postseason' : g.week != null ? 'Week ' + g.week : 'Week TBA';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(g);
+    });
+    const described = [status === 'all' ? 'all' : status, school ? 'involving ' + school.name : '',
+      conf ? 'involving ' + conf + ' teams' : '', week === 'post' ? 'postseason' : week != null ? 'week ' + week : ''].filter(Boolean).join(' · ');
+    const target = document.getElementById('games-results');
+    target.innerHTML = notes.map(n => '<p class="empty-note">' + esc(n) + ' That filter is ignored.</p>').join('') +
+      (state.game != null && !data.byId.has(state.game) ? '<p class="empty-note">That game isn\'t in the ' + season + ' list.</p>' : '') +
+      '<p class="section-note">' + season + ' · ' + games.length + ' game' + (games.length === 1 ? '' : 's') + ' · ' + esc(described) +
+      ' · earliest first.' + (status !== 'completed' ? ' Upcoming predictions use the latest exported pregame ratings.' : '') + '</p>' +
+      (games.length ? [...groups].map(([label, gs]) => '<section class="games-week" aria-label="' + esc(label) + '"><h3>' + esc(label) +
+          ' <small>' + gs.length + ' game' + (gs.length === 1 ? '' : 's') + '</small></h3><ul class="games-grid">' +
+          gs.map(g => listingGame(g, season)).join('') + '</ul></section>').join('')
+        : '<p class="empty-note">No games match these filters. ' + (active
+          ? '<a class="side-link" href="' + esc(routeHref({ week: null, team: null, conf: null })) + '">Clear filters</a>'
+          : '<a class="side-link" href="' + esc(routeHref({ status: status === 'upcoming' ? 'completed' : 'upcoming' })) + '">View ' +
+            (status === 'upcoming' ? 'completed' : 'upcoming') + ' games</a>') + '.</p>');
     const hit = state.game != null && target.querySelector('[data-game-id="' + state.game + '"]');
     if (hit) {
       hit.classList.add('is-target');
@@ -2035,6 +2129,14 @@ function hydrateGames(version) {
     document.getElementById('games-results').innerHTML = '<p class="empty-note">Could not load this season. <button class="action-button" id="retry-games">Retry</button></p>';
   });
 }
+
+document.getElementById('content').addEventListener('change', e => {
+  const sel = e.target.closest('#games-filters select');
+  if (!sel || state.section !== 'games') return;
+  gamesFocusAfterLoad = sel.id;                      // keep keyboard focus on the control just used
+  const value = sel.value || null;
+  navigate({ [sel.dataset.filter]: sel.dataset.filter === 'week' && value && value !== 'post' ? Number(value) : value });
+});
 
 function renderRankingPoll(key) {
   const polls = DATA.polls || {};
