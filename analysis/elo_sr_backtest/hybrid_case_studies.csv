@@ -1,0 +1,7 @@
+game,source,srdiff,expected_win_prob,mov_multiplier,production_elo_change,hybrid_config,hybrid_K,sr_adjustment,hybrid_multiplier,hybrid_elo_change
+BYU at Colorado State 2026,supplied,0.17,0.8915,2.5246,9.59,hyb_exp_g2.25_dz0.00|normalized,27.93,1.4659,3.701,11.22
+BYU at Colorado State 2026,CFBD garbage time excluded,0.3014,0.8915,2.5246,9.59,hyb_exp_g2.25_dz0.00|normalized,27.93,1.9702,4.9741,15.08
+BYU at Colorado State 2026,CFBD all plays,0.237,0.8915,2.5246,9.59,hyb_exp_g2.25_dz0.00|normalized,27.93,1.7046,4.3035,13.04
+Marshall at Missouri State 2026,supplied,-0.03,0.5309,1.9271,31.64,hyb_exp_g2.25_dz0.00|normalized,27.93,0.9347,1.8013,23.6
+Marshall at Missouri State 2026,CFBD garbage time excluded,-0.0557,0.5309,1.9271,31.64,hyb_exp_g2.25_dz0.00|normalized,27.93,0.8823,1.7003,22.28
+Marshall at Missouri State 2026,CFBD all plays,-0.0557,0.5309,1.9271,31.64,hyb_exp_g2.25_dz0.00|normalized,27.93,0.8823,1.7003,22.28

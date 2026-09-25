@@ -1,0 +1,177 @@
+model,test_season,config_chosen_on_prior_seasons,games,brier,log_loss,accuracy
+Current MOV Elo,2011,MOV_production,715,0.179771,0.53247,0.72448
+Current MOV Elo,2012,MOV_production,732,0.175247,0.520957,0.72814
+Current MOV Elo,2013,MOV_production,737,0.165928,0.496364,0.75577
+Current MOV Elo,2014,MOV_production,760,0.189172,0.555084,0.69868
+Current MOV Elo,2015,MOV_production,765,0.173099,0.515016,0.73856
+Current MOV Elo,2016,MOV_production,760,0.19326,0.563989,0.69868
+Current MOV Elo,2017,MOV_production,776,0.191564,0.560546,0.69201
+Current MOV Elo,2018,MOV_production,772,0.177968,0.526614,0.72927
+Current MOV Elo,2019,MOV_production,774,0.176326,0.523913,0.7261
+Current MOV Elo,2020,MOV_production,534,0.193072,0.570122,0.71536
+Current MOV Elo,2021,MOV_production,770,0.189011,0.555442,0.69351
+Current MOV Elo,2022,MOV_production,776,0.205218,0.596777,0.67397
+Current MOV Elo,2023,MOV_production,792,0.186233,0.551399,0.70833
+Current MOV Elo,2024,MOV_production,798,0.199885,0.580833,0.67794
+Current MOV Elo,2025,MOV_production,808,0.185532,0.54673,0.70916
+Current MOV Elo,2026,MOV_production,157,0.158461,0.495002,0.77707
+Hybrid exp [normalized K],2011,hyb_exp_g3.5_dz0.04|normalized,715,0.180256,0.534084,0.72168
+Hybrid exp [normalized K],2012,hyb_exp_g2.5_dz0.00|normalized,732,0.174688,0.518913,0.7418
+Hybrid exp [normalized K],2013,hyb_exp_g2.25_dz0.00|normalized,737,0.164375,0.492019,0.7517
+Hybrid exp [normalized K],2014,hyb_exp_g2.75_dz0.02|normalized,760,0.185061,0.543513,0.71184
+Hybrid exp [normalized K],2015,hyb_exp_g3.25_dz0.02|normalized,765,0.170608,0.509831,0.74118
+Hybrid exp [normalized K],2016,hyb_exp_g3.0_dz0.02|normalized,760,0.191262,0.559385,0.70789
+Hybrid exp [normalized K],2017,hyb_exp_g2.75_dz0.00|normalized,776,0.190063,0.557163,0.69459
+Hybrid exp [normalized K],2018,hyb_exp_g2.75_dz0.00|normalized,772,0.175328,0.521099,0.73057
+Hybrid exp [normalized K],2019,hyb_exp_g2.75_dz0.00|normalized,774,0.175368,0.520675,0.73127
+Hybrid exp [normalized K],2020,hyb_exp_g2.75_dz0.00|normalized,534,0.191389,0.567398,0.70787
+Hybrid exp [normalized K],2021,hyb_exp_g2.5_dz0.00|normalized,770,0.188184,0.553977,0.7013
+Hybrid exp [normalized K],2022,hyb_exp_g2.5_dz0.00|normalized,776,0.203799,0.595213,0.67268
+Hybrid exp [normalized K],2023,hyb_exp_g2.5_dz0.00|normalized,792,0.185129,0.547764,0.71086
+Hybrid exp [normalized K],2024,hyb_exp_g2.5_dz0.00|normalized,798,0.199383,0.580568,0.67544
+Hybrid exp [normalized K],2025,hyb_exp_g2.25_dz0.00|normalized,808,0.183918,0.542418,0.71658
+Hybrid exp [normalized K],2026,hyb_exp_g2.25_dz0.00|normalized,157,0.15624,0.489226,0.78344
+Hybrid exp [fixed K],2011,hyb_exp_g2.5_dz0.04|fixed,715,0.180077,0.533485,0.73287
+Hybrid exp [fixed K],2012,hyb_exp_g2.0_dz0.02|fixed,732,0.173406,0.515828,0.73634
+Hybrid exp [fixed K],2013,hyb_exp_g2.0_dz0.02|fixed,737,0.163716,0.489197,0.74898
+Hybrid exp [fixed K],2014,hyb_exp_g2.75_dz0.04|fixed,760,0.187109,0.548809,0.70526
+Hybrid exp [fixed K],2015,hyb_exp_g2.75_dz0.04|fixed,765,0.171142,0.509292,0.74641
+Hybrid exp [fixed K],2016,hyb_exp_g2.75_dz0.04|fixed,760,0.192202,0.562473,0.70263
+Hybrid exp [fixed K],2017,hyb_exp_g2.5_dz0.04|fixed,776,0.19116,0.560537,0.69201
+Hybrid exp [fixed K],2018,hyb_exp_g2.25_dz0.04|fixed,772,0.176201,0.522272,0.73575
+Hybrid exp [fixed K],2019,hyb_exp_g2.25_dz0.04|fixed,774,0.175566,0.521098,0.73127
+Hybrid exp [fixed K],2020,hyb_exp_g2.0_dz0.02|fixed,534,0.191735,0.569816,0.71161
+Hybrid exp [fixed K],2021,hyb_exp_g2.0_dz0.02|fixed,770,0.188812,0.556018,0.7026
+Hybrid exp [fixed K],2022,hyb_exp_g2.0_dz0.02|fixed,776,0.20527,0.599734,0.67655
+Hybrid exp [fixed K],2023,hyb_exp_g1.75_dz0.02|fixed,792,0.185121,0.548352,0.71212
+Hybrid exp [fixed K],2024,hyb_exp_g2.0_dz0.04|fixed,798,0.199591,0.581332,0.68045
+Hybrid exp [fixed K],2025,hyb_exp_g1.75_dz0.02|fixed,808,0.184016,0.542521,0.71906
+Hybrid exp [fixed K],2026,hyb_exp_g2.0_dz0.04|fixed,157,0.156129,0.49052,0.77707
+Hybrid linear [normalized K],2011,hyb_linear_g4.5_dz0.04|normalized,715,0.179422,0.531939,0.72727
+Hybrid linear [normalized K],2012,hyb_linear_g3.5_dz0.02|normalized,732,0.174731,0.518941,0.7418
+Hybrid linear [normalized K],2013,hyb_linear_g3.0_dz0.02|normalized,737,0.164464,0.492216,0.75034
+Hybrid linear [normalized K],2014,hyb_linear_g4.0_dz0.04|normalized,760,0.185075,0.543527,0.71053
+Hybrid linear [normalized K],2015,hyb_linear_g5.0_dz0.04|normalized,765,0.170688,0.510237,0.74248
+Hybrid linear [normalized K],2016,hyb_linear_g4.5_dz0.04|normalized,760,0.191141,0.558923,0.70658
+Hybrid linear [normalized K],2017,hyb_linear_g4.5_dz0.04|normalized,776,0.190357,0.557607,0.6933
+Hybrid linear [normalized K],2018,hyb_linear_g4.5_dz0.04|normalized,772,0.175343,0.520894,0.73187
+Hybrid linear [normalized K],2019,hyb_linear_g4.0_dz0.02|normalized,774,0.175339,0.520633,0.73514
+Hybrid linear [normalized K],2020,hyb_linear_g4.0_dz0.02|normalized,534,0.191566,0.567999,0.70787
+Hybrid linear [normalized K],2021,hyb_linear_g4.0_dz0.02|normalized,770,0.188082,0.553713,0.70519
+Hybrid linear [normalized K],2022,hyb_linear_g3.5_dz0.02|normalized,776,0.203661,0.594768,0.67784
+Hybrid linear [normalized K],2023,hyb_linear_g3.5_dz0.02|normalized,792,0.185349,0.548439,0.71338
+Hybrid linear [normalized K],2024,hyb_linear_g3.5_dz0.02|normalized,798,0.199365,0.580469,0.6792
+Hybrid linear [normalized K],2025,hyb_linear_g3.5_dz0.02|normalized,808,0.183913,0.542402,0.71782
+Hybrid linear [normalized K],2026,hyb_linear_g3.5_dz0.02|normalized,157,0.156243,0.489351,0.77707
+Hybrid linear [fixed K],2011,hyb_linear_g3.0_dz0.04|fixed,715,0.179665,0.532375,0.73007
+Hybrid linear [fixed K],2012,hyb_linear_g2.5_dz0.04|fixed,732,0.173613,0.516281,0.74044
+Hybrid linear [fixed K],2013,hyb_linear_g3.0_dz0.04|fixed,737,0.163653,0.488991,0.7517
+Hybrid linear [fixed K],2014,hyb_linear_g3.5_dz0.04|fixed,760,0.187107,0.548715,0.70526
+Hybrid linear [fixed K],2015,hyb_linear_g3.5_dz0.04|fixed,765,0.17104,0.509281,0.74379
+Hybrid linear [fixed K],2016,hyb_linear_g3.5_dz0.04|fixed,760,0.191949,0.561616,0.70789
+Hybrid linear [fixed K],2017,hyb_linear_g3.5_dz0.04|fixed,776,0.191433,0.561199,0.69201
+Hybrid linear [fixed K],2018,hyb_linear_g3.0_dz0.04|fixed,772,0.176099,0.521849,0.73575
+Hybrid linear [fixed K],2019,hyb_linear_g3.0_dz0.04|fixed,774,0.17552,0.520979,0.72868
+Hybrid linear [fixed K],2020,hyb_linear_g3.0_dz0.04|fixed,534,0.191961,0.570647,0.71161
+Hybrid linear [fixed K],2021,hyb_linear_g3.0_dz0.04|fixed,770,0.188816,0.555996,0.7
+Hybrid linear [fixed K],2022,hyb_linear_g2.5_dz0.02|fixed,776,0.205251,0.599666,0.67397
+Hybrid linear [fixed K],2023,hyb_linear_g2.5_dz0.04|fixed,792,0.185209,0.548579,0.71591
+Hybrid linear [fixed K],2024,hyb_linear_g2.5_dz0.04|fixed,798,0.199589,0.581378,0.6792
+Hybrid linear [fixed K],2025,hyb_linear_g2.5_dz0.04|fixed,808,0.183944,0.542375,0.71658
+Hybrid linear [fixed K],2026,hyb_linear_g2.5_dz0.04|fixed,157,0.156138,0.490694,0.7707
+Hybrid close [normalized K],2011,hyb_close_g5.0_tau14|normalized,715,0.179123,0.530438,0.73007
+Hybrid close [normalized K],2012,hyb_close_g5.0_tau14|normalized,732,0.175961,0.522806,0.73634
+Hybrid close [normalized K],2013,hyb_close_g4.0_tau14|normalized,737,0.165517,0.495085,0.7517
+Hybrid close [normalized K],2014,hyb_close_g4.0_tau14|normalized,760,0.188308,0.55229,0.70263
+Hybrid close [normalized K],2015,hyb_close_g4.5_tau14|normalized,765,0.172018,0.513105,0.7451
+Hybrid close [normalized K],2016,hyb_close_g4.5_tau14|normalized,760,0.191796,0.560312,0.70263
+Hybrid close [normalized K],2017,hyb_close_g5.0_tau14|normalized,776,0.191744,0.561061,0.69072
+Hybrid close [normalized K],2018,hyb_close_g4.5_tau14|normalized,772,0.176813,0.524104,0.73446
+Hybrid close [normalized K],2019,hyb_close_g5.0_tau14|normalized,774,0.175549,0.521662,0.72739
+Hybrid close [normalized K],2020,hyb_close_g5.0_tau14|normalized,534,0.19303,0.570854,0.70974
+Hybrid close [normalized K],2021,hyb_close_g5.0_tau14|normalized,770,0.188347,0.553847,0.70519
+Hybrid close [normalized K],2022,hyb_close_g4.5_tau14|normalized,776,0.204426,0.595447,0.67912
+Hybrid close [normalized K],2023,hyb_close_g4.5_tau14|normalized,792,0.186599,0.551746,0.70581
+Hybrid close [normalized K],2024,hyb_close_g4.5_tau14|normalized,798,0.199605,0.580229,0.67168
+Hybrid close [normalized K],2025,hyb_close_g4.5_tau14|normalized,808,0.184924,0.544931,0.71906
+Hybrid close [normalized K],2026,hyb_close_g4.5_tau14|normalized,157,0.157733,0.494465,0.7707
+Hybrid close [fixed K],2011,hyb_close_g4.5_tau14|fixed,715,0.179278,0.530726,0.73147
+Hybrid close [fixed K],2012,hyb_close_g4.5_tau14|fixed,732,0.175313,0.521186,0.73361
+Hybrid close [fixed K],2013,hyb_close_g4.0_tau14|fixed,737,0.165255,0.493851,0.75034
+Hybrid close [fixed K],2014,hyb_close_g4.5_tau14|fixed,760,0.188901,0.553633,0.69474
+Hybrid close [fixed K],2015,hyb_close_g4.5_tau14|fixed,765,0.171864,0.51211,0.75294
+Hybrid close [fixed K],2016,hyb_close_g4.5_tau14|fixed,760,0.191877,0.560625,0.70395
+Hybrid close [fixed K],2017,hyb_close_g5.0_tau14|fixed,776,0.192117,0.562172,0.69201
+Hybrid close [fixed K],2018,hyb_close_g4.5_tau14|fixed,772,0.176914,0.523947,0.73446
+Hybrid close [fixed K],2019,hyb_close_g4.5_tau14|fixed,774,0.175562,0.521468,0.72997
+Hybrid close [fixed K],2020,hyb_close_g4.5_tau14|fixed,534,0.193015,0.571521,0.71348
+Hybrid close [fixed K],2021,hyb_close_g4.5_tau14|fixed,770,0.188635,0.554675,0.7
+Hybrid close [fixed K],2022,hyb_close_g4.0_tau14|fixed,776,0.204941,0.597052,0.67526
+Hybrid close [fixed K],2023,hyb_close_g4.0_tau14|fixed,792,0.186544,0.551701,0.70328
+Hybrid close [fixed K],2024,hyb_close_g4.0_tau14|fixed,798,0.199716,0.580714,0.67544
+Hybrid close [fixed K],2025,hyb_close_g3.5_tau14|fixed,808,0.184907,0.544785,0.71658
+Hybrid close [fixed K],2026,hyb_close_g4.0_tau14|fixed,157,0.157285,0.494015,0.7707
+Any hybrid [normalized K],2011,hyb_exp_g3.5_dz0.04|normalized,715,0.180256,0.534084,0.72168
+Any hybrid [normalized K],2012,hyb_exp_g2.5_dz0.00|normalized,732,0.174688,0.518913,0.7418
+Any hybrid [normalized K],2013,hyb_exp_g2.25_dz0.00|normalized,737,0.164375,0.492019,0.7517
+Any hybrid [normalized K],2014,hyb_exp_g2.75_dz0.02|normalized,760,0.185061,0.543513,0.71184
+Any hybrid [normalized K],2015,hyb_exp_g3.25_dz0.02|normalized,765,0.170608,0.509831,0.74118
+Any hybrid [normalized K],2016,hyb_exp_g3.0_dz0.02|normalized,760,0.191262,0.559385,0.70789
+Any hybrid [normalized K],2017,hyb_exp_g2.75_dz0.00|normalized,776,0.190063,0.557163,0.69459
+Any hybrid [normalized K],2018,hyb_exp_g2.75_dz0.00|normalized,772,0.175328,0.521099,0.73057
+Any hybrid [normalized K],2019,hyb_exp_g2.75_dz0.00|normalized,774,0.175368,0.520675,0.73127
+Any hybrid [normalized K],2020,hyb_exp_g2.75_dz0.00|normalized,534,0.191389,0.567398,0.70787
+Any hybrid [normalized K],2021,hyb_exp_g2.5_dz0.00|normalized,770,0.188184,0.553977,0.7013
+Any hybrid [normalized K],2022,hyb_exp_g2.5_dz0.00|normalized,776,0.203799,0.595213,0.67268
+Any hybrid [normalized K],2023,hyb_exp_g2.5_dz0.00|normalized,792,0.185129,0.547764,0.71086
+Any hybrid [normalized K],2024,hyb_exp_g2.5_dz0.00|normalized,798,0.199383,0.580568,0.67544
+Any hybrid [normalized K],2025,hyb_exp_g2.25_dz0.00|normalized,808,0.183918,0.542418,0.71658
+Any hybrid [normalized K],2026,hyb_exp_g2.25_dz0.00|normalized,157,0.15624,0.489226,0.78344
+Any hybrid [fixed K],2011,hyb_exp_g2.5_dz0.04|fixed,715,0.180077,0.533485,0.73287
+Any hybrid [fixed K],2012,hyb_linear_g2.5_dz0.04|fixed,732,0.173613,0.516281,0.74044
+Any hybrid [fixed K],2013,hyb_exp_g2.0_dz0.02|fixed,737,0.163716,0.489197,0.74898
+Any hybrid [fixed K],2014,hyb_exp_g2.75_dz0.04|fixed,760,0.187109,0.548809,0.70526
+Any hybrid [fixed K],2015,hyb_exp_g2.75_dz0.04|fixed,765,0.171142,0.509292,0.74641
+Any hybrid [fixed K],2016,hyb_exp_g2.75_dz0.04|fixed,760,0.192202,0.562473,0.70263
+Any hybrid [fixed K],2017,hyb_exp_g2.5_dz0.04|fixed,776,0.19116,0.560537,0.69201
+Any hybrid [fixed K],2018,hyb_exp_g2.25_dz0.04|fixed,772,0.176201,0.522272,0.73575
+Any hybrid [fixed K],2019,hyb_linear_g3.0_dz0.04|fixed,774,0.17552,0.520979,0.72868
+Any hybrid [fixed K],2020,hyb_linear_g3.0_dz0.04|fixed,534,0.191961,0.570647,0.71161
+Any hybrid [fixed K],2021,hyb_exp_g2.0_dz0.02|fixed,770,0.188812,0.556018,0.7026
+Any hybrid [fixed K],2022,hyb_linear_g2.5_dz0.02|fixed,776,0.205251,0.599666,0.67397
+Any hybrid [fixed K],2023,hyb_linear_g2.5_dz0.04|fixed,792,0.185209,0.548579,0.71591
+Any hybrid [fixed K],2024,hyb_linear_g2.5_dz0.04|fixed,798,0.199589,0.581378,0.6792
+Any hybrid [fixed K],2025,hyb_exp_g1.75_dz0.02|fixed,808,0.184016,0.542521,0.71906
+Any hybrid [fixed K],2026,hyb_linear_g2.5_dz0.04|fixed,157,0.156138,0.490694,0.7707
+reshaped MOV,2011,shape_p3.0_c2.2,715,0.181228,0.538422,0.72727
+reshaped MOV,2012,shape_p2.0_c2.2,732,0.17423,0.51754,0.73634
+reshaped MOV,2013,shape_p2.0_c1.1,737,0.165583,0.49506,0.75441
+reshaped MOV,2014,shape_p2.0_c1.1,760,0.189192,0.553958,0.70395
+reshaped MOV,2015,shape_p2.0_c2.2,765,0.171534,0.511154,0.73725
+reshaped MOV,2016,shape_p2.5_c2.2,760,0.19361,0.565142,0.71053
+reshaped MOV,2017,shape_p2.0_c2.2,776,0.190672,0.558054,0.68943
+reshaped MOV,2018,shape_p2.0_c2.2,772,0.17656,0.523643,0.73316
+reshaped MOV,2019,shape_p2.0_c2.2,774,0.175966,0.522895,0.73256
+reshaped MOV,2020,shape_p2.0_c1.1,534,0.191163,0.566922,0.71723
+reshaped MOV,2021,shape_p2.0_c1.1,770,0.188856,0.555735,0.7039
+reshaped MOV,2022,shape_p2.0_c1.1,776,0.205178,0.596589,0.67397
+reshaped MOV,2023,shape_p2.0_c1.1,792,0.185743,0.550246,0.71086
+reshaped MOV,2024,shape_p2.0_c1.1,798,0.197409,0.575213,0.6792
+reshaped MOV,2025,shape_p2.0_c1.1,808,0.184612,0.544574,0.70668
+reshaped MOV,2026,shape_p2.0_c1.1,157,0.155822,0.487955,0.78344
+reshaped hybrid,2011,shape_p2.0_c2.2_g2.0,715,0.180261,0.535615,0.73706
+reshaped hybrid,2012,shape_p1.5_c1.1_g2.0,732,0.172898,0.514831,0.7377
+reshaped hybrid,2013,shape_p2.0_c1.1_g1.5,737,0.164659,0.492497,0.75441
+reshaped hybrid,2014,shape_p1.5_c1.1_g2.0,760,0.186095,0.545808,0.70921
+reshaped hybrid,2015,shape_p1.5_c1.1_g2.5,765,0.17111,0.510277,0.74379
+reshaped hybrid,2016,shape_p1.5_c1.1_g2.5,760,0.190798,0.55838,0.70263
+reshaped hybrid,2017,shape_p1.5_c1.1_g2.5,776,0.190251,0.558013,0.6933
+reshaped hybrid,2018,shape_p1.25_c1.1_g2.5,772,0.174852,0.519535,0.72927
+reshaped hybrid,2019,shape_p1.25_c1.1_g2.5,774,0.174438,0.518546,0.72997
+reshaped hybrid,2020,shape_p1.25_c1.1_g2.5,534,0.190274,0.565174,0.71161
+reshaped hybrid,2021,shape_p1.25_c1.1_g2.5,770,0.187773,0.553471,0.70519
+reshaped hybrid,2022,shape_p1.25_c1.1_g2.5,776,0.204263,0.595797,0.67912
+reshaped hybrid,2023,shape_p1.25_c1.1_g2.5,792,0.184699,0.546892,0.71591
+reshaped hybrid,2024,shape_p1.25_c1.1_g2.5,798,0.197708,0.576512,0.68672
+reshaped hybrid,2025,shape_p1.25_c1.1_g2.0,808,0.18321,0.540926,0.72525
+reshaped hybrid,2026,shape_p1.25_c1.1_g2.0,157,0.15514,0.486772,0.77707

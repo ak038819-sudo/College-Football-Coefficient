@@ -1,0 +1,357 @@
+{
+ "decomposition": {
+  "reshaped_mov_vs_production": {
+   "mean": -0.0014905159619639425,
+   "se": 0.0007879205150944423,
+   "z": -1.8917085332970234,
+   "games": 11426
+  },
+  "sr_on_top_of_reshaped_mov": {
+   "mean": -0.0028441172603573673,
+   "se": 0.0007302260565050483,
+   "z": -3.894844938798353,
+   "games": 11426
+  },
+  "reshaped_hybrid_vs_production": {
+   "mean": -0.00433463322232131,
+   "se": 0.0009888936558595362,
+   "z": -4.383315836477575,
+   "games": 11426
+  },
+  "sr_on_top_seasons_better": [
+   15,
+   16
+  ],
+  "walk_forward": {
+   "reshaped MOV": {
+    "n": 11426,
+    "brier": 0.18438254074306953,
+    "log_loss": 0.5441350392851848,
+    "accuracy": 0.7149483633817609
+   },
+   "reshaped hybrid": {
+    "n": 11426,
+    "brier": 0.18317144483078585,
+    "log_loss": 0.5412909220248273,
+    "accuracy": 0.7180115525993348
+   }
+  },
+  "choices": {
+   "reshaped MOV": [
+    [
+     "shape_p2.0_c1.1",
+     9
+    ],
+    [
+     "shape_p2.0_c2.2",
+     5
+    ],
+    [
+     "shape_p3.0_c2.2",
+     1
+    ],
+    [
+     "shape_p2.5_c2.2",
+     1
+    ]
+   ],
+   "reshaped hybrid": [
+    [
+     "shape_p1.25_c1.1_g2.5",
+     7
+    ],
+    [
+     "shape_p1.5_c1.1_g2.5",
+     3
+    ],
+    [
+     "shape_p1.5_c1.1_g2.0",
+     2
+    ],
+    [
+     "shape_p1.25_c1.1_g2.0",
+     2
+    ],
+    [
+     "shape_p2.0_c2.2_g2.0",
+     1
+    ],
+    [
+     "shape_p2.0_c1.1_g1.5",
+     1
+    ]
+   ]
+  }
+ },
+ "walk_forward": {
+  "Current MOV Elo": {
+   "n": 11426,
+   "brier": 0.18504961065711267,
+   "log_loss": 0.5456255552471487,
+   "accuracy": 0.7117976544722563
+  },
+  "Hybrid exp [normalized K]": {
+   "n": 11426,
+   "brier": 0.18353864151890179,
+   "log_loss": 0.5420835762483182,
+   "accuracy": 0.7152109224575529
+  },
+  "Hybrid exp [fixed K]": {
+   "n": 11426,
+   "brier": 0.1839621445949976,
+   "log_loss": 0.5432018131280236,
+   "accuracy": 0.7161736390687905
+  },
+  "Hybrid linear [normalized K]": {
+   "n": 11426,
+   "brier": 0.18351797505751266,
+   "log_loss": 0.5419953965381595,
+   "accuracy": 0.7166987572203746
+  },
+  "Hybrid linear [fixed K]": {
+   "n": 11426,
+   "brier": 0.18394082273791543,
+   "log_loss": 0.5431362334843798,
+   "accuracy": 0.7159985996849291
+  },
+  "Hybrid close [normalized K]": {
+   "n": 11426,
+   "brier": 0.1845349147501135,
+   "log_loss": 0.5443725841560941,
+   "accuracy": 0.7145982846140382
+  },
+  "Hybrid close [fixed K]": {
+   "n": 11426,
+   "brier": 0.18460404391957186,
+   "log_loss": 0.5445125926941364,
+   "accuracy": 0.7142482058463154
+  },
+  "Any hybrid [normalized K]": {
+   "n": 11426,
+   "brier": 0.18353864151890179,
+   "log_loss": 0.5420835762483182,
+   "accuracy": 0.7152109224575529
+  },
+  "Any hybrid [fixed K]": {
+   "n": 11426,
+   "brier": 0.18398769431144207,
+   "log_loss": 0.5432782993641658,
+   "accuracy": 0.7161736390687905
+  }
+ },
+ "choices": {
+  "Current MOV Elo": [
+   [
+    "MOV_production",
+    16
+   ]
+  ],
+  "Hybrid exp [normalized K]": [
+   [
+    "hyb_exp_g2.5_dz0.00|normalized",
+    5
+   ],
+   [
+    "hyb_exp_g2.75_dz0.00|normalized",
+    4
+   ],
+   [
+    "hyb_exp_g2.25_dz0.00|normalized",
+    3
+   ],
+   [
+    "hyb_exp_g3.5_dz0.04|normalized",
+    1
+   ],
+   [
+    "hyb_exp_g2.75_dz0.02|normalized",
+    1
+   ],
+   [
+    "hyb_exp_g3.25_dz0.02|normalized",
+    1
+   ],
+   [
+    "hyb_exp_g3.0_dz0.02|normalized",
+    1
+   ]
+  ],
+  "Hybrid exp [fixed K]": [
+   [
+    "hyb_exp_g2.0_dz0.02|fixed",
+    5
+   ],
+   [
+    "hyb_exp_g2.75_dz0.04|fixed",
+    3
+   ],
+   [
+    "hyb_exp_g2.5_dz0.04|fixed",
+    2
+   ],
+   [
+    "hyb_exp_g2.25_dz0.04|fixed",
+    2
+   ],
+   [
+    "hyb_exp_g1.75_dz0.02|fixed",
+    2
+   ],
+   [
+    "hyb_exp_g2.0_dz0.04|fixed",
+    2
+   ]
+  ],
+  "Hybrid linear [normalized K]": [
+   [
+    "hyb_linear_g3.5_dz0.02|normalized",
+    6
+   ],
+   [
+    "hyb_linear_g4.5_dz0.04|normalized",
+    4
+   ],
+   [
+    "hyb_linear_g4.0_dz0.02|normalized",
+    3
+   ],
+   [
+    "hyb_linear_g3.0_dz0.02|normalized",
+    1
+   ],
+   [
+    "hyb_linear_g4.0_dz0.04|normalized",
+    1
+   ],
+   [
+    "hyb_linear_g5.0_dz0.04|normalized",
+    1
+   ]
+  ],
+  "Hybrid linear [fixed K]": [
+   [
+    "hyb_linear_g3.0_dz0.04|fixed",
+    6
+   ],
+   [
+    "hyb_linear_g2.5_dz0.04|fixed",
+    5
+   ],
+   [
+    "hyb_linear_g3.5_dz0.04|fixed",
+    4
+   ],
+   [
+    "hyb_linear_g2.5_dz0.02|fixed",
+    1
+   ]
+  ],
+  "Hybrid close [normalized K]": [
+   [
+    "hyb_close_g4.5_tau14|normalized",
+    8
+   ],
+   [
+    "hyb_close_g5.0_tau14|normalized",
+    6
+   ],
+   [
+    "hyb_close_g4.0_tau14|normalized",
+    2
+   ]
+  ],
+  "Hybrid close [fixed K]": [
+   [
+    "hyb_close_g4.5_tau14|fixed",
+    9
+   ],
+   [
+    "hyb_close_g4.0_tau14|fixed",
+    5
+   ],
+   [
+    "hyb_close_g5.0_tau14|fixed",
+    1
+   ],
+   [
+    "hyb_close_g3.5_tau14|fixed",
+    1
+   ]
+  ],
+  "Any hybrid [normalized K]": [
+   [
+    "hyb_exp_g2.5_dz0.00|normalized",
+    5
+   ],
+   [
+    "hyb_exp_g2.75_dz0.00|normalized",
+    4
+   ],
+   [
+    "hyb_exp_g2.25_dz0.00|normalized",
+    3
+   ],
+   [
+    "hyb_exp_g3.5_dz0.04|normalized",
+    1
+   ],
+   [
+    "hyb_exp_g2.75_dz0.02|normalized",
+    1
+   ],
+   [
+    "hyb_exp_g3.25_dz0.02|normalized",
+    1
+   ],
+   [
+    "hyb_exp_g3.0_dz0.02|normalized",
+    1
+   ]
+  ],
+  "Any hybrid [fixed K]": [
+   [
+    "hyb_linear_g2.5_dz0.04|fixed",
+    4
+   ],
+   [
+    "hyb_exp_g2.75_dz0.04|fixed",
+    3
+   ],
+   [
+    "hyb_exp_g2.5_dz0.04|fixed",
+    2
+   ],
+   [
+    "hyb_exp_g2.0_dz0.02|fixed",
+    2
+   ],
+   [
+    "hyb_linear_g3.0_dz0.04|fixed",
+    2
+   ],
+   [
+    "hyb_exp_g2.25_dz0.04|fixed",
+    1
+   ],
+   [
+    "hyb_linear_g2.5_dz0.02|fixed",
+    1
+   ],
+   [
+    "hyb_exp_g1.75_dz0.02|fixed",
+    1
+   ]
+  ]
+ },
+ "lead_minus_mov_logloss_per_game": {
+  "mean": -0.003541978998830487,
+  "se": 0.0009199030216181003,
+  "z": -3.8503830464652467,
+  "games": 11426
+ },
+ "lead_better_seasons": [
+  15,
+  16
+ ],
+ "lead_latest_config": "hyb_exp_g2.25_dz0.00|normalized"
+}

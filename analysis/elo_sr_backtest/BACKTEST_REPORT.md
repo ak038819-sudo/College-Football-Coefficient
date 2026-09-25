@@ -204,4 +204,8 @@ gain. The direction never reverses.
   a better-tuned MOV baseline would only widen MOV's lead.
 * FCS opponents aren't in the data, so games against them never inform either model.
 
+**Follow-up:** the hybrid suggested in Q15 was tested; see `HYBRID_REPORT.md`.
+Success Rate *does* improve Elo when it adjusts the margin multiplier instead of
+replacing it (0.8% better log loss, 15 of 16 seasons).
+
 Production Elo was not modified. The decision on MOV vs SR remains yours.

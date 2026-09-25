@@ -1,0 +1,14 @@
+split,games,mov_log_loss,hybrid_log_loss,hybrid_minus_mov
+all games,11426,0.54563,0.54208,-0.00354
+favourite at home,6517,0.50852,0.50391,-0.00461
+favourite on the road,4023,0.58751,0.58703,-0.00048
+neutral site,886,0.62837,0.61877,-0.0096
+conference,7738,0.55834,0.55556,-0.00279
+nonconference,3688,0.51894,0.51382,-0.00512
+regular season,10841,0.53942,0.53625,-0.00317
+postseason,585,0.66061,0.6502,-0.01042
+home win prob <20%,1050,0.38585,0.38744,0.00159
+home win prob 20-40%,2125,0.63072,0.63105,0.00033
+home win prob 40-60%,2675,0.68804,0.68413,-0.00392
+home win prob 60-80%,2960,0.60852,0.60087,-0.00765
+home win prob >80%,2616,0.32384,0.32013,-0.00372
