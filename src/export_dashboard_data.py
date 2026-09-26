@@ -36,7 +36,7 @@ from select_playoff_field_v2 import (  # noqa: E402
 from draw_playoff_bracket_v2 import (  # noqa: E402
     backtrack_pairings, choose_home_away, build_conf_map,
 )
-from simulate_bracket import run_simulation, DEFAULT_TEMPERATURE  # noqa: E402
+from simulate_bracket import run_simulation, DEFAULT_TEMPERATURE, DEFAULT_HOME_FIELD  # noqa: E402
 sys.path.insert(0, str(Path(__file__).parent))
 from build_coe2_rollups import conference_coe2_rank, load_bonus_config  # noqa: E402
 import random
@@ -336,7 +336,8 @@ def load_csv_by_year(filename: str, year_field: str) -> dict:
     return out
 
 
-def build_playoff_data(db_path: str, year: int, draw_seed: int, sims: int, temperature: float) -> dict:
+def build_playoff_data(db_path: str, year: int, draw_seed: int, sims: int, temperature: float,
+                       home_field: float = 0.0) -> dict:
     bid_table = YEAR1_BIDS if year == 2014 else YEAR2_BIDS
     conn = sqlite3.connect(db_path)
     conf_ranked = load_conference_coe_rank(conn, year)
@@ -372,7 +373,8 @@ def build_playoff_data(db_path: str, year: int, draw_seed: int, sims: int, tempe
     # The odds redraw the Round of 24 every run, so they average over the draw
     # rather than describing the one bracket above. The bracket shown on this
     # page is `draw_seed`'s draw; a team's chances are not a property of it.
-    counts, n_sims, sim_conf_of, sim_team_coe = run_simulation(db_path, year, draw_seed, sims, temperature)
+    counts, n_sims, sim_conf_of, sim_team_coe = run_simulation(
+        db_path, year, draw_seed, sims, temperature, home_field=home_field)
     simulation = [
         {
             "team": team,
@@ -400,7 +402,10 @@ def build_playoff_data(db_path: str, year: int, draw_seed: int, sims: int, tempe
         "independents": [{"team": n, "coe": round(c, 3)} for n, c in independents],
         "independent_replacements": replacements,
         "simulation": simulation,
-        "sim_meta": {"n_sims": n_sims, "temperature": temperature, "redraws": True},
+        # home_field ships so the page's own Simulate button uses the same venue
+        # term as these odds, rather than keeping a second copy of it.
+        "sim_meta": {"n_sims": n_sims, "temperature": temperature,
+                     "home_field": home_field, "redraws": True},
         "qualifiers": [
             {
                 "team": q["team_name"], "conference": q["conference"],
@@ -421,6 +426,7 @@ def main() -> None:
     p.add_argument("--draw-seed", type=int, default=1)
     p.add_argument("--sims", type=int, default=10000)
     p.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE)
+    p.add_argument("--home-field", type=float, default=DEFAULT_HOME_FIELD)
     p.add_argument("--out", default="ui/dashboard_data.json")
     args = p.parse_args()
 
@@ -493,7 +499,7 @@ def main() -> None:
         print(f"Building playoff data for {year}...")
         try:
             out["playoff_by_year"][str(year)] = build_playoff_data(
-                args.db, year, args.draw_seed, args.sims, args.temperature
+                args.db, year, args.draw_seed, args.sims, args.temperature, args.home_field
             )
             usable_years.append(year)
         except Exception as e:

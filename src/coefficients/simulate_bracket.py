@@ -24,12 +24,15 @@ the fit written up beside it, and is still exposed as a CLI flag. The
 Brier curve is flat between roughly 4.25 and 5.0, so it is "about 4.5"
 rather than a precise constant.
 
-No home-field boost is added on top of this -- home field was already
-decided by CoE (the higher-CoE team hosts), so adding a separate boost
-would double-count that advantage. The same fit does MEASURE that edge,
-at about 1.25 CoE points; it is recorded in the config and deliberately
-not applied, so that a later decision about the Round of 24's real home
-games can start from a number rather than a guess.
+Home field IS applied, in the Round of 24 only, at the 1.25 CoE points the
+same fit measured. It was previously measured and left inert on the
+argument that CoE already decided who hosts, so applying it would
+double-count. That argument was wrong: CoE decides WHICH team hosts, but it
+carries no information about the advantage OF hosting, which is a venue
+effect measured on real games. Leaving it out understated the host's chance
+in all eight Round-of-24 games. The Round of 16 onward is played at neutral
+sites -- nothing past the Round of 24 assigns a host -- so the boost stops
+there, and every later round stays exactly symmetric.
 
 Bracket structure: Round of 24 (8 games) feeds into a 16-seed Round of 16
 using the same seeding as the bracket graphic (byes ranked 1-8 by 5yr CoE,
@@ -84,17 +87,54 @@ def _configured_temperature() -> float:
         return 6.0
 
 
+def _configured_home_field() -> float:
+    """
+    The host's edge in CoE points, from the same config section.
+
+    Falls back to 0.0 rather than to the measured 1.25: if the config cannot be
+    read, the safe default is the neutral-site model that makes no claim about
+    venue, not a number this function only guessed at.
+    """
+    try:
+        with open(CONFIG_PATH) as f:
+            return float(json.load(f)["simulation"]["home_field"])
+    except (OSError, KeyError, ValueError, TypeError):
+        return 0.0
+
+
 DEFAULT_TEMPERATURE = _configured_temperature()
+DEFAULT_HOME_FIELD = _configured_home_field()
 
 
-def win_probability(coe_a: float, coe_b: float, temperature: float) -> float:
-    """P(team A beats team B), given their CoE values."""
-    gap = coe_a - coe_b
+def win_probability(coe_a: float, coe_b: float, temperature: float,
+                    home_field: float = 0.0) -> float:
+    """
+    P(team A beats team B), given their CoE values.
+
+    `home_field` is team A's venue edge in CoE points: positive when A hosts,
+    negative when B hosts, zero at a neutral site. It defaults to zero so that
+    the neutral-site case is the one you get by saying nothing.
+    """
+    gap = coe_a - coe_b + home_field
     return 1.0 / (1.0 + math.exp(-gap / temperature))
 
 
-def simulate_game(team_a: str, team_b: str, team_coe: dict, temperature: float, rng: random.Random) -> str:
-    p_a = win_probability(team_coe.get(team_a, 0.0), team_coe.get(team_b, 0.0), temperature)
+def simulate_game(team_a: str, team_b: str, team_coe: dict, temperature: float,
+                  rng: random.Random, home_field: float = 0.0, host: str | None = None) -> str:
+    """
+    One game. `host` names whichever of the two teams is at home, or None for a
+    neutral site; `home_field` is the edge in CoE points. A host that is neither
+    team is a caller bug, so it raises rather than silently playing it neutral.
+    """
+    edge = 0.0
+    if host is not None:
+        if host == team_a:
+            edge = home_field
+        elif host == team_b:
+            edge = -home_field
+        else:
+            raise ValueError(f"host {host!r} is not playing in {team_a!r} vs {team_b!r}")
+    p_a = win_probability(team_coe.get(team_a, 0.0), team_coe.get(team_b, 0.0), temperature, edge)
     return team_a if rng.random() < p_a else team_b
 
 
@@ -169,11 +209,16 @@ def r16_bracket_order(seeds: list) -> list:
     return order
 
 
-def simulate_one_bracket(byes, r24_pairs, r16_seed_order, team_coe, temperature, rng) -> dict:
+def simulate_one_bracket(byes, r24_pairs, r16_seed_order, team_coe, temperature, rng,
+                        home_field: float = 0.0) -> dict:
     """
     Runs one full simulated bracket. Returns {team: furthest_round_reached}
     where furthest_round is one of: 'r24_participant', 'r16', 'qf', 'sf', 'final', 'champion'.
     Bye teams always start at 'r16' (guaranteed, not simulated).
+
+    `home_field` applies to the Round of 24 alone, where the higher-CoE team of
+    each pair hosts. Later rounds are at neutral sites, so they are simulated
+    with no venue term at all.
     """
     result = {}
 
@@ -188,7 +233,11 @@ def simulate_one_bracket(byes, r24_pairs, r16_seed_order, team_coe, temperature,
             a, b = slot["pair"]
             for t in (a, b):
                 result.setdefault(t, "r24_participant")
-            winner = simulate_game(a, b, team_coe, temperature, rng)
+            # The one hosted round. choose_home_away is the same function the
+            # bracket graphic uses to print "away @ home", so the simulation and
+            # the displayed bracket cannot disagree about who is at home.
+            host, _ = choose_home_away(a, b, team_coe)
+            winner = simulate_game(a, b, team_coe, temperature, rng, home_field, host)
             result[winner] = "r16"
             r16_field.append(winner)
 
@@ -228,7 +277,7 @@ ROUND_RANK = {r: i for i, r in enumerate(ROUND_ORDER)}
 
 
 def run_simulation(db_path: str, year: int, draw_seed: int, n_sims: int, temperature: float,
-                   sim_seed: int = 0, fixed_draw: bool = False):
+                   sim_seed: int = 0, fixed_draw: bool = False, home_field: float = 0.0):
     """
     Title odds over `n_sims` brackets.
 
@@ -264,7 +313,8 @@ def run_simulation(db_path: str, year: int, draw_seed: int, n_sims: int, tempera
         else:
             r24_pairs = draw_with(byes, pot1, pot2, conf_of, draw_rng)
             r16_seed_order = r16_bracket_order(build_r16_seeds(byes, r24_pairs, team_coe))
-        result = simulate_one_bracket(byes, r24_pairs, r16_seed_order, team_coe, temperature, rng)
+        result = simulate_one_bracket(byes, r24_pairs, r16_seed_order, team_coe, temperature, rng,
+                                      home_field)
         for team, furthest in result.items():
             reached_rank = ROUND_RANK[furthest]
             for r in ROUND_ORDER:
@@ -281,6 +331,9 @@ def main() -> None:
     p.add_argument("--draw-seed", type=int, default=1)
     p.add_argument("--sims", type=int, default=10000)
     p.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE)
+    p.add_argument("--home-field", type=float, default=DEFAULT_HOME_FIELD,
+                   help="the host's edge in CoE points, applied in the Round of 24 only "
+                        "(0 turns it off)")
     p.add_argument("--sim-seed", type=int, default=0)
     p.add_argument("--fixed-draw", action="store_true",
                    help="run every simulation on the single bracket --draw-seed names, "
@@ -289,13 +342,14 @@ def main() -> None:
 
     counts, n_sims, conf_of, team_coe = run_simulation(
         args.db, args.year, args.draw_seed, args.sims, args.temperature, args.sim_seed,
-        fixed_draw=args.fixed_draw,
+        fixed_draw=args.fixed_draw, home_field=args.home_field,
     )
 
     drawing = (f"one fixed draw, seed {args.draw_seed}" if args.fixed_draw
                else "redrawn each run")
     print(f"=== {args.year} Monte Carlo bracket simulation ({n_sims:,} runs, "
-          f"temperature={args.temperature}, {drawing}) ===\n")
+          f"temperature={args.temperature}, home field {args.home_field} CoE in the "
+          f"Round of 24, {drawing}) ===\n")
     print(f"{'Team':<20} {'Conf':<18} {'CoE':>7} {'R16':>7} {'QF':>7} {'SF':>7} {'Final':>7} {'Champ':>7}")
     rows = sorted(counts.items(), key=lambda kv: -kv[1]["champion"])
     for team, c in rows:
