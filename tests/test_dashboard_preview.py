@@ -35,24 +35,55 @@ def test_preview_uses_existing_exports_without_recomputing(tmp_path, monkeypatch
         assert hashlib.sha256(path.read_bytes()).hexdigest()[:12] in html
 
 
-def test_every_routable_rankings_view_can_actually_render(repo_root):
+def _shell(root: Path) -> str:
+    return (root / "ui" / "dashboard_shell.html").read_text(encoding="utf-8")
+
+
+def test_every_routable_view_has_a_renderer_and_a_link(repo_root):
     """
-    navigation.js decides which rankings views are reachable; the shell decides
-    which ones can be drawn. A view added to one and not the other is a URL that
-    resolves to a blank page, and nothing else would catch it.
+    ui/navigation.js decides which URLs exist; ui/dashboard_shell.html decides
+    what they draw and how they are reached. A view added to one and not the other
+    is a route the router will happily send a reader to, showing nothing.
     """
     nav = (repo_root / "ui" / "navigation.js").read_text(encoding="utf-8")
-    shell = (repo_root / "ui" / "dashboard_shell.html").read_text(encoding="utf-8")
-    listed = re.search(r"rankings:\s*\[([^\]]*)\]", nav)
-    assert listed, "navigation.js no longer declares its rankings views the expected way"
-    views = re.findall(r"'([a-z0-9-]+)'", listed.group(1))
-    assert "elo-weekly" in views, "the week-by-week view must stay reachable"
+    shell = _shell(repo_root)
+    views_block = re.search(r"const views = \{(.*?)\};", nav, re.S).group(1)
 
-    renderers = re.search(r"const views = \{ elo: renderElo.*?\};", shell, re.S)
-    assert renderers, "the rankings render dispatch moved; this guard needs updating"
-    tabs = re.search(r"rankings: \[\[(.*?)\]\],\n", shell, re.S)
-    assert tabs, "the rankings tab labels moved; this guard needs updating"
-    for view in views:
-        assert f"'{view}'" in renderers.group(0) or f"{view}:" in renderers.group(0), \
-            f"{view} is routable but has no renderer"
-        assert f"'{view}'" in tabs.group(0), f"{view} is routable but has no tab label"
+    rankings = re.findall(r"'([a-z0-9-]+)'", re.search(r"rankings: \[([^\]]*)\]", nav).group(1))
+    assert "conference-coe" in rankings and "conference-coe2" in rankings, \
+        "CoE v1 and CoE 2.0 conference rankings are separate views and must stay separate"
+    labels = dict(re.findall(r"\['([a-z0-9-]+)', '([^']+)'\]",
+                             re.search(r"rankings: \[(.*?)\],\n\s*playoff:", shell, re.S).group(1)))
+    for view in rankings:
+        assert view in labels, f"rankings view {view} has no tab label, so nothing links to it"
+    assert labels["conference-coe2"] != labels["conference-coe"], \
+        "the two conference rankings must be distinguishable in the tab bar"
+    view_map = re.search(r"const views = \{ elo: renderElo,(.*?)\};", shell, re.S).group(1)
+    assert "'conference-coe2': renderConferenceCoe2" in view_map
+    # Every rankings view, not just the two named above, has to be drawable: a
+    # routable view with no entry here renders undefined and throws (P1-05).
+    for view in rankings:
+        assert f"'{view}'" in view_map or f"{view}:" in view_map or view == "elo", \
+            f"rankings view {view} is routable but has no renderer"
+    assert "elo-weekly" in rankings, "the week-by-week Elo view must stay reachable"
+
+    sections = re.findall(r"([a-z]+): \[\]", views_block)
+    assert "coverage" in sections
+    for section in sections:
+        assert f"state.section === '{section}'" in shell, f"section {section} is never rendered"
+        assert f'data-section="{section}"' in shell, f"section {section} has no navigation link"
+
+
+def test_the_coverage_page_is_the_one_place_the_season_table_lives(repo_root):
+    """
+    Promoting coverage out of Methodology is only worth it if it did not leave a
+    second copy behind: two tables drift, and a reader cannot tell which is current.
+    """
+    shell = _shell(repo_root)
+    assert shell.count("coverageTableHtml()") == 2, \
+        "coverageTableHtml is defined once and called once, from the coverage page"
+    assert "function renderCoverage()" in shell
+    # Methodology still explains coverage, but sends the reader to the page for it.
+    methodology = shell.split("function renderMethodology()")[1].split("function ")[0]
+    assert "coverageTableHtml()" not in methodology
+    assert "section: 'coverage'" in methodology, "Methodology must link to the coverage page"

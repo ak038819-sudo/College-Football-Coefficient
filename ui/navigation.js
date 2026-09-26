@@ -6,8 +6,13 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
   const views = {
-    home: [], games: [], teams: [], methodology: [],
-    rankings: ['elo', 'team-coe', 'conference-coe', 'elo-weekly', 'ap', 'cfp'],
+    home: [], games: [], teams: [], methodology: [], coverage: [],
+    // 'conference-coe' is CoE v1's five-year rolling value, which INCLUDES the
+    // current season and feeds the live playoff model. 'conference-coe2' is CoE
+    // 2.0's frozen value ENTERING the season. Separate views with separate names,
+    // for the same reason they are separate tables: they must never be read as
+    // one number.
+    rankings: ['elo', 'team-coe', 'conference-coe', 'conference-coe2', 'elo-weekly', 'ap', 'cfp'],
     playoff: ['field', 'bracket', 'odds', 'history']
   };
   // Detail-page tabs (Milestone E). The first entry is the default and is left out
@@ -67,7 +72,8 @@
     const years = seasonsFor(section, config);
     let year = Number(p.get('season'));
     if (!p.has('season') || !years.includes(year)) year = latest(years);
-    if (section === 'home' || section === 'teams' || section === 'methodology') year = latest(config.yearsAll || []);
+    if (section === 'home' || section === 'teams' || section === 'methodology' || section === 'coverage')
+      year = latest(config.yearsAll || []);
     const season = (config.gameSeasons || []).find(s => s.season === year);
     const status = ['upcoming', 'completed', 'all'].includes(p.get('status')) ? p.get('status')
       : season && season.scheduled > 0 ? 'upcoming' : 'completed';

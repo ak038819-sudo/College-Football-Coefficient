@@ -261,6 +261,34 @@ test('section routes carry no detail-page state', () => {
   }
 });
 
+test('the CoE 2.0 conference view is a first-class rankings view', () => {
+  const r = read('#section=rankings&view=conference-coe2&season=2025');
+  assert.equal(r.section, 'rankings');
+  assert.equal(r.subview, 'conference-coe2');
+  assert.equal(r.year, 2025);
+  // It round-trips, so the tab can be linked to and bookmarked.
+  assert.equal(hashFor(r), '#section=rankings&view=conference-coe2&season=2025');
+  // CoE v1's rolling value keeps its own URL: the two are different numbers and
+  // must never collapse into one view.
+  assert.equal(read('#section=rankings&view=conference-coe').subview, 'conference-coe');
+  assert.equal(read('#tab=conferences').subview, 'conference-coe');
+});
+
+test('data coverage is a section with no season of its own', () => {
+  const r = read('#section=coverage');
+  assert.equal(r.section, 'coverage');
+  assert.equal(r.subview, '');
+  assert.equal(r.year, 2026, 'coverage shows every season, so it pins to the latest like the other season-less sections');
+  assert.equal(hashFor(r), '#section=coverage');
+  // A season in the URL is not part of this section's contract and is dropped.
+  assert.equal(hashFor(read('#section=coverage&season=1980')), '#section=coverage');
+});
+
+test('an unknown view falls back to the section default, not to a blank page', () => {
+  assert.equal(read('#section=rankings&view=conference-coe3').subview, 'elo');
+  assert.equal(read('#section=coverage&view=anything').subview, '');
+});
+
 // ---- Week by week: the point-in-time Elo view (P1-05, P1-06) ----
 
 test('a week-by-week stage survives a URL round trip', () => {
