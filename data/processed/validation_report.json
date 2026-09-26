@@ -40,247 +40,247 @@
           "against": "mean_opponent_pregame_elo",
           "n": 96,
           "season_year": 1985,
-          "spearman": 0.21907216494845366
+          "spearman": 0.2238469886055345
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 95,
           "season_year": 1986,
-          "spearman": 0.2155375139977603
+          "spearman": 0.20908454647256436
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 94,
           "season_year": 1987,
-          "spearman": 0.2266960481213296
+          "spearman": 0.22309081728305497
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 97,
           "season_year": 1988,
-          "spearman": 0.07035123016637805
+          "spearman": 0.06719528713087698
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 99,
           "season_year": 1989,
-          "spearman": 0.24173302756290027
+          "spearman": 0.24091661267091627
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 101,
           "season_year": 1990,
-          "spearman": 0.3786488060570763
+          "spearman": 0.3748864298194525
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 102,
           "season_year": 1991,
-          "spearman": 0.21182238155283264
+          "spearman": 0.2081356622241322
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 103,
           "season_year": 1992,
-          "spearman": 0.14746009824139142
+          "spearman": 0.14855837477095155
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 104,
           "season_year": 1993,
-          "spearman": 0.20913261495785768
+          "spearman": 0.21430705217112983
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 105,
           "season_year": 1994,
-          "spearman": 0.2233591474217833
+          "spearman": 0.2295690397079587
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 105,
           "season_year": 1995,
-          "spearman": 0.24600870827285926
+          "spearman": 0.2473460501762389
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 106,
           "season_year": 1996,
-          "spearman": 0.1957130153746174
+          "spearman": 0.2002826417182507
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 111,
           "season_year": 1997,
-          "spearman": 0.2561098681768533
+          "spearman": 0.2541354045708984
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 112,
           "season_year": 1998,
-          "spearman": 0.20370386189848577
+          "spearman": 0.2025165076483122
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 112,
           "season_year": 1999,
-          "spearman": 0.243416163402493
+          "spearman": 0.2381456772704275
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 114,
           "season_year": 2000,
-          "spearman": 0.3232626379841747
+          "spearman": 0.3234975466229404
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 116,
           "season_year": 2001,
-          "spearman": 0.24494762138114626
+          "spearman": 0.23699375304714448
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 117,
           "season_year": 2002,
-          "spearman": 0.3493009036550825
+          "spearman": 0.34731526023168335
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 117,
           "season_year": 2003,
-          "spearman": 0.18212607806770972
+          "spearman": 0.1875735255603134
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 117,
           "season_year": 2004,
-          "spearman": 0.237258608061769
+          "spearman": 0.22165067221687687
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 118,
           "season_year": 2005,
-          "spearman": 0.176026324155497
+          "spearman": 0.18050376711934768
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 119,
           "season_year": 2006,
-          "spearman": 0.2141504059250819
+          "spearman": 0.2186939182452642
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 119,
           "season_year": 2007,
-          "spearman": 0.25376014812704745
+          "spearman": 0.22589374732944026
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 119,
           "season_year": 2008,
-          "spearman": 0.18041265562743242
+          "spearman": 0.15842144712574446
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 120,
           "season_year": 2009,
-          "spearman": 0.16207750898959944
+          "spearman": 0.15781331657311892
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 120,
           "season_year": 2010,
-          "spearman": 0.19621501493159252
+          "spearman": 0.18947843600250022
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 120,
           "season_year": 2011,
-          "spearman": 0.23757941103482408
+          "spearman": 0.23558274113297042
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 120,
           "season_year": 2012,
-          "spearman": 0.16285966289484285
+          "spearman": 0.15840098896825483
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 124,
           "season_year": 2013,
-          "spearman": 0.10967810969916521
+          "spearman": 0.1112516837264129
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 126,
           "season_year": 2014,
-          "spearman": 0.31032367502648334
+          "spearman": 0.30475936221910876
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 127,
           "season_year": 2015,
-          "spearman": 0.2479029690182534
+          "spearman": 0.2275236506430113
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 128,
           "season_year": 2016,
-          "spearman": 0.11312603003112982
+          "spearman": 0.11330342428126716
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 129,
           "season_year": 2017,
-          "spearman": 0.1669690151244117
+          "spearman": 0.14376878032458887
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 129,
           "season_year": 2018,
-          "spearman": 0.1903876766377036
+          "spearman": 0.181208325705015
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 130,
           "season_year": 2019,
-          "spearman": 0.20292891029217672
+          "spearman": 0.18785283345858342
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 84,
           "season_year": 2020,
-          "spearman": 0.035518655439632965
+          "spearman": 0.007229281637371133
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 130,
           "season_year": 2021,
-          "spearman": 0.14223053708230346
+          "spearman": 0.12617132556773955
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 130,
           "season_year": 2022,
-          "spearman": 0.1704272493511665
+          "spearman": 0.15384636393569348
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 132,
           "season_year": 2023,
-          "spearman": 0.24022352927385163
+          "spearman": 0.24143926972109384
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 133,
           "season_year": 2024,
-          "spearman": 0.17665647324731057
+          "spearman": 0.16778335199489383
         },
         {
           "against": "mean_opponent_pregame_elo",
           "n": 136,
           "season_year": 2025,
-          "spearman": 0.2005045296085774
+          "spearman": 0.19202652672668424
         }
       ]
     },
@@ -323,329 +323,329 @@
         {
           "from_season": 1984,
           "max_abs_rank_change": 77,
-          "mean_abs_rank_change": 21.72222222222222,
+          "mean_abs_rank_change": 21.666666666666668,
           "n": 36,
           "spearman": null,
           "to_season": 1985
         },
         {
           "from_season": 1985,
-          "max_abs_rank_change": 72,
-          "mean_abs_rank_change": 21.021052631578947,
+          "max_abs_rank_change": 71,
+          "mean_abs_rank_change": 20.926315789473684,
           "n": 95,
-          "spearman": 0.5222844344904815,
+          "spearman": 0.5280935050391936,
           "to_season": 1986
         },
         {
           "from_season": 1986,
           "max_abs_rank_change": 70,
-          "mean_abs_rank_change": 23.793478260869566,
+          "mean_abs_rank_change": 23.717391304347824,
           "n": 92,
-          "spearman": 0.4399627009839784,
+          "spearman": 0.44507980088682236,
           "to_season": 1987
         },
         {
           "from_season": 1987,
           "max_abs_rank_change": 70,
-          "mean_abs_rank_change": 21.817204301075268,
+          "mean_abs_rank_change": 21.623655913978496,
           "n": 93,
-          "spearman": 0.519378977576617,
+          "spearman": 0.5285257057211374,
           "to_season": 1988
         },
         {
           "from_season": 1988,
           "max_abs_rank_change": 67,
-          "mean_abs_rank_change": 22.389473684210525,
+          "mean_abs_rank_change": 22.157894736842106,
           "n": 95,
-          "spearman": 0.5007559433334322,
+          "spearman": 0.5060755390524981,
           "to_season": 1989
         },
         {
           "from_season": 1989,
           "max_abs_rank_change": 74,
-          "mean_abs_rank_change": 21.520408163265305,
+          "mean_abs_rank_change": 21.510204081632654,
           "n": 98,
-          "spearman": 0.5387055567661725,
+          "spearman": 0.5397512650647031,
           "to_season": 1990
         },
         {
           "from_season": 1990,
           "max_abs_rank_change": 94,
-          "mean_abs_rank_change": 24.831683168316832,
+          "mean_abs_rank_change": 24.752475247524753,
           "n": 101,
-          "spearman": 0.39179965055329063,
+          "spearman": 0.3935934769947583,
           "to_season": 1991
         },
         {
           "from_season": 1991,
           "max_abs_rank_change": 81,
-          "mean_abs_rank_change": 23.0,
+          "mean_abs_rank_change": 22.88235294117647,
           "n": 102,
-          "spearman": 0.4835835917927392,
+          "spearman": 0.4866144003005022,
           "to_season": 1992
         },
         {
           "from_season": 1992,
-          "max_abs_rank_change": 87,
-          "mean_abs_rank_change": 27.281553398058254,
+          "max_abs_rank_change": 86,
+          "mean_abs_rank_change": 27.0873786407767,
           "n": 103,
-          "spearman": 0.31856059878156473,
+          "spearman": 0.3278355440737001,
           "to_season": 1993
         },
         {
           "from_season": 1993,
           "max_abs_rank_change": 82,
-          "mean_abs_rank_change": 23.942307692307693,
+          "mean_abs_rank_change": 23.73076923076923,
           "n": 104,
-          "spearman": 0.48763989803157326,
+          "spearman": 0.49740208476195635,
           "to_season": 1994
         },
         {
           "from_season": 1994,
           "max_abs_rank_change": 88,
-          "mean_abs_rank_change": 25.63809523809524,
+          "mean_abs_rank_change": 25.6,
           "n": 105,
-          "spearman": 0.4182813423544531,
+          "spearman": 0.42269772651791,
           "to_season": 1995
         },
         {
           "from_season": 1995,
           "max_abs_rank_change": 69,
-          "mean_abs_rank_change": 21.866666666666667,
+          "mean_abs_rank_change": 21.63809523809524,
           "n": 105,
-          "spearman": 0.5986331086302208,
+          "spearman": 0.6052368993305092,
           "to_season": 1996
         },
         {
           "from_season": 1996,
           "max_abs_rank_change": 78,
-          "mean_abs_rank_change": 25.57547169811321,
+          "mean_abs_rank_change": 25.5,
           "n": 106,
-          "spearman": 0.46647134854630334,
+          "spearman": 0.472416546918444,
           "to_season": 1997
         },
         {
           "from_season": 1997,
           "max_abs_rank_change": 100,
-          "mean_abs_rank_change": 26.64864864864865,
+          "mean_abs_rank_change": 26.61261261261261,
           "n": 111,
-          "spearman": 0.4468820754986469,
+          "spearman": 0.44784737728768254,
           "to_season": 1998
         },
         {
           "from_season": 1998,
           "max_abs_rank_change": 104,
-          "mean_abs_rank_change": 26.25,
+          "mean_abs_rank_change": 26.178571428571427,
           "n": 112,
-          "spearman": 0.4451933097568893,
+          "spearman": 0.44766200263099454,
           "to_season": 1999
         },
         {
           "from_season": 1999,
-          "max_abs_rank_change": 105,
-          "mean_abs_rank_change": 28.9375,
+          "max_abs_rank_change": 104,
+          "mean_abs_rank_change": 28.857142857142858,
           "n": 112,
-          "spearman": 0.33536422597198356,
+          "spearman": 0.33907151262689544,
           "to_season": 2000
         },
         {
           "from_season": 2000,
-          "max_abs_rank_change": 92,
-          "mean_abs_rank_change": 29.403508771929825,
+          "max_abs_rank_change": 90,
+          "mean_abs_rank_change": 29.350877192982455,
           "n": 114,
-          "spearman": 0.37851230972732736,
+          "spearman": 0.3812988686313117,
           "to_season": 2001
         },
         {
           "from_season": 2001,
           "max_abs_rank_change": 91,
-          "mean_abs_rank_change": 27.224137931034484,
+          "mean_abs_rank_change": 27.0,
           "n": 116,
-          "spearman": 0.46675636721741254,
+          "spearman": 0.4737799135906466,
           "to_season": 2002
         },
         {
           "from_season": 2002,
-          "max_abs_rank_change": 83,
+          "max_abs_rank_change": 84,
           "mean_abs_rank_change": 24.512820512820515,
           "n": 117,
-          "spearman": 0.562615673978194,
+          "spearman": 0.5621511048660325,
           "to_season": 2003
         },
         {
           "from_season": 2003,
           "max_abs_rank_change": 86,
-          "mean_abs_rank_change": 23.88034188034188,
+          "mean_abs_rank_change": 23.914529914529915,
           "n": 117,
-          "spearman": 0.5691769056357171,
+          "spearman": 0.5636320381036388,
           "to_season": 2004
         },
         {
           "from_season": 2004,
-          "max_abs_rank_change": 106,
-          "mean_abs_rank_change": 28.786324786324787,
+          "max_abs_rank_change": 107,
+          "mean_abs_rank_change": 28.376068376068375,
           "n": 117,
-          "spearman": 0.4371378742620454,
+          "spearman": 0.44836997754662017,
           "to_season": 2005
         },
         {
           "from_season": 2005,
-          "max_abs_rank_change": 85,
-          "mean_abs_rank_change": 32.059322033898304,
+          "max_abs_rank_change": 89,
+          "mean_abs_rank_change": 31.940677966101696,
           "n": 118,
-          "spearman": 0.3473378205244269,
+          "spearman": 0.3568916466202127,
           "to_season": 2006
         },
         {
           "from_season": 2006,
-          "max_abs_rank_change": 108,
-          "mean_abs_rank_change": 29.41176470588235,
+          "max_abs_rank_change": 105,
+          "mean_abs_rank_change": 29.277310924369747,
           "n": 119,
-          "spearman": 0.4303731662156388,
+          "spearman": 0.44135450790485686,
           "to_season": 2007
         },
         {
           "from_season": 2007,
-          "max_abs_rank_change": 100,
-          "mean_abs_rank_change": 30.521008403361346,
+          "max_abs_rank_change": 97,
+          "mean_abs_rank_change": 30.95798319327731,
           "n": 119,
-          "spearman": 0.3763003423669658,
+          "spearman": 0.36830289186586623,
           "to_season": 2008
         },
         {
           "from_season": 2008,
           "max_abs_rank_change": 106,
-          "mean_abs_rank_change": 28.18487394957983,
+          "mean_abs_rank_change": 27.478991596638654,
           "n": 119,
-          "spearman": 0.4273757786927773,
+          "spearman": 0.4413873404567252,
           "to_season": 2009
         },
         {
           "from_season": 2009,
-          "max_abs_rank_change": 112,
-          "mean_abs_rank_change": 30.333333333333332,
+          "max_abs_rank_change": 111,
+          "mean_abs_rank_change": 30.216666666666665,
           "n": 120,
-          "spearman": 0.37547464316092977,
+          "spearman": 0.37863806277934486,
           "to_season": 2010
         },
         {
           "from_season": 2010,
-          "max_abs_rank_change": 92,
-          "mean_abs_rank_change": 30.783333333333335,
+          "max_abs_rank_change": 95,
+          "mean_abs_rank_change": 30.633333333333333,
           "n": 120,
-          "spearman": 0.3826522373994194,
+          "spearman": 0.3807250168854563,
           "to_season": 2011
         },
         {
           "from_season": 2011,
           "max_abs_rank_change": 113,
-          "mean_abs_rank_change": 29.75,
+          "mean_abs_rank_change": 29.533333333333335,
           "n": 120,
-          "spearman": 0.413862194100639,
+          "spearman": 0.41606028249299115,
           "to_season": 2012
         },
         {
           "from_season": 2012,
-          "max_abs_rank_change": 109,
-          "mean_abs_rank_change": 26.408333333333335,
+          "max_abs_rank_change": 108,
+          "mean_abs_rank_change": 26.716666666666665,
           "n": 120,
-          "spearman": 0.5232380476150791,
+          "spearman": 0.5194252298802678,
           "to_season": 2013
         },
         {
           "from_season": 2013,
-          "max_abs_rank_change": 112,
-          "mean_abs_rank_change": 29.241935483870968,
+          "max_abs_rank_change": 107,
+          "mean_abs_rank_change": 28.693548387096776,
           "n": 124,
-          "spearman": 0.4490980273764957,
+          "spearman": 0.46833339628557163,
           "to_season": 2014
         },
         {
           "from_season": 2014,
-          "max_abs_rank_change": 104,
-          "mean_abs_rank_change": 31.872,
+          "max_abs_rank_change": 109,
+          "mean_abs_rank_change": 31.296,
           "n": 125,
-          "spearman": 0.4140934380750786,
+          "spearman": 0.42588456492953897,
           "to_season": 2015
         },
         {
           "from_season": 2015,
-          "max_abs_rank_change": 110,
+          "max_abs_rank_change": 111,
           "mean_abs_rank_change": 31.133858267716537,
           "n": 127,
-          "spearman": 0.4321370455705176,
+          "spearman": 0.42635162746054156,
           "to_season": 2016
         },
         {
           "from_season": 2016,
           "max_abs_rank_change": 120,
-          "mean_abs_rank_change": 35.0859375,
+          "mean_abs_rank_change": 34.1015625,
           "n": 128,
-          "spearman": 0.28421540550950103,
+          "spearman": 0.31210675856343695,
           "to_season": 2017
         },
         {
           "from_season": 2017,
-          "max_abs_rank_change": 98,
-          "mean_abs_rank_change": 29.5703125,
+          "max_abs_rank_change": 100,
+          "mean_abs_rank_change": 29.0546875,
           "n": 128,
-          "spearman": 0.4768060521398893,
+          "spearman": 0.48485758884243096,
           "to_season": 2018
         },
         {
           "from_season": 2018,
-          "max_abs_rank_change": 104,
-          "mean_abs_rank_change": 31.364341085271317,
+          "max_abs_rank_change": 103,
+          "mean_abs_rank_change": 31.11627906976744,
           "n": 129,
-          "spearman": 0.40384059034756753,
+          "spearman": 0.4119969532470893,
           "to_season": 2019
         },
         {
           "from_season": 2019,
           "max_abs_rank_change": 107,
-          "mean_abs_rank_change": 36.42857142857143,
+          "mean_abs_rank_change": 36.357142857142854,
           "n": 84,
-          "spearman": 0.23970029899597228,
+          "spearman": 0.26589378862605506,
           "to_season": 2020
         },
         {
           "from_season": 2020,
           "max_abs_rank_change": 105,
-          "mean_abs_rank_change": 34.142857142857146,
+          "mean_abs_rank_change": 33.785714285714285,
           "n": 84,
-          "spearman": 0.29665367323996755,
+          "spearman": 0.31987039984289756,
           "to_season": 2021
         },
         {
           "from_season": 2021,
           "max_abs_rank_change": 119,
-          "mean_abs_rank_change": 33.56923076923077,
+          "mean_abs_rank_change": 33.15384615384615,
           "n": 130,
-          "spearman": 0.3272533111930173,
+          "spearman": 0.3415318269156483,
           "to_season": 2022
         },
         {
           "from_season": 2022,
-          "max_abs_rank_change": 100,
-          "mean_abs_rank_change": 34.23076923076923,
+          "max_abs_rank_change": 104,
+          "mean_abs_rank_change": 34.238461538461536,
           "n": 130,
-          "spearman": 0.37788086397618703,
+          "spearman": 0.37721172924932306,
           "to_season": 2023
         },
         {
           "from_season": 2023,
-          "max_abs_rank_change": 124,
-          "mean_abs_rank_change": 37.07575757575758,
+          "max_abs_rank_change": 125,
+          "mean_abs_rank_change": 37.34090909090909,
           "n": 132,
-          "spearman": 0.23136044580764234,
+          "spearman": 0.2269514185199339,
           "to_season": 2024
         },
         {
           "from_season": 2024,
-          "max_abs_rank_change": 114,
-          "mean_abs_rank_change": 34.70676691729323,
+          "max_abs_rank_change": 116,
+          "mean_abs_rank_change": 34.1578947368421,
           "n": 133,
-          "spearman": 0.3578254837233946,
+          "spearman": 0.3709096149428636,
           "to_season": 2025
         }
       ],
@@ -1049,291 +1049,291 @@
         "spearman": null
       },
       {
-        "max_abs_rank_change": 52,
-        "mean_abs_rank_change": 11.708333333333334,
+        "max_abs_rank_change": 51,
+        "mean_abs_rank_change": 11.6875,
         "n": 96,
         "season_year": 1985,
-        "spearman": 0.8380765056972329
+        "spearman": 0.8383749321758005
       },
       {
-        "max_abs_rank_change": 44,
-        "mean_abs_rank_change": 10.715789473684211,
+        "max_abs_rank_change": 45,
+        "mean_abs_rank_change": 10.631578947368421,
         "n": 95,
         "season_year": 1986,
-        "spearman": 0.8655375139977601
+        "spearman": 0.8663773796192608
       },
       {
         "max_abs_rank_change": 44,
-        "mean_abs_rank_change": 11.51063829787234,
+        "mean_abs_rank_change": 11.574468085106384,
         "n": 94,
         "season_year": 1987,
-        "spearman": 0.8478722641180009
+        "spearman": 0.8463694825260948
       },
       {
-        "max_abs_rank_change": 66,
-        "mean_abs_rank_change": 13.1340206185567,
+        "max_abs_rank_change": 65,
+        "mean_abs_rank_change": 12.989690721649485,
         "n": 97,
         "season_year": 1988,
-        "spearman": 0.7937328231911673
+        "spearman": 0.7959288335533702
       },
       {
         "max_abs_rank_change": 54,
         "mean_abs_rank_change": 12.171717171717171,
         "n": 99,
         "season_year": 1989,
-        "spearman": 0.8231688697267814
+        "spearman": 0.8226988126677602
       },
       {
-        "max_abs_rank_change": 69,
-        "mean_abs_rank_change": 13.782178217821782,
+        "max_abs_rank_change": 67,
+        "mean_abs_rank_change": 13.702970297029703,
         "n": 101,
         "season_year": 1990,
-        "spearman": 0.776260920209668
+        "spearman": 0.7779382644146767
       },
       {
-        "max_abs_rank_change": 52,
-        "mean_abs_rank_change": 12.666666666666666,
+        "max_abs_rank_change": 51,
+        "mean_abs_rank_change": 12.607843137254902,
         "n": 102,
         "season_year": 1991,
-        "spearman": 0.8292687064251829
+        "spearman": 0.8307501795296607
       },
       {
         "max_abs_rank_change": 62,
-        "mean_abs_rank_change": 14.116504854368932,
+        "mean_abs_rank_change": 14.097087378640778,
         "n": 103,
         "season_year": 1992,
-        "spearman": 0.785816856900276
-      },
-      {
-        "max_abs_rank_change": 57,
-        "mean_abs_rank_change": 15.01923076923077,
-        "n": 104,
-        "season_year": 1993,
-        "spearman": 0.7709911447775526
-      },
-      {
-        "max_abs_rank_change": 75,
-        "mean_abs_rank_change": 14.076190476190476,
-        "n": 105,
-        "season_year": 1994,
-        "spearman": 0.7884147368932195
-      },
-      {
-        "max_abs_rank_change": 42,
-        "mean_abs_rank_change": 13.076190476190476,
-        "n": 105,
-        "season_year": 1995,
-        "spearman": 0.8525917478747669
-      },
-      {
-        "max_abs_rank_change": 54,
-        "mean_abs_rank_change": 11.858490566037736,
-        "n": 106,
-        "season_year": 1996,
-        "spearman": 0.8580569263622114
-      },
-      {
-        "max_abs_rank_change": 69,
-        "mean_abs_rank_change": 12.864864864864865,
-        "n": 111,
-        "season_year": 1997,
-        "spearman": 0.8552762063430066
-      },
-      {
-        "max_abs_rank_change": 44,
-        "mean_abs_rank_change": 13.089285714285714,
-        "n": 112,
-        "season_year": 1998,
-        "spearman": 0.8653506112200362
-      },
-      {
-        "max_abs_rank_change": 45,
-        "mean_abs_rank_change": 13.5,
-        "n": 112,
-        "season_year": 1999,
-        "spearman": 0.8566547362079735
-      },
-      {
-        "max_abs_rank_change": 45,
-        "mean_abs_rank_change": 12.666666666666666,
-        "n": 114,
-        "season_year": 2000,
-        "spearman": 0.8813934132445793
-      },
-      {
-        "max_abs_rank_change": 45,
-        "mean_abs_rank_change": 14.913793103448276,
-        "n": 116,
-        "season_year": 2001,
-        "spearman": 0.8432369054897483
-      },
-      {
-        "max_abs_rank_change": 39,
-        "mean_abs_rank_change": 11.418803418803419,
-        "n": 117,
-        "season_year": 2002,
-        "spearman": 0.9074390444933986
-      },
-      {
-        "max_abs_rank_change": 43,
-        "mean_abs_rank_change": 14.188034188034187,
-        "n": 117,
-        "season_year": 2003,
-        "spearman": 0.8581340806642964
-      },
-      {
-        "max_abs_rank_change": 58,
-        "mean_abs_rank_change": 12.35897435897436,
-        "n": 117,
-        "season_year": 2004,
-        "spearman": 0.8795630077699192
-      },
-      {
-        "max_abs_rank_change": 52,
-        "mean_abs_rank_change": 15.110169491525424,
-        "n": 118,
-        "season_year": 2005,
-        "spearman": 0.8355470989971512
-      },
-      {
-        "max_abs_rank_change": 50,
-        "mean_abs_rank_change": 14.201680672268907,
-        "n": 119,
-        "season_year": 2006,
-        "spearman": 0.8529198119925937
-      },
-      {
-        "max_abs_rank_change": 52,
-        "mean_abs_rank_change": 16.436974789915965,
-        "n": 119,
-        "season_year": 2007,
-        "spearman": 0.826064663153397
-      },
-      {
-        "max_abs_rank_change": 50,
-        "mean_abs_rank_change": 16.008403361344538,
-        "n": 119,
-        "season_year": 2008,
-        "spearman": 0.8257527876255568
+        "spearman": 0.7861243743285529
       },
       {
         "max_abs_rank_change": 56,
-        "mean_abs_rank_change": 15.4,
-        "n": 120,
-        "season_year": 2009,
-        "spearman": 0.8340767311574679
+        "mean_abs_rank_change": 14.865384615384615,
+        "n": 104,
+        "season_year": 1993,
+        "spearman": 0.7734023258295103
       },
       {
-        "max_abs_rank_change": 62,
-        "mean_abs_rank_change": 13.266666666666667,
-        "n": 120,
-        "season_year": 2010,
-        "spearman": 0.8714910757691509
+        "max_abs_rank_change": 75,
+        "mean_abs_rank_change": 14.038095238095238,
+        "n": 105,
+        "season_year": 1994,
+        "spearman": 0.7892130055832277
       },
       {
-        "max_abs_rank_change": 47,
-        "mean_abs_rank_change": 15.983333333333333,
-        "n": 120,
-        "season_year": 2011,
-        "spearman": 0.8315834981321968
-      },
-      {
-        "max_abs_rank_change": 45,
-        "mean_abs_rank_change": 14.35,
-        "n": 120,
-        "season_year": 2012,
-        "spearman": 0.8609199314044096
-      },
-      {
-        "max_abs_rank_change": 53,
-        "mean_abs_rank_change": 15.78225806451613,
-        "n": 124,
-        "season_year": 2013,
-        "spearman": 0.8371413824957803
-      },
-      {
-        "max_abs_rank_change": 58,
-        "mean_abs_rank_change": 17.015873015873016,
-        "n": 126,
-        "season_year": 2014,
-        "spearman": 0.8305284297398614
-      },
-      {
-        "max_abs_rank_change": 42,
-        "mean_abs_rank_change": 14.874015748031496,
-        "n": 127,
-        "season_year": 2015,
-        "spearman": 0.8727046902906609
-      },
-      {
-        "max_abs_rank_change": 48,
-        "mean_abs_rank_change": 17.78125,
-        "n": 128,
-        "season_year": 2016,
-        "spearman": 0.8244254715253616
-      },
-      {
-        "max_abs_rank_change": 52,
-        "mean_abs_rank_change": 15.829457364341085,
-        "n": 129,
-        "season_year": 2017,
-        "spearman": 0.8488854104894694
-      },
-      {
-        "max_abs_rank_change": 57,
-        "mean_abs_rank_change": 19.124031007751938,
-        "n": 129,
-        "season_year": 2018,
-        "spearman": 0.7991150479589757
-      },
-      {
-        "max_abs_rank_change": 50,
-        "mean_abs_rank_change": 15.492307692307692,
-        "n": 130,
-        "season_year": 2019,
-        "spearman": 0.8630862805098403
-      },
-      {
-        "max_abs_rank_change": 48,
-        "mean_abs_rank_change": 16.80952380952381,
-        "n": 84,
-        "season_year": 2020,
-        "spearman": 0.6487520891217339
+        "max_abs_rank_change": 41,
+        "mean_abs_rank_change": 13.0,
+        "n": 105,
+        "season_year": 1995,
+        "spearman": 0.8536077130416755
       },
       {
         "max_abs_rank_change": 54,
-        "mean_abs_rank_change": 15.446153846153846,
+        "mean_abs_rank_change": 11.669811320754716,
+        "n": 106,
+        "season_year": 1996,
+        "spearman": 0.8603341822688512
+      },
+      {
+        "max_abs_rank_change": 69,
+        "mean_abs_rank_change": 12.756756756756756,
+        "n": 111,
+        "season_year": 1997,
+        "spearman": 0.8569523065596172
+      },
+      {
+        "max_abs_rank_change": 44,
+        "mean_abs_rank_change": 13.071428571428571,
+        "n": 112,
+        "season_year": 1998,
+        "spearman": 0.8650601792451735
+      },
+      {
+        "max_abs_rank_change": 45,
+        "mean_abs_rank_change": 13.607142857142858,
+        "n": 112,
+        "season_year": 1999,
+        "spearman": 0.8556382242959544
+      },
+      {
+        "max_abs_rank_change": 45,
+        "mean_abs_rank_change": 12.68421052631579,
+        "n": 114,
+        "season_year": 2000,
+        "spearman": 0.8809883983501557
+      },
+      {
+        "max_abs_rank_change": 45,
+        "mean_abs_rank_change": 14.827586206896552,
+        "n": 116,
+        "season_year": 2001,
+        "spearman": 0.8449053341301334
+      },
+      {
+        "max_abs_rank_change": 39,
+        "mean_abs_rank_change": 11.350427350427351,
+        "n": 117,
+        "season_year": 2002,
+        "spearman": 0.9077687362316235
+      },
+      {
+        "max_abs_rank_change": 48,
+        "mean_abs_rank_change": 14.495726495726496,
+        "n": 117,
+        "season_year": 2003,
+        "spearman": 0.8548296455277926
+      },
+      {
+        "max_abs_rank_change": 57,
+        "mean_abs_rank_change": 12.35897435897436,
+        "n": 117,
+        "season_year": 2004,
+        "spearman": 0.879622951834614
+      },
+      {
+        "max_abs_rank_change": 57,
+        "mean_abs_rank_change": 15.09322033898305,
+        "n": 118,
+        "season_year": 2005,
+        "spearman": 0.8343857394029387
+      },
+      {
+        "max_abs_rank_change": 53,
+        "mean_abs_rank_change": 14.15126050420168,
+        "n": 119,
+        "season_year": 2006,
+        "spearman": 0.8552841475573281
+      },
+      {
+        "max_abs_rank_change": 49,
+        "mean_abs_rank_change": 16.33613445378151,
+        "n": 119,
+        "season_year": 2007,
+        "spearman": 0.8277595784076343
+      },
+      {
+        "max_abs_rank_change": 51,
+        "mean_abs_rank_change": 16.243697478991596,
+        "n": 119,
+        "season_year": 2008,
+        "spearman": 0.8202264994787596
+      },
+      {
+        "max_abs_rank_change": 54,
+        "mean_abs_rank_change": 15.216666666666667,
+        "n": 120,
+        "season_year": 2009,
+        "spearman": 0.838910408554651
+      },
+      {
+        "max_abs_rank_change": 60,
+        "mean_abs_rank_change": 13.35,
+        "n": 120,
+        "season_year": 2010,
+        "spearman": 0.8707618584623934
+      },
+      {
+        "max_abs_rank_change": 47,
+        "mean_abs_rank_change": 16.0,
+        "n": 120,
+        "season_year": 2011,
+        "spearman": 0.8306598212732522
+      },
+      {
+        "max_abs_rank_change": 46,
+        "mean_abs_rank_change": 14.733333333333333,
+        "n": 120,
+        "season_year": 2012,
+        "spearman": 0.8536415976426274
+      },
+      {
+        "max_abs_rank_change": 50,
+        "mean_abs_rank_change": 15.943548387096774,
+        "n": 124,
+        "season_year": 2013,
+        "spearman": 0.8348313758237806
+      },
+      {
+        "max_abs_rank_change": 56,
+        "mean_abs_rank_change": 17.58730158730159,
+        "n": 126,
+        "season_year": 2014,
+        "spearman": 0.8236952736346327
+      },
+      {
+        "max_abs_rank_change": 42,
+        "mean_abs_rank_change": 15.188976377952756,
+        "n": 127,
+        "season_year": 2015,
+        "spearman": 0.8713044726417655
+      },
+      {
+        "max_abs_rank_change": 48,
+        "mean_abs_rank_change": 17.4375,
+        "n": 128,
+        "season_year": 2016,
+        "spearman": 0.8258160135506317
+      },
+      {
+        "max_abs_rank_change": 50,
+        "mean_abs_rank_change": 16.325581395348838,
+        "n": 129,
+        "season_year": 2017,
+        "spearman": 0.8448547190941267
+      },
+      {
+        "max_abs_rank_change": 56,
+        "mean_abs_rank_change": 19.325581395348838,
+        "n": 129,
+        "season_year": 2018,
+        "spearman": 0.7967559212271885
+      },
+      {
+        "max_abs_rank_change": 48,
+        "mean_abs_rank_change": 15.461538461538462,
+        "n": 130,
+        "season_year": 2019,
+        "spearman": 0.8646976727800976
+      },
+      {
+        "max_abs_rank_change": 48,
+        "mean_abs_rank_change": 17.071428571428573,
+        "n": 84,
+        "season_year": 2020,
+        "spearman": 0.6453703243221793
+      },
+      {
+        "max_abs_rank_change": 57,
+        "mean_abs_rank_change": 15.36923076923077,
         "n": 130,
         "season_year": 2021,
-        "spearman": 0.8576137868877084
+        "spearman": 0.8585970039192123
       },
       {
-        "max_abs_rank_change": 58,
-        "mean_abs_rank_change": 16.807692307692307,
+        "max_abs_rank_change": 59,
+        "mean_abs_rank_change": 16.93076923076923,
         "n": 130,
         "season_year": 2022,
-        "spearman": 0.8402365732662564
+        "spearman": 0.8400290049428212
       },
       {
-        "max_abs_rank_change": 58,
-        "mean_abs_rank_change": 15.916666666666666,
+        "max_abs_rank_change": 60,
+        "mean_abs_rank_change": 16.295454545454547,
         "n": 132,
         "season_year": 2023,
-        "spearman": 0.8551873114272528
+        "spearman": 0.8498182259327798
       },
       {
         "max_abs_rank_change": 71,
-        "mean_abs_rank_change": 21.007518796992482,
+        "mean_abs_rank_change": 21.654135338345863,
         "n": 133,
         "season_year": 2024,
-        "spearman": 0.7600763103755308
+        "spearman": 0.752327950972012
       },
       {
-        "max_abs_rank_change": 64,
-        "mean_abs_rank_change": 19.86764705882353,
+        "max_abs_rank_change": 61,
+        "mean_abs_rank_change": 19.852941176470587,
         "n": 136,
         "season_year": 2025,
-        "spearman": 0.806044811980915
+        "spearman": 0.8088883064759113
       }
     ]
   },
@@ -1341,7 +1341,7 @@
     "bins": 10,
     "db": "db/league.db",
     "from_season": null,
-    "prediction_fingerprint": "39efac9840112cdc",
+    "prediction_fingerprint": "aac3a5abaecf1d9d",
     "v1_ratings_csv": "data/processed/team_ratings_by_season.csv"
   },
   "models": {
@@ -2438,472 +2438,472 @@
     "elo": {
       "by_season": [
         {
-          "accuracy": 0.674812030075188,
+          "accuracy": 0.6823308270676691,
           "base_rate": 0.5958646616541353,
-          "brier": 0.2054705872984549,
-          "brier_skill": 0.13664344463740785,
-          "calibration_error": 0.04516560808444489,
-          "log_loss": 0.6027473811607424,
+          "brier": 0.20533008552996768,
+          "brier_skill": 0.13723381197152806,
+          "calibration_error": 0.047001167588198445,
+          "log_loss": 0.6020410425182726,
           "n": 532,
           "season_year": 1980
         },
         {
           "accuracy": 0.7174721189591078,
           "base_rate": 0.6133828996282528,
-          "brier": 0.17589615307173373,
-          "brier_skill": 0.24041288261726712,
-          "calibration_error": 0.05349141305573226,
-          "log_loss": 0.538432275751223,
+          "brier": 0.17628308852887603,
+          "brier_skill": 0.23874194676465632,
+          "calibration_error": 0.05119495765544977,
+          "log_loss": 0.5386640884354332,
           "n": 538,
           "season_year": 1981
         },
         {
-          "accuracy": 0.7117296222664016,
+          "accuracy": 0.709741550695825,
           "base_rate": 0.6063618290258449,
-          "brier": 0.17681937610561219,
-          "brier_skill": 0.23695590907129016,
-          "calibration_error": 0.056552643914235534,
-          "log_loss": 0.5415308179035828,
+          "brier": 0.17775224106174395,
+          "brier_skill": 0.23293023548229586,
+          "calibration_error": 0.06673572422140465,
+          "log_loss": 0.5438739563536905,
           "n": 503,
           "season_year": 1982
         },
         {
-          "accuracy": 0.746078431372549,
+          "accuracy": 0.7401960784313726,
           "base_rate": 0.5911764705882353,
-          "brier": 0.16796470800395577,
-          "brier_skill": 0.28917274902349266,
-          "calibration_error": 0.04952725701753768,
-          "log_loss": 0.5159212916633577,
+          "brier": 0.1675245979288037,
+          "brier_skill": 0.2910352964512537,
+          "calibration_error": 0.038264777251066265,
+          "log_loss": 0.5142801347484015,
           "n": 510,
           "season_year": 1983
         },
         {
-          "accuracy": 0.7219047619047619,
+          "accuracy": 0.7161904761904762,
           "base_rate": 0.6133333333333333,
-          "brier": 0.18993078905831295,
-          "brier_skill": 0.1725464904656936,
-          "calibration_error": 0.09056810830132056,
-          "log_loss": 0.5811543414258218,
+          "brier": 0.19096207055422368,
+          "brier_skill": 0.16805360388664026,
+          "calibration_error": 0.0815222504891626,
+          "log_loss": 0.5851685761607648,
           "n": 525,
           "season_year": 1984
         },
         {
-          "accuracy": 0.7268431001890359,
+          "accuracy": 0.724952741020794,
           "base_rate": 0.6077504725897921,
-          "brier": 0.16869058685380936,
-          "brier_skill": 0.2736561035857107,
-          "calibration_error": 0.05259642930844345,
-          "log_loss": 0.5258930626853496,
+          "brier": 0.16905923501089432,
+          "brier_skill": 0.27206878716327687,
+          "calibration_error": 0.052557910960361526,
+          "log_loss": 0.526704328162942,
           "n": 529,
           "season_year": 1985
         },
         {
-          "accuracy": 0.7062146892655368,
+          "accuracy": 0.704331450094162,
           "base_rate": 0.5988700564971752,
-          "brier": 0.1901709146716079,
-          "brier_skill": 0.1957526207145175,
-          "calibration_error": 0.04754201218718099,
-          "log_loss": 0.5684928165390349,
+          "brier": 0.19099006993658213,
+          "brier_skill": 0.19228835029114033,
+          "calibration_error": 0.049600500135657005,
+          "log_loss": 0.5708771719009745,
           "n": 531,
           "season_year": 1986
         },
         {
-          "accuracy": 0.7354048964218456,
+          "accuracy": 0.7335216572504708,
           "base_rate": 0.6412429378531074,
-          "brier": 0.16956863161220817,
-          "brier_skill": 0.24276022239627404,
-          "calibration_error": 0.07093864440420268,
-          "log_loss": 0.5224345604372321,
+          "brier": 0.16951972793149273,
+          "brier_skill": 0.24297861073825022,
+          "calibration_error": 0.06974711547174231,
+          "log_loss": 0.5216935001916216,
           "n": 531,
           "season_year": 1987
         },
         {
-          "accuracy": 0.7566287878787878,
+          "accuracy": 0.7604166666666666,
           "base_rate": 0.6051136363636364,
-          "brier": 0.1587584919234303,
-          "brier_skill": 0.32079833630842847,
-          "calibration_error": 0.04664772829662618,
-          "log_loss": 0.49618708697114833,
+          "brier": 0.15800980222420152,
+          "brier_skill": 0.3240013856895614,
+          "calibration_error": 0.050431602367671594,
+          "log_loss": 0.4939886375780628,
           "n": 528,
           "season_year": 1988
         },
         {
-          "accuracy": 0.7423146473779385,
+          "accuracy": 0.7495479204339964,
           "base_rate": 0.608499095840868,
-          "brier": 0.1589426767902532,
-          "brier_skill": 0.31593693552106195,
-          "calibration_error": 0.04553945286158126,
-          "log_loss": 0.4987368894430576,
+          "brier": 0.15835039513475072,
+          "brier_skill": 0.3184860180738388,
+          "calibration_error": 0.04324192058104757,
+          "log_loss": 0.4967082876256099,
           "n": 553,
           "season_year": 1989
         },
         {
-          "accuracy": 0.7305605786618445,
+          "accuracy": 0.7269439421338155,
           "base_rate": 0.6094032549728752,
-          "brier": 0.1689364491211627,
-          "brier_skill": 0.2680322106929106,
-          "calibration_error": 0.0478948739982639,
-          "log_loss": 0.5241429315317446,
+          "brier": 0.16852770688259633,
+          "brier_skill": 0.2698032089251824,
+          "calibration_error": 0.04736636499725035,
+          "log_loss": 0.5231080856219485,
           "n": 553,
           "season_year": 1990
         },
         {
-          "accuracy": 0.759391771019678,
+          "accuracy": 0.761180679785331,
           "base_rate": 0.6180679785330948,
-          "brier": 0.16278629890300142,
-          "brier_skill": 0.29023238450202415,
-          "calibration_error": 0.0489991978616446,
-          "log_loss": 0.5117259605235055,
+          "brier": 0.16229857754971583,
+          "brier_skill": 0.2923589075833999,
+          "calibration_error": 0.04578356198628048,
+          "log_loss": 0.510282246556476,
           "n": 559,
           "season_year": 1991
         },
         {
-          "accuracy": 0.7145359019264448,
+          "accuracy": 0.712784588441331,
           "base_rate": 0.6409807355516638,
-          "brier": 0.17894570405924273,
-          "brier_skill": 0.20422771939414464,
-          "calibration_error": 0.07444851523446454,
-          "log_loss": 0.5429229914762249,
+          "brier": 0.1803260873687981,
+          "brier_skill": 0.19808914914944364,
+          "calibration_error": 0.08150380409033912,
+          "log_loss": 0.5465548742918283,
           "n": 571,
           "season_year": 1992
         },
         {
-          "accuracy": 0.7191304347826087,
+          "accuracy": 0.717391304347826,
           "base_rate": 0.62,
-          "brier": 0.17818191875715197,
-          "brier_skill": 0.22803945686134497,
-          "calibration_error": 0.06528081409560607,
-          "log_loss": 0.5409431341647939,
+          "brier": 0.17846016996055206,
+          "brier_skill": 0.2268339532299778,
+          "calibration_error": 0.06730998288745776,
+          "log_loss": 0.5413944390055302,
           "n": 575,
           "season_year": 1993
         },
         {
-          "accuracy": 0.7388698630136986,
+          "accuracy": 0.7320205479452054,
           "base_rate": 0.5916095890410958,
-          "brier": 0.1650731625983418,
-          "brier_skill": 0.30066372630914273,
-          "calibration_error": 0.030624476137911985,
-          "log_loss": 0.5107246756949834,
+          "brier": 0.16557891752590573,
+          "brier_skill": 0.29852108385366394,
+          "calibration_error": 0.0366686389558285,
+          "log_loss": 0.510803706459734,
           "n": 584,
           "season_year": 1994
         },
         {
-          "accuracy": 0.7363481228668942,
+          "accuracy": 0.7448805460750854,
           "base_rate": 0.5861774744027304,
-          "brier": 0.16790069928809898,
-          "brier_skill": 0.29670343121988474,
-          "calibration_error": 0.04637368904281105,
-          "log_loss": 0.5124640833120517,
+          "brier": 0.16800462459934323,
+          "brier_skill": 0.2962681125159282,
+          "calibration_error": 0.046565853784326205,
+          "log_loss": 0.5119787201491312,
           "n": 586,
           "season_year": 1995
         },
         {
-          "accuracy": 0.762214983713355,
+          "accuracy": 0.758957654723127,
           "base_rate": 0.6254071661237784,
-          "brier": 0.16811525187561496,
-          "brier_skill": 0.2823960881329286,
-          "calibration_error": 0.07178762987731585,
-          "log_loss": 0.5051383380023616,
+          "brier": 0.16837885859308357,
+          "brier_skill": 0.2812708766512846,
+          "calibration_error": 0.06722908594099837,
+          "log_loss": 0.5057250488689397,
           "n": 614,
           "season_year": 1996
         },
         {
-          "accuracy": 0.7563694267515924,
+          "accuracy": 0.7611464968152867,
           "base_rate": 0.6194267515923567,
-          "brier": 0.167057482919929,
-          "brier_skill": 0.2913403282325291,
-          "calibration_error": 0.049717248962238225,
-          "log_loss": 0.5038226584999428,
+          "brier": 0.16697746139961353,
+          "brier_skill": 0.2916797803979151,
+          "calibration_error": 0.06168243194938111,
+          "log_loss": 0.5036748079052905,
           "n": 628,
           "season_year": 1997
         },
         {
-          "accuracy": 0.7655502392344498,
+          "accuracy": 0.7703349282296651,
           "base_rate": 0.6220095693779905,
-          "brier": 0.1649275886125136,
-          "brier_skill": 0.29851976648653944,
-          "calibration_error": 0.06382903381896227,
-          "log_loss": 0.49945414741683597,
+          "brier": 0.16521873628388137,
+          "brier_skill": 0.297281439180501,
+          "calibration_error": 0.07184367969856073,
+          "log_loss": 0.4998790932399952,
           "n": 627,
           "season_year": 1998
         },
         {
-          "accuracy": 0.717219589257504,
+          "accuracy": 0.7140600315955766,
           "base_rate": 0.6255924170616114,
-          "brier": 0.19119754091422092,
-          "brier_skill": 0.1837067779975029,
-          "calibration_error": 0.06657176078037515,
-          "log_loss": 0.563769490918116,
+          "brier": 0.19218311408589742,
+          "brier_skill": 0.1794990005544449,
+          "calibration_error": 0.0775704850597013,
+          "log_loss": 0.5669155518701233,
           "n": 633,
           "season_year": 1999
         },
         {
-          "accuracy": 0.7151702786377709,
+          "accuracy": 0.7105263157894737,
           "base_rate": 0.6362229102167183,
-          "brier": 0.18199312248750105,
-          "brier_skill": 0.21366007243367446,
-          "calibration_error": 0.0588503130762973,
-          "log_loss": 0.5392691065614581,
+          "brier": 0.1825860448374714,
+          "brier_skill": 0.21109822552783786,
+          "calibration_error": 0.06129524370509996,
+          "log_loss": 0.5404110358216718,
           "n": 646,
           "season_year": 2000
         },
         {
-          "accuracy": 0.75920245398773,
+          "accuracy": 0.7576687116564417,
           "base_rate": 0.5874233128834356,
-          "brier": 0.1697393485769131,
-          "brier_skill": 0.2996313972314091,
-          "calibration_error": 0.04368229212030079,
-          "log_loss": 0.5100341129215664,
+          "brier": 0.1694608394340774,
+          "brier_skill": 0.30078056541699183,
+          "calibration_error": 0.044250049003204346,
+          "log_loss": 0.5088321013184681,
           "n": 652,
           "season_year": 2001
         },
         {
-          "accuracy": 0.7496463932107497,
+          "accuracy": 0.7425742574257426,
           "base_rate": 0.6039603960396039,
-          "brier": 0.17371299057464704,
-          "brier_skill": 0.27375155047049526,
-          "calibration_error": 0.04009904718977487,
-          "log_loss": 0.5198389537367101,
+          "brier": 0.1739452149081692,
+          "brier_skill": 0.2727806814433398,
+          "calibration_error": 0.03758034321928669,
+          "log_loss": 0.5202105871366196,
           "n": 707,
           "season_year": 2002
         },
         {
-          "accuracy": 0.7381974248927039,
+          "accuracy": 0.7324749642346209,
           "base_rate": 0.6051502145922747,
-          "brier": 0.16895981364635645,
-          "brier_skill": 0.2928878104342373,
-          "calibration_error": 0.051597341568343724,
-          "log_loss": 0.501955899260732,
+          "brier": 0.1681265221367884,
+          "brier_skill": 0.2963752112022715,
+          "calibration_error": 0.04253595692521912,
+          "log_loss": 0.5001240774487243,
           "n": 699,
           "season_year": 2003
         },
         {
-          "accuracy": 0.726027397260274,
+          "accuracy": 0.7016742770167428,
           "base_rate": 0.6301369863013698,
-          "brier": 0.17915244050292975,
-          "brier_skill": 0.2313177492430677,
-          "calibration_error": 0.06527800378256647,
-          "log_loss": 0.5303779981571488,
+          "brier": 0.1829050222108354,
+          "brier_skill": 0.21521669616623262,
+          "calibration_error": 0.07579392240419527,
+          "log_loss": 0.538692448437166,
           "n": 657,
           "season_year": 2004
         },
         {
-          "accuracy": 0.697289156626506,
+          "accuracy": 0.6987951807228916,
           "base_rate": 0.5662650602409639,
-          "brier": 0.19182167796181335,
-          "brier_skill": 0.2189955440431851,
-          "calibration_error": 0.04239928796548045,
-          "log_loss": 0.5606512862485002,
+          "brier": 0.19199119129578787,
+          "brier_skill": 0.21830536829983382,
+          "calibration_error": 0.041226928997211726,
+          "log_loss": 0.5624139799580165,
           "n": 664,
           "season_year": 2005
         },
         {
-          "accuracy": 0.7380952380952381,
+          "accuracy": 0.7478991596638656,
           "base_rate": 0.592436974789916,
-          "brier": 0.17754745000471156,
-          "brier_skill": 0.2646780903657998,
-          "calibration_error": 0.046800246299148265,
-          "log_loss": 0.5266274896397509,
+          "brier": 0.17498588069574625,
+          "brier_skill": 0.27528696160488975,
+          "calibration_error": 0.047405880216761453,
+          "log_loss": 0.5209664822716673,
           "n": 714,
           "season_year": 2006
         },
         {
-          "accuracy": 0.7162921348314607,
+          "accuracy": 0.723314606741573,
           "base_rate": 0.5955056179775281,
-          "brier": 0.18695372542436342,
-          "brier_skill": 0.22386768391698897,
-          "calibration_error": 0.03759366513449115,
-          "log_loss": 0.5555111192644271,
+          "brier": 0.18611845814995667,
+          "brier_skill": 0.22733526886487987,
+          "calibration_error": 0.044190525871221284,
+          "log_loss": 0.5507695787296232,
           "n": 712,
           "season_year": 2007
         },
         {
           "accuracy": 0.7140864714086471,
           "base_rate": 0.5871687587168759,
-          "brier": 0.1837447570842168,
-          "brier_skill": 0.2419821016188365,
-          "calibration_error": 0.035148584687128726,
-          "log_loss": 0.5446930569404868,
+          "brier": 0.18269924472634474,
+          "brier_skill": 0.24629524280894122,
+          "calibration_error": 0.047259976891584975,
+          "log_loss": 0.5418674427301033,
           "n": 717,
           "season_year": 2008
         },
         {
-          "accuracy": 0.7450980392156863,
+          "accuracy": 0.7436974789915967,
           "base_rate": 0.5952380952380952,
-          "brier": 0.17397506069354968,
-          "brier_skill": 0.2779011598507741,
-          "calibration_error": 0.03006370265610996,
-          "log_loss": 0.5204886799201471,
+          "brier": 0.17701330637274898,
+          "brier_skill": 0.2652906530787563,
+          "calibration_error": 0.04714518190061031,
+          "log_loss": 0.5289161572015784,
           "n": 714,
           "season_year": 2009
         },
         {
-          "accuracy": 0.7311977715877437,
+          "accuracy": 0.7256267409470752,
           "base_rate": 0.5668523676880223,
-          "brier": 0.18278394935438935,
-          "brier_skill": 0.2555558062920439,
-          "calibration_error": 0.020398286462342204,
-          "log_loss": 0.5419200422127715,
+          "brier": 0.18330313128241363,
+          "brier_skill": 0.2534412772365062,
+          "calibration_error": 0.019181066311023665,
+          "log_loss": 0.5426860833839184,
           "n": 718,
           "season_year": 2010
         },
         {
-          "accuracy": 0.7244755244755244,
+          "accuracy": 0.7258741258741259,
           "base_rate": 0.5972027972027972,
-          "brier": 0.17977070873754408,
-          "brier_skill": 0.2526730372239303,
-          "calibration_error": 0.027920219133975282,
-          "log_loss": 0.532470223909417,
+          "brier": 0.179496530322612,
+          "brier_skill": 0.25381282759094215,
+          "calibration_error": 0.04161918293023249,
+          "log_loss": 0.5325888362617834,
           "n": 715,
           "season_year": 2011
         },
         {
-          "accuracy": 0.7281420765027322,
+          "accuracy": 0.7390710382513661,
           "base_rate": 0.5710382513661202,
-          "brier": 0.17524749690563118,
-          "brier_skill": 0.2845685034745056,
-          "calibration_error": 0.03517911370113232,
-          "log_loss": 0.5209570291432511,
+          "brier": 0.17772521463213797,
+          "brier_skill": 0.27445345286127465,
+          "calibration_error": 0.05472264496311016,
+          "log_loss": 0.5292757856675897,
           "n": 732,
           "season_year": 2012
         },
         {
-          "accuracy": 0.7557666214382632,
+          "accuracy": 0.7503392130257802,
           "base_rate": 0.5848032564450475,
-          "brier": 0.1659283926821022,
-          "brier_skill": 0.31662830683511,
-          "calibration_error": 0.054695780078583126,
-          "log_loss": 0.4963641951435169,
+          "brier": 0.16751698592484068,
+          "brier_skill": 0.31008572761468456,
+          "calibration_error": 0.0634167364348832,
+          "log_loss": 0.5027888665562679,
           "n": 737,
           "season_year": 2013
         },
         {
-          "accuracy": 0.6986842105263158,
+          "accuracy": 0.7065789473684211,
           "base_rate": 0.5592105263157895,
-          "brier": 0.18917224127886578,
-          "brier_skill": 0.23254864574066036,
-          "calibration_error": 0.05276897337499095,
-          "log_loss": 0.5550838419645651,
+          "brier": 0.18646008615604645,
+          "brier_skill": 0.24355156618975926,
+          "calibration_error": 0.060331766987129505,
+          "log_loss": 0.5481738561825363,
           "n": 760,
           "season_year": 2014
         },
         {
-          "accuracy": 0.738562091503268,
+          "accuracy": 0.7529411764705882,
           "base_rate": 0.5699346405228758,
-          "brier": 0.17309857618837965,
-          "brier_skill": 0.2937898117046115,
-          "calibration_error": 0.046868802990358414,
-          "log_loss": 0.5150158073566894,
+          "brier": 0.17038331996065498,
+          "brier_skill": 0.3048675551157696,
+          "calibration_error": 0.06740992200182308,
+          "log_loss": 0.5120551220144268,
           "n": 765,
           "season_year": 2015
         },
         {
-          "accuracy": 0.6986842105263158,
+          "accuracy": 0.7144736842105263,
           "base_rate": 0.5802631578947368,
-          "brier": 0.1932597156783965,
-          "brier_skill": 0.20651403709265326,
-          "calibration_error": 0.05082424633270248,
-          "log_loss": 0.5639886964364564,
+          "brier": 0.18693357383543166,
+          "brier_skill": 0.2324879175474227,
+          "calibration_error": 0.025133815529895333,
+          "log_loss": 0.5495849926417514,
           "n": 760,
           "season_year": 2016
         },
         {
-          "accuracy": 0.6920103092783505,
+          "accuracy": 0.6881443298969072,
           "base_rate": 0.5682989690721649,
-          "brier": 0.1915644505840647,
-          "brier_skill": 0.21917274447550916,
-          "calibration_error": 0.036867698799439984,
-          "log_loss": 0.5605456489831897,
+          "brier": 0.1903655947380202,
+          "brier_skill": 0.22405934695933294,
+          "calibration_error": 0.04336271148311078,
+          "log_loss": 0.5591238219726679,
           "n": 776,
           "season_year": 2017
         },
         {
-          "accuracy": 0.7292746113989638,
+          "accuracy": 0.7189119170984456,
           "base_rate": 0.5919689119170984,
-          "brier": 0.17796767869532717,
-          "brier_skill": 0.2632010765895183,
-          "calibration_error": 0.042070172486493904,
-          "log_loss": 0.526613911797854,
+          "brier": 0.17538612196546655,
+          "brier_skill": 0.27388890616187955,
+          "calibration_error": 0.0440154418363754,
+          "log_loss": 0.5226138429476643,
           "n": 772,
           "season_year": 2018
         },
         {
-          "accuracy": 0.7260981912144703,
+          "accuracy": 0.7416020671834626,
           "base_rate": 0.5917312661498708,
-          "brier": 0.17632566219388482,
-          "brier_skill": 0.27013105684826333,
-          "calibration_error": 0.032824944037848504,
-          "log_loss": 0.5239125564005132,
+          "brier": 0.1752965637970223,
+          "brier_skill": 0.2743908279443803,
+          "calibration_error": 0.047278199524123043,
+          "log_loss": 0.5216563091749358,
           "n": 774,
           "season_year": 2019
         },
         {
-          "accuracy": 0.7153558052434457,
+          "accuracy": 0.7134831460674157,
           "base_rate": 0.5617977528089888,
-          "brier": 0.1930715158613237,
-          "brier_skill": 0.21573360146792564,
-          "calibration_error": 0.03394672977522315,
-          "log_loss": 0.5701219431620461,
+          "brier": 0.18993565571566287,
+          "brier_skill": 0.2284716261929407,
+          "calibration_error": 0.05417160991055974,
+          "log_loss": 0.5617098358943639,
           "n": 534,
           "season_year": 2020
         },
         {
-          "accuracy": 0.6935064935064935,
+          "accuracy": 0.7038961038961039,
           "base_rate": 0.5753246753246753,
-          "brier": 0.18901113694122793,
-          "brier_skill": 0.22639838816207136,
-          "calibration_error": 0.037495067390932786,
-          "log_loss": 0.5554415461714893,
+          "brier": 0.1872103168642259,
+          "brier_skill": 0.23376894492789857,
+          "calibration_error": 0.019063495955318047,
+          "log_loss": 0.5513323497729132,
           "n": 770,
           "season_year": 2021
         },
         {
-          "accuracy": 0.6739690721649485,
+          "accuracy": 0.6752577319587629,
           "base_rate": 0.5773195876288659,
-          "brier": 0.20521805486204645,
-          "brier_skill": 0.15901712622081188,
-          "calibration_error": 0.04860108656632519,
-          "log_loss": 0.5967771167787436,
+          "brier": 0.2019702233726852,
+          "brier_skill": 0.17232672834772844,
+          "calibration_error": 0.045564051315061804,
+          "log_loss": 0.5885859746857456,
           "n": 776,
           "season_year": 2022
         },
         {
-          "accuracy": 0.7083333333333334,
+          "accuracy": 0.7146464646464646,
           "base_rate": 0.5795454545454546,
-          "brier": 0.1862325628914121,
-          "brier_skill": 0.2357260376093896,
-          "calibration_error": 0.02947510547967768,
-          "log_loss": 0.551398844172912,
+          "brier": 0.18755889193112343,
+          "brier_skill": 0.2302829575439288,
+          "calibration_error": 0.030778130308150475,
+          "log_loss": 0.5538574329009948,
           "n": 792,
           "season_year": 2023
         },
         {
-          "accuracy": 0.6779448621553885,
+          "accuracy": 0.6842105263157895,
           "base_rate": 0.5839598997493735,
-          "brier": 0.199884555511439,
-          "brier_skill": 0.17726301458253835,
-          "calibration_error": 0.050534889005737646,
-          "log_loss": 0.5808334813910575,
+          "brier": 0.19901834898330045,
+          "brier_skill": 0.18082837332616997,
+          "calibration_error": 0.04081017419732594,
+          "log_loss": 0.5781134995925018,
           "n": 798,
           "season_year": 2024
         },
         {
-          "accuracy": 0.7091584158415841,
+          "accuracy": 0.7264851485148515,
           "base_rate": 0.5952970297029703,
-          "brier": 0.18553242100723885,
-          "brier_skill": 0.22989542359845805,
-          "calibration_error": 0.041510715237089324,
-          "log_loss": 0.5467302048557113,
+          "brier": 0.18414848703386938,
+          "brier_skill": 0.23563983139814826,
+          "calibration_error": 0.03046150489728794,
+          "log_loss": 0.5442352841258273,
           "n": 808,
           "season_year": 2025
         },
         {
-          "accuracy": 0.7770700636942676,
+          "accuracy": 0.7834394904458599,
           "base_rate": 0.732484076433121,
-          "brier": 0.1584607802156356,
-          "brier_skill": 0.19132509906103357,
-          "calibration_error": 0.08672993475025548,
-          "log_loss": 0.4950023180904877,
+          "brier": 0.15847134586329747,
+          "brier_skill": 0.19127117925788284,
+          "calibration_error": 0.08908910496143514,
+          "log_loss": 0.4944322463332165,
           "n": 157,
           "season_year": 2026
         }
@@ -2912,94 +2912,94 @@
         {
           "bin_lower": 0.0,
           "bin_upper": 0.1,
-          "gap": -0.004795306773889715,
-          "mean_predicted": 0.06861191148268773,
-          "n": 807,
-          "observed_rate": 0.06381660470879802
+          "gap": 0.004042523271378384,
+          "mean_predicted": 0.06823864383737493,
+          "n": 754,
+          "observed_rate": 0.07228116710875332
         },
         {
           "bin_lower": 0.1,
           "bin_upper": 0.2,
-          "gap": 0.01415255919662084,
-          "mean_predicted": 0.1527654900743696,
-          "n": 1989,
-          "observed_rate": 0.16691804927099044
+          "gap": 0.0042551776676452435,
+          "mean_predicted": 0.15345383427589437,
+          "n": 1842,
+          "observed_rate": 0.15770901194353962
         },
         {
           "bin_lower": 0.2,
           "bin_upper": 0.3,
-          "gap": 0.03604581673858842,
-          "mean_predicted": 0.251604202618748,
-          "n": 2583,
-          "observed_rate": 0.2876500193573364
+          "gap": 0.021931879098363416,
+          "mean_predicted": 0.25104862229439423,
+          "n": 2513,
+          "observed_rate": 0.27298050139275765
         },
         {
           "bin_lower": 0.3,
           "bin_upper": 0.4,
-          "gap": 0.02706186090924817,
-          "mean_predicted": 0.3522719256305207,
-          "n": 2942,
-          "observed_rate": 0.37933378653976885
+          "gap": 0.02372833218309861,
+          "mean_predicted": 0.35151564959959497,
+          "n": 3074,
+          "observed_rate": 0.3752439817826936
         },
         {
           "bin_lower": 0.4,
           "bin_upper": 0.5,
-          "gap": 0.04726199978917889,
-          "mean_predicted": 0.4506521837626685,
-          "n": 3356,
-          "observed_rate": 0.4979141835518474
+          "gap": 0.038049944662238044,
+          "mean_predicted": 0.44953605593602697,
+          "n": 3343,
+          "observed_rate": 0.487586000598265
         },
         {
           "bin_lower": 0.5,
           "bin_upper": 0.6,
-          "gap": 0.043064438731443166,
-          "mean_predicted": 0.5501284299881678,
-          "n": 3702,
-          "observed_rate": 0.593192868719611
+          "gap": 0.043586606095232794,
+          "mean_predicted": 0.5507530165462766,
+          "n": 3816,
+          "observed_rate": 0.5943396226415094
         },
         {
           "bin_lower": 0.6,
           "bin_upper": 0.7,
-          "gap": 0.025356548579471117,
-          "mean_predicted": 0.6510685223516612,
-          "n": 3877,
-          "observed_rate": 0.6764250709311324
+          "gap": 0.022116910765391018,
+          "mean_predicted": 0.650569319482916,
+          "n": 3987,
+          "observed_rate": 0.672686230248307
         },
         {
           "bin_lower": 0.7,
           "bin_upper": 0.8,
-          "gap": 0.005689732789241009,
-          "mean_predicted": 0.7501859305921085,
-          "n": 3957,
-          "observed_rate": 0.7558756633813495
+          "gap": 0.00907028417724498,
+          "mean_predicted": 0.7500679390132657,
+          "n": 4131,
+          "observed_rate": 0.7591382231905107
         },
         {
           "bin_lower": 0.8,
           "bin_upper": 0.9,
-          "gap": 0.01209619173807619,
-          "mean_predicted": 0.8500679157475284,
-          "n": 4168,
-          "observed_rate": 0.8621641074856046
+          "gap": 0.022905777820121043,
+          "mean_predicted": 0.8497150128094544,
+          "n": 4098,
+          "observed_rate": 0.8726207906295754
         },
         {
           "bin_lower": 0.9,
           "bin_upper": 1.0,
-          "gap": 0.017105306499350714,
-          "mean_predicted": 0.9384113309787578,
-          "n": 2855,
-          "observed_rate": 0.9555166374781086
+          "gap": 0.021038425838827313,
+          "mean_predicted": 0.9378861447362287,
+          "n": 2678,
+          "observed_rate": 0.958924570575056
         }
       ],
       "from_season": null,
       "model": "elo",
       "n_dropped_before_from_season": 0,
       "overall": {
-        "accuracy": 0.7241202540018521,
+        "accuracy": 0.7256746924196322,
         "base_rate": 0.5967885963751819,
-        "brier": 0.17933395074551256,
-        "brier_skill": 0.24976233751050947,
-        "calibration_error": 0.0245684483537922,
-        "log_loss": 0.5362973319634479,
+        "brier": 0.1789383318989948,
+        "brier_skill": 0.25141739589412504,
+        "calibration_error": 0.02342662746533182,
+        "log_loss": 0.5355471560316344,
         "n": 30236
       },
       "seasons": [
@@ -3055,422 +3055,422 @@
     "elo_on_hybrid_games": {
       "by_season": [
         {
-          "accuracy": 0.7268431001890359,
+          "accuracy": 0.724952741020794,
           "base_rate": 0.6077504725897921,
-          "brier": 0.16869058685380936,
-          "brier_skill": 0.2736561035857107,
-          "calibration_error": 0.05259642930844345,
-          "log_loss": 0.5258930626853496,
+          "brier": 0.16905923501089432,
+          "brier_skill": 0.27206878716327687,
+          "calibration_error": 0.052557910960361526,
+          "log_loss": 0.526704328162942,
           "n": 529,
           "season_year": 1985
         },
         {
-          "accuracy": 0.7062146892655368,
+          "accuracy": 0.704331450094162,
           "base_rate": 0.5988700564971752,
-          "brier": 0.1901709146716079,
-          "brier_skill": 0.1957526207145175,
-          "calibration_error": 0.04754201218718099,
-          "log_loss": 0.5684928165390349,
+          "brier": 0.19099006993658213,
+          "brier_skill": 0.19228835029114033,
+          "calibration_error": 0.049600500135657005,
+          "log_loss": 0.5708771719009745,
           "n": 531,
           "season_year": 1986
         },
         {
-          "accuracy": 0.7433206106870229,
+          "accuracy": 0.7414122137404581,
           "base_rate": 0.6402671755725191,
-          "brier": 0.16708253549652125,
-          "brier_skill": 0.2545046126791225,
-          "calibration_error": 0.06979852786603005,
-          "log_loss": 0.517150485754125,
+          "brier": 0.16692537030259386,
+          "brier_skill": 0.2552058584842096,
+          "calibration_error": 0.0686496484712913,
+          "log_loss": 0.5161443819970271,
           "n": 524,
           "season_year": 1987
         },
         {
-          "accuracy": 0.7566287878787878,
+          "accuracy": 0.7604166666666666,
           "base_rate": 0.6051136363636364,
-          "brier": 0.1587584919234303,
-          "brier_skill": 0.32079833630842847,
-          "calibration_error": 0.04664772829662618,
-          "log_loss": 0.49618708697114833,
+          "brier": 0.15800980222420152,
+          "brier_skill": 0.3240013856895614,
+          "calibration_error": 0.050431602367671594,
+          "log_loss": 0.4939886375780628,
           "n": 528,
           "season_year": 1988
         },
         {
-          "accuracy": 0.7431192660550459,
+          "accuracy": 0.7504587155963303,
           "base_rate": 0.6055045871559633,
-          "brier": 0.15878123764430274,
-          "brier_skill": 0.31959897408498683,
-          "calibration_error": 0.04721628139915244,
-          "log_loss": 0.4974949380068008,
+          "brier": 0.1581470721837714,
+          "brier_skill": 0.3223164666322613,
+          "calibration_error": 0.04042428057772622,
+          "log_loss": 0.4953791498653582,
           "n": 545,
           "season_year": 1989
         },
         {
-          "accuracy": 0.7316849816849816,
+          "accuracy": 0.728021978021978,
           "base_rate": 0.6071428571428571,
-          "brier": 0.16955150997806673,
-          "brier_skill": 0.26807751389391565,
-          "calibration_error": 0.04744479821589063,
-          "log_loss": 0.5246666749576173,
+          "brier": 0.16916696844796864,
+          "brier_skill": 0.26973750850414846,
+          "calibration_error": 0.04838653140567043,
+          "log_loss": 0.5237180649192218,
           "n": 546,
           "season_year": 1990
         },
         {
-          "accuracy": 0.759391771019678,
+          "accuracy": 0.761180679785331,
           "base_rate": 0.6180679785330948,
-          "brier": 0.16278629890300142,
-          "brier_skill": 0.29023238450202415,
-          "calibration_error": 0.0489991978616446,
-          "log_loss": 0.5117259605235055,
+          "brier": 0.16229857754971583,
+          "brier_skill": 0.2923589075833999,
+          "calibration_error": 0.04578356198628048,
+          "log_loss": 0.510282246556476,
           "n": 559,
           "season_year": 1991
         },
         {
-          "accuracy": 0.7145390070921985,
+          "accuracy": 0.7127659574468085,
           "base_rate": 0.6382978723404256,
-          "brier": 0.17904976748216528,
-          "brier_skill": 0.2061797564112372,
-          "calibration_error": 0.07258423462990408,
-          "log_loss": 0.5431997720469129,
+          "brier": 0.18039691326162424,
+          "brier_skill": 0.20020716227812163,
+          "calibration_error": 0.07941074283498858,
+          "log_loss": 0.5467828601099594,
           "n": 564,
           "season_year": 1992
         },
         {
-          "accuracy": 0.7191304347826087,
+          "accuracy": 0.717391304347826,
           "base_rate": 0.62,
-          "brier": 0.17818191875715197,
-          "brier_skill": 0.22803945686134497,
-          "calibration_error": 0.06528081409560607,
-          "log_loss": 0.5409431341647939,
+          "brier": 0.17846016996055206,
+          "brier_skill": 0.2268339532299778,
+          "calibration_error": 0.06730998288745776,
+          "log_loss": 0.5413944390055302,
           "n": 575,
           "season_year": 1993
         },
         {
-          "accuracy": 0.7374350086655113,
+          "accuracy": 0.7305025996533796,
           "base_rate": 0.5883882149046794,
-          "brier": 0.16580692153890242,
-          "brier_skill": 0.2990764820327967,
-          "calibration_error": 0.027415105293768685,
-          "log_loss": 0.5124475141922644,
+          "brier": 0.16633602714729478,
+          "brier_skill": 0.2968397686256091,
+          "calibration_error": 0.034272517436440074,
+          "log_loss": 0.5126009001023483,
           "n": 577,
           "season_year": 1994
         },
         {
-          "accuracy": 0.7374350086655113,
+          "accuracy": 0.7461005199306759,
           "base_rate": 0.5814558058925476,
-          "brier": 0.1678858031063411,
-          "brier_skill": 0.2989143613372073,
-          "calibration_error": 0.04860941644717826,
-          "log_loss": 0.5127182363802815,
+          "brier": 0.16789629316002228,
+          "brier_skill": 0.2988705552151374,
+          "calibration_error": 0.050320345494451295,
+          "log_loss": 0.5120618787171303,
           "n": 577,
           "season_year": 1995
         },
         {
-          "accuracy": 0.7654109589041096,
+          "accuracy": 0.761986301369863,
           "base_rate": 0.6198630136986302,
-          "brier": 0.16574566572468258,
-          "brier_skill": 0.29659357710669754,
-          "calibration_error": 0.06766739383342665,
-          "log_loss": 0.4997948192072361,
+          "brier": 0.16609514564672465,
+          "brier_skill": 0.29511042265579945,
+          "calibration_error": 0.06389987566918731,
+          "log_loss": 0.5006262291692024,
           "n": 584,
           "season_year": 1996
         },
         {
-          "accuracy": 0.7548701298701299,
+          "accuracy": 0.7597402597402597,
           "base_rate": 0.6185064935064936,
-          "brier": 0.1678814874953415,
-          "brier_skill": 0.28850574949425023,
-          "calibration_error": 0.04815765855706173,
-          "log_loss": 0.505796048821837,
+          "brier": 0.16788911958578026,
+          "brier_skill": 0.28847340412641054,
+          "calibration_error": 0.06265206209212237,
+          "log_loss": 0.5059066942405652,
           "n": 616,
           "season_year": 1997
         },
         {
-          "accuracy": 0.7655502392344498,
+          "accuracy": 0.7703349282296651,
           "base_rate": 0.6220095693779905,
-          "brier": 0.1649275886125136,
-          "brier_skill": 0.29851976648653944,
-          "calibration_error": 0.06382903381896227,
-          "log_loss": 0.49945414741683597,
+          "brier": 0.16521873628388137,
+          "brier_skill": 0.297281439180501,
+          "calibration_error": 0.07184367969856073,
+          "log_loss": 0.4998790932399952,
           "n": 627,
           "season_year": 1998
         },
         {
-          "accuracy": 0.7196110210696921,
+          "accuracy": 0.7147487844408428,
           "base_rate": 0.6239870340356564,
-          "brier": 0.19074039842688092,
-          "brier_skill": 0.18704913192196104,
-          "calibration_error": 0.06550061385490158,
-          "log_loss": 0.5630598709938034,
+          "brier": 0.19189314477962066,
+          "brier_skill": 0.18213603456103256,
+          "calibration_error": 0.07623528638349095,
+          "log_loss": 0.5666170696128786,
           "n": 617,
           "season_year": 1999
         },
         {
-          "accuracy": 0.7176656151419558,
+          "accuracy": 0.7129337539432177,
           "base_rate": 0.6356466876971609,
-          "brier": 0.18085279225718973,
-          "brier_skill": 0.21911566965797524,
-          "calibration_error": 0.057870388850896404,
-          "log_loss": 0.5368808346533057,
+          "brier": 0.18151272407918428,
+          "brier_skill": 0.21626622280975205,
+          "calibration_error": 0.06062801607136353,
+          "log_loss": 0.5381847306181259,
           "n": 634,
           "season_year": 2000
         },
         {
-          "accuracy": 0.7581395348837209,
+          "accuracy": 0.7565891472868217,
           "base_rate": 0.586046511627907,
-          "brier": 0.1702431314298604,
-          "brier_skill": 0.2982442705238747,
-          "calibration_error": 0.04348970699110416,
-          "log_loss": 0.5113110168535175,
+          "brier": 0.16999703394189147,
+          "brier_skill": 0.2992587039447203,
+          "calibration_error": 0.04343404002070721,
+          "log_loss": 0.5102159404389413,
           "n": 645,
           "season_year": 2001
         },
         {
-          "accuracy": 0.7496463932107497,
+          "accuracy": 0.7425742574257426,
           "base_rate": 0.6039603960396039,
-          "brier": 0.17371299057464704,
-          "brier_skill": 0.27375155047049526,
-          "calibration_error": 0.04009904718977487,
-          "log_loss": 0.5198389537367101,
+          "brier": 0.1739452149081692,
+          "brier_skill": 0.2727806814433398,
+          "calibration_error": 0.03758034321928669,
+          "log_loss": 0.5202105871366196,
           "n": 707,
           "season_year": 2002
         },
         {
-          "accuracy": 0.7381974248927039,
+          "accuracy": 0.7324749642346209,
           "base_rate": 0.6051502145922747,
-          "brier": 0.16895981364635645,
-          "brier_skill": 0.2928878104342373,
-          "calibration_error": 0.051597341568343724,
-          "log_loss": 0.501955899260732,
+          "brier": 0.1681265221367884,
+          "brier_skill": 0.2963752112022715,
+          "calibration_error": 0.04253595692521912,
+          "log_loss": 0.5001240774487243,
           "n": 699,
           "season_year": 2003
         },
         {
-          "accuracy": 0.7296466973886329,
+          "accuracy": 0.7050691244239631,
           "base_rate": 0.6344086021505376,
-          "brier": 0.177278316865569,
-          "brier_skill": 0.23565295983534196,
-          "calibration_error": 0.06957177827953759,
-          "log_loss": 0.5251460300362646,
+          "brier": 0.18094590607410116,
+          "brier_skill": 0.21983990945418808,
+          "calibration_error": 0.07800427426591412,
+          "log_loss": 0.5331673022949246,
           "n": 651,
           "season_year": 2004
         },
         {
-          "accuracy": 0.7007633587786259,
+          "accuracy": 0.7022900763358778,
           "base_rate": 0.5648854961832062,
-          "brier": 0.19058039556178208,
-          "brier_skill": 0.22462063341969019,
-          "calibration_error": 0.04035844484776584,
-          "log_loss": 0.5579502305735073,
+          "brier": 0.19082462357999422,
+          "brier_skill": 0.22362698784820167,
+          "calibration_error": 0.04336942400712247,
+          "log_loss": 0.5598398705671648,
           "n": 655,
           "season_year": 2005
         },
         {
-          "accuracy": 0.7380952380952381,
+          "accuracy": 0.7478991596638656,
           "base_rate": 0.592436974789916,
-          "brier": 0.17754745000471156,
-          "brier_skill": 0.2646780903657998,
-          "calibration_error": 0.046800246299148265,
-          "log_loss": 0.5266274896397509,
+          "brier": 0.17498588069574625,
+          "brier_skill": 0.27528696160488975,
+          "calibration_error": 0.047405880216761453,
+          "log_loss": 0.5209664822716673,
           "n": 714,
           "season_year": 2006
         },
         {
-          "accuracy": 0.7162921348314607,
+          "accuracy": 0.723314606741573,
           "base_rate": 0.5955056179775281,
-          "brier": 0.18695372542436342,
-          "brier_skill": 0.22386768391698897,
-          "calibration_error": 0.03759366513449115,
-          "log_loss": 0.5555111192644271,
+          "brier": 0.18611845814995667,
+          "brier_skill": 0.22733526886487987,
+          "calibration_error": 0.044190525871221284,
+          "log_loss": 0.5507695787296232,
           "n": 712,
           "season_year": 2007
         },
         {
           "accuracy": 0.7128712871287128,
           "base_rate": 0.5869872701555869,
-          "brier": 0.18369912213211234,
-          "brier_skill": 0.24226916571535173,
-          "calibration_error": 0.034266057914918754,
-          "log_loss": 0.5443007765204131,
+          "brier": 0.18316394562861624,
+          "brier_skill": 0.24447668708930803,
+          "calibration_error": 0.04680624727338328,
+          "log_loss": 0.542995463921546,
           "n": 707,
           "season_year": 2008
         },
         {
-          "accuracy": 0.7450980392156863,
+          "accuracy": 0.7436974789915967,
           "base_rate": 0.5952380952380952,
-          "brier": 0.17397506069354968,
-          "brier_skill": 0.2779011598507741,
-          "calibration_error": 0.03006370265610996,
-          "log_loss": 0.5204886799201471,
+          "brier": 0.17701330637274898,
+          "brier_skill": 0.2652906530787563,
+          "calibration_error": 0.04714518190061031,
+          "log_loss": 0.5289161572015784,
           "n": 714,
           "season_year": 2009
         },
         {
-          "accuracy": 0.7311977715877437,
+          "accuracy": 0.7256267409470752,
           "base_rate": 0.5668523676880223,
-          "brier": 0.18278394935438935,
-          "brier_skill": 0.2555558062920439,
-          "calibration_error": 0.020398286462342204,
-          "log_loss": 0.5419200422127715,
+          "brier": 0.18330313128241363,
+          "brier_skill": 0.2534412772365062,
+          "calibration_error": 0.019181066311023665,
+          "log_loss": 0.5426860833839184,
           "n": 718,
           "season_year": 2010
         },
         {
-          "accuracy": 0.7244755244755244,
+          "accuracy": 0.7258741258741259,
           "base_rate": 0.5972027972027972,
-          "brier": 0.17977070873754408,
-          "brier_skill": 0.2526730372239303,
-          "calibration_error": 0.027920219133975282,
-          "log_loss": 0.532470223909417,
+          "brier": 0.179496530322612,
+          "brier_skill": 0.25381282759094215,
+          "calibration_error": 0.04161918293023249,
+          "log_loss": 0.5325888362617834,
           "n": 715,
           "season_year": 2011
         },
         {
-          "accuracy": 0.7264833574529667,
+          "accuracy": 0.7366136034732272,
           "base_rate": 0.5716353111432706,
-          "brier": 0.1750034205482747,
-          "brier_skill": 0.2853163851624071,
-          "calibration_error": 0.03611460017538016,
-          "log_loss": 0.5201271412672966,
+          "brier": 0.17742439899565265,
+          "brier_skill": 0.2754295291067067,
+          "calibration_error": 0.055800982957610566,
+          "log_loss": 0.5283023007853952,
           "n": 691,
           "season_year": 2012
         },
         {
-          "accuracy": 0.7554945054945055,
+          "accuracy": 0.75,
           "base_rate": 0.5851648351648352,
-          "brier": 0.1657784751658323,
-          "brier_skill": 0.3170728835751524,
-          "calibration_error": 0.055333518532236364,
-          "log_loss": 0.4961005302383353,
+          "brier": 0.1676558902509347,
+          "brier_skill": 0.30933884169113257,
+          "calibration_error": 0.06456831160885824,
+          "log_loss": 0.5031480758418134,
           "n": 728,
           "season_year": 2013
         },
         {
-          "accuracy": 0.7023319615912208,
+          "accuracy": 0.710562414266118,
           "base_rate": 0.5569272976680384,
-          "brier": 0.18776739861831948,
-          "brier_skill": 0.2390665246601481,
-          "calibration_error": 0.0561763112398413,
-          "log_loss": 0.5523946230613845,
+          "brier": 0.1851629131087075,
+          "brier_skill": 0.24962128669490302,
+          "calibration_error": 0.060101600088592264,
+          "log_loss": 0.5453968719876511,
           "n": 729,
           "season_year": 2014
         },
         {
-          "accuracy": 0.7387267904509284,
+          "accuracy": 0.753315649867374,
           "base_rate": 0.5716180371352785,
-          "brier": 0.17293731301158155,
-          "brier_skill": 0.29376114698991884,
-          "calibration_error": 0.04750966791641449,
-          "log_loss": 0.5145594429529373,
+          "brier": 0.16993604416581254,
+          "brier_skill": 0.3060176845196123,
+          "calibration_error": 0.0652636635482314,
+          "log_loss": 0.5109859444949407,
           "n": 754,
           "season_year": 2015
         },
         {
-          "accuracy": 0.6986842105263158,
+          "accuracy": 0.7144736842105263,
           "base_rate": 0.5802631578947368,
-          "brier": 0.1932597156783965,
-          "brier_skill": 0.20651403709265326,
-          "calibration_error": 0.05082424633270248,
-          "log_loss": 0.5639886964364564,
+          "brier": 0.18693357383543166,
+          "brier_skill": 0.2324879175474227,
+          "calibration_error": 0.025133815529895333,
+          "log_loss": 0.5495849926417514,
           "n": 760,
           "season_year": 2016
         },
         {
-          "accuracy": 0.6954248366013072,
+          "accuracy": 0.6901960784313725,
           "base_rate": 0.5673202614379085,
-          "brier": 0.19039260095628907,
-          "brier_skill": 0.22436890100767048,
-          "calibration_error": 0.032636938453903884,
-          "log_loss": 0.5579273978735599,
+          "brier": 0.18917830004883313,
+          "brier_skill": 0.22931578204520442,
+          "calibration_error": 0.0457815483965357,
+          "log_loss": 0.556373477942068,
           "n": 765,
           "season_year": 2017
         },
         {
-          "accuracy": 0.7309711286089239,
+          "accuracy": 0.7204724409448819,
           "base_rate": 0.589238845144357,
-          "brier": 0.1771764886268616,
-          "brier_skill": 0.26797594183556883,
-          "calibration_error": 0.03947053374914868,
-          "log_loss": 0.5248872223005063,
+          "brier": 0.17509599492496172,
+          "brier_skill": 0.27657172931534957,
+          "calibration_error": 0.04141621448567915,
+          "log_loss": 0.5220483302928575,
           "n": 762,
           "season_year": 2018
         },
         {
-          "accuracy": 0.7260981912144703,
+          "accuracy": 0.7416020671834626,
           "base_rate": 0.5917312661498708,
-          "brier": 0.17632566219388482,
-          "brier_skill": 0.27013105684826333,
-          "calibration_error": 0.032824944037848504,
-          "log_loss": 0.5239125564005132,
+          "brier": 0.1752965637970223,
+          "brier_skill": 0.2743908279443803,
+          "calibration_error": 0.047278199524123043,
+          "log_loss": 0.5216563091749358,
           "n": 774,
           "season_year": 2019
         },
         {
-          "accuracy": 0.7153558052434457,
+          "accuracy": 0.7134831460674157,
           "base_rate": 0.5617977528089888,
-          "brier": 0.1930715158613237,
-          "brier_skill": 0.21573360146792564,
-          "calibration_error": 0.03394672977522315,
-          "log_loss": 0.5701219431620461,
+          "brier": 0.18993565571566287,
+          "brier_skill": 0.2284716261929407,
+          "calibration_error": 0.05417160991055974,
+          "log_loss": 0.5617098358943639,
           "n": 534,
           "season_year": 2020
         },
         {
-          "accuracy": 0.6935064935064935,
+          "accuracy": 0.7038961038961039,
           "base_rate": 0.5753246753246753,
-          "brier": 0.18901113694122793,
-          "brier_skill": 0.22639838816207136,
-          "calibration_error": 0.037495067390932786,
-          "log_loss": 0.5554415461714893,
+          "brier": 0.1872103168642259,
+          "brier_skill": 0.23376894492789857,
+          "calibration_error": 0.019063495955318047,
+          "log_loss": 0.5513323497729132,
           "n": 770,
           "season_year": 2021
         },
         {
           "accuracy": 0.674934725848564,
           "base_rate": 0.577023498694517,
-          "brier": 0.20459443589854273,
-          "brier_skill": 0.16172970204119963,
-          "calibration_error": 0.04729407423071947,
-          "log_loss": 0.5954852445312464,
+          "brier": 0.2016444410317663,
+          "brier_skill": 0.1738165071641694,
+          "calibration_error": 0.04653961525729291,
+          "log_loss": 0.5878158059345141,
           "n": 766,
           "season_year": 2022
         },
         {
-          "accuracy": 0.7090909090909091,
+          "accuracy": 0.7142857142857143,
           "base_rate": 0.5792207792207792,
-          "brier": 0.18603008089902673,
-          "brier_skill": 0.2367184647827617,
-          "calibration_error": 0.029364708394530554,
-          "log_loss": 0.5509192064145854,
+          "brier": 0.18746582321902625,
+          "brier_skill": 0.23082761316946587,
+          "calibration_error": 0.031152233737206214,
+          "log_loss": 0.5535697018955635,
           "n": 770,
           "season_year": 2023
         },
         {
-          "accuracy": 0.6797966963151207,
+          "accuracy": 0.6836086404066074,
           "base_rate": 0.5819567979669632,
-          "brier": 0.19911216935919662,
-          "brier_skill": 0.1815617975349686,
-          "calibration_error": 0.04956844864918994,
-          "log_loss": 0.5787312259479217,
+          "brier": 0.1987731789157239,
+          "brier_skill": 0.18295519669335014,
+          "calibration_error": 0.03987735585522204,
+          "log_loss": 0.5771399390173281,
           "n": 787,
           "season_year": 2024
         },
         {
-          "accuracy": 0.7104591836734694,
+          "accuracy": 0.7270408163265306,
           "base_rate": 0.5943877551020408,
-          "brier": 0.18438790853886716,
-          "brier_skill": 0.2351935763296209,
-          "calibration_error": 0.038729140996946534,
-          "log_loss": 0.5440737486416153,
+          "brier": 0.1827594104308531,
+          "brier_skill": 0.24194828071242858,
+          "calibration_error": 0.02822195213856727,
+          "log_loss": 0.5409918944210447,
           "n": 784,
           "season_year": 2025
         },
         {
-          "accuracy": 0.7763157894736842,
+          "accuracy": 0.7828947368421053,
           "base_rate": 0.7368421052631579,
-          "brier": 0.1572394877997775,
-          "brier_skill": 0.18909349863257874,
-          "calibration_error": 0.08471268353412782,
-          "log_loss": 0.4921514887761168,
+          "brier": 0.1568869569558335,
+          "brier_skill": 0.19091155055634712,
+          "calibration_error": 0.0842287648493099,
+          "log_loss": 0.4907855705845093,
           "n": 152,
           "season_year": 2026
         }
@@ -3479,94 +3479,94 @@
         {
           "bin_lower": 0.0,
           "bin_upper": 0.1,
-          "gap": -0.00518935200321248,
-          "mean_predicted": 0.06819203296835993,
-          "n": 746,
-          "observed_rate": 0.06300268096514745
+          "gap": 0.002716579646481282,
+          "mean_predicted": 0.06818445432693084,
+          "n": 677,
+          "observed_rate": 0.07090103397341212
         },
         {
           "bin_lower": 0.1,
           "bin_upper": 0.2,
-          "gap": 0.014251171102947463,
-          "mean_predicted": 0.15277999346785626,
-          "n": 1829,
-          "observed_rate": 0.16703116457080372
+          "gap": 0.0020228326784275386,
+          "mean_predicted": 0.15353272287712802,
+          "n": 1665,
+          "observed_rate": 0.15555555555555556
         },
         {
           "bin_lower": 0.2,
           "bin_upper": 0.3,
-          "gap": 0.028599194041264542,
-          "mean_predicted": 0.25146880425877793,
-          "n": 2353,
-          "observed_rate": 0.2800679983000425
+          "gap": 0.011433544328948442,
+          "mean_predicted": 0.25102274937734526,
+          "n": 2288,
+          "observed_rate": 0.2624562937062937
         },
         {
           "bin_lower": 0.3,
           "bin_upper": 0.4,
-          "gap": 0.02609110531648534,
-          "mean_predicted": 0.352282208026843,
-          "n": 2668,
-          "observed_rate": 0.37837331334332835
+          "gap": 0.024340129169451885,
+          "mean_predicted": 0.35155145428275925,
+          "n": 2804,
+          "observed_rate": 0.37589158345221113
         },
         {
           "bin_lower": 0.4,
           "bin_upper": 0.5,
-          "gap": 0.04838393722001161,
-          "mean_predicted": 0.45061706178098737,
-          "n": 3003,
-          "observed_rate": 0.499000999000999
+          "gap": 0.03543721008002276,
+          "mean_predicted": 0.4493961232533106,
+          "n": 3000,
+          "observed_rate": 0.48483333333333334
         },
         {
           "bin_lower": 0.5,
           "bin_upper": 0.6,
-          "gap": 0.039475812499233376,
-          "mean_predicted": 0.5500075823347149,
-          "n": 3252,
-          "observed_rate": 0.5894833948339483
+          "gap": 0.03843382685163188,
+          "mean_predicted": 0.5506780055473058,
+          "n": 3389,
+          "observed_rate": 0.5891118323989377
         },
         {
           "bin_lower": 0.6,
           "bin_upper": 0.7,
-          "gap": 0.022784060759531544,
-          "mean_predicted": 0.6510911206628197,
-          "n": 3445,
-          "observed_rate": 0.6738751814223513
+          "gap": 0.020779801798714193,
+          "mean_predicted": 0.6507245241850983,
+          "n": 3583,
+          "observed_rate": 0.6715043259838125
         },
         {
           "bin_lower": 0.7,
           "bin_upper": 0.8,
-          "gap": 0.007218167940041709,
-          "mean_predicted": 0.7502382192293449,
-          "n": 3554,
-          "observed_rate": 0.7574563871693866
+          "gap": 0.01229359311456768,
+          "mean_predicted": 0.7501862780609557,
+          "n": 3726,
+          "observed_rate": 0.7624798711755234
         },
         {
           "bin_lower": 0.8,
           "bin_upper": 0.9,
-          "gap": 0.010379158983464865,
-          "mean_predicted": 0.8502333014178023,
-          "n": 3788,
-          "observed_rate": 0.8606124604012672
+          "gap": 0.022742998603461184,
+          "mean_predicted": 0.8496289690515253,
+          "n": 3710,
+          "observed_rate": 0.8723719676549865
         },
         {
           "bin_lower": 0.9,
           "bin_upper": 1.0,
-          "gap": 0.018029426394974957,
-          "mean_predicted": 0.9387049603619851,
-          "n": 2658,
-          "observed_rate": 0.9567343867569601
+          "gap": 0.02256718635597932,
+          "mean_predicted": 0.9379055112805325,
+          "n": 2454,
+          "observed_rate": 0.9604726976365118
         }
       ],
       "from_season": null,
       "model": "elo_on_hybrid_games",
       "n_dropped_before_from_season": 0,
       "overall": {
-        "accuracy": 0.7258572684642438,
+        "accuracy": 0.7273959554513482,
         "base_rate": 0.5954352286049238,
-        "brier": 0.17859859586071378,
-        "brier_skill": 0.25485543410398526,
-        "calibration_error": 0.023149796841554455,
-        "log_loss": 0.5335876687345219,
+        "brier": 0.17817866882031166,
+        "brier_skill": 0.2566074431313824,
+        "calibration_error": 0.021841919688319233,
+        "log_loss": 0.532780967295005,
         "n": 27296
       },
       "seasons": [
@@ -3617,422 +3617,422 @@
     "hybrid": {
       "by_season": [
         {
-          "accuracy": 0.7306238185255198,
+          "accuracy": 0.7287334593572778,
           "base_rate": 0.6077504725897921,
-          "brier": 0.16503183370216928,
-          "brier_skill": 0.28940987544544916,
-          "calibration_error": 0.054368248085585526,
-          "log_loss": 0.5165150140607376,
+          "brier": 0.16528574183131353,
+          "brier_skill": 0.2883166038925218,
+          "calibration_error": 0.05426090407864881,
+          "log_loss": 0.5171822746108384,
           "n": 529,
           "season_year": 1985
         },
         {
-          "accuracy": 0.7062146892655368,
+          "accuracy": 0.711864406779661,
           "base_rate": 0.5988700564971752,
-          "brier": 0.18857337015193956,
-          "brier_skill": 0.2025087589781095,
-          "calibration_error": 0.06195875261036694,
-          "log_loss": 0.5654368263356395,
+          "brier": 0.18839001134389952,
+          "brier_skill": 0.20328419743613957,
+          "calibration_error": 0.056001894986325615,
+          "log_loss": 0.5648032264998449,
           "n": 531,
           "season_year": 1986
         },
         {
-          "accuracy": 0.7375954198473282,
+          "accuracy": 0.7414122137404581,
           "base_rate": 0.6402671755725191,
-          "brier": 0.1666401678481029,
-          "brier_skill": 0.25647838594283223,
-          "calibration_error": 0.06508483419739944,
-          "log_loss": 0.5147012792948465,
+          "brier": 0.1662192097227527,
+          "brier_skill": 0.2583566333597225,
+          "calibration_error": 0.06513789158655439,
+          "log_loss": 0.5136905201487695,
           "n": 524,
           "season_year": 1987
         },
         {
-          "accuracy": 0.7433712121212122,
+          "accuracy": 0.7509469696969697,
           "base_rate": 0.6051136363636364,
-          "brier": 0.15898043144015853,
-          "brier_skill": 0.31984883315319934,
-          "calibration_error": 0.05627178460655249,
-          "log_loss": 0.49657959802114476,
+          "brier": 0.1586056241202172,
+          "brier_skill": 0.32145233638747495,
+          "calibration_error": 0.05766609394800126,
+          "log_loss": 0.4959430854118158,
           "n": 528,
           "season_year": 1988
         },
         {
-          "accuracy": 0.7486238532110092,
+          "accuracy": 0.7522935779816514,
           "base_rate": 0.6055045871559633,
-          "brier": 0.15797640301698135,
-          "brier_skill": 0.3230478091882133,
-          "calibration_error": 0.04556502083708824,
-          "log_loss": 0.49482707241139645,
+          "brier": 0.157582677253989,
+          "brier_skill": 0.3247349821630787,
+          "calibration_error": 0.05103649470109643,
+          "log_loss": 0.4938484981126029,
           "n": 545,
           "season_year": 1989
         },
         {
-          "accuracy": 0.739010989010989,
+          "accuracy": 0.7261904761904762,
           "base_rate": 0.6071428571428571,
-          "brier": 0.16921134099254614,
-          "brier_skill": 0.26954596044216883,
-          "calibration_error": 0.047174141024361134,
-          "log_loss": 0.5239906751351251,
+          "brier": 0.16838149241054218,
+          "brier_skill": 0.27312826317312366,
+          "calibration_error": 0.04531139403060269,
+          "log_loss": 0.5223368953429908,
           "n": 546,
           "season_year": 1990
         },
         {
-          "accuracy": 0.7540250447227191,
+          "accuracy": 0.7576028622540251,
           "base_rate": 0.6180679785330948,
-          "brier": 0.161707421462262,
-          "brier_skill": 0.2949364184022264,
-          "calibration_error": 0.0501554725622376,
-          "log_loss": 0.5090681045624272,
+          "brier": 0.1611252266489756,
+          "brier_skill": 0.29747485700035314,
+          "calibration_error": 0.04866165775613894,
+          "log_loss": 0.5075459457854968,
           "n": 559,
           "season_year": 1991
         },
         {
-          "accuracy": 0.7216312056737588,
+          "accuracy": 0.723404255319149,
           "base_rate": 0.6382978723404256,
-          "brier": 0.17766551391945232,
-          "brier_skill": 0.21231686854376686,
-          "calibration_error": 0.0725848060490662,
-          "log_loss": 0.5387913143844569,
+          "brier": 0.17803151600481865,
+          "brier_skill": 0.21069419196258432,
+          "calibration_error": 0.06675724086752549,
+          "log_loss": 0.5397569294207237,
           "n": 564,
           "season_year": 1992
         },
         {
-          "accuracy": 0.7226086956521739,
+          "accuracy": 0.731304347826087,
           "base_rate": 0.62,
-          "brier": 0.17653979410888634,
-          "brier_skill": 0.23515384559516606,
-          "calibration_error": 0.057798521439300504,
-          "log_loss": 0.5367751822470412,
+          "brier": 0.17633190447407476,
+          "brier_skill": 0.23605451271403788,
+          "calibration_error": 0.05218491352030554,
+          "log_loss": 0.5362167484833265,
           "n": 575,
           "season_year": 1993
         },
         {
           "accuracy": 0.744367417677643,
           "base_rate": 0.5883882149046794,
-          "brier": 0.16419303105234737,
-          "brier_skill": 0.3058989583621974,
-          "calibration_error": 0.027361944263153436,
-          "log_loss": 0.5087801166409229,
+          "brier": 0.16472156916921232,
+          "brier_skill": 0.3036646439390457,
+          "calibration_error": 0.026935124322652604,
+          "log_loss": 0.509813250156704,
           "n": 577,
           "season_year": 1994
         },
         {
-          "accuracy": 0.7478336221837089,
+          "accuracy": 0.7461005199306759,
           "base_rate": 0.5814558058925476,
-          "brier": 0.1665916657724861,
-          "brier_skill": 0.3043186366388443,
-          "calibration_error": 0.033963745781045745,
-          "log_loss": 0.5102227487025333,
+          "brier": 0.16667412225320896,
+          "brier_skill": 0.3039743010644249,
+          "calibration_error": 0.049995915612637304,
+          "log_loss": 0.5103983883895797,
           "n": 577,
           "season_year": 1995
         },
         {
-          "accuracy": 0.7602739726027398,
+          "accuracy": 0.7654109589041096,
           "base_rate": 0.6198630136986302,
-          "brier": 0.16397655269024577,
-          "brier_skill": 0.3041014987516242,
-          "calibration_error": 0.0537216933741737,
-          "log_loss": 0.49514574411860585,
+          "brier": 0.1641956943127753,
+          "brier_skill": 0.30317148574563346,
+          "calibration_error": 0.05605748605699177,
+          "log_loss": 0.4958125132692959,
           "n": 584,
           "season_year": 1996
         },
         {
-          "accuracy": 0.7532467532467533,
+          "accuracy": 0.7581168831168831,
           "base_rate": 0.6185064935064936,
-          "brier": 0.16728070772914425,
-          "brier_skill": 0.291051898899088,
-          "calibration_error": 0.05232355741557273,
-          "log_loss": 0.5042346217532441,
+          "brier": 0.16715894177990093,
+          "brier_skill": 0.2915679520630582,
+          "calibration_error": 0.05402603111787619,
+          "log_loss": 0.5040202158296009,
           "n": 616,
           "season_year": 1997
         },
         {
-          "accuracy": 0.7607655502392344,
+          "accuracy": 0.7623604465709729,
           "base_rate": 0.6220095693779905,
-          "brier": 0.16390033583470004,
-          "brier_skill": 0.30288894161679014,
-          "calibration_error": 0.058886996088304694,
-          "log_loss": 0.49736948693962385,
+          "brier": 0.16399785410560086,
+          "brier_skill": 0.30247417086788864,
+          "calibration_error": 0.05840535736044609,
+          "log_loss": 0.49763439932903636,
           "n": 627,
           "season_year": 1998
         },
         {
-          "accuracy": 0.7179902755267423,
+          "accuracy": 0.7163695299837926,
           "base_rate": 0.6239870340356564,
-          "brier": 0.1892146079609565,
-          "brier_skill": 0.19355217319695328,
-          "calibration_error": 0.06160889085206371,
-          "log_loss": 0.559650278494929,
+          "brier": 0.18935666897340078,
+          "brier_skill": 0.19294669777413187,
+          "calibration_error": 0.06111414909064046,
+          "log_loss": 0.5600012568346435,
           "n": 617,
           "season_year": 1999
         },
         {
-          "accuracy": 0.7176656151419558,
+          "accuracy": 0.7208201892744479,
           "base_rate": 0.6356466876971609,
-          "brier": 0.18068155317450998,
-          "brier_skill": 0.21985504401176792,
-          "calibration_error": 0.059657310482879006,
-          "log_loss": 0.535781204073631,
+          "brier": 0.1807615583686553,
+          "brier_skill": 0.21950959840556905,
+          "calibration_error": 0.056187730562563806,
+          "log_loss": 0.5358985254490026,
           "n": 634,
           "season_year": 2000
         },
         {
-          "accuracy": 0.7488372093023256,
+          "accuracy": 0.7426356589147287,
           "base_rate": 0.586046511627907,
-          "brier": 0.1698195504416387,
-          "brier_skill": 0.29999030505040813,
-          "calibration_error": 0.03924104455209449,
-          "log_loss": 0.5100961886721226,
+          "brier": 0.1694811196282057,
+          "brier_skill": 0.30138534378332604,
+          "calibration_error": 0.04573664864164235,
+          "log_loss": 0.5093515856086661,
           "n": 645,
           "season_year": 2001
         },
         {
-          "accuracy": 0.751060820367751,
+          "accuracy": 0.7567185289957568,
           "base_rate": 0.6039603960396039,
-          "brier": 0.17345472389330874,
-          "brier_skill": 0.2748312957230904,
-          "calibration_error": 0.042584045211403895,
-          "log_loss": 0.5187078950243291,
+          "brier": 0.17349979002500923,
+          "brier_skill": 0.2746428860470753,
+          "calibration_error": 0.05059079948729895,
+          "log_loss": 0.5188383835352295,
           "n": 707,
           "season_year": 2002
         },
         {
-          "accuracy": 0.7353361945636624,
+          "accuracy": 0.7381974248927039,
           "base_rate": 0.6051502145922747,
-          "brier": 0.16829609091347625,
-          "brier_skill": 0.2956655504469826,
-          "calibration_error": 0.036933740712299205,
-          "log_loss": 0.5016037228990048,
+          "brier": 0.16769839796618624,
+          "brier_skill": 0.2981669498006234,
+          "calibration_error": 0.03818315941436654,
+          "log_loss": 0.5004715918161261,
           "n": 699,
           "season_year": 2003
         },
         {
-          "accuracy": 0.7250384024577573,
+          "accuracy": 0.7142857142857143,
           "base_rate": 0.6344086021505376,
-          "brier": 0.17535243986173005,
-          "brier_skill": 0.24395650430503435,
-          "calibration_error": 0.0671939658768342,
-          "log_loss": 0.5209224856290998,
+          "brier": 0.17898413242984332,
+          "brier_skill": 0.2282982246332439,
+          "calibration_error": 0.06595369360113884,
+          "log_loss": 0.5286266237756609,
           "n": 651,
           "season_year": 2004
         },
         {
-          "accuracy": 0.7053435114503817,
+          "accuracy": 0.7099236641221374,
           "base_rate": 0.5648854961832062,
-          "brier": 0.1889689759849949,
-          "brier_skill": 0.23117671956412944,
-          "calibration_error": 0.0358629289310874,
-          "log_loss": 0.553536000025546,
+          "brier": 0.18918873140374423,
+          "brier_skill": 0.23028264115228558,
+          "calibration_error": 0.04713393461265568,
+          "log_loss": 0.5550192951290879,
           "n": 655,
           "season_year": 2005
         },
         {
-          "accuracy": 0.726890756302521,
+          "accuracy": 0.7366946778711485,
           "base_rate": 0.592436974789916,
-          "brier": 0.17745462160428155,
-          "brier_skill": 0.2650625439677562,
-          "calibration_error": 0.036879458834243886,
-          "log_loss": 0.5262556050500833,
+          "brier": 0.17473937857747374,
+          "brier_skill": 0.27630786282499853,
+          "calibration_error": 0.03593933535763229,
+          "log_loss": 0.5191060213544865,
           "n": 714,
           "season_year": 2006
         },
         {
-          "accuracy": 0.7219101123595506,
+          "accuracy": 0.7247191011235955,
           "base_rate": 0.5955056179775281,
-          "brier": 0.18532476063156259,
-          "brier_skill": 0.23063027832148342,
-          "calibration_error": 0.03213957022594098,
-          "log_loss": 0.5520501753837841,
+          "brier": 0.18444286150711803,
+          "brier_skill": 0.23429145387951555,
+          "calibration_error": 0.037156253076113525,
+          "log_loss": 0.5472582570866988,
           "n": 712,
           "season_year": 2007
         },
         {
-          "accuracy": 0.7157001414427157,
+          "accuracy": 0.7142857142857143,
           "base_rate": 0.5869872701555869,
-          "brier": 0.18201861924175824,
-          "brier_skill": 0.24920098358332177,
-          "calibration_error": 0.03138138854348754,
-          "log_loss": 0.5408018515794776,
+          "brier": 0.1811949375033562,
+          "brier_skill": 0.2525985450064817,
+          "calibration_error": 0.042879473115939044,
+          "log_loss": 0.5386178008562292,
           "n": 707,
           "season_year": 2008
         },
         {
-          "accuracy": 0.742296918767507,
+          "accuracy": 0.7366946778711485,
           "base_rate": 0.5952380952380952,
-          "brier": 0.17307145409387542,
-          "brier_skill": 0.28165165877271614,
-          "calibration_error": 0.03139098242030873,
-          "log_loss": 0.5185307229020613,
+          "brier": 0.1748963437561901,
+          "brier_skill": 0.27407729320960306,
+          "calibration_error": 0.03641868522276787,
+          "log_loss": 0.5226511393565012,
           "n": 714,
           "season_year": 2009
         },
         {
-          "accuracy": 0.7284122562674095,
+          "accuracy": 0.7186629526462396,
           "base_rate": 0.5668523676880223,
-          "brier": 0.18338418979926882,
-          "brier_skill": 0.2531111413441778,
-          "calibration_error": 0.019499322488906894,
-          "log_loss": 0.5434937852324628,
+          "brier": 0.1831677531040209,
+          "brier_skill": 0.2539926467589134,
+          "calibration_error": 0.01971028753629786,
+          "log_loss": 0.5416718207298078,
           "n": 718,
           "season_year": 2010
         },
         {
-          "accuracy": 0.7272727272727273,
+          "accuracy": 0.7286713286713287,
           "base_rate": 0.5972027972027972,
-          "brier": 0.17870645995941314,
-          "brier_skill": 0.25709723854451305,
-          "calibration_error": 0.023900201212057385,
-          "log_loss": 0.5302491345650325,
+          "brier": 0.17791469366135604,
+          "brier_skill": 0.2603886996891611,
+          "calibration_error": 0.03494867763703345,
+          "log_loss": 0.5278839627843486,
           "n": 715,
           "season_year": 2011
         },
         {
-          "accuracy": 0.7279305354558611,
+          "accuracy": 0.7409551374819102,
           "base_rate": 0.5716353111432706,
-          "brier": 0.17616348170546606,
-          "brier_skill": 0.28057889661128754,
-          "calibration_error": 0.03446845972339163,
-          "log_loss": 0.5227316652342867,
+          "brier": 0.1771883358834564,
+          "brier_skill": 0.27639356991131314,
+          "calibration_error": 0.0346763210166625,
+          "log_loss": 0.5255194498833428,
           "n": 691,
           "season_year": 2012
         },
         {
-          "accuracy": 0.7431318681318682,
+          "accuracy": 0.7472527472527473,
           "base_rate": 0.5851648351648352,
-          "brier": 0.1657196811745356,
-          "brier_skill": 0.3173150863756017,
-          "calibration_error": 0.05127237562297757,
-          "log_loss": 0.4974792980860022,
+          "brier": 0.16583605142465702,
+          "brier_skill": 0.31683569724336624,
+          "calibration_error": 0.0463792071623989,
+          "log_loss": 0.4972016817411859,
           "n": 728,
           "season_year": 2013
         },
         {
-          "accuracy": 0.7160493827160493,
+          "accuracy": 0.7256515775034293,
           "base_rate": 0.5569272976680384,
-          "brier": 0.1851332534079212,
-          "brier_skill": 0.24974148359469994,
-          "calibration_error": 0.05382981622964694,
-          "log_loss": 0.5460348697458944,
+          "brier": 0.1824414879982776,
+          "brier_skill": 0.2606499502562808,
+          "calibration_error": 0.051275056727672005,
+          "log_loss": 0.5380945042535378,
           "n": 729,
           "season_year": 2014
         },
         {
-          "accuracy": 0.7427055702917772,
+          "accuracy": 0.7572944297082228,
           "base_rate": 0.5716180371352785,
-          "brier": 0.1718870289908266,
-          "brier_skill": 0.29805028141230405,
-          "calibration_error": 0.04882359018210833,
-          "log_loss": 0.5137468725858301,
+          "brier": 0.1680700086959799,
+          "brier_skill": 0.31363817270079775,
+          "calibration_error": 0.04790897278911649,
+          "log_loss": 0.506507515383387,
           "n": 754,
           "season_year": 2015
         },
         {
-          "accuracy": 0.7026315789473684,
+          "accuracy": 0.7065789473684211,
           "base_rate": 0.5802631578947368,
-          "brier": 0.1931104633197366,
-          "brier_skill": 0.2071268375984996,
-          "calibration_error": 0.03613197475836582,
-          "log_loss": 0.5636530509145052,
+          "brier": 0.18769969866399083,
+          "brier_skill": 0.2293423613451766,
+          "calibration_error": 0.02305621893925083,
+          "log_loss": 0.5508423719408819,
           "n": 760,
           "season_year": 2016
         },
         {
-          "accuracy": 0.7045751633986929,
+          "accuracy": 0.7019607843137254,
           "base_rate": 0.5673202614379085,
-          "brier": 0.1879125147362135,
-          "brier_skill": 0.23447240288122573,
-          "calibration_error": 0.02669632661747817,
-          "log_loss": 0.5518119667522127,
+          "brier": 0.18691043733159857,
+          "brier_skill": 0.23855471697700992,
+          "calibration_error": 0.04112555151097886,
+          "log_loss": 0.5503705107584299,
           "n": 765,
           "season_year": 2017
         },
         {
           "accuracy": 0.7309711286089239,
           "base_rate": 0.589238845144357,
-          "brier": 0.17616629199740158,
-          "brier_skill": 0.2721496797957941,
-          "calibration_error": 0.03519038835544042,
-          "log_loss": 0.5232501750215263,
+          "brier": 0.1738118379728968,
+          "brier_skill": 0.28187736433868715,
+          "calibration_error": 0.039390974061108384,
+          "log_loss": 0.5185396288584533,
           "n": 762,
           "season_year": 2018
         },
         {
-          "accuracy": 0.7390180878552972,
+          "accuracy": 0.7467700258397932,
           "base_rate": 0.5917312661498708,
-          "brier": 0.17549263086114364,
-          "brier_skill": 0.27357924295387703,
-          "calibration_error": 0.04491065528161609,
-          "log_loss": 0.5220104803053659,
+          "brier": 0.1740471290782181,
+          "brier_skill": 0.2795626423382941,
+          "calibration_error": 0.04775037075375486,
+          "log_loss": 0.5180426552425382,
           "n": 774,
           "season_year": 2019
         },
         {
           "accuracy": 0.7172284644194756,
           "base_rate": 0.5617977528089888,
-          "brier": 0.19251494238594907,
-          "brier_skill": 0.21799443146712683,
-          "calibration_error": 0.04242939149547783,
-          "log_loss": 0.5680991758922544,
+          "brier": 0.1891697975126855,
+          "brier_skill": 0.23158258148821442,
+          "calibration_error": 0.03983126113174848,
+          "log_loss": 0.5603643954163235,
           "n": 534,
           "season_year": 2020
         },
         {
-          "accuracy": 0.6974025974025974,
+          "accuracy": 0.7103896103896103,
           "base_rate": 0.5753246753246753,
-          "brier": 0.18955839914476325,
-          "brier_skill": 0.22415850468428167,
-          "calibration_error": 0.04245483091732915,
-          "log_loss": 0.5557771378956218,
+          "brier": 0.18756481652047136,
+          "brier_skill": 0.2323180171682674,
+          "calibration_error": 0.02781673118314765,
+          "log_loss": 0.5509614562583238,
           "n": 770,
           "season_year": 2021
         },
         {
-          "accuracy": 0.6801566579634465,
+          "accuracy": 0.6684073107049608,
           "base_rate": 0.577023498694517,
-          "brier": 0.20468888192611842,
-          "brier_skill": 0.16134273501871343,
-          "calibration_error": 0.047875271527661585,
-          "log_loss": 0.5957991533227007,
+          "brier": 0.20232924504104038,
+          "brier_skill": 0.17101070817762098,
+          "calibration_error": 0.06549850240595075,
+          "log_loss": 0.5895141370111823,
           "n": 766,
           "season_year": 2022
         },
         {
-          "accuracy": 0.712987012987013,
+          "accuracy": 0.7142857142857143,
           "base_rate": 0.5792207792207792,
-          "brier": 0.18508635198390985,
-          "brier_skill": 0.2405905850961979,
-          "calibration_error": 0.020867145437715163,
-          "log_loss": 0.5472809516800713,
+          "brier": 0.18677923059766335,
+          "brier_skill": 0.23364470311303875,
+          "calibration_error": 0.030477707760461117,
+          "log_loss": 0.549833729697816,
           "n": 770,
           "season_year": 2023
         },
         {
-          "accuracy": 0.6747141041931385,
+          "accuracy": 0.6810673443456162,
           "base_rate": 0.5819567979669632,
-          "brier": 0.19988389075966537,
-          "brier_skill": 0.1783896846609231,
-          "calibration_error": 0.04697872234540931,
-          "log_loss": 0.5807378510773417,
+          "brier": 0.20025828428752052,
+          "brier_skill": 0.17685076332357608,
+          "calibration_error": 0.047855102472861635,
+          "log_loss": 0.5805692201433652,
           "n": 787,
           "season_year": 2024
         },
         {
-          "accuracy": 0.7168367346938775,
+          "accuracy": 0.7295918367346939,
           "base_rate": 0.5943877551020408,
-          "brier": 0.1846311917190247,
-          "brier_skill": 0.23418448337754028,
-          "calibration_error": 0.03208024226800849,
-          "log_loss": 0.5444857198567318,
+          "brier": 0.18259657502708523,
+          "brier_skill": 0.2426236913930392,
+          "calibration_error": 0.03160868119340642,
+          "log_loss": 0.5395507039632014,
           "n": 784,
           "season_year": 2025
         },
         {
-          "accuracy": 0.7763157894736842,
+          "accuracy": 0.7828947368421053,
           "base_rate": 0.7368421052631579,
-          "brier": 0.15293942644402442,
-          "brier_skill": 0.2112695293386767,
-          "calibration_error": 0.07176726014181907,
-          "log_loss": 0.48076999952489036,
+          "brier": 0.15114860083170062,
+          "brier_skill": 0.22050507285366083,
+          "calibration_error": 0.08015090276319847,
+          "log_loss": 0.4777100182834395,
           "n": 152,
           "season_year": 2026
         }
@@ -4041,94 +4041,94 @@
         {
           "bin_lower": 0.0,
           "bin_upper": 0.1,
-          "gap": -0.01746134715731989,
-          "mean_predicted": 0.06849582991594058,
-          "n": 725,
-          "observed_rate": 0.05103448275862069
+          "gap": -0.009886185656260496,
+          "mean_predicted": 0.06797747196331444,
+          "n": 723,
+          "observed_rate": 0.058091286307053944
         },
         {
           "bin_lower": 0.1,
           "bin_upper": 0.2,
-          "gap": 0.011302224719397236,
-          "mean_predicted": 0.15284212918048634,
-          "n": 1718,
-          "observed_rate": 0.16414435389988358
+          "gap": 0.011010440369358998,
+          "mean_predicted": 0.15420189238224077,
+          "n": 1719,
+          "observed_rate": 0.16521233275159977
         },
         {
           "bin_lower": 0.2,
           "bin_upper": 0.3,
-          "gap": 0.017418852781705574,
-          "mean_predicted": 0.2519088783107314,
-          "n": 2380,
-          "observed_rate": 0.26932773109243696
+          "gap": 0.008703258789180601,
+          "mean_predicted": 0.2520540561850018,
+          "n": 2324,
+          "observed_rate": 0.2607573149741824
         },
         {
           "bin_lower": 0.3,
           "bin_upper": 0.4,
-          "gap": 0.03354592292892894,
-          "mean_predicted": 0.3517526409410635,
-          "n": 2646,
-          "observed_rate": 0.38529856386999245
+          "gap": 0.02839004715098048,
+          "mean_predicted": 0.3511169432831623,
+          "n": 2718,
+          "observed_rate": 0.37950699043414277
         },
         {
           "bin_lower": 0.4,
           "bin_upper": 0.5,
-          "gap": 0.036038525341574645,
-          "mean_predicted": 0.4509109036959457,
-          "n": 3065,
-          "observed_rate": 0.48694942903752036
+          "gap": 0.03282823665675011,
+          "mean_predicted": 0.4499245533331045,
+          "n": 2957,
+          "observed_rate": 0.4827527899898546
         },
         {
           "bin_lower": 0.5,
           "bin_upper": 0.6,
-          "gap": 0.03177379391496571,
-          "mean_predicted": 0.549265004583157,
-          "n": 3196,
-          "observed_rate": 0.5810387984981227
+          "gap": 0.03513171758074485,
+          "mean_predicted": 0.5512069132261012,
+          "n": 3272,
+          "observed_rate": 0.586338630806846
         },
         {
           "bin_lower": 0.6,
           "bin_upper": 0.7,
-          "gap": 0.02554942311778441,
-          "mean_predicted": 0.6502872189695666,
-          "n": 3526,
-          "observed_rate": 0.6758366420873511
+          "gap": 0.01674882267917277,
+          "mean_predicted": 0.6505353038526027,
+          "n": 3509,
+          "observed_rate": 0.6672841265317755
         },
         {
           "bin_lower": 0.7,
           "bin_upper": 0.8,
-          "gap": 0.0047825933610432525,
-          "mean_predicted": 0.7499819806299881,
-          "n": 3568,
-          "observed_rate": 0.7547645739910314
+          "gap": 0.011827839059859069,
+          "mean_predicted": 0.7505212278995262,
+          "n": 3644,
+          "observed_rate": 0.7623490669593853
         },
         {
           "bin_lower": 0.8,
           "bin_upper": 0.9,
-          "gap": 0.018495376036690603,
-          "mean_predicted": 0.8497399180809565,
-          "n": 3825,
-          "observed_rate": 0.8682352941176471
+          "gap": 0.019846704998450426,
+          "mean_predicted": 0.8494880418873169,
+          "n": 3773,
+          "observed_rate": 0.8693347468857673
         },
         {
           "bin_lower": 0.9,
           "bin_upper": 1.0,
-          "gap": 0.015178554613063167,
-          "mean_predicted": 0.9394871046238088,
-          "n": 2647,
-          "observed_rate": 0.954665659236872
+          "gap": 0.018402671447273145,
+          "mean_predicted": 0.9390681603178755,
+          "n": 2657,
+          "observed_rate": 0.9574708317651487
         }
       ],
       "from_season": null,
       "model": "hybrid",
       "n_dropped_before_from_season": 0,
       "overall": {
-        "accuracy": 0.7269563305978898,
+        "accuracy": 0.7294841735052755,
         "base_rate": 0.5954352286049238,
-        "brier": 0.1777556636255214,
-        "brier_skill": 0.2583722947570334,
-        "calibration_error": 0.021701978766052656,
-        "log_loss": 0.5315715737432796,
+        "brier": 0.17707485316054675,
+        "brier_skill": 0.261212755041372,
+        "calibration_error": 0.020557555569861306,
+        "log_loss": 0.5297768919580944,
         "n": 27296
       },
       "seasons": [
