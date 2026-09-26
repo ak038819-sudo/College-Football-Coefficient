@@ -1585,7 +1585,7 @@ function loading(id, title) {
 // the first time a team page opens. It's a <script> (not fetch) so it also
 // works when dashboard.html is opened straight from disk. Every number shown
 // here was computed in Python; this code only indexes, filters and draws.
-const TEAM_PAGES_VERSION = 'cb290adf5f05';
+const TEAM_PAGES_VERSION = '58e14eb4388c';
 let TP = null;
 let _teamPagesPromise = null;
 let teamPageState = { teamId: null, chartSeason: 'all', season: null };
@@ -1611,7 +1611,10 @@ function indexTeamPages(raw) {
   });
   return { gamesById, eloByTeam, seasonsByTeam, teamsPerSeason, coe2PerSeason,
     swings: raw.swings, history: raw.history, cfpFirst: raw.cfp_first_season, titlesSince: raw.titles_since,
-    advanced: raw.advanced || null };
+    advanced: raw.advanced || null,
+    // ENG-13: {"<team>|<season>": {games, bonus, total, items}} -- the season total
+    // decomposed, so the ledger can show where every point came from.
+    rollups: raw.coe2_rollups || {} };
 }
 
 function loadTeamPages() {
@@ -2720,8 +2723,42 @@ function fillCoeLedger(tp, team, season) {
       'Overtime loss ' + C.ot_loss + ', regulation loss ' + C.regulation_loss + '; a tie is 1 + ' + C.tie_delta + ' × (0.5 − P). CoE 2.0 has no separate postseason bonus.' +
       (shown != null ? ' The total ' + (Math.abs(shown - total) < 0.01 ? 'matches' : 'does NOT match')   /* per-game values are stored to 3 decimals */ + ' the season CoE 2.0 in Advanced Analytics (' + shown.toFixed(3) + ').' : '') +
       (mismatch ? ' <b>Some rows don\'t reconcile with the current parameters; the model may need a rebuild.</b>' : '') +
-      ' Note: the playoff still uses CoE v1, which comes from an iterative whole-season calculation and can\'t be split into per-game amounts.</p>';
+      ' Note: the playoff still uses CoE v1, which comes from an iterative whole-season calculation and can\'t be split into per-game amounts.</p>' +
+      coe2SeasonBreakdown(tp, team, season);
   }).catch(() => { if (ok()) target().innerHTML = '<div class="empty-note">The CoE ledger could not be loaded.</div>'; });
+}
+
+// ---- Season CoE 2.0 = game awards + explicit bonuses (ENG-13) ----
+// Every figure comes from src/build_coe2_rollups.py's tables; the page only
+// formats them. The point of showing the split is that a bonus can never hide
+// inside opponent strength -- if it contributed, it is named here.
+const BONUS_LABELS = {
+  bowl_appearance: 'Bowl appearance', bowl_win: 'Bowl win',
+  cfp_appearance: 'Playoff appearance', cfp_win: 'Playoff win',
+  conference_standings_first: 'First in conference standings', national_title: 'National championship'
+};
+function coe2SeasonBreakdown(tp, team, season) {
+  const r = (tp.rollups || {})[team.id + '|' + season];
+  if (!r) return '';
+  const n3 = v => Number(v).toFixed(3);
+  const items = (r.items || []).map(([cat, n, pts]) =>
+    '<tr><td class="tl">' + esc(BONUS_LABELS[cat] || cat) + (n > 1 ? ' \u00d7' + n : '') + '</td>' +
+    '<td>' + (pts === 0 ? '<span class="dim">0.000</span>' : n3(pts)) + '</td></tr>').join('');
+  const zeroWeighted = (r.items || []).length && r.bonus === 0;
+  return '<h3 class="an-title">Season total</h3>' +
+    '<div class="table-scroll" tabindex="0" role="region" aria-label="Season CoE 2.0 breakdown">' +
+    '<table class="ledger"><tbody>' +
+    '<tr><td class="tl">Game awards (' + season + ')</td><td>' + n3(r.games) + '</td></tr>' +
+    items +
+    '<tr><td class="tl">Bonuses</td><td>' + n3(r.bonus) + '</td></tr>' +
+    '</tbody><tfoot><tr><td class="tl">Season CoE 2.0</td><td>' + n3(r.total) + '</td></tr></tfoot></table></div>' +
+    '<p class="section-note">Season CoE 2.0 = the sum of this season\u2019s game awards plus explicit bonuses. ' +
+    (zeroWeighted
+      ? 'The achievements above are recorded, but every bonus category is currently weighted <b>0.000</b>, so the ' +
+        'season total is exactly the sum of its game awards. The weights live in the model configuration and are ' +
+        'deliberately unset until they are chosen against the validation harness.'
+      : 'Each bonus is recorded separately from opponent strength, so no part of the total is hidden inside a rating.') +
+    '</p>';
 }
 
 document.getElementById('content').addEventListener('change', e => {

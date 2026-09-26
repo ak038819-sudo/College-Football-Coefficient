@@ -43,5 +43,15 @@
     "m_min": 0.5,
     "m_max": 1.5,
     "model_path": "data/processed/xsrdiff_model.json"
+  },
+  "coe2_bonuses": {
+    "_comment": "Explicit season/postseason bonus terms for CoE 2.0 (spec's B_(i,Y)), applied by src/build_coe2_rollups.py AFTER game awards: C = sum(Game CoE 2.0) + B. Each awarded bonus is stored as its own row in team_coe2_bonuses with its category, count and reason, so no bonus can hide inside opponent strength and a season total is always decomposable. ALL VALUES SHIP AT 0.0 ON PURPOSE: the categories and the machinery are implemented and tested, but the magnitudes are a modelling decision to make with the validation harness, not defaults to inherit. At 0.0 a season total is exactly the sum of its game awards, so the current model stays reproducible. Bonuses are derived from real results only -- bowl/CFP participation from the games table, first place in the derived conference standings -- the playoff model's own ordering, which starts in 2014 and is NOT the conference championship game, national titles from data/reference/national_champions.csv -- and never from ratings. Bump 'version' when changing any value so old and new rows stay distinguishable.",
+    "version": "coe2_bonus_v1",
+    "bowl_appearance": 0.0,
+    "bowl_win": 0.0,
+    "cfp_appearance": 0.0,
+    "cfp_win": 0.0,
+    "national_title": 0.0,
+    "conference_standings_first": 0.0
   }
 }
