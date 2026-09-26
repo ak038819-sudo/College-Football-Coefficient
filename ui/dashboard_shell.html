@@ -131,6 +131,25 @@
   .search-hit small { color: var(--ink-dim); margin-left: auto; font: 11px var(--font-mono); white-space: nowrap; }
   .search-hit .hit-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .search-note { color: var(--ink-dim); font-size: 13px; padding: 8px 12px; margin: 0; }
+  /* ---- Explainability (Milestone D) ---- */
+  .tabs a.tab-secondary { margin-left: auto; font-size: 13px; border-style: dashed; }
+  .ledger-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 10px; }
+  .ledger-head select { padding: 6px 8px; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 3px; font: inherit; }
+  .ledger-note { background: var(--panel-2); border-radius: 3px; padding: 10px 12px; font-size: 13.5px; margin: 8px 0 12px; line-height: 1.6; }
+  .ledger-note code, .method code { font-family: var(--font-mono); font-size: 12.5px; }
+  .ledger { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .ledger th, .ledger td { padding: 7px 6px; border-bottom: 1px dotted var(--line); text-align: right; white-space: nowrap; }
+  .ledger th:nth-child(-n+3), .ledger td:nth-child(-n+3) { text-align: left; }
+  .ledger thead th { font: 10.5px var(--font-mono); color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.3px; }
+  .ledger td { font-family: var(--font-mono); }
+  .ledger td.opp { font-family: inherit; }
+  .ledger td small { display: block; color: var(--ink-dim); font-size: 10.5px; }
+  .ledger td.pos { color: var(--green-hl); } .ledger td.neg { color: var(--red); }
+  .ledger tfoot td { font-weight: 600; border-top: 1px solid var(--line); }
+  .ledger a, #tp-ledger .section-note a { color: var(--amber); }
+  .method h3 { font-family: var(--font-display); font-size: 17px; margin: 18px 0 6px; }
+  .method p, .method li { line-height: 1.6; font-size: 14.5px; }
+  .method .gp-formula { margin: 8px 0; }
   /* ---- Game pages (Milestone C) ---- */
   .gl-more { margin-left: auto; color: var(--amber); font: 11px var(--font-mono); white-space: nowrap; }
   .gl-foot { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
@@ -697,6 +716,7 @@
     <a data-section="teams" href="#section=teams">Teams</a>
     <a data-section="rankings" href="#section=rankings">Rankings</a>
     <a data-section="playoff" href="#section=playoff">Playoff</a>
+    <a data-section="methodology" href="#section=methodology" class="tab-secondary">How it works</a>
   </nav>
 
   <nav class="subnav" id="subnav" aria-label="Section views"></nav>
@@ -899,7 +919,7 @@ const ROUTE_CONFIG = { yearsAll: DATA.years_all, playoffYears: DATA.years_playof
   gameSeasons: STATIC_MANIFEST.seasons || [] };
 let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult: null, simYear: null,
   homeGroup: null, homeTop25: false, homePoll: null };
-const SECTION_LABELS = { home: 'Home', games: 'Games', teams: 'Teams', rankings: 'Rankings', playoff: 'Playoff' };
+const SECTION_LABELS = { home: 'Home', games: 'Games', teams: 'Teams', rankings: 'Rankings', playoff: 'Playoff', methodology: 'How it works' };
 const SUBVIEWS = {
   rankings: [['elo', 'Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'], ['ap', 'AP'], ['cfp', 'CFP']],
   playoff: [['field', 'Field'], ['bracket', 'Bracket & Simulator'], ['odds', 'Title Odds'], ['history', 'History']]
@@ -916,9 +936,10 @@ function fmt(n) { return Number(n).toFixed(3); }
 
 function renderYearRow() {
   const row = document.getElementById('year-row');
-  if (state.view === 'team' || state.view === 'game' || state.section === 'teams') {
+  if (state.view === 'team' || state.view === 'game' || state.section === 'teams' || state.section === 'methodology') {
     row.innerHTML = '';
-    document.getElementById('year-caption').textContent = state.view === 'team' ? 'TEAM PAGE' : state.view === 'game' ? 'GAME' : 'TEAM DIRECTORY';
+    document.getElementById('year-caption').textContent = state.view === 'team' ? 'TEAM PAGE' : state.view === 'game' ? 'GAME'
+      : state.section === 'methodology' ? 'METHODOLOGY' : 'TEAM DIRECTORY';
     return;
   }
   if (state.section === 'home') {
@@ -1338,6 +1359,7 @@ function renderTeamPage(param) {
     loading('tp-elo', 'Historical Elo') +
     '<div class="grid-2 team-section">' + renderUpcomingCard(team) + loading('tp-analytics', 'Advanced Analytics') + '</div>' +
     '<div class="grid-2 team-section">' + loading('tp-gains', 'Biggest Elo Gains') + loading('tp-losses', 'Biggest Elo Losses') + '</div>' +
+    loading('tp-ledger', 'Rating Ledger') +
     loading('tp-history', 'Program History');
 }
 
@@ -1358,7 +1380,7 @@ function indexTeamPages(raw) {
   const eloByTeam = new Map();   // already grouped by team and chronological in the export
   raw.elo.forEach(r => {
     if (!eloByTeam.has(r[1])) eloByTeam.set(r[1], []);
-    eloByTeam.get(r[1]).push({ gid: r[0], tid: r[1], pre: r[2], oppPre: r[3], exp: r[4], chg: r[5], post: r[6] });
+    eloByTeam.get(r[1]).push({ gid: r[0], tid: r[1], pre: r[2], oppPre: r[3], exp: r[4], chg: r[5], post: r[6], mov: r[7] ?? null });
   });
   const seasonsByTeam = new Map(), teamsPerSeason = new Map(), coe2PerSeason = new Map();
   raw.team_seasons.forEach(s => {
@@ -1821,9 +1843,10 @@ function hydrateTeamPage() {
     fillEloPanel(tp, team);
     fillAnalyticsPanel(tp, team);
     fillSwingPanels(tp, team);
+    fillLedgerPanel(tp, team);
     fillHistoryPanel(tp, team);
   }).catch(err => {
-    ['tp-elo', 'tp-analytics', 'tp-gains', 'tp-losses', 'tp-history'].forEach(id => {
+    ['tp-elo', 'tp-analytics', 'tp-gains', 'tp-losses', 'tp-ledger', 'tp-history'].forEach(id => {
       const note = document.querySelector('#' + id + ' .empty-note');
       if (note) note.textContent = 'Team history is unavailable (' + err.message + ').';
     });
@@ -2202,6 +2225,179 @@ function playoffIntro() {
   return '<h2 class="view-title">Playoff</h2><p class="section-note">CoE model postseason. Fields, brackets, title odds, and history reflect this project\'s model, not official CFP results.</p>';
 }
 
+// ---------------- Rating ledger (Milestone D) ----------------
+// "Why is this team's rating what it is?" -- every row shows STORED values with the formula
+// that produced them. Nothing is recomputed; the arithmetic is shown as explanation and
+// reconciles exactly with the stored numbers (pinned by tests/test_ledger.py).
+function fillLedgerPanel(tp, team) {
+  const el = document.getElementById('tp-ledger');
+  if (!el) return;
+  const P = (STATIC_MANIFEST.model_params || {}).elo || {};
+  const K = P.k, INIT = P.initial_rating, KEEP = P.offseason_retention;
+  const rows = tp.eloByTeam.get(team.id) || [];
+  const head = '<h2 class="section-title">Rating Ledger</h2>';
+  if (!rows.length) { el.innerHTML = head + '<div class="empty-note">No completed games in the dataset.</div>'; return; }
+  const seasonOf = r => tp.gamesById.get(r.gid).season;
+  const seasons = [...new Set(rows.map(seasonOf))];
+  let season = teamPageState.ledgerSeason;
+  if (!seasons.includes(season)) season = seasons[seasons.length - 1];
+  const idx = rows.findIndex(r => seasonOf(r) === season);
+  const mine = rows.filter(r => seasonOf(r) === season);
+  const prev = idx > 0 ? rows[idx - 1] : null;
+  const f1 = v => Number(v).toFixed(1), f3 = v => Number(v).toFixed(3);
+  const sgn = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1);
+
+  let opening;
+  if (!prev) opening = 'First season in the dataset: every team starts at <code>' + INIT + '</code>. Entered ' + season + ' at <b>' + f1(mine[0].pre) + '</b>.';
+  else {
+    const n = season - seasonOf(prev);
+    opening = 'Ended ' + seasonOf(prev) + ' at <b>' + f1(prev.post) + '</b>. Each offseason pulls ratings ' + Math.round((1 - KEEP) * 100) +
+      '% of the way back toward ' + INIT + ': <code>' + INIT + ' + ' + KEEP + (n > 1 ? '<sup>' + n + '</sup>' : '') + ' × (' + f1(prev.post) + ' − ' + INIT +
+      ') = ' + f1(mine[0].pre) + '</code>' + (n > 1 ? ' (' + n + ' offseasons: no FBS games in ' + (seasonOf(prev) + 1) + (n > 2 ? '–' + (season - 1) : '') + ')' : '') + '.';
+  }
+  const body = mine.map(r => {
+    const g = tp.gamesById.get(r.gid);
+    const home = g.home === team.id, my = home ? g.hs : g.as, opp = home ? g.as : g.hs;
+    const oppTeam = TEAM_BY_ID.get(String(home ? g.away : g.home));
+    const S = my > opp ? 1 : my < opp ? 0 : 0.5, res = S === 1 ? 'W' : S === 0 ? 'L' : 'T';
+    const M = r.mov == null ? null : r.mov;
+    return '<tr><td>' + esc(fmtGameDate(g)) + '</td><td class="opp">' + (g.neutral ? 'vs ' : home ? 'vs ' : 'at ') +
+      (oppTeam ? oppLink(oppTeam.name, g.season) : 'Unknown') + '</td><td><a href="' + esc(gameHref(g.id, g.season)) + '">' + res + ' ' + my + '–' + opp + (g.ot ? ' OT' : '') + '</a></td>' +
+      '<td>' + f3(r.exp) + '</td><td>' + (M == null ? '—' : f3(M)) + '</td>' +
+      '<td class="' + (r.chg >= 0 ? 'pos' : 'neg') + '">' + sgn(r.chg) + (M == null ? '' : '<small>' + K + ' × (' + S + ' − ' + f3(r.exp) + ') × ' + f3(M) + '</small>') + '</td>' +
+      '<td>' + f1(r.post) + '</td></tr>';
+  }).join('');
+  const posts = mine.map(r => r.post), net = mine[mine.length - 1].post - mine[0].pre;
+  const peak = rows.reduce((a, r) => r.post > a.post ? r : a), low = rows.reduce((a, r) => r.post < a.post ? r : a);
+  const at = r => { const g = tp.gamesById.get(r.gid); return '<a href="' + esc(gameHref(g.id, g.season)) + '">' + f1(r.post) + '</a> (' + g.season + ')'; };
+  el.innerHTML = head + '<div class="ledger-head"><label>Season <select id="tp-ledger-season">' +
+      seasons.slice().reverse().map(y => '<option' + (y === season ? ' selected' : '') + '>' + y + '</option>').join('') + '</select></label>' +
+      '<a class="side-link" href="#section=methodology">How these are calculated &rarr;</a></div>' +
+    '<h3 class="an-title">Elo</h3><p class="ledger-note">' + opening + '</p>' +
+    '<div class="table-scroll" tabindex="0" role="region" aria-label="Elo ledger for ' + season + '"><table class="ledger"><thead><tr>' +
+      '<th scope="col">Date</th><th scope="col">Opponent</th><th scope="col">Result</th><th scope="col">Expected (E)</th>' +
+      '<th scope="col">Margin mult. (M)</th><th scope="col">Change</th><th scope="col">Elo after</th></tr></thead><tbody>' + body + '</tbody>' +
+      '<tfoot><tr><td colspan="5">' + season + ': ' + f1(mine[0].pre) + ' → ' + f1(mine[mine.length - 1].post) + '</td><td class="' + (net >= 0 ? 'pos' : 'neg') + '">' + sgn(net) +
+      '</td><td>' + f1(mine[mine.length - 1].post) + '</td></tr></tfoot></table></div>' +
+    '<p class="section-note">Change = K × (S − E) × M, with K = ' + K + '; S = 1 for a win, ½ tie, 0 loss; E is the pregame expectation (home field included); ' +
+      'M grows with the margin of victory. Season high ' + f1(Math.max(...posts)) + ', low ' + f1(Math.min(...posts)) +
+      '. All-time since 1980: peak ' + at(peak) + ', low ' + at(low) + '.</p>' +
+    '<h3 class="an-title">CoE 2.0</h3><div id="tp-ledger-coe"><div class="empty-note">Loading&hellip;</div></div>';
+  fillCoeLedger(tp, team, season);
+}
+
+function fillCoeLedger(tp, team, season) {
+  const target = () => document.getElementById('tp-ledger-coe');
+  const ok = () => state.view === 'team' && teamPageState.teamId === team.id && (teamPageState.ledgerSeason ?? season) === season && target();
+  Promise.all([loadSeasonGames(season), loadGameDetails(season)]).then(([data, details]) => {
+    if (!ok()) return;
+    if (!details) { target().innerHTML = '<div class="empty-note">Not available for ' + season + ': CoE 2.0 begins in 1985, once five prior seasons exist.</div>'; return; }
+    const C = details.params;
+    const games = data.games.filter(g => g.completed && (g.home_id === team.id || g.away_id === team.id));
+    let total = 0, mismatch = false;
+    const body = games.map(g => {
+      const home = g.home_id === team.id, d = details.byId.get(g.game_id);
+      const stored = home ? g.home_game_coe : g.away_game_coe;
+      if (!d || stored == null) return '';
+      const P = home ? d.home_hybrid_p : d.away_hybrid_p, rt = home ? d.home_result : d.away_result;
+      let base, bonus;
+      if (rt === 'WIN' || rt === 'OT_WIN') { base = C.win_base; bonus = C.difficulty_alpha * (1 - P); }
+      else if (rt === 'OT_LOSS') { base = C.ot_loss; bonus = 0; }
+      else if (rt === 'LOSS') { base = C.regulation_loss; bonus = 0; }
+      else { base = 1; bonus = C.tie_delta * (0.5 - P); }
+      if (Math.abs(base + bonus - stored) > 0.0006) mismatch = true;
+      total += stored;
+      const oppT = TEAM_BY_ID.get(String(home ? g.away_id : g.home_id));
+      const my = home ? g.home_score : g.away_score, opp = home ? g.away_score : g.home_score;
+      return '<tr><td>' + esc(fmtGameDate(g)) + '</td><td class="opp">' + (g.neutral || home ? 'vs ' : 'at ') + (oppT ? oppLink(oppT.name, season) : 'Unknown') +
+        '</td><td><a href="' + esc(gameHref(g.game_id, season)) + '">' + (RESULT_LABEL[rt] || rt) + ' ' + my + '–' + opp + '</a></td>' +
+        '<td>' + (P * 100).toFixed(1) + '%</td><td>' + Number(base).toFixed(3) + '</td><td>' + (bonus >= 0 ? '+' : '−') + Math.abs(bonus).toFixed(3) +
+        '</td><td>' + stored.toFixed(3) + '</td></tr>';
+    }).join('');
+    const seasonRow = (tp.seasonsByTeam.get(team.id) || new Map()).get(season);
+    const shown = seasonRow && seasonRow.coe2 != null ? seasonRow.coe2 : null;
+    target().innerHTML = '<div class="table-scroll" tabindex="0" role="region" aria-label="CoE ledger for ' + season + '"><table class="ledger"><thead><tr>' +
+      '<th scope="col">Date</th><th scope="col">Opponent</th><th scope="col">Result</th><th scope="col">Hybrid expectation (P)</th>' +
+      '<th scope="col">Base</th><th scope="col">Difficulty bonus</th><th scope="col">Game CoE</th></tr></thead><tbody>' + body + '</tbody>' +
+      '<tfoot><tr><td colspan="6">' + season + ' season total (sum of Game CoE)</td><td>' + total.toFixed(3) + '</td></tr></tfoot></table></div>' +
+      '<p class="section-note">Win: base ' + C.win_base + ' plus a difficulty bonus of ' + C.difficulty_alpha + ' × (1 − P), so a less likely win earns more. ' +
+      'Overtime loss ' + C.ot_loss + ', regulation loss ' + C.regulation_loss + '; a tie is 1 + ' + C.tie_delta + ' × (0.5 − P). CoE 2.0 has no separate postseason bonus.' +
+      (shown != null ? ' The total ' + (Math.abs(shown - total) < 0.01 ? 'matches' : 'does NOT match')   /* per-game values are stored to 3 decimals */ + ' the season CoE 2.0 in Advanced Analytics (' + shown.toFixed(3) + ').' : '') +
+      (mismatch ? ' <b>Some rows don\'t reconcile with the current parameters; the model may need a rebuild.</b>' : '') +
+      ' Note: the playoff still uses CoE v1, which comes from an iterative whole-season calculation and can\'t be split into per-game amounts.</p>';
+  }).catch(() => { if (ok()) target().innerHTML = '<div class="empty-note">The CoE ledger could not be loaded.</div>'; });
+}
+
+document.getElementById('content').addEventListener('change', e => {
+  if (e.target.id !== 'tp-ledger-season' || !TP) return;
+  teamPageState.ledgerSeason = Number(e.target.value);
+  fillLedgerPanel(TP, resolveTeam(state.teamParam));
+  document.getElementById('tp-ledger-season')?.focus();
+});
+
+// ---------------- Methodology (Milestone D) ----------------
+// Plain English first, formulas on request. Every number comes from STATIC_MANIFEST.model_params,
+// which the build reads from config/model_config.json and from the code itself -- never typed here.
+function renderMethodology() {
+  const M = STATIC_MANIFEST.model_params || {};
+  const E = M.elo || {}, H = M.hybrid || {}, C2 = M.coe2 || {}, V1 = M.coe_v1 || {}, bids = M.playoff_bids || [];
+  const pw = V1.PHASE_WEIGHTS || {};
+  const bidText = bids.map(([lo, hi, n]) => (lo === hi ? 'rank ' + lo : 'ranks ' + lo + '–' + hi) + ': ' + n + ' bid' + (n === 1 ? ' (champion only)' : 's')).join('; ');
+  const f = (title, html) => '<details class="help"><summary>' + title + '</summary>' + html + '</details>';
+  return '<h2 class="view-title">How it works</h2><div class="panel method">' +
+    '<p>This site measures college football three different ways, on purpose kept separate: <b>Elo</b> asks how strong a team is right now; ' +
+    '<b>CoE</b> asks what a team has actually earned through results against the schedule it played; and the <b>efficiency stats</b> on team pages ' +
+    '(EPA, success rate) describe how well it played, independent of the scoreboard. Every number shown is computed once, from information available ' +
+    'before each game, and never rewritten later.</p>' +
+
+    '<h3>Elo: strength right now</h3><p>Every team carries a rating, starting at ' + E.initial_rating + '. Before each game, the gap between the two ' +
+    'ratings (plus a home-field bump for the home team, none at neutral sites) gives each side\'s chance of winning. Afterward, the winner takes points ' +
+    'from the loser: more for an upset than for an expected win, and more for a bigger margin. Between seasons every rating drifts part of the way back ' +
+    'toward ' + E.initial_rating + ', because rosters turn over. Team pages show every one of these steps in the Rating Ledger.</p>' +
+    f('The Elo formulas', '<div class="gp-formula">Expected result: E = 1 / (1 + 10<sup>(R<sub>opp</sub> − R<sub>team</sub>)/' + E.scale + '</sup>)  (home team gets +' + E.home_field + ')<br>' +
+      'Update: ΔR = K × (S − E) × M,  K = ' + E.k + ',  S = 1 win / ½ tie / 0 loss<br>' +
+      'Margin multiplier: M = ln(|margin| + 1) × ' + E.mov_c + ' / (' + E.mov_c + ' + ' + E.mov_d + ' × winner\'s pregame edge)  (M = 1 for ties)<br>' +
+      'Offseason: R<sub>next</sub> = ' + E.initial_rating + ' + ' + E.offseason_retention + ' × (R − ' + E.initial_rating + ')</div>' +
+      '<p>The winner always gains exactly what the loser drops. The margin multiplier shrinks when a heavy favorite wins big, so running up the score on a weak ' +
+      'opponent counts for less.</p>') +
+
+    '<h3>CoE v1: the playoff coefficient</h3><p>The coefficient that decides playoff bids, seeding and home field. It\'s solved for a whole season at once: ' +
+    'a win is worth the opponent\'s rating, a loss still earns a little, and the calculation repeats until the ratings settle. Postseason games count more. ' +
+    'Early in a season, when few games are played, ratings lean on the previous season so a couple of results can\'t swing everything.</p>' +
+    f('The CoE v1 details', '<ul><li>' + V1.ITERATIONS + ' passes; each win adds the opponent\'s rating × the game weight (regular ' + pw.regular + ', bowl ' + pw.bowl +
+      ', CFP ' + pw.cfp + '); each loss adds ' + V1.LOSS_PENALTY + ' × that amount.</li>' +
+      '<li>Early-season damping: full weight after ' + V1.CONFIDENCE_GAMES + ' games; before that the result is blended with the prior season ' +
+      '(regressed ' + V1.PRIOR_REGRESSION + ' of the way to average).</li>' +
+      '<li>The five-year CoE sums seasons Y−' + (V1.ROLLING_YEARS - 1) + ' through Y — <b>including the current season</b> — ' +
+      (V1.USE_WITHIN_WINDOW_DECAY ? 'each year weighted ' + V1.WITHIN_WINDOW_DECAY_BASE + '<sup>age</sup>' : 'unweighted') + '.</li>' +
+      '<li>A conference\'s rating is the sum of its members\' ratings, <b>including games against each other</b>.</li></ul>' +
+      '<p>Because v1 is solved all at once, it can\'t be split into a per-game amount; that\'s what CoE 2.0 adds.</p>') +
+
+    '<h3>CoE 2.0: achievement, game by game (experimental)</h3><p>Every game earns a Game CoE when it\'s played. A win is worth at least ' + C2.win_base +
+    ', plus a bonus for how unlikely it was; losses earn nothing (' + C2.ot_loss + ' in overtime). "How unlikely" uses a hybrid rating that blends current ' +
+    'Elo with the last five completed seasons of CoE, so beating a team that is strong now <i>and</i> has a track record is worth the most. ' +
+    'A season\'s CoE 2.0 is simply the sum of its games, which the Rating Ledger shows row by row. CoE 2.0 is shown alongside the playoff model but does not ' +
+    'drive it yet.</p>' +
+    f('The CoE 2.0 formulas', '<div class="gp-formula">Hybrid strength = ' + H.elo_weight + ' × z(Elo) + ' + H.coe_weight + ' × z(five prior seasons of CoE)<br>' +
+      'P = the win expectation those hybrid ratings imply (home field included)<br>' +
+      'Win: G = ' + C2.win_base + ' + ' + C2.difficulty_alpha + ' × (1 − P)   OT loss: ' + C2.ot_loss + '   Loss: ' + C2.regulation_loss +
+      '   Tie: 1 + ' + C2.tie_delta + ' × (0.5 − P)</div>' +
+      '<p>The five-season CoE is frozen before the season starts, so this season\'s results never change how earlier games were valued. It begins in 1985, ' +
+      'once five prior seasons exist.</p>') +
+
+    '<h3>The playoff model</h3><p>Conferences are ranked by five-year conference CoE, and the rank sets how many bids each gets (' + esc(bidText) +
+    '). Every conference champion qualifies; independents qualify only if their own CoE beats the weakest at-large team. Seeding and home field follow team CoE. ' +
+    'Simulated brackets are always labeled as simulations and kept apart from real results.</p>' +
+
+    '<h3>Rules the data follows</h3><ul>' +
+    '<li>Win probabilities and ratings shown for past games are the values stored <b>before</b> kickoff, never recomputed with today\'s ratings.</li>' +
+    '<li>Scheduled games never change Elo, CoE or standings.</li>' +
+    '<li>Missing data is shown as unavailable, never as zero.</li>' +
+    '<li>Real history (bowls, CFP, national titles) and model history (simulated playoffs) are always shown separately.</li>' +
+    '<li>Games are FBS vs. FBS from CollegeFootballData.com, 1980 on. Kickoff times exist from 2001; advanced stats from 2001; CoE 2.0 from 1985.</li></ul>' +
+    '<p class="section-note">These parameters are read from the model\'s configuration and code each time the site is built, so this page always describes the model that produced the numbers you see.</p></div>';
+}
+
 // ---------------- Game pages (Milestone C) ----------------
 // One reusable view keyed by game id. Every number is a stored, point-in-time value from
 // the exports -- the page never recomputes Elo or CoE; formulas are shown with the stored
@@ -2559,6 +2755,7 @@ function render() {
   if (state.view === 'team') { content.innerHTML = renderTeamPage(state.teamParam); hydrateTeamPage(); return; }
   if (state.view === 'game') { content.innerHTML = renderGamePage(); hydrateGamePage(version); return; }
   if (state.section === 'home') content.innerHTML = renderHome();
+  else if (state.section === 'methodology') content.innerHTML = renderMethodology();
   else if (state.section === 'teams') { content.innerHTML = renderTeamDirectory(); hydrateDirectory(version); }
   else if (state.section === 'games') { content.innerHTML = renderGames(); hydrateGames(version); }
   else if (state.section === 'rankings') {

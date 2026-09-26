@@ -169,7 +169,7 @@ def load_elo_rows(conn: sqlite3.Connection) -> list[tuple]:
         """
         SELECT e.game_id, e.team_id, e.pregame_elo, e.opponent_pregame_elo,
                e.elo_expectation, e.elo_change, e.postgame_elo,
-               g.season_year, g.game_date
+               g.season_year, g.game_date, e.mov_multiplier
         FROM elo_game_history e
         JOIN games g ON g.game_id = e.game_id
         WHERE g.home_score IS NOT NULL AND g.away_score IS NOT NULL
@@ -223,7 +223,7 @@ def build_team_pages(conn: sqlite3.Connection, champions: list[dict] | None = No
     # ---- per team-season analytics ----
     acc: dict = {}
     by_team: dict = defaultdict(list)
-    for gid, tid, pre, opp_pre, exp, chg, post, season, _date in elo_rows:
+    for gid, tid, pre, opp_pre, exp, chg, post, season, _date, _mov in elo_rows:
         if gid not in game_by_id:
             continue
         by_team[tid].append((gid, pre, opp_pre, exp, chg, post, season))
@@ -313,8 +313,10 @@ def build_team_pages(conn: sqlite3.Connection, champions: list[dict] | None = No
         # date-only seasons or when kickoff times haven't been fetched (see export_static_data.kickoff_map).
         "games": [[g[0], g[1], g[2], g[3], g[4], g[5], g[6], g[7], g[8],
                    PHASE_CODE.get(g[9], 0), g[10], kickoffs.get(g[0], (None, None))[0]] for g in games],
-        "elo": [[r[0], r[1], round(r[2], 1), round(r[3], 1), round(r[4], 3), round(r[5], 1), round(r[6], 1)]
-                for r in elo_rows if r[0] in game_by_id],
+        # mov_multiplier appended LAST (position 7) for the Elo ledger; existing positions never move.
+        # Expectation kept to 4 decimals so a ledger row's K x (S - E) x M reproduces the stored change.
+        "elo": [[r[0], r[1], round(r[2], 1), round(r[3], 1), round(r[4], 4), round(r[5], 2), round(r[6], 1),
+                 None if r[9] is None else round(r[9], 4)] for r in elo_rows if r[0] in game_by_id],
         "team_seasons": team_seasons,
         "swings": swings,
         "history": history,

@@ -147,3 +147,11 @@ test('game and team pages return to each other, one level deep (URLs can never n
   assert.ok(h.length < 120, 'return URLs stay short: ' + h.length);
   assert.equal(read('#team=byu&from=' + encodeURIComponent('#game=abc')).returnTo, '#section=teams');
 });
+
+test('the methodology page has a stable URL and ignores seasons', () => {
+  const r = read('#section=methodology&season=1999');
+  assert.equal(r.section, 'methodology'); assert.equal(r.view, 'tab');
+  assert.equal(r.year, 2026);
+  assert.equal(hashFor(r), '#section=methodology');
+  assert.deepEqual(read(hashFor(r)), r);
+});

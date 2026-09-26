@@ -20,10 +20,13 @@ def _db(tmp_path, games, elo):
     conn.execute("""CREATE TABLE games (game_id INTEGER PRIMARY KEY, season_year INTEGER, game_date TEXT,
         week INTEGER, home_team_id INTEGER, away_team_id INTEGER, home_score INTEGER, away_score INTEGER,
         neutral_site INTEGER, game_phase TEXT, went_ot INTEGER)""")
+    # mov_multiplier mirrors the real schema; left NULL here, which also exercises the export's
+    # "missing value -> null, never a crash" path.
     conn.execute("""CREATE TABLE elo_game_history (game_id INTEGER, team_id INTEGER, pregame_elo REAL,
-        opponent_pregame_elo REAL, elo_expectation REAL, elo_change REAL, postgame_elo REAL)""")
+        opponent_pregame_elo REAL, elo_expectation REAL, elo_change REAL, postgame_elo REAL, mov_multiplier REAL)""")
     conn.executemany("INSERT INTO games VALUES (?,?,?,?,?,?,?,?,?,?,?)", games)
-    conn.executemany("INSERT INTO elo_game_history VALUES (?,?,?,?,?,?,?)", elo)
+    conn.executemany("INSERT INTO elo_game_history (game_id, team_id, pregame_elo, opponent_pregame_elo, "
+                     "elo_expectation, elo_change, postgame_elo) VALUES (?,?,?,?,?,?,?)", elo)
     conn.commit()
     return conn
 
@@ -115,7 +118,7 @@ def test_elo_history_is_chronological_and_continuous(real):
     _, data = real
     season_of = {g[0]: g[1] for g in data["games"]}
     prev = {}
-    for gid, tid, pre, _opp, _exp, _chg, post in data["elo"]:
+    for gid, tid, pre, _opp, _exp, _chg, post, *_later_fields in data["elo"]:
         key = (tid, season_of[gid])
         if key in prev:
             assert pre == pytest.approx(prev[key], abs=0.11), f"team {tid} season {key[1]} game {gid}"

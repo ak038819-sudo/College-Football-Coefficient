@@ -6,7 +6,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
   const views = {
-    home: [], games: [], teams: [],
+    home: [], games: [], teams: [], methodology: [],
     rankings: ['elo', 'team-coe', 'conference-coe', 'ap', 'cfp'],
     playoff: ['field', 'bracket', 'odds', 'history']
   };
@@ -35,7 +35,7 @@
     const years = seasonsFor(section, config);
     let year = Number(p.get('season'));
     if (!p.has('season') || !years.includes(year)) year = latest(years);
-    if (section === 'home' || section === 'teams') year = latest(config.yearsAll || []);
+    if (section === 'home' || section === 'teams' || section === 'methodology') year = latest(config.yearsAll || []);
     const season = (config.gameSeasons || []).find(s => s.season === year);
     const status = ['upcoming', 'completed', 'all'].includes(p.get('status')) ? p.get('status')
       : season && season.scheduled > 0 ? 'upcoming' : 'completed';

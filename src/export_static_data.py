@@ -33,6 +33,7 @@ otherwise `date`.
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import shutil
@@ -166,6 +167,43 @@ def build_series(payloads: dict) -> dict:
     return {k: {"shard": k, "fields": SERIES_FIELDS, "pairs": dict(v)} for k, v in shards.items()}
 
 
+def _code_constants(path: Path, names: list) -> dict:
+    """Values of simple NAME = <literal> assignments anywhere in a module, read from its syntax
+    tree (never imported, never hand-copied) -- so the methodology page shows what the code uses."""
+    out = {}
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+            name = node.targets[0].id
+            if name in names and name not in out:
+                try:
+                    out[name] = ast.literal_eval(node.value)
+                except ValueError:
+                    pass
+    return out
+
+
+def _argparse_default(path: Path, flag: str):
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.Call) and node.args and isinstance(node.args[0], ast.Constant) and node.args[0].value == flag:
+            for kw in node.keywords:
+                if kw.arg == "default":
+                    return ast.literal_eval(kw.value)
+    return None
+
+
+def model_params() -> dict:
+    """The live parameters behind every number on the site, for the methodology page."""
+    cfg = json.loads((REPO / "config" / "model_config.json").read_text(encoding="utf-8"))
+    clean = lambda d: {k: v for k, v in (d or {}).items() if not k.startswith("_")}
+    v1_path = REPO / "src" / "build_coefficients.py"
+    v1 = _code_constants(v1_path, ["ITERATIONS", "PHASE_WEIGHTS", "ROLLING_YEARS", "USE_WITHIN_WINDOW_DECAY",
+                                   "WITHIN_WINDOW_DECAY_BASE", "CONFIDENCE_GAMES", "LOSS_PENALTY"])
+    v1["PRIOR_REGRESSION"] = _argparse_default(v1_path, "--prior-regression")
+    bids = _code_constants(REPO / "src" / "coefficients" / "select_playoff_field_v2.py", ["YEAR2_BIDS"]).get("YEAR2_BIDS", {})
+    return {"elo": clean(cfg.get("elo")), "hybrid": clean(cfg.get("hybrid")), "coe2": clean(cfg.get("coe")),
+            "coe_v1": v1, "playoff_bids": [[lo, hi, n] for (lo, hi), n in sorted(bids.items())]}
+
+
 def build_search_index(conn: sqlite3.Connection, payloads: dict) -> dict:
     names = dict(conn.execute("SELECT team_id, team_name FROM teams"))
     aliases = defaultdict(list)
@@ -212,7 +250,7 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
         v = _write_js(out_dir / "series" / f"{k}.js", f"(window.__CFB_SERIES__=window.__CFB_SERIES__||{{}})[{k}]", p)
         series.append(f"data/series/{k}.js?v={v}")
     manifest = {"seasons": seasons, "search_index": f"data/search_index.js?v={sv}", "game_fields": FIELDS,
-                "details": details, "series": series, "series_shards": SERIES_SHARDS}
+                "details": details, "series": series, "series_shards": SERIES_SHARDS, "model_params": model_params()}
     (out_dir / "static_manifest.json").write_text(json.dumps(manifest, separators=(",", ":")), encoding="utf-8")
     return manifest
 
