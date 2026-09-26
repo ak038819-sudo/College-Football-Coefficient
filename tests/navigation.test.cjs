@@ -155,3 +155,108 @@ test('the methodology page has a stable URL and ignores seasons', () => {
   assert.equal(hashFor(r), '#section=methodology');
   assert.deepEqual(read(hashFor(r)), r);
 });
+
+// ---------------- Milestone E: detail-page tabs and conference pages ----------------
+
+test('team pages carry a tab, defaulting to overview and left out of the URL', () => {
+  const plain = read('#team=byu');
+  assert.equal(plain.tab, 'overview');
+  assert.equal(hashFor(plain), '#team=byu');
+  for (const tab of ['schedule', 'history', 'analytics']) {
+    const r = read('#team=byu&tab=' + tab);
+    assert.equal(r.view, 'team');
+    assert.equal(r.section, 'teams');
+    assert.equal(r.tab, tab);
+    assert.equal(hashFor(r), '#team=byu&tab=' + tab);
+    assert.deepEqual(read(hashFor(r)), r);
+  }
+  // An unknown or conference-only tab falls back to the default, never to a blank page.
+  for (const bad of ['', 'members', 'external', 'nope', '__proto__', 'constructor'])
+    assert.equal(read('#team=byu&tab=' + bad).tab, 'overview');
+});
+
+test('a team-page tab never revives the pre-A1 tab names', () => {
+  // #tab=history used to mean the Playoff history view; beside #team= it is the team's own tab.
+  const r = read('#team=byu&tab=history');
+  assert.equal(r.section, 'teams');
+  assert.equal(r.view, 'team');
+  assert.equal(r.tab, 'history');
+  assert.equal(r.subview, '');
+  assert.equal(read('#tab=history').section, 'playoff');      // unchanged without #team=
+  assert.equal(read('#tab=history').subview, 'history');
+});
+
+test('#conference=<slug> opens a conference page in the Teams section', () => {
+  const r = read('#conference=sec');
+  assert.equal(r.view, 'conference');
+  assert.equal(r.section, 'teams');
+  assert.equal(r.conferenceParam, 'sec');
+  assert.equal(r.tab, 'overview');
+  assert.equal(r.returnTo, '#section=teams');
+  assert.equal(r.year, 2026);
+  assert.equal(hashFor(r), '#conference=sec');
+  assert.deepEqual(read(hashFor(r)), r);
+  for (const tab of ['members', 'history', 'external']) {
+    const t = read('#conference=big-12&tab=' + tab);
+    assert.equal(t.tab, tab);
+    assert.deepEqual(read(hashFor(t)), t);
+  }
+  for (const bad of ['schedule', 'analytics', 'nope']) assert.equal(read('#conference=sec&tab=' + bad).tab, 'overview');
+});
+
+test('a conference page ignores the Games explorer filters and season', () => {
+  const r = read('#conference=sec&season=1980&week=3&school=byu&conf=SEC&status=all&q=x&game=5');
+  assert.equal(r.year, 2026);
+  assert.equal(r.week, null); assert.equal(r.team, null); assert.equal(r.conf, null);
+  assert.equal(r.query, ''); assert.equal(r.game, null); assert.equal(r.gameParam, null);
+  assert.equal(hashFor(r), '#conference=sec');
+});
+
+test('a team parameter always wins, and #section= keeps its own meaning', () => {
+  assert.equal(read('#team=byu&conference=sec').view, 'team');
+  assert.equal(read('#team=byu&conference=sec').conferenceParam, null);
+  assert.equal(read('#conference=sec&game=5').view, 'conference');
+  // #section= is a section URL, so a stray conference parameter cannot hijack it.
+  const s = read('#section=rankings&view=conference-coe&conference=sec');
+  assert.equal(s.view, 'tab'); assert.equal(s.section, 'rankings'); assert.equal(s.conferenceParam, null);
+});
+
+test('team, conference and game pages return to each other, still one level deep', () => {
+  const pages = ['#team=byu', '#conference=sec', '#game=7&season=2025'];
+  for (const from of pages) {
+    for (const target of pages) {
+      if (target === from) continue;
+      const r = read(target + '&from=' + encodeURIComponent(from));
+      assert.equal(r.returnTo, from, target + ' <- ' + from);
+      assert.deepEqual(read(hashFor(r)), r);
+    }
+  }
+  // A page is never its own return target, and a nested return address is dropped.
+  assert.equal(read('#conference=sec&from=' + encodeURIComponent('#conference=big-12')).returnTo, '#section=teams');
+  const nested = '#team=byu&from=' + encodeURIComponent('#section=rankings&view=elo&season=2020');
+  assert.equal(read('#conference=sec&from=' + encodeURIComponent(nested)).returnTo, '#team=byu');
+  // ...and a tab on the return target is dropped too, so a return URL can't grow.
+  assert.equal(read('#conference=sec&from=' + encodeURIComponent('#team=byu&tab=schedule')).returnTo, '#team=byu');
+  let h = '#conference=sec&tab=external';
+  for (let i = 0; i < 20; i++) {
+    const t = hashFor({ ...read('#team=byu&tab=schedule'), returnTo: h });
+    h = hashFor({ ...read('#conference=sec&tab=external'), returnTo: hashFor(read(t)) });
+  }
+  assert.ok(h.length < 120, 'return URLs stay short: ' + h.length);
+});
+
+test('conference pages reject unsafe and empty return addresses', () => {
+  for (const bad of ['https://example.com', 'javascript:alert(1)', '#section=teams&team=byu',
+    '#team=', '#game=abc', '#conference=', 'section=teams'])
+    assert.equal(read('#conference=sec&from=' + encodeURIComponent(bad)).returnTo, '#section=teams');
+});
+
+test('section routes carry no detail-page state', () => {
+  for (const hash of ['#section=home', '#section=games&season=2025&status=completed', '#section=rankings&view=elo']) {
+    const r = read(hash);
+    assert.equal(r.view, 'tab');
+    assert.equal(r.tab, '');
+    assert.equal(r.teamParam, null);
+    assert.equal(r.conferenceParam, null);
+  }
+});

@@ -11,10 +11,11 @@ import pytest
 from export_team_pages import build_team_pages
 
 # team_season row layout (see export_team_pages module docstring)
-TID, SEASON, GAMES, W, L, T, START, END, CHG, SOS, SOS_RANK, EXP, ACT, ABOVE, COE2, COE2_RANK = range(16)
+(TID, SEASON, GAMES, W, L, T, START, END, CHG, SOS, SOS_RANK, EXP, ACT, ABOVE,
+ COE2, COE2_RANK, CONF) = range(17)
 
 
-def _db(tmp_path, games, elo):
+def _db(tmp_path, games, elo, membership=()):
     db = tmp_path / "tp.db"
     conn = sqlite3.connect(str(db))
     conn.execute("""CREATE TABLE games (game_id INTEGER PRIMARY KEY, season_year INTEGER, game_date TEXT,
@@ -24,6 +25,11 @@ def _db(tmp_path, games, elo):
     # "missing value -> null, never a crash" path.
     conn.execute("""CREATE TABLE elo_game_history (game_id INTEGER, team_id INTEGER, pregame_elo REAL,
         opponent_pregame_elo REAL, elo_expectation REAL, elo_change REAL, postgame_elo REAL, mov_multiplier REAL)""")
+    # Milestone E: the team page names each season's own conference, so the export
+    # reads this table too.
+    conn.execute("""CREATE TABLE team_membership_by_season (team_id INTEGER, season_year INTEGER,
+        conference_real TEXT, is_fbs INTEGER)""")
+    conn.executemany("INSERT INTO team_membership_by_season VALUES (?,?,?,1)", membership)
     conn.executemany("INSERT INTO games VALUES (?,?,?,?,?,?,?,?,?,?,?)", games)
     conn.executemany("INSERT INTO elo_game_history (game_id, team_id, pregame_elo, opponent_pregame_elo, "
                      "elo_expectation, elo_change, postgame_elo) VALUES (?,?,?,?,?,?,?)", elo)
@@ -47,7 +53,10 @@ def synthetic(tmp_path):
         (3, 2, 1460.0, 1520.0, 0.50, 1.0, 1461.0), (3, 1, 1520.0, 1460.0, 0.50, -1.0, 1519.0),
         (4, 1, 1519.0, 1610.0, 0.30, 25.0, 1544.0), (4, 3, 1610.0, 1519.0, 0.70, -25.0, 1585.0),
     ]
-    conn = _db(tmp_path, games, elo)
+    # Team 1 changes conference between 2013 and 2015; team 3 has no membership row.
+    membership = [(1, 2013, "Old League"), (2, 2013, "Old League"),
+                  (1, 2015, "New League"), (2, 2015, "Old League")]
+    conn = _db(tmp_path, games, elo, membership)
     yield build_team_pages(conn)
     conn.close()
 
@@ -82,6 +91,14 @@ def test_swings_signs_and_results(synthetic):
     assert sw["losses"] == [2]            # the tie (game 3, -1.0) is excluded from both lists
     assert all(elo_by[(g, 1)][5] > 0 for g in sw["gains"])
     assert all(elo_by[(g, 1)][5] < 0 for g in sw["losses"])
+
+
+def test_each_team_season_names_that_seasons_conference(synthetic):
+    # Milestone E: a later realignment must never rewrite an older season's label.
+    assert _season(synthetic, 1, 2013)[CONF] == "Old League"
+    assert _season(synthetic, 1, 2015)[CONF] == "New League"
+    # No membership row means no conference, never a guess carried over from another season.
+    assert _season(synthetic, 3, 2013)[CONF] is None
 
 
 def test_pre_2014_cfp_phase_counts_as_bowl_not_cfp(synthetic):
@@ -135,6 +152,21 @@ def test_expected_wins_match_database_on_every_team_season(real):
     assert len(direct) == len(data["team_seasons"])
     for r in data["team_seasons"]:
         assert r[EXP] == pytest.approx(direct[(r[TID], r[SEASON])], abs=0.006)
+
+
+def test_every_team_season_names_its_conference(real):
+    """Guards export_team_pages.load_memberships' missing-table fallback: on the real
+    database every rated team-season has a membership row, so a silently empty
+    conference column would mean the team page lost its per-season conference."""
+    conn, data = real
+    if not conn.execute("SELECT COUNT(*) FROM team_membership_by_season").fetchone()[0]:
+        pytest.skip("team_membership_by_season is empty -- run run_pipeline.py first")
+    missing = [(r[TID], r[SEASON]) for r in data["team_seasons"] if r[CONF] is None]
+    known = dict(conn.execute("SELECT team_id || '-' || season_year, conference_real "
+                              "FROM team_membership_by_season WHERE conference_real IS NOT NULL"))
+    assert [m for m in missing if f"{m[0]}-{m[1]}" in known] == []
+    assert len(missing) < 0.01 * len(data["team_seasons"]), \
+        f"{len(missing)} of {len(data['team_seasons'])} team-seasons have no conference: {missing[:10]}"
 
 
 def test_real_swings_have_correct_signs(real):
