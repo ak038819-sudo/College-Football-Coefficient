@@ -35,7 +35,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import math
 import sqlite3
 import sys
 from collections import defaultdict
@@ -44,24 +43,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_elo import fetch_games_chronological, load_config, run_elo  # noqa: E402
 from srdiff import MOV, RAW_SRDIFF, RESULT_ONLY, XSRDIFF, XsrModel, build_layer  # noqa: E402
+# Brier, log loss and the calibration summary used to be computed privately in
+# this file. They now come from the shared harness (MODEL-07), which returns the
+# same numbers plus accuracy and skill, so a variant's score here is directly
+# comparable to run_validation.py's report.
+from validation import score  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 OUT_PATH = REPO / "data" / "processed" / "performance_layer_backtest.csv"
-EPS = 1e-12
-
-
-def score(pairs: list[tuple[float, float]]) -> dict:
-    """pairs of (predicted probability, actual outcome in {0, 0.5, 1})."""
-    if not pairs:
-        return {"n": 0, "brier": None, "log_loss": None, "calibration_error": None}
-    brier = sum((p - s) ** 2 for p, s in pairs) / len(pairs)
-    ll = -sum(s * math.log(max(p, EPS)) + (1 - s) * math.log(max(1 - p, EPS)) for p, s in pairs) / len(pairs)
-    bins = defaultdict(list)
-    for p, s in pairs:
-        bins[min(9, int(p * 10))].append((p, s))
-    cal = sum(len(v) * abs(sum(p for p, _ in v) / len(v) - sum(s for _, s in v) / len(v))
-              for v in bins.values()) / len(pairs)
-    return {"n": len(pairs), "brier": brier, "log_loss": ll, "calibration_error": cal}
 
 
 def evaluate(games, rows, from_season: int | None) -> dict:
@@ -70,12 +59,13 @@ def evaluate(games, rows, from_season: int | None) -> dict:
     made before that game, so nothing is recomputed here and nothing can peek
     at a rating formed later.
     """
-    result_of, season_of = {}, {}
+    result_of, season_of, home_of = {}, {}, {}
     for g in games:
         hs, aws = g["home_score"], g["away_score"]
         result_of[(g["game_id"], g["home_team_id"])] = 1.0 if hs > aws else 0.0 if aws > hs else 0.5
         result_of[(g["game_id"], g["away_team_id"])] = 1.0 if aws > hs else 0.0 if hs > aws else 0.5
         season_of[g["game_id"]] = g["season_year"]
+        home_of[g["game_id"]] = g["home_team_id"]
 
     pairs, deltas, mults, by_model = [], [], [], defaultdict(int)
     seen_games = set()
@@ -83,7 +73,16 @@ def evaluate(games, rows, from_season: int | None) -> dict:
         gid, tid, expectation, m, delta = r[0], r[1], r[4], r[5], r[6]
         if from_season is not None and season_of[gid] < from_season:
             continue
-        pairs.append((expectation, result_of[(gid, tid)]))
+        # One prediction per game, from the home side, matching run_validation.py.
+        # Both rows of a game carry mirrored information, so scoring both leaves
+        # Brier and log loss untouched -- but it does NOT leave the binned
+        # calibration error untouched, because a bin holding the favourites is
+        # not the mirror of the bin holding the underdogs. This file used to
+        # score both, so its calibration column was not comparable with the
+        # harness's. |dElo| is unaffected either way: an Elo update is zero-sum,
+        # so the two rows of a game differ only in sign.
+        if tid == home_of[gid]:
+            pairs.append((expectation, result_of[(gid, tid)]))
         deltas.append(abs(delta))
         if gid not in seen_games:          # M is per game, not per team
             seen_games.add(gid)
@@ -154,7 +153,8 @@ def main() -> None:
         results.append(r)
 
     fields = ["variant", "beta", "m_min", "m_max", "games", "n", "brier", "log_loss",
-              "calibration_error", "mean_abs_delta", "mean_multiplier", "paths"]
+              "accuracy", "base_rate", "brier_skill", "calibration_error",
+              "mean_abs_delta", "mean_multiplier", "paths"]
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", newline="", encoding="utf-8") as f:

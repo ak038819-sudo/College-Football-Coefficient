@@ -38,10 +38,10 @@ from __future__ import annotations
 import argparse
 import csv
 import itertools
-import json
 import sqlite3
 
 from build_elo import run_elo, fetch_games_chronological, load_config
+from validation import brier_score as brier_of_pairs
 
 K_GRID = [10, 15, 20, 25, 30, 35, 40]
 HFA_GRID = [0, 25, 50, 75, 100]
@@ -53,11 +53,16 @@ def brier_score(games: list, cfg: dict) -> float:
     Lower is better. Scores using each game's HOME team perspective only
     (the away perspective carries identical information -- E_away = 1 -
     E_home, S_away = 1 - S_home -- scoring both would just double-count).
+
+    The metric itself lives in src/validation.py (MODEL-07), shared with the
+    other backtests and the validation harness, so "Brier" means one thing
+    across the repository. This function's job is only to run the engine for a
+    candidate config and pair each prediction with what happened.
     """
     rows, _, _ = run_elo(games, cfg)
     game_lookup = {g["game_id"]: g for g in games}
 
-    squared_errors = []
+    pairs = []
     for row in rows:
         game_id, team_id, _, _, e_this, *_ = row
         g = game_lookup[game_id]
@@ -72,9 +77,9 @@ def brier_score(games: list, cfg: dict) -> float:
         else:
             s_home = 0.5
 
-        squared_errors.append((s_home - e_this) ** 2)
+        pairs.append((e_this, s_home))
 
-    return sum(squared_errors) / len(squared_errors)
+    return brier_of_pairs(pairs)
 
 
 def main() -> None:

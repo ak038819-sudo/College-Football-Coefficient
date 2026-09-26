@@ -51,7 +51,10 @@ CI does the fetch/fit steps automatically on its scheduled refresh.
 
 `beta`, `m_min` and `m_max` in `config/model_config.json` are **placeholders, not
 calibrated values**. Set them from `backtest_performance_layer.py`'s
-walk-forward output, not from a handful of memorable games.
+walk-forward output, not from a handful of memorable games. That script's
+metrics now come from the shared validation harness (`docs/validation.md`), so a
+variant's score there is directly comparable to `run_validation.py`'s report on
+the live models.
 
 Watch the scale. MOV's multiplier averages well above 1; xSRDiff's sits near 1.
 On a synthetic rehearsal the mean M was 2.43 under MOV and 1.07 under xSRDiff,

@@ -38,6 +38,7 @@ import sqlite3
 
 from build_elo import load_config
 from build_hybrid_coefficients import load_team_ratings_by_season, compute_frozen_5yr_coe, compute_hybrid_rows
+from validation import brier_score as brier_of_pairs
 
 ELO_WEIGHT_GRID = [0.25, 0.40, 0.50, 0.60, 0.75, 0.80, 0.85, 0.90, 0.95, 1.0]
 
@@ -46,7 +47,7 @@ def brier_score_for_weight(elo_rows, frozen_5yr, team_id_to_name, elo_home_field
     hybrid_rows, _ = compute_hybrid_rows(elo_rows, frozen_5yr, team_id_to_name, elo_home_field, hybrid_cfg, coe_cfg)
     game_lookup = {r["game_id"]: r for r in elo_rows}
 
-    squared_errors = []
+    pairs = []
     seen = set()
     for row in hybrid_rows:
         game_id, team_id, elo_z, coe_z, os_strength, hybrid_rating, p_this, result_type, game_coe = row
@@ -64,9 +65,12 @@ def brier_score_for_weight(elo_rows, frozen_5yr, team_id_to_name, elo_home_field
         else:
             s_home = 0.5  # TIE -- structurally absent from 2000-2026, kept for completeness
 
-        squared_errors.append((s_home - p_this) ** 2)
+        pairs.append((p_this, s_home))
 
-    return sum(squared_errors) / len(squared_errors) if squared_errors else float("nan")
+    # The metric lives in src/validation.py (MODEL-07) so every backtest in the
+    # repository computes Brier the same way. None (no games scored) becomes nan
+    # here, which is what this script's callers already sort and print.
+    return brier_of_pairs(pairs) if pairs else float("nan")
 
 
 def main() -> None:
