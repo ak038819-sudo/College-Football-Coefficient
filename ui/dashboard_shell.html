@@ -2825,12 +2825,42 @@ function hydrateGamePage(version) {
           esc(hn) + ': ' + coeFormula(d.home_result, d.home_hybrid_p, P, g.home_game_coe) + '</div>' +
           '<p class="section-note">All inputs are the stored pregame values; later games never change this game\'s CoE. CoE 2.0 is the experimental layer; playoff selection still uses CoE v1.</p></details></div>';
       }
+      // ---- Efficiency: SRDiff / xSRDiff / SR+ (EXP-03, guide section 7) ----
+      // Every number is copied from what src/build_elo.py stored for this game;
+      // nothing here recomputes the model. Absent Success Rate renders N/A.
+      const pct1 = v => (v > 0 ? '+' : v < 0 ? '\u2212' : '\u00b1') + Math.abs(v * 100).toFixed(1) + '%';
+      const srPanel = (d && (d.home_sr_diff != null || d.away_sr_diff != null))
+        ? '<div class="panel" id="gp-efficiency"><h2 class="section-title">Efficiency vs. expectation</h2>' +
+          '<div class="table-scroll" tabindex="0" role="region" aria-label="Success Rate against expectation">' +
+          '<table class="gp-table"><thead><tr><th scope="col"></th>' +
+          '<th scope="col">' + esc(an) + '</th><th scope="col">' + esc(hn) + '</th></tr></thead><tbody>' +
+          [['Success Rate', 'success_rate', v => v == null ? 'N/A' : (v * 100).toFixed(1) + '%',
+            'Share of this team\u2019s plays that gained enough for the down and distance, in this game.'],
+           ['SRDiff', 'sr_diff', v => v == null ? 'N/A' : pct1(v),
+            'How much better this team performed by Success Rate than its opponent.'],
+           ['xSRDiff', 'xsr_diff', v => v == null ? 'N/A' : pct1(v),
+            'Expected Success Rate Differential based on the teams\u2019 pregame Elo strength and venue.'],
+           ['SR+', 'sr_plus', v => v == null ? 'N/A' : pct1(v),
+            'Actual SRDiff minus xSRDiff; positive means the team performed better than expected.']]
+            .map(([label, key, fmt, tip]) =>
+              '<tr><th scope="row" title="' + esc(tip) + '">' + label + '</th>' +
+              '<td>' + fmt(d['away_' + key]) + '</td><td>' + fmt(d['home_' + key]) + '</td></tr>').join('') +
+          '</tbody></table></div>' +
+          '<p class="section-note"><b>xSRDiff</b> is what the matchup implied before kickoff; <b>SR+</b> is how far ' +
+          'the team beat it. The two sides are mirror images by construction. ' +
+          (d.performance_model === 'xsrdiff'
+            ? 'The winner\u2019s SR+ set the Elo multiplier for this game.'
+            : 'This game\u2019s Elo used the <code>' + esc(d.performance_model || 'mov') + '</code> multiplier instead, so ' +
+              'these numbers are shown for context and did not move the rating.') +
+          ' Success Rate coverage begins in 2001; earlier games have none.</p></div>'
+        : '';
+
       const q = encodeURIComponent(an + ' vs ' + hn + ' ' + season + ' highlights');
       const more = '<div class="panel"><h2 class="section-title">More</h2><div class="gp-facts">' +
         '<div class="gp-fact"><b>Box score &amp; advanced stats</b>Not in this dataset yet.</div>' +
         (g.completed ? '<div class="gp-fact"><b>Highlights</b><a href="https://www.youtube.com/results?search_query=' + q + '" target="_blank" rel="noopener noreferrer">Search YouTube &rarr;</a></div>' : '') +
         '<div class="gp-fact"><b>Teams</b>' + (away ? teamLink(an, 'xs', season) : esc(an)) + ' ' + (home ? teamLink(hn, 'xs', season) : esc(hn)) + '</div></div></div>';
-      target().innerHTML = hero + '<div class="grid-2">' + eloPanel + coePanel + '</div>' +
+      target().innerHTML = hero + '<div class="grid-2">' + eloPanel + coePanel + '</div>' + srPanel +
         '<div class="panel" id="gp-series"><h2 class="section-title">Series history</h2><p class="empty-note">Loading meetings…</p></div>' + more;
       loadSeries(g.home_id, g.away_id).then(rows => {
         if (version === renderVersion) document.getElementById('gp-series').innerHTML = seriesHtml(rows, g, an, hn);

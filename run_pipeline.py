@@ -132,6 +132,13 @@ def main() -> None:
             run([python, "src/load_advanced.py", str(adv_path), "--db", str(DB_PATH)],
                 f"Load advanced stats: {adv_path.stem.replace('advanced_', '')}")
 
+        # PER-GAME advanced stats (EXP-03). Unlike the season file this IS model
+        # input: the xSRDiff performance layer reads Success Rate from it. Absent,
+        # build_elo.py takes its configured fallback for every game.
+        for gadv_path in sorted(Path("data/raw").glob("game_advanced_*.csv")):
+            run([python, "src/load_game_advanced.py", str(gadv_path), "--db", str(DB_PATH)],
+                f"Load per-game advanced stats: {gadv_path.stem.replace('game_advanced_', '')}")
+
         run(
             [python, "src/patch_known_membership_gaps.py", "--db", str(DB_PATH)],
             "Patch known conference-membership gaps",

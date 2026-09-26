@@ -132,12 +132,21 @@ jobs:
           SEASON=$(python3 src/current_season.py)
           echo "Refreshing season $SEASON"
           python3 src/fetch_cfbd_games.py "$SEASON"
+          # Per-game advanced stats (EXP-03). This is model input, not display
+          # data: the xSRDiff performance layer reads Success Rate from it. A
+          # failed fetch only warns and keeps the existing file, so the rebuild
+          # still succeeds with whatever coverage is already committed.
+          python3 src/fetch_cfbd_game_advanced.py "$SEASON"
 
       - name: Run full pipeline (bootstrap, load, ratings, standings)
         run: python3 run_pipeline.py --force
 
       - name: Build Elo, hybrid, and conference CoE 2.0 tables
         run: |
+          # Refit the xSRDiff expectation curve BEFORE Elo, so the new season is
+          # valued by a curve that includes it in its walk-forward history. A
+          # no-op (and a clean skip) until per-game Success Rate has been loaded.
+          python3 src/fit_xsrdiff.py || echo "xSRDiff curve not fitted; Elo will use its configured fallback."
           python3 src/build_elo.py
           python3 src/build_hybrid_coefficients.py
           python3 src/build_conference_coe2.py

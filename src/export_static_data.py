@@ -58,7 +58,13 @@ SEARCH_GAME_FIELDS = ["game_id", "season", "home_id", "away_id"]
 # Game pages (Milestone C). Loaded only when a game page opens.
 DETAIL_FIELDS = ["game_id",
                  "home_elo_z", "home_coe_z", "home_hybrid_rating", "home_hybrid_p", "home_result",
-                 "away_elo_z", "away_coe_z", "away_hybrid_rating", "away_hybrid_p", "away_result"]
+                 "away_elo_z", "away_coe_z", "away_hybrid_rating", "away_hybrid_p", "away_result",
+                 # xSRDiff performance layer (EXP-03), appended LAST so existing
+                 # positions never move. Null where the game has no per-game
+                 # Success Rate -- never 0, which would be a real claim.
+                 "home_success_rate", "home_sr_diff", "home_xsr_diff", "home_sr_plus",
+                 "away_success_rate", "away_sr_diff", "away_xsr_diff", "away_sr_plus",
+                 "performance_model"]
 SERIES_FIELDS = ["game_id", "season", "date", "kickoff_utc", "home_id", "away_id", "home_score", "away_score",
                  "p_home", "home_elo_change", "home_pre_elo", "away_pre_elo", "phase", "neutral", "ot"]
 SERIES_SHARDS = 32
@@ -139,6 +145,14 @@ def build_game_details(conn: sqlite3.Connection) -> dict:
         return {}
     side = {(g, t): (ez, cz, hr, p, rt) for g, t, ez, cz, hr, p, rt in conn.execute(
         "SELECT game_id, team_id, elo_z, coe_z, hybrid_rating, hybrid_expectation, result_type FROM hybrid_game_ratings")}
+    # The Elo engine's own stored performance-layer values (src/srdiff.py). Copied,
+    # never recomputed here -- and never recomputed in the browser either.
+    elo_cols = {r[1] for r in conn.execute("PRAGMA table_info(elo_game_history)")}
+    sr_side = {}
+    if {"sr_diff", "xsr_diff", "sr_plus", "performance_model"} <= elo_cols:
+        sr_side = {(g, t): (sr, d, x, plus, model) for g, t, sr, d, x, plus, model in conn.execute(
+            "SELECT game_id, team_id, success_rate_team, sr_diff, xsr_diff, sr_plus, performance_model "
+            "FROM elo_game_history")}
     cfg = json.loads((REPO / "config" / "model_config.json").read_text(encoding="utf-8"))
     params = {k: v for sec in ("coe", "hybrid") for k, v in cfg.get(sec, {}).items() if not k.startswith("_")}
     out = defaultdict(list)
@@ -148,7 +162,12 @@ def build_game_details(conn: sqlite3.Connection) -> dict:
         if not h or not a:
             continue                                     # e.g. the 1980-84 bootstrap: no CoE 2.0 yet
         r = lambda v: None if v is None else round(v, 4)
-        out[season].append([gid, r(h[0]), r(h[1]), r(h[2]), r(h[3]), h[4], r(a[0]), r(a[1]), r(a[2]), r(a[3]), a[4]])
+        hs_sr = sr_side.get((gid, home), (None, None, None, None, None))
+        as_sr = sr_side.get((gid, away), (None, None, None, None, None))
+        out[season].append([gid, r(h[0]), r(h[1]), r(h[2]), r(h[3]), h[4], r(a[0]), r(a[1]), r(a[2]), r(a[3]), a[4],
+                            r(hs_sr[0]), r(hs_sr[1]), r(hs_sr[2]), r(hs_sr[3]),
+                            r(as_sr[0]), r(as_sr[1]), r(as_sr[2]), r(as_sr[3]),
+                            hs_sr[4] or as_sr[4]])
     return {s: {"season": s, "fields": DETAIL_FIELDS, "params": params, "games": rows} for s, rows in out.items()}
 
 
@@ -201,7 +220,9 @@ def model_params() -> dict:
     v1["PRIOR_REGRESSION"] = _argparse_default(v1_path, "--prior-regression")
     bids = _code_constants(REPO / "src" / "coefficients" / "select_playoff_field_v2.py", ["YEAR2_BIDS"]).get("YEAR2_BIDS", {})
     return {"elo": clean(cfg.get("elo")), "hybrid": clean(cfg.get("hybrid")), "coe2": clean(cfg.get("coe")),
-            "coe_v1": v1, "playoff_bids": [[lo, hi, n] for (lo, hi), n in sorted(bids.items())]}
+            "coe_v1": v1, "playoff_bids": [[lo, hi, n] for (lo, hi), n in sorted(bids.items())],
+            # EXP-03: which performance multiplier the ratings on this page were built with.
+            "performance": clean(cfg.get("performance"))}
 
 
 # How people actually type a conference. Canonical name -> the other names that should
