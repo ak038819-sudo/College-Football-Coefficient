@@ -78,12 +78,6 @@
     line-height: 1;
   }
   .title-block h1 span { color: var(--amber); }
-  .title-block p {
-    margin: 6px 0 0;
-    color: var(--ink-dim);
-    font-size: 14px;
-    max-width: 46ch;
-  }
   .scope-note {
     font-family: var(--font-mono);
     font-size: 12px;
@@ -92,11 +86,19 @@
     line-height: 1.5;
   }
 
+  /* Tabs and the global search share one row, so the search sits with the
+     navigation rather than competing with the title. */
+  .nav-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    margin-bottom: 18px;
+  }
   nav.tabs {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
-    margin-bottom: 18px;
   }
   nav.tabs a {
     font-family: var(--font-display);
@@ -120,8 +122,8 @@
   .skip-link { position: absolute; left: -10000px; }
   .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   /* ---- Global search (Milestone A2) ---- */
-  .global-search { position: relative; flex: 1 1 280px; max-width: 440px; align-self: center; }
-  .global-search input { width: 100%; box-sizing: border-box; padding: 11px 12px; background: var(--panel-2); color: var(--ink);
+  .global-search { position: relative; flex: 1 1 260px; max-width: 380px; margin-left: auto; }
+  .global-search input { width: 100%; box-sizing: border-box; padding: 9px 12px; background: var(--panel-2); color: var(--ink);
     border: 1px solid var(--line); border-radius: 3px; font: inherit; }
   .search-results { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20; max-height: 70vh; overflow-y: auto;
     background: var(--panel); border: 1px solid var(--line); border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); padding: 6px 0; }
@@ -132,7 +134,6 @@
   .search-hit .hit-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .search-note { color: var(--ink-dim); font-size: 13px; padding: 8px 12px; margin: 0; }
   /* ---- Explainability (Milestone D) ---- */
-  .tabs a.tab-secondary { margin-left: auto; font-size: 13px; border-style: dashed; }
   .ledger-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 10px; }
   .ledger-head select { padding: 6px 8px; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 3px; font: inherit; }
   .ledger-note { background: var(--panel-2); border-radius: 3px; padding: 10px 12px; font-size: 13.5px; margin: 8px 0 12px; line-height: 1.6; }
@@ -229,11 +230,10 @@
   .section-note { color: var(--ink-dim); font-size: 13px; line-height: 1.5; margin: 0 0 16px; }
   #content, .panel { min-width: 0; }
   .table-scroll { max-width: 100%; overflow-x: auto; }
-  .home-links { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
-  .home-links a { color: var(--amber); }
   @media (max-width: 520px) {
     .wrap { padding: 20px 12px 60px; }
-    nav.tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
+    .nav-row { display: block; }
+    nav.tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin-bottom: 10px; }
     nav.tabs a { padding: 9px 3px; font-size: 13px; text-align: center; }
     .panel { padding: 14px; }
     .subnav a { padding: 9px 8px; font-size: 14px; }
@@ -756,15 +756,6 @@
   <header class="top">
     <div class="title-block">
       <h1>CoE <span>Playoff Model</span></h1>
-      <p>An iterative, opponent-strength coefficient replacing the poll — conference standings decide who qualifies, CoE decides seeding and home field.</p>
-    </div>
-    <div class="global-search" role="search">
-      <label class="visually-hidden" for="global-search">Search teams, games and seasons</label>
-      <input type="search" id="global-search" autocomplete="off" spellcheck="false" maxlength="150"
-             placeholder="Search teams, conferences, games, seasons  ( / )"
-             aria-controls="search-results" aria-expanded="false" aria-describedby="search-status">
-      <div id="search-results" class="search-results" hidden></div>
-      <p id="search-status" class="visually-hidden" aria-live="polite"></p>
     </div>
     <div class="scope-note">
       <span id="coverage-caption"></span><br>
@@ -772,15 +763,25 @@
     </div>
   </header>
 
-  <nav class="tabs" id="tabs" aria-label="Primary">
-    <a data-section="home" href="#section=home">Home</a>
-    <a data-section="games" href="#section=games">Games</a>
-    <a data-section="teams" href="#section=teams">Teams</a>
-    <a data-section="rankings" href="#section=rankings">Rankings</a>
-    <a data-section="playoff" href="#section=playoff">Playoff</a>
-    <a data-section="coverage" href="#section=coverage" class="tab-secondary">Data coverage</a>
-    <a data-section="methodology" href="#section=methodology" class="tab-secondary">How it works</a>
-  </nav>
+  <div class="nav-row">
+    <nav class="tabs" id="tabs" aria-label="Primary">
+      <a data-section="home" href="#section=home">Home</a>
+      <a data-section="games" href="#section=games">Games</a>
+      <a data-section="teams" href="#section=teams">Teams</a>
+      <a data-section="rankings" href="#section=rankings">Rankings</a>
+      <a data-section="playoff" href="#section=playoff">Playoff</a>
+      <a data-section="coverage" href="#section=coverage">Data coverage</a>
+      <a data-section="methodology" href="#section=methodology">How it works</a>
+    </nav>
+    <div class="global-search" role="search">
+      <label class="visually-hidden" for="global-search">Search teams, games and seasons</label>
+      <input type="search" id="global-search" autocomplete="off" spellcheck="false" maxlength="150"
+             placeholder="Search teams, games, seasons  ( / )"
+             aria-controls="search-results" aria-expanded="false" aria-describedby="search-status">
+      <div id="search-results" class="search-results" hidden></div>
+      <p id="search-status" class="visually-hidden" aria-live="polite"></p>
+    </div>
+  </div>
 
   <nav class="subnav" id="subnav" aria-label="Section views"></nav>
   <div class="year-row" id="year-row"></div>
@@ -2595,9 +2596,7 @@ function renderPollsPanel() {
 }
 
 function renderHome() {
-  return '<h2 class="view-title">Home</h2><div class="home-links">' +
-    '<a href="#section=games">Browse games &rarr;</a><a href="#section=teams">Find a team &rarr;</a>' +
-    '<a href="#section=rankings">Explore rankings &rarr;</a></div>' +
+  return '<h2 class="view-title">Home</h2>' +
     '<div class="home-grid"><div class="home-main">' + renderUpcomingPanel() + '</div>' +
     '<aside class="home-side" aria-label="Rankings">' + renderEloTop25() + renderConferenceBoard() + renderPollsPanel() + '</aside></div>';
 }
