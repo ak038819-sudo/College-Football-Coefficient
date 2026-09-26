@@ -155,6 +155,9 @@ jobs:
           # Season rollups + explicit bonuses, and the conference five-season
           # (entering) value. Depends on the game awards above.
           python3 src/build_coe2_rollups.py
+          # Validation report (MODEL-07): one versioned file per configuration,
+          # so a model change can be diffed against the run before it.
+          python3 src/run_validation.py
 
       - name: Rebuild the dashboard
         run: python3 build_dashboard.py --draw-seed 1

@@ -35,7 +35,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import math
 import sqlite3
 import sys
 from collections import defaultdict
@@ -44,24 +43,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_elo import fetch_games_chronological, load_config, run_elo  # noqa: E402
 from srdiff import MOV, RAW_SRDIFF, RESULT_ONLY, XSRDIFF, XsrModel, build_layer  # noqa: E402
+# One definition of Brier/log loss/calibration for the whole project (MODEL-07),
+# so a score here means exactly what it means in src/run_validation.py.
+from validation import score_predictions as score  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 OUT_PATH = REPO / "data" / "processed" / "performance_layer_backtest.csv"
-EPS = 1e-12
-
-
-def score(pairs: list[tuple[float, float]]) -> dict:
-    """pairs of (predicted probability, actual outcome in {0, 0.5, 1})."""
-    if not pairs:
-        return {"n": 0, "brier": None, "log_loss": None, "calibration_error": None}
-    brier = sum((p - s) ** 2 for p, s in pairs) / len(pairs)
-    ll = -sum(s * math.log(max(p, EPS)) + (1 - s) * math.log(max(1 - p, EPS)) for p, s in pairs) / len(pairs)
-    bins = defaultdict(list)
-    for p, s in pairs:
-        bins[min(9, int(p * 10))].append((p, s))
-    cal = sum(len(v) * abs(sum(p for p, _ in v) / len(v) - sum(s for _, s in v) / len(v))
-              for v in bins.values()) / len(pairs)
-    return {"n": len(pairs), "brier": brier, "log_loss": ll, "calibration_error": cal}
 
 
 def evaluate(games, rows, from_season: int | None) -> dict:

@@ -1,0 +1,1084 @@
+{
+  "achievement": {
+    "conference_behavior": {
+      "conferences": 11,
+      "external_games_counted": 18273,
+      "internal_regular_season_games": 36304,
+      "reading": "Conference strength counts only games against the outside world, so the 36,304 intra-conference regular-season team-games must not appear in the counted total. Spread shows whether the measure separates conferences at all.",
+      "season": 2026,
+      "spread": 62.553,
+      "stdev": 21.328
+    },
+    "cupcake_resistance": {
+      "reading": "It takes about 1.26 wins over bottom-20% opponents to match one win over a top-20% opponent. Higher is more resistant to schedule padding; a value near 1 would mean a soft schedule is as good as a hard one.",
+      "weak_wins_per_elite_win": 1.265
+    },
+    "edge_cases": {
+      "negative_season_totals": 0,
+      "reading": "An undefeated team against nobody should still score below a strong team against everybody; a winless season should not go negative under a model whose losses are worth zero; a one-game season should be small, not extrapolated.",
+      "single_game_season": {
+        "coe": 3.913,
+        "season": 2026,
+        "team_id": 140
+      },
+      "undefeated_vs_weakest_schedule": {
+        "coe": 30.292,
+        "games": 12,
+        "season": 1998,
+        "sos": 1424.9,
+        "team_id": 48
+      },
+      "winless_vs_hardest_schedule": {
+        "coe": 0.0,
+        "games": 11,
+        "season": 2013,
+        "sos": 1655.2,
+        "team_id": 5
+      },
+      "zero_season_totals": 132
+    },
+    "elite_win_reward": {
+      "elite_n": 5433,
+      "elite_win_mean": 3.0701,
+      "opponent_elo_cutoffs": [
+        1288.9,
+        1610.1
+      ],
+      "ratio": 1.2646,
+      "reading": "Ratio above 1 means beating a strong team is worth more than beating a weak one. A ratio near 1 would mean opponent quality barely matters.",
+      "weak_n": 5433,
+      "weak_win_mean": 2.4277
+    },
+    "historical_overlap": {
+      "overlap_rate": 0.5,
+      "per_season": [
+        {
+          "model_top": 4,
+          "overlap": 2,
+          "season": 2014,
+          "selected": 4
+        },
+        {
+          "model_top": 4,
+          "overlap": 2,
+          "season": 2015,
+          "selected": 4
+        },
+        {
+          "model_top": 4,
+          "overlap": 1,
+          "season": 2016,
+          "selected": 4
+        },
+        {
+          "model_top": 4,
+          "overlap": 1,
+          "season": 2017,
+          "selected": 4
+        },
+        {
+          "model_top": 4,
+          "overlap": 2,
+          "season": 2018,
+          "selected": 4
+        },
+        {
+          "model_top": 4,
+          "overlap": 2,
+          "season": 2019,
+          "selected": 4
+        },
+        {
+          "model_top": 4,
+          "overlap": 1,
+          "season": 2020,
+          "selected": 4
+        },
+        {
+          "model_top": 4,
+          "overlap": 2,
+          "season": 2021,
+          "selected": 4
+        },
+        {
+          "model_top": 4,
+          "overlap": 2,
+          "season": 2022,
+          "selected": 4
+        },
+        {
+          "model_top": 4,
+          "overlap": 3,
+          "season": 2023,
+          "selected": 4
+        },
+        {
+          "model_top": 4,
+          "overlap": 4,
+          "season": 2024,
+          "selected": 12
+        },
+        {
+          "model_top": 4,
+          "overlap": 2,
+          "season": 2025,
+          "selected": 12
+        }
+      ],
+      "reading": "Share of the model's top 4 by season CoE 2.0 that the real playoff also took. Informative context, not a target -- the model includes the postseason games themselves, so some agreement is circular.",
+      "seasons": 12
+    },
+    "schedule_strength": {
+      "mean_correlation": 0.0156,
+      "per_win_total": [
+        {
+          "correlation": 0.0317,
+          "n": 156,
+          "wins": 0
+        },
+        {
+          "correlation": -0.0328,
+          "n": 337,
+          "wins": 1
+        },
+        {
+          "correlation": 0.166,
+          "n": 451,
+          "wins": 2
+        },
+        {
+          "correlation": 0.0124,
+          "n": 532,
+          "wins": 3
+        },
+        {
+          "correlation": 0.0357,
+          "n": 516,
+          "wins": 4
+        },
+        {
+          "correlation": 0.0783,
+          "n": 505,
+          "wins": 5
+        },
+        {
+          "correlation": 0.0493,
+          "n": 525,
+          "wins": 6
+        },
+        {
+          "correlation": 0.0474,
+          "n": 529,
+          "wins": 7
+        },
+        {
+          "correlation": -0.046,
+          "n": 456,
+          "wins": 8
+        },
+        {
+          "correlation": -0.0306,
+          "n": 352,
+          "wins": 9
+        },
+        {
+          "correlation": -0.0351,
+          "n": 292,
+          "wins": 10
+        },
+        {
+          "correlation": -0.075,
+          "n": 151,
+          "wins": 11
+        },
+        {
+          "correlation": 0.0508,
+          "n": 83,
+          "wins": 12
+        },
+        {
+          "correlation": -0.0339,
+          "n": 26,
+          "wins": 13
+        }
+      ],
+      "reading": "Positive means a harder schedule earns more at the same win total, which is what CoE claims to do. Near zero would mean difficulty is not being measured; negative would mean it is being punished."
+    }
+  },
+  "config": {
+    "coe": {
+      "difficulty_alpha": 2.0,
+      "ot_loss": 1.0,
+      "regulation_loss": 0.0,
+      "tie_delta": 2.0,
+      "win_base": 2.0
+    },
+    "coe2_bonuses": {
+      "bowl_appearance": 0.0,
+      "bowl_win": 0.0,
+      "cfp_appearance": 0.0,
+      "cfp_win": 0.0,
+      "conference_standings_first": 0.0,
+      "national_title": 0.0,
+      "version": "coe2_bonus_v1"
+    },
+    "elo": {
+      "home_field": 50,
+      "initial_rating": 1500,
+      "k": 35,
+      "mov_c": 2.2,
+      "mov_d": 0.001,
+      "offseason_retention": 0.8,
+      "scale": 400
+    },
+    "hfa": {
+      "effective_n_method": "sum_weights",
+      "fcs_prior_weight": 0.5,
+      "half_life_years": 10.0,
+      "point_bounds": [
+        -400.0,
+        400.0
+      ],
+      "shrinkage_k": 30.0
+    },
+    "hybrid": {
+      "coe_weight": 0.15,
+      "elo_weight": 0.85,
+      "rating_scale": 200
+    },
+    "performance": {
+      "beta": 1.0,
+      "fallback": "mov",
+      "m_max": 1.5,
+      "m_min": 0.5,
+      "model_path": "data/processed/xsrdiff_model.json",
+      "modifier": "xsrdiff"
+    }
+  },
+  "config_hash": "1754b1610524",
+  "generated_at": "2026-09-26T07:06:45+00:00",
+  "min_train_seasons": 5,
+  "note": "Predictive and achievement sections are deliberately separate. CoE is an achievement system: tuning it to maximise forecast accuracy would make it a worse copy of Elo.",
+  "predictive": {
+    "elo": {
+      "aggregate": {
+        "base_rate": 0.5,
+        "brier": 0.178952,
+        "calibration_error": 0.005019,
+        "log_loss": 0.534405,
+        "n": 55256,
+        "sharpness": 0.224963
+      },
+      "first_scored_season": 1985,
+      "folds": [
+        {
+          "base_rate": 0.5,
+          "brier": 0.168691,
+          "calibration_error": 0.037002,
+          "log_loss": 0.525893,
+          "n": 1058,
+          "sharpness": 0.221156,
+          "test_season": 1985,
+          "trained_through": 1984
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.190171,
+          "calibration_error": 0.023143,
+          "log_loss": 0.568493,
+          "n": 1062,
+          "sharpness": 0.22567,
+          "test_season": 1986,
+          "trained_through": 1985
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.169569,
+          "calibration_error": 0.040962,
+          "log_loss": 0.522435,
+          "n": 1062,
+          "sharpness": 0.215809,
+          "test_season": 1987,
+          "trained_through": 1986
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.158758,
+          "calibration_error": 0.039064,
+          "log_loss": 0.496187,
+          "n": 1056,
+          "sharpness": 0.224283,
+          "test_season": 1988,
+          "trained_through": 1987
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.158943,
+          "calibration_error": 0.038883,
+          "log_loss": 0.498737,
+          "n": 1106,
+          "sharpness": 0.2302,
+          "test_season": 1989,
+          "trained_through": 1988
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.168936,
+          "calibration_error": 0.016933,
+          "log_loss": 0.524143,
+          "n": 1106,
+          "sharpness": 0.230831,
+          "test_season": 1990,
+          "trained_through": 1989
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.162786,
+          "calibration_error": 0.034268,
+          "log_loss": 0.511726,
+          "n": 1118,
+          "sharpness": 0.230063,
+          "test_season": 1991,
+          "trained_through": 1990
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.178946,
+          "calibration_error": 0.043947,
+          "log_loss": 0.542923,
+          "n": 1142,
+          "sharpness": 0.226293,
+          "test_season": 1992,
+          "trained_through": 1991
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.178182,
+          "calibration_error": 0.045817,
+          "log_loss": 0.540943,
+          "n": 1150,
+          "sharpness": 0.220936,
+          "test_season": 1993,
+          "trained_through": 1992
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.165073,
+          "calibration_error": 0.025958,
+          "log_loss": 0.510725,
+          "n": 1168,
+          "sharpness": 0.223903,
+          "test_season": 1994,
+          "trained_through": 1993
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.167901,
+          "calibration_error": 0.022171,
+          "log_loss": 0.512464,
+          "n": 1172,
+          "sharpness": 0.227128,
+          "test_season": 1995,
+          "trained_through": 1994
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.168115,
+          "calibration_error": 0.062217,
+          "log_loss": 0.505138,
+          "n": 1228,
+          "sharpness": 0.235827,
+          "test_season": 1996,
+          "trained_through": 1995
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.167057,
+          "calibration_error": 0.021659,
+          "log_loss": 0.503823,
+          "n": 1256,
+          "sharpness": 0.238063,
+          "test_season": 1997,
+          "trained_through": 1996
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.164928,
+          "calibration_error": 0.032429,
+          "log_loss": 0.499454,
+          "n": 1254,
+          "sharpness": 0.239161,
+          "test_season": 1998,
+          "trained_through": 1997
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.191198,
+          "calibration_error": 0.023892,
+          "log_loss": 0.563769,
+          "n": 1266,
+          "sharpness": 0.225107,
+          "test_season": 1999,
+          "trained_through": 1998
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.181993,
+          "calibration_error": 0.022184,
+          "log_loss": 0.539269,
+          "n": 1292,
+          "sharpness": 0.217436,
+          "test_season": 2000,
+          "trained_through": 1999
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.169739,
+          "calibration_error": 0.041229,
+          "log_loss": 0.510034,
+          "n": 1304,
+          "sharpness": 0.228617,
+          "test_season": 2001,
+          "trained_through": 2000
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.173713,
+          "calibration_error": 0.029072,
+          "log_loss": 0.519839,
+          "n": 1414,
+          "sharpness": 0.222612,
+          "test_season": 2002,
+          "trained_through": 2001
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.16896,
+          "calibration_error": 0.040198,
+          "log_loss": 0.501956,
+          "n": 1398,
+          "sharpness": 0.23363,
+          "test_season": 2003,
+          "trained_through": 2002
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.179152,
+          "calibration_error": 0.026153,
+          "log_loss": 0.530378,
+          "n": 1314,
+          "sharpness": 0.234748,
+          "test_season": 2004,
+          "trained_through": 2003
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.191822,
+          "calibration_error": 0.025035,
+          "log_loss": 0.560651,
+          "n": 1328,
+          "sharpness": 0.218075,
+          "test_season": 2005,
+          "trained_through": 2004
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.177547,
+          "calibration_error": 0.033112,
+          "log_loss": 0.526627,
+          "n": 1428,
+          "sharpness": 0.223572,
+          "test_season": 2006,
+          "trained_through": 2005
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.186954,
+          "calibration_error": 0.019454,
+          "log_loss": 0.555511,
+          "n": 1424,
+          "sharpness": 0.229176,
+          "test_season": 2007,
+          "trained_through": 2006
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.183745,
+          "calibration_error": 0.034495,
+          "log_loss": 0.544693,
+          "n": 1434,
+          "sharpness": 0.2212,
+          "test_season": 2008,
+          "trained_through": 2007
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.173975,
+          "calibration_error": 0.021663,
+          "log_loss": 0.520489,
+          "n": 1428,
+          "sharpness": 0.223435,
+          "test_season": 2009,
+          "trained_through": 2008
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.182784,
+          "calibration_error": 0.020398,
+          "log_loss": 0.54192,
+          "n": 1436,
+          "sharpness": 0.224304,
+          "test_season": 2010,
+          "trained_through": 2009
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.179771,
+          "calibration_error": 0.01059,
+          "log_loss": 0.53247,
+          "n": 1430,
+          "sharpness": 0.227173,
+          "test_season": 2011,
+          "trained_through": 2010
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.175247,
+          "calibration_error": 0.035083,
+          "log_loss": 0.520957,
+          "n": 1464,
+          "sharpness": 0.224562,
+          "test_season": 2012,
+          "trained_through": 2011
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.165928,
+          "calibration_error": 0.0478,
+          "log_loss": 0.496364,
+          "n": 1474,
+          "sharpness": 0.231533,
+          "test_season": 2013,
+          "trained_through": 2012
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.189172,
+          "calibration_error": 0.032858,
+          "log_loss": 0.555084,
+          "n": 1520,
+          "sharpness": 0.227011,
+          "test_season": 2014,
+          "trained_through": 2013
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.173099,
+          "calibration_error": 0.018075,
+          "log_loss": 0.515016,
+          "n": 1530,
+          "sharpness": 0.2263,
+          "test_season": 2015,
+          "trained_through": 2014
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.19326,
+          "calibration_error": 0.048131,
+          "log_loss": 0.563989,
+          "n": 1520,
+          "sharpness": 0.230558,
+          "test_season": 2016,
+          "trained_through": 2015
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.191564,
+          "calibration_error": 0.031362,
+          "log_loss": 0.560546,
+          "n": 1552,
+          "sharpness": 0.222236,
+          "test_season": 2017,
+          "trained_through": 2016
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.177968,
+          "calibration_error": 0.034039,
+          "log_loss": 0.526614,
+          "n": 1544,
+          "sharpness": 0.228299,
+          "test_season": 2018,
+          "trained_through": 2017
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.176326,
+          "calibration_error": 0.012709,
+          "log_loss": 0.523913,
+          "n": 1548,
+          "sharpness": 0.227209,
+          "test_season": 2019,
+          "trained_through": 2018
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.193072,
+          "calibration_error": 0.029363,
+          "log_loss": 0.570122,
+          "n": 1068,
+          "sharpness": 0.221505,
+          "test_season": 2020,
+          "trained_through": 2019
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.189011,
+          "calibration_error": 0.035702,
+          "log_loss": 0.555442,
+          "n": 1540,
+          "sharpness": 0.219622,
+          "test_season": 2021,
+          "trained_through": 2020
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.205218,
+          "calibration_error": 0.039934,
+          "log_loss": 0.596777,
+          "n": 1552,
+          "sharpness": 0.213903,
+          "test_season": 2022,
+          "trained_through": 2021
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.186233,
+          "calibration_error": 0.015813,
+          "log_loss": 0.551399,
+          "n": 1584,
+          "sharpness": 0.216443,
+          "test_season": 2023,
+          "trained_through": 2022
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.199885,
+          "calibration_error": 0.03629,
+          "log_loss": 0.580833,
+          "n": 1596,
+          "sharpness": 0.211241,
+          "test_season": 2024,
+          "trained_through": 2023
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.185532,
+          "calibration_error": 0.032894,
+          "log_loss": 0.54673,
+          "n": 1616,
+          "sharpness": 0.209161,
+          "test_season": 2025,
+          "trained_through": 2024
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.158461,
+          "calibration_error": 0.040804,
+          "log_loss": 0.495002,
+          "n": 314,
+          "sharpness": 0.245494,
+          "test_season": 2026,
+          "trained_through": 2025
+        }
+      ],
+      "reading": "Lower Brier and log loss are better; calibration error is how far predicted frequencies sit from observed ones. Sharpness is reported beside calibration because always predicting 50% is perfectly calibrated and useless.",
+      "seasons_scored": 42
+    },
+    "hybrid": {
+      "aggregate": {
+        "base_rate": 0.5,
+        "brier": 0.178872,
+        "calibration_error": 0.005421,
+        "log_loss": 0.533086,
+        "n": 49278,
+        "sharpness": 0.223492
+      },
+      "first_scored_season": 1990,
+      "folds": [
+        {
+          "base_rate": 0.5,
+          "brier": 0.169211,
+          "calibration_error": 0.009074,
+          "log_loss": 0.523991,
+          "n": 1092,
+          "sharpness": 0.23165,
+          "test_season": 1990,
+          "trained_through": 1989
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.161707,
+          "calibration_error": 0.028349,
+          "log_loss": 0.509068,
+          "n": 1118,
+          "sharpness": 0.22767,
+          "test_season": 1991,
+          "trained_through": 1990
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.177666,
+          "calibration_error": 0.043951,
+          "log_loss": 0.538791,
+          "n": 1128,
+          "sharpness": 0.230886,
+          "test_season": 1992,
+          "trained_through": 1991
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.17654,
+          "calibration_error": 0.029616,
+          "log_loss": 0.536775,
+          "n": 1150,
+          "sharpness": 0.225585,
+          "test_season": 1993,
+          "trained_through": 1992
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.164193,
+          "calibration_error": 0.026945,
+          "log_loss": 0.50878,
+          "n": 1154,
+          "sharpness": 0.222531,
+          "test_season": 1994,
+          "trained_through": 1993
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.166592,
+          "calibration_error": 0.021886,
+          "log_loss": 0.510223,
+          "n": 1154,
+          "sharpness": 0.225948,
+          "test_season": 1995,
+          "trained_through": 1994
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.163977,
+          "calibration_error": 0.040688,
+          "log_loss": 0.495146,
+          "n": 1168,
+          "sharpness": 0.233946,
+          "test_season": 1996,
+          "trained_through": 1995
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.167281,
+          "calibration_error": 0.02514,
+          "log_loss": 0.504235,
+          "n": 1232,
+          "sharpness": 0.231944,
+          "test_season": 1997,
+          "trained_through": 1996
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.1639,
+          "calibration_error": 0.027846,
+          "log_loss": 0.497369,
+          "n": 1254,
+          "sharpness": 0.232919,
+          "test_season": 1998,
+          "trained_through": 1997
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.189215,
+          "calibration_error": 0.016709,
+          "log_loss": 0.55965,
+          "n": 1234,
+          "sharpness": 0.224388,
+          "test_season": 1999,
+          "trained_through": 1998
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.180682,
+          "calibration_error": 0.03153,
+          "log_loss": 0.535781,
+          "n": 1268,
+          "sharpness": 0.223224,
+          "test_season": 2000,
+          "trained_through": 1999
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.16982,
+          "calibration_error": 0.029586,
+          "log_loss": 0.510096,
+          "n": 1290,
+          "sharpness": 0.226998,
+          "test_season": 2001,
+          "trained_through": 2000
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.173455,
+          "calibration_error": 0.032797,
+          "log_loss": 0.518708,
+          "n": 1414,
+          "sharpness": 0.219392,
+          "test_season": 2002,
+          "trained_through": 2001
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.168296,
+          "calibration_error": 0.028201,
+          "log_loss": 0.501604,
+          "n": 1398,
+          "sharpness": 0.225399,
+          "test_season": 2003,
+          "trained_through": 2002
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.175352,
+          "calibration_error": 0.025754,
+          "log_loss": 0.520922,
+          "n": 1302,
+          "sharpness": 0.232266,
+          "test_season": 2004,
+          "trained_through": 2003
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.188969,
+          "calibration_error": 0.018611,
+          "log_loss": 0.553536,
+          "n": 1310,
+          "sharpness": 0.221138,
+          "test_season": 2005,
+          "trained_through": 2004
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.177455,
+          "calibration_error": 0.018363,
+          "log_loss": 0.526256,
+          "n": 1428,
+          "sharpness": 0.223438,
+          "test_season": 2006,
+          "trained_through": 2005
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.185325,
+          "calibration_error": 0.013575,
+          "log_loss": 0.55205,
+          "n": 1424,
+          "sharpness": 0.230043,
+          "test_season": 2007,
+          "trained_through": 2006
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.182019,
+          "calibration_error": 0.025011,
+          "log_loss": 0.540802,
+          "n": 1414,
+          "sharpness": 0.222839,
+          "test_season": 2008,
+          "trained_through": 2007
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.173071,
+          "calibration_error": 0.021069,
+          "log_loss": 0.518531,
+          "n": 1428,
+          "sharpness": 0.221228,
+          "test_season": 2009,
+          "trained_through": 2008
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.183384,
+          "calibration_error": 0.015754,
+          "log_loss": 0.543494,
+          "n": 1436,
+          "sharpness": 0.220506,
+          "test_season": 2010,
+          "trained_through": 2009
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.178706,
+          "calibration_error": 0.016548,
+          "log_loss": 0.530249,
+          "n": 1430,
+          "sharpness": 0.222371,
+          "test_season": 2011,
+          "trained_through": 2010
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.176163,
+          "calibration_error": 0.030585,
+          "log_loss": 0.522732,
+          "n": 1382,
+          "sharpness": 0.219974,
+          "test_season": 2012,
+          "trained_through": 2011
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.16572,
+          "calibration_error": 0.029389,
+          "log_loss": 0.497479,
+          "n": 1456,
+          "sharpness": 0.221058,
+          "test_season": 2013,
+          "trained_through": 2012
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.185133,
+          "calibration_error": 0.021933,
+          "log_loss": 0.546035,
+          "n": 1458,
+          "sharpness": 0.222274,
+          "test_season": 2014,
+          "trained_through": 2013
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.171887,
+          "calibration_error": 0.029004,
+          "log_loss": 0.513747,
+          "n": 1508,
+          "sharpness": 0.219163,
+          "test_season": 2015,
+          "trained_through": 2014
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.19311,
+          "calibration_error": 0.034273,
+          "log_loss": 0.563653,
+          "n": 1520,
+          "sharpness": 0.220169,
+          "test_season": 2016,
+          "trained_through": 2015
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.187913,
+          "calibration_error": 0.024658,
+          "log_loss": 0.551812,
+          "n": 1530,
+          "sharpness": 0.216399,
+          "test_season": 2017,
+          "trained_through": 2016
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.176166,
+          "calibration_error": 0.026336,
+          "log_loss": 0.52325,
+          "n": 1524,
+          "sharpness": 0.221915,
+          "test_season": 2018,
+          "trained_through": 2017
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.175493,
+          "calibration_error": 0.033539,
+          "log_loss": 0.52201,
+          "n": 1548,
+          "sharpness": 0.219303,
+          "test_season": 2019,
+          "trained_through": 2018
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.192515,
+          "calibration_error": 0.030892,
+          "log_loss": 0.568099,
+          "n": 1068,
+          "sharpness": 0.22415,
+          "test_season": 2020,
+          "trained_through": 2019
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.189558,
+          "calibration_error": 0.026812,
+          "log_loss": 0.555777,
+          "n": 1540,
+          "sharpness": 0.221165,
+          "test_season": 2021,
+          "trained_through": 2020
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.204689,
+          "calibration_error": 0.039266,
+          "log_loss": 0.595799,
+          "n": 1532,
+          "sharpness": 0.219423,
+          "test_season": 2022,
+          "trained_through": 2021
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.185086,
+          "calibration_error": 0.016896,
+          "log_loss": 0.547281,
+          "n": 1540,
+          "sharpness": 0.221904,
+          "test_season": 2023,
+          "trained_through": 2022
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.199884,
+          "calibration_error": 0.042555,
+          "log_loss": 0.580738,
+          "n": 1574,
+          "sharpness": 0.214866,
+          "test_season": 2024,
+          "trained_through": 2023
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.184631,
+          "calibration_error": 0.02015,
+          "log_loss": 0.544486,
+          "n": 1568,
+          "sharpness": 0.212753,
+          "test_season": 2025,
+          "trained_through": 2024
+        },
+        {
+          "base_rate": 0.5,
+          "brier": 0.152939,
+          "calibration_error": 0.027864,
+          "log_loss": 0.48077,
+          "n": 304,
+          "sharpness": 0.267115,
+          "test_season": 2026,
+          "trained_through": 2025
+        }
+      ],
+      "reading": "Lower Brier and log loss are better; calibration error is how far predicted frequencies sit from observed ones. Sharpness is reported beside calibration because always predicting 50% is perfectly calibrated and useless.",
+      "seasons_scored": 37
+    }
+  }
+}

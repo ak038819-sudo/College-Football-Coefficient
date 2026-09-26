@@ -130,10 +130,12 @@ def title_counts(conn: sqlite3.Connection, champions: list[dict] | None) -> dict
     """
     {(team_id, season): {category: count}} for conference and national titles.
 
-    Conference titles come from the derived standings, which only cover the
-    seasons the playoff model needs; a season without standings data simply has
-    no conference-title bonus rather than a guessed one. National titles come
-    from the hand-maintained reference list and are never inferred from results.
+    Conference standings come from derive_conference_standings_local.py, which
+    run_pipeline.py builds for every season that has membership data (1980 on).
+    A leaner build -- CI's test bootstrap only derives the seasons the playoff
+    model needs -- simply yields no standings bonus for the seasons it skipped,
+    rather than a guessed one. National titles come from the hand-maintained
+    reference list and are never inferred from results.
     """
     out: dict = defaultdict(lambda: defaultdict(int))
     if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
