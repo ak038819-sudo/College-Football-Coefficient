@@ -204,6 +204,38 @@ def model_params() -> dict:
             "coe_v1": v1, "playoff_bids": [[lo, hi, n] for (lo, hi), n in sorted(bids.items())]}
 
 
+# How people actually type a conference. Canonical name -> the other names that should
+# find it; the conference itself is always matched by its own name and slug, so these are
+# only the shorthands that are not substrings of it. Every key is checked against the
+# database by tests/test_static_assets.py, so a renamed conference cannot leave a dead alias.
+CONFERENCE_ALIASES = {
+    "American Athletic": ["AAC", "The American", "American"],
+    "Big Ten": ["B1G", "Big 10"],
+    "Conference USA": ["C-USA", "CUSA"],
+    "FBS Independents": ["Independents", "Independent"],
+    "Mid-American": ["MAC"],
+    "Mountain West": ["MWC", "Mountain West Conference"],
+    "Pac-10": ["Pacific-10", "PAC 10"],
+    "Pac-12": ["Pacific-12", "PAC 12"],
+    "Southern": ["SoCon"],
+    "Southwest": ["SWC", "Southwest Conference"],
+    "Western Athletic": ["WAC"],
+}
+
+
+def build_conference_search_rows(conn: sqlite3.Connection) -> list:
+    """
+    [[slug, name, [aliases]], ...] for every conference that ever had members, so the
+    header search can reach a conference page the same way it reaches a team page.
+    Season coverage is not repeated here: the dashboard already knows it from the
+    embedded conference ratings.
+    """
+    from export_dashboard_data import slugify
+    names = sorted(r[0] for r in conn.execute(
+        "SELECT DISTINCT conference_real FROM team_membership_by_season WHERE conference_real IS NOT NULL"))
+    return [[slugify(n), n, CONFERENCE_ALIASES.get(n, [])] for n in names]
+
+
 def build_search_index(conn: sqlite3.Connection, payloads: dict) -> dict:
     names = dict(conn.execute("SELECT team_id, team_name FROM teams"))
     aliases = defaultdict(list)
@@ -214,7 +246,8 @@ def build_search_index(conn: sqlite3.Connection, payloads: dict) -> dict:
     from export_dashboard_data import slugify
     teams = [[tid, name, slugify(name), aliases.get(tid, [])] for tid, name in sorted(names.items(), key=lambda x: x[1])]
     games = [[r[0], season, r[8], r[9]] for season in sorted(payloads) for r in payloads[season]["games"]]
-    return {"teams": teams, "seasons": sorted(payloads), "game_fields": SEARCH_GAME_FIELDS, "games": games}
+    return {"teams": teams, "seasons": sorted(payloads), "game_fields": SEARCH_GAME_FIELDS, "games": games,
+            "conferences": build_conference_search_rows(conn)}
 
 
 def _write_js(path: Path, global_expr: str, payload) -> str:

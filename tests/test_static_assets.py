@@ -11,7 +11,8 @@ from collections import Counter
 import pytest
 
 import export_logo_files as lf
-from export_static_data import FIELDS, build_search_index, build_season_payloads
+from export_static_data import (CONFERENCE_ALIASES, FIELDS, build_conference_search_rows,
+                                build_search_index, build_season_payloads)
 from predict_upcoming import build_upcoming, elo_config
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"fake-image-bytes"
@@ -102,3 +103,36 @@ def test_search_index_covers_teams_aliases_and_games(payloads):
     for alias, canonical in conn.execute("SELECT alias, team_name FROM team_aliases"):
         assert alias in names[canonical][3]
     assert len(idx["games"]) == sum(len(s["games"]) for s in p.values())
+
+
+# ---------------- conference search rows (Milestone E pages) ----------------
+
+
+def test_search_index_covers_every_conference_that_ever_existed(payloads):
+    conn, p = payloads
+    rows = build_search_index(conn, p)["conferences"]
+    expected = {r[0] for r in conn.execute(
+        "SELECT DISTINCT conference_real FROM team_membership_by_season WHERE conference_real IS NOT NULL")}
+    assert {r[1] for r in rows} == expected
+    assert [r[1] for r in rows] == sorted(r[1] for r in rows)
+    assert len({r[0] for r in rows}) == len(rows), "two conferences share a slug"
+
+
+def test_conference_slugs_match_the_conference_page_route(db_conn):
+    """The header search links to #conference=<slug>, so these slugs must be the ones
+    src/export_conference_pages.py generates -- otherwise a search hit 404s."""
+    from export_conference_pages import build_conference_pages
+    from export_team_pages import load_national_champions
+    pages = build_conference_pages(db_conn, load_national_champions(db_conn))
+    assert {c["slug"] for c in pages["conferences"]} == {r[0] for r in build_conference_search_rows(db_conn)}
+
+
+def test_every_conference_alias_names_a_real_conference(db_conn):
+    """A renamed or dropped conference must not leave a shorthand pointing at nothing."""
+    real = {r[0] for r in db_conn.execute(
+        "SELECT DISTINCT conference_real FROM team_membership_by_season WHERE conference_real IS NOT NULL")}
+    unknown = sorted(set(CONFERENCE_ALIASES) - real)
+    assert unknown == [], f"aliases for conferences that do not exist: {unknown}"
+    for name, aliases in CONFERENCE_ALIASES.items():
+        assert len(set(aliases)) == len(aliases), f"{name}: duplicate alias"
+        assert name not in aliases, f"{name}: lists its own name as an alias"

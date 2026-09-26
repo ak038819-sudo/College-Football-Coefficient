@@ -737,7 +737,7 @@
     <div class="global-search" role="search">
       <label class="visually-hidden" for="global-search">Search teams, games and seasons</label>
       <input type="search" id="global-search" autocomplete="off" spellcheck="false" maxlength="150"
-             placeholder="Search teams, games, seasons  ( / )"
+             placeholder="Search teams, conferences, games, seasons  ( / )"
              aria-controls="search-results" aria-expanded="false" aria-describedby="search-status">
       <div id="search-results" class="search-results" hidden></div>
       <p id="search-status" class="visually-hidden" aria-live="polite"></p>
@@ -834,7 +834,8 @@ function loadSeasonGames(season) {
 }
 
 let _searchIndex = null;
-// Resolves to {teams: [{id, name, slug, aliases}], seasons: [..], games: [[game_id, season, home_id, away_id]]}.
+// Resolves to {teams: [{id, name, slug, aliases}], seasons: [..], games: [[game_id, season, home_id, away_id]],
+//               conferences: [[slug, name, [aliases]]]}.
 function loadSearchIndex() {
   if (_searchIndex) return Promise.resolve(_searchIndex);
   if (!STATIC_MANIFEST.search_index) return Promise.reject(new Error('no search index'));
@@ -842,7 +843,7 @@ function loadSearchIndex() {
     const raw = window.__CFB_SEARCH__;
     if (!raw) throw new Error('search index was empty');
     _searchIndex = { teams: raw.teams.map(([id, name, slug, aliases]) => ({ id, name, slug, aliases })),
-                     seasons: raw.seasons, games: raw.games };
+                     seasons: raw.seasons, games: raw.games, conferences: raw.conferences || [] };
     return _searchIndex;
   });
 }
@@ -3315,6 +3316,19 @@ function searchResultsHtml(r) {
         ' vs. ' + esc(searchTeamName(g.home_id)) + '</span><small>' + g.season + '</small></a>';
     }).join('') + (r.gamesTotal > r.games.length ? '<p class="search-note">Showing the ' + r.games.length + ' most relevant of ' + r.gamesTotal + ' games.</p>' : '') + '</div>');
   }
+  if ((r.conferences || []).length) {
+    groups.push('<div class="search-group" role="group" aria-label="Conferences"><h3>Conferences</h3>' +
+      r.conferences.map(c => {
+        const meta = CONF_BY_SLUG.get(c.slug);
+        const span = meta ? meta.first + '\u2013' + meta.last : '';
+        return '<a class="search-hit" href="' + esc(conferenceHref(c.name)) + '">' +
+          logoMarkup(c.name, 'conf', 'xs', meta ? meta.last : LATEST_SEASON) +
+          '<span class="hit-text">' + esc(c.name) + '</span>' + (span ? '<small>' + span + '</small>' : '') + '</a>';
+      }).join('') +
+      (r.conferencesTotal > r.conferences.length
+        ? '<p class="search-note">+' + (r.conferencesTotal - r.conferences.length) + ' more conferences \u2014 keep typing to narrow.</p>' : '') +
+      '</div>');
+  }
   if (r.seasons.length) {
     groups.push('<div class="search-group" role="group" aria-label="Seasons"><h3>Seasons</h3>' + r.seasons.map(y =>
       '<a class="search-hit" href="' + esc(CfbNavigation.hashFor(CfbNavigation.readRoute('#section=games&season=' + y, ROUTE_CONFIG))) + '">' +
@@ -3334,9 +3348,9 @@ function runSearch() {
     SEARCH.searcher = SEARCH.searcher || CfbSearch.buildSearcher(idx);
     if (seq !== SEARCH.seq) return;                       // a newer keystroke already ran
     const r = SEARCH.searcher.search(query);
-    const count = r.teams.length + r.games.length + r.seasons.length * 2;
+    const count = r.teams.length + (r.conferences || []).length + r.games.length + r.seasons.length * 2;
     openSearch(count ? searchResultsHtml(r)
-      : '<p class="search-note">No matches for “' + esc(query) + '”. Try a team name, an alias, a year, or two teams.</p>',
+      : '<p class="search-note">No matches for “' + esc(query) + '”. Try a team name, an alias, a conference, a year, or two teams.</p>',
       count ? count + ' result' + (count === 1 ? '' : 's') + '. Press Down to browse.' : 'No matches');
   }).catch(() => {
     if (seq !== SEARCH.seq) return;

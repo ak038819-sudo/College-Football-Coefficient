@@ -1,7 +1,8 @@
 /* Global search for the static dashboard (Milestone A2). No framework or build dependency.
  *
  * Works on the compact index written by src/export_static_data.py
- *   { teams: [{id, name, slug, aliases}], seasons: [..], games: [[game_id, season, home_id, away_id], ..] }
+ *   { teams: [{id, name, slug, aliases}], seasons: [..], games: [[game_id, season, home_id, away_id], ..],
+ *     conferences: [[slug, name, [aliases]], ..] }
  * and understands plain queries:
  *   "byu"                     -> Teams
  *   "miami"                   -> Miami (FL) via the alias table
@@ -11,6 +12,9 @@
  *   "indiana 2025"            -> Indiana's 2025 schedule
  *   "tex"                     -> team suggestions while typing (from the start of any word,
  *                                never mid-word: "am" finds Texas A&M, not Miami)
+ *   "sec" / "big ten" / "MAC" -> Conferences, by name, slug or common shorthand
+ * Conferences match the text the user is still typing, exactly like team suggestions.
+ * They never consume a token, so "michigan ohio state" stays a team-vs-team lookup.
  * Team mentions are whole-word matches (longest first), so "texas a&m" never
  * also matches "Texas", while partial words still produce suggestions.
  */
@@ -30,23 +34,46 @@
     return String(text || '').split(/[\s\-\/]+/).map(normalize).filter(Boolean);
   }
 
+  // Name/alias/slug -> the word forms a prefix search runs against. Shared by teams and
+  // conferences so both behave identically while typing.
+  function nameVariants(labels) {
+    const out = [], seen = new Set();
+    labels.filter(Boolean).forEach(v => {
+      const w = words(v);
+      const key = w.join(SEP);
+      // starts: the name read from each word onward ("texas a&m" -> "texasam", "am"), so a
+      // suggestion can begin at any WORD but never mid-word ("am" must not match "miami").
+      if (w.length && !seen.has(key)) {
+        seen.add(key);
+        out.push({ words: w, key, joined: w.join(''), starts: w.map((_, i) => w.slice(i).join('')) });
+      }
+    });
+    return out;
+  }
+
+  // Best (lowest) prefix score for a query across a set of variants: 0 = the whole name
+  // starts with it, 1 = a later word does, null = no match.
+  function prefixScore(variants, q) {
+    let best = null;
+    variants.forEach(v => {
+      const score = v.joined.startsWith(q) ? 0 : v.starts.some(x => x.startsWith(q)) ? 1 : null;
+      if (score !== null && (best === null || score < best)) best = score;
+    });
+    return best;
+  }
+
   function buildSearcher(index) {
     const teams = (index && index.teams) || [];
+    // Conferences (Milestone E pages): [slug, name, [aliases]].
+    const conferences = ((index && index.conferences) || []).map(c => ({
+      slug: c[0], name: c[1], aliases: c[2] || [],
+      variants: nameVariants([c[1], c[0], ...(c[2] || [])])
+    }));
     const seasons = new Set(((index && index.seasons) || []).map(Number));
     const games = (index && index.games) || [];
     const variants = [];
     teams.forEach(t => {
-      const seen = new Set();
-      [t.name, ...(t.aliases || []), t.slug].forEach(v => {
-        const w = words(v);
-        const key = w.join(SEP);
-        // starts: the name read from each word onward ("texas a&m" -> "texasam", "am"), so a
-        // suggestion can begin at any WORD but never mid-word ("am" must not match "miami").
-        if (w.length && !seen.has(key)) {
-          seen.add(key);
-          variants.push({ team: t, words: w, key, joined: w.join(''), starts: w.map((_, i) => w.slice(i).join('')) });
-        }
-      });
+      nameVariants([t.name, ...(t.aliases || []), t.slug]).forEach(v => variants.push({ team: t, ...v }));
     });
     const gamesByTeam = new Map();
     games.forEach((g, i) => {
@@ -58,7 +85,7 @@
     const asGame = g => ({ game_id: g[0], season: g[1], home_id: g[2], away_id: g[3] });
 
     function search(query, opts) {
-      const limits = Object.assign({ teams: 8, games: 12 }, opts || {});
+      const limits = Object.assign({ teams: 8, games: 12, conferences: 5 }, opts || {});
       const tokens = words(String(query || '').slice(0, 150));
       // A four-digit token that is a real season is the year; only the first one counts.
       const yearAt = tokens.findIndex(t => /^\d{4}$/.test(t) && seasons.has(Number(t)));
@@ -92,6 +119,18 @@
         .sort((a, b) => scored.get(a.id) - scored.get(b.id) || a.name.localeCompare(b.name));
       const teamHits = [...found, ...suggestions];
 
+      // Conferences run off the same typed text, so they appear while typing and never
+      // steal a word from a team-vs-team query.
+      const confScored = [];
+      if (q.length >= 2) {
+        conferences.forEach(c => {
+          const score = prefixScore(c.variants, q);
+          if (score !== null) confScored.push({ conf: c, score });
+        });
+      }
+      confScored.sort((a, b) => a.score - b.score || a.conf.name.localeCompare(b.conf.name));
+      const confHits = confScored.map(x => x.conf);
+
       let gameIdx = [];
       if (found.length >= 2) {
         const [a, b] = found;
@@ -110,6 +149,8 @@
         teamsTotal: teamHits.length,
         games: gameIdx.slice(0, limits.games).map(i => asGame(games[i])),
         gamesTotal: gameIdx.length,
+        conferences: confHits.slice(0, limits.conferences).map(c => ({ slug: c.slug, name: c.name })),
+        conferencesTotal: confHits.length,
         seasons: year !== null ? [year] : []
       };
     }
