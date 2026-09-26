@@ -47,11 +47,17 @@ still computed and printed, as the contrast that justifies the restriction.
 
 ## Home field
 
-The simulator adds no home-field term, on the argument that home field was
-already decided by CoE. That is a fair argument for the bracket, but it
-makes fitting on real games awkward, because real games mostly DO have a
-home team and the outcomes carry that advantage. Fitting T alone would
-quietly absorb home field into the slope and bias it.
+Real games mostly DO have a home team, and their outcomes carry that
+advantage, so fitting T alone would quietly absorb home field into the slope
+and bias it. Both parameters therefore have to be fitted together whatever
+the bracket then does with h.
+
+What the bracket does with h has changed. It used to discard it, on the
+argument that CoE already decided who hosts so applying it would
+double-count. That argument was wrong -- CoE decides WHICH team hosts and
+says nothing about the advantage OF hosting -- and h is now applied in the
+Round of 24, the one round with a host. Either way, h has to be in this fit
+for T to mean anything.
 
 So two parameters are fitted together:
 

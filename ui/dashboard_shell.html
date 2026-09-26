@@ -1469,11 +1469,14 @@ function renderField() {
 // fitted temperature: it ships in sim_meta so this button and the published
 // Title Odds cannot drift apart. No fallback constant lives here -- one would
 // silently reinstate the old hand-picked 6.0 if the payload ever changed shape.
-function winProbability(coeA, coeB, temperature) {
-  return 1 / (1 + Math.exp(-(coeA - coeB) / temperature));
+// homeField is team A's venue edge in CoE points, and every caller states it:
+// the Round of 24 is played at the higher-CoE team's home, which is the `home`
+// side of the pair, and every later round is at a neutral site and passes 0.
+function winProbability(coeA, coeB, temperature, homeField) {
+  return 1 / (1 + Math.exp(-((coeA - coeB) + homeField) / temperature));
 }
-function simulateGame(a, b, teamCoe, temperature) {
-  const pA = winProbability(teamCoe[a] || 0, teamCoe[b] || 0, temperature);
+function simulateGame(a, b, teamCoe, temperature, homeField) {
+  const pA = winProbability(teamCoe[a] || 0, teamCoe[b] || 0, temperature, homeField);
   return Math.random() < pA ? a : b;
 }
 
@@ -1481,6 +1484,7 @@ function runBracketSimulation(pf) {
   const teamCoe = {};
   pf.qualifiers.forEach(q => { teamCoe[q.team] = q.team_coe_5yr; });
   const temperature = (pf.sim_meta || {}).temperature;
+  const homeField = (pf.sim_meta || {}).home_field;
 
   const seeds = buildBracketSeeds(pf);
   const byRank = {};
@@ -1491,19 +1495,20 @@ function runBracketSimulation(pf) {
   const r16Field = r16Order.map(slot => {
     if (slot.isTeam) return slot.team;
     const game = pf.round_of_24[slot.seed - 9];
-    return simulateGame(game.home, game.away, teamCoe, temperature);
+    // game.home hosts, so the edge is team A's here.
+    return simulateGame(game.home, game.away, teamCoe, temperature, homeField);
   });
 
   const qfField = [];
-  for (let i = 0; i < 16; i += 2) qfField.push(simulateGame(r16Field[i], r16Field[i + 1], teamCoe, temperature));
+  for (let i = 0; i < 16; i += 2) qfField.push(simulateGame(r16Field[i], r16Field[i + 1], teamCoe, temperature, 0));
 
   const sfField = [];
-  for (let i = 0; i < 8; i += 2) sfField.push(simulateGame(qfField[i], qfField[i + 1], teamCoe, temperature));
+  for (let i = 0; i < 8; i += 2) sfField.push(simulateGame(qfField[i], qfField[i + 1], teamCoe, temperature, 0));
 
   const finalField = [];
-  for (let i = 0; i < 4; i += 2) finalField.push(simulateGame(sfField[i], sfField[i + 1], teamCoe, temperature));
+  for (let i = 0; i < 4; i += 2) finalField.push(simulateGame(sfField[i], sfField[i + 1], teamCoe, temperature, 0));
 
-  const champion = simulateGame(finalField[0], finalField[1], teamCoe, temperature);
+  const champion = simulateGame(finalField[0], finalField[1], teamCoe, temperature, 0);
 
   return { r16Field, qfField, sfField, finalField, champion };
 }
@@ -1698,6 +1703,11 @@ function renderOdds() {
     'temperature is fitted against the record &mdash; the CoE each team carried into a season ' +
     'against who actually won, over every game since 1980 between two teams of playoff calibre ' +
     '&mdash; rather than chosen to look right.' +
+    // Home field is real but small, and only one round has a host, so say both.
+    (meta.home_field ? ' The Round of 24 is played at the higher-CoE team\'s home ground, ' +
+      'and hosting is worth a measured ' + meta.home_field + ' CoE points, so the host gets ' +
+      'that edge in those eight games. Every round after that is at a neutral site and no ' +
+      'team gets an edge.' : '') +
     // Why these numbers don't match a hand-count off the bracket page.
     (meta.redraws ? ' Every run also redraws the Round of 24, so these are a team\'s chances ' +
       'before the draw is known, not its chances in the particular bracket shown under ' +

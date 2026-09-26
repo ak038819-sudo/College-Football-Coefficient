@@ -147,7 +147,7 @@ def test_the_config_carries_a_fitted_temperature(repo_root):
     # something has gone wrong in the fit, not that it has been re-tuned.
     assert 1.0 < sim["temperature"] < 12.0
     assert sim["temperature"] != 6.0, "6.0 was the unfitted placeholder"
-    assert 0.0 < sim["measured_home_field"] < 5.0
+    assert 0.0 < sim["home_field"] < 5.0
     assert "calibrate_sim_temperature" in sim["_comment"], \
         "the config should say where the number came from"
 
@@ -167,7 +167,9 @@ def test_the_page_takes_its_temperature_from_the_payload_not_a_constant(repo_roo
     shell = (repo_root / "ui" / "dashboard_shell.html").read_text(encoding="utf-8")
     assert "temperature = temperature || 6.0" not in shell
     assert "const temperature = (pf.sim_meta || {}).temperature;" in shell
-    assert "simulateGame(finalField[0], finalField[1], teamCoe, temperature)" in shell
+    # The venue argument is checked by test_only_the_round_of_24_gets_a_venue_term;
+    # what matters here is that the temperature still comes from the payload.
+    assert "simulateGame(finalField[0], finalField[1], teamCoe, temperature, 0)" in shell
 
 
 def test_no_build_layer_hardcodes_its_own_temperature(repo_root):
@@ -182,18 +184,171 @@ def test_no_build_layer_hardcodes_its_own_temperature(repo_root):
     assert "default=6.0" not in build
 
 
-def test_the_measured_home_field_is_recorded_but_not_applied():
+def test_a_neutral_site_game_is_exactly_symmetric():
     """
-    The simulator deliberately leaves home field out, because CoE already
-    decided who hosts. So its model must be symmetric: swapping the two teams
-    has to give exactly the complementary probability, with no residual edge
-    to whichever side is named first.
+    With no venue term, swapping the two teams must give exactly the
+    complementary probability, with no residual edge to whichever side is named
+    first. This is the property every round from the Round of 16 on relies on,
+    and it is also what makes the home-field term below visible rather than
+    confounded with a naming bias.
     """
     for gap in (0.0, 1.5, 7.0, -4.0):
         forward = simulate_bracket.win_probability(gap, 0.0, 4.5)
         reverse = simulate_bracket.win_probability(0.0, gap, 4.5)
         assert forward + reverse == pytest.approx(1.0)
     assert simulate_bracket.win_probability(0.0, 0.0, 4.5) == pytest.approx(0.5)
+
+
+def test_home_field_helps_the_host_and_is_antisymmetric():
+    """
+    The host's edge must go to whichever side is actually at home, so passing it
+    negated has to give exactly the mirror image. A term that helped team A
+    regardless of who hosted would be a naming bias wearing a home-field label.
+    """
+    home = simulate_bracket.win_probability(0.0, 0.0, 4.5, 1.25)
+    away = simulate_bracket.win_probability(0.0, 0.0, 4.5, -1.25)
+    assert home > 0.5 > away
+    assert home + away == pytest.approx(1.0)
+
+
+def test_home_field_is_worth_less_than_the_gap_it_is_measured_in():
+    """
+    1.25 CoE points is a real but modest edge: it must not turn a clear underdog
+    into a favourite. A term large enough to do that would be a sign the fit had
+    absorbed something else, so the bound is worth pinning.
+    """
+    underdog_at_home = simulate_bracket.win_probability(-5.0, 0.0, 4.5, 1.25)
+    assert underdog_at_home < 0.5
+
+
+def test_the_python_simulator_uses_the_configured_home_field(repo_root):
+    cfg = json.loads((repo_root / "config" / "model_config.json").read_text())
+    assert simulate_bracket.DEFAULT_HOME_FIELD == cfg["simulation"]["home_field"]
+
+
+def test_host_must_be_one_of_the_two_teams():
+    """
+    simulate_game takes the host by name, so a caller that passes a team from
+    another game would otherwise silently play a neutral-site game while looking
+    like it applied home field.
+    """
+    import random as _random
+    with pytest.raises(ValueError):
+        simulate_bracket.simulate_game("A", "B", {"A": 1.0, "B": 0.0}, 4.5,
+                                       _random.Random(0), 1.25, "C")
+
+
+def test_the_host_named_is_the_team_helped():
+    """
+    The decision that turns a host's NAME into a signed edge is its own step, and
+    testing win_probability's arithmetic does not reach it: a simulate_game that
+    added the edge to whichever team was listed first would pass every algebraic
+    check while handing home field to the wrong team half the time.
+
+    So this drives simulate_game itself. Two equal teams, a fixed coin at exactly
+    0.5: the host's probability is above 0.5 and the visitor's below, so the
+    winner must be whoever is at home, whichever argument position they occupy.
+    """
+    class FixedCoin:
+        def random(self):
+            return 0.5
+
+    coe = {"A": 5.0, "B": 5.0}
+    for host in ("A", "B"):
+        for a, b in (("A", "B"), ("B", "A")):
+            won = simulate_bracket.simulate_game(a, b, coe, 4.5, FixedCoin(), 1.25, host)
+            assert won == host, f"{a} vs {b} at {host}'s place was won by {won}"
+    # And with no host at all the same coin sits exactly on the boundary, so the
+    # second-named team takes it -- the neutral case is genuinely neutral.
+    assert simulate_bracket.simulate_game("A", "B", coe, 4.5, FixedCoin(), 1.25, None) == "B"
+
+
+def test_no_round_after_the_round_of_24_feels_home_field():
+    """
+    Behavioural, not textual. An earlier version of this test asserted that the
+    source contained exactly one call passing a host, which a one-word edit
+    defeated while leaving the leak in place.
+
+    Instead: a bracket whose sixteen Round-of-16 slots are all byes has no
+    Round-of-24 game at all, so home field has nothing legitimate to act on.
+    Every later round is a neutral site, so the whole simulation must give
+    bit-identical results no matter what home field is set to. A leak into any
+    later round would change who wins, since the term is deliberately made large
+    here.
+    """
+    import random
+
+    teams = [f"T{i:02d}" for i in range(16)]
+    coe = {t: 10.0 - i * 0.4 for i, t in enumerate(teams)}
+    seed_order = [{"fixed_team": t, "pair": None} for t in teams]
+
+    for seed in range(50):
+        quiet = simulate_bracket.simulate_one_bracket(
+            teams, [], seed_order, coe, 4.5, random.Random(seed), 0.0)
+        loud = simulate_bracket.simulate_one_bracket(
+            teams, [], seed_order, coe, 4.5, random.Random(seed), 8.0)
+        assert quiet == loud, (
+            f"seed {seed}: home field changed a bracket with no home games, so it is "
+            "reaching a neutral-site round")
+
+
+def test_the_round_of_24_boost_goes_to_the_higher_coe_team():
+    """
+    Who hosts is not a detail the simulation may get backwards. The bracket
+    graphic prints "away @ home" from choose_home_away, and the simulation has to
+    agree with it, or the published bracket shows one venue while the odds assume
+    the other.
+
+    Driven through simulate_one_bracket rather than asserted from the source: one
+    Round-of-24 pair, the rest byes, and the higher-CoE team's rate of reaching
+    the Round of 16 must RISE when home field is turned up. Handing the boost to
+    the visitor instead would push it down.
+    """
+    import random
+
+    strong, weak = "Strong", "Weak"
+    byes = [f"Bye{i:02d}" for i in range(15)]
+    coe = {strong: 10.0, weak: 7.0}
+    for i, b in enumerate(byes):
+        coe[b] = 9.0 - i * 0.3
+    seed_order = ([{"fixed_team": None, "pair": (weak, strong)}]
+                  + [{"fixed_team": b, "pair": None} for b in byes])
+
+    def advance_rate(home_field):
+        got = 0
+        for seed in range(400):
+            result = simulate_bracket.simulate_one_bracket(
+                byes, [], seed_order, coe, 4.5, random.Random(seed), home_field)
+            if simulate_bracket.ROUND_RANK[result[strong]] >= simulate_bracket.ROUND_RANK["r16"]:
+                got += 1
+        return got / 400
+
+    quiet, loud = advance_rate(0.0), advance_rate(6.0)
+    assert loud > quiet + 0.05, (
+        f"the higher-CoE team advanced {quiet:.1%} with no home field and {loud:.1%} with a "
+        "large one; the boost is not reaching the host")
+
+
+def test_the_page_keeps_home_field_to_the_round_of_24(repo_root):
+    """
+    The page runs its own copy of the model and cannot be driven from here, so it
+    is read instead: the Round of 24 passes the shipped value and each later
+    round passes an explicit 0, rather than inheriting whatever the last call
+    used.
+    """
+    shell = (repo_root / "ui" / "dashboard_shell.html").read_text(encoding="utf-8")
+    assert "simulateGame(game.home, game.away, teamCoe, temperature, homeField)" in shell
+    for later in ("qfField.push(simulateGame(r16Field[i], r16Field[i + 1], teamCoe, temperature, 0))",
+                  "sfField.push(simulateGame(qfField[i], qfField[i + 1], teamCoe, temperature, 0))",
+                  "finalField.push(simulateGame(sfField[i], sfField[i + 1], teamCoe, temperature, 0))",
+                  "simulateGame(finalField[0], finalField[1], teamCoe, temperature, 0)"):
+        assert later in shell, f"a later round does not state its neutral venue: {later}"
+
+
+def test_the_page_takes_its_home_field_from_the_payload_not_a_constant(repo_root):
+    shell = (repo_root / "ui" / "dashboard_shell.html").read_text(encoding="utf-8")
+    assert "const homeField = (pf.sim_meta || {}).home_field;" in shell
+    assert "1.25" not in shell.split("function winProbability")[1].split("function runBracketSimulation")[0]
 
 
 # --------------------------------------------------------------------------
@@ -215,7 +370,7 @@ def test_the_fitted_temperature_beats_the_old_guess_on_real_games(db_path, repo_
         pytest.skip("not enough rated games -- run the pipeline and build_coefficients.py")
 
     fitted = json.loads((repo_root / "config" / "model_config.json").read_text())["simulation"]
-    now = cal.score(gaps, fitted["temperature"], fitted["measured_home_field"])
+    now = cal.score(gaps, fitted["temperature"], fitted["home_field"])
     before = cal.score(gaps, cal.INCUMBENT_TEMPERATURE, 0.0)
     assert now["brier"] < before["brier"]
     # The real gain is calibration: 6.0 was underconfident, not just off.
