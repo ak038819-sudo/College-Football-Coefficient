@@ -421,6 +421,44 @@
   .adv-row .val.na { color: var(--ink-dim); }
   .adv-row .rk { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); text-align: right; min-width: 64px; }
 
+  /* ---- Detail-page tabs + conference pages (Milestone E) ---- */
+  .page-tabs { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 0 0 18px; border-bottom: 1px solid var(--line); }
+  .page-tabs a { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.4px; text-transform: uppercase;
+    color: var(--ink-dim); padding: 9px 12px; margin-bottom: -1px; border-bottom: 2px solid transparent; text-decoration: none; }
+  .page-tabs a:hover { color: var(--ink); }
+  .page-tabs a[aria-current="page"] { color: var(--amber); border-color: var(--amber); }
+  @media (max-width: 520px) { .page-tabs a { padding: 9px 7px; font-size: 11px; } }
+  /* .ledger left-aligns its first three columns; these override that per cell. */
+  .ledger th.tl, .ledger td.tl { text-align: left; }
+  .ledger th.tr, .ledger td.tr { text-align: right; }
+  .ledger tbody tr:hover td { background: var(--panel-2); }
+  .ledger td.win { color: var(--green-hl); } .ledger td.loss { color: var(--red); }
+  .dim, .ledger td.dim { color: var(--ink-dim); }
+  .ledger caption { caption-side: bottom; font: 11px var(--font-mono); color: var(--ink-dim); text-align: left; padding-top: 8px; }
+  .sched-group { font: 10.5px var(--font-mono); color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.4px; }
+  .ledger tr.sched-post td { border-top: 1px solid var(--line); }
+  /* Contribution breakdown: each member's share of the conference's season CoE. */
+  .share-list { list-style: none; margin: 0; padding: 0; }
+  .share-row { display: grid; grid-template-columns: minmax(0, 1fr) 56px; gap: 4px 10px; align-items: center; padding: 7px 0; }
+  .share-row .share-pct { font-family: var(--font-mono); font-size: 13px; color: var(--amber); text-align: right; }
+  .share-bar { grid-column: 1 / -1; height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+  .share-bar i { display: block; height: 100%; background: var(--amber); }
+  /* One bar per season: conference CoE over time, at a glance. */
+  .bar-strip { display: flex; align-items: flex-end; gap: 2px; height: 96px; margin: 6px 0 4px; }
+  .bar-strip button { flex: 1 1 0; min-width: 3px; display: flex; align-items: flex-end; height: 100%;
+    padding: 0; border: 0; background: none; cursor: pointer; }
+  .bar-strip i { display: block; width: 100%; background: var(--amber-dim); border-radius: 1px 1px 0 0; min-height: 1px; }
+  .bar-strip button:hover i, .bar-strip button:focus-visible i { background: var(--amber); }
+  .bar-strip button.top i { background: var(--amber); }
+  .bar-strip button.on i { background: var(--ink); }
+  .bar-axis { display: flex; justify-content: space-between; font: 10.5px var(--font-mono); color: var(--ink-dim); }
+  .conf-title { font-family: var(--font-display); font-size: 38px; line-height: 1.05; margin: 0 0 6px; }
+  @media (max-width: 760px) { .conf-title { font-size: 30px; } }
+  .conf-tag { display: inline-block; font: 10.5px var(--font-mono); text-transform: uppercase; letter-spacing: 0.4px;
+    color: var(--ink-dim); border: 1px solid var(--line); border-radius: 3px; padding: 2px 6px; }
+  .cp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 760px) { .cp-cols { grid-template-columns: 1fr; } }
+
   /* ---- Upcoming schedule (Milestone 3) ---- */
   .up-note { font-size: 12px; color: var(--ink-dim); margin: 0 0 6px; line-height: 1.45; }
   .up-list { list-style: none; margin: 0; padding: 0; }
@@ -744,7 +782,7 @@
 <script id="static-manifest" type="application/json">
 {"seasons":[{"season":1980,"completed":532,"scheduled":0,"src":"data/games/1980.js?v=3178aa776e"},{"season":1981,"completed":538,"scheduled":0,"src":"data/games/1981.js?v=772e5c9680"},{"season":1982,"completed":503,"scheduled":0,"src":"data/games/1982.js?v=d88cbf35f7"},{"season":1983,"completed":510,"scheduled":0,"src":"data/games/1983.js?v=269b95d6cd"},{"season":1984,"completed":525,"scheduled":0,"src":"data/games/1984.js?v=0ea047a864"},{"season":1985,"completed":529,"scheduled":0,"src":"data/games/1985.js?v=2c4abc9888"},{"season":1986,"completed":531,"scheduled":0,"src":"data/games/1986.js?v=7a003e7762"},{"season":1987,"completed":531,"scheduled":0,"src":"data/games/1987.js?v=9dd92df582"},{"season":1988,"completed":528,"scheduled":0,"src":"data/games/1988.js?v=e55b054cad"},{"season":1989,"completed":553,"scheduled":0,"src":"data/games/1989.js?v=a528fe91d7"},{"season":1990,"completed":553,"scheduled":0,"src":"data/games/1990.js?v=6ace88104e"},{"season":1991,"completed":559,"scheduled":0,"src":"data/games/1991.js?v=12c3bdf3d0"},{"season":1992,"completed":571,"scheduled":0,"src":"data/games/1992.js?v=d321f9f22c"},{"season":1993,"completed":575,"scheduled":0,"src":"data/games/1993.js?v=99948fe73d"},{"season":1994,"completed":584,"scheduled":0,"src":"data/games/1994.js?v=c90d64453c"},{"season":1995,"completed":586,"scheduled":0,"src":"data/games/1995.js?v=75a3538e6d"},{"season":1996,"completed":614,"scheduled":0,"src":"data/games/1996.js?v=52be9a555e"},{"season":1997,"completed":628,"scheduled":0,"src":"data/games/1997.js?v=06f138d587"},{"season":1998,"completed":627,"scheduled":0,"src":"data/games/1998.js?v=d1bbb9eec5"},{"season":1999,"completed":633,"scheduled":0,"src":"data/games/1999.js?v=5408b92283"},{"season":2000,"completed":646,"scheduled":0,"src":"data/games/2000.js?v=956fd0cffc"},{"season":2001,"completed":652,"scheduled":0,"src":"data/games/2001.js?v=2241f728a6"},{"season":2002,"completed":707,"scheduled":0,"src":"data/games/2002.js?v=509f2ea27c"},{"season":2003,"completed":699,"scheduled":0,"src":"data/games/2003.js?v=1f92665dc6"},{"season":2004,"completed":657,"scheduled":0,"src":"data/games/2004.js?v=e0b2c239ab"},{"season":2005,"completed":664,"scheduled":0,"src":"data/games/2005.js?v=87747d77fa"},{"season":2006,"completed":714,"scheduled":0,"src":"data/games/2006.js?v=5e4adcfb03"},{"season":2007,"completed":712,"scheduled":0,"src":"data/games/2007.js?v=c07e69ad4b"},{"season":2008,"completed":717,"scheduled":0,"src":"data/games/2008.js?v=9aee93fad0"},{"season":2009,"completed":714,"scheduled":0,"src":"data/games/2009.js?v=75436868bd"},{"season":2010,"completed":718,"scheduled":0,"src":"data/games/2010.js?v=dbd1f895b4"},{"season":2011,"completed":715,"scheduled":0,"src":"data/games/2011.js?v=7f37e5f39f"},{"season":2012,"completed":732,"scheduled":0,"src":"data/games/2012.js?v=366d68b083"},{"season":2013,"completed":737,"scheduled":0,"src":"data/games/2013.js?v=38b258eedf"},{"season":2014,"completed":760,"scheduled":0,"src":"data/games/2014.js?v=cff7284b7d"},{"season":2015,"completed":765,"scheduled":0,"src":"data/games/2015.js?v=6933685e3e"},{"season":2016,"completed":760,"scheduled":0,"src":"data/games/2016.js?v=1f0604f8a7"},{"season":2017,"completed":776,"scheduled":0,"src":"data/games/2017.js?v=ac64a00dbb"},{"season":2018,"completed":772,"scheduled":0,"src":"data/games/2018.js?v=7d1e5cd6da"},{"season":2019,"completed":774,"scheduled":0,"src":"data/games/2019.js?v=7cfd80eff4"},{"season":2020,"completed":534,"scheduled":0,"src":"data/games/2020.js?v=8dee818c8e"},{"season":2021,"completed":770,"scheduled":0,"src":"data/games/2021.js?v=04c93187da"},{"season":2022,"completed":776,"scheduled":0,"src":"data/games/2022.js?v=35e9f85934"},{"season":2023,"completed":792,"scheduled":0,"src":"data/games/2023.js?v=1d5582dcbe"},{"season":2024,"completed":798,"scheduled":0,"src":"data/games/2024.js?v=a0233e7c8f"},{"season":2025,"completed":808,"scheduled":0,"src":"data/games/2025.js?v=9dc85f97ae"},{"season":2026,"completed":157,"scheduled":604,"src":"data/games/2026.js?v=3196251ee4"}],"search_index":"data/search_index.js?v=b473567edb","game_fields":["game_id","week","date","kickoff_utc","completed","phase","neutral","ot","home_id","away_id","home_score","away_score","home_pre_elo","away_pre_elo","p_home","home_post_elo","away_post_elo","home_elo_change","home_game_coe","away_game_coe","home_provisional","away_provisional","time_tbd"],"details":{"1985":"data/details/1985.js?v=4b2f7d2cb4","1986":"data/details/1986.js?v=120cedfeb9","1987":"data/details/1987.js?v=de25e66c2a","1988":"data/details/1988.js?v=e2aeb9e1b0","1989":"data/details/1989.js?v=9d231373fd","1990":"data/details/1990.js?v=c2b30113a0","1991":"data/details/1991.js?v=9b251fd35b","1992":"data/details/1992.js?v=1855d649c3","1993":"data/details/1993.js?v=8bb1b22063","1994":"data/details/1994.js?v=b84ab430f0","1995":"data/details/1995.js?v=ef73f14f0c","1996":"data/details/1996.js?v=a0b35633b7","1997":"data/details/1997.js?v=2d2e43b811","1998":"data/details/1998.js?v=058b366205","1999":"data/details/1999.js?v=4bceb9cd60","2000":"data/details/2000.js?v=16701bebf2","2001":"data/details/2001.js?v=3e39ab0a88","2002":"data/details/2002.js?v=6d75373fec","2003":"data/details/2003.js?v=93ed95e7c3","2004":"data/details/2004.js?v=3247f38eb5","2005":"data/details/2005.js?v=2c054f4dc2","2006":"data/details/2006.js?v=b4e19bc73e","2007":"data/details/2007.js?v=f2a9a120cf","2008":"data/details/2008.js?v=a60b551dca","2009":"data/details/2009.js?v=8daec2deca","2010":"data/details/2010.js?v=83de0f7173","2011":"data/details/2011.js?v=4c3fa3e01d","2012":"data/details/2012.js?v=4cba36d6a4","2013":"data/details/2013.js?v=83d53cfd33","2014":"data/details/2014.js?v=a341474878","2015":"data/details/2015.js?v=4bdd3590b6","2016":"data/details/2016.js?v=ccfb79a491","2017":"data/details/2017.js?v=4b2c50cc86","2018":"data/details/2018.js?v=04e3a93d6d","2019":"data/details/2019.js?v=c925544e26","2020":"data/details/2020.js?v=a8bbff5627","2021":"data/details/2021.js?v=e8f5eb7b29","2022":"data/details/2022.js?v=49a199d8f7","2023":"data/details/2023.js?v=5a028df816","2024":"data/details/2024.js?v=df2aff5706","2025":"data/details/2025.js?v=298230f58d","2026":"data/details/2026.js?v=f4a441f941"},"series":["data/series/0.js?v=ef84483c2b","data/series/1.js?v=58fbdb40ef","data/series/2.js?v=45372ed20a","data/series/3.js?v=4371372882","data/series/4.js?v=aa106cff3c","data/series/5.js?v=8d19506524","data/series/6.js?v=12df7cff82","data/series/7.js?v=d51b170ac3","data/series/8.js?v=924b010c1b","data/series/9.js?v=30fc996584","data/series/10.js?v=e60edec181","data/series/11.js?v=578a376e5e","data/series/12.js?v=617230daeb","data/series/13.js?v=90bbaa2483","data/series/14.js?v=e78043a203","data/series/15.js?v=ce205ed878","data/series/16.js?v=389a39340c","data/series/17.js?v=4dc840f766","data/series/18.js?v=e14bb8bb7b","data/series/19.js?v=f578a4e8ee","data/series/20.js?v=85adfe702e","data/series/21.js?v=59eb4d308a","data/series/22.js?v=9c0667e6a1","data/series/23.js?v=b86f8d0609","data/series/24.js?v=8831686334","data/series/25.js?v=df68573380","data/series/26.js?v=31048eec8f","data/series/27.js?v=3008290344","data/series/28.js?v=6106bf856e","data/series/29.js?v=07f00174ec","data/series/30.js?v=8f8149c5b1","data/series/31.js?v=58a539cea0"],"series_shards":32,"model_params":{"elo":{"initial_rating":1500,"scale":400,"k":35,"home_field":50,"offseason_retention":0.8,"mov_c":2.2,"mov_d":0.001},"hybrid":{"elo_weight":0.85,"coe_weight":0.15,"rating_scale":200},"coe2":{"win_base":2.0,"ot_loss":1.0,"regulation_loss":0.0,"difficulty_alpha":2.0,"tie_delta":2.0},"coe_v1":{"ITERATIONS":15,"PHASE_WEIGHTS":{"regular":1.0,"bowl":2.0,"cfp":3.0},"ROLLING_YEARS":5,"USE_WITHIN_WINDOW_DECAY":true,"WITHIN_WINDOW_DECAY_BASE":0.92,"CONFIDENCE_GAMES":8,"LOSS_PENALTY":0.15,"PRIOR_REGRESSION":0.5},"playoff_bids":[[1,4,4],[5,5,3],[6,10,1]]}}
 </script>
-<script src="navigation.js?v=985b384f61c5"></script>
+<script src="navigation.js?v=c6874299bf6e"></script>
 <script src="search.js?v=e852a057e15d"></script>
 <script>
 const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
@@ -915,6 +953,46 @@ function teamLink(name, size, yearOverride, namePrefix) {
     '<span class="team-link-name">' + (namePrefix || '') + name + '</span>');
 }
 
+// ---------------- Conference index (Milestone E) ----------------
+// Derived from the embedded conference ratings, which exist for exactly the
+// seasons a conference had rated members -- so a conference page can be resolved
+// and its header drawn without waiting for data/conference_pages.js.
+const CONFERENCES = (() => {
+  const byName = new Map();
+  Object.keys(DATA.conference_ratings_by_year || {}).map(Number).filter(Number.isInteger)
+    .sort((a, b) => a - b).forEach(year => {
+      (DATA.conference_ratings_by_year[year] || []).forEach(r => {
+        let e = byName.get(r.conference);
+        if (!e) byName.set(r.conference, e = { name: r.conference, slug: slugify(r.conference), first: year, seasons: 0 });
+        e.last = year;
+        e.seasons++;
+      });
+    });
+  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
+})();
+const CONF_BY_SLUG = new Map(CONFERENCES.map(c => [c.slug, c]));
+const CONF_BY_NAME = new Map(CONFERENCES.map(c => [c.name, c]));
+const LATEST_SEASON = DATA.years_all.length ? Math.max(...DATA.years_all) : null;
+
+function resolveConference(value) {
+  const v = String(value == null ? '' : value).trim();
+  return CONF_BY_SLUG.get(v) || CONF_BY_NAME.get(v) || CONF_BY_SLUG.get(slugify(v)) || null;
+}
+// A conference link carries where it was clicked from, exactly as team links do.
+function conferenceHref(name) {
+  const c = resolveConference(name);
+  const from = (state.view === 'team' || state.view === 'game') ? CfbNavigation.hashFor(state)
+    : state.view === 'conference' ? (state.returnTo || '#section=teams') : CfbNavigation.hashFor(state);
+  return CfbNavigation.hashFor({ view: 'conference', conferenceParam: c ? c.slug : slugify(name), tab: '', returnTo: from });
+}
+function conferenceLink(name, size, yearOverride) {
+  if (!name) return '';
+  const year = yearOverride === undefined ? LATEST_SEASON : yearOverride;
+  const inner = (size ? logoMarkup(name, 'conf', size, year) : '') +
+    '<span class="team-link-name">' + esc(name) + '</span>';
+  return '<a class="team-link" href="' + esc(conferenceHref(name)) + '">' + inner + '</a>';
+}
+
 const ROUTE_CONFIG = { yearsAll: DATA.years_all, playoffYears: DATA.years_playoff,
   gameSeasons: STATIC_MANIFEST.seasons || [] };
 let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult: null, simYear: null,
@@ -936,10 +1014,12 @@ function fmt(n) { return Number(n).toFixed(3); }
 
 function renderYearRow() {
   const row = document.getElementById('year-row');
-  if (state.view === 'team' || state.view === 'game' || state.section === 'teams' || state.section === 'methodology') {
+  if (state.view === 'team' || state.view === 'conference' || state.view === 'game' ||
+      state.section === 'teams' || state.section === 'methodology') {
     row.innerHTML = '';
-    document.getElementById('year-caption').textContent = state.view === 'team' ? 'TEAM PAGE' : state.view === 'game' ? 'GAME'
-      : state.section === 'methodology' ? 'METHODOLOGY' : 'TEAM DIRECTORY';
+    document.getElementById('year-caption').textContent = state.view === 'team' ? 'TEAM PAGE'
+      : state.view === 'conference' ? 'CONFERENCE PAGE' : state.view === 'game' ? 'GAME'
+      : state.section === 'methodology' ? 'METHODOLOGY' : 'TEAMS & CONFERENCES';
     return;
   }
   if (state.section === 'home') {
@@ -981,7 +1061,8 @@ function rankTable(rows, valueKey, labelKey, valueLabel, kind) {
   if (!rows || !rows.length) return '<div class="empty-note">No data for this season.</div>';
   let html = '<table class="rank-table"><thead><tr><th></th><th>' + labelKey + '</th><th class="num">' + valueLabel + '</th></tr></thead><tbody>';
   rows.forEach((r, i) => {
-    html += '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + (kind === 'team' ? teamLink(r.name, 'sm') : logoMarkup(r.name, kind, 'sm') + '<span>' + r.name + '</span>') + '</div></td><td class="num coe-val">' + fmt(r.value) + '</td></tr>';
+    html += '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + (kind === 'team' ? teamLink(r.name, 'sm') : kind === 'conf' ? conferenceLink(r.name, 'sm', state.year)
+      : logoMarkup(r.name, kind, 'sm') + '<span>' + r.name + '</span>') + '</div></td><td class="num coe-val">' + fmt(r.value) + '</td></tr>';
   });
   html += '</tbody></table>';
   return html;
@@ -1342,7 +1423,8 @@ function renderTeamPage(param) {
     '<div class="panel team-header">' +
       '<div class="team-header-main">' + logoMarkup(team.name, 'team', 'lg', season || undefined) +
         '<div><h1 class="team-title">' + team.name + '</h1>' +
-        '<div class="team-sub">' + (team.conference || 'No conference data') +
+        '<div class="team-sub">' +
+          (team.conference ? conferenceLink(team.conference, null, team.conference_year || season) : 'No conference data') +
           (season ? ' &middot; ' + season + ' season' : '') + '</div></div>' +
       '</div>' +
       '<div class="team-stats">' +
@@ -1353,14 +1435,45 @@ function renderTeamPage(param) {
       '</div>' +
     '</div>';
 
-  const loading = (id, title) => '<div class="panel team-section" id="' + id + '"><h2 class="section-title">' + title +
+  // Milestone E: Overview / Schedule / History / Analytics. Only the open tab's
+  // panels are in the DOM, and every fill*() below no-ops when its panel is absent,
+  // so a tab switch costs one render and no extra data load.
+  const tab = activeTab('team');
+  let body;
+  if (tab === 'schedule') {
+    body = loading('tp-schedule', 'Schedule');
+  } else if (tab === 'history') {
+    body = loading('tp-seasons', 'Season by Season') + loading('tp-history', 'Program History');
+  } else if (tab === 'analytics') {
+    body = loading('tp-analytics', 'Advanced Analytics') + loading('tp-ledger', 'Rating Ledger');
+  } else {
+    body = loading('tp-elo', 'Historical Elo') + renderUpcomingCard(team) +
+      '<div class="grid-2 team-section">' + loading('tp-gains', 'Biggest Elo Gains') +
+      loading('tp-losses', 'Biggest Elo Losses') + '</div>';
+  }
+  return back + header + pageTabNav('team', TEAM_TAB_LABELS) + body;
+}
+
+// ---------------- Detail-page tabs (Milestone E) ----------------
+// The tab lives in the URL (see ui/navigation.js), so every tab is a shareable
+// address and Back moves between tabs like any other navigation.
+const TEAM_TAB_LABELS = { overview: 'Overview', schedule: 'Schedule', history: 'History', analytics: 'Analytics' };
+const CONF_TAB_LABELS = { overview: 'Overview', members: 'Members', history: 'History', external: 'External' };
+
+function activeTab(kind) {
+  const tabs = CfbNavigation.pageTabs[kind] || [];
+  return tabs.includes(state.tab) ? state.tab : tabs[0] || '';
+}
+function pageTabNav(kind, labels) {
+  const tabs = CfbNavigation.pageTabs[kind] || [];
+  const active = activeTab(kind);
+  return '<nav class="page-tabs" aria-label="' + (kind === 'team' ? 'Team' : 'Conference') + ' page sections">' +
+    tabs.map(t => '<a href="' + esc(routeHref({ tab: t })) + '"' +
+      (t === active ? ' aria-current="page"' : '') + '>' + esc(labels[t]) + '</a>').join('') + '</nav>';
+}
+function loading(id, title) {
+  return '<div class="panel team-section" id="' + id + '"><h2 class="section-title">' + title +
     '</h2><div class="empty-note">Loading&hellip;</div></div>';
-  return back + header +
-    loading('tp-elo', 'Historical Elo') +
-    '<div class="grid-2 team-section">' + renderUpcomingCard(team) + loading('tp-analytics', 'Advanced Analytics') + '</div>' +
-    '<div class="grid-2 team-section">' + loading('tp-gains', 'Biggest Elo Gains') + loading('tp-losses', 'Biggest Elo Losses') + '</div>' +
-    loading('tp-ledger', 'Rating Ledger') +
-    loading('tp-history', 'Program History');
 }
 
 // ---------------- Team page data & sections (Milestone 2) ----------------
@@ -1368,7 +1481,7 @@ function renderTeamPage(param) {
 // the first time a team page opens. It's a <script> (not fetch) so it also
 // works when dashboard.html is opened straight from disk. Every number shown
 // here was computed in Python; this code only indexes, filters and draws.
-const TEAM_PAGES_VERSION = 'e8f8d2862002';
+const TEAM_PAGES_VERSION = 'cb290adf5f05';
 let TP = null;
 let _teamPagesPromise = null;
 let teamPageState = { teamId: null, chartSeason: 'all', season: null };
@@ -1386,7 +1499,7 @@ function indexTeamPages(raw) {
   raw.team_seasons.forEach(s => {
     const o = { tid: s[0], season: s[1], games: s[2], w: s[3], l: s[4], t: s[5], startElo: s[6], endElo: s[7],
       eloChange: s[8], sos: s[9], sosRank: s[10], expWins: s[11], actWins: s[12], aboveExp: s[13],
-      coe2: s[14], coe2Rank: s[15] };
+      coe2: s[14], coe2Rank: s[15], conf: s[16] ?? null };
     if (!seasonsByTeam.has(o.tid)) seasonsByTeam.set(o.tid, new Map());
     seasonsByTeam.get(o.tid).set(o.season, o);
     teamsPerSeason.set(o.season, (teamsPerSeason.get(o.season) || 0) + 1);
@@ -1759,6 +1872,156 @@ function fillHistoryPanel(tp, team) {
     '</ul></details>';
 }
 
+// ---- Full season schedule (Milestone E) ----
+// One season at a time, results and remaining games in one list. Completed rows
+// show the values STORED for that game (pregame Elo, the pregame expectation the
+// model actually made, the resulting change); scheduled rows show today's ratings
+// from DATA.upcoming. Nothing here recalculates Elo.
+function teamScheduleSeasons(tp, team) {
+  const played = teamSeasonsList(tp, team);
+  const ahead = UPCOMING_GAMES.filter(g => g.home === team.id || g.away === team.id).map(g => g.season);
+  return [...new Set([...ahead, ...played])].sort((a, b) => b - a);
+}
+
+function fillSchedulePanel(tp, team) {
+  const el = document.getElementById('tp-schedule');
+  if (!el) return;
+  const seasons = teamScheduleSeasons(tp, team);
+  if (!seasons.length) {
+    el.innerHTML = panelHead('Schedule') + '<div class="empty-note">No games in the dataset for this team.</div>';
+    return;
+  }
+  if (!seasons.includes(Number(teamPageState.schedSeason))) teamPageState.schedSeason = seasons[0];
+  const season = Number(teamPageState.schedSeason);
+  const played = (tp.eloByTeam.get(team.id) || []).filter(r => tp.gamesById.get(r.gid).season === season);
+  const ahead = UPCOMING_GAMES.filter(g => g.season === season && (g.home === team.id || g.away === team.id));
+  const wk = g => (g.phase > 0 ? 'Post' : g.week != null ? 'Wk ' + g.week : '—');
+
+  const rows = played.map(r => {
+    const g = tp.gamesById.get(r.gid), v = gameFor(team, g), ph = phaseLabel(tp, g);
+    return '<tr>' +
+      '<td><a href="' + esc(gameHref(g.id, g.season)) + '">' + esc(fmtGameDate(g)) + '</a></td>' +
+      '<td class="opp"><span class="swing-where">' + v.where + '</span> ' +
+        (v.opp ? oppLink(v.opp.name, g.season) : 'Unknown') + (v.neutral ? ' <span class="swing-where">(N)</span>' : '') + '</td>' +
+      '<td>' + (ph || wk(g)) + '</td>' +
+      '<td class="' + (v.result === 'W' ? 'win' : v.result === 'L' ? 'loss' : '') + '">' +
+        v.result + ' ' + v.mine + '–' + v.theirs + (g.ot ? ' OT' : '') + '</td>' +
+      '<td>' + r.pre.toFixed(0) + '</td><td>' + r.oppPre.toFixed(0) + '</td>' +
+      '<td>' + Math.round(r.exp * 100) + '%</td>' +
+      '<td class="' + (r.chg >= 0 ? 'pos' : 'neg') + '">' + signed(r.chg, 1) + '</td>' +
+      '<td>' + r.post.toFixed(0) + '</td></tr>';
+  });
+  if (ahead.length) {
+    rows.push('<tr class="sched-post"><td colspan="9" class="sched-group">Scheduled · ' +
+      'current ratings, not yet played</td></tr>');
+    ahead.forEach(g => {
+      const home = g.home === team.id, oppId = home ? g.away : g.home;
+      const opp = TEAM_BY_ID.get(String(oppId));
+      const myElo = home ? g.homeElo : g.awayElo, oppElo = home ? g.awayElo : g.homeElo;
+      const pct = probPct(g.pHome);
+      rows.push('<tr>' +
+        '<td>' + esc(fmtKickoff(g.kickoff, g.tbd)) + '</td>' +
+        '<td class="opp"><span class="swing-where">' + (g.neutral || home ? 'vs' : 'at') + '</span> ' +
+          (opp ? oppLink(opp.name, g.season) : 'Unknown') + (g.neutral ? ' <span class="swing-where">(N)</span>' : '') + '</td>' +
+        '<td>' + (g.phase === 2 ? 'CFP' : g.phase === 1 ? 'Bowl' : wk(g)) + '</td>' +
+        '<td class="dim">—</td>' +
+        '<td>' + Number(myElo).toFixed(0) + '</td><td>' + Number(oppElo).toFixed(0) + '</td>' +
+        '<td>' + (home ? pct.home : pct.away) + '%</td>' +
+        '<td class="dim">—</td><td class="dim">—</td></tr>');
+    });
+  }
+
+  const sRow = (tp.seasonsByTeam.get(team.id) || new Map()).get(season);
+  const foot = sRow
+    ? '<tfoot><tr><td colspan="3">' + season + ' · ' + recStr(sRow.w, sRow.l, sRow.t) + '</td>' +
+      '<td>' + fmtWins(sRow.actWins) + ' W</td>' +
+      '<td>' + sRow.startElo.toFixed(0) + '</td><td>' + sRow.sos.toFixed(0) + '</td>' +
+      '<td>' + Math.round(100 * sRow.expWins / sRow.games) + '%</td>' +
+      '<td class="' + (sRow.eloChange >= 0 ? 'pos' : 'neg') + '">' + signed(sRow.eloChange, 1) + '</td>' +
+      '<td>' + sRow.endElo.toFixed(0) + '</td></tr></tfoot>'
+    : '';
+  el.innerHTML = panelHead('Schedule', seasonSelect('tp-sched-season', seasons, season, false)) +
+    (rows.length
+      ? '<div class="table-scroll" tabindex="0" role="region" aria-label="' + season + ' schedule">' +
+        '<table class="ledger"><caption>Footer row: season record, actual wins, opening Elo, ' +
+        'average opponent pregame Elo, average pregame win probability, net Elo change, closing Elo.</caption>' +
+        '<thead><tr><th scope="col">Date</th><th scope="col">Opponent</th>' +
+        '<th scope="col">Round</th><th scope="col">Result</th><th scope="col">Elo</th>' +
+        '<th scope="col">Opp Elo</th><th scope="col">Win prob</th><th scope="col">Elo &Delta;</th>' +
+        '<th scope="col">Elo after</th></tr></thead><tbody>' + rows.join('') + '</tbody>' + foot + '</table></div>'
+      : '<div class="empty-note">No games recorded for ' + season + '.</div>') +
+    '<details class="help"><summary>What these columns mean</summary><ul>' +
+      '<li><b>Elo</b> and <b>Opp Elo</b> are both teams’ ratings <i>entering</i> the game, and <b>Win prob</b> is the ' +
+        'expectation the model made before kickoff (home field included). A completed row shows what was stored at the ' +
+        'time, so a past prediction is never rewritten with what happened later.</li>' +
+      '<li><b>Elo &Delta;</b> is K × (S − E) × M for that game; the Rating Ledger under <i>Analytics</i> shows the arithmetic.</li>' +
+      '<li>Scheduled rows use current ratings from <code>src/predict_upcoming.py</code> and have no result, no Elo change ' +
+        'and no post-game rating, because the game hasn’t been played.</li>' +
+      '<li>FBS opponents only — the database doesn’t store FCS games.</li>' +
+    '</ul></details>';
+  const sel = document.getElementById('tp-sched-season');
+  if (sel) sel.addEventListener('change', () => {
+    teamPageState.schedSeason = Number(sel.value);
+    fillSchedulePanel(tp, team);
+  });
+}
+
+// ---- Season by season (Milestone E): the team's whole history in one table ----
+function fillSeasonHistoryPanel(tp, team) {
+  const el = document.getElementById('tp-seasons');
+  if (!el) return;
+  const seasons = teamSeasonsList(tp, team);
+  if (!seasons.length) {
+    el.innerHTML = '<h2 class="section-title">Season by Season</h2>' +
+      '<div class="empty-note">No completed games in the dataset yet.</div>';
+    return;
+  }
+  const byId = tp.seasonsByTeam.get(team.id);
+  const tot = { games: 0, w: 0, l: 0, t: 0, exp: 0, act: 0 };
+  const rows = seasons.map(year => {
+    const s = byId.get(year);
+    const coe = rankLookup('team_ratings_by_year', 'rating', year, team.name);
+    tot.games += s.games; tot.w += s.w; tot.l += s.l; tot.t += s.t;
+    tot.exp += s.expWins; tot.act += s.actWins;
+    return '<tr>' +
+      '<td><a href="' + esc(routeHref({ tab: 'schedule' })) + '" data-season="' + year + '">' + year + '</a></td>' +
+      '<td class="opp">' + (s.conf ? conferenceLink(s.conf, null, year) : '<span class="dim">—</span>') + '</td>' +
+      '<td>' + recStr(s.w, s.l, s.t) + '</td>' +
+      '<td class="tr">' + s.endElo.toFixed(0) + '</td>' +
+      '<td class="' + (s.eloChange >= 0 ? 'pos' : 'neg') + '">' + signed(s.eloChange, 1) + '</td>' +
+      '<td>' + s.sos.toFixed(0) + ' <small>#' + s.sosRank + '</small></td>' +
+      '<td class="' + (s.aboveExp >= 0 ? 'pos' : 'neg') + '">' + signed(s.aboveExp, 1) + '</td>' +
+      '<td>' + (coe ? fmt(coe.value) + ' <small>#' + coe.rank + '</small>' : '<span class="dim">—</span>') + '</td>' +
+      '<td>' + (s.coe2 != null ? s.coe2.toFixed(1) + ' <small>#' + s.coe2Rank + '</small>' : '<span class="dim">—</span>') + '</td>' +
+    '</tr>';
+  });
+  el.innerHTML = '<h2 class="section-title">Season by Season</h2>' +
+    '<div class="table-scroll" tabindex="0" role="region" aria-label="Season by season history">' +
+    '<table class="ledger"><caption>Conference is the team\u2019s membership in that season, not today\u2019s. ' +
+    'Ranks are that season\u2019s, among teams with a rating.</caption>' +
+    '<thead><tr><th scope="col">Season</th><th scope="col">Conference</th>' +
+    '<th scope="col">Record</th><th scope="col" class="tr">End Elo</th><th scope="col">Elo &Delta;</th>' +
+    '<th scope="col">SoS</th><th scope="col">vs exp.</th><th scope="col">CoE v1</th>' +
+    '<th scope="col">CoE 2.0</th></tr></thead><tbody>' + rows.join('') + '</tbody>' +
+    '<tfoot><tr><td colspan="2">' + seasons.length + ' seasons · ' + tot.games + ' games</td>' +
+    '<td>' + recStr(tot.w, tot.l, tot.t) + '</td><td colspan="3" class="tl">expected ' + tot.exp.toFixed(1) +
+    ' W</td><td class="' + (tot.act - tot.exp >= 0 ? 'pos' : 'neg') + '">' + signed(tot.act - tot.exp, 1) +
+    '</td><td colspan="2" class="tl">actual ' + fmtWins(tot.act) + ' W</td></tr></tfoot></table></div>' +
+    '<details class="help"><summary>What these columns mean</summary><ul>' +
+      '<li><b>End Elo</b> is the rating after the season’s last game; <b>Elo &Delta;</b> is the change across the season, ' +
+        'after the offseason pull toward the mean that the Rating Ledger spells out.</li>' +
+      '<li><b>SoS</b> is the average opponent pregame Elo (higher = tougher) with that season’s rank beside it.</li>' +
+      '<li><b>vs exp.</b> is actual wins minus the sum of pregame win probabilities. Positive can mean real improvement ' +
+        'the ratings hadn’t caught up to, close-game results, or luck — it doesn’t say which.</li>' +
+      '<li><b>CoE v1</b> is the season rating that drives the playoff model. <b>CoE 2.0</b> is the experimental hybrid ' +
+        'layer, present only for seasons where it has been computed.</li>' +
+    '</ul></details>';
+  // A season opens that season's schedule: set the panel's season before the hash changes.
+  el.querySelectorAll('a[data-season]').forEach(a => a.addEventListener('click', () => {
+    teamPageState.schedSeason = Number(a.dataset.season);
+  }));
+}
+
 // ---- Upcoming schedule (Milestone 3) ----
 // DATA.upcoming comes from src/predict_upcoming.py: probabilities are computed
 // in Python with the Elo engine's own functions and current ratings. Nothing
@@ -1836,17 +2099,22 @@ function renderUpcomingCard(team) {
 function hydrateTeamPage() {
   const team = resolveTeam(state.teamParam);
   if (!team) return;
-  if (teamPageState.teamId !== team.id) teamPageState = { teamId: team.id, chartSeason: 'all', season: null };
+  if (teamPageState.teamId !== team.id) {
+    teamPageState = { teamId: team.id, chartSeason: 'all', season: null, schedSeason: null, ledgerSeason: null };
+  }
   loadTeamPages().then(tp => {
     const cur = resolveTeam(state.teamParam);
     if (state.view !== 'team' || !cur || cur.id !== team.id) return;   // user navigated away meanwhile
     fillEloPanel(tp, team);
+    fillSchedulePanel(tp, team);
+    fillSeasonHistoryPanel(tp, team);
     fillAnalyticsPanel(tp, team);
     fillSwingPanels(tp, team);
     fillLedgerPanel(tp, team);
     fillHistoryPanel(tp, team);
   }).catch(err => {
-    ['tp-elo', 'tp-analytics', 'tp-gains', 'tp-losses', 'tp-ledger', 'tp-history'].forEach(id => {
+    ['tp-elo', 'tp-schedule', 'tp-seasons', 'tp-analytics', 'tp-gains', 'tp-losses',
+     'tp-ledger', 'tp-history'].forEach(id => {
       const note = document.querySelector('#' + id + ' .empty-note');
       if (note) note.textContent = 'Team history is unavailable (' + err.message + ').';
     });
@@ -1951,8 +2219,8 @@ function renderConferenceBoard() {
   const b = DATA.conference_board || { rows: [] };
   const body = b.rows.length
     ? '<ol class="mini-board">' + b.rows.map(([conf, coe], i) =>
-        '<li><span class="rk">' + (i + 1) + '</span><span class="nm">' + logoMarkup(conf, 'conf', 'xs', b.season) +
-        '<span>' + conf + '</span></span><span class="v">' + fmt(coe) + '</span></li>').join('') + '</ol>'
+        '<li><span class="rk">' + (i + 1) + '</span><span class="nm">' + conferenceLink(conf, 'xs', b.season) +
+        '</span><span class="v">' + fmt(coe) + '</span></li>').join('') + '</ol>'
     : '<div class="empty-note">No conference ratings yet.</div>';
   return '<div class="panel">' + panelHead('Conference CoE', '<a class="side-link" href="#section=rankings&view=conference-coe&season=' + b.season + '">Details &rarr;</a>') + body +
     '<p class="side-note">5-year rolling CoE' + (b.season ? ', ' + b.season : '') + ': the order that sets playoff bids.</p></div>';
@@ -2027,7 +2295,27 @@ function renderTeamDirectory() {
     '<input type="search" id="team-query" name="q" maxlength="150" placeholder="BYU, Florida Atlantic, Miami…" value="' + esc(state.query) + '">' +
     '<button class="action-button" type="submit">Search</button>' +
     (state.query ? '<a class="side-link" href="#section=teams">Clear</a>' : '') + '</form>' +
-    '<div id="directory-results" aria-live="polite"></div></div>';
+    '<div id="directory-results" aria-live="polite"></div></div>' + renderConferenceDirectory();
+}
+
+// Conferences are browsable objects too (Milestone E), filtered by the same search box.
+function renderConferenceDirectory() {
+  const q = CfbNavigation.normalizeSearch(state.query);
+  const hits = CONFERENCES.filter(c => !q || CfbNavigation.normalizeSearch(c.name).includes(q) || c.slug.includes(q));
+  const card = c => '<li><a class="directory-card" href="' + esc(conferenceHref(c.name)) + '">' +
+    '<span class="name-cell">' + logoMarkup(c.name, 'conf', 'sm', c.last) + '<span>' + esc(c.name) + '</span></span>' +
+    '<small>' + c.first + '\u2013' + c.last + ' \u00b7 ' + c.seasons + ' season' + (c.seasons === 1 ? '' : 's') +
+    (c.last === LATEST_SEASON ? '' : ' \u00b7 not in ' + LATEST_SEASON) + '</small></a></li>';
+  const group = (label, list) => list.length
+    ? '<h3 class="an-title">' + label + '</h3><ul class="directory-grid">' + list.map(card).join('') + '</ul>' : '';
+  return '<div class="panel"><h2 class="section-title">Conferences</h2>' +
+    '<p class="section-note">' + hits.length + ' conference' + (hits.length === 1 ? '' : 's') +
+    (state.query ? ' matching \u201c' + esc(state.query) + '\u201d' : ' in this dataset') +
+    '. A conference page shows its members, historical CoE and record against the outside world.</p>' +
+    (hits.length
+      ? group('In ' + LATEST_SEASON, hits.filter(c => c.last === LATEST_SEASON)) +
+        group('Historical', hits.filter(c => c.last !== LATEST_SEASON))
+      : '<p class="empty-note">No matching conferences.</p>') + '</div>';
 }
 
 function fillDirectoryResults(aliasTeams, message) {
@@ -2410,6 +2698,7 @@ function backLink() {
   const r = state.returnTo || '#section=home';
   let label;
   if (r.startsWith('#team=')) { const t = resolveTeam(CfbNavigation.readRoute(r, ROUTE_CONFIG).teamParam); label = t ? t.name : 'team'; }
+  else if (r.startsWith('#conference=')) { const c = resolveConference(CfbNavigation.readRoute(r, ROUTE_CONFIG).conferenceParam); label = c ? c.name : 'conference'; }
   else if (r.startsWith('#game=')) label = 'game';
   else label = SECTION_LABELS[CfbNavigation.readRoute(r, ROUTE_CONFIG).section];
   return '<a class="back-link" href="' + esc(r) + '">&larr; Back to ' + esc(label) + '</a>';
@@ -2590,6 +2879,380 @@ function seriesHtml(rows, game, an, hn) {
 const BASE_TITLE = document.title;
 let hasRendered = false;
 let pendingFocus = null;
+// ---------------- Conference pages (Milestone E) ----------------
+// data/conference_pages.js is produced by src/export_conference_pages.py and
+// loaded only the first time a conference page opens (a <script>, not fetch(),
+// so it also works when dashboard.html is opened straight from disk). Every
+// number below was computed in Python from the authoritative tables; this code
+// only selects a season, formats and draws.
+const CONFERENCE_PAGES_VERSION = '474fbfab74f1';
+let CP = null;
+let _confPagesPromise = null;
+let confPageState = { slug: null, season: null };
+
+function indexConferencePages(raw) {
+  const sf = {}, mf = {};
+  raw.season_fields.forEach((f, i) => { sf[f] = i; });
+  raw.member_fields.forEach((f, i) => { mf[f] = i; });
+  // Season rows arrive oldest-first; keep that order and index by season for lookups.
+  const rowsBy = new Map();
+  Object.keys(raw.seasons).forEach(slug => {
+    rowsBy.set(slug, new Map((raw.seasons[slug] || []).map(r => [r[sf.season], r])));
+  });
+  return { raw, sf, mf,
+    seasonsOf: slug => raw.seasons[slug] || [],
+    rowFor: (slug, season) => (rowsBy.get(slug) || new Map()).get(Number(season)) || null,
+    membersOf: (slug, season) => ((raw.members[slug] || {})[String(season)] || []),
+    vsFor: (slug, season) => ((raw.vs[slug] || {})[String(season)] || {}),
+    vsAll: slug => raw.vs_all[slug] || {},
+    totals: slug => raw.totals[slug] || null,
+    meta: slug => (raw.conferences || []).find(c => c.slug === slug) || null };
+}
+
+function loadConferencePages() {
+  if (CP) return Promise.resolve(CP);
+  if (!_confPagesPromise) {
+    _confPagesPromise = new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = 'data/conference_pages.js?v=' + encodeURIComponent(CONFERENCE_PAGES_VERSION);
+      el.onload = () => {
+        if (!window.__CONFERENCE_PAGES__) { _confPagesPromise = null; reject(new Error('data file was empty')); return; }
+        CP = indexConferencePages(window.__CONFERENCE_PAGES__);
+        resolve(CP);
+      };
+      el.onerror = () => { _confPagesPromise = null; el.remove(); reject(new Error('could not load data/conference_pages.js')); };
+      document.head.appendChild(el);
+    });
+  }
+  return _confPagesPromise;
+}
+
+// Won-lost-tied as a record plus win percentage (ties count half, as everywhere else).
+function wlt(w, l, t) { return recStr(w, l, t); }
+function wltPct(w, l, t) {
+  const n = w + l + t;
+  return n ? ((w + 0.5 * t) / n * 100).toFixed(1) + '%' : '—';
+}
+function confSeasons(cp, slug) { return cp.seasonsOf(slug).map(r => r[cp.sf.season]).slice().reverse(); }
+function selectedConfSeason(cp, slug) {
+  const seasons = confSeasons(cp, slug);
+  if (!seasons.includes(Number(confPageState.season))) confPageState.season = seasons[0] ?? null;
+  return Number(confPageState.season);
+}
+function confSeasonSelect(cp, slug, id) {
+  return seasonSelect(id, confSeasons(cp, slug), selectedConfSeason(cp, slug), false);
+}
+function onConfSeasonChange(id, cp, c, refill) {
+  const sel = document.getElementById(id);
+  if (sel) sel.addEventListener('change', () => { confPageState.season = Number(sel.value); refill(cp, c); });
+}
+function confTeamCell(tid, season) {
+  const t = TEAM_BY_ID.get(String(tid));
+  return t ? oppLink(t.name, season) : '<span class="dim">Unknown team</span>';
+}
+// The definition every record on this page uses, stated once.
+const CONF_RECORD_NOTE =
+  '<details class="help"><summary>How these records are defined</summary><ul>' +
+    '<li>A <b>conference game</b> is one where both teams belonged to this conference that season; ' +
+      'an <b>external game</b> is one against a team in a different conference. Membership is that season’s ' +
+      '(<code>team_membership_by_season</code>), never today’s, so a realignment never rewrites an old record.</li>' +
+    '<li>Records count completed games against FBS opponents only — the database doesn’t store FCS games — ' +
+      'and win percentage counts a tie as half a win.</li>' +
+    '<li><b>Bowl</b> and <b>CFP</b> are real results. Pre-2014 title bowls count as bowls, not CFP, because the ' +
+      'College Football Playoff began with the 2014 season.</li>' +
+    '<li><b>Conference CoE 2.0</b> is copied from <code>conference_coe2_by_season</code> and counts a slightly ' +
+      'different game set: every postseason game is external to it, including the rare same-conference bowl. It is ' +
+      'experimental and does not set playoff bids.</li>' +
+    '<li><b>National titles</b> come from the hand-maintained reference list, credited to the conference the team ' +
+      'belonged to that season. They are never inferred from game results.</li>' +
+  '</ul></details>';
+
+function renderConferencePage(param) {
+  const back = backLink();
+  const c = resolveConference(param);
+  if (!c) {
+    return back + '<div class="panel"><h2 class="section-title">Conference not found</h2>' +
+      '<div class="empty-note">No conference matches &ldquo;' + esc(param || '') + '&rdquo;. ' +
+      '<a href="#section=teams">Browse teams and conferences</a>.</div></div>';
+  }
+  const active = c.last === LATEST_SEASON;
+  const header =
+    '<div class="panel team-header">' +
+      '<div class="team-header-main">' + logoMarkup(c.name, 'conf', 'lg', c.last) +
+        '<div><h1 class="conf-title">' + esc(c.name) + '</h1>' +
+        '<div class="team-sub">' + c.first + '–' + c.last + ' &middot; ' + c.seasons +
+          ' season' + (c.seasons === 1 ? '' : 's') + ' in dataset &middot; ' +
+          '<span class="conf-tag">' + (active ? 'Active' : 'Not in the latest season') + '</span></div></div>' +
+      '</div>' +
+    '</div>';
+  const tab = activeTab('conference');
+  let body;
+  if (tab === 'members') body = loading('cp-members', 'Members');
+  else if (tab === 'history') body = loading('cp-history', 'Season by Season');
+  else if (tab === 'external') body = loading('cp-external', 'External Performance');
+  else body = loading('cp-summary', 'Overview') + loading('cp-contrib', 'Contribution Breakdown');
+  return back + header + pageTabNav('conference', CONF_TAB_LABELS) + body;
+}
+
+function hydrateConferencePage() {
+  const c = resolveConference(state.conferenceParam);
+  if (!c) return;
+  if (confPageState.slug !== c.slug) confPageState = { slug: c.slug, season: null };
+  loadConferencePages().then(cp => {
+    const cur = resolveConference(state.conferenceParam);
+    if (state.view !== 'conference' || !cur || cur.slug !== c.slug) return;   // navigated away meanwhile
+    if (!cp.seasonsOf(c.slug).length) {
+      ['cp-summary', 'cp-contrib', 'cp-members', 'cp-history', 'cp-external'].forEach(id => {
+        const note = document.querySelector('#' + id + ' .empty-note');
+        if (note) note.textContent = 'No seasons recorded for this conference.';
+      });
+      return;
+    }
+    fillConfSummary(cp, c);
+    fillConfContrib(cp, c);
+    fillConfMembers(cp, c);
+    fillConfHistory(cp, c);
+    fillConfExternal(cp, c);
+  }).catch(err => {
+    ['cp-summary', 'cp-contrib', 'cp-members', 'cp-history', 'cp-external'].forEach(id => {
+      const note = document.querySelector('#' + id + ' .empty-note');
+      if (note) note.textContent = 'Conference history is unavailable (' + err.message + ').';
+    });
+  });
+}
+
+// ---- Overview: one season's standing, the all-time totals, and CoE over time ----
+// The season selector here drives the contribution breakdown below it, so the two
+// panels always describe the same season.
+function fillConfSummary(cp, c) {
+  const el = document.getElementById('cp-summary');
+  if (!el) return;
+  const F = cp.sf, rows = cp.seasonsOf(c.slug), T = cp.totals(c.slug) || {};
+  const season = selectedConfSeason(cp, c.slug);
+  const row = cp.rowFor(c.slug, season) || rows[rows.length - 1];
+  const rank = (r, of) => (r ? '#' + r + (of ? ' of ' + of : '') : 'N/A');
+  const board = DATA.conference_board || { rows: [] };
+  const bidIdx = (board.rows || []).findIndex(r => r[0] === c.name);
+  const bids = ((STATIC_MANIFEST.model_params || {}).playoff_bids || [])
+    .find(([lo, hi]) => bidIdx >= 0 && bidIdx + 1 >= lo && bidIdx + 1 <= hi);
+  const ext = T.ext || [0, 0, 0], bowl = T.bowl || [0, 0, 0, 0], cfp = T.cfp || [0, 0, 0];
+
+  // The bid rank is the CURRENT season's bid-setting order, so it is only shown
+  // beside that season -- it would be wrong to print it next to 1994.
+  const bidTile = (bidIdx >= 0 && season === (board.season ?? season))
+    ? teamStat('Playoff bid rank', '#' + (bidIdx + 1),
+        (bids ? bids[2] + (bids[2] === 1 ? ' bid' : ' bids') : 'no bids') + ' &middot; ' + board.season)
+    : '';
+  const tiles =
+    teamStat('CoE (season)', row[F.coe] == null ? 'N/A' : fmt(row[F.coe]),
+      rank(row[F.coe_rank], row[F.coe_of]) + ' &middot; ' + season) +
+    teamStat('CoE (5-yr)', row[F.coe5] == null ? 'N/A' : fmt(row[F.coe5]),
+      row[F.coe5] == null ? 'no full window yet' : rank(row[F.coe5_rank], row[F.coe5_of]) + ' &middot; sets playoff bids') +
+    teamStat('Conference CoE 2.0', row[F.coe2] == null ? 'N/A' : row[F.coe2].toFixed(1),
+      row[F.coe2] == null ? 'not computed for ' + season
+        : row[F.coe2_games] + ' external games &middot; experimental') +
+    teamStat('Members', String(row[F.members]), season + ' season &middot; ' + (T.members_ever || 0) + ' ever') +
+    teamStat('External record', wlt(row[F.ext_w], row[F.ext_l], row[F.ext_t]),
+      wltPct(row[F.ext_w], row[F.ext_l], row[F.ext_t]) + ' vs other conferences, ' + season) +
+    teamStat('External, all seasons', wlt(...ext),
+      wltPct(...ext) + ' &middot; ' + c.first + '–' + c.last) +
+    teamStat('Bowl / CFP, all seasons', wlt(bowl[1], bowl[2], bowl[3]) + ' / ' + wlt(cfp[1], cfp[2], 0),
+      bowl[0] + ' bowl bids &middot; ' + cfp[0] + ' CFP bids') +
+    teamStat('National titles', String(T.titles || 0), 'won by members while in the conference');
+
+  // One bar per season: this conference's own CoE over time. Absolute heights are not
+  // comparable across eras (FBS size and schedule length changed), so the tooltip
+  // carries the rank, which is.
+  const max = Math.max(...rows.map(r => r[F.coe] || 0), 0);
+  const peak = T.peak_coe ? T.peak_coe[0] : null;
+  const strip = max > 0
+    ? '<h3 class="an-title">Conference CoE by season</h3>' +
+      '<div class="bar-strip">' + rows.map(r => {
+        const y = r[F.season], v = r[F.coe] || 0;
+        return '<button type="button" data-season="' + y + '"' +
+          (y === season ? ' class="on"' : y === peak ? ' class="top"' : '') +
+          ' aria-label="' + y + '" title="' + y + ': ' + (r[F.coe] == null ? 'no rating' : fmt(r[F.coe])) +
+          (r[F.coe_rank] ? ' (' + rank(r[F.coe_rank], r[F.coe_of]) + ')' : '') + ', ' + r[F.members] + ' members">' +
+          '<i style="height:' + Math.max(1, Math.round(100 * v / max)) + '%"></i></button>';
+      }).join('') + '</div>' +
+      '<div class="bar-axis"><span>' + rows[0][F.season] + '</span>' +
+        (peak ? '<span>peak ' + peak + '</span>' : '') + '<span>' + rows[rows.length - 1][F.season] + '</span></div>' +
+      '<p class="section-note">CoE is a sum over member teams, so a bigger conference scores higher and the scale ' +
+        'shifts as FBS and the schedule change — across eras, compare the rank rather than the bar height. ' +
+        (T.best_rank ? 'Best finish: #' + T.best_rank[1] + ' of ' + T.best_rank[2] + ' in ' + T.best_rank[0] + '. ' : '') +
+        'Pick a bar to see that season.</p>'
+    : '';
+
+  el.innerHTML = panelHead('Overview', confSeasonSelect(cp, c.slug, 'cp-sum-season')) +
+    (c.name === (cp.raw.independents || '')
+      ? '<p class="ledger-note"><b>' + esc(c.name) + '</b> is not a league: it is every unaffiliated program, ' +
+        'grouped so their results still have somewhere to land. It has no standings, no champion and no internal ' +
+        'schedule, and it is excluded from playoff bid allocation.</p>'
+      : '') +
+    '<div class="an-grid">' + bidTile + tiles + '</div>' + strip + CONF_RECORD_NOTE;
+  const refill = () => { fillConfSummary(cp, c); fillConfContrib(cp, c); };
+  onConfSeasonChange('cp-sum-season', cp, c, refill);
+  el.querySelectorAll('button[data-season]').forEach(b => b.addEventListener('click', () => {
+    confPageState.season = Number(b.dataset.season);
+    refill();
+  }));
+}
+
+// ---- Overview: who earned the conference's season CoE, and how much of it ----
+function fillConfContrib(cp, c) {
+  const el = document.getElementById('cp-contrib');
+  if (!el) return;
+  const F = cp.sf, M = cp.mf, season = selectedConfSeason(cp, c.slug);
+  const row = cp.rowFor(c.slug, season), members = cp.membersOf(c.slug, season);
+  const rated = members.filter(m => m[M.share] != null);
+  el.innerHTML = '<h2 class="section-title">Contribution Breakdown &middot; ' + season + '</h2>' +
+    (rated.length
+      ? '<ol class="share-list">' + rated.map(m => '<li class="share-row">' +
+          '<span>' + confTeamCell(m[M.team_id], season) + '</span>' +
+          '<span class="share-pct">' + m[M.share].toFixed(1) + '%</span>' +
+          '<span class="share-bar"><i style="width:' + Math.max(0.6, m[M.share]) + '%"></i></span></li>').join('') + '</ol>' +
+        '<p class="section-note">' + season + ' conference CoE ' +
+          (row && row[F.coe] != null ? '<b>' + fmt(row[F.coe]) + '</b>' : 'N/A') +
+          ' is the sum of its members’ season ratings, so each share is one team’s rating divided by that ' +
+          'total. A team with no completed games that season has no rating and no share. ' +
+          'Change the season with the selector above.</p>'
+      : '<div class="empty-note">No rated members in ' + season + '.</div>');
+}
+
+// ---- Members: one season's roster with each team's record and contribution ----
+function fillConfMembers(cp, c) {
+  const el = document.getElementById('cp-members');
+  if (!el) return;
+  const F = cp.sf, M = cp.mf, season = selectedConfSeason(cp, c.slug);
+  const row = cp.rowFor(c.slug, season), members = cp.membersOf(c.slug, season);
+  const champ = row && row[F.champion_id] != null ? TEAM_BY_ID.get(String(row[F.champion_id])) : null;
+  const titles = (row && row[F.title_ids] || []).map(id => TEAM_BY_ID.get(String(id))).filter(Boolean);
+  const body = members.map(m => '<tr>' +
+    '<td class="opp">' + confTeamCell(m[M.team_id], season) + '</td>' +
+    '<td class="tr">' + (m[M.conf_rank] ? '#' + m[M.conf_rank] : '<span class="dim">—</span>') + '</td>' +
+    '<td class="tr">' + wlt(m[M.w], m[M.l], m[M.t]) + '</td>' +
+    '<td>' + (m[M.conf_w] + m[M.conf_l] + m[M.conf_t] ? wlt(m[M.conf_w], m[M.conf_l], m[M.conf_t]) : '<span class="dim">—</span>') + '</td>' +
+    '<td>' + (m[M.ext_w] + m[M.ext_l] + m[M.ext_t] ? wlt(m[M.ext_w], m[M.ext_l], m[M.ext_t]) : '<span class="dim">—</span>') + '</td>' +
+    '<td>' + (m[M.end_elo] == null ? '<span class="dim">—</span>' : m[M.end_elo].toFixed(0)) + '</td>' +
+    '<td>' + (m[M.coe] == null ? '<span class="dim">—</span>' : fmt(m[M.coe])) + '</td>' +
+    '<td>' + (m[M.share] == null ? '<span class="dim">—</span>' : m[M.share].toFixed(1) + '%') + '</td>' +
+    '</tr>').join('');
+  el.innerHTML = panelHead('Members', confSeasonSelect(cp, c.slug, 'cp-mem-season')) +
+    (members.length
+      ? (champ ? '<p class="ledger-note">' + season + ' standings leader: <b>' + esc(champ.name) + '</b>. ' +
+          'Derived locally from loaded results with the same tiebreak heuristic the playoff model uses — ' +
+          'a stable proxy ordering, not the league’s official tiebreakers.</p>' : '') +
+        (titles.length ? '<p class="ledger-note">National title' + (titles.length === 1 ? '' : 's') + ' in ' + season +
+          ': <b>' + titles.map(t => esc(t.name)).join(', ') + '</b>.</p>' : '') +
+        '<div class="table-scroll" tabindex="0" role="region" aria-label="' + season + ' members">' +
+        '<table class="ledger"><caption>Ordered by season CoE. &ldquo;Share&rdquo; is this team’s part of the ' +
+        'conference’s season CoE.</caption><thead><tr><th scope="col">Team</th>' +
+        '<th scope="col" class="tr">Standing</th><th scope="col" class="tr">Record</th>' +
+        '<th scope="col">Conference</th><th scope="col">External</th><th scope="col">End Elo</th>' +
+        '<th scope="col">CoE v1</th><th scope="col">Share</th></tr></thead><tbody>' + body + '</tbody>' +
+        (row ? '<tfoot><tr><td colspan="3">' + row[F.members] + ' members &middot; ' + row[F.conf_games] +
+          ' conference games</td><td class="dim">—</td><td>' +
+          wlt(row[F.ext_w], row[F.ext_l], row[F.ext_t]) + '</td><td class="dim">—</td><td>' +
+          (row[F.coe] == null ? '—' : fmt(row[F.coe])) + '</td><td>100%</td></tr></tfoot>' : '') +
+        '</table></div>' +
+        '<p class="section-note">Standing is the derived conference rank, available from ' +
+          (cp.raw.standings_since || 2014) + ' on; earlier seasons have no standings data, so the column is blank ' +
+          'rather than guessed.</p>' + CONF_RECORD_NOTE
+      : '<div class="empty-note">No members recorded for ' + season + '.</div>');
+  onConfSeasonChange('cp-mem-season', cp, c, fillConfMembers);
+}
+
+// ---- History: every season on one line ----
+function fillConfHistory(cp, c) {
+  const el = document.getElementById('cp-history');
+  if (!el) return;
+  const F = cp.sf, rows = cp.seasonsOf(c.slug).slice().reverse(), T = cp.totals(c.slug) || {};
+  const body = rows.map(r => {
+    const champ = r[F.champion_id] != null ? TEAM_BY_ID.get(String(r[F.champion_id])) : null;
+    const titles = (r[F.title_ids] || []).map(id => TEAM_BY_ID.get(String(id))).filter(Boolean);
+    const val = (v, rk, of) => v == null ? '<span class="dim">—</span>'
+      : fmt(v) + (rk ? ' <small>#' + rk + ' of ' + of + '</small>' : '');
+    return '<tr>' +
+      '<td><a href="' + esc(routeHref({ tab: 'members' })) + '" data-season="' + r[F.season] + '">' + r[F.season] + '</a></td>' +
+      '<td class="tr">' + r[F.members] + '</td>' +
+      '<td class="tr">' + val(r[F.coe], r[F.coe_rank], r[F.coe_of]) + '</td>' +
+      '<td>' + val(r[F.coe5], r[F.coe5_rank], r[F.coe5_of]) + '</td>' +
+      '<td>' + (r[F.coe2] == null ? '<span class="dim">—</span>' : r[F.coe2].toFixed(1)) + '</td>' +
+      '<td>' + wlt(r[F.ext_w], r[F.ext_l], r[F.ext_t]) + ' <small>' + wltPct(r[F.ext_w], r[F.ext_l], r[F.ext_t]) + '</small></td>' +
+      '<td>' + (r[F.bowl_teams] ? wlt(r[F.bowl_w], r[F.bowl_l], r[F.bowl_t]) + ' <small>' + r[F.bowl_teams] + ' bids</small>' : '<span class="dim">—</span>') + '</td>' +
+      '<td>' + (r[F.cfp_teams] ? wlt(r[F.cfp_w], r[F.cfp_l], 0) + ' <small>' + r[F.cfp_teams] + ' bids</small>' : '<span class="dim">—</span>') + '</td>' +
+      '<td class="opp">' + (champ ? confTeamCell(r[F.champion_id], r[F.season]) : '<span class="dim">—</span>') +
+        (titles.length ? ' <small>★ ' + titles.map(t => esc(t.name)).join(', ') + '</small>' : '') + '</td>' +
+      '</tr>';
+  }).join('');
+  const ext = T.ext || [0, 0, 0], bowl = T.bowl || [0, 0, 0, 0], cfp = T.cfp || [0, 0, 0];
+  el.innerHTML = '<h2 class="section-title">Season by Season</h2>' +
+    '<div class="table-scroll" tabindex="0" role="region" aria-label="Conference history">' +
+    '<table class="ledger"><caption>A season opens that season’s members. Ranks are among the conferences that ' +
+    'actually had members that season, so a dissolved conference never occupies a rank it no longer holds.</caption>' +
+    '<thead><tr><th scope="col">Season</th><th scope="col" class="tr">Members</th>' +
+    '<th scope="col" class="tr">CoE</th><th scope="col">CoE 5-yr</th><th scope="col">CoE 2.0</th>' +
+    '<th scope="col">External</th><th scope="col">Bowl</th><th scope="col">CFP</th>' +
+    '<th scope="col">Standings leader</th></tr></thead><tbody>' + body + '</tbody>' +
+    '<tfoot><tr><td>' + rows.length + ' seasons</td><td class="tr">' + (T.members_ever || 0) + ' ever</td>' +
+    '<td colspan="3" class="tl">' + (T.peak_coe ? 'peak ' + fmt(T.peak_coe[1]) + ' in ' + T.peak_coe[0] : '—') + '</td>' +
+    '<td>' + wlt(...ext) + ' <small>' + wltPct(...ext) + '</small></td>' +
+    '<td>' + wlt(bowl[1], bowl[2], bowl[3]) + ' <small>' + bowl[0] + ' bids</small></td>' +
+    '<td>' + wlt(cfp[1], cfp[2], 0) + ' <small>' + cfp[0] + ' bids</small></td>' +
+    '<td>' + (T.titles || 0) + ' national title' + ((T.titles || 0) === 1 ? '' : 's') + '</td></tr></tfoot>' +
+    '</table></div>' + CONF_RECORD_NOTE;
+  el.querySelectorAll('a[data-season]').forEach(a => a.addEventListener('click', () => {
+    confPageState.season = Number(a.dataset.season);
+  }));
+}
+
+// ---- External: the question conference CoE exists to answer ----
+function fillConfExternal(cp, c) {
+  const el = document.getElementById('cp-external');
+  if (!el) return;
+  const F = cp.sf, season = selectedConfSeason(cp, c.slug);
+  const row = cp.rowFor(c.slug, season);
+  const table = (map, label) => {
+    const entries = Object.entries(map).filter(([, v]) => v[0] + v[1] + v[2] > 0)
+      .sort((a, b) => (b[1][0] + b[1][1] + b[1][2]) - (a[1][0] + a[1][1] + a[1][2]));
+    if (!entries.length) return '<div class="empty-note">No external games ' + label + '.</div>';
+    const tot = entries.reduce((a, [, v]) => [a[0] + v[0], a[1] + v[1], a[2] + v[2]], [0, 0, 0]);
+    return '<div class="table-scroll" tabindex="0" role="region" aria-label="External record ' + esc(label) + '">' +
+      '<table class="ledger"><thead><tr><th scope="col">Opponent conference</th>' +
+      '<th scope="col" class="tr">Record</th><th scope="col" class="tr">Win %</th>' +
+      '<th scope="col">Games</th></tr></thead><tbody>' +
+      entries.map(([slug, v]) => {
+        const meta = CONF_BY_SLUG.get(slug);
+        return '<tr><td class="opp">' + (meta ? conferenceLink(meta.name, null, season)
+            : '<span class="dim">No conference that season</span>') + '</td>' +
+          '<td class="tr">' + wlt(v[0], v[1], v[2]) + '</td>' +
+          '<td class="tr">' + wltPct(v[0], v[1], v[2]) + '</td>' +
+          '<td>' + (v[0] + v[1] + v[2]) + '</td></tr>';
+      }).join('') + '</tbody>' +
+      '<tfoot><tr><td>Total</td><td class="tr">' + wlt(...tot) + '</td><td class="tr">' + wltPct(...tot) +
+      '</td><td>' + (tot[0] + tot[1] + tot[2]) + '</td></tr></tfoot></table></div>';
+  };
+  const post = row
+    ? '<div class="an-grid">' +
+      teamStat('Bowl record, ' + season, row[F.bowl_teams] ? wlt(row[F.bowl_w], row[F.bowl_l], row[F.bowl_t]) : '—',
+        row[F.bowl_teams] + ' member' + (row[F.bowl_teams] === 1 ? '' : 's') + ' in a bowl') +
+      teamStat('CFP record, ' + season, row[F.cfp_teams] ? wlt(row[F.cfp_w], row[F.cfp_l], 0) : '—',
+        row[F.cfp_teams] ? row[F.cfp_teams] + ' member' + (row[F.cfp_teams] === 1 ? '' : 's') + ' in the CFP'
+          : (season < (cp.raw.cfp_first_season || 2014) ? 'no CFP before ' + (cp.raw.cfp_first_season || 2014) : 'no CFP bids')) +
+      teamStat('Conference CoE 2.0, ' + season, row[F.coe2] == null ? 'N/A' : row[F.coe2].toFixed(1),
+        row[F.coe2] == null ? 'not computed' : row[F.coe2_games] + ' external games &middot; experimental') +
+      teamStat('Conference games, ' + season, String(row[F.conf_games]), 'played inside the conference') +
+      '</div>'
+    : '';
+  el.innerHTML = panelHead('External Performance', confSeasonSelect(cp, c.slug, 'cp-ext-season')) +
+    '<p class="section-note">Conference CoE asks one question: how did this conference do against everyone else? ' +
+      'These are the games that answer it.</p>' + post +
+    '<h3 class="an-title">' + season + ', by opponent conference</h3>' + table(cp.vsFor(c.slug, season), 'in ' + season) +
+    '<h3 class="an-title">All seasons, by opponent conference</h3>' + table(cp.vsAll(c.slug), 'on record') +
+    CONF_RECORD_NOTE;
+  onConfSeasonChange('cp-ext-season', cp, c, fillConfExternal);
+}
+
 function applyRoute() {
   const wasSeason = document.activeElement?.id === 'season-select';
   Object.assign(state, CfbNavigation.readRoute(location.hash, ROUTE_CONFIG));
@@ -2597,7 +3260,13 @@ function applyRoute() {
   if (location.hash !== canonical) history.replaceState(null, '', canonical);
   render();
   const t = state.view === 'team' ? resolveTeam(state.teamParam) : null;
-  document.title = (state.view === 'team' ? t?.name || 'Team not found' : SECTION_LABELS[state.section]) + ' · ' + BASE_TITLE;
+  const cf = state.view === 'conference' ? resolveConference(state.conferenceParam) : null;
+  const tabLabels = state.view === 'conference' ? CONF_TAB_LABELS : TEAM_TAB_LABELS;
+  const tabPart = (state.view === 'team' || state.view === 'conference') && state.tab !== 'overview' &&
+    tabLabels[state.tab] ? ' · ' + tabLabels[state.tab] : '';
+  document.title = (state.view === 'team' ? t?.name || 'Team not found'
+    : state.view === 'conference' ? cf?.name || 'Conference not found'
+    : SECTION_LABELS[state.section]) + tabPart + ' · ' + BASE_TITLE;
   if (hasRendered) {
     const focus = document.getElementById(pendingFocus || (wasSeason ? 'season-select' : 'content'));
     if (focus) focus.focus({ preventScroll: true });
@@ -2753,6 +3422,7 @@ function render() {
   renderYearRow();
   const content = document.getElementById('content');
   if (state.view === 'team') { content.innerHTML = renderTeamPage(state.teamParam); hydrateTeamPage(); return; }
+  if (state.view === 'conference') { content.innerHTML = renderConferencePage(state.conferenceParam); hydrateConferencePage(); return; }
   if (state.view === 'game') { content.innerHTML = renderGamePage(); hydrateGamePage(version); return; }
   if (state.section === 'home') content.innerHTML = renderHome();
   else if (state.section === 'methodology') content.innerHTML = renderMethodology();

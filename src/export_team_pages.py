@@ -23,7 +23,8 @@ Shared, normalized layout (no game duplicated per team):
                   change, postgame], ...]   grouped by team, chronological
   team_seasons: [[team_id, season, games, w, l, t, start_elo, end_elo,
                   elo_change, sos, sos_rank, expected_wins, actual_wins,
-                  wins_above_expected, coe2_season, coe2_rank], ...]
+                  wins_above_expected, coe2_season, coe2_rank,
+                  conference], ...]
   swings:       {team_id: {"gains": [game_id...], "losses": [game_id...]}}
   history:      {team_id: {...REAL postseason history only...}}
 
@@ -151,6 +152,24 @@ def build_advanced(conn: sqlite3.Connection) -> dict | None:
             "teams": dict(teams)}
 
 
+def load_memberships(conn: sqlite3.Connection) -> dict:
+    """
+    {(team_id, season): conference} -- the conference a team actually belonged
+    to in that season (Milestone E), so the team page's season-by-season history
+    names the right league for old seasons instead of today's.
+
+    Empty when the table isn't there (synthetic Elo-only fixtures); every
+    team-season in the real database has one, which
+    tests/test_team_pages.py::test_every_team_season_names_its_conference pins.
+    """
+    if not conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='team_membership_by_season'").fetchone():
+        return {}
+    return {(tid, season): conf for tid, season, conf in conn.execute(
+        "SELECT team_id, season_year, conference_real FROM team_membership_by_season "
+        "WHERE conference_real IS NOT NULL")}
+
+
 def load_completed_games(conn: sqlite3.Connection) -> list[tuple]:
     # Same ordering build_elo.py uses, so the chart can never disagree with the engine.
     return conn.execute(
@@ -219,6 +238,7 @@ def build_team_pages(conn: sqlite3.Connection, champions: list[dict] | None = No
     game_by_id = {g[0]: g for g in games}
     elo_rows = load_elo_rows(conn)
     coe2 = load_game_coe2(conn)
+    membership = load_memberships(conn)
 
     # ---- per team-season analytics ----
     acc: dict = {}
@@ -254,6 +274,8 @@ def build_team_pages(conn: sqlite3.Connection, champions: list[dict] | None = No
             round(a["exp_sum"], 2), actual, round(actual - a["exp_sum"], 2),
             round(coe2[(tid, season)], 3) if (tid, season) in coe2 else None,
             coe2_rank.get((tid, season)),
+            # conference appended LAST (position 16) so existing positions never move.
+            membership.get((tid, season)),
         ])
 
     # ---- biggest single-game swings (wins only / losses only; ties excluded) ----

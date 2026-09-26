@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
 Build ui/dashboard.html from ui/dashboard_shell.html and the static exports.
-Ratings and manifest data are embedded; navigation, logos, team histories and
-season game files remain separate assets served beside the page.
+Ratings and manifest data are embedded; navigation, logos, team histories,
+conference histories and season game files remain separate assets served beside
+the page.
 
 Normal build: regenerate exports from an existing league database, export logo
 files from the committed dated-logo sources, and render the dashboard.
@@ -25,6 +26,7 @@ SHELL_PATH = Path("ui/dashboard_shell.html")
 DATA_PATH = Path("ui/dashboard_data.json")
 OUT_PATH = Path("ui/dashboard.html")
 TEAM_PAGES_PATH = Path("ui/data/team_pages.js")
+CONFERENCE_PAGES_PATH = Path("ui/data/conference_pages.js")
 LOGO_MANIFEST_PATH = Path("ui/logo_manifest.json")
 STATIC_MANIFEST_PATH = Path("ui/data/static_manifest.json")
 NAVIGATION_PATH = Path("ui/navigation.js")
@@ -33,7 +35,7 @@ SEARCH_PATH = Path("ui/search.js")
 
 def render_from_exports() -> None:
     """Render the template from existing exports, without touching model data."""
-    required = [SHELL_PATH, DATA_PATH, TEAM_PAGES_PATH, LOGO_MANIFEST_PATH,
+    required = [SHELL_PATH, DATA_PATH, TEAM_PAGES_PATH, CONFERENCE_PAGES_PATH, LOGO_MANIFEST_PATH,
                 STATIC_MANIFEST_PATH, NAVIGATION_PATH, SEARCH_PATH]
     missing = [str(path) for path in required if not path.exists()]
     if missing:
@@ -44,6 +46,7 @@ def render_from_exports() -> None:
              .replace("__LOGO_MANIFEST_JSON__", LOGO_MANIFEST_PATH.read_text(encoding="utf-8"))
              .replace("__STATIC_MANIFEST_JSON__", STATIC_MANIFEST_PATH.read_text(encoding="utf-8"))
              .replace("__TEAM_PAGES_VERSION__", hashlib.sha256(TEAM_PAGES_PATH.read_bytes()).hexdigest()[:12])
+             .replace("__CONFERENCE_PAGES_VERSION__", hashlib.sha256(CONFERENCE_PAGES_PATH.read_bytes()).hexdigest()[:12])
              .replace("__NAVIGATION_VERSION__", hashlib.sha256(NAVIGATION_PATH.read_bytes()).hexdigest()[:12])
              .replace("__SEARCH_VERSION__", hashlib.sha256(SEARCH_PATH.read_bytes()).hexdigest()[:12]))
     OUT_PATH.write_text(final, encoding="utf-8")
@@ -75,6 +78,13 @@ def main() -> None:
     # GitHub Pages cache can never pair a new dashboard with an old data file.
     subprocess.run(
         [sys.executable, "src/export_team_pages.py", "--db", args.db, "--out", str(TEAM_PAGES_PATH)],
+        check=True,
+    )
+    # Conference-page data (Milestone E): members, historical CoE, external
+    # performance. Loaded only when a conference page opens, and content-hashed
+    # into the page for the same cache-pairing reason as team_pages.js.
+    subprocess.run(
+        [sys.executable, "src/export_conference_pages.py", "--db", args.db, "--out", str(CONFERENCE_PAGES_PATH)],
         check=True,
     )
     # Logos as static files + a small manifest (data foundation step) instead of

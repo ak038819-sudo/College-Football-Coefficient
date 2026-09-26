@@ -10,6 +10,16 @@
     rankings: ['elo', 'team-coe', 'conference-coe', 'ap', 'cfp'],
     playoff: ['field', 'bracket', 'odds', 'history']
   };
+  // Detail-page tabs (Milestone E). The first entry is the default and is left out
+  // of the URL, so every existing #team= link keeps opening the same page.
+  const pageTabs = {
+    team: ['overview', 'schedule', 'history', 'analytics'],
+    conference: ['overview', 'members', 'history', 'external'],
+    game: []
+  };
+  // Where each kind of detail page goes when it has no return address of its own.
+  const pageHome = { team: '#section=teams', conference: '#section=teams', game: '#section=games' };
+  const pagePrefix = { team: '#team=', conference: '#conference=', game: '#game=' };
   const legacy = {
     home: ['home', ''], teams: ['rankings', 'team-coe'],
     elo: ['rankings', 'elo'], conferences: ['rankings', 'conference-coe'],
@@ -25,11 +35,33 @@
     return [...new Set((years || []).map(Number).filter(Number.isInteger))].sort((a, b) => a - b);
   }
 
+  // A detail page's `from` may name a section URL or ANOTHER detail page, never an
+  // external URL. The target's own return address is dropped, so links can't nest
+  // without limit, and a page can never be its own return target.
+  function safeReturn(from, config, kind) {
+    const fallback = pageHome[kind];
+    if (!from) return fallback;
+    if (from.startsWith('#section=')) {
+      const back = new URLSearchParams(from.slice(1));
+      return back.has('team') ? fallback : hashFor(readRoute(from, config));
+    }
+    for (const other of ['team', 'conference', 'game']) {
+      if (other === kind || !from.startsWith(pagePrefix[other])) continue;
+      const r = readRoute(from, config);
+      const id = other === 'game' ? r.gameParam : other === 'team' ? r.teamParam : r.conferenceParam;
+      return (r.view === other && id != null && id !== '')
+        ? hashFor({ ...r, tab: '', returnTo: pageHome[other] }) : fallback;
+    }
+    return fallback;
+  }
+
   function readRoute(hash, config) {
     const p = new URLSearchParams(String(hash || '').replace(/^#/, ''));
     let section = p.get('section');
     let subview = p.get('view');
-    if (!p.has('section') && has(legacy, p.get('tab'))) [section, subview] = legacy[p.get('tab')];
+    // `tab` means a detail page's tab when one is open, and only otherwise the pre-A1 tab names.
+    const isPage = p.has('team') || p.has('conference');
+    if (!p.has('section') && !isPage && has(legacy, p.get('tab'))) [section, subview] = legacy[p.get('tab')];
     if (!has(views, section)) section = 'home';
     if (!views[section].includes(subview)) subview = views[section][0] || '';
     const years = seasonsFor(section, config);
@@ -54,66 +86,54 @@
     const conf = isGames && c.length <= 60 && /^[A-Za-z0-9 &().'-]+$/.test(c) ? c : null;
     const route = { section, subview, year, status,
       query: section === 'teams' ? (p.get('q') || '').trim().slice(0, 150) : '',
-      game, week, team: teamFilter, conf, view: 'tab', teamParam: null, gameParam: null, returnTo: '' };
-    // Existing team URLs remain valid. A team page belongs to the Teams section.
-    if (p.has('team')) {
-      route.view = 'team';
-      route.section = 'teams';
+      game, week, team: teamFilter, conf, view: 'tab', teamParam: null, conferenceParam: null,
+      gameParam: null, tab: '', returnTo: '' };
+    const openPage = (kind, param) => {
+      route.view = kind;
       route.subview = '';
       route.query = '';
       route.game = null;
-      route.week = null;
-      route.team = null;
-      route.conf = null;
+      route.week = null; route.team = null; route.conf = null;
+      route[kind === 'game' ? 'gameParam' : kind + 'Param'] = param;
+      const wanted = p.get('tab') || '';
+      route.tab = pageTabs[kind].includes(wanted) ? wanted : (pageTabs[kind][0] || '');
+      route.returnTo = safeReturn(p.get('from'), config, kind);
+    };
+    // Existing team URLs remain valid. Team and conference pages belong to the Teams
+    // section; a team link always wins over a conference or game parameter beside it.
+    if (p.has('team')) {
+      route.section = 'teams';
+      openPage('team', p.get('team'));
       route.year = latest(config.yearsAll || []);
-      route.teamParam = p.get('team');
-      // Only accept a section URL or a game page as the return target; never an external URL.
-      // A game page's own return address is dropped, so links can't nest without limit.
-      const from = p.get('from');
-      if (from && from.startsWith('#section=')) {
-        const back = new URLSearchParams(from.slice(1));
-        if (!back.has('team')) route.returnTo = hashFor(readRoute(from, config));
-      } else if (from && from.startsWith('#game=')) {
-        const g = readRoute(from, config);
-        if (g.view === 'game' && g.gameParam != null) route.returnTo = hashFor({ ...g, returnTo: '#section=games' });
-      }
-      if (!route.returnTo) route.returnTo = '#section=teams';
+    } else if (p.has('conference') && !p.has('section')) {
+      // Conference pages (Milestone E): historical CoE, members, external performance.
+      // Guarded like #game=, so a stray parameter can't hijack an explicit #section= URL.
+      route.section = 'teams';
+      openPage('conference', p.get('conference'));
+      route.year = latest(config.yearsAll || []);
     } else if (p.has('game') && !p.has('section')) {
       // A game page (Milestone C) belongs to the Games section. #section=games&...&game=
       // stays what it was: a season list with that game highlighted.
       const id = p.get('game') || '';
-      route.view = 'game';
       route.section = 'games';
-      route.subview = '';
-      route.query = '';
-      route.week = null; route.team = null; route.conf = null;
-      route.gameParam = /^\d{1,12}$/.test(id) ? Number(id) : null;
-      route.game = null;
+      openPage('game', /^\d{1,12}$/.test(id) ? Number(id) : null);
       const s = Number(p.get('season'));
       route.year = (config.gameSeasons || []).some(x => x.season === s) ? s : null;
-      // Return to a section URL or a team page (whose own return address is dropped).
-      const from = p.get('from');
-      if (from && from.startsWith('#section=')) {
-        const back = new URLSearchParams(from.slice(1));
-        if (!back.has('team')) route.returnTo = hashFor(readRoute(from, config));
-      } else if (from && from.startsWith('#team=')) {
-        const t = readRoute(from, config);
-        if (t.view === 'team' && t.teamParam) route.returnTo = hashFor({ ...t, returnTo: '#section=teams' });
-      }
-      if (!route.returnTo) route.returnTo = '#section=games';
     }
     return route;
   }
 
   function hashFor(route) {
     const p = new URLSearchParams();
-    if (route.view === 'team') {
-      p.set('team', route.teamParam || '');
-      if (route.returnTo && route.returnTo !== '#section=teams') p.set('from', route.returnTo);
-    } else if (route.view === 'game') {
+    const kind = route.view;
+    if (kind === 'team' || kind === 'conference') {
+      p.set(kind, (kind === 'team' ? route.teamParam : route.conferenceParam) || '');
+      if (route.tab && route.tab !== pageTabs[kind][0]) p.set('tab', route.tab);
+      if (route.returnTo && route.returnTo !== pageHome[kind]) p.set('from', route.returnTo);
+    } else if (kind === 'game') {
       p.set('game', route.gameParam == null ? '' : route.gameParam);
       if (route.year != null) p.set('season', route.year);
-      if (route.returnTo && route.returnTo !== '#section=games') p.set('from', route.returnTo);
+      if (route.returnTo && route.returnTo !== pageHome.game) p.set('from', route.returnTo);
     } else {
       p.set('section', route.section);
       if (route.subview) p.set('view', route.subview);
@@ -136,5 +156,5 @@
       .toLowerCase().replace(/[^a-z0-9]/g, '');
   }
 
-  return { readRoute, hashFor, seasonsFor, normalizeSearch };
+  return { readRoute, hashFor, seasonsFor, normalizeSearch, pageTabs };
 });
