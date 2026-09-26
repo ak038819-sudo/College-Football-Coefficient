@@ -5,6 +5,8 @@ Exports everything the dashboard needs into one JSON file:
   - team 5yr rolling CoE (years with a computed window)
   - conference ratings by season (years with membership data, detected dynamically)
   - conference 5yr rolling CoE
+  - CoE 2.0 conference five-season (entering) values, in the canonical
+    bid-allocation order, plus the bonus magnitudes they were built with
   - playoff field + Round-of-24 bracket draw for every season that has
     both membership data AND enough of it to actually build a 24-team
     field (a year can have membership but still fail, e.g. too few
@@ -35,6 +37,8 @@ from draw_playoff_bracket_v2 import (  # noqa: E402
     backtrack_pairings, choose_home_away, build_conf_map,
 )
 from simulate_bracket import run_simulation, DEFAULT_TEMPERATURE  # noqa: E402
+sys.path.insert(0, str(Path(__file__).parent))
+from build_coe2_rollups import conference_coe2_rank, load_bonus_config  # noqa: E402
 import random
 
 DATA_DIR = Path("data/processed")
@@ -180,6 +184,69 @@ def build_conference_board(db_path: str, membership_years: list[int]) -> dict:
     finally:
         conn.close()
     return {"season": None, "rows": []}
+
+
+def build_conference_coe2_5yr(db_path: str) -> dict:
+    """
+    {"<season>": [{conference, coe2_5yr, window, seasons_counted, external_games, rank}, ...]}
+    strongest first: Conference CoE 2.0 over the five seasons BEFORE that season --
+    the value ENTERING it, frozen (src/build_coe2_rollups.py, ENG-14).
+
+    The ORDER and the exclusions are not decided here. They come from
+    conference_coe2_rank(), which is the canonical bid-allocation contract
+    ('FBS Independents' is not a league; a conference with no members that season
+    cannot hold a rank in it). Everything else on the row is copied from
+    conference_coe2_5yr_by_season so the window a number covers travels with it.
+
+    Empty until src/build_coe2_rollups.py has been run, which is why every caller
+    must tolerate a missing season rather than render an absence as a zero.
+    """
+    conn = sqlite3.connect(db_path)
+    try:
+        if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND "
+                            "name='conference_coe2_5yr_by_season'").fetchone():
+            return {}
+        rows = {(season, conf): rest for season, conf, *rest in conn.execute(
+            """SELECT season_year, conference, window_start_year, window_end_year,
+                      seasons_counted, external_games FROM conference_coe2_5yr_by_season""")}
+        out = {}
+        for season in sorted({s for s, _ in rows}):
+            ranked = conference_coe2_rank(conn, season)
+            if not ranked:
+                continue
+            # Competition ranking (1, 2, 2, 4): two conferences on the same value
+            # share a rank rather than being separated by float ordering.
+            prev_value, prev_rank = None, 0
+            season_rows = []
+            for i, (conf, value) in enumerate(ranked, start=1):
+                rank = prev_rank if value == prev_value else i
+                prev_value, prev_rank = value, rank
+                start, end, counted, external = rows[(season, conf)]
+                season_rows.append({"conference": conf, "coe2_5yr": round(value, 3),
+                                    "window": [start, end], "seasons_counted": counted,
+                                    "external_games": external, "rank": rank})
+            out[str(season)] = season_rows
+        return out
+    finally:
+        conn.close()
+
+
+def build_coe2_bonuses(config_path: Path = Path("config/model_config.json")) -> dict:
+    """
+    {"version", "values", "all_zero"} -- the bonus magnitudes a CoE 2.0 season
+    total was built with.
+
+    They all ship at 0.0 on purpose (see build_coe2_rollups.py), which means a
+    season total is exactly the sum of its game awards. That is a fact a reader
+    needs in order to read the number correctly, so it is exported rather than
+    left as something the page has to assume.
+    """
+    if not config_path.exists():
+        return {"version": None, "values": {}, "all_zero": True}
+    cfg = json.loads(config_path.read_text(encoding="utf-8"))
+    bonus = load_bonus_config(cfg.get("coe2_bonuses"))
+    return {"version": bonus["version"], "values": bonus["values"],
+            "all_zero": not any(bonus["values"].values())}
 
 
 def build_polls(db_path: str, season) -> dict:
@@ -390,6 +457,13 @@ def main() -> None:
         # sets playoff bids -- the same load_conference_coe_rank() the playoff
         # field uses, so defunct conferences can never appear.
         "conference_board": build_conference_board(args.db, membership_years),
+        # CoE 2.0 conference five-season (entering) values + the bonus magnitudes
+        # those totals were built with (ENG-14). Embedded rather than lazy-loaded
+        # because both the rankings tab and the conference page need it, and it is
+        # a few hundred rows. The live playoff model still runs on CoE v1; these
+        # two must stay visibly separate, which is why they have separate keys.
+        "conference_coe2_5yr_by_year": build_conference_coe2_5yr(args.db),
+        "coe2_bonuses": build_coe2_bonuses(),
     }
 
     usable_years = []
