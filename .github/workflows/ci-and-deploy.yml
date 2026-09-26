@@ -156,6 +156,15 @@ jobs:
           # (entering) value. Depends on the game awards above.
           python3 src/build_coe2_rollups.py
 
+      # MODEL-07. Scores the ratings that were just built and writes
+      # data/processed/validation_report.json + validation_by_season.csv, which
+      # the commit step below picks up -- so every refresh leaves a dated record
+      # of how well the model predicted, instead of that being knowable only by
+      # running a script locally. Reads the database, writes nothing to it and
+      # never touches config, so it cannot change the site it reports on.
+      - name: Score the model and write the validation report
+        run: python3 src/run_validation.py
+
       - name: Rebuild the dashboard
         run: python3 build_dashboard.py --draw-seed 1
 
