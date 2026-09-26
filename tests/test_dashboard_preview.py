@@ -60,6 +60,12 @@ def test_every_routable_view_has_a_renderer_and_a_link(repo_root):
         "the two conference rankings must be distinguishable in the tab bar"
     view_map = re.search(r"const views = \{ elo: renderElo,(.*?)\};", shell, re.S).group(1)
     assert "'conference-coe2': renderConferenceCoe2" in view_map
+    # Every rankings view, not just the two named above, has to be drawable: a
+    # routable view with no entry here renders undefined and throws (P1-05).
+    for view in rankings:
+        assert f"'{view}'" in view_map or f"{view}:" in view_map or view == "elo", \
+            f"rankings view {view} is routable but has no renderer"
+    assert "elo-weekly" in rankings, "the week-by-week Elo view must stay reachable"
 
     sections = re.findall(r"([a-z]+): \[\]", views_block)
     assert "coverage" in sections

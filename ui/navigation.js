@@ -12,7 +12,7 @@
     // 2.0's frozen value ENTERING the season. Separate views with separate names,
     // for the same reason they are separate tables: they must never be read as
     // one number.
-    rankings: ['elo', 'team-coe', 'conference-coe', 'conference-coe2', 'ap', 'cfp'],
+    rankings: ['elo', 'team-coe', 'conference-coe', 'conference-coe2', 'elo-weekly', 'ap', 'cfp'],
     playoff: ['field', 'bracket', 'odds', 'history']
   };
   // Detail-page tabs (Milestone E). The first entry is the default and is left out
@@ -90,16 +90,23 @@
     const teamFilter = isGames && /^[a-z0-9-]{1,60}$/.test(t) ? t : null;
     const c = (p.get('conf') || '').trim();
     const conf = isGames && c.length <= 60 && /^[A-Za-z0-9 &().'-]+$/.test(c) ? c : null;
+    // Which point in a season the week-by-week Elo table is showing (P1-05):
+    // 'pre', 'w<week>' or 'post', the keys src/elo_timeline.py writes. Only the
+    // shape is checked here; the page checks it against the season's real stages
+    // and says so when one doesn't apply, exactly as the week filter does.
+    const st = p.get('stage') || '';
+    const stage = (section === 'rankings' && subview === 'elo-weekly' &&
+      (st === 'pre' || st === 'post' || /^w\d{1,2}$/.test(st))) ? st : null;
     const route = { section, subview, year, status,
       query: section === 'teams' ? (p.get('q') || '').trim().slice(0, 150) : '',
-      game, week, team: teamFilter, conf, view: 'tab', teamParam: null, conferenceParam: null,
+      game, week, team: teamFilter, conf, stage, view: 'tab', teamParam: null, conferenceParam: null,
       gameParam: null, tab: '', returnTo: '' };
     const openPage = (kind, param) => {
       route.view = kind;
       route.subview = '';
       route.query = '';
       route.game = null;
-      route.week = null; route.team = null; route.conf = null;
+      route.week = null; route.team = null; route.conf = null; route.stage = null;
       route[kind === 'game' ? 'gameParam' : kind + 'Param'] = param;
       const wanted = p.get('tab') || '';
       route.tab = pageTabs[kind].includes(wanted) ? wanted : (pageTabs[kind][0] || '');
@@ -152,6 +159,7 @@
         if (route.conf) p.set('conf', route.conf);
         if (route.game != null) p.set('game', route.game);
       }
+      if (route.section === 'rankings' && route.subview === 'elo-weekly' && route.stage) p.set('stage', route.stage);
       if (route.section === 'teams' && route.query) p.set('q', route.query);
     }
     return '#' + p.toString();
