@@ -77,12 +77,26 @@ jobs:
           conn.executescript(open('sql/views/v_games_enriched.sql').read())
           conn.commit()
           "
+          # PER-GAME advanced stats (EXP-03). This is the one optional load the test
+          # job cannot skip: it is model INPUT, so without it build_elo.py sends
+          # every game down the MOV fallback and this job tests a set of ratings
+          # that nothing in production would ever produce. Season-level advanced
+          # stats are still left out, being display data no model reads.
+          for f in data/raw/game_advanced_*.csv; do
+            [ -e "$f" ] || continue
+            python3 src/load_game_advanced.py "$f" --db db/league.db
+          done
           python3 src/build_coefficients.py
           for year in 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024 2025 2026; do
             python3 src/coefficients/compute_conference_team_records.py --year "$year" --no-validation
             python3 src/coefficients/derive_conference_standings_local.py --year "$year"
           done
           # Build Elo + hybrid tables so real-data invariant tests run instead of skipping.
+          # Fit the xSRDiff expectation curve first: it is model input, and without
+          # it build_elo.py sends every game down its MOV fallback, so the tests
+          # that check the configured layer actually fires would pass on a build
+          # that never ran the layer.
+          python3 src/fit_xsrdiff.py || echo "xSRDiff curve not fitted; Elo will use its configured fallback."
           python3 src/build_elo.py
           python3 src/build_hybrid_coefficients.py
           python3 src/build_conference_coe2.py

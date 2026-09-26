@@ -185,10 +185,13 @@ def test_real_coverage_confirms_the_documented_era_boundaries(db_conn):
     assert first["elo"] == 1980
     assert first["coe2"] == 1985, "CoE 2.0 needs five prior seasons"
     # Optional loads: right boundary when present, cleanly absent when not.
-    for key, expected in (("kickoff", 2001), ("team_advanced", 2001)):
+    # Per-game efficiency joined this group once EXP-03's fetch was actually run. It
+    # used to be asserted absent, as the one dimension implemented but uncollected;
+    # that is no longer true of the project, so it is no longer asserted here. It is
+    # now a boundary like the others -- checked where the data was loaded, allowed to
+    # be cleanly absent in CI's leaner bootstrap.
+    for key, expected in (("kickoff", 2001), ("team_advanced", 2001), ("game_advanced", 2001)):
         assert first[key] in (expected, None), f"{key} starts at {first[key]}, expected {expected} or absent"
-    # Per-game efficiency is the EXP-03 data gap: implemented, not yet collected.
-    assert first["game_advanced"] is None
 
 
 def test_the_manifest_carries_coverage_for_the_dashboard(repo_root):

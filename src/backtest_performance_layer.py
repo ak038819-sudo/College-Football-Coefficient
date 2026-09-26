@@ -26,6 +26,15 @@ Metrics
     mean M        the multiplier's scale -- MOV sits well above 1 and xSRDiff near 1,
                   so a variant switch almost certainly needs k recalibrated with it
 
+The k confound, and --fit-k
+    k reaches the record only through k * M, so a row scored at somebody else's k
+    is measuring k, not the layer. Every row here shares the configured k by
+    default, which means the default table flatters whichever layer that k was
+    fitted for. --fit-k gives each variant its own best k from a sweep before
+    scoring it, which is the only comparison between layers worth reading. The
+    default is kept because it answers a different, also useful question: what
+    each variant would do if dropped into the engine as configured today.
+
 Usage:
     python src/backtest_performance_layer.py --db db/league.db
     python src/backtest_performance_layer.py --db db/league.db --from-season 2001
@@ -117,6 +126,11 @@ def main() -> None:
     p.add_argument("--out", default=str(OUT_PATH))
     p.add_argument("--from-season", type=int, default=None,
                    help="score only games from this season on (e.g. 2001, where Success Rate coverage starts)")
+    p.add_argument("--fit-k", action="store_true",
+                   help="give each variant its own best k before scoring it, so the table compares "
+                        "layers rather than k * mean(M) -- see the module docstring")
+    p.add_argument("--k-grid", default="20,25,30,35,40,45,50,55,60,70,80",
+                   help="the k values --fit-k searches (comma separated)")
     args = p.parse_args()
 
     raw = load_config(args.config)
@@ -143,16 +157,30 @@ def main() -> None:
         print("WARNING: with no per-game Success Rate every SR variant falls back, so the rows "
               "below will be identical. Fetch and load it first (see src/fit_xsrdiff.py).")
 
+    k_grid = [int(v) for v in args.k_grid.split(",")] if args.fit_k else [elo_cfg["k"]]
+    if args.fit_k:
+        print(f"--fit-k: each variant gets its own best k from {k_grid}")
+
     results = []
     for name, cfg in variants(elo_cfg, perf_cfg, model):
-        layer = build_layer(cfg, elo_cfg, model)
-        rows, _, _ = run_elo(games, elo_cfg, layer, success_rates)
-        r = evaluate(games, rows, args.from_season)
+        best = None
+        for k in k_grid:
+            ecfg = {**elo_cfg, "k": k}
+            rows, _, _ = run_elo(games, ecfg, build_layer(cfg, ecfg, model), success_rates)
+            r = evaluate(games, rows, args.from_season)
+            r["k"] = k
+            # A variant with nothing to score keeps its first row rather than
+            # dropping out of the table, so a broken row stays visible.
+            better = best is None or (r["brier"] is not None and
+                                      (best["brier"] is None or r["brier"] < best["brier"]))
+            if better:
+                best = r
+        r = best
         r["variant"] = name
         r["beta"], r["m_min"], r["m_max"] = cfg["beta"], cfg["m_min"], cfg["m_max"]
         results.append(r)
 
-    fields = ["variant", "beta", "m_min", "m_max", "games", "n", "brier", "log_loss",
+    fields = ["variant", "k", "beta", "m_min", "m_max", "games", "n", "brier", "log_loss",
               "accuracy", "base_rate", "brier_skill", "calibration_error",
               "mean_abs_delta", "mean_multiplier", "paths"]
     out = Path(args.out)
@@ -165,12 +193,18 @@ def main() -> None:
 
     scope = f" (scored from {args.from_season})" if args.from_season else ""
     print(f"\nWrote {out}{scope}\n")
-    print(f"{'variant':<24}{'Brier':>10}{'log loss':>11}{'calib':>9}{'mean|dElo|':>12}{'mean M':>9}")
+    print(f"{'variant':<24}{'k':>4}{'Brier':>10}{'log loss':>11}{'calib':>9}{'mean|dElo|':>12}{'mean M':>9}")
     for r in sorted(results, key=lambda x: (x["brier"] is None, x["brier"])):
-        print(f"{r['variant']:<24}{r['brier']:>10.5f}{r['log_loss']:>11.5f}"
+        print(f"{r['variant']:<24}{r['k']:>4}{r['brier']:>10.5f}{r['log_loss']:>11.5f}"
               f"{r['calibration_error']:>9.5f}{r['mean_abs_delta']:>12.3f}{r['mean_multiplier']:>9.3f}")
-    print("\nLower Brier/log loss/calibration is better. A variant that only raises mean|dElo| is "
-          "turning K up, not predicting better -- recalibrate k before comparing.")
+    print("\nLower Brier/log loss/calibration is better.")
+    if args.fit_k:
+        print("Each row is at its own best k, so the Brier column compares layers.")
+    else:
+        print(f"Every row is at the configured k={elo_cfg['k']}, which was fitted for "
+              f"'{perf_cfg['modifier']}'. k acts only through k * mean(M), and the mean M column "
+              "shows how far apart these layers are on that scale -- so this table does NOT "
+              "settle which layer predicts better. Re-run with --fit-k for that.")
 
 
 if __name__ == "__main__":

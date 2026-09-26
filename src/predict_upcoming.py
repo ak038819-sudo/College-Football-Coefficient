@@ -26,7 +26,9 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from build_elo import effective_rating, expected_result, fetch_games_chronological, load_config, run_elo
+from build_elo import (effective_rating, expected_result, fetch_games_chronological,
+                       load_config, load_game_success_rates, run_elo)
+from srdiff import XsrModel, build_layer, load_performance_config
 
 CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "model_config.json"
 PHASE_CODE = {"regular": 0, "bowl": 1, "cfp": 2}
@@ -36,6 +38,23 @@ def elo_config(path: Path = CONFIG_PATH) -> dict:
     return load_config(str(path))["elo"]
 
 
+def performance_layer(conn: sqlite3.Connection, cfg: dict, path: Path = CONFIG_PATH):
+    """
+    The performance layer build_elo.py would use, plus the Success Rate it needs.
+
+    This file used to call run_elo with no layer at all, which silently meant the
+    margin-of-victory default. That was invisible while MOV was also what the
+    config asked for, and became wrong the moment it wasn't: the ratings behind
+    the site's upcoming-game predictions were then produced by a different model
+    than the ratings on its rankings pages, for the same teams on the same day.
+    Reading the configured layer here instead of defaulting is what keeps the two
+    from drifting apart again.
+    """
+    perf = load_performance_config(load_config(str(path)).get("performance"))
+    model = XsrModel.load(perf["model_path"]) if perf["model_path"] else None
+    return build_layer(perf, cfg, model), load_game_success_rates(conn)
+
+
 def game_expectation(r_home: float, r_away: float, neutral: bool, cfg: dict) -> float:
     """P(home team wins), computed exactly as build_elo.run_elo computes a game's pregame expectation."""
     eff_home = effective_rating(r_home, True, bool(neutral), cfg["home_field"])
@@ -43,12 +62,17 @@ def game_expectation(r_home: float, r_away: float, neutral: bool, cfg: dict) -> 
     return expected_result(eff_home, eff_away, cfg["scale"])
 
 
-def current_ratings(conn: sqlite3.Connection, cfg: dict, for_season: int):
+def current_ratings(conn: sqlite3.Connection, cfg: dict, for_season: int,
+                    layer=None, success_rates: dict | None = None):
     """
     Ratings every team would carry into its next game of `for_season`, as
     run_elo would have them. Returns (ratings, last_completed_season,
     last_completed_date). Teams absent from `ratings` have never played a
     completed game; run_elo would start them at initial_rating.
+
+    `layer`/`success_rates` default to the CONFIGURED performance layer rather
+        than to run_elo's own MOV default -- see performance_layer() above for why
+        that distinction is the whole point.
     """
     prev = conn.row_factory
     conn.row_factory = sqlite3.Row
@@ -58,7 +82,11 @@ def current_ratings(conn: sqlite3.Connection, cfg: dict, for_season: int):
         conn.row_factory = prev
     if not games:
         return {}, None, None
-    _, ratings, _ = run_elo(games, cfg)
+    if layer is None:
+        layer, configured_sr = performance_layer(conn, cfg)
+        if success_rates is None:
+            success_rates = configured_sr
+    _, ratings, _ = run_elo(games, cfg, layer, success_rates)
     last_season, last_date = games[-1]["season_year"], games[-1]["game_date"]
     if for_season > last_season:
         # run_elo regresses every known team once when it meets a new season's first game.
@@ -95,10 +123,13 @@ def build_upcoming(conn: sqlite3.Connection, cfg: dict) -> dict:
     season = max([last_completed or 0] + [r[1] for r in sched])
 
     cache: dict = {}
+    # Built once: the config read, the curve file and the Success Rate table are
+    # the same for every season asked about, and only the Elo walk differs.
+    layer, success_rates = performance_layer(conn, cfg)
 
     def ratings_for(s: int):
         if s not in cache:
-            cache[s] = current_ratings(conn, cfg, s)
+            cache[s] = current_ratings(conn, cfg, s, layer, success_rates)
         return cache[s]
 
     games_out = []
