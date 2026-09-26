@@ -2,8 +2,17 @@
 """
 Team-specific home-field advantage (HFA), estimated empirically.
 
+Implements Austin's "Dynamic Team-Specific Home-Field Advantage" guide.
+
 ANALYSIS ONLY. build_elo.py keeps using the flat config "elo.home_field";
-nothing in this module changes production ratings or predictions.
+nothing in this module changes production ratings or predictions. That is the
+guide's boundary, not an oversight: estimating H and converting H into Elo
+points are separate layers, and the conversion has not been validated.
+
+The measured national FBS baseline is H_FBS = 1.128 as of 2026 -- home teams
+win about 12.8% more often than neutral-field Elo expects. It is computed from
+the data every time, never assumed to be 1.00; assuming 1.00 would throw away
+the very quantity the model exists to measure.
 
 ------------------------------------------------------------------------
 The question each estimate answers
@@ -76,6 +85,14 @@ team that won every home game has no finite raw solution). A team with no
 games gets the national D solved over all FBS home games for its prior.
 The national D is a useful cross-check against the separately calibrated
 flat "elo.home_field".
+
+This D is a DIAGNOSTIC, and is NOT the calibrated conversion the guide's
+step 15 calls for. It is derived from the team's own games rather than invented
+(no "H = 1.10, therefore +100 Elo"), but it is fitted in-sample with no
+out-of-sample scoring behind it, so nothing reads it as a rating input. Applying
+it would also reopen the circularity the estimator avoids: the pregame ratings
+these estimates are built from have to keep coming from a flat-HFA reference
+run, or each team's estimate starts feeding the ratings that produce its next.
 """
 from __future__ import annotations
 
@@ -109,16 +126,25 @@ def neutral_win_probability(home_pre_elo: float, away_pre_elo: float, scale: flo
     return expected_result(home_pre_elo, away_pre_elo, scale)
 
 
-def load_home_games(conn: sqlite3.Connection, scale: float) -> Tuple[List[HomeGame], Dict[str, int]]:
+def load_home_games(conn: sqlite3.Connection, scale: float,
+                    min_season: Optional[int] = None) -> Tuple[List[HomeGame], Dict[str, int]]:
     """
     Every completed, non-neutral game with a pregame Elo for BOTH teams, from
     the home team's perspective, oldest first. Games are excluded (and counted)
     rather than guessed at: neutral sites; missing scores (unplayed/canceled);
-    a missing Elo row for either side. Postseason games are NOT excluded for
-    being postseason -- only the neutral flag decides, so an on-campus CFP
-    game counts and a neutral-site bowl does not. The games table only holds
-    FBS-vs-FBS games with canonical team ids (aliases resolved at load), so
-    FCS opponents and renamed programs need no handling here.
+    a missing Elo row for either side; seasons before `min_season`. Postseason
+    games are NOT excluded for being postseason -- only the neutral flag
+    decides, so an on-campus CFP game counts and a neutral-site bowl does not.
+    The games table only holds FBS-vs-FBS games with canonical team ids
+    (aliases resolved at load), so FCS opponents and renamed programs need no
+    handling here.
+
+    `pregame_elo` is deliberately the column read, and `elo_expectation` is
+    deliberately NOT: the stored expectation already contains the flat home
+    bonus the engine applied, and reusing it would put a home-field term inside
+    the very quantity this model measures the home team against. There is no
+    age cutoff beyond min_season -- old games decay under the recency weight
+    instead of being deleted.
     """
     rows = conn.execute(
         """
@@ -131,8 +157,11 @@ def load_home_games(conn: sqlite3.Connection, scale: float) -> Tuple[List[HomeGa
         ORDER BY g.game_date, g.game_id
         """
     ).fetchall()
-    games, skipped = [], {"neutral_site": 0, "not_completed": 0, "missing_elo": 0}
+    games, skipped = [], {"neutral_site": 0, "not_completed": 0, "missing_elo": 0, "before_min_season": 0}
     for gid, season, date, home, away, hs, as_, neutral, home_pre, away_pre in rows:
+        if min_season is not None and season < min_season:
+            skipped["before_min_season"] += 1
+            continue
         if neutral:
             skipped["neutral_site"] += 1
             continue
@@ -222,14 +251,19 @@ def calculate_fbs_baseline(all_games: Sequence[HomeGame], as_of: dt.date, half_l
     return calculate_raw_hfa(weighted_sums(all_games, as_of, half_life_years))
 
 
-def calculate_hfa_prior(fbs_baseline: float, fcs_hfa: Optional[float] = None, fcs_weight: float = 0.5) -> float:
+def calculate_hfa_prior(fbs_baseline: float, fcs_hfa: Optional[float] = None, fcs_weight: float = 0.5,
+                        use_fcs_prior: bool = True) -> float:
     """
-    alpha * H_FCS + (1 - alpha) * H_FBS when FCS history exists; otherwise H_FBS.
+    alpha * H_FCS + (1 - alpha) * H_FBS when FCS history exists AND the FCS prior
+    is switched on; otherwise H_FBS.
+
     Hook for transitioning programs (North Dakota State, Sacramento State, ...):
     the database holds FBS-vs-FBS games only, so fcs_hfa is None for everyone
-    today and this safely returns the FBS baseline. No FCS value is ever invented.
+    today and this safely returns the FBS baseline. No FCS value is ever invented,
+    and the FBS-only path is the one that has to work -- the FCS prior is an
+    enhancement, never a dependency.
     """
-    if fcs_hfa is None:
+    if fcs_hfa is None or not use_fcs_prior:
         return fbs_baseline
     return fcs_weight * fcs_hfa + (1.0 - fcs_weight) * fbs_baseline
 
@@ -302,7 +336,7 @@ def calculate_team_hfa(team_games: Sequence[HomeGame], national_games: Sequence[
     baseline = calculate_raw_hfa(nat)
     if baseline is None:
         raise ValueError(f"no qualifying home games before {as_of}: no national baseline can be formed")
-    prior = calculate_hfa_prior(baseline, fcs_hfa, cfg["fcs_prior_weight"])
+    prior = calculate_hfa_prior(baseline, fcs_hfa, cfg["fcs_prior_weight"], cfg.get("use_fcs_prior", True))
 
     s = weighted_sums(team_games, as_of, L)
     raw = calculate_raw_hfa(s)
