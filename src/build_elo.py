@@ -19,7 +19,9 @@ Formulas:
     special here (S=0, same as a regulation loss). That distinction is
     reserved for the future CoE 2.0 layer (Game CoE), not Elo -- Elo
     only asks who won.
-  Margin-of-victory multiplier:
+  Performance multiplier M: chosen by config/model_config.json's "performance"
+    section and computed by src/srdiff.py, so the engine never knows which
+    variant it is running. The default is the margin-of-victory multiplier:
     M = ln(|point_diff| + 1) * (mov_c / (mov_c + mov_d * winner_advantage))
     where winner_advantage = the WINNING team's effective rating minus
     the LOSING team's effective rating, before the game -- signed, so
@@ -43,9 +45,18 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
+import re
 import sqlite3
+import sys
+from dataclasses import dataclass
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from srdiff import (XsrModel, actual_sr_diff, build_layer, expected_sr_diff,  # noqa: E402
+                    load_performance_config, mov_multiplier, sr_plus)
+# mov_multiplier is re-exported (it used to live here) so existing callers and
+# tests keep importing it from build_elo; src/srdiff.py is now its one definition.
+__all__ = ["run_elo", "effective_rating", "expected_result", "mov_multiplier", "GameContext"]
 
 
 def load_config(path: str) -> dict:
@@ -63,24 +74,50 @@ def expected_result(eff_a: float, eff_b: float, scale: float) -> float:
     return 1.0 / (1.0 + 10 ** ((eff_b - eff_a) / scale))
 
 
-def mov_multiplier(point_diff: int, winner_advantage: float, mov_c: float, mov_d: float) -> float:
-    """
-    point_diff: absolute point differential (0 for a tie).
-    winner_advantage: winner's effective rating minus loser's effective
-    rating, BEFORE the game -- signed, negative for an upset.
+@dataclass(frozen=True)
+class GameContext:
+    """Everything a performance layer may look at, all of it PREGAME state plus
+    the final score. Deliberately narrow: a layer cannot reach postgame Elo,
+    later games, or anything the model did not know at kickoff."""
+    season: int
+    is_tie: bool
+    point_diff: int
+    winner_advantage: float              # winner's effective rating minus loser's, pregame
+    winner_elo_diff_adjusted: float      # same quantity, named for the xSRDiff curve
+    winner_sr: float | None              # winner's Success Rate in THIS game
+    loser_sr: float | None
 
-    NOTE: for a tie (point_diff=0), ln(0+1)=0, so M=0 and the rating
-    change is zero regardless of K*(S-E). Ties have been structurally
-    impossible in FBS since the 1996 overtime rule, so this never
-    triggers on the current 2000-2026 dataset -- but would need
-    explicit handling before this script is ever run against
-    pre-1996 data.
-    """
-    return math.log(abs(point_diff) + 1) * (mov_c / (mov_c + mov_d * winner_advantage))
+
+# Columns the xSRDiff layer added to elo_game_history (EXP-03). Parsed from the
+# schema file rather than restated, so the two can never drift.
+def _optional_columns(schema_sql: str) -> list[tuple[str, str]]:
+    body = schema_sql.split("CREATE TABLE IF NOT EXISTS elo_game_history", 1)[-1]
+    body = body.split(");", 1)[0]
+    out = []
+    for line in body.splitlines():
+        line = line.split("--", 1)[0].strip().rstrip(",")
+        m = re.match(r"^(\w+)\s+(REAL|TEXT|INTEGER)$", line)   # NOT NULL columns are original
+        if m:
+            out.append((m.group(1), m.group(2)))
+    return out
 
 
 def ensure_schema(conn: sqlite3.Connection, schema_path: str) -> None:
-    conn.executescript(Path(schema_path).read_text())
+    """
+    Create the table, then add any column an older database is missing.
+
+    A plain CREATE TABLE IF NOT EXISTS silently leaves an existing table on its
+    old shape, so a database built before the performance layer would keep
+    failing the INSERT. ALTER TABLE ADD COLUMN is cheap and idempotent here
+    because every added column is nullable.
+    """
+    sql = Path(schema_path).read_text()
+    conn.executescript(sql)
+    have = {r[1] for r in conn.execute("PRAGMA table_info(elo_game_history)")}
+    for name, decl in _optional_columns(sql):
+        if name not in have:
+            conn.execute(f"ALTER TABLE elo_game_history ADD COLUMN {name} {decl}")
+    conn.commit()
 
 
 def fetch_games_chronological(conn: sqlite3.Connection):
@@ -98,20 +135,45 @@ def fetch_games_chronological(conn: sqlite3.Connection):
     ).fetchall()
 
 
-def run_elo(games, cfg: dict):
+def load_game_success_rates(conn: sqlite3.Connection) -> dict:
+    """
+    {(game_id, team_id): offensive Success Rate for THAT game}.
+
+    Per-game, never per-season: a season figure includes the game itself and
+    every game after it, so using it here would leak the future into a rating
+    the model is supposed to have formed before kickoff. Empty until
+    src/load_game_advanced.py has run, which is the whole point of the
+    fallback path.
+    """
+    if not conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='game_team_advanced'").fetchone():
+        return {}
+    return {(g, t): sr for g, t, sr in conn.execute(
+        "SELECT game_id, team_id, off_success_rate FROM game_team_advanced WHERE off_success_rate IS NOT NULL")}
+
+
+def run_elo(games, cfg: dict, layer=None, success_rates: dict | None = None):
     """
     Pure function (no DB writes): given chronologically-ordered game rows
     and an elo config dict, returns (rows_to_insert, final_ratings,
     id_to_name). Separated from main() so tests can call this directly
     against a synthetic game list, without needing a real database.
+
+    `layer` is the performance layer that supplies M (src/srdiff.py). Omitted,
+    it is the margin-of-victory layer -- so every existing caller and test
+    keeps the exact behavior it had before the performance layer existed.
+    `success_rates` is {(game_id, team_id): Success Rate} for the xSRDiff and
+    raw-SRDiff variants; the MOV and result-only layers never read it.
     """
     initial_rating = cfg["initial_rating"]
     scale = cfg["scale"]
     k = cfg["k"]
     home_field = cfg["home_field"]
     retention = cfg["offseason_retention"]
-    mov_c = cfg["mov_c"]
-    mov_d = cfg["mov_d"]
+    if layer is None:
+        layer = build_layer({"modifier": "mov", "fallback": "mov", "beta": 1.0,
+                             "m_min": 0.5, "m_max": 1.5, "model_path": None}, cfg)
+    sr_of = success_rates or {}
 
     ratings: dict = {}
     current_season = None
@@ -162,22 +224,22 @@ def run_elo(games, cfg: dict):
         else:
             winner_advantage = eff_away - eff_home
 
-        if hs == aws:
-            # A tie has no margin at all (point_diff=0), so the margin
-            # formula's ln(0+1)=0 isn't a real judgment that upsets don't
-            # matter for ties -- it's an incidental artifact of a formula
-            # built to scale a margin that doesn't exist here. Left as
-            # M=0, a tie would ALWAYS produce zero rating change for
-            # either team regardless of how surprising it was (e.g. a
-            # heavy underdog tying a top team should still move ratings
-            # somewhat). Using M=1.0 (no margin scaling, since there's
-            # no margin to scale by) lets K*(S-E) drive the change
-            # directly, same as any other result. Ties were structurally
-            # impossible in the 2000-2026 dataset (post-1996 overtime
-            # rule) so this never mattered before extending back further.
-            m = 1.0
-        else:
-            m = mov_multiplier(point_diff, winner_advantage, mov_c, mov_d)
+        # One M per GAME, from the winner's point of view. It multiplies a
+        # zero-sum delta, so a per-team M would break the zero-sum property
+        # (see src/srdiff.py for why the winner's SR+ is the right side).
+        is_tie = hs == aws
+        home_won = hs > aws
+        winner_id, loser_id = (home_id, away_id) if home_won else (away_id, home_id)
+        gid = g["game_id"]
+        ctx = GameContext(
+            season=season, is_tie=is_tie, point_diff=point_diff,
+            winner_advantage=winner_advantage,
+            # Venue-adjusted pregame Elo difference, winner minus loser.
+            winner_elo_diff_adjusted=winner_advantage,
+            winner_sr=None if is_tie else sr_of.get((gid, winner_id)),
+            loser_sr=None if is_tie else sr_of.get((gid, loser_id)),
+        )
+        m, model_used = layer.multiplier(ctx)
 
         delta_home = k * (s_home - e_home) * m
         # Zero-sum by construction: away's change is exactly -delta_home
@@ -185,8 +247,24 @@ def run_elo(games, cfg: dict):
         new_r_home = r_home + delta_home
         new_r_away = r_away - delta_home
 
-        rows.append((g["game_id"], home_id, r_home, r_away, e_home, m, delta_home, new_r_home))
-        rows.append((g["game_id"], away_id, r_away, r_home, e_away, m, -delta_home, new_r_away))
+        # Per-team analytics. SRDiff/xSRDiff/SR+ are antisymmetric, so each team
+        # stores its own signed view of the same game; M is shared.
+        home_sr, away_sr = sr_of.get((gid, home_id)), sr_of.get((gid, away_id))
+        x_model = getattr(layer, "model", None)
+        home_elo_diff = eff_home - eff_away
+        per_team = {}
+        for tid, own_sr, opp_sr, elo_diff in ((home_id, home_sr, away_sr, home_elo_diff),
+                                              (away_id, away_sr, home_sr, -home_elo_diff)):
+            d = actual_sr_diff(own_sr, opp_sr)
+            x = expected_sr_diff(elo_diff, x_model, season)
+            per_team[tid] = (own_sr, opp_sr, elo_diff, d, x, sr_plus(d, x))
+
+        for tid, opp_id, pre, opp_pre, exp, delta, post in (
+                (home_id, away_id, r_home, r_away, e_home, delta_home, new_r_home),
+                (away_id, home_id, r_away, r_home, e_away, -delta_home, new_r_away)):
+            own_sr, opp_sr, elo_diff, d, x, plus = per_team[tid]
+            rows.append((gid, tid, pre, opp_pre, exp, m, delta, post,
+                         elo_diff, own_sr, opp_sr, d, x, plus, model_used))
 
         ratings[home_id] = new_r_home
         ratings[away_id] = new_r_away
@@ -201,28 +279,44 @@ def main() -> None:
     p.add_argument("--schema", default="sql/elo_tables.sql")
     args = p.parse_args()
 
-    cfg = load_config(args.config)["elo"]
+    raw = load_config(args.config)
+    cfg = raw["elo"]
+    perf = load_performance_config(raw.get("performance"))
 
     conn = sqlite3.connect(args.db)
     conn.row_factory = sqlite3.Row
     ensure_schema(conn, args.schema)
     conn.execute("DELETE FROM elo_game_history")  # idempotent full rebuild
 
+    model = XsrModel.load(perf["model_path"]) if perf["model_path"] else None
+    success_rates = load_game_success_rates(conn)
+    layer = build_layer(perf, cfg, model)
+
     games = fetch_games_chronological(conn)
-    rows, ratings, id_to_name = run_elo(games, cfg)
+    rows, ratings, id_to_name = run_elo(games, cfg, layer, success_rates)
 
     conn.executemany(
         """
         INSERT INTO elo_game_history
             (game_id, team_id, pregame_elo, opponent_pregame_elo,
-             elo_expectation, mov_multiplier, elo_change, postgame_elo)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             elo_expectation, mov_multiplier, elo_change, postgame_elo,
+             elo_diff_adjusted, success_rate_team, success_rate_opp,
+             sr_diff, xsr_diff, sr_plus, performance_model)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         rows,
     )
     conn.commit()
 
+    used = {}
+    for r in rows:
+        used[r[14]] = used.get(r[14], 0) + 1
     print(f"Processed {len(games)} games, {len(ratings)} teams.")
+    print(f"Performance layer: {perf['modifier']} (fallback {perf['fallback']}); "
+          f"per-game Success Rate for {len(success_rates):,} team-games; "
+          f"xSRDiff curve: {model.version if model else 'not fitted yet'}")
+    for name, n in sorted(used.items(), key=lambda x: -x[1]):
+        print(f"  {name:<14} {n // 2:,} games")
     print("Final Elo top 10:")
     for team_id, rating in sorted(ratings.items(), key=lambda x: -x[1])[:10]:
         print(f"  {id_to_name.get(team_id, team_id):<20} {rating:.1f}")

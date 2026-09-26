@@ -122,7 +122,13 @@ def _league(tmp_path, extra_games=(), name="hfa.db"):
     from build_elo import fetch_games_chronological
     elo_rows, _, _ = run_elo(fetch_games_chronological(conn), CFG["elo"])
     conn.row_factory = None
-    conn.executemany("INSERT INTO elo_game_history VALUES (?,?,?,?,?,?,?,?)", elo_rows)
+    # Name the columns and take only the original eight: run_elo's row also carries
+    # the xSRDiff performance-layer fields (EXP-03), which HFA never reads, and a
+    # positional insert would break every time that row grows.
+    conn.executemany(
+        "INSERT INTO elo_game_history (game_id, team_id, pregame_elo, opponent_pregame_elo,"
+        " elo_expectation, mov_multiplier, elo_change, postgame_elo) VALUES (?,?,?,?,?,?,?,?)",
+        [r[:8] for r in elo_rows])
     conn.commit()
     return conn
 

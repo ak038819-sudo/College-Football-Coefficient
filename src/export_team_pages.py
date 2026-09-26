@@ -197,6 +197,30 @@ def load_elo_rows(conn: sqlite3.Connection) -> list[tuple]:
     ).fetchall()
 
 
+def load_coe2_rollups(conn: sqlite3.Connection) -> dict:
+    """
+    {(team_id, season): {"games": x, "bonus": y, "total": z, "items": [[category, count, points], ...]}}
+    from the ENG-13 rollup tables, so the ledger can show C = sum(game awards) + B
+    with each bonus named. Empty when the rollups have not been built.
+    """
+    need = {"team_coe2_by_season", "team_coe2_bonuses"}
+    have = {r[0] for r in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN "
+        "('team_coe2_by_season', 'team_coe2_bonuses')")}
+    if need - have:
+        return {}
+    out = {}
+    for tid, season, games, bonus, total in conn.execute(
+            "SELECT team_id, season_year, game_coe_total, bonus_total, season_coe2 FROM team_coe2_by_season"):
+        out[(tid, season)] = {"games": round(games, 3), "bonus": round(bonus, 3),
+                              "total": round(total, 3), "items": []}
+    for tid, season, cat, n, pts in conn.execute(
+            "SELECT team_id, season_year, category, count, points FROM team_coe2_bonuses ORDER BY category"):
+        if (tid, season) in out:
+            out[(tid, season)]["items"].append([cat, n, round(pts, 3)])
+    return out
+
+
 def load_game_coe2(conn: sqlite3.Connection) -> dict:
     """{(team_id, season): summed Game CoE 2.0}; absent where hybrid data doesn't exist."""
     exists = conn.execute(
@@ -329,6 +353,8 @@ def build_team_pages(conn: sqlite3.Connection, champions: list[dict] | None = No
     kickoffs = kickoff_map(conn)
     return {
         "cfp_first_season": CFP_FIRST_SEASON,
+        # ENG-13: the season total decomposed into game awards plus named bonuses.
+        "coe2_rollups": {f"{t}|{s}": v for (t, s), v in load_coe2_rollups(conn).items()},
         "titles_since": min((c["season"] for c in champions), default=None) if champions else None,
         "advanced": build_advanced(conn),
         # kickoff_utc appended LAST (position 11) so existing positions never move; null for

@@ -1,6 +1,5 @@
 {
   "_comment": "CoE 2.0 model parameters. None of these are hardcoded in the scripts that use them -- change values here to run experiments without touching code. The 'elo' section is the only one build_elo.py reads right now; 'hybrid' and 'coe' are placeholders for later phases (build_hybrid_coefficients.py), documented here now so the full intended structure is visible from day one.",
-
   "elo": {
     "_comment": "k, home_field, and offseason_retention were calibrated via calibrate_elo.py's grid search (K in [10,15,...,40], HFA in [0,25,...,100], retention in [0.5,0.6,...,1.0]) against the full 2000-2026 dataset (18969 games), optimizing out-of-sample Brier score. Best found: K=35, HFA=50, retention=0.8 (Brier=0.18359, vs 0.18684 for the original placeholder guess -- ~1.7% relative improvement). Full 210-row results in data/processed/elo_calibration_results.csv. mov_c/mov_d are still the UNCALIBRATED FiveThirtyEight-NFL-derived placeholder -- MOV-constant tuning is a separate, later step, not part of this grid.",
     "initial_rating": 1500,
@@ -11,14 +10,12 @@
     "mov_c": 2.2,
     "mov_d": 0.001
   },
-
   "hybrid": {
     "_comment": "elo_weight/coe_weight calibrated via calibrate_hybrid_weight.py's grid search (0.25 through 1.00 in steps, an initial coarse pass at [0.25,0.40,0.50,0.60,0.75] showed monotonic improvement all the way to the edge, so the grid was extended to find the real optimum) against the full dataset, optimizing out-of-sample Brier score (same walk-forward methodology as calibrate_elo.py). Best found: elo_weight=0.85, coe_weight=0.15 (Brier=0.18718). Notably, pure Elo (elo_weight=1.0) scored WORSE (Brier=0.18814) than this blend -- confirming the frozen 5yr CoE component adds real predictive signal on top of Elo alone, even at a small weight, which validates the hybrid architecture's core premise. Full 10-row results in data/processed/hybrid_weight_calibration_results.csv. difficulty_alpha (below) is deliberately NOT tuned this way -- see calibrate_hybrid_weight.py's docstring for why (CoE measures achievement, not prediction accuracy, per spec section 32).",
     "elo_weight": 0.85,
     "coe_weight": 0.15,
     "rating_scale": 200
   },
-
   "coe": {
     "_comment": "win_base/ot_loss/regulation_loss/difficulty_alpha are the Game CoE 2.0 formula constants, deliberately NOT tuned via Brier score/prediction accuracy (see calibrate_hybrid_weight.py's docstring for why -- CoE measures achievement, not prediction). tie_delta is the spec's own suggested starting formula for a tie (G_tie = 1 + tie_delta*(0.5 - p_this), symmetric around 1.0, rewarding an underdog for tying and mildly penalizing a favorite for settling for one) -- defaulted to match difficulty_alpha's value as a reasonable placeholder, not yet independently calibrated. Only matters once the dataset extends before 1996's overtime rule; ties were structurally impossible in 2000-2026.",
     "win_base": 2.0,
@@ -27,13 +24,34 @@
     "difficulty_alpha": 2.0,
     "tie_delta": 2.0
   },
-
   "hfa": {
     "_comment": "Team-specific home-field advantage (src/hfa.py, src/build_hfa.py). ANALYSIS ONLY: build_elo.py still uses the flat 'elo.home_field' above; nothing here changes production Elo. Every value is an untuned placeholder to be chosen by out-of-sample backtesting (log loss / Brier), not by intuition. half_life_years: L in the recency weight w = 2^(-age_years / L). shrinkage_k: K in lambda = N_eff / (N_eff + K). fcs_prior_weight: alpha in prior = alpha * H_FCS + (1 - alpha) * H_FBS -- currently inert because the database stores FBS-vs-FBS games only, so every prior falls back to the FBS baseline. effective_n_method: 'sum_weights' (N_eff = sum of w, the starting definition) or 'kish' ((sum w)^2 / sum w^2); pluggable in src/hfa.py. point_bounds: search interval, in Elo points, when converting an HFA estimate into an equivalent home bonus; a result at a bound is flagged rather than trusted.",
     "half_life_years": 10.0,
     "shrinkage_k": 30.0,
     "fcs_prior_weight": 0.5,
     "effective_n_method": "sum_weights",
-    "point_bounds": [-400.0, 400.0]
+    "point_bounds": [
+      -400.0,
+      400.0
+    ]
+  },
+  "performance": {
+    "_comment": "Which performance multiplier M scales the Elo update (src/srdiff.py). 'mov' is the margin-of-victory multiplier the project has always used. 'xsrdiff' is the strength-adjusted Success Rate layer (EXP-03): M = clamp(1 + beta * SR+, m_min, m_max), where SR+ is how far the WINNER's Success Rate differential beat what the venue-adjusted pregame Elo gap implied. 'raw_srdiff' (no strength adjustment) and 'result_only' (M = 1) exist for the backtest matrix. A game with no per-game Success Rate on both sides, or in a season no point-in-time expectation fold covers, takes 'fallback' and records that in elo_game_history.performance_model -- missing SR is never treated as 0. beta/m_min/m_max are CONFIGURABLE PLACEHOLDERS, not calibrated values: run src/backtest_performance_layer.py and set them from its walk-forward output. Note the scale difference -- MOV's M averages well above 1 while xSRDiff's sits near 1, so k almost certainly needs recalibrating alongside any switch.",
+    "modifier": "xsrdiff",
+    "fallback": "mov",
+    "beta": 1.0,
+    "m_min": 0.5,
+    "m_max": 1.5,
+    "model_path": "data/processed/xsrdiff_model.json"
+  },
+  "coe2_bonuses": {
+    "_comment": "Explicit season/postseason bonus terms for CoE 2.0 (spec's B_(i,Y)), applied by src/build_coe2_rollups.py AFTER game awards: C = sum(Game CoE 2.0) + B. Each awarded bonus is stored as its own row in team_coe2_bonuses with its category, count and reason, so no bonus can hide inside opponent strength and a season total is always decomposable. ALL VALUES SHIP AT 0.0 ON PURPOSE: the categories and the machinery are implemented and tested, but the magnitudes are a modelling decision to make with the validation harness, not defaults to inherit. At 0.0 a season total is exactly the sum of its game awards, so the current model stays reproducible. Bonuses are derived from real results only -- bowl/CFP participation from the games table, first place in the derived conference standings -- the playoff model's own ordering, which starts in 2014 and is NOT the conference championship game, national titles from data/reference/national_champions.csv -- and never from ratings. Bump 'version' when changing any value so old and new rows stay distinguishable.",
+    "version": "coe2_bonus_v1",
+    "bowl_appearance": 0.0,
+    "bowl_win": 0.0,
+    "cfp_appearance": 0.0,
+    "cfp_win": 0.0,
+    "national_title": 0.0,
+    "conference_standings_first": 0.0
   }
 }

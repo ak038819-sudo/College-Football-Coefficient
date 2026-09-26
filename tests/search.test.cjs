@@ -15,7 +15,14 @@ const teams = [
 const games = [
   [100, 2018, 3, 2], [101, 2019, 2, 3], [102, 2019, 3, 1], [103, 2020, 2, 1], [104, 2020, 3, 2], [105, 2019, 1, 7]
 ];
-const s = buildSearcher({ teams, seasons: [2018, 2019, 2020], games });
+const conferences = [
+  ['sec', 'SEC', []],
+  ['big-ten', 'Big Ten', ['B1G', 'Big 10']],
+  ['mid-american', 'Mid-American', ['MAC']],
+  ['american-athletic', 'American Athletic', ['AAC', 'The American', 'American']],
+  ['pac-12', 'Pac-12', ['Pacific-12', 'PAC 12']]
+];
+const s = buildSearcher({ teams, seasons: [2018, 2019, 2020], games, conferences });
 const names = r => r.teams.map(t => t.name);
 
 test('words split and normalize like the directory search', () => {
@@ -78,4 +85,58 @@ test('limits cap results but report totals', () => {
 test('an empty or missing index never throws', () => {
   const empty = buildSearcher({});
   assert.deepEqual(empty.search('texas').teams, []);
+});
+
+
+// ---------------- Conferences (Milestone E pages) ----------------
+
+const confNames = r => (r.conferences || []).map(c => c.name);
+
+test('a conference is found by name, slug or shorthand', () => {
+  assert.deepEqual(confNames(s.search('sec')), ['SEC']);
+  assert.deepEqual(confNames(s.search('big ten')), ['Big Ten']);
+  assert.deepEqual(confNames(s.search('big-ten')), ['Big Ten']);
+  assert.deepEqual(confNames(s.search('b1g')), ['Big Ten']);
+  assert.deepEqual(confNames(s.search('mac')), ['Mid-American']);
+  assert.deepEqual(confNames(s.search('pac 12')), ['Pac-12']);
+  assert.deepEqual(confNames(s.search('pac-12')), ['Pac-12']);
+  // A prefix matches while typing, and the whole-name match sorts ahead of a later word.
+  assert.deepEqual(confNames(s.search('american')), ['American Athletic', 'Mid-American']);
+});
+
+test('a conference hit carries the slug the conference route needs', () => {
+  assert.deepEqual(s.search('sec').conferences, [{ slug: 'sec', name: 'SEC' }]);
+});
+
+test('conferences never consume a word from a team query', () => {
+  // "american" is a conference shorthand; it must not stop Texas from being matched.
+  const r = s.search('texas lsu');
+  assert.deepEqual(r.mentioned, [1, 3]);
+  assert.equal(r.gamesTotal, 1);
+  assert.deepEqual(confNames(r), []);
+  // Two real teams still produce the head-to-head list with no conference noise.
+  assert.deepEqual(confNames(s.search('texas a&m lsu')), []);
+});
+
+test('conference matching does not disturb team results', () => {
+  // "miami" is a team, not a conference: the team groups are unchanged.
+  const r = s.search('miami');
+  assert.deepEqual(names(r), ['Miami (FL)', 'Miami (OH)']);
+  assert.deepEqual(confNames(r), []);
+});
+
+test('conference results are capped and counted', () => {
+  const many = Array.from({ length: 9 }, (_, i) => ['c' + i, 'Coastal ' + i, []]);
+  const big = buildSearcher({ teams: [], seasons: [], games: [], conferences: many });
+  const r = big.search('coastal');
+  assert.equal(r.conferences.length, 5);
+  assert.equal(r.conferencesTotal, 9);
+  assert.equal(big.search('coastal', { conferences: 2 }).conferences.length, 2);
+});
+
+test('an index with no conferences still searches teams', () => {
+  const none = buildSearcher({ teams, seasons: [2019], games });
+  assert.deepEqual(none.search('texas a&m').mentioned, [2]);
+  assert.deepEqual(none.search('sec').conferences, []);
+  assert.equal(none.search('sec').conferencesTotal, 0);
 });

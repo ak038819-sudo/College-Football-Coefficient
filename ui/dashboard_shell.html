@@ -421,6 +421,25 @@
   .adv-row .val.na { color: var(--ink-dim); }
   .adv-row .rk { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); text-align: right; min-width: 64px; }
 
+  /* ---- Data-coverage indicators (P1-08) ---- */
+  .cov-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+  .cov { display: inline-flex; align-items: center; gap: 5px; font: 10.5px var(--font-mono);
+    text-transform: uppercase; letter-spacing: 0.4px; color: var(--ink-dim);
+    border: 1px solid var(--line); border-radius: 3px; padding: 3px 7px; cursor: help; }
+  .cov::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-dim); }
+  .cov.full::before { background: var(--green-hl); }
+  .cov.partial::before { background: var(--amber); }
+  .cov.none { opacity: 0.75; }
+  .cov.none::before { background: transparent; box-shadow: inset 0 0 0 1px var(--ink-dim); }
+  .cov b { font-weight: 600; color: var(--ink); }
+  .cov-table { width: 100%; border-collapse: collapse; font: 12px var(--font-mono); }
+  .cov-table th, .cov-table td { padding: 5px 8px; border-bottom: 1px solid var(--panel-2); text-align: right; }
+  .cov-table th:first-child, .cov-table td:first-child { text-align: left; }
+  .cov-table thead th { color: var(--ink-dim); font-size: 10.5px; text-transform: uppercase; }
+  .cov-table td.full { color: var(--green-hl); }
+  .cov-table td.partial { color: var(--amber); }
+  .cov-table td.none { color: var(--ink-dim); }
+
   /* ---- Detail-page tabs + conference pages (Milestone E) ---- */
   .page-tabs { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 0 0 18px; border-bottom: 1px solid var(--line); }
   .page-tabs a { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.4px; text-transform: uppercase;
@@ -737,7 +756,7 @@
     <div class="global-search" role="search">
       <label class="visually-hidden" for="global-search">Search teams, games and seasons</label>
       <input type="search" id="global-search" autocomplete="off" spellcheck="false" maxlength="150"
-             placeholder="Search teams, games, seasons  ( / )"
+             placeholder="Search teams, conferences, games, seasons  ( / )"
              aria-controls="search-results" aria-expanded="false" aria-describedby="search-status">
       <div id="search-results" class="search-results" hidden></div>
       <p id="search-status" class="visually-hidden" aria-live="polite"></p>
@@ -834,7 +853,8 @@ function loadSeasonGames(season) {
 }
 
 let _searchIndex = null;
-// Resolves to {teams: [{id, name, slug, aliases}], seasons: [..], games: [[game_id, season, home_id, away_id]]}.
+// Resolves to {teams: [{id, name, slug, aliases}], seasons: [..], games: [[game_id, season, home_id, away_id]],
+//               conferences: [[slug, name, [aliases]]]}.
 function loadSearchIndex() {
   if (_searchIndex) return Promise.resolve(_searchIndex);
   if (!STATIC_MANIFEST.search_index) return Promise.reject(new Error('no search index'));
@@ -842,7 +862,7 @@ function loadSearchIndex() {
     const raw = window.__CFB_SEARCH__;
     if (!raw) throw new Error('search index was empty');
     _searchIndex = { teams: raw.teams.map(([id, name, slug, aliases]) => ({ id, name, slug, aliases })),
-                     seasons: raw.seasons, games: raw.games };
+                     seasons: raw.seasons, games: raw.games, conferences: raw.conferences || [] };
     return _searchIndex;
   });
 }
@@ -951,6 +971,90 @@ function teamAnchor(name, innerHtml, extraClass) {
 function teamLink(name, size, yearOverride, namePrefix) {
   return teamAnchor(name, logoMarkup(name, 'team', size, yearOverride) +
     '<span class="team-link-name">' + (namePrefix || '') + name + '</span>');
+}
+
+// ---------------- Data-coverage indicators (P1-08) ----------------
+// STATIC_MANIFEST.coverage is counted from the database by src/coverage.py and
+// embedded in the page, so any view can ask "does this season have that?"
+// without a fetch. The point is that an absent metric can say WHY it is absent
+// instead of being drawn as a zero.
+const COVERAGE = STATIC_MANIFEST.coverage || { dimensions: [], seasons: {}, first: {}, source_first: {} };
+const COVERAGE_DIMS = new Map((COVERAGE.dimensions || []).map(d => [d.key, d]));
+
+// [have, of] for one season and dimension, or null when the season is unknown.
+function coverageCell(key, season) {
+  const row = (COVERAGE.seasons || {})[String(season)];
+  return row && row[key] ? row[key] : null;
+}
+function coverageState(cell) {
+  if (!cell || !cell[1]) return 'none';
+  if (cell[0] === 0) return 'none';
+  return cell[0] >= cell[1] ? 'full' : 'partial';
+}
+// The sentence a view shows when something is missing: specific about whether it
+// was never collected for that era, or simply is not there yet.
+function coverageReason(key, season) {
+  const dim = COVERAGE_DIMS.get(key);
+  if (!dim) return '';
+  const cell = coverageCell(key, season);
+  const state = coverageState(cell);
+  if (state === 'full') return '';
+  const firstHave = (COVERAGE.first || {})[key];
+  const sourceFirst = (COVERAGE.source_first || {})[key];
+  if (state === 'partial') {
+    return 'Only ' + cell[0] + ' of ' + cell[1] + ' were reported by ' + dim.source + ' for ' + season + '.';
+  }
+  if (firstHave != null && season < firstHave) {
+    return dim.absent + ' Coverage in this dataset starts in ' + firstHave +
+      (sourceFirst != null && sourceFirst < firstHave
+        ? ' (the source itself goes back to ' + sourceFirst + ', but those seasons have not been collected).' : '.');
+  }
+  return dim.absent;
+}
+function coverageBadge(key, season) {
+  const dim = COVERAGE_DIMS.get(key);
+  if (!dim) return '';
+  const cell = coverageCell(key, season);
+  const state = coverageState(cell);
+  const detail = state === 'full' ? 'Complete for ' + season + ' (' + cell[0] + ' of ' + cell[1] + ').'
+    : coverageReason(key, season);
+  const count = state === 'partial' ? ' <b>' + cell[0] + '/' + cell[1] + '</b>' : '';
+  return '<span class="cov ' + state + '" title="' + esc(dim.source + ' \u2014 ' + detail) + '">' +
+    esc(dim.label) + count + '</span>';
+}
+function coverageRow(keys, season) {
+  const badges = keys.map(k => coverageBadge(k, season)).filter(Boolean).join('');
+  return badges ? '<div class="cov-row" role="group" aria-label="Data coverage for ' + season + '">' + badges + '</div>' : '';
+}
+
+// A plain sentence naming where each dimension starts, generated rather than
+// hardcoded so it can never claim a boundary the data no longer has.
+function coverageSentence() {
+  const first = COVERAGE.first || {};
+  const parts = (COVERAGE.dimensions || [])
+    .filter(d => d.key !== 'scores')
+    .map(d => first[d.key] != null ? d.label.toLowerCase() + ' from ' + first[d.key]
+                                   : d.label.toLowerCase() + ' not collected yet');
+  return parts.length ? parts.join('; ') + '.' : '';
+}
+
+// One row per season, one column per dimension, for the methodology page.
+function coverageTableHtml() {
+  const dims = COVERAGE.dimensions || [];
+  const seasons = Object.keys(COVERAGE.seasons || {}).map(Number).sort((a, b) => b - a);
+  if (!dims.length || !seasons.length) return '<p class="empty-note">Coverage data is unavailable.</p>';
+  const body = seasons.map(y => '<tr><td>' + y + '</td>' + dims.map(d => {
+    const cell = coverageCell(d.key, y), state = coverageState(cell);
+    const text = !cell || !cell[1] ? '\u2014'
+      : state === 'full' ? 'all ' + cell[1]
+      : state === 'none' ? 'none'
+      : cell[0] + ' / ' + cell[1];
+    return '<td class="' + state + '">' + text + '</td>';
+  }).join('') + '</tr>').join('');
+  return '<div class="table-scroll" tabindex="0" role="region" aria-label="Data coverage by season">' +
+    '<table class="cov-table"><thead><tr><th scope="col">Season</th>' +
+    dims.map(d => '<th scope="col" title="' + esc(d.source) + '">' + esc(d.label) + '</th>').join('') +
+    '</tr></thead><tbody>' + body + '</tbody></table></div>';
 }
 
 // ---------------- Conference index (Milestone E) ----------------
@@ -1507,7 +1611,10 @@ function indexTeamPages(raw) {
   });
   return { gamesById, eloByTeam, seasonsByTeam, teamsPerSeason, coe2PerSeason,
     swings: raw.swings, history: raw.history, cfpFirst: raw.cfp_first_season, titlesSince: raw.titles_since,
-    advanced: raw.advanced || null };
+    advanced: raw.advanced || null,
+    // ENG-13: {"<team>|<season>": {games, bonus, total, items}} -- the season total
+    // decomposed, so the ledger can show where every point came from.
+    rollups: raw.coe2_rollups || {} };
 }
 
 function loadTeamPages() {
@@ -1729,8 +1836,10 @@ function advancedBlock(tp, team, season) {
   if (!A) {
     body = '<div class="empty-note">Advanced stats haven\'t been loaded.</div>';
   } else if (!cells) {
-    body = '<div class="empty-note">Not available for ' + season +
-      (season < A.first_season ? ' (CFBD\'s play-by-play stats begin in ' + A.first_season + ')' : '') + '.</div>';
+    // P1-08: say why, using the season's own counted coverage rather than a guess.
+    body = '<div class="empty-note">Not available for ' + season + '. ' +
+      esc(coverageReason('team_advanced', season) ||
+          (season < A.first_season ? 'CFBD\'s play-by-play stats begin in ' + A.first_season + '.' : '')) + '</div>';
   } else {
     const side = which => '<div class="adv-side"><h4>' + (which === 'offense' ? 'Offense' : 'Defense') + '</h4>' +
       A.metrics.map((m, i) => [m, cells[i]]).filter(([m]) => m[0] === which).map(([m, c]) => {
@@ -1742,7 +1851,8 @@ function advancedBlock(tp, team, season) {
     body = '<div class="adv-cols">' + side('offense') + side('defense') + '</div>';
   }
   return '<h3 class="adv-title">Play-by-play efficiency</h3>' +
-    '<div class="adv-sub">CollegeFootballData.com &middot; garbage time excluded &middot; ranks among FBS teams (#1 = best)</div>' + body;
+    '<div class="adv-sub">CollegeFootballData.com &middot; garbage time excluded &middot; ranks among FBS teams (#1 = best)</div>' +
+    coverageRow(['team_advanced', 'game_advanced'], season) + body;
 }
 
 // ---- Advanced analytics (all values computed in export_team_pages.py) ----
@@ -1760,6 +1870,7 @@ function fillAnalyticsPanel(tp, team) {
   const coe = rankLookup('team_ratings_by_year', 'rating', s.season, team.name);
   const coe5 = rankLookup('team_rolling_by_year', 'coeff_5yr', s.season, team.name);
   el.innerHTML = panelHead('Advanced Analytics', seasonSelect('tp-an-season', seasons, s.season, false)) +
+    coverageRow(['scores', 'elo', 'coe2'], s.season) +
     '<div class="an-grid">' +
       teamStat('Record', recStr(s.w, s.l, s.t), 'vs FBS opponents') +
       teamStat('Season Elo', s.endElo.toFixed(1), 'opened ' + s.startElo.toFixed(1) + ' &middot; ' + signed(s.eloChange, 1)) +
@@ -2612,8 +2723,42 @@ function fillCoeLedger(tp, team, season) {
       'Overtime loss ' + C.ot_loss + ', regulation loss ' + C.regulation_loss + '; a tie is 1 + ' + C.tie_delta + ' × (0.5 − P). CoE 2.0 has no separate postseason bonus.' +
       (shown != null ? ' The total ' + (Math.abs(shown - total) < 0.01 ? 'matches' : 'does NOT match')   /* per-game values are stored to 3 decimals */ + ' the season CoE 2.0 in Advanced Analytics (' + shown.toFixed(3) + ').' : '') +
       (mismatch ? ' <b>Some rows don\'t reconcile with the current parameters; the model may need a rebuild.</b>' : '') +
-      ' Note: the playoff still uses CoE v1, which comes from an iterative whole-season calculation and can\'t be split into per-game amounts.</p>';
+      ' Note: the playoff still uses CoE v1, which comes from an iterative whole-season calculation and can\'t be split into per-game amounts.</p>' +
+      coe2SeasonBreakdown(tp, team, season);
   }).catch(() => { if (ok()) target().innerHTML = '<div class="empty-note">The CoE ledger could not be loaded.</div>'; });
+}
+
+// ---- Season CoE 2.0 = game awards + explicit bonuses (ENG-13) ----
+// Every figure comes from src/build_coe2_rollups.py's tables; the page only
+// formats them. The point of showing the split is that a bonus can never hide
+// inside opponent strength -- if it contributed, it is named here.
+const BONUS_LABELS = {
+  bowl_appearance: 'Bowl appearance', bowl_win: 'Bowl win',
+  cfp_appearance: 'Playoff appearance', cfp_win: 'Playoff win',
+  conference_standings_first: 'First in conference standings', national_title: 'National championship'
+};
+function coe2SeasonBreakdown(tp, team, season) {
+  const r = (tp.rollups || {})[team.id + '|' + season];
+  if (!r) return '';
+  const n3 = v => Number(v).toFixed(3);
+  const items = (r.items || []).map(([cat, n, pts]) =>
+    '<tr><td class="tl">' + esc(BONUS_LABELS[cat] || cat) + (n > 1 ? ' \u00d7' + n : '') + '</td>' +
+    '<td>' + (pts === 0 ? '<span class="dim">0.000</span>' : n3(pts)) + '</td></tr>').join('');
+  const zeroWeighted = (r.items || []).length && r.bonus === 0;
+  return '<h3 class="an-title">Season total</h3>' +
+    '<div class="table-scroll" tabindex="0" role="region" aria-label="Season CoE 2.0 breakdown">' +
+    '<table class="ledger"><tbody>' +
+    '<tr><td class="tl">Game awards (' + season + ')</td><td>' + n3(r.games) + '</td></tr>' +
+    items +
+    '<tr><td class="tl">Bonuses</td><td>' + n3(r.bonus) + '</td></tr>' +
+    '</tbody><tfoot><tr><td class="tl">Season CoE 2.0</td><td>' + n3(r.total) + '</td></tr></tfoot></table></div>' +
+    '<p class="section-note">Season CoE 2.0 = the sum of this season\u2019s game awards plus explicit bonuses. ' +
+    (zeroWeighted
+      ? 'The achievements above are recorded, but every bonus category is currently weighted <b>0.000</b>, so the ' +
+        'season total is exactly the sum of its game awards. The weights live in the model configuration and are ' +
+        'deliberately unset until they are chosen against the validation harness.'
+      : 'Each bonus is recorded separately from opponent strength, so no part of the total is hidden inside a rating.') +
+    '</p>';
 }
 
 document.getElementById('content').addEventListener('change', e => {
@@ -2682,8 +2827,14 @@ function renderMethodology() {
     '<li>Scheduled games never change Elo, CoE or standings.</li>' +
     '<li>Missing data is shown as unavailable, never as zero.</li>' +
     '<li>Real history (bowls, CFP, national titles) and model history (simulated playoffs) are always shown separately.</li>' +
-    '<li>Games are FBS vs. FBS from CollegeFootballData.com, 1980 on. Kickoff times exist from 2001; advanced stats from 2001; CoE 2.0 from 1985.</li></ul>' +
-    '<p class="section-note">These parameters are read from the model\'s configuration and code each time the site is built, so this page always describes the model that produced the numbers you see.</p></div>';
+    '<li>Games are FBS vs. FBS from CollegeFootballData.com, ' + coverageRange(DATA.years_all) + '. ' +
+      esc(coverageSentence()) + '</li></ul>' +
+    '<h3>Data coverage</h3>' +
+    '<p>Every season carries a different amount of data, and the site says so rather than drawing an absence as a zero. ' +
+      'A metric that was never collected for an era reads <i>N/A</i> with the reason; a season that is only partly covered ' +
+      'shows how much of it is.</p>' + coverageTableHtml() +
+    '<p class="section-note">These parameters and the coverage above are read from the model\'s configuration, code and database ' +
+      'each time the site is built, so this page always describes the model and the data that produced the numbers you see.</p></div>';
 }
 
 // ---------------- Game pages (Milestone C) ----------------
@@ -2824,12 +2975,45 @@ function hydrateGamePage(version) {
           esc(hn) + ': ' + coeFormula(d.home_result, d.home_hybrid_p, P, g.home_game_coe) + '</div>' +
           '<p class="section-note">All inputs are the stored pregame values; later games never change this game\'s CoE. CoE 2.0 is the experimental layer; playoff selection still uses CoE v1.</p></details></div>';
       }
+      // ---- Efficiency: SRDiff / xSRDiff / SR+ (EXP-03, guide section 7) ----
+      // Every number is copied from what src/build_elo.py stored for this game;
+      // nothing here recomputes the model. Absent Success Rate renders N/A.
+      const pct1 = v => (v > 0 ? '+' : v < 0 ? '\u2212' : '\u00b1') + Math.abs(v * 100).toFixed(1) + '%';
+      const srPanel = (d && (d.home_sr_diff != null || d.away_sr_diff != null))
+        ? '<div class="panel" id="gp-efficiency"><h2 class="section-title">Efficiency vs. expectation</h2>' +
+          '<div class="table-scroll" tabindex="0" role="region" aria-label="Success Rate against expectation">' +
+          '<table class="gp-table"><thead><tr><th scope="col"></th>' +
+          '<th scope="col">' + esc(an) + '</th><th scope="col">' + esc(hn) + '</th></tr></thead><tbody>' +
+          [['Success Rate', 'success_rate', v => v == null ? 'N/A' : (v * 100).toFixed(1) + '%',
+            'Share of this team\u2019s plays that gained enough for the down and distance, in this game.'],
+           ['SRDiff', 'sr_diff', v => v == null ? 'N/A' : pct1(v),
+            'How much better this team performed by Success Rate than its opponent.'],
+           ['xSRDiff', 'xsr_diff', v => v == null ? 'N/A' : pct1(v),
+            'Expected Success Rate Differential based on the teams\u2019 pregame Elo strength and venue.'],
+           ['SR+', 'sr_plus', v => v == null ? 'N/A' : pct1(v),
+            'Actual SRDiff minus xSRDiff; positive means the team performed better than expected.']]
+            .map(([label, key, fmt, tip]) =>
+              '<tr><th scope="row" title="' + esc(tip) + '">' + label + '</th>' +
+              '<td>' + fmt(d['away_' + key]) + '</td><td>' + fmt(d['home_' + key]) + '</td></tr>').join('') +
+          '</tbody></table></div>' +
+          '<p class="section-note"><b>xSRDiff</b> is what the matchup implied before kickoff; <b>SR+</b> is how far ' +
+          'the team beat it. The two sides are mirror images by construction. ' +
+          (d.performance_model === 'xsrdiff'
+            ? 'The winner\u2019s SR+ set the Elo multiplier for this game.'
+            : 'This game\u2019s Elo used the <code>' + esc(d.performance_model || 'mov') + '</code> multiplier instead, so ' +
+              'these numbers are shown for context and did not move the rating.') +
+          ' Success Rate coverage begins in 2001; earlier games have none.</p></div>'
+        : '';
+
       const q = encodeURIComponent(an + ' vs ' + hn + ' ' + season + ' highlights');
-      const more = '<div class="panel"><h2 class="section-title">More</h2><div class="gp-facts">' +
-        '<div class="gp-fact"><b>Box score &amp; advanced stats</b>Not in this dataset yet.</div>' +
+      const more = '<div class="panel"><h2 class="section-title">More</h2>' +
+        coverageRow(['scores', 'kickoff', 'team_advanced', 'game_advanced', 'elo', 'coe2'], season) +
+        '<div class="gp-facts">' +
+        '<div class="gp-fact"><b>Box score &amp; advanced stats</b>' +
+        esc(coverageReason('game_advanced', season) || 'Available for this season.') + '</div>' +
         (g.completed ? '<div class="gp-fact"><b>Highlights</b><a href="https://www.youtube.com/results?search_query=' + q + '" target="_blank" rel="noopener noreferrer">Search YouTube &rarr;</a></div>' : '') +
         '<div class="gp-fact"><b>Teams</b>' + (away ? teamLink(an, 'xs', season) : esc(an)) + ' ' + (home ? teamLink(hn, 'xs', season) : esc(hn)) + '</div></div></div>';
-      target().innerHTML = hero + '<div class="grid-2">' + eloPanel + coePanel + '</div>' +
+      target().innerHTML = hero + '<div class="grid-2">' + eloPanel + coePanel + '</div>' + srPanel +
         '<div class="panel" id="gp-series"><h2 class="section-title">Series history</h2><p class="empty-note">Loading meetings…</p></div>' + more;
       loadSeries(g.home_id, g.away_id).then(rows => {
         if (version === renderVersion) document.getElementById('gp-series').innerHTML = seriesHtml(rows, g, an, hn);
@@ -3315,6 +3499,19 @@ function searchResultsHtml(r) {
         ' vs. ' + esc(searchTeamName(g.home_id)) + '</span><small>' + g.season + '</small></a>';
     }).join('') + (r.gamesTotal > r.games.length ? '<p class="search-note">Showing the ' + r.games.length + ' most relevant of ' + r.gamesTotal + ' games.</p>' : '') + '</div>');
   }
+  if ((r.conferences || []).length) {
+    groups.push('<div class="search-group" role="group" aria-label="Conferences"><h3>Conferences</h3>' +
+      r.conferences.map(c => {
+        const meta = CONF_BY_SLUG.get(c.slug);
+        const span = meta ? meta.first + '\u2013' + meta.last : '';
+        return '<a class="search-hit" href="' + esc(conferenceHref(c.name)) + '">' +
+          logoMarkup(c.name, 'conf', 'xs', meta ? meta.last : LATEST_SEASON) +
+          '<span class="hit-text">' + esc(c.name) + '</span>' + (span ? '<small>' + span + '</small>' : '') + '</a>';
+      }).join('') +
+      (r.conferencesTotal > r.conferences.length
+        ? '<p class="search-note">+' + (r.conferencesTotal - r.conferences.length) + ' more conferences \u2014 keep typing to narrow.</p>' : '') +
+      '</div>');
+  }
   if (r.seasons.length) {
     groups.push('<div class="search-group" role="group" aria-label="Seasons"><h3>Seasons</h3>' + r.seasons.map(y =>
       '<a class="search-hit" href="' + esc(CfbNavigation.hashFor(CfbNavigation.readRoute('#section=games&season=' + y, ROUTE_CONFIG))) + '">' +
@@ -3334,9 +3531,9 @@ function runSearch() {
     SEARCH.searcher = SEARCH.searcher || CfbSearch.buildSearcher(idx);
     if (seq !== SEARCH.seq) return;                       // a newer keystroke already ran
     const r = SEARCH.searcher.search(query);
-    const count = r.teams.length + r.games.length + r.seasons.length * 2;
+    const count = r.teams.length + (r.conferences || []).length + r.games.length + r.seasons.length * 2;
     openSearch(count ? searchResultsHtml(r)
-      : '<p class="search-note">No matches for “' + esc(query) + '”. Try a team name, an alias, a year, or two teams.</p>',
+      : '<p class="search-note">No matches for “' + esc(query) + '”. Try a team name, an alias, a conference, a year, or two teams.</p>',
       count ? count + ' result' + (count === 1 ? '' : 's') + '. Press Down to browse.' : 'No matches');
   }).catch(() => {
     if (seq !== SEARCH.seq) return;
