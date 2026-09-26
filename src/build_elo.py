@@ -45,7 +45,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import re
 import sqlite3
 import sys
@@ -171,8 +170,6 @@ def run_elo(games, cfg: dict, layer=None, success_rates: dict | None = None):
     k = cfg["k"]
     home_field = cfg["home_field"]
     retention = cfg["offseason_retention"]
-    mov_c = cfg["mov_c"]
-    mov_d = cfg["mov_d"]
     if layer is None:
         layer = build_layer({"modifier": "mov", "fallback": "mov", "beta": 1.0,
                              "m_min": 0.5, "m_max": 1.5, "model_path": None}, cfg)

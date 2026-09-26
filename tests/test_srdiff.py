@@ -6,13 +6,11 @@ These run entirely on synthetic fixtures -- no database and no per-game Success
 Rate needed -- so they pin the arithmetic and the fallback behavior whether or
 not CFBD data has been fetched yet.
 """
-import math
-
 import pytest
 
 from build_elo import GameContext, run_elo
 from srdiff import (MOV, RAW_SRDIFF, RESULT_ONLY, TIE, XSRDIFF, MovLayer, ResultOnlyLayer,
-                    XsrDiffLayer, XsrModel, actual_sr_diff, build_layer, expected_sr_diff,
+                    XsrModel, actual_sr_diff, build_layer, expected_sr_diff,
                     load_performance_config, performance_multiplier, sr_plus)
 
 ELO_CFG = {"initial_rating": 1500.0, "scale": 400.0, "k": 20.0, "home_field": 50.0,
