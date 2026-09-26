@@ -439,6 +439,8 @@
   .cov-table td.full { color: var(--green-hl); }
   .cov-table td.partial { color: var(--amber); }
   .cov-table td.none { color: var(--ink-dim); }
+  /* The coverage page's summary table carries a prose column, which reads left-aligned. */
+  .cov-table td.tl { text-align: left; white-space: normal; }
 
   /* ---- Detail-page tabs + conference pages (Milestone E) ---- */
   .page-tabs { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 0 0 18px; border-bottom: 1px solid var(--line); }
@@ -765,6 +767,7 @@
       <a data-section="teams" href="#section=teams">Teams</a>
       <a data-section="rankings" href="#section=rankings">Rankings</a>
       <a data-section="playoff" href="#section=playoff">Playoff</a>
+      <a data-section="coverage" href="#section=coverage">Data coverage</a>
       <a data-section="methodology" href="#section=methodology">How it works</a>
     </nav>
     <div class="global-search" role="search">
@@ -1102,9 +1105,10 @@ const ROUTE_CONFIG = { yearsAll: DATA.years_all, playoffYears: DATA.years_playof
   gameSeasons: STATIC_MANIFEST.seasons || [] };
 let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult: null, simYear: null,
   homeGroup: null, homeTop25: false, homePoll: null };
-const SECTION_LABELS = { home: 'Home', games: 'Games', teams: 'Teams', rankings: 'Rankings', playoff: 'Playoff', methodology: 'How it works' };
+const SECTION_LABELS = { home: 'Home', games: 'Games', teams: 'Teams', rankings: 'Rankings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
 const SUBVIEWS = {
-  rankings: [['elo', 'Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'], ['ap', 'AP'], ['cfp', 'CFP']],
+  rankings: [['elo', 'Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
+    ['conference-coe2', 'Conference CoE 2.0'], ['ap', 'AP'], ['cfp', 'CFP']],
   playoff: [['field', 'Field'], ['bracket', 'Bracket & Simulator'], ['odds', 'Title Odds'], ['history', 'History']]
 };
 
@@ -1120,11 +1124,12 @@ function fmt(n) { return Number(n).toFixed(3); }
 function renderYearRow() {
   const row = document.getElementById('year-row');
   if (state.view === 'team' || state.view === 'conference' || state.view === 'game' ||
-      state.section === 'teams' || state.section === 'methodology') {
+      state.section === 'teams' || state.section === 'methodology' || state.section === 'coverage') {
     row.innerHTML = '';
     document.getElementById('year-caption').textContent = state.view === 'team' ? 'TEAM PAGE'
       : state.view === 'conference' ? 'CONFERENCE PAGE' : state.view === 'game' ? 'GAME'
-      : state.section === 'methodology' ? 'METHODOLOGY' : 'TEAMS & CONFERENCES';
+      : state.section === 'methodology' ? 'METHODOLOGY'
+      : state.section === 'coverage' ? 'EVERY SEASON' : 'TEAMS & CONFERENCES';
     return;
   }
   if (state.section === 'home') {
@@ -1180,6 +1185,80 @@ function renderTeamCoeRankings() {
     '<div class="panel"><h2 class="section-title">Single-Season Rating</h2>' + rankTable(single, 'value', 'Team', 'Rating', 'team') + '</div>' +
     '<div class="panel"><h2 class="section-title">5-Year Rolling CoE</h2>' + rankTable(rolling, 'value', 'Team', 'CoE', 'team') + '</div>' +
     '</div>';
+}
+
+// ---- Conference CoE 2.0, five seasons ENTERING a season (ENG-14) ----
+// DATA.conference_coe2_5yr_by_year is exported in the canonical bid-allocation
+// order by src/export_dashboard_data.py, which asks
+// build_coe2_rollups.conference_coe2_rank() -- so the order and the exclusions
+// here are the model's, not this page's. Deliberately NOT the same number as the
+// 'Conference CoE' tab: that one is CoE v1 and INCLUDES the current season.
+function coe2Entering(season) {
+  return (DATA.conference_coe2_5yr_by_year || {})[String(season)] || [];
+}
+function coe2EnteringFor(conference, season) {
+  return coe2Entering(season).find(r => r.conference === conference) || null;
+}
+// The earliest season any window reaches back to: the first season with CoE 2.0
+// game awards. Derived from the feed rather than restated, so it cannot claim a
+// boundary the data no longer has.
+function coe2FirstAwardSeason() {
+  const feed = DATA.conference_coe2_5yr_by_year || {};
+  const starts = Object.keys(feed).flatMap(y => feed[y].map(r => r.window[0]));
+  return starts.length ? Math.min(...starts) : null;
+}
+// Why a season has no value. A short window is never the reason: a window of one
+// season is published (the earliest value counts a single season). The reasons are
+// that no earlier season has CoE 2.0 game awards at all, or that the rollups have
+// not been built for the configured formula version.
+function coe2EmptyReason(season) {
+  const first = coe2FirstAwardSeason();
+  if (first == null) {
+    return 'No CoE 2.0 five-season values have been built for this site yet.';
+  }
+  if (season <= first) {
+    return 'No CoE 2.0 value entering ' + season + '. It is built from CoE 2.0 game awards in earlier ' +
+      'seasons, and the first season with any is ' + first + ' \u2014 so the first value is the one ' +
+      'entering ' + (first + 1) + '.';
+  }
+  return 'No CoE 2.0 value entering ' + season + '. No conference holds a rank entering this season: ' +
+    'either no member conference has contributing games in the window, or membership for ' + season +
+    ' is not recorded.';
+}
+
+function renderConferenceCoe2() {
+  const rows = coe2Entering(state.year);
+  const bonuses = DATA.coe2_bonuses || null;
+  const intro = '<p class="section-note">Conference CoE 2.0 over the (at most) five seasons <b>before</b> ' + state.year +
+    ' \u2014 the value <b>entering</b> it, frozen. It never includes ' + state.year + ' itself, so it cannot be ' +
+    'moved by a game played this season. The <a href="' + esc(routeHref({ subview: 'conference-coe' })) +
+    '">Conference CoE</a> tab is a different number: CoE v1\u2019s rolling five years, which does include the ' +
+    'current season and is what actually sets playoff bids. CoE 2.0 is experimental and sets nothing.</p>';
+  if (!rows.length) {
+    return '<div class="panel"><h2 class="section-title">Conference CoE 2.0 entering ' + state.year + '</h2>' +
+      intro + '<div class="empty-note">' + esc(coe2EmptyReason(state.year)) + '</div></div>';
+  }
+  const body = rows.map(r =>
+    '<tr><td class="rk">' + r.rank + '</td>' +
+    '<td><div class="name-cell">' + conferenceLink(r.conference, 'sm', state.year) + '</div></td>' +
+    '<td class="num coe-val">' + Number(r.coe2_5yr).toFixed(3) + '</td>' +
+    '<td class="num">' + r.window[0] + '\u2013' + r.window[1] + '</td>' +
+    '<td class="num">' + r.seasons_counted + '</td>' +
+    '<td class="num">' + r.external_games + '</td></tr>').join('');
+  const zeroNote = bonuses && bonuses.all_zero
+    ? ' Every bonus category is currently weighted 0.000, so these totals are exactly the sum of their game awards.'
+    : '';
+  return '<div class="panel"><h2 class="section-title">Conference CoE 2.0 entering ' + state.year + '</h2>' + intro +
+    '<div class="table-scroll" tabindex="0" role="region" aria-label="Conference CoE 2.0 entering ' + state.year + '">' +
+    '<table class="rank-table"><thead><tr><th></th><th>Conference</th><th class="num">CoE 2.0</th>' +
+    '<th class="num">Window</th><th class="num">Seasons</th><th class="num">External games</th>' +
+    '</tr></thead><tbody>' + body + '</tbody></table></div>' +
+    '<p class="section-note">A season is weighted by recency within its window (0.92 per year back from ' +
+    'the season just finished), and only games against teams outside the conference contribute. ' +
+    'The earliest seasons have fewer than five to draw on and use however many exist, which is what the ' +
+    'Seasons column counts.' + zeroNote +
+    ' Independents are not a league and are excluded, as is a conference with no members entering ' + state.year +
+    '.</p></div>';
 }
 
 function renderElo() {
@@ -2767,6 +2846,58 @@ document.getElementById('content').addEventListener('change', e => {
   document.getElementById('tp-ledger-season')?.focus();
 });
 
+// ---------------- Data coverage page ----------------
+// The same counted numbers the badges use (src/coverage.py, via
+// STATIC_MANIFEST.coverage), given an address of their own so "why is this
+// blank?" can be linked to rather than scrolled to.
+function renderCoverage() {
+  const dims = COVERAGE.dimensions || [];
+  const seasons = Object.keys(COVERAGE.seasons || {}).map(Number).sort((a, b) => a - b);
+  if (!dims.length || !seasons.length) {
+    return '<h2 class="view-title">Data coverage</h2>' +
+      '<div class="empty-note">Coverage data is unavailable.</div>';
+  }
+  const first = COVERAGE.first || {}, sourceFirst = COVERAGE.source_first || {};
+  // Every season counted, per dimension, so the summary states what was counted
+  // rather than what someone expected to be there.
+  const summary = dims.map(d => {
+    const counted = seasons.map(y => coverageCell(d.key, y)).filter(Boolean);
+    const full = counted.filter(c => coverageState(c) === 'full').length;
+    const partial = counted.filter(c => coverageState(c) === 'partial').length;
+    const none = counted.length - full - partial;
+    const start = first[d.key], src = sourceFirst[d.key];
+    let note;
+    if (start == null) {
+      note = d.absent + (src != null
+        ? ' The source has it from ' + src + '; those seasons have not been collected.' : '');
+    } else {
+      note = 'Present from ' + start + '.' + (src != null && src < start
+        ? ' The source itself goes back to ' + src + ', so ' + src + '\u2013' + (start - 1) +
+          ' has not been collected.' : '');
+    }
+    return '<tr><td class="tl">' + esc(d.label) + '</td>' +
+      '<td class="' + (full ? 'full' : none === counted.length ? 'none' : 'partial') + '">' +
+      (full ? full + ' complete' : '\u2014') + '</td>' +
+      '<td class="' + (partial ? 'partial' : '') + '">' + (partial ? partial + ' partial' : '\u2014') + '</td>' +
+      '<td class="' + (none ? 'none' : '') + '">' + (none ? none + ' none' : '\u2014') + '</td>' +
+      '<td class="tl"><span class="dim">' + esc(d.source) + '</span> \u2014 ' + esc(note) + '</td></tr>';
+  }).join('');
+  return '<h2 class="view-title">Data coverage</h2>' +
+    '<div class="panel"><p class="section-note">Every season carries a different amount of data. This page is ' +
+      'counted from the database each time the site is built, so an absent metric can say <b>why</b> it is absent ' +
+      'instead of being drawn as a zero. Each cell below is how many of that season\u2019s units have the data, ' +
+      'out of how many could.</p>' +
+    '<h3 class="an-title">By source, across ' + seasons[0] + '\u2013' + seasons[seasons.length - 1] + '</h3>' +
+    '<div class="table-scroll" tabindex="0" role="region" aria-label="Coverage summary by source">' +
+    '<table class="cov-table"><thead><tr><th scope="col">Data</th><th scope="col">Complete</th>' +
+    '<th scope="col">Partial</th><th scope="col">None</th><th scope="col">Where it comes from</th>' +
+    '</tr></thead><tbody>' + summary + '</tbody></table></div>' +
+    '<h3 class="an-title">By season</h3>' + coverageTableHtml() +
+    '<p class="section-note">Counted by <code>src/coverage.py</code> from the same database that produced every ' +
+      'rating on this site. See <a href="' + esc(routeHref({ section: 'methodology', subview: '' })) +
+      '">How it works</a> for what the numbers themselves mean.</p></div>';
+}
+
 // ---------------- Methodology (Milestone D) ----------------
 // Plain English first, formulas on request. Every number comes from STATIC_MANIFEST.model_params,
 // which the build reads from config/model_config.json and from the code itself -- never typed here.
@@ -2831,7 +2962,8 @@ function renderMethodology() {
     '<h3>Data coverage</h3>' +
     '<p>Every season carries a different amount of data, and the site says so rather than drawing an absence as a zero. ' +
       'A metric that was never collected for an era reads <i>N/A</i> with the reason; a season that is only partly covered ' +
-      'shows how much of it is.</p>' + coverageTableHtml() +
+      'shows how much of it is. <a href="' + esc(CfbNavigation.hashFor({ ...state, section: 'coverage', subview: '' })) +
+      '">Data coverage</a> has the full count, season by season and source by source.</p>' +
     '<p class="section-note">These parameters and the coverage above are read from the model\'s configuration, code and database ' +
       'each time the site is built, so this page always describes the model and the data that produced the numbers you see.</p></div>';
 }
@@ -3234,6 +3366,16 @@ function fillConfSummary(cp, c) {
     teamStat('Conference CoE 2.0', row[F.coe2] == null ? 'N/A' : row[F.coe2].toFixed(1),
       row[F.coe2] == null ? 'not computed for ' + season
         : row[F.coe2_games] + ' external games &middot; experimental') +
+    // The five-season value ENTERING this season, frozen: a different window from
+    // both the tile above (this season alone) and the CoE 5-yr tile (CoE v1, which
+    // includes this season). Labeled with its window so the three can't be read as
+    // one number.
+    (() => {
+      const e = coe2EnteringFor(c.name, season);
+      return teamStat('CoE 2.0 entering ' + season, e ? e.coe2_5yr.toFixed(1) : 'N/A',
+        e ? '#' + e.rank + ' &middot; ' + e.window[0] + '\u2013' + e.window[1] + ' &middot; experimental'
+          : 'no five-season window entering ' + season);
+    })() +
     teamStat('Members', String(row[F.members]), season + ' season &middot; ' + (T.members_ever || 0) + ' ever') +
     teamStat('External record', wlt(row[F.ext_w], row[F.ext_l], row[F.ext_t]),
       wltPct(row[F.ext_w], row[F.ext_l], row[F.ext_t]) + ' vs other conferences, ' + season) +
@@ -3622,10 +3764,12 @@ function render() {
   if (state.view === 'game') { content.innerHTML = renderGamePage(); hydrateGamePage(version); return; }
   if (state.section === 'home') content.innerHTML = renderHome();
   else if (state.section === 'methodology') content.innerHTML = renderMethodology();
+  else if (state.section === 'coverage') content.innerHTML = renderCoverage();
   else if (state.section === 'teams') { content.innerHTML = renderTeamDirectory(); hydrateDirectory(version); }
   else if (state.section === 'games') { content.innerHTML = renderGames(); hydrateGames(version); }
   else if (state.section === 'rankings') {
     const views = { elo: renderElo, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferences,
+      'conference-coe2': renderConferenceCoe2,
       ap: () => renderRankingPoll('ap'), cfp: () => renderRankingPoll('cfp') };
     content.innerHTML = '<h2 class="view-title">Rankings</h2>' + views[state.subview]();
   } else if (state.section === 'playoff') {
