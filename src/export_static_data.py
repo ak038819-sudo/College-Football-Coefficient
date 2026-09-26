@@ -6,6 +6,8 @@ The foundation the Games section, game pages and global search build on:
 
   ui/data/games/<season>.js   every game of one season, completed AND scheduled,
                               oldest first, loaded only when that season is needed
+  ui/data/elo_timeline/<season>.js  the Elo table as it stood after every week of
+                              one season, with movement (P1-05/06)
   ui/data/search_index.js     teams (+ aliases), seasons and every game, compactly,
                               loaded on the first search
   ui/data/static_manifest.json  seasons, counts and content versions; embedded in
@@ -44,6 +46,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from coverage import build_coverage  # noqa: E402
+from elo_timeline import build_timeline  # noqa: E402
 from predict_upcoming import build_upcoming, elo_config  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
@@ -299,6 +302,17 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
     for season, p in sorted(build_game_details(conn).items()):
         v = _write_js(out_dir / "details" / f"{season}.js", f"(window.__CFB_DETAILS__=window.__CFB_DETAILS__||{{}})[{season}]", p)
         details[str(season)] = f"data/details/{season}.js?v={v}"
+    # P1-05/06: one file per season, loaded only when the week-by-week view opens.
+    timeline_dir = out_dir / "elo_timeline"
+    if timeline_dir.exists():
+        shutil.rmtree(timeline_dir)                                  # no orphan seasons
+    timeline_dir.mkdir(parents=True)
+    elo_timeline = {}
+    for season, p in sorted(build_timeline(conn).items()):
+        v = _write_js(timeline_dir / f"{season}.js",
+                      f"(window.__CFB_ELO_TIMELINE__=window.__CFB_ELO_TIMELINE__||{{}})[{season}]", p)
+        elo_timeline[str(season)] = f"data/elo_timeline/{season}.js?v={v}"
+
     shard_payloads = build_series(payloads)
     for k in range(SERIES_SHARDS):
         p = shard_payloads.get(k, {"shard": k, "fields": SERIES_FIELDS, "pairs": {}})
@@ -306,6 +320,9 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
         series.append(f"data/series/{k}.js?v={v}")
     manifest = {"seasons": seasons, "search_index": f"data/search_index.js?v={sv}", "game_fields": FIELDS,
                 "details": details, "series": series, "series_shards": SERIES_SHARDS,
+                # P1-05/06: which seasons have a week-by-week Elo table, so the view
+                # knows whether it exists before fetching anything.
+                "elo_timeline": elo_timeline,
                 "model_params": model_params(),
                 # P1-08: what each season actually has, so an absent metric can say
                 # why it is absent instead of rendering as a zero.
@@ -325,7 +342,9 @@ def main() -> None:
     print(f"Season game files: {len(m['seasons'])} seasons, {sum(s['completed'] for s in m['seasons'])} completed + "
           f"{sum(s['scheduled'] for s in m['seasons'])} scheduled games ({games_bytes:,} bytes total); "
           f"search index {(OUT_DIR / 'search_index.js').stat().st_size:,} bytes; "
-          f"game details {len(m['details'])} seasons; series {m['series_shards']} files")
+          f"game details {len(m['details'])} seasons; series {m['series_shards']} files; "
+          f"Elo timeline {len(m['elo_timeline'])} seasons "
+          f"({sum((OUT_DIR / 'elo_timeline' / f'{s}.js').stat().st_size for s in m['elo_timeline']):,} bytes)")
 
 
 if __name__ == "__main__":

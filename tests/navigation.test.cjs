@@ -260,3 +260,42 @@ test('section routes carry no detail-page state', () => {
     assert.equal(r.conferenceParam, null);
   }
 });
+
+// ---- Week by week: the point-in-time Elo view (P1-05, P1-06) ----
+
+test('a week-by-week stage survives a URL round trip', () => {
+  for (const hash of ['#section=rankings&view=elo-weekly&season=2025&stage=w8',
+    '#section=rankings&view=elo-weekly&season=2025&stage=pre',
+    '#section=rankings&view=elo-weekly&season=2025&stage=post']) {
+    assert.deepEqual(read(hashFor(read(hash))), read(hash));
+    assert.equal(hashFor(read(hash)), hash);
+  }
+});
+
+test('a malformed stage is dropped rather than carried into the page', () => {
+  for (const bad of ['w', 'w123', 'week8', '8', 'PRE', '__proto__', 'w8; drop', '']) {
+    const r = read('#section=rankings&view=elo-weekly&season=2025&stage=' + encodeURIComponent(bad));
+    assert.equal(r.stage, null, bad);
+    assert.equal(hashFor(r), '#section=rankings&view=elo-weekly&season=2025');
+  }
+});
+
+test('stage belongs to the week-by-week view alone', () => {
+  // Another rankings view, another section, and a detail page must all ignore it.
+  assert.equal(read('#section=rankings&view=elo&season=2025&stage=w8').stage, null);
+  assert.equal(read('#section=games&season=2025&stage=w8').stage, null);
+  assert.equal(read('#team=byu&stage=w8').stage, null);
+  assert.equal(read('#section=rankings&view=elo-weekly&season=2025&stage=w8&week=3').week, null);
+});
+
+test('the week-by-week view keeps every other rankings URL unchanged', () => {
+  for (const hash of ['#section=rankings&view=elo&season=2025',
+    '#section=rankings&view=conference-coe&season=1980', '#tab=elo', '#tab=conferences']) {
+    const r = read(hash);
+    assert.notEqual(r.subview, 'elo-weekly');
+    assert.equal(r.stage, null);
+  }
+  // It is reachable, and it is not the default.
+  assert.equal(read('#section=rankings&view=elo-weekly').subview, 'elo-weekly');
+  assert.equal(read('#section=rankings').subview, 'elo');
+});

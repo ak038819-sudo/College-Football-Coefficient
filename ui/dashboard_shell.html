@@ -145,6 +145,8 @@
   .ledger td.opp { font-family: inherit; }
   .ledger td small { display: block; color: var(--ink-dim); font-size: 10.5px; }
   .ledger td.pos { color: var(--green-hl); } .ledger td.neg { color: var(--red); }
+  .rank-table td.pos { color: var(--green-hl); } .rank-table td.neg { color: var(--red); }
+  .rank-table td.flat, .rank-table td.bye { color: var(--ink-dim); }
   .ledger tfoot td { font-weight: 600; border-top: 1px solid var(--line); }
   .ledger a, #tp-ledger .section-note a { color: var(--amber); }
   .method h3 { font-family: var(--font-display); font-size: 17px; margin: 18px 0 6px; }
@@ -217,9 +219,10 @@
   .gl-row.lost .gl-team, .gl-row.lost .gl-main { opacity: 0.55; }
   .gl-row.won .gl-main { color: var(--amber); }
   .gl-foot { font: 11px var(--font-mono); color: var(--ink-dim); border-top: 1px dotted var(--line); padding-top: 6px; }
-  .games-filters form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; margin: 0 0 14px; }
-  .games-filters label { display: flex; flex-direction: column; gap: 4px; font: 11px var(--font-mono); color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.4px; }
-  .games-filters select { padding: 8px; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 3px; font: 14px var(--font-body, inherit); max-width: 240px; }
+  /* Shared by the games filters and the week-by-week stage picker (P1-05). */
+  .games-filters form, .filter-row form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; margin: 0 0 14px; }
+  .games-filters label, .filter-row label { display: flex; flex-direction: column; gap: 4px; font: 11px var(--font-mono); color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.4px; }
+  .games-filters select, .filter-row select { padding: 8px; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 3px; font: 14px var(--font-body, inherit); max-width: 240px; }
   .games-week { margin: 0 0 18px; }
   .games-week h3 { font-family: var(--font-display); font-size: 17px; margin: 0 0 8px; display: flex; align-items: baseline; gap: 8px; }
   .games-week h3 small { font: 11px var(--font-mono); color: var(--ink-dim); }
@@ -852,6 +855,28 @@ function loadSeasonGames(season) {
   });
 }
 
+const _eloTimeline = new Map();
+// P1-05/06. Resolves to {season, teams: [{id, name}], stages: [objects, oldest first],
+// rows: [[row objects] per stage]}. One file per season (src/export_static_data.py),
+// loaded only when the week-by-week view opens.
+function loadEloTimeline(season) {
+  season = Number(season);
+  if (_eloTimeline.has(season)) return Promise.resolve(_eloTimeline.get(season));
+  const src = (STATIC_MANIFEST.elo_timeline || {})[String(season)];
+  if (!src) return Promise.reject(new Error('no Elo timeline for season ' + season));
+  return loadDataScript(src).then(() => {
+    const raw = (window.__CFB_ELO_TIMELINE__ || {})[season];
+    if (!raw) throw new Error('Elo timeline for ' + season + ' was empty');
+    const unpack = (fields, row) => Object.fromEntries(fields.map((f, i) => [f, row[i]]));
+    const data = { season,
+      teams: raw.teams.map(([id, name]) => ({ id, name })),
+      stages: raw.stages.map(r => unpack(raw.stage_fields, r)),
+      rows: raw.rows.map(stage => stage.map(r => unpack(raw.row_fields, r))) };
+    _eloTimeline.set(season, data);
+    return data;
+  });
+}
+
 let _searchIndex = null;
 // Resolves to {teams: [{id, name, slug, aliases}], seasons: [..], games: [[game_id, season, home_id, away_id]],
 //               conferences: [[slug, name, [aliases]]]}.
@@ -1103,7 +1128,8 @@ let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult
   homeGroup: null, homeTop25: false, homePoll: null };
 const SECTION_LABELS = { home: 'Home', games: 'Games', teams: 'Teams', rankings: 'Rankings', playoff: 'Playoff', methodology: 'How it works' };
 const SUBVIEWS = {
-  rankings: [['elo', 'Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'], ['ap', 'AP'], ['cfp', 'CFP']],
+  rankings: [['elo', 'Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
+             ['elo-weekly', 'Week by Week'], ['ap', 'AP'], ['cfp', 'CFP']],
   playoff: [['field', 'Field'], ['bracket', 'Bracket & Simulator'], ['odds', 'Title Odds'], ['history', 'History']]
 };
 
@@ -1187,6 +1213,120 @@ function renderElo() {
   return '<div class="panel"><h2 class="section-title">Elo Rating · ' + state.year + '</h2>' +
     '<p class="section-note">Latest exported rating within the selected season.</p>' +
     rankTable(rows, 'value', 'Team', 'Elo', 'team') + '</div>';
+}
+
+// ---------------- Week by week (P1-05, P1-06) ----------------
+// A point-in-time Elo table plus how far each team moved to reach it. The stage
+// keys and every number come from src/elo_timeline.py; this view picks a stage
+// and formats it.
+function renderEloWeekly() {
+  if (!(STATIC_MANIFEST.elo_timeline || {})[String(state.year)]) {
+    return '<div class="empty-note">No week-by-week Elo for ' + state.year + '.</div>';
+  }
+  return '<div class="panel"><h2 class="section-title">Week by Week \u00b7 ' + state.year + '</h2>' +
+    '<p class="section-note">Where the Elo table stood at a chosen point in the season, and how far each team ' +
+    'moved to get there. Every rating is the engine\'s own postgame number after the games up to that point \u2014 ' +
+    'nothing is recomputed here.</p>' +
+    '<div id="ew-filters" class="filter-row"></div><div id="ew-results"><div class="empty-note">Loading&hellip;</div></div></div>';
+}
+
+function stageNote(stage, season, rows) {
+  if (stage.key === 'pre') {
+    // The first season in the data has no season to carry over from: every team
+    // starts at the engine's initial rating, so the table has no order to read.
+    // Said from the numbers rather than by hardcoding which season that is.
+    const flat = rows.length > 1 && rows.every(r => r.elo === rows[0].elo);
+    if (flat) {
+      return 'Every team enters ' + season + ' at the engine\'s starting rating of ' + rows[0].elo.toFixed(1) +
+        ' \u2014 there is no earlier season to carry a rating over from, so this table has no ranking to read yet.';
+    }
+    return 'Ratings carried into ' + season + ' before a game was played. Elo is one continuous number kept ' +
+      'across seasons, so this is not everyone at the same starting figure \u2014 it is the carry-in that week 1 ' +
+      'is measured against. A team appearing in the data for the first time enters at the starting rating.';
+  }
+  if (stage.key === 'post') {
+    return 'After every bowl and playoff game: the season\'s final table. The postseason is one stage because ' +
+      'bowl and playoff games overlap in time, so "after the bowls" is not a single moment.';
+  }
+  const dates = stage.first_date === stage.last_date ? stage.first_date : stage.first_date + ' to ' + stage.last_date;
+  return 'After all ' + stage.games + ' game' + (stage.games === 1 ? '' : 's') + ' of ' + stage.label.toLowerCase() +
+    ' (' + dates + ').';
+}
+
+function moversPanel(title, rows, teams) {
+  if (!rows.length) return '';
+  return '<div class="panel"><h2 class="section-title">' + title + '</h2><table class="rank-table"><tbody>' +
+    rows.map(r => '<tr><td><div class="name-cell">' + teamLink(teams[r.team].name, 'sm') + '</div></td>' +
+      '<td class="num ' + (r.d_elo > 0 ? 'pos' : r.d_elo < 0 ? 'neg' : 'flat') + '">' + signed(r.d_elo, 1) + '</td>' +
+      '<td class="num">' + (r.d_rank === 0 ? '\u00b1 0' : signed(r.d_rank, 0)) + ' rank</td></tr>').join('') +
+    '</tbody></table></div>';
+}
+
+function hydrateEloWeekly(version) {
+  const season = state.year;
+  // renderEloWeekly() draws a plain note instead of the panel when a season has
+  // no timeline, so there is nothing to hydrate and nothing to report into.
+  if (!document.getElementById('ew-results')) return;
+  loadEloTimeline(season).then(data => {
+    if (version !== renderVersion) return;
+    const notes = [];
+    // Validate the requested stage against THIS season, like the games filters do.
+    let index = data.stages.findIndex(st => st.key === state.stage);
+    if (state.stage && index < 0) {
+      notes.push('There is no ' + (state.stage === 'post' ? 'postseason' : state.stage === 'pre' ? 'preseason'
+        : 'week ' + state.stage.slice(1)) + ' in ' + season + '.');
+    }
+    if (index < 0) index = data.stages.length - 1;               // latest known state
+    const stage = data.stages[index];
+    const rows = data.rows[index] || [];
+    const teams = data.teams;
+
+    const opt = (value, label, selected) => '<option value="' + esc(value) + '"' + (selected ? ' selected' : '') +
+      '>' + esc(label) + '</option>';
+    document.getElementById('ew-filters').innerHTML =
+      '<form id="ew-filter-form" aria-label="Choose a point in the season">' +
+      '<label>As of<select id="ew-stage" data-filter="stage">' +
+      data.stages.map(st => opt(st.key, st.label, st.key === stage.key)).join('') + '</select></label>' +
+      (index < data.stages.length - 1
+        ? '<a class="side-link" href="' + esc(routeHref({ stage: null })) + '">Latest</a>' : '') +
+      '</form>';
+
+    const hasMovement = rows.some(r => r.d_elo !== null);
+    const movers = rows.filter(r => r.stage_games > 0 && r.d_elo !== null);
+    const byGain = [...movers].sort((a, b) => b.d_elo - a.d_elo);
+    const table = '<table class="rank-table"><thead><tr><th></th><th class="num">Move</th><th>Team</th>' +
+      '<th class="num">Elo</th><th class="num">Change</th><th class="num">GP</th></tr></thead><tbody>' +
+      rows.map(r => {
+        const moved = r.d_rank === null ? '<td class="num flat">&mdash;</td>'
+          : '<td class="num ' + (r.d_rank > 0 ? 'pos' : r.d_rank < 0 ? 'neg' : 'flat') + '">' +
+            (r.d_rank === 0 ? '\u00b1 0' : signed(r.d_rank, 0)) + '</td>';
+        const change = r.d_elo === null ? '<td class="num flat">&mdash;</td>'
+          : r.stage_games === 0 ? '<td class="num bye">bye</td>'
+          : '<td class="num ' + (r.d_elo > 0 ? 'pos' : r.d_elo < 0 ? 'neg' : 'flat') + '">' + signed(r.d_elo, 1) + '</td>';
+        return '<tr><td class="rk">' + r.rank + '</td>' + moved +
+          '<td><div class="name-cell">' + teamLink(teams[r.team].name, 'sm') + '</div></td>' +
+          '<td class="num coe-val">' + r.elo.toFixed(1) + '</td>' + change +
+          '<td class="num">' + r.played + '</td></tr>';
+      }).join('') + '</tbody></table>';
+
+    document.getElementById('ew-results').innerHTML =
+      notes.map(n => '<p class="empty-note">' + esc(n) + ' Showing ' + esc(stage.label.toLowerCase()) + ' instead.</p>').join('') +
+      '<p class="section-note">' + esc(stageNote(stage, season, rows)) + ' ' + rows.length + ' teams' +
+      (hasMovement ? '. Move and Change are against ' + esc(data.stages[index - 1].label.toLowerCase()) +
+        '; a team on a bye keeps its rating but can still move as others change.' : '.') + '</p>' +
+      table +
+      (hasMovement && byGain.length > 1
+        ? '<div class="grid-2">' + moversPanel('Biggest gains', byGain.slice(0, 5), teams) +
+          moversPanel('Biggest drops', byGain.slice(-5).reverse(), teams) + '</div>' : '');
+    // These tables arrive after render() ran, so they need the same scroll wrapper
+    // it gives every other rank table -- without it the page scrolls sideways on a phone.
+    wrapWideTables();
+  }).catch(() => {
+    if (version !== renderVersion) return;
+    const target = document.getElementById('ew-results');
+    if (target) target.innerHTML =
+      '<p class="empty-note">Could not load the week-by-week table for ' + season + '.</p>';
+  });
 }
 
 function renderConferences() {
@@ -2594,6 +2734,8 @@ function hydrateGames(version) {
 }
 
 document.getElementById('content').addEventListener('change', e => {
+  const stageSel = e.target.closest('#ew-filters select');
+  if (stageSel) { navigate({ stage: stageSel.value || null }); return; }
   const sel = e.target.closest('#games-filters select');
   if (!sel || state.section !== 'games') return;
   gamesFocusAfterLoad = sel.id;                      // keep keyboard focus on the control just used
@@ -3627,8 +3769,9 @@ function render() {
   else if (state.section === 'games') { content.innerHTML = renderGames(); hydrateGames(version); }
   else if (state.section === 'rankings') {
     const views = { elo: renderElo, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferences,
-      ap: () => renderRankingPoll('ap'), cfp: () => renderRankingPoll('cfp') };
+      'elo-weekly': renderEloWeekly, ap: () => renderRankingPoll('ap'), cfp: () => renderRankingPoll('cfp') };
     content.innerHTML = '<h2 class="view-title">Rankings</h2>' + views[state.subview]();
+    if (state.subview === 'elo-weekly') hydrateEloWeekly(version);
   } else if (state.section === 'playoff') {
     const views = { field: renderField, bracket: renderBracket, odds: renderOdds, history: renderHistory };
     content.innerHTML = playoffIntro() + views[state.subview]();
