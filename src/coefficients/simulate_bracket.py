@@ -10,15 +10,26 @@ whole thing.
 Win probability model (standard logistic, same family as Elo):
     P(A beats B) = 1 / (1 + exp(-(coe_A - coe_B) / TEMPERATURE))
 
-TEMPERATURE controls how much a given CoE gap matters. Default of 6.0
-was picked to produce plausible-looking upset odds (a 5-point favorite
-wins about 70% of the time, a 15-point favorite about 92%) -- this is
-a genuine modeling choice, not derived from the rules, and is exposed
-as a CLI flag so it can be tuned.
+TEMPERATURE controls how much a given CoE gap matters. It used to be 6.0,
+a value picked to produce plausible-looking upset odds and never checked
+against a result. src/calibrate_sim_temperature.py has now fitted it
+against the record -- the CoE gap entering each season against the actual
+winner, on the games where both teams were playoff calibre -- and the
+answer is about 4.5. At 6.0 the simulator was systematically
+underconfident, pulling every matchup toward a coin flip: its calibration
+error on those games was 0.078, against 0.020 at 4.5.
+
+The value now lives in config/model_config.json under "simulation", with
+the fit written up beside it, and is still exposed as a CLI flag. The
+Brier curve is flat between roughly 4.25 and 5.0, so it is "about 4.5"
+rather than a precise constant.
 
 No home-field boost is added on top of this -- home field was already
 decided by CoE (the higher-CoE team hosts), so adding a separate boost
-would double-count that advantage.
+would double-count that advantage. The same fit does MEASURE that edge,
+at about 1.25 CoE points; it is recorded in the config and deliberately
+not applied, so that a later decision about the Round of 24's real home
+games can start from a number rather than a guess.
 
 Bracket structure: Round of 24 (8 games, already drawn) feeds into a
 16-seed Round of 16 using the same seeding as the bracket graphic (byes
@@ -33,10 +44,12 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import random
 import sqlite3
 from collections import defaultdict
+from pathlib import Path
 
 from select_playoff_field_v2 import (
     YEAR1_BIDS, YEAR2_BIDS, load_conference_coe_rank, load_team_coe_5yr,
@@ -45,7 +58,25 @@ from select_playoff_field_v2 import (
 )
 from draw_playoff_bracket_v2 import backtrack_pairings, choose_home_away, build_conf_map
 
-DEFAULT_TEMPERATURE = 6.0
+CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "model_config.json"
+
+
+def _configured_temperature() -> float:
+    """
+    The fitted temperature from config/model_config.json.
+
+    Read once at import, with the historical 6.0 as the fallback, so that a
+    config trimmed down or missing in a bare checkout still runs rather than
+    failing at the top of the module.
+    """
+    try:
+        with open(CONFIG_PATH) as f:
+            return float(json.load(f)["simulation"]["temperature"])
+    except (OSError, KeyError, ValueError, TypeError):
+        return 6.0
+
+
+DEFAULT_TEMPERATURE = _configured_temperature()
 
 
 def win_probability(coe_a: float, coe_b: float, temperature: float) -> float:

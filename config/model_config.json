@@ -53,5 +53,11 @@
     "cfp_win": 0.0,
     "national_title": 0.0,
     "conference_standings_first": 0.0
+  },
+  "simulation": {
+    "_comment": "Bracket simulator (src/coefficients/simulate_bracket.py). temperature was fitted by calibrate_sim_temperature.py against real results: the CoE gap ENTERING each season (end_year = Y-1, so every game scored is out of sample) against the actual winner, home perspective only, on the 5,081 games since 1980 where BOTH teams were top-40 by entering CoE -- the population a 24-team bracket actually contains. Best found: T=4.5 (Brier=0.22356, calibration error=0.02034) against the previous hand-picked T=6.0 (Brier=0.22845, calibration error=0.07760): the old value was systematically underconfident, pulling every matchup toward a coin flip. The Brier curve is flat between about 4.25 and 5.0, so treat T as 'about 4.5', not a precise constant. Fitting on ALL games instead gives T=3.0, which scores worse here: a slope tuned mostly on mismatches does not transfer to a bracket. Full search in data/processed/sim_temperature_calibration.csv.",
+    "temperature": 4.5,
+    "_measured_home_field_comment": "The same fit measures the home-field edge at about 1.25 CoE points. It is recorded, NOT applied: the simulator gives home field to the higher-CoE team by rule, so adding a separate boost would count the same advantage twice. Kept here so a later decision about the Round of 24's real home games starts from a measured number instead of a guess.",
+    "measured_home_field": 1.25
   }
 }
