@@ -43,6 +43,7 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from coverage import build_coverage  # noqa: E402
 from predict_upcoming import build_upcoming, elo_config  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
@@ -304,7 +305,11 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
         v = _write_js(out_dir / "series" / f"{k}.js", f"(window.__CFB_SERIES__=window.__CFB_SERIES__||{{}})[{k}]", p)
         series.append(f"data/series/{k}.js?v={v}")
     manifest = {"seasons": seasons, "search_index": f"data/search_index.js?v={sv}", "game_fields": FIELDS,
-                "details": details, "series": series, "series_shards": SERIES_SHARDS, "model_params": model_params()}
+                "details": details, "series": series, "series_shards": SERIES_SHARDS,
+                "model_params": model_params(),
+                # P1-08: what each season actually has, so an absent metric can say
+                # why it is absent instead of rendering as a zero.
+                "coverage": build_coverage(conn)}
     (out_dir / "static_manifest.json").write_text(json.dumps(manifest, separators=(",", ":")), encoding="utf-8")
     return manifest
 
