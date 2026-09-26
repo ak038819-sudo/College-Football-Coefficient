@@ -1697,7 +1697,13 @@ function renderOdds() {
     'softened by a temperature so that the better team usually but not always wins. That ' +
     'temperature is fitted against the record &mdash; the CoE each team carried into a season ' +
     'against who actually won, over every game since 1980 between two teams of playoff calibre ' +
-    '&mdash; rather than chosen to look right.</p>';
+    '&mdash; rather than chosen to look right.' +
+    // Why these numbers don't match a hand-count off the bracket page.
+    (meta.redraws ? ' Every run also redraws the Round of 24, so these are a team\'s chances ' +
+      'before the draw is known, not its chances in the particular bracket shown under ' +
+      'Bracket &amp; Simulator. The draw matters: leaving everything else alone and changing ' +
+      'only it can move a contender by more than ten points.' : '') +
+    '</p>';
   html += '<table class="rank-table"><thead><tr><th></th><th>Team</th><th class="num">CoE</th>' +
     '<th class="num">R16</th><th class="num">QF</th><th class="num">SF</th><th class="num">Final</th><th class="num">Champion</th></tr></thead><tbody>';
   pf.simulation.forEach((r, i) => {

@@ -31,12 +31,20 @@ at about 1.25 CoE points; it is recorded in the config and deliberately
 not applied, so that a later decision about the Round of 24's real home
 games can start from a number rather than a guess.
 
-Bracket structure: Round of 24 (8 games, already drawn) feeds into a
-16-seed Round of 16 using the same seeding as the bracket graphic (byes
-ranked 1-8 by 5yr CoE, R24 games as placeholder seeds 9-16, paired
-1v16, 2v15, ... 8v9). From there it's a standard single-elimination
-bracket: adjacent R16 winners meet in the Quarterfinals, and so on
-through the Final.
+Bracket structure: Round of 24 (8 games) feeds into a 16-seed Round of 16
+using the same seeding as the bracket graphic (byes ranked 1-8 by 5yr CoE,
+R24 games as placeholder seeds 9-16, paired 1v16, 2v15, ... 8v9). From
+there it's a standard single-elimination bracket: adjacent R16 winners meet
+in the Quarterfinals, and so on through the Final.
+
+The draw is resampled for every run, so the odds average over the draw as
+well as over the games. This used to be a single draw shared by all 10,000
+runs, which made the published number a sample rather than the quantity: in
+2026, with the field and the model held fixed and only the draw changed,
+Notre Dame's title odds run from 12.0% to 27.7%. Averaged over draws the
+same figure reproduces within about two points across independent runs.
+Pass --fixed-draw for the other question -- the odds given a bracket that
+has already been drawn, which is what the bracket page displays.
 
 Usage:
     python src/coefficients/simulate_bracket.py --year 2025 --draw-seed 1 --sims 10000
@@ -110,15 +118,34 @@ def build_field(db_path: str, year: int) -> tuple[list, list, dict, dict]:
     return byes, pot1, pot2, team_coe, conf_of
 
 
+# How many shuffles to try before calling a field unpairable. A single shuffle
+# can fail the same-conference constraint by luck, which matters now that a draw
+# happens inside the simulation loop: one unlucky shuffle must not end a run.
+# A field that genuinely cannot be paired fails every attempt, so the error is
+# still reached -- it just takes evidence rather than one try.
+DRAW_ATTEMPTS = 50
+
+
+def draw_with(byes: list, pot1: list, pot2: list, conf_of: dict, rng: random.Random) -> list:
+    """
+    One Round of 24 draw, from the caller's own random source.
+
+    Split out from draw_round_of_24 so the simulation can draw a FRESH bracket
+    per run off its own rng, rather than every run sharing one bracket.
+    """
+    for _ in range(DRAW_ATTEMPTS):
+        p1, p2 = pot1[:], pot2[:]
+        rng.shuffle(p1)
+        rng.shuffle(p2)
+        pairs = backtrack_pairings(p1, p2, conf_of, p2[:])
+        if pairs is not None:
+            return pairs
+    raise SystemExit(f"No valid Round of 24 pairing after {DRAW_ATTEMPTS} attempts.")
+
+
 def draw_round_of_24(byes: list, pot1: list, pot2: list, conf_of: dict, draw_seed: int) -> list:
-    rng = random.Random(draw_seed)
-    p1, p2 = pot1[:], pot2[:]
-    rng.shuffle(p1)
-    rng.shuffle(p2)
-    pairs = backtrack_pairings(p1, p2, conf_of, p2[:])
-    if pairs is None:
-        raise SystemExit("No valid Round of 24 pairing for this draw-seed.")
-    return pairs
+    """The one reproducible draw a given seed names -- what the bracket page shows."""
+    return draw_with(byes, pot1, pot2, conf_of, random.Random(draw_seed))
 
 
 def build_r16_seeds(byes: list, r24_pairs: list, team_coe: dict) -> list:
@@ -200,16 +227,43 @@ ROUND_ORDER = ["r24_participant", "r16", "qf", "sf", "final", "champion"]
 ROUND_RANK = {r: i for i, r in enumerate(ROUND_ORDER)}
 
 
-def run_simulation(db_path: str, year: int, draw_seed: int, n_sims: int, temperature: float, sim_seed: int = 0):
+def run_simulation(db_path: str, year: int, draw_seed: int, n_sims: int, temperature: float,
+                   sim_seed: int = 0, fixed_draw: bool = False):
+    """
+    Title odds over `n_sims` brackets.
+
+    By default the Round of 24 is REDRAWN for every run, so the odds average
+    over the draw as well as over the games. That is what a title chance means
+    before the draw happens, and the draw matters enormously: in 2026, holding
+    the field and the model fixed and changing only which draw is used, Notre
+    Dame's title odds run from 12.0% to 27.7%. Reporting one draw's number as
+    "Title Odds" was reporting a sample as if it were the quantity.
+
+    `fixed_draw` keeps the old behaviour -- every run on the single bracket
+    `draw_seed` names -- which is the right question for odds conditioned on a
+    bracket already drawn, as the bracket page shows one.
+    """
     byes, pot1, pot2, team_coe, conf_of = build_field(db_path, year)
-    r24_pairs = draw_round_of_24(byes, pot1, pot2, conf_of, draw_seed)
-    seeds = build_r16_seeds(byes, r24_pairs, team_coe)
-    r16_seed_order = r16_bracket_order(seeds)
 
     rng = random.Random(sim_seed)
+    # The draw rng is separate from the game rng, so that changing the number of
+    # simulations does not reshuffle which brackets get drawn, and a fixed-draw
+    # run and a redrawn run at the same sim_seed play the same games.
+    draw_rng = random.Random((sim_seed, draw_seed).__hash__())
+
+    fixed = None
+    if fixed_draw:
+        pairs = draw_round_of_24(byes, pot1, pot2, conf_of, draw_seed)
+        fixed = (pairs, r16_bracket_order(build_r16_seeds(byes, pairs, team_coe)))
+
     counts = defaultdict(lambda: defaultdict(int))  # team -> round -> count reaching AT LEAST that round
 
     for _ in range(n_sims):
+        if fixed is not None:
+            r24_pairs, r16_seed_order = fixed
+        else:
+            r24_pairs = draw_with(byes, pot1, pot2, conf_of, draw_rng)
+            r16_seed_order = r16_bracket_order(build_r16_seeds(byes, r24_pairs, team_coe))
         result = simulate_one_bracket(byes, r24_pairs, r16_seed_order, team_coe, temperature, rng)
         for team, furthest in result.items():
             reached_rank = ROUND_RANK[furthest]
@@ -228,13 +282,20 @@ def main() -> None:
     p.add_argument("--sims", type=int, default=10000)
     p.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE)
     p.add_argument("--sim-seed", type=int, default=0)
+    p.add_argument("--fixed-draw", action="store_true",
+                   help="run every simulation on the single bracket --draw-seed names, "
+                        "instead of redrawing the Round of 24 each run")
     args = p.parse_args()
 
     counts, n_sims, conf_of, team_coe = run_simulation(
-        args.db, args.year, args.draw_seed, args.sims, args.temperature, args.sim_seed
+        args.db, args.year, args.draw_seed, args.sims, args.temperature, args.sim_seed,
+        fixed_draw=args.fixed_draw,
     )
 
-    print(f"=== {args.year} Monte Carlo bracket simulation ({n_sims:,} runs, temperature={args.temperature}) ===\n")
+    drawing = (f"one fixed draw, seed {args.draw_seed}" if args.fixed_draw
+               else "redrawn each run")
+    print(f"=== {args.year} Monte Carlo bracket simulation ({n_sims:,} runs, "
+          f"temperature={args.temperature}, {drawing}) ===\n")
     print(f"{'Team':<20} {'Conf':<18} {'CoE':>7} {'R16':>7} {'QF':>7} {'SF':>7} {'Final':>7} {'Champ':>7}")
     rows = sorted(counts.items(), key=lambda kv: -kv[1]["champion"])
     for team, c in rows:
