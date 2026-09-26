@@ -98,6 +98,11 @@ jobs:
           # that never ran the layer.
           python3 src/fit_xsrdiff.py || echo "xSRDiff curve not fitted; Elo will use its configured fallback."
           python3 src/build_elo.py
+          # Team-specific HFA (analysis only -- production Elo keeps its flat
+          # elo.home_field). Runs AFTER build_elo.py because every estimate reads
+          # pregame ratings out of elo_game_history; the tables are what make the
+          # point-in-time test on the real database run instead of skipping.
+          python3 src/build_hfa.py
           python3 src/build_hybrid_coefficients.py
           python3 src/build_conference_coe2.py
           python3 src/build_coe2_rollups.py
@@ -164,6 +169,11 @@ jobs:
           # no-op (and a clean skip) until per-game Success Rate has been loaded.
           python3 src/fit_xsrdiff.py || echo "xSRDiff curve not fitted; Elo will use its configured fallback."
           python3 src/build_elo.py
+          # Team-specific HFA (analysis only -- production Elo keeps its flat
+          # elo.home_field). Runs AFTER build_elo.py because every estimate reads
+          # pregame ratings out of elo_game_history; the tables are what make the
+          # point-in-time test on the real database run instead of skipping.
+          python3 src/build_hfa.py
           python3 src/build_hybrid_coefficients.py
           python3 src/build_conference_coe2.py
           # Season rollups + explicit bonuses, and the conference five-season

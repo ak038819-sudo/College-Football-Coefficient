@@ -11,6 +11,10 @@ Outputs (database + CSV mirrors in data/processed/):
   team_hfa_current    the latest estimate for teams active in the latest season,
                       as of the day after the last completed game (not the wall
                       clock, so identical inputs always give identical output).
+  hfa_report.txt      the guide's validation report: every team ranked by
+                      adjusted HFA descending and ascending, so the extremes can
+                      be inspected for pathologies rather than for agreement with
+                      expectations.
 
 Requires elo_game_history (run src/build_elo.py first).
 
@@ -18,6 +22,7 @@ Usage:
     python src/build_hfa.py                          # build both tables
     python src/build_hfa.py --diagnose BYU           # per-game audit for one team (aliases accepted)
     python src/build_hfa.py --diagnose BYU --as-of 2015-08-29
+    python src/build_hfa.py --report                 # ranked validation report, both directions
 """
 from __future__ import annotations
 
@@ -69,7 +74,7 @@ def active_teams(conn: sqlite3.Connection, season: int) -> list:
 def build(conn: sqlite3.Connection, cfg: dict) -> tuple[list, list]:
     """Returns (by_season_rows, current_rows) as dicts. Pure with respect to the database contents."""
     hcfg, scale = cfg["hfa"], cfg["elo"]["scale"]
-    games, _skipped = load_home_games(conn, scale)
+    games, _skipped = load_home_games(conn, scale, hcfg.get("min_season"))
     by_team = defaultdict(list)
     for g in games:
         by_team[g.team_id].append(g)
@@ -78,7 +83,8 @@ def build(conn: sqlite3.Connection, cfg: dict) -> tuple[list, list]:
         nat = weighted_sums(games, as_of, hcfg["half_life_years"])
         if calculate_raw_hfa(nat) is None:
             return []                                    # e.g. the first season: nothing before it
-        prior = calculate_hfa_prior(calculate_raw_hfa(nat), None, hcfg["fcs_prior_weight"])
+        prior = calculate_hfa_prior(calculate_raw_hfa(nat), None, hcfg["fcs_prior_weight"],
+                                    hcfg.get("use_fcs_prior", True))
         nat_points, _ = convert_hfa_to_elo_points(games, as_of, hcfg["half_life_years"], prior * nat.sum_wp, scale,
                                                   tuple(hcfg["point_bounds"]))
         out = []
@@ -123,6 +129,38 @@ def write(conn: sqlite3.Connection, cfg: dict, by_season: list, current: list, o
                            [round(r[c], 6) if isinstance(r[c], float) else r[c] for c in COLUMNS])
 
 
+REPORT_HEAD = f"{'team':<26}{'raw':>9}{'adjusted':>10}{'N_eff':>9}{'lambda':>8}{'baseline':>10}{'games':>7}"
+
+
+def _report_line(r: dict, names: dict) -> str:
+    raw = f"{r['raw_hfa']:.4f}" if r["raw_hfa"] is not None else "none"
+    return (f"{str(names.get(r['team_id'], r['team_id']))[:25]:<26}{raw:>9}{r['adjusted_hfa']:10.4f}"
+            f"{r['effective_n']:9.1f}{r['lambda']:8.3f}{r['fbs_baseline']:10.4f}{r['games_used']:7d}")
+
+
+def report(conn: sqlite3.Connection, current: list, out_path: Path) -> str:
+    """
+    The validation report the guide asks for: both sort directions over the same
+    estimates, so the extremes can be read off and hand-checked.
+
+    The point is to find implementation errors -- a tiny sample driving an extreme
+    value, a brand-new program landing far from the prior, a neutral game leaking
+    in -- and NOT to push any particular program toward a number someone expected.
+    """
+    names = dict(conn.execute("SELECT team_id, team_name FROM teams"))
+    by_adj = sorted(current, key=lambda r: (-r["adjusted_hfa"], r["team_id"]))
+    out = [f"Team-specific HFA validation report -- as of {current[0]['as_of']}",
+           f"national FBS baseline H_FBS = {current[0]['fbs_baseline']:.4f}  "
+           f"(1.0000 would mean home teams win exactly as often as neutral Elo expects)",
+           f"{len(current)} teams", ""]
+    for label, rows in (("adjusted_hfa DESC", by_adj), ("adjusted_hfa ASC", list(reversed(by_adj)))):
+        out += [f"== {label} ==", REPORT_HEAD] + [_report_line(r, names) for r in rows] + [""]
+    text = "\n".join(out) + "\n"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(text, encoding="utf-8")
+    return text
+
+
 def resolve_team(conn: sqlite3.Connection, name: str) -> int:
     """Canonical team_id for a name or alias, via the same lookup load_games.py uses."""
     cur = conn.cursor()
@@ -132,7 +170,7 @@ def resolve_team(conn: sqlite3.Connection, name: str) -> int:
 def diagnose(conn: sqlite3.Connection, cfg: dict, team: str, as_of: dt.date | None) -> None:
     tid = resolve_team(conn, team)
     hcfg, scale = cfg["hfa"], cfg["elo"]["scale"]
-    games, skipped = load_home_games(conn, scale)
+    games, skipped = load_home_games(conn, scale, hcfg.get("min_season"))
     if as_of is None:
         last = conn.execute("SELECT MAX(game_date) FROM games WHERE home_score IS NOT NULL").fetchone()[0]
         as_of = dt.date.fromisoformat(str(last)[:10]) + dt.timedelta(days=1)
@@ -162,6 +200,8 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--db", default=str(REPO / "db" / "league.db"))
     p.add_argument("--diagnose", metavar="TEAM")
+    p.add_argument("--report", action="store_true",
+                   help="print and write the ranked validation report instead of rebuilding the tables")
     p.add_argument("--as-of", type=dt.date.fromisoformat)
     args = p.parse_args()
     cfg = load_config()
@@ -171,8 +211,16 @@ def main() -> None:
     if args.diagnose:
         diagnose(conn, cfg, args.diagnose, args.as_of)
         return
+    if args.report:
+        _, current = build(conn, cfg)
+        path = REPO / "data" / "processed" / "hfa_report.txt"
+        text = report(conn, current, path)
+        print(text)
+        print(f"written to {path}")
+        return
     by_season, current = build(conn, cfg)
     write(conn, cfg, by_season, current, REPO / "data" / "processed")
+    report(conn, current, REPO / "data" / "processed" / "hfa_report.txt")
     print(f"team_hfa_by_season: {len(by_season)} rows; team_hfa_current: {len(current)} teams "
           f"(L={cfg['hfa']['half_life_years']}, K={cfg['hfa']['shrinkage_k']}, "
           f"N_eff={cfg['hfa']['effective_n_method']})")
