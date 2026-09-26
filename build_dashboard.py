@@ -58,7 +58,12 @@ def main() -> None:
     p.add_argument("--db", default="db/league.db")
     p.add_argument("--draw-seed", type=int, default=1)
     p.add_argument("--sims", type=int, default=10000)
-    p.add_argument("--temperature", type=float, default=6.0)
+    # No default here on purpose. The bracket temperature is a fitted model
+    # parameter that lives in config/model_config.json; a default repeated at
+    # this layer would silently override the fitted one, which is exactly what
+    # a hardcoded 6.0 here did after the fit landed. Left unset, the flag is
+    # simply not passed and export_dashboard_data.py uses the fitted value.
+    p.add_argument("--temperature", type=float, default=None)
     p.add_argument("--reuse-exports", action="store_true",
                    help="Preview UI changes using existing exports; do not rebuild the database or data.")
     args = p.parse_args()
@@ -70,7 +75,8 @@ def main() -> None:
     subprocess.run(
         [sys.executable, "src/export_dashboard_data.py", "--db", args.db,
          "--draw-seed", str(args.draw_seed), "--sims", str(args.sims),
-         "--temperature", str(args.temperature), "--out", str(DATA_PATH)],
+         "--out", str(DATA_PATH)]
+        + (["--temperature", str(args.temperature)] if args.temperature is not None else []),
         check=True,
     )
     # Team-page data (Milestone 2): loaded by the dashboard only when a team

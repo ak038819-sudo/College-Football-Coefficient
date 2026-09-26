@@ -1465,18 +1465,22 @@ function renderField() {
   return html;
 }
 
+// The same logistic src/coefficients/simulate_bracket.py runs, with the same
+// fitted temperature: it ships in sim_meta so this button and the published
+// Title Odds cannot drift apart. No fallback constant lives here -- one would
+// silently reinstate the old hand-picked 6.0 if the payload ever changed shape.
 function winProbability(coeA, coeB, temperature) {
-  temperature = temperature || 6.0;
   return 1 / (1 + Math.exp(-(coeA - coeB) / temperature));
 }
-function simulateGame(a, b, teamCoe) {
-  const pA = winProbability(teamCoe[a] || 0, teamCoe[b] || 0);
+function simulateGame(a, b, teamCoe, temperature) {
+  const pA = winProbability(teamCoe[a] || 0, teamCoe[b] || 0, temperature);
   return Math.random() < pA ? a : b;
 }
 
 function runBracketSimulation(pf) {
   const teamCoe = {};
   pf.qualifiers.forEach(q => { teamCoe[q.team] = q.team_coe_5yr; });
+  const temperature = (pf.sim_meta || {}).temperature;
 
   const seeds = buildBracketSeeds(pf);
   const byRank = {};
@@ -1487,19 +1491,19 @@ function runBracketSimulation(pf) {
   const r16Field = r16Order.map(slot => {
     if (slot.isTeam) return slot.team;
     const game = pf.round_of_24[slot.seed - 9];
-    return simulateGame(game.home, game.away, teamCoe);
+    return simulateGame(game.home, game.away, teamCoe, temperature);
   });
 
   const qfField = [];
-  for (let i = 0; i < 16; i += 2) qfField.push(simulateGame(r16Field[i], r16Field[i + 1], teamCoe));
+  for (let i = 0; i < 16; i += 2) qfField.push(simulateGame(r16Field[i], r16Field[i + 1], teamCoe, temperature));
 
   const sfField = [];
-  for (let i = 0; i < 8; i += 2) sfField.push(simulateGame(qfField[i], qfField[i + 1], teamCoe));
+  for (let i = 0; i < 8; i += 2) sfField.push(simulateGame(qfField[i], qfField[i + 1], teamCoe, temperature));
 
   const finalField = [];
-  for (let i = 0; i < 4; i += 2) finalField.push(simulateGame(sfField[i], sfField[i + 1], teamCoe));
+  for (let i = 0; i < 4; i += 2) finalField.push(simulateGame(sfField[i], sfField[i + 1], teamCoe, temperature));
 
-  const champion = simulateGame(finalField[0], finalField[1], teamCoe);
+  const champion = simulateGame(finalField[0], finalField[1], teamCoe, temperature);
 
   return { r16Field, qfField, sfField, finalField, champion };
 }
@@ -1687,6 +1691,13 @@ function renderOdds() {
   const meta = pf.sim_meta || {};
   let html = '<div class="panel"><h2 class="section-title">Title Odds &mdash; Monte Carlo, ' +
     (meta.n_sims || '?').toLocaleString() + ' simulated brackets (temperature=' + meta.temperature + ')</h2>';
+  // Where the temperature comes from. It used to be a guess, so the page should
+  // say that it no longer is, in the reader's terms rather than the model's.
+  html += '<p class="section-note">Each game is decided by the CoE gap between the two teams, ' +
+    'softened by a temperature so that the better team usually but not always wins. That ' +
+    'temperature is fitted against the record &mdash; the CoE each team carried into a season ' +
+    'against who actually won, over every game since 1980 between two teams of playoff calibre ' +
+    '&mdash; rather than chosen to look right.</p>';
   html += '<table class="rank-table"><thead><tr><th></th><th>Team</th><th class="num">CoE</th>' +
     '<th class="num">R16</th><th class="num">QF</th><th class="num">SF</th><th class="num">Final</th><th class="num">Champion</th></tr></thead><tbody>';
   pf.simulation.forEach((r, i) => {
