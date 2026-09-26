@@ -46,6 +46,26 @@ def perf(repo_root):
 
 
 @pytest.fixture(scope="module")
+def has_success_rate(db_conn):
+    """
+    Whether per-game Success Rate was actually loaded into this database.
+
+    A checkout that has not run the per-game load has nothing for the layer to
+    read, so the coverage checks below have nothing to say and skip rather than
+    fail. That skip is a hole, and it is closed from the other side: CI loads the
+    data (see the workflow test at the bottom, which cannot skip), so the checks
+    do run where it matters. Without that pairing this fixture would be a way for
+    the suite to go quiet on exactly the failure it exists to catch.
+    """
+    if not db_conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='game_team_advanced'"
+    ).fetchone():
+        return False
+    return bool(db_conn.execute(
+        "SELECT 1 FROM game_team_advanced WHERE off_success_rate IS NOT NULL LIMIT 1").fetchone())
+
+
+@pytest.fixture(scope="module")
 def by_season(db_conn):
     """{season: {performance_model: count}} over every built game."""
     row = db_conn.execute("SELECT count(*) FROM elo_game_history").fetchone()
@@ -75,7 +95,7 @@ def totals(by_season: dict, seasons) -> dict:
 
 # ------------------------------------------------------ the layer actually runs
 
-def test_the_configured_layer_is_the_one_the_engine_actually_used(perf, by_season):
+def test_the_configured_layer_is_the_one_the_engine_actually_used(perf, by_season, has_success_rate):
     """
     The regression test for the inert switch. Over the seasons where the data is
     genuinely present, the configured modifier must be what the engine actually
@@ -83,6 +103,8 @@ def test_the_configured_layer_is_the_one_the_engine_actually_used(perf, by_seaso
     claims -- exactly as wrong as running the wrong formula, and much harder to
     see, because nothing anywhere reports an error.
     """
+    if perf["modifier"] == XSRDIFF and not has_success_rate:
+        pytest.skip("per-game Success Rate not loaded -- run src/load_game_advanced.py")
     seasons = [s for s in by_season if s >= FULL_COVERAGE_FROM]
     assert seasons, f"no games from {FULL_COVERAGE_FROM} on"
     counts = totals(by_season, seasons)
@@ -107,7 +129,7 @@ def test_seasons_before_the_data_take_the_fallback_rather_than_failing(perf, by_
         f"{perf['fallback']!r}, got {counts}")
 
 
-def test_the_first_success_rate_season_falls_back_for_want_of_a_fold(perf, by_season):
+def test_the_first_success_rate_season_falls_back_for_want_of_a_fold(perf, by_season, has_success_rate):
     """
     2001 has per-game Success Rate but no expectation curve: a fold is fitted only
     on seasons strictly before the one it values, so the earliest fold is 2002.
@@ -117,6 +139,8 @@ def test_the_first_success_rate_season_falls_back_for_want_of_a_fold(perf, by_se
     """
     if perf["modifier"] != XSRDIFF:
         pytest.skip("no xSRDiff curve in play")
+    if not has_success_rate:
+        pytest.skip("per-game Success Rate not loaded -- run src/load_game_advanced.py")
     counts = totals(by_season, [SR_FIRST_SEASON])
     if not counts:
         pytest.skip("2001 not in the built range")
@@ -126,7 +150,7 @@ def test_the_first_success_rate_season_falls_back_for_want_of_a_fold(perf, by_se
     assert set(counts) == {perf["fallback"]}
 
 
-def test_coverage_climbs_and_is_near_total_in_the_recent_seasons(perf, by_season):
+def test_coverage_climbs_and_is_near_total_in_the_recent_seasons(perf, by_season, has_success_rate):
     """
     The fallback share is the honest measure of how much of the record this layer
     actually touches, and it is worth pinning: a data regression that halved
@@ -136,6 +160,8 @@ def test_coverage_climbs_and_is_near_total_in_the_recent_seasons(perf, by_season
     """
     if perf["modifier"] != XSRDIFF:
         pytest.skip("no xSRDiff curve in play")
+    if not has_success_rate:
+        pytest.skip("per-game Success Rate not loaded -- run src/load_game_advanced.py")
     recent = [s for s in by_season if s >= 2018]
     counts = totals(by_season, recent)
     share = counts.get(XSRDIFF, 0) / sum(counts.values())
@@ -225,19 +251,34 @@ def test_the_committed_backtest_still_prefers_the_configured_layer(repo_root, pe
 
 # ------------------------------------------------------------------ CI wiring
 
-def test_ci_fits_the_curve_before_it_builds_elo(repo_root):
+def test_ci_loads_the_data_and_fits_the_curve_before_it_builds_elo(repo_root):
     """
-    The tests above read a built database. If CI builds Elo without fitting the
-    curve first, it builds one that fell back everywhere -- so they would either
-    fail or, worse, pass against ratings nobody intended. Both jobs that build
-    Elo must fit first.
+    This test is the one that cannot skip, and it carries the weight for the ones
+    that can.
+
+    The coverage checks above read a built database and skip when per-game Success
+    Rate is absent. That is fine locally and unacceptable in CI, where skipping
+    would let the whole point of this file go quiet. CI got that exactly wrong
+    once already: the test job built Elo with no per-game data loaded, so every
+    game fell back to MOV and the ratings it tested were ones production would
+    never produce.
+
+    So the ordering is asserted here, against the workflow file itself: each
+    build_elo.py must be preceded by a fit_xsrdiff.py, and each fit must be
+    preceded by the per-game load that gives it something to fit.
     """
     wf = (repo_root / ".github" / "workflows" / "ci-and-deploy.yml").read_text(encoding="utf-8")
-    builds = [i for i, line in enumerate(wf.splitlines()) if "src/build_elo.py" in line]
-    fits = [i for i, line in enumerate(wf.splitlines()) if "src/fit_xsrdiff.py" in line]
+    lines = wf.splitlines()
+    at = lambda needle: [i for i, line in enumerate(lines) if needle in line]
+    builds, fits = at("src/build_elo.py"), at("src/fit_xsrdiff.py")
+    loads = at("src/load_game_advanced.py") + at("src/fetch_cfbd_game_advanced.py")
     assert builds, "no build_elo.py step found; this test is reading the wrong file"
     assert len(fits) >= len(builds), \
         f"{len(builds)} build_elo.py steps but only {len(fits)} fit_xsrdiff.py steps"
     for b in builds:
         assert any(f < b for f in fits), \
             "a build_elo.py step runs with no fit_xsrdiff.py before it"
+    for f in fits:
+        assert any(l < f for l in loads), \
+            ("a fit_xsrdiff.py step runs with no per-game Success Rate loaded before it, "
+             "so it has nothing to fit and Elo falls back for every game")
