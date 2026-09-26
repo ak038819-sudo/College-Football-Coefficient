@@ -186,17 +186,27 @@ def build_conference_board(db_path: str, membership_years: list[int]) -> dict:
     return {"season": None, "rows": []}
 
 
-def build_conference_coe2_5yr(db_path: str) -> dict:
+def build_conference_coe2_5yr(db_path: str, version: str | None = None) -> dict:
     """
     {"<season>": [{conference, coe2_5yr, window, seasons_counted, external_games, rank}, ...]}
-    strongest first: Conference CoE 2.0 over the five seasons BEFORE that season --
-    the value ENTERING it, frozen (src/build_coe2_rollups.py, ENG-14).
+    strongest first: Conference CoE 2.0 over the seasons BEFORE that season -- the
+    value ENTERING it, frozen (src/build_coe2_rollups.py, ENG-14). Early seasons
+    carry a shorter window than five, which is why seasons_counted travels with
+    every row.
 
     The ORDER and the exclusions are not decided here. They come from
     conference_coe2_rank(), which is the canonical bid-allocation contract
     ('FBS Independents' is not a league; a conference with no members that season
     cannot hold a rank in it). Everything else on the row is copied from
     conference_coe2_5yr_by_season so the window a number covers travels with it.
+
+    ONE formula_version only -- the configured one. build_coe2_rollups.py keeps
+    older versions' rows on purpose (that is what makes a v2 comparable against
+    the v1 it supersedes), so an unfiltered read would list a conference once per
+    version and pair its value with another version's window. A database whose
+    rollups predate the configured version therefore exports nothing rather than
+    a mixture: an absence the page reports honestly, where a mixture would be a
+    wrong number nobody could spot.
 
     Empty until src/build_coe2_rollups.py has been run, which is why every caller
     must tolerate a missing season rather than render an absence as a zero.
@@ -208,10 +218,11 @@ def build_conference_coe2_5yr(db_path: str) -> dict:
             return {}
         rows = {(season, conf): rest for season, conf, *rest in conn.execute(
             """SELECT season_year, conference, window_start_year, window_end_year,
-                      seasons_counted, external_games FROM conference_coe2_5yr_by_season""")}
+                      seasons_counted, external_games FROM conference_coe2_5yr_by_season
+               WHERE formula_version = ?""", (version,))}
         out = {}
         for season in sorted({s for s, _ in rows}):
-            ranked = conference_coe2_rank(conn, season)
+            ranked = conference_coe2_rank(conn, season, version)
             if not ranked:
                 continue
             # Competition ranking (1, 2, 2, 4): two conferences on the same value
@@ -245,7 +256,12 @@ def build_coe2_bonuses(config_path: Path = Path("config/model_config.json")) -> 
         return {"version": None, "values": {}, "all_zero": True}
     cfg = json.loads(config_path.read_text(encoding="utf-8"))
     bonus = load_bonus_config(cfg.get("coe2_bonuses"))
-    return {"version": bonus["version"], "values": bonus["values"],
+    # Sorted: load_bonus_config builds its dict from a SET of category names, so
+    # the insertion order changes between processes. Every other export in this
+    # repo reproduces byte for byte on a rebuild, and the deploy job commits
+    # "anything that actually changed" -- an unordered dict would hand it a
+    # meaningless diff on every scheduled run.
+    return {"version": bonus["version"], "values": dict(sorted(bonus["values"].items())),
             "all_zero": not any(bonus["values"].values())}
 
 
@@ -412,6 +428,9 @@ def main() -> None:
     team_elo = load_elo_by_season(args.db)
 
     membership_years = years_with_membership_data(args.db)
+    # Read once: the same version labels the exported bonus magnitudes and selects
+    # the rollup rows, so the two can never describe different formulas.
+    coe2_bonuses = build_coe2_bonuses()
 
     def top(rows, key, n=None):
         rows_sorted = sorted(rows, key=lambda r: -float(r[key]))
@@ -462,8 +481,8 @@ def main() -> None:
         # because both the rankings tab and the conference page need it, and it is
         # a few hundred rows. The live playoff model still runs on CoE v1; these
         # two must stay visibly separate, which is why they have separate keys.
-        "conference_coe2_5yr_by_year": build_conference_coe2_5yr(args.db),
-        "coe2_bonuses": build_coe2_bonuses(),
+        "conference_coe2_5yr_by_year": build_conference_coe2_5yr(args.db, coe2_bonuses["version"]),
+        "coe2_bonuses": coe2_bonuses,
     }
 
     usable_years = []

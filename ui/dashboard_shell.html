@@ -1198,18 +1198,44 @@ function coe2Entering(season) {
 function coe2EnteringFor(conference, season) {
   return coe2Entering(season).find(r => r.conference === conference) || null;
 }
+// The earliest season any window reaches back to: the first season with CoE 2.0
+// game awards. Derived from the feed rather than restated, so it cannot claim a
+// boundary the data no longer has.
+function coe2FirstAwardSeason() {
+  const feed = DATA.conference_coe2_5yr_by_year || {};
+  const starts = Object.keys(feed).flatMap(y => feed[y].map(r => r.window[0]));
+  return starts.length ? Math.min(...starts) : null;
+}
+// Why a season has no value. A short window is never the reason: a window of one
+// season is published (the earliest value counts a single season). The reasons are
+// that no earlier season has CoE 2.0 game awards at all, or that the rollups have
+// not been built for the configured formula version.
+function coe2EmptyReason(season) {
+  const first = coe2FirstAwardSeason();
+  if (first == null) {
+    return 'No CoE 2.0 five-season values have been built for this site yet.';
+  }
+  if (season <= first) {
+    return 'No CoE 2.0 value entering ' + season + '. It is built from CoE 2.0 game awards in earlier ' +
+      'seasons, and the first season with any is ' + first + ' \u2014 so the first value is the one ' +
+      'entering ' + (first + 1) + '.';
+  }
+  return 'No CoE 2.0 value entering ' + season + '. No conference holds a rank entering this season: ' +
+    'either no member conference has contributing games in the window, or membership for ' + season +
+    ' is not recorded.';
+}
+
 function renderConferenceCoe2() {
   const rows = coe2Entering(state.year);
   const bonuses = DATA.coe2_bonuses || null;
-  const intro = '<p class="section-note">Conference CoE 2.0 over the five seasons <b>before</b> ' + state.year +
+  const intro = '<p class="section-note">Conference CoE 2.0 over the (at most) five seasons <b>before</b> ' + state.year +
     ' \u2014 the value <b>entering</b> it, frozen. It never includes ' + state.year + ' itself, so it cannot be ' +
     'moved by a game played this season. The <a href="' + esc(routeHref({ subview: 'conference-coe' })) +
     '">Conference CoE</a> tab is a different number: CoE v1\u2019s rolling five years, which does include the ' +
     'current season and is what actually sets playoff bids. CoE 2.0 is experimental and sets nothing.</p>';
   if (!rows.length) {
     return '<div class="panel"><h2 class="section-title">Conference CoE 2.0 entering ' + state.year + '</h2>' +
-      intro + '<div class="empty-note">No CoE 2.0 five-season value for ' + state.year + '. ' +
-      'It needs five prior seasons of game awards, so the earliest seasons have none.</div></div>';
+      intro + '<div class="empty-note">' + esc(coe2EmptyReason(state.year)) + '</div></div>';
   }
   const body = rows.map(r =>
     '<tr><td class="rk">' + r.rank + '</td>' +
@@ -1227,7 +1253,9 @@ function renderConferenceCoe2() {
     '<th class="num">Window</th><th class="num">Seasons</th><th class="num">External games</th>' +
     '</tr></thead><tbody>' + body + '</tbody></table></div>' +
     '<p class="section-note">A season is weighted by recency within its window (0.92 per year back from ' +
-    'the season just finished), and only games against teams outside the conference contribute.' + zeroNote +
+    'the season just finished), and only games against teams outside the conference contribute. ' +
+    'The earliest seasons have fewer than five to draw on and use however many exist, which is what the ' +
+    'Seasons column counts.' + zeroNote +
     ' Independents are not a league and are excluded, as is a conference with no members entering ' + state.year +
     '.</p></div>';
 }
