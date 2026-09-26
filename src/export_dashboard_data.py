@@ -369,6 +369,9 @@ def build_playoff_data(db_path: str, year: int, draw_seed: int, sims: int, tempe
             "away_coe": round(team_coe.get(away, 0.0), 3),
         })
 
+    # The odds redraw the Round of 24 every run, so they average over the draw
+    # rather than describing the one bracket above. The bracket shown on this
+    # page is `draw_seed`'s draw; a team's chances are not a property of it.
     counts, n_sims, sim_conf_of, sim_team_coe = run_simulation(db_path, year, draw_seed, sims, temperature)
     simulation = [
         {
@@ -397,7 +400,7 @@ def build_playoff_data(db_path: str, year: int, draw_seed: int, sims: int, tempe
         "independents": [{"team": n, "coe": round(c, 3)} for n, c in independents],
         "independent_replacements": replacements,
         "simulation": simulation,
-        "sim_meta": {"n_sims": n_sims, "temperature": temperature},
+        "sim_meta": {"n_sims": n_sims, "temperature": temperature, "redraws": True},
         "qualifiers": [
             {
                 "team": q["team_name"], "conference": q["conference"],
