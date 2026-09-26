@@ -104,9 +104,12 @@ jobs:
           # that never ran the layer.
           python3 src/fit_xsrdiff.py || echo "xSRDiff curve not fitted; Elo will use its configured fallback."
           python3 src/build_elo.py
-          # Display-only team HFA estimates. Production Elo remains on its
-          # calibrated flat home-field value; no team-specific bonus is fed back.
-          python3 src/build_hfa.py --current-only
+          # Team-specific HFA (analysis only -- production Elo keeps its flat
+          # elo.home_field). Runs AFTER build_elo.py because every estimate reads
+          # pregame ratings out of elo_game_history. The FULL build here, not
+          # --current-only: team_hfa_by_season is what makes the point-in-time
+          # test run on the real database instead of skipping.
+          python3 src/build_hfa.py
           python3 src/build_hybrid_coefficients.py
           python3 src/build_conference_coe2.py
           python3 src/build_coe2_rollups.py
@@ -223,7 +226,9 @@ jobs:
           python3 src/fit_xsrdiff.py || echo "xSRDiff curve not fitted; Elo will use its configured fallback."
           python3 src/build_elo.py
           # Current team HFA evidence depends on this newly rebuilt Elo history.
-          # Display-only; production Elo continues to use its flat bonus.
+          # Display-only; production Elo continues to use its flat bonus. The
+          # dashboard reads only the current estimates, so this stays
+          # --current-only; the full historical rebuild runs in the test job.
           python3 src/build_hfa.py --current-only
           python3 src/build_hybrid_coefficients.py
           python3 src/build_conference_coe2.py
