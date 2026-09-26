@@ -84,8 +84,13 @@ def synthetic(tmp_path):
                ["end_year", "window_start", "window_end", "conference_name", "coeff_5yr"],
                [{"end_year": 2015, "window_start": 2011, "window_end": 2015, "conference_name": ALPHA, "coeff_5yr": 20.0},
                 {"end_year": 2015, "window_start": 2011, "window_end": 2015, "conference_name": BETA, "coeff_5yr": 30.0}])
-    # A title in a season the team was in Alpha, and one in a season with no membership row.
+    # load_national_champions returns one row per SYSTEM, so 2013 here is a unanimous
+    # title (two awarded rows, one championship) and 2014 a split one (two teams in the
+    # same conference). Also a vacated title and one in a season with no membership row.
     champions = [{"season": 2013, "team_id": 1, "system": "ap", "status": "awarded", "notes": ""},
+                 {"season": 2013, "team_id": 1, "system": "coaches", "status": "awarded", "notes": ""},
+                 {"season": 2014, "team_id": 1, "system": "ap", "status": "awarded", "notes": ""},
+                 {"season": 2014, "team_id": 2, "system": "coaches", "status": "awarded", "notes": ""},
                  {"season": 2015, "team_id": 3, "system": "cfp", "status": "awarded", "notes": ""},
                  {"season": 2015, "team_id": 1, "system": "ap", "status": "vacated", "notes": ""},
                  {"season": 1900, "team_id": 1, "system": "ap", "status": "awarded", "notes": ""}]
@@ -173,7 +178,26 @@ def test_champion_and_titles_come_from_their_own_sources_never_from_results(synt
     assert _row(synthetic, "beta", 2015)[F["title_ids"]] == [3]
     # A vacated title is never counted, and a season with no membership row credits nobody.
     assert _row(synthetic, "alpha", 2015)[F["title_ids"]] == []
-    assert synthetic["totals"]["alpha"]["titles"] == 1
+    assert synthetic["totals"]["alpha"]["titles"] == 3                  # 2013 once + 2014's two teams
+
+
+def test_one_title_is_counted_once_however_many_polls_awarded_it(synthetic):
+    """A unanimous champion has an awarded row per system (AP and Coaches), which is
+    two rows for one championship -- it must not be listed or counted twice."""
+    F, _ = _fields(synthetic)
+    assert _row(synthetic, "alpha", 2013)[F["title_ids"]] == [1]        # not [1, 1]
+    # A genuinely split season still credits both members, once each.
+    assert _row(synthetic, "alpha", 2014)[F["title_ids"]] == [1, 2]
+    for slug, rows in synthetic["seasons"].items():
+        for r in rows:
+            ids = r[F["title_ids"]]
+            assert len(ids) == len(set(ids)), f"{slug} {r[F['season']]}: {ids}"
+
+
+def test_the_title_total_matches_the_seasons_it_sums(synthetic):
+    F, _ = _fields(synthetic)
+    for slug, rows in synthetic["seasons"].items():
+        assert synthetic["totals"][slug]["titles"] == sum(len(r[F["title_ids"]]) for r in rows)
 
 
 def test_totals_roll_up_every_season(synthetic):
@@ -328,6 +352,22 @@ def test_no_conference_reports_a_season_outside_the_dataset(real):
     for slug, rows in data["seasons"].items():
         assert {r[F["season"]] for r in rows} <= years
         assert [r[F["season"]] for r in rows] == sorted(r[F["season"]] for r in rows)
+
+
+def test_no_real_conference_season_lists_a_team_twice_for_one_title(real):
+    """data/reference/national_champions.csv carries a row per system, so most
+    pre-BCS champions appear twice; the conference payload must still list and
+    count each championship once."""
+    _, data = real
+    F, _ = _fields(data)
+    total_titles = 0
+    for slug, rows in data["seasons"].items():
+        for r in rows:
+            ids = r[F["title_ids"]]
+            assert len(ids) == len(set(ids)), f"{slug} {r[F['season']]}: {ids}"
+            total_titles += len(ids)
+        assert data["totals"][slug]["titles"] == sum(len(x[F["title_ids"]]) for x in rows)
+    assert total_titles > 0, "no titles were credited to any conference at all"
 
 
 def test_the_independents_bucket_is_present_and_has_no_champion(real):

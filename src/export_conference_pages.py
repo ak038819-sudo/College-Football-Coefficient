@@ -253,13 +253,18 @@ def build_conference_pages(conn: sqlite3.Connection, champions: list[dict] | Non
                 bowl_teams[(conf, season)].add(tid)
 
     # ---- national titles won by a team while it was a member ----
-    titles_of: dict = defaultdict(list)
+    # A SET, not a list: load_national_champions returns one row per SYSTEM, so a
+    # unanimous champion (AP and Coaches agreeing) has two awarded rows for one
+    # title. Counting distinct (season, team) keeps a conference's tally on the
+    # same footing as export_team_pages.title_history's distinct-season count,
+    # while still crediting two different members in a genuinely split season.
+    titles_of: dict = defaultdict(set)
     for c in champions or []:
         if c["status"] != "awarded":
             continue
         conf = membership.get((c["team_id"], c["season"]))
         if conf is not None:
-            titles_of[(conf, c["season"])].append(c["team_id"])
+            titles_of[(conf, c["season"])].add(c["team_id"])
 
     # ---- ranks: among the conferences that actually HAVE members that season ----
     season_rank, season_of_n, rolling_rank, rolling_of_n = {}, {}, {}, {}
@@ -327,7 +332,7 @@ def build_conference_pages(conn: sqlite3.Connection, champions: list[dict] | Non
                 len(bowl_teams[(name, season)]), bw["w"], bw["l"], bw["t"],
                 len(cfp_teams[(name, season)]), cf["w"], cf["l"],
                 (champion_of.get((name, season)) or [None])[0] if name != INDEPENDENTS else None,
-                sorted(titles_of.get((name, season), [])),
+                sorted(titles_of.get((name, season), ())),
             ])
             season_vs = {}
             for opp, rec in vs_rec.get((name, season), {}).items():
@@ -340,7 +345,7 @@ def build_conference_pages(conn: sqlite3.Connection, champions: list[dict] | Non
             for src, dst in ((ext, all_ext), (bw, all_bowl), (cf, all_cfp)):
                 for k in ("w", "l", "t"):
                     dst[k] += src[k]
-            title_total += len(titles_of.get((name, season), []))
+            title_total += len(titles_of.get((name, season), ()))
             bowl_team_total += len(bowl_teams[(name, season)])
             cfp_team_total += len(cfp_teams[(name, season)])
 
