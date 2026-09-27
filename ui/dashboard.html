@@ -757,6 +757,17 @@
   .live-team .live-rank { color: var(--amber); font: 11px var(--font-mono); }
   .live-meta .final { color: var(--ink-dim); }
   .live-card .gc-foot { display: flex; justify-content: space-between; }
+  .live-team .live-right { display: flex; align-items: baseline; gap: 8px; justify-content: flex-end; }
+  .live-team .live-odds { min-width: 40px; text-align: right; color: var(--amber); font: 14px var(--font-display); }
+  .live-team .live-rating { white-space: nowrap; }
+  .live-delta { font: 11px var(--font-mono); white-space: nowrap; }
+  .live-delta.up { color: #7ddca3; }
+  .live-delta.down { color: #ff8888; }
+  .live-player-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .live-player-group { padding: 10px; background: var(--panel-2); border-radius: 6px; }
+  .live-player-group h3 { margin: 0 0 6px; font-size: 14px; }
+  .live-player-row { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; font: 12px var(--font-mono); }
+  @media (max-width: 700px) { .live-player-grid { grid-template-columns: 1fr; } }
   @media (max-width: 960px) { .live-layout { grid-template-columns: 1fr; } }
   @media (max-width: 700px) { .live-layout .live-grid { grid-template-columns: 1fr; } }
   .empty-note {
@@ -785,7 +796,6 @@
   <div class="nav-row">
     <nav class="tabs" id="tabs" aria-label="Primary">
       <a data-section="home" href="#section=home">Home</a>
-      <a data-section="live" href="#section=live">Live Scores</a>
       <a data-section="games" href="#section=games">Games</a>
       <a data-section="teams" href="#section=teams">Teams</a>
       <a data-section="rankings" href="#section=rankings">Rankings</a>
@@ -2643,9 +2653,7 @@ function renderPollsPanel() {
 }
 
 function renderHome() {
-  return '<h2 class="view-title">Home</h2>' +
-    '<div class="home-grid"><div class="home-main">' + renderUpcomingPanel() + '</div>' +
-    '<aside class="home-side" aria-label="Rankings">' + renderEloTop25() + renderConferenceBoard() + renderPollsPanel() + '</aside></div>';
+  return renderLiveScores();
 }
 
 // ---------------- Milestone A1 landing views ----------------
@@ -2722,6 +2730,7 @@ function hydrateDirectory(version) {
 // pregame probabilities or Elo history. Cache-busting lets Pages serve new JSON.
 let liveRequest = 0;
 let liveSnapshot = null;
+let liveSeasonData = null;
 const liveSeason = () => new Date().getFullYear();
 function liveGameHref(g) {
   // The CFBD scoreboard ID is the same ID used by the Games archive.
@@ -2742,8 +2751,20 @@ function liveTeamId(t) {
 function livePrediction(g) {
   const p = UPCOMING_BY_ID.get(g.id);
   if (p) return p;
-  // The live feed can include FCS opponents, which are absent from our Elo board.
-  return null;
+  const historical = liveSeasonData?.byId?.get(g.id);
+  if (historical && historical.p_home != null) return {
+    homeElo: historical.home_pre_elo, awayElo: historical.away_pre_elo,
+    pHome: historical.p_home, estimated: false
+  };
+  const home = liveTeamId(g.home), away = liveTeamId(g.away);
+  const h = home && (CURRENT_ELO.get(home.id) || CURRENT_ELO.get(String(home.id)));
+  const a = away && (CURRENT_ELO.get(away.id) || CURRENT_ELO.get(String(away.id)));
+  const cfg = STATIC_MANIFEST.model_params?.elo || {};
+  if (!h || !a || !Number.isFinite(cfg.scale) || !cfg.scale) return null;
+  return { homeElo: h.elo, awayElo: a.elo,
+    pHome: 1 / (1 + Math.pow(10, (a.elo - h.elo - (g.neutral_site ? 0 : Number(cfg.home_field || 0))) / cfg.scale)),
+    estimated: true };
+
 }
 function projectedElo(games) {
   const values = new Map((UPCOMING.current_elo || []).map(([id, elo]) => [String(id), Number(elo)]));
@@ -2753,6 +2774,7 @@ function projectedElo(games) {
   let active = false;
   for (const g of games) {
     if (g.status !== 'in_progress' && g.status !== 'completed') continue;
+    if (liveSeasonData?.byId?.get(g.id)?.home_elo_change != null) continue;
     if (!Number.isInteger(g.home?.points) || !Number.isInteger(g.away?.points)) continue;
     const home = liveTeamId(g.home), away = liveTeamId(g.away);
     const pre = livePrediction(g);
@@ -2787,31 +2809,53 @@ function renderLiveBoard(games) {
       : 'Published Elo ratings; no live result projection is available yet.') + '</p></div>';
 }
 function renderLiveScores() {
-  return '<h2 class="view-title">Live Scores</h2><p class="section-note">Scores from CollegeFootballData.com. ' +
+  return '<h2 class="view-title">Home · Live Scores</h2><p class="section-note">Scores from CollegeFootballData.com. ' +
     'The feed timestamp shows its freshness. Live Elo rankings are an illustrative scenario; published ratings update separately.</p>' +
     '<div id="live-status" role="status" aria-live="polite">Loading the scoreboard…</div>' +
     '<div class="live-layout"><div id="live-games" class="live-grid"></div>' +
-    '<aside id="live-rankings" aria-label="Elo rankings">' + renderEloTop25() + '</aside></div>';
+    '<aside class="home-side" aria-label="Rankings"><div id="live-rankings">' +
+    renderEloTop25() + '</div>' + renderConferenceBoard() + renderPollsPanel() + '</aside></div>';
 }
-function liveTeam(t) {
+function liveChange(g, t) {
+  if (g.status !== 'completed' || !Number.isInteger(g.away?.points) || !Number.isInteger(g.home?.points)) return '';
+  const historical = liveSeasonData?.byId?.get(g.id);
+  const p = livePrediction(g), K = Number(STATIC_MANIFEST.model_params?.elo?.k);
+  if ((!p || !Number.isFinite(K)) && historical?.home_elo_change == null) return '';
+  const result = g.home.points === g.away.points ? .5 : g.home.points > g.away.points ? 1 : 0;
+  const delta = historical?.home_elo_change != null
+    ? historical.home_elo_change * (t === g.home ? 1 : -1)
+    : K * (result - p.pHome) * (t === g.home ? 1 : -1);
+  const up = delta >= 0;
+  return '<span class="live-delta ' + (up ? 'up' : 'down') + '" title="' +
+    (historical?.home_elo_change != null ? 'Official postgame Elo change' :
+      'Estimated result-only Elo change; official postgame value may differ') + '">(' +
+    (up ? '▲' : '▼') + (historical?.home_elo_change == null ? '≈' : '') +
+    Math.abs(delta).toFixed(1) + ')</span>';
+}
+function liveTeam(t, g, pct) {
   const team = liveTeamId(t);
   const name = team?.name || String(t?.name || 'Unknown team');
   const rating = team && (CURRENT_ELO.get(team.id) || CURRENT_ELO.get(String(team.id)));
+  const projected = livePrediction(g);
+  const elo = t === g.home ? projected?.homeElo : projected?.awayElo;
+  const chance = t === g.home ? pct?.home : pct?.away;
   return '<div class="live-team"><span class="name-cell">' +
     (rating?.rank <= 25 ? '<span class="live-rank">#' + rating.rank + '</span>' : '') +
     (team ? teamLink(name, 'xs', liveSeason()) : logoMarkup(name, 'team', 'xs', liveSeason()) + esc(name)) +
-    '</span><span class="live-rating">' + (rating ? rating.elo.toFixed(0) : '') +
-    '</span><strong>' + (Number.isInteger(t?.points) ? t.points : '—') + '</strong></div>';
+    '</span><span class="live-rating">' + (Number.isFinite(elo) ? elo.toFixed(0) : 'Unrated') +
+    '</span><span class="live-right">' + (g.status === 'scheduled'
+      ? '<span class="live-odds">' + (chance == null ? 'N/A' : chance + '%') + '</span>'
+      : '<strong>' + (Number.isInteger(t?.points) ? t.points : '—') + '</strong>') +
+    liveChange(g, t) + '</span></div>';
 }
 function renderLiveCard(g) {
   const p = livePrediction(g), pct = p ? probPct(p.pHome) : null;
-  const footer = g.status === 'scheduled' && pct ? 'Pregame: ' + pct.away + '% / ' + pct.home + '%' :
-    pct ? 'Pregame odds: ' + pct.away + '% / ' + pct.home + '%' : 'Pregame odds unavailable';
+  const footer = pct ? 'Pregame win chance: ' + pct.away + '% / ' + pct.home + '%' : 'Win chance unavailable';
   return '<article class="live-card" role="link" tabindex="0" data-live-id="' + Number(g.id) +
     '" aria-label="' + esc(String(g.away?.name || 'Away') + ' at ' + String(g.home?.name || 'Home') +
     ', ' + liveLabel(g) + '. Open game') + '"><div class="live-meta"><span class="gbadge ' +
     (g.status === 'completed' ? 'final' : 'upcoming') + '">' + esc(liveLabel(g)) + '</span>' +
-    (g.tv ? '<span>' + esc(g.tv) + '</span>' : '') + '</div>' + liveTeam(g.away) + liveTeam(g.home) +
+    (g.tv ? '<span>' + esc(g.tv) + '</span>' : '') + '</div>' + liveTeam(g.away, g, pct) + liveTeam(g.home, g, pct) +
     '<div class="gc-foot"><span>' + esc(footer) + '</span><span>Game details &rarr;</span></div></article>';
 }
 function hydrateLiveScores(version) {
@@ -2819,7 +2863,7 @@ function hydrateLiveScores(version) {
   fetch('data/live_scores.json?t=' + Date.now(), {cache: 'no-store'})
     .then(r => { if (!r.ok) throw new Error('scoreboard unavailable'); return r.json(); })
     .then(data => {
-      if (version !== renderVersion || request !== liveRequest || state.section !== 'live') return;
+      if (version !== renderVersion || request !== liveRequest || state.section !== 'live' && state.section !== 'home') return;
       const status = document.getElementById('live-status');
       const target = document.getElementById('live-games');
       const board = document.getElementById('live-rankings');
@@ -2838,24 +2882,71 @@ function hydrateLiveScores(version) {
       target.innerHTML = games.length ? games.map(renderLiveCard).join('') :
         '<p class="empty-note">No games in the current scoreboard window.</p>';
       board.innerHTML = renderLiveBoard(games);
+      if (!liveSeasonData) loadSeasonGames(liveSeason()).then(archive => {
+        if (version !== renderVersion || request !== liveRequest) return;
+        liveSeasonData = archive;
+        target.innerHTML = games.length ? games.map(renderLiveCard).join('') :
+          '<p class="empty-note">No games in the current scoreboard window.</p>';
+        board.innerHTML = renderLiveBoard(games);
+      }).catch(() => {});
     }).catch(() => {
-      if (version === renderVersion && state.section === 'live') {
+      if (version === renderVersion && (state.section === 'live' || state.section === 'home')) {
         document.getElementById('live-status').textContent = 'The live feed could not be loaded. Try refreshing this page.';
       }
     });
 }
+function livePlayerPanel(g) {
+  const teams = liveSnapshot?.player_boxscores?.[String(g.id)] || [];
+  if (!teams.length) return '<div class="panel"><h2 class="section-title">Player box score</h2>' +
+    '<p class="section-note">Player lines appear here when CFBD publishes this game’s box score.</p></div>';
+  const groups = teams.flatMap(team => (team.categories || []).map(c => {
+    const lines = (c.lines || []).map(a => '<div class="live-player-row"><span>' + esc(a.name) +
+      '</span><strong>' + esc(a.stat) + '</strong></div>').join('');
+    return '<div class="live-player-group"><h3>' + esc(team.name) + ' · ' + esc(c.name) +
+      (c.type && c.type !== c.name ? ' · ' + esc(c.type) : '') + '</h3>' + lines + '</div>';
+  }));
+  return '<div class="panel"><h2 class="section-title">Player box score</h2>' +
+    '<p class="section-note">From the most recent CFBD snapshot. Availability and timing vary by game.</p>' +
+    '<div class="live-player-grid">' + groups.join('') + '</div></div>';
+}
+function liveEloPanel(g) {
+  const p = livePrediction(g), pct = p && probPct(p.pHome);
+  const rating = t => {
+    const r = t === g.home ? p?.homeElo : p?.awayElo;
+    return Number.isFinite(r) ? r.toFixed(1) : 'Unrated';
+  };
+  const row = (label, away, home) => '<tr><th scope="row">' + label + '</th><td>' + away + '</td><td>' + home + '</td></tr>';
+  const name = t => esc(liveTeamId(t)?.name || t?.name || 'Unknown team');
+  return '<div class="panel"><h2 class="section-title">Elo and win probability</h2>' +
+    '<table class="gp-table"><thead><tr><th></th><th>' + name(g.away) + '</th><th>' + name(g.home) + '</th></tr></thead><tbody>' +
+    row('Elo', rating(g.away), rating(g.home)) +
+    row('Win chance', pct ? pct.away + '%' : 'Unavailable', pct ? pct.home + '%' : 'Unavailable') +
+    (g.status === 'completed' ? row('Estimated Elo change', liveChange(g, g.away) || 'Unavailable',
+      liveChange(g, g.home) || 'Unavailable') : '') + '</tbody></table>' +
+    '<p class="section-note">' + (p?.estimated ? 'Win chances estimated from currently published Elo; original pregame values were unavailable. ' :
+      'Win chances come from the pregame prediction. ') +
+    'Elo changes marked with triangles are result-only estimates. The official model also uses postgame performance data.</p></div>';
+}
 function liveDetail(g) {
   const stamp = liveSnapshot?.updated_at ? new Date(liveSnapshot.updated_at) : null;
   const freshness = stamp && !Number.isNaN(stamp.getTime()) ? ' · Updated ' + stamp.toLocaleString() : '';
-  return '<div class="panel gp-hero"><div class="gl-top"><span class="gbadge ' +
+  const p = livePrediction(g), pct = p && probPct(p.pHome);
+  const hero = '<div class="panel gp-hero"><div class="gl-top"><span class="gbadge ' +
     (g.status === 'completed' ? 'final' : 'upcoming') + '">' + esc(liveLabel(g)) + '</span>' +
     '<span>' + esc(String(g.tv || '')) + esc(freshness) + '</span></div><div class="gp-board">' +
     [g.away, g.home].map(t => {
       const team = liveTeamId(t), name = team?.name || String(t?.name || 'Unknown team');
+      const chance = t === g.home ? pct?.home : pct?.away;
       return '<div class="gp-side">' + (team ? teamLink(name, 'lg', liveSeason()) :
         logoMarkup(name, 'team', 'lg', liveSeason()) + esc(name)) +
-        '<span class="gp-score">' + (Number.isInteger(t?.points) ? t.points : '—') + '</span></div>';
-    }).join('<div class="gp-mid">at</div>') + '</div></div>';
+        '<span class="gp-score">' + (Number.isInteger(t?.points) ? t.points :
+          chance != null ? chance + '%' : '—') + '</span></div>';
+    }).join('<div class="gp-mid">' + (g.neutral_site ? 'vs.' : 'at') + '</div>') + '</div></div>';
+  return hero + '<div class="grid-2">' + liveEloPanel(g) +
+    '<div class="panel"><h2 class="section-title">Game information</h2><p>' +
+    esc(liveLabel(g)) + (g.tv ? ' · ' + esc(g.tv) : '') + '</p><p class="section-note">' +
+    'Scores refresh when CFBD updates its feed. Historical results and official ratings update on their own schedule.</p></div></div>' +
+    livePlayerPanel(g);
 }
 function hydrateLiveGamePage(version) {
   const id = state.gameParam;
@@ -2865,21 +2956,26 @@ function hydrateLiveGamePage(version) {
     if (!g) return false;
     liveSnapshot = data;
     const target = document.getElementById('game-page');
-    if (target) target.innerHTML = liveDetail(g) +
-      '<div class="panel"><p class="section-note">Live score from CollegeFootballData.com. ' +
-      'Pregame ratings and historical game data update on their separate schedule.</p></div>';
+    if (target) target.innerHTML = liveDetail(g);
     return true;
   };
   if (liveSnapshot && show(liveSnapshot)) return;
   fetch('data/live_scores.json?t=' + Date.now(), {cache:'no-store'})
     .then(r => r.ok ? r.json() : null)
-    .then(data => { if (!show(data)) hydrateGamePage(version); })
+    .then(data => {
+      if (!show(data)) { hydrateGamePage(version); return; }
+      if (!liveSeasonData) loadSeasonGames(liveSeason()).then(archive => {
+        if (version === renderVersion && state.view === 'game') {
+          liveSeasonData = archive; show(data);
+        }
+      }).catch(() => {});
+    })
     .catch(() => hydrateGamePage(version));
 }
 // Only reload while the tab is open; the publishing workflow controls source freshness.
 setInterval(() => {
   if (document.hidden) return;
-  if (state.view === 'tab' && state.section === 'live') hydrateLiveScores(renderVersion);
+  if (state.view === 'tab' && (state.section === 'live' || state.section === 'home')) hydrateLiveScores(renderVersion);
   else if (state.view === 'game') hydrateLiveGamePage(renderVersion);
 }, 60_000);
 
@@ -4124,7 +4220,7 @@ function render() {
   if (state.view === 'team') { content.innerHTML = renderTeamPage(state.teamParam); hydrateTeamPage(); return; }
   if (state.view === 'conference') { content.innerHTML = renderConferencePage(state.conferenceParam); hydrateConferencePage(); return; }
   if (state.view === 'game') { content.innerHTML = renderGamePage(); hydrateLiveGamePage(version); return; }
-  if (state.section === 'home') content.innerHTML = renderHome();
+  if (state.section === 'home') { content.innerHTML = renderHome(); hydrateLiveScores(version); }
   else if (state.section === 'methodology') content.innerHTML = renderMethodology();
   else if (state.section === 'coverage') content.innerHTML = renderCoverage();
   else if (state.section === 'teams') { content.innerHTML = renderTeamDirectory(); hydrateDirectory(version); }

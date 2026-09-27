@@ -11,6 +11,7 @@ import datetime as dt
 import json
 import os
 from pathlib import Path
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 URL = 'https://api.collegefootballdata.com/scoreboard?classification=fbs'
@@ -36,7 +37,67 @@ def clean_game(item):
     return {'id': item['id'], 'start_date': item.get('startDate'),
             'status': item['status'], 'period': item.get('period'),
             'clock': item.get('clock'), 'tv': item.get('tv'),
+            'neutral_site': item.get('neutralSite') is True,
             'away': teams[0], 'home': teams[1]}
+
+
+def clean_player_boxscores(payload, game_ids):
+    """Keep only displayable player lines for games in the current scoreboard."""
+    if not isinstance(payload, list):
+        raise ValueError('invalid player box-score response')
+    result = {}
+    for game in payload:
+        if not isinstance(game, dict) or game.get('id') not in game_ids:
+            continue
+        teams = []
+        for team in game.get('teams', []):
+            if not isinstance(team, dict):
+                continue
+            categories = []
+            for category in team.get('categories', []):
+                for typ in category.get('types', []):
+                    lines = [{'name': str(a['name'])[:100], 'stat': str(a['stat'])[:80]}
+                             for a in typ.get('athletes', [])[:8]
+                             if isinstance(a, dict) and a.get('name') and a.get('stat') is not None]
+                    if lines:
+                        categories.append({'name': str(category.get('name', ''))[:60],
+                                           'type': str(typ.get('name', ''))[:60], 'lines': lines})
+            teams.append({'name': str(team.get('team', ''))[:100],
+                          'home_away': team.get('homeAway'), 'categories': categories[:24]})
+        result[str(game['id'])] = teams[:2]
+    return result
+
+
+def fetch_player_boxscores(key, games, now):
+    """One weekly batch request; failure never blocks the scoreboard."""
+    active = {g['id'] for g in games if g['status'] != 'scheduled'}
+    if not active:
+        return {}
+    year = now.year - 1 if now.month <= 2 else now.year
+    def get(path, params):
+        request = Request('https://api.collegefootballdata.com' + path + '?' + urlencode(params),
+                          headers={'Authorization': 'Bearer ' + key, 'Accept': 'application/json',
+                                   'User-Agent': 'cfb-coefficient-live-scores/1.0'})
+        with urlopen(request, timeout=25) as response:
+            return json.load(response)
+    calendar = get('/calendar', {'year': year})
+    if not isinstance(calendar, list):
+        raise ValueError('invalid calendar response')
+    candidates = []
+    for week in calendar:
+        try:
+            start = dt.datetime.fromisoformat(week['startDate'].replace('Z', '+00:00'))
+            end = dt.datetime.fromisoformat(week['endDate'].replace('Z', '+00:00'))
+            if start <= now <= end + dt.timedelta(days=1):
+                candidates.append((start, week))
+        except (KeyError, TypeError, ValueError):
+            continue
+    if not candidates:
+        return {}
+    week = max(candidates, key=lambda pair: pair[0])[1]
+    payload = get('/games/players', {'year': year, 'week': week['week'],
+                                     'seasonType': week.get('seasonType', 'regular')})
+    return clean_player_boxscores(payload, active)
 
 
 def make_snapshot(payload, now):
@@ -60,6 +121,10 @@ def main():
                                    'Accept': 'application/json', 'User-Agent': 'cfb-coefficient-live-scores/1.0'})
     with urlopen(request, timeout=25) as response:
         snapshot = make_snapshot(json.load(response), dt.datetime.now(dt.timezone.utc))
+    try:
+        snapshot['player_boxscores'] = fetch_player_boxscores(key, snapshot['games'], dt.datetime.now(dt.timezone.utc))
+    except (OSError, ValueError, KeyError) as exc:
+        print(f'Player box scores unavailable: {exc}')
     args.out.parent.mkdir(parents=True, exist_ok=True)
     temporary = args.out.with_suffix(args.out.suffix + '.tmp')
     temporary.write_text(json.dumps(snapshot, separators=(',', ':'), ensure_ascii=False) + '\n', encoding='utf-8')
