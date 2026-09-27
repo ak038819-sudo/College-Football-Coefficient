@@ -2729,6 +2729,7 @@ function hydrateDirectory(version) {
 // The live feed is a separate static snapshot. It never changes the game archive,
 // pregame probabilities or Elo history. Cache-busting lets Pages serve new JSON.
 let liveRequest = 0;
+let liveGameRequest = 0;
 let liveSnapshot = null;
 let liveSeasonData = null;
 const liveSeason = () => new Date().getFullYear();
@@ -2952,7 +2953,9 @@ function liveEloPanel(g) {
 }
 function liveDetail(g) {
   const stamp = liveSnapshot?.updated_at ? new Date(liveSnapshot.updated_at) : null;
-  const freshness = stamp && !Number.isNaN(stamp.getTime()) ? ' · Updated ' + stamp.toLocaleString() : '';
+  const freshness = stamp && !Number.isNaN(stamp.getTime())
+    ? ' · Updated ' + stamp.toLocaleString() +
+      (Date.now() - stamp.getTime() > 10 * 60 * 1000 ? ' · Feed may be delayed' : '') : '';
   const p = livePrediction(g), pct = p && probPct(p.pHome);
   const hero = '<div class="panel gp-hero"><div class="gl-top"><span class="gbadge ' +
     (g.status === 'completed' ? 'final' : 'upcoming') + '">' + esc(liveLabel(g)) + '</span>' +
@@ -2973,6 +2976,7 @@ function liveDetail(g) {
 }
 function hydrateLiveGamePage(version) {
   const id = state.gameParam;
+  const request = ++liveGameRequest;
   const show = data => {
     if (version !== renderVersion || state.view !== 'game') return false;
     const g = (data?.games || []).find(g => g.id === id);
@@ -2982,10 +2986,12 @@ function hydrateLiveGamePage(version) {
     if (target) target.innerHTML = liveDetail(g);
     return true;
   };
-  if (liveSnapshot && show(liveSnapshot)) return;
+  // Show cached data immediately, then always request the latest snapshot.
+  const cached = !!(liveSnapshot && show(liveSnapshot));
   fetch('data/live_scores.json?t=' + Date.now(), {cache:'no-store'})
     .then(r => r.ok ? r.json() : null)
     .then(data => {
+      if (request !== liveGameRequest || version !== renderVersion || state.view !== 'game') return;
       if (!show(data)) { hydrateGamePage(version); return; }
       if (!liveSeasonData) loadSeasonGames(liveSeason()).then(archive => {
         if (version === renderVersion && state.view === 'game') {
@@ -2993,14 +2999,19 @@ function hydrateLiveGamePage(version) {
         }
       }).catch(() => {});
     })
-    .catch(() => hydrateGamePage(version));
+    .catch(() => {
+      if (!cached && request === liveGameRequest && version === renderVersion && state.view === 'game')
+        hydrateGamePage(version);
+    });
 }
-// Only reload while the tab is open; the publishing workflow controls source freshness.
-setInterval(() => {
+// Recheck when a mobile browser resumes as well as while its tab stays visible.
+function refreshVisibleLive() {
   if (document.hidden) return;
   if (state.view === 'tab' && (state.section === 'live' || state.section === 'home')) hydrateLiveScores(renderVersion);
   else if (state.view === 'game') hydrateLiveGamePage(renderVersion);
-}, 60_000);
+}
+setInterval(refreshVisibleLive, 60_000);
+document.addEventListener('visibilitychange', refreshVisibleLive);
 
 function renderGames() {
   const tabs = [['upcoming', 'Upcoming'], ['completed', 'Completed'], ['all', 'All']].map(([status, label]) =>
