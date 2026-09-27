@@ -1,6 +1,6 @@
 import datetime as dt
 import pytest
-from fetch_live_scores import make_snapshot, clean_player_boxscores
+from fetch_live_scores import make_snapshot, clean_player_boxscores, merge_player_boxscores
 
 
 def sample(status='in_progress'):
@@ -34,3 +34,22 @@ def test_player_boxscore_keeps_current_game_and_display_lines():
     result = clean_player_boxscores(payload, {42})
     assert list(result) == ['42']
     assert result['42'][0]['categories'][0]['lines'] == [{'name': 'Quarterback', 'stat': '288'}]
+
+
+def test_player_stats_survive_empty_or_failed_refresh():
+    game = sample('completed')
+    snapshot = make_snapshot([game], dt.datetime(2026, 9, 26, tzinfo=dt.timezone.utc))
+    lines = clean_player_boxscores([{'id': 42, 'teams': [{'team': 'BYU',
+        'categories': [{'name': 'passing', 'types': [{'name': 'YDS',
+        'athletes': [{'name': 'Quarterback', 'stat': '288'}]}]}]}]}], {42})
+    assert clean_player_boxscores([{'id': 42, 'teams': []}], {42}) == {}
+    previous = merge_player_boxscores(snapshot, {}, lines, '2026-09-26T22:00:00Z')
+    new_snapshot = make_snapshot([game], dt.datetime(2026, 9, 27, tzinfo=dt.timezone.utc))
+    result = merge_player_boxscores(new_snapshot, previous, {}, '2026-09-27T00:00:00Z')
+    assert result['player_boxscores'] == lines
+    assert result['player_boxscore_times']['42'] == '2026-09-26T22:00:00Z'
+    assert result['player_stats_checked_at'] == '2026-09-27T00:00:00Z'
+    failed = merge_player_boxscores(make_snapshot([game], dt.datetime.now(dt.timezone.utc)),
+                                    result, None, '2026-09-27T01:00:00Z')
+    assert failed['player_boxscores'] == lines
+    assert failed['player_stats_checked_at'] == '2026-09-27T00:00:00Z'

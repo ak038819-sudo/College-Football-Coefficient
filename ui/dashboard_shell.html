@@ -2911,8 +2911,15 @@ function hydrateLiveScores(version) {
 }
 function livePlayerPanel(g) {
   const teams = liveSnapshot?.player_boxscores?.[String(g.id)] || [];
+  const checked = liveSnapshot?.player_stats_checked_at;
+  const updated = liveSnapshot?.player_boxscore_times?.[String(g.id)];
+  const timestamp = value => {
+    const date = value ? new Date(value) : null;
+    return date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : null;
+  };
   if (!teams.length) return '<div class="panel"><h2 class="section-title">Player box score</h2>' +
-    '<p class="section-note">Player lines appear here when CFBD publishes this game’s box score.</p></div>';
+    '<p class="section-note">Player lines appear here when CFBD publishes this game’s box score.' +
+    (timestamp(checked) ? ' Last checked ' + esc(timestamp(checked)) + '.' : '') + '</p></div>';
   const groups = teams.flatMap(team => (team.categories || []).map(c => {
     const lines = (c.lines || []).map(a => '<div class="live-player-row"><span>' + esc(a.name) +
       '</span><strong>' + esc(a.stat) + '</strong></div>').join('');
@@ -2920,7 +2927,9 @@ function livePlayerPanel(g) {
       (c.type && c.type !== c.name ? ' · ' + esc(c.type) : '') + '</h3>' + lines + '</div>';
   }));
   return '<div class="panel"><h2 class="section-title">Player box score</h2>' +
-    '<p class="section-note">From the most recent CFBD snapshot. Availability and timing vary by game.</p>' +
+    '<p class="section-note">From CFBD.' +
+    (timestamp(updated) ? ' Player stats updated ' + esc(timestamp(updated)) + '.' : '') +
+    ' Availability and timing vary by game.</p>' +
     '<div class="live-player-grid">' + groups.join('') + '</div></div>';
 }
 function liveEloPanel(g) {

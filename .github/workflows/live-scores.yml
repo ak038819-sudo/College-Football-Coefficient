@@ -2,12 +2,18 @@ name: Refresh live scores
 
 on:
   workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/live-scores.yml'
+      - 'src/fetch_live_scores.py'
   schedule:
-    # UTC; roughly Friday evening through Sunday morning Central during games.
-    - cron: '*/5 22-23 * 8-12 5'
-    - cron: '*/5 14-23 * 8-12 6'
-    - cron: '*/5 0-6 * 8-12 0'
-    # Bowl/playoff Saturdays and January games can be run manually.
+    # UTC: Friday afternoons/evenings and the full Saturday slate in Central.
+    # The two adjacent UTC dates together cover each evening past midnight UTC.
+    - cron: '2/5 20-23 * 8-12 5'
+    - cron: '2/5 0-7,14-23 * 8-12 6'
+    - cron: '2/5 0-9 * 8-12 0'
+    # Bowl/playoff games outside this window can be run manually.
 
 permissions:
   contents: write
@@ -33,6 +39,23 @@ jobs:
             exit 0
           fi
           python3 src/fetch_live_scores.py
+      - name: Check feed freshness
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import datetime as dt
+          import json
+          from pathlib import Path
+          path = Path('ui/data/live_scores.json')
+          if not path.exists():
+              raise SystemExit('No scoreboard snapshot was published')
+          data = json.loads(path.read_text())
+          stamp = dt.datetime.fromisoformat(data['updated_at'].replace('Z', '+00:00'))
+          age = dt.datetime.now(dt.timezone.utc) - stamp
+          if age > dt.timedelta(minutes=20):
+              raise SystemExit(f'Scoreboard snapshot is stale by {age}')
+          print(f"Scoreboard fresh; {len(data.get('player_boxscores', {}))} games with player lines")
+          PY
       - name: Publish changed snapshot
         run: |
           if git diff --quiet -- ui/data/live_scores.json; then exit 0; fi

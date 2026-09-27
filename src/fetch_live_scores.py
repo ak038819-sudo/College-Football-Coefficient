@@ -64,7 +64,10 @@ def clean_player_boxscores(payload, game_ids):
                                            'type': str(typ.get('name', ''))[:60], 'lines': lines})
             teams.append({'name': str(team.get('team', ''))[:100],
                           'home_away': team.get('homeAway'), 'categories': categories[:24]})
-        result[str(game['id'])] = teams[:2]
+        # An empty response for a game can precede CFBD's completed box score.
+        # Keep the last published lines instead of replacing them with blanks.
+        if any(category['lines'] for team in teams for category in team['categories']):
+            result[str(game['id'])] = teams[:2]
     return result
 
 
@@ -110,6 +113,29 @@ def make_snapshot(payload, now):
             'games': games}
 
 
+def merge_player_boxscores(snapshot, previous, fresh, checked_at):
+    """Preserve previously published lines for games still on the scoreboard."""
+    ids = {str(game['id']) for game in snapshot['games']}
+    old = previous if isinstance(previous, dict) else {}
+    saved = old.get('player_boxscores') or {}
+    times = old.get('player_boxscore_times') or {}
+    if not isinstance(saved, dict):
+        saved = {}
+    if not isinstance(times, dict):
+        times = {}
+    snapshot['player_boxscores'] = {key: value for key, value in saved.items()
+                                    if key in ids and isinstance(value, list) and value}
+    snapshot['player_boxscore_times'] = {key: value for key, value in times.items()
+                                         if key in snapshot['player_boxscores']}
+    if fresh is not None:
+        snapshot['player_stats_checked_at'] = checked_at
+        snapshot['player_boxscores'].update(fresh)
+        snapshot['player_boxscore_times'].update({key: checked_at for key in fresh})
+    elif old.get('player_stats_checked_at'):
+        snapshot['player_stats_checked_at'] = old['player_stats_checked_at']
+    return snapshot
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, default=DEFAULT_OUT)
@@ -122,9 +148,19 @@ def main():
     with urlopen(request, timeout=25) as response:
         snapshot = make_snapshot(json.load(response), dt.datetime.now(dt.timezone.utc))
     try:
-        snapshot['player_boxscores'] = fetch_player_boxscores(key, snapshot['games'], dt.datetime.now(dt.timezone.utc))
+        previous = json.loads(args.out.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        previous = {}
+    checked_at = dt.datetime.now(dt.timezone.utc).isoformat().replace('+00:00', 'Z')
+    fresh = None
+    try:
+        fresh = fetch_player_boxscores(key, snapshot['games'], dt.datetime.now(dt.timezone.utc))
     except (OSError, ValueError, KeyError) as exc:
         print(f'Player box scores unavailable: {exc}')
+    merge_player_boxscores(snapshot, previous, fresh, checked_at)
+    print(f"Player box scores: {len(fresh) if fresh is not None else 'fetch failed'} new/updated, "
+          f"{len(snapshot['player_boxscores'])} published; "
+          f"{sum(g['status'] == 'completed' for g in snapshot['games'])} completed games")
     args.out.parent.mkdir(parents=True, exist_ok=True)
     temporary = args.out.with_suffix(args.out.suffix + '.tmp')
     temporary.write_text(json.dumps(snapshot, separators=(',', ':'), ensure_ascii=False) + '\n', encoding='utf-8')
