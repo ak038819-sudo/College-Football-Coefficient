@@ -26,6 +26,34 @@ test('live CFBD IDs cannot relabel another school', () => {
   assert.equal(context.lookup({ id: 10, name: 'Texas Tech Red Raiders' }).name, 'Texas Tech');
 });
 
+test('an open live game refreshes status and score even with a cached snapshot', async () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = shell.match(/function hydrateLiveGamePage\(version\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(source);
+  const target = { innerHTML: '' };
+  const game = (status, points) => ({ id: 42, status, home: { points } });
+  let requests = 0;
+  const context = {
+    state: { view: 'game', gameParam: 42 }, renderVersion: 1, liveGameRequest: 0,
+    liveSnapshot: { games: [game('in_progress', 28)] }, liveSeasonData: {},
+    document: { getElementById: () => target },
+    liveDetail: g => g.status + ':' + g.home.points,
+    fetch: () => { requests++; return Promise.resolve({ ok: true,
+      json: () => Promise.resolve({ games: [game('completed', 34)] }) }); },
+    hydrateGamePage: () => assert.fail('live game should still be present')
+  };
+  vm.runInNewContext(source + '\nthis.refresh = hydrateLiveGamePage;', context);
+  context.refresh(1);
+  assert.equal(target.innerHTML, 'in_progress:28');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requests, 1);
+  assert.equal(target.innerHTML, 'completed:34');
+  context.refresh(1);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requests, 2);
+  assert.equal(target.innerHTML, 'completed:34');
+});
+
 test('all eight legacy tabs retain their original destination', () => {
   for (const [tab, section, view] of [
     ['home', 'home', ''], ['teams', 'rankings', 'team-coe'], ['elo', 'rankings', 'elo'],
