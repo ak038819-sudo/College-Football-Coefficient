@@ -134,8 +134,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
-      - name: Fetch fresh data from CFBD (scheduled and manual runs only)
-        if: github.event_name != 'push'
+      - name: Detect live finals missing from model inputs
+        if: github.event_name == 'push'
+        id: freshness
+        run: echo "needed=$(python3 src/model_refresh_needed.py)" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch fresh data from CFBD (scheduled, manual, or stale push)
+        if: github.event_name != 'push' || steps.freshness.outputs.needed == 'true'
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
           CFBD_FETCH_ADVANCED: ${{ vars.FETCH_ADVANCED_STATS || '1' }}
@@ -181,15 +186,15 @@ jobs:
       - name: Rebuild the dashboard
         run: python3 build_dashboard.py --draw-seed 1
 
-      # Pushes were already tested by the `test` job against the committed data.
-      # Scheduled/manual runs just fetched NEW data, so test that before publishing.
-      - name: Test the freshly fetched data before publishing (scheduled and manual runs only)
-        if: github.event_name != 'push'
+      # A stale push can fetch new data too, so retest whenever the feed ran.
+      - name: Test the freshly fetched data before publishing
+        if: github.event_name != 'push' || steps.freshness.outputs.needed == 'true'
         run: pytest -q
 
       - name: Commit and push if anything actually changed
         env:
           EVENT: ${{ github.event_name }}
+          FRESH: ${{ steps.freshness.outputs.needed }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -198,7 +203,9 @@ jobs:
             echo "Nothing changed; no commit."
             exit 0
           fi
-          if [ "$EVENT" = "push" ]; then
+          if [ "$EVENT" = "push" ] && [ "$FRESH" = "true" ]; then
+            git commit -m "Refresh model from newer live finals [skip ci]"
+          elif [ "$EVENT" = "push" ]; then
             git commit -m "Auto-rebuild dashboard [skip ci]"
           else
             git commit -m "Scheduled data refresh: season $(python3 src/current_season.py) [skip ci]"

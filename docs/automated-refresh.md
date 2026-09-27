@@ -25,6 +25,10 @@ in logs, and nothing in the project prints it.
   picks up midweek and Thursday results before the Saturday slate.
 - **On demand:** **Actions** tab -> **Test, Rebuild Dashboard, and Deploy** ->
   **Run workflow** -> **Run workflow**.
+- **On a code push with newer live finals:** the workflow checks the live feed
+  against the committed raw game scores. If an FBS final is missing or changed,
+  it fetches the season and retests it before publishing. A routine UI push
+  with no new finals does not spend API requests on a full fetch.
 
 The UTC schedule stays fixed, so it shifts by an hour locally when daylight saving ends.
 GitHub can start scheduled runs a few minutes late during busy periods.

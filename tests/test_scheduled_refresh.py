@@ -52,7 +52,10 @@ def test_fetched_data_is_tested_before_it_is_committed():
     gate = next(i for i, n in enumerate(names) if n.startswith("Test the freshly fetched data"))
     commit = next(i for i, n in enumerate(names) if n.startswith("Commit and push"))
     assert fetch < gate < commit
-    assert steps[fetch]["if"] == steps[gate]["if"] == "github.event_name != 'push'"
+    assert steps[fetch]["if"] == steps[gate]["if"] == \
+        "github.event_name != 'push' || steps.freshness.outputs.needed == 'true'"
+    detect = next(i for i, n in enumerate(names) if n.startswith("Detect live finals"))
+    assert detect < fetch
     assert "data/raw/" in steps[commit]["run"], "fetched data must be committed or the next push rebuild undoes it"
 
 
