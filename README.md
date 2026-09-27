@@ -16,6 +16,8 @@ A structural college football simulation engine that replaces the current postse
 
 Full original rules and the coefficient system's early design draft are in `docs/`.
 
+The current [dashboard roadmap](docs/roadmap.md) covers the scorebug redesign, a live game day experience, and an installable app later on.
+
 ## The Rating Model (source of truth)
 
 **As of this rebuild, the project uses an iterative, opponent-strength rating model — not the discrete win/OT-loss/loss point system originally drafted in `docs/coe_spec.md`.** The old system (and everything built on it: bounty multiplier, conference/team point totals, qualifier and bracket scripts) is archived under `archive/discrete_coe_system_2026-09/` for reference, not deleted.

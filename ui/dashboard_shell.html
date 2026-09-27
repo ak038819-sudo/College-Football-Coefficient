@@ -740,26 +740,46 @@
   }
   footer.foot a { color: var(--amber); }
 
-  .live-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-top: 18px; }
-  .live-card { border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
-  .live-meta, .live-team { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .live-meta { color: var(--ink-dim); font-size: 12px; margin-bottom: 12px; }
-  .live-team + .live-team { margin-top: 10px; }
-  .live-team strong { font-family: var(--font-mono); font-size: 20px; }
+  .live-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 18px; }
   .live-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
   .live-layout .live-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .live-card { position: relative; background: var(--panel-2); cursor: pointer; }
+  .live-card { min-width: 0; overflow: hidden; border: 1px solid #53605c; border-radius: 12px;
+    background: var(--panel-2); cursor: pointer; box-shadow: 0 8px 20px #0003; }
   .live-card:hover, .live-card:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
-  .live-card .live-team { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; }
-  .live-team .name-cell { min-width: 0; }
-  .live-team .team-link-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .live-team .live-rating { font: 11px var(--font-mono); color: var(--ink-dim); }
-  .live-team .live-rank { color: var(--amber); font: 11px var(--font-mono); }
-  .live-meta .final { color: var(--ink-dim); }
-  .live-card .gc-foot { display: flex; justify-content: space-between; }
-  .live-team .live-right { display: flex; align-items: baseline; gap: 8px; justify-content: flex-end; }
-  .live-team .live-odds { min-width: 40px; text-align: right; color: var(--amber); font: 14px var(--font-display); }
-  .live-team .live-rating { white-space: nowrap; }
+  .live-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    min-height: 35px; padding: 6px 13px; background: #16231f; color: #d7ddd7;
+    font: 11px var(--font-mono); letter-spacing: .025em; }
+  .live-meta .gbadge { flex: 0 0 auto; }
+  .live-meta .live-tv { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .live-card.is-live .live-meta { background: #283022; }
+  .live-card.is-live .live-meta::before { content: ''; width: 6px; height: 6px;
+    border-radius: 50%; background: #f4bd51; box-shadow: 0 0 8px #f4bd51; flex: 0 0 auto; }
+  .live-team { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center; gap: 8px; min-height: 89px; padding: 11px 14px;
+    background: linear-gradient(95deg, #101b19bb 0%, #101b1970 60%, #101b19ad 100%), var(--team-brand, #304250);
+    color: #f8f9f5; border-top: 1px solid #ffffff22; }
+  .live-team.is-losing { filter: saturate(.72); }
+  .live-team.is-winning { box-shadow: inset 4px 0 #edc46b; }
+  .live-team .live-watermark { position: absolute; z-index: -1; right: 15%; top: 50%;
+    width: 106px; height: 106px; object-fit: contain; transform: translateY(-50%);
+    opacity: .12; pointer-events: none; }
+  .live-team .name-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .live-team .team-link, .live-team .team-link-static { gap: 10px; min-width: 0; }
+  .live-team .logo-chip.xs, .live-team .monogram.xs { width: 45px; height: 45px; padding: 4px;
+    border: 1px solid #ffffff44; box-shadow: 0 2px 8px #0005; }
+  .live-team .monogram.xs { font-size: 15px; }
+  .live-team .team-link-name { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    font-family: var(--font-display); font-size: 17px; line-height: 1.1; }
+  .live-team .live-identity { min-width: 0; }
+  .live-team .live-rating { display: block; margin-top: 4px; font: 11px var(--font-mono); color: #e1e9e3; }
+  .live-team .live-rank { color: #f7d47e; margin-right: 5px; }
+  .live-team .live-right { display: flex; flex-direction: column; align-items: flex-end;
+    gap: 2px; min-width: 52px; font-family: var(--font-mono); }
+  .live-team .live-right strong { font: 30px/1 var(--font-display); letter-spacing: -.04em; }
+  .live-team .live-right .live-odds { color: #ffde91; font: 21px/1 var(--font-display); }
+  .live-card .gc-foot { display: flex; justify-content: space-between; gap: 8px; align-items: center;
+    padding: 10px 13px; background: #17241f; color: #bec9c2; font: 11px var(--font-mono); }
+  .live-card .gc-foot span:last-child { color: #f1cb77; white-space: nowrap; }
   .live-delta { font: 11px var(--font-mono); white-space: nowrap; }
   .live-delta.up { color: #7ddca3; }
   .live-delta.down { color: #ff8888; }
@@ -770,6 +790,9 @@
   @media (max-width: 700px) { .live-player-grid { grid-template-columns: 1fr; } }
   @media (max-width: 960px) { .live-layout { grid-template-columns: 1fr; } }
   @media (max-width: 700px) { .live-layout .live-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 400px) { .live-team { padding: 10px; } .live-team .logo-chip.xs,
+    .live-team .monogram.xs { width: 39px; height: 39px; } .live-team .team-link-name { font-size: 15px; }
+    .live-card .gc-foot { font-size: 10px; } }
   .empty-note {
     color: var(--ink-dim);
     font-size: 14px;
@@ -835,6 +858,9 @@ __DATA_JSON__
 <script id="logo-manifest" type="application/json">
 __LOGO_MANIFEST_JSON__
 </script>
+<script id="team-brand-colors" type="application/json">
+__TEAM_BRAND_COLORS_JSON__
+</script>
 <script id="static-manifest" type="application/json">
 __STATIC_MANIFEST_JSON__
 </script>
@@ -848,6 +874,7 @@ const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
 // Built by src/export_logo_files.py.
 const LOGO_MANIFEST = JSON.parse(document.getElementById('logo-manifest').textContent);
 const DATED_LOGOS = LOGO_MANIFEST.teams || {};
+const TEAM_BRAND_COLORS = JSON.parse(document.getElementById('team-brand-colors').textContent);
 const DATED_CONFERENCE_LOGOS = LOGO_MANIFEST.conferences || {};
 
 // ---------------- Static data loaders (data foundation step) ----------------
@@ -2854,23 +2881,36 @@ function liveTeam(t, g, pct) {
   const projected = livePrediction(g);
   const elo = t === g.home ? projected?.homeElo : projected?.awayElo;
   const chance = t === g.home ? pct?.home : pct?.away;
-  return '<div class="live-team"><span class="name-cell">' +
-    (rating?.rank <= 25 ? '<span class="live-rank">#' + rating.rank + '</span>' : '') +
-    (team ? teamLink(name, 'xs', liveSeason()) : logoMarkup(name, 'team', 'xs', liveSeason()) + esc(name)) +
-    '</span><span class="live-rating">' + (Number.isFinite(elo) ? elo.toFixed(0) : 'Unrated') +
-    '</span><span class="live-right">' + (g.status === 'scheduled'
+  const logo = pickDatedLogoEntry(DATED_LOGOS, name, liveSeason());
+  const brand = TEAM_BRAND_COLORS[name] || '#304250';
+  const homeWon = Number.isInteger(g.home?.points) && Number.isInteger(g.away?.points) &&
+    g.home.points !== g.away.points && g.status === 'completed' && g.home.points > g.away.points;
+  const awayWon = Number.isInteger(g.home?.points) && Number.isInteger(g.away?.points) &&
+    g.home.points !== g.away.points && g.status === 'completed' && g.away.points > g.home.points;
+  const won = t === g.home ? homeWon : awayWon;
+  const lost = t === g.home ? awayWon : homeWon;
+  const identity = logoMarkup(name, 'team', 'xs', liveSeason()) +
+    '<span class="live-identity"><span class="team-link-name">' + esc(name) + '</span>' +
+    '<span class="live-rating">' + (rating?.rank <= 25 ? '<span class="live-rank">#' + rating.rank + '</span>' : '') +
+    'Elo ' + (Number.isFinite(elo) ? elo.toFixed(0) : 'unrated') + '</span></span>';
+  return '<div class="live-team' + (won ? ' is-winning' : lost ? ' is-losing' : '') +
+    '" style="--team-brand:' + brand + '">' +
+    (logo ? '<img class="live-watermark" src="' + esc(logo.src) + '" alt="" aria-hidden="true" loading="lazy">' : '') +
+    '<span class="name-cell">' + teamAnchor(name, identity) + '</span><span class="live-right">' +
+    (g.status === 'scheduled'
       ? '<span class="live-odds">' + (chance == null ? 'N/A' : chance + '%') + '</span>'
       : '<strong>' + (Number.isInteger(t?.points) ? t.points : '—') + '</strong>') +
     liveChange(g, t) + '</span></div>';
 }
 function renderLiveCard(g) {
   const p = livePrediction(g), pct = p ? probPct(p.pHome) : null;
-  const footer = pct ? 'Pregame win chance: ' + pct.away + '% / ' + pct.home + '%' : 'Win chance unavailable';
-  return '<article class="live-card" role="link" tabindex="0" data-live-id="' + Number(g.id) +
+  const footer = pct ? 'Pregame: ' + pct.away + '% away · ' + pct.home + '% home' : 'Win chance unavailable';
+  return '<article class="live-card' + (g.status === 'in_progress' ? ' is-live' : '') +
+    '" role="link" tabindex="0" data-live-id="' + Number(g.id) +
     '" aria-label="' + esc(String(g.away?.name || 'Away') + ' at ' + String(g.home?.name || 'Home') +
     ', ' + liveLabel(g) + '. Open game') + '"><div class="live-meta"><span class="gbadge ' +
     (g.status === 'completed' ? 'final' : 'upcoming') + '">' + esc(liveLabel(g)) + '</span>' +
-    (g.tv ? '<span>' + esc(g.tv) + '</span>' : '') + '</div>' + liveTeam(g.away, g, pct) + liveTeam(g.home, g, pct) +
+    (g.tv ? '<span class="live-tv">' + esc(g.tv) + '</span>' : '') + '</div>' + liveTeam(g.away, g, pct) + liveTeam(g.home, g, pct) +
     '<div class="gc-foot"><span>' + esc(footer) + '</span><span>Game details &rarr;</span></div></article>';
 }
 function hydrateLiveScores(version) {

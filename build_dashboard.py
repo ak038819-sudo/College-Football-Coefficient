@@ -28,6 +28,7 @@ OUT_PATH = Path("ui/dashboard.html")
 TEAM_PAGES_PATH = Path("ui/data/team_pages.js")
 CONFERENCE_PAGES_PATH = Path("ui/data/conference_pages.js")
 LOGO_MANIFEST_PATH = Path("ui/logo_manifest.json")
+TEAM_BRAND_COLORS_PATH = Path("ui/team_brand_colors.json")
 STATIC_MANIFEST_PATH = Path("ui/data/static_manifest.json")
 NAVIGATION_PATH = Path("ui/navigation.js")
 SEARCH_PATH = Path("ui/search.js")
@@ -36,6 +37,7 @@ SEARCH_PATH = Path("ui/search.js")
 def render_from_exports() -> None:
     """Render the template from existing exports, without touching model data."""
     required = [SHELL_PATH, DATA_PATH, TEAM_PAGES_PATH, CONFERENCE_PAGES_PATH, LOGO_MANIFEST_PATH,
+                TEAM_BRAND_COLORS_PATH,
                 STATIC_MANIFEST_PATH, NAVIGATION_PATH, SEARCH_PATH]
     missing = [str(path) for path in required if not path.exists()]
     if missing:
@@ -44,6 +46,7 @@ def render_from_exports() -> None:
     final = (SHELL_PATH.read_text(encoding="utf-8")
              .replace("__DATA_JSON__", DATA_PATH.read_text(encoding="utf-8"))
              .replace("__LOGO_MANIFEST_JSON__", LOGO_MANIFEST_PATH.read_text(encoding="utf-8"))
+             .replace("__TEAM_BRAND_COLORS_JSON__", TEAM_BRAND_COLORS_PATH.read_text(encoding="utf-8"))
              .replace("__STATIC_MANIFEST_JSON__", STATIC_MANIFEST_PATH.read_text(encoding="utf-8"))
              .replace("__TEAM_PAGES_VERSION__", hashlib.sha256(TEAM_PAGES_PATH.read_bytes()).hexdigest()[:12])
              .replace("__CONFERENCE_PAGES_VERSION__", hashlib.sha256(CONFERENCE_PAGES_PATH.read_bytes()).hexdigest()[:12])
