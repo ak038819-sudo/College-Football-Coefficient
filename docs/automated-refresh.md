@@ -19,14 +19,14 @@ in logs, and nothing in the project prints it.
 
 ## When it runs
 
-- **Sunday 20:00 UTC** (3 PM Central in season): after Saturday's games and the
-  AP poll's Sunday release.
-- **Wednesday 12:00 UTC** (7 AM Central): picks up Tuesday-night CFP rankings
-  and midweek games.
+- **Sunday night, 11:15 PM CDT / 10:15 PM CST** (Monday 04:15 UTC):
+  rebuilds team pages and Elo rankings after the weekend slate.
+- **Thursday night, 11:15 PM CDT / 10:15 PM CST** (Friday 04:15 UTC):
+  picks up midweek and Thursday results before the Saturday slate.
 - **On demand:** **Actions** tab -> **Test, Rebuild Dashboard, and Deploy** ->
   **Run workflow** -> **Run workflow**.
 
-Times are UTC, so they shift by an hour in local time when daylight saving ends.
+The UTC schedule stays fixed, so it shifts by an hour locally when daylight saving ends.
 GitHub can start scheduled runs a few minutes late during busy periods.
 
 To change the schedule, edit the two `cron:` lines near the top of the workflow

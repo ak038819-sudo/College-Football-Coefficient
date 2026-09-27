@@ -34,7 +34,7 @@ def test_workflow_runs_on_schedule_and_on_demand():
     _, on = _workflow()
     assert "workflow_dispatch" in on
     crons = [c["cron"] for c in on["schedule"]]
-    assert len(crons) >= 1 and all(len(c.split()) == 5 for c in crons)
+    assert crons == ["15 4 * * 1", "15 4 * * 5"]  # Sunday/Thursday night Central
 
 
 def test_secret_reaches_only_the_fetch_step():

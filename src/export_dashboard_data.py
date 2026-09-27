@@ -61,8 +61,8 @@ def load_elo_by_season(db_path: str) -> dict:
     conn.row_factory = sqlite3.Row
     rows = conn.execute(
         """
-        SELECT season_year, team_name, postgame_elo FROM (
-            SELECT g.season_year, t.team_name, e.postgame_elo,
+        SELECT season_year, team_name, postgame_elo, elo_change FROM (
+            SELECT g.season_year, t.team_name, e.postgame_elo, e.elo_change,
                    ROW_NUMBER() OVER (
                        PARTITION BY g.season_year, e.team_id
                        ORDER BY g.game_date DESC, e.game_id DESC
@@ -78,7 +78,8 @@ def load_elo_by_season(db_path: str) -> dict:
 
     by_year = defaultdict(list)
     for r in rows:
-        by_year[r["season_year"]].append({"team": r["team_name"], "elo": round(r["postgame_elo"], 1)})
+        by_year[r["season_year"]].append({"team": r["team_name"], "elo": round(r["postgame_elo"], 1),
+                                          "change": round(r["elo_change"], 1)})
     for year in by_year:
         by_year[year].sort(key=lambda x: -x["elo"])
     return dict(by_year)
