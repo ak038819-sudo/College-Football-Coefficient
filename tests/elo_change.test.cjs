@@ -22,8 +22,21 @@ test('published game Elo movement is green/up or red/down; missing and zero stay
 test('Elo rankings pass each audited change to the table', () => {
   const ctx = {
     DATA: {team_elo_by_year: {2026: [{team: 'Florida', elo: 1551.4, change: -8.2}]}},
-    state: {year: 2026}, rankTable: rows => JSON.stringify(rows),
+    state: {year: 2026}, UPCOMING: {season: 2026, ratings_as_of: '2026-09-20'},
+    esc: x => x, rankTable: rows => JSON.stringify(rows),
   };
   vm.runInNewContext(sourceOf('renderElo') + '\nthis.render = renderElo;', ctx);
   assert.match(ctx.render(), /"change":-8\.2/);
+});
+
+test('a newer final marks only its teams as waiting for a model rebuild', () => {
+  const ctx = {liveTeamId: t => ({name: t.name})};
+  vm.runInNewContext(sourceOf('newerFinalTeams') + '\nthis.newer = newerFinalTeams;', ctx);
+  const games = [
+    {status: 'completed', start_date: '2026-09-26T19:30:00Z', away: {name: 'Ole Miss'}, home: {name: 'Florida'}},
+    {status: 'scheduled', start_date: '2026-10-01T19:30:00Z', away: {name: 'BYU'}, home: {name: 'Utah'}},
+    {status: 'completed', start_date: '2026-09-20T19:30:00Z', away: {name: 'Texas'}, home: {name: 'Georgia'}},
+  ];
+  assert.deepEqual([...ctx.newer(games, '2026-09-20')].sort(), ['Florida', 'Ole Miss']);
+  assert.equal(ctx.newer(games, '2026-09-26').size, 0);
 });

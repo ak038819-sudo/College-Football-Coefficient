@@ -366,6 +366,11 @@
   .elo-change { display: inline-block; margin-left: 5px; font: 11px var(--font-mono); white-space: nowrap; vertical-align: middle; }
   .elo-change.up { color: #7ddca3; }
   .elo-change.down { color: #ff8888; }
+  .elo-change.pending { color: var(--amber); }
+  .rating-freshness { margin: 10px 0 18px; padding: 9px 12px; border-left: 3px solid var(--amber);
+    background: var(--panel-2); color: var(--ink-dim); font: 12px/1.5 var(--font-mono); }
+  .rating-freshness.stale { color: var(--ink); }
+  .rating-freshness:empty { display: none; }
   .mini-board .elo-change { margin-left: 3px; font-size: 10px; }
   .team-stat .sub { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); margin-top: 2px; }
   .team-section { margin-bottom: 18px; }
@@ -1259,7 +1264,7 @@ function rankTable(rows, valueKey, labelKey, valueLabel, kind) {
   let html = '<table class="rank-table"><thead><tr><th></th><th>' + labelKey + '</th><th class="num">' + valueLabel + '</th></tr></thead><tbody>';
   rows.forEach((r, i) => {
     html += '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + (kind === 'team' ? teamLink(r.name, 'sm') : kind === 'conf' ? conferenceLink(r.name, 'sm', state.year)
-      : logoMarkup(r.name, kind, 'sm') + '<span>' + r.name + '</span>') + '</div></td><td class="num coe-val">' + fmt(r.value) + eloChangeMarkup(r.change) + '</td></tr>';
+      : logoMarkup(r.name, kind, 'sm') + '<span>' + r.name + '</span>') + '</div></td><td class="num coe-val">' + fmt(r.value) + eloChangeMarkup(r.change, r.name) + '</td></tr>';
   });
   html += '</tbody></table>';
   return html;
@@ -1352,7 +1357,10 @@ function renderElo() {
   const rows = (DATA.team_elo_by_year[state.year] || []).map(r => ({ name: r.team, value: r.elo, change: r.change }));
   if (!rows.length) return '<div class="empty-note">No Elo data for this season.</div>';
   return '<div class="panel"><h2 class="section-title">Elo Rating · ' + state.year + '</h2>' +
-    '<p class="section-note">Latest exported rating within the selected season. Arrows show the change from each team’s most recent game, not a change in rank.</p>' +
+    '<p class="section-note">Published rating' + (state.year === UPCOMING.season && UPCOMING.ratings_as_of
+      ? ' through ' + esc(UPCOMING.ratings_as_of) : ' within the selected season') +
+      '. Arrows show each team’s most recent game in that export, not a change in rank.</p>' +
+    (state.year === UPCOMING.season ? '<p class="rating-freshness" id="rating-freshness" role="status"></p>' : '') +
     rankTable(rows, 'value', 'Team', 'Elo', 'team') + '</div>';
 }
 
@@ -1814,10 +1822,11 @@ function teamStat(label, value, sub) {
   return '<div class="team-stat"><div class="lbl">' + label + '</div><div class="val">' + value +
     '</div><div class="sub">' + (sub || '&nbsp;') + '</div></div>';
 }
-function eloChangeMarkup(change) {
+function eloChangeMarkup(change, name) {
   if (!Number.isFinite(change) || change === 0) return '';
   const up = change > 0;
-  return '<span class="elo-change ' + (up ? 'up' : 'down') + '" title="Elo ' +
+  return '<span class="elo-change ' + (up ? 'up' : 'down') + '"' +
+    (name ? ' data-elo-team="' + esc(name) + '"' : '') + ' title="Elo ' +
     (up ? 'gained' : 'lost') + ' in the most recent game">(' + (up ? '▲' : '▼') +
     Math.abs(change).toFixed(1) + ')</span>';
 }
@@ -1850,12 +1859,12 @@ function renderTeamPage(param) {
           (season ? ' &middot; ' + season + ' season' : '') + '</div></div>' +
       '</div>' +
       '<div class="team-stats">' +
-        teamStat('Elo', elo ? Number(elo.value).toFixed(1) + eloChangeMarkup(teamEloChange(season, team.name)) : 'N/A', rankSub(elo)) +
+        teamStat('Elo', elo ? Number(elo.value).toFixed(1) + eloChangeMarkup(teamEloChange(season, team.name), team.name) : 'N/A', rankSub(elo)) +
         teamStat('CoE (season)', coe ? fmt(coe.value) : 'N/A', rankSub(coe)) +
         teamStat('CoE (5-yr)', coe5 ? fmt(coe5.value) : 'N/A', rankSub(coe5)) +
         teamStat('Record', recStr, 'vs FBS opponents') +
       '</div>' +
-    '</div>';
+    '</div>' + (season === UPCOMING.season ? '<p class="rating-freshness" id="rating-freshness" role="status"></p>' : '');
 
   // Milestone E: Overview / Schedule / History / Analytics. Only the open tab's
   // panels are in the DOM, and every fill*() below no-ops when its panel is absent,
@@ -2637,7 +2646,7 @@ function renderEloTop25() {
         const t = TEAM_BY_ID.get(String(id));
         return '<li><span class="rk">' + rank + '</span><span class="nm">' +
           (t ? teamAnchor(t.name, logoMarkup(t.name, 'team', 'xs') + '<span class="team-link-name">' + t.name + '</span>') : id) +
-          '</span><span class="v">' + elo.toFixed(1) + eloChangeMarkup(t ? teamEloChange(UPCOMING.season, t.name) : null) + '</span></li>';
+          '</span><span class="v">' + elo.toFixed(1) + eloChangeMarkup(t ? teamEloChange(UPCOMING.season, t.name) : null, t?.name) + '</span></li>';
       }).join('') + '</ol>'
     : '<div class="empty-note">No Elo ratings yet.</div>';
   return '<div class="panel">' + panelHead('Elo Top 25', '<a class="side-link" href="#section=rankings&view=elo">All ratings &rarr;</a>') + body +
@@ -2803,6 +2812,48 @@ function liveTeamId(t) {
   const candidates = TEAMS.filter(match);
   // Choose Texas Tech over Texas for "Texas Tech Red Raiders", for example.
   return candidates.sort((a, b) => b.name.length - a.name.length)[0] || null;
+}
+// A static model export can trail the independently refreshed live scoreboard.
+// Never attach the prior game's green/red movement to a team with a newer final.
+function newerFinalTeams(games, asOf) {
+  const cutoff = new Date(String(asOf || '') + 'T23:59:59.999Z');
+  const names = new Set();
+  if (Number.isNaN(cutoff.getTime())) return names;
+  for (const game of games || []) {
+    const kickoff = new Date(game.start_date);
+    if (game.status !== 'completed' || Number.isNaN(kickoff.getTime()) || kickoff <= cutoff) continue;
+    for (const side of [game.away, game.home]) {
+      const team = liveTeamId(side);
+      if (team) names.add(team.name);
+    }
+  }
+  return names;
+}
+function hydrateRatingFreshness(version) {
+  const note = document.getElementById('rating-freshness');
+  if (!note || !UPCOMING.ratings_as_of) return;
+  fetch('data/live_scores.json?t=' + Date.now(), {cache: 'no-store'})
+    .then(r => { if (!r.ok) throw new Error('scoreboard unavailable'); return r.json(); })
+    .then(data => {
+      if (version !== renderVersion || !document.getElementById('rating-freshness')) return;
+      const newer = newerFinalTeams(data.games, UPCOMING.ratings_as_of);
+      const current = state.view === 'team' ? resolveTeam(state.teamParam)?.name : null;
+      if (!newer.size || current && !newer.has(current)) return;
+      const affected = current ? new Set([current]) : newer;
+      document.querySelectorAll('.elo-change[data-elo-team]').forEach(el => {
+        if (!affected.has(el.dataset.eloTeam)) return;
+        el.classList.remove('up', 'down');
+        el.classList.add('pending');
+        el.textContent = '(update pending)';
+        el.title = 'A newer final is in the live feed; the model has not rebuilt yet';
+      });
+      note.classList.add('stale');
+      note.textContent = current
+        ? 'A newer final is in the live feed. This team’s rating, record and schedule still reflect the ' +
+          UPCOMING.ratings_as_of + ' model export; the next rebuild will incorporate it.'
+        : 'Live scores include newer finals than the ' + UPCOMING.ratings_as_of +
+          ' model export. Affected teams are marked “update pending”; ratings and rankings rebuild separately.';
+    }).catch(() => {});
 }
 function livePrediction(g) {
   const p = UPCOMING_BY_ID.get(g.id);
@@ -3063,6 +3114,8 @@ function refreshVisibleLive() {
   if (document.hidden) return;
   if (state.view === 'tab' && (state.section === 'live' || state.section === 'home')) hydrateLiveScores(renderVersion);
   else if (state.view === 'game') hydrateLiveGamePage(renderVersion);
+  else if (state.view === 'team' || state.view === 'tab' && state.section === 'rankings' && state.subview === 'elo')
+    hydrateRatingFreshness(renderVersion);
 }
 setInterval(refreshVisibleLive, 60_000);
 document.addEventListener('visibilitychange', refreshVisibleLive);
@@ -4305,7 +4358,7 @@ function render() {
   renderNavigation();
   renderYearRow();
   const content = document.getElementById('content');
-  if (state.view === 'team') { content.innerHTML = renderTeamPage(state.teamParam); hydrateTeamPage(); return; }
+  if (state.view === 'team') { content.innerHTML = renderTeamPage(state.teamParam); hydrateTeamPage(); hydrateRatingFreshness(version); return; }
   if (state.view === 'conference') { content.innerHTML = renderConferencePage(state.conferenceParam); hydrateConferencePage(); return; }
   if (state.view === 'game') { content.innerHTML = renderGamePage(); hydrateLiveGamePage(version); return; }
   if (state.section === 'home') { content.innerHTML = renderHome(); hydrateLiveScores(version); }
@@ -4320,6 +4373,7 @@ function render() {
       ap: () => renderRankingPoll('ap'), cfp: () => renderRankingPoll('cfp') };
     content.innerHTML = '<h2 class="view-title">Rankings</h2>' + views[state.subview]();
     if (state.subview === 'elo-weekly') hydrateEloWeekly(version);
+    if (state.subview === 'elo') hydrateRatingFreshness(version);
   } else if (state.section === 'playoff') {
     const views = { field: renderField, bracket: renderBracket, odds: renderOdds, history: renderHistory };
     content.innerHTML = playoffIntro() + views[state.subview]();
