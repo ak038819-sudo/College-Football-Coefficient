@@ -1,12 +1,30 @@
 // Dependency-free route regressions: node --test tests/navigation.test.cjs
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const path = require('node:path');
 const { readRoute, hashFor, normalizeSearch } = require('../ui/navigation.js');
 const config = {
   yearsAll: [1980, 2024, 2025, 2026], playoffYears: [2024, 2025, 2026],
   gameSeasons: [{ season: 1980, scheduled: 0 }, { season: 2025, scheduled: 0 }, { season: 2026, scheduled: 604 }]
 };
 const read = hash => readRoute(hash, config);
+
+test('live CFBD IDs cannot relabel another school', () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = shell.match(/function liveTeamId\(t\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(source, 'live team lookup exists');
+  const teams = [
+    { id: 47, name: 'Louisiana Tech' }, { id: 104, name: 'Rutgers' },
+    { id: 10, name: 'Texas' }, { id: 11, name: 'Texas Tech' }
+  ];
+  const context = { TEAMS: teams, TEAM_BY_NAME: new Map(teams.map(t => [t.name, t])) };
+  vm.runInNewContext(source + '\nthis.lookup = liveTeamId;', context);
+  assert.equal(context.lookup({ id: 47, name: 'Howard Bison' }), null);
+  assert.equal(context.lookup({ id: 164, name: 'Rutgers Scarlet Knights' }).name, 'Rutgers');
+  assert.equal(context.lookup({ id: 10, name: 'Texas Tech Red Raiders' }).name, 'Texas Tech');
+});
 
 test('all eight legacy tabs retain their original destination', () => {
   for (const [tab, section, view] of [
