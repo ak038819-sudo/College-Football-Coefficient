@@ -6,7 +6,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
   const views = {
-    home: [], games: [], teams: [], methodology: [], coverage: [],
+    home: [], live: [], games: [], teams: [], methodology: [], coverage: [],
     // 'conference-coe' is CoE v1's five-year rolling value, which INCLUDES the
     // current season and feeds the live playoff model. 'conference-coe2' is CoE
     // 2.0's frozen value ENTERING the season. Separate views with separate names,
@@ -72,7 +72,7 @@
     const years = seasonsFor(section, config);
     let year = Number(p.get('season'));
     if (!p.has('season') || !years.includes(year)) year = latest(years);
-    if (section === 'home' || section === 'teams' || section === 'methodology' || section === 'coverage')
+    if (section === 'home' || section === 'live' || section === 'teams' || section === 'methodology' || section === 'coverage')
       year = latest(config.yearsAll || []);
     const season = (config.gameSeasons || []).find(s => s.season === year);
     const status = ['upcoming', 'completed', 'all'].includes(p.get('status')) ? p.get('status')

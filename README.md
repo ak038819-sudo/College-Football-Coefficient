@@ -182,3 +182,9 @@ The pipeline is deterministic given a fixed `--draw-seed` and unchanged database
 ## Legacy / Archived
 
 `archive/discrete_coe_system_2026-09/` holds the original discrete win/OT-loss/loss point system (with bounty multiplier, conference champion derivation, and Year 1/Year 2 qualifier and draw scripts). It's fully superseded by the iterative model above but kept for reference. If reviving any piece of it, note that its SQL tables (`team_coefficient_by_year`, `conference_coefficient_by_year`, `playoff_field_by_year`, etc. — still defined in `sql/`) are no longer written to by anything in `src/`.
+
+## Beta live scores
+
+The **Live Scores** tab reads `ui/data/live_scores.json`, a display-only snapshot. It refreshes in an open browser tab every minute and marks a feed older than 15 minutes as delayed. It never modifies historical scores, Elo, CoE, or predictions.
+
+The `.github/workflows/live-scores.yml` workflow fetches CFBD's `/scoreboard` on a game-window schedule (UTC Friday evening, Saturday, and early Sunday, August–December) and can also be run manually from Actions. CFBD's live scoreboard requires a subscribed API key. Set `CFBD_API_KEY` in repository Actions secrets with scoreboard access; the key is only used by the workflow and is never sent to visitors. Until activated, the page says the feed is inactive. To expand the schedule for weekday or January games, edit the workflow's cron entries. GitHub scheduled jobs may be delayed, so treat the timestamp as authoritative. A failed fetch keeps the last good snapshot; the site labels stale data. The existing full data refresh remains separate.

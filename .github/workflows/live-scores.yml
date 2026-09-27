@@ -1,0 +1,44 @@
+name: Refresh live scores
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    # UTC; roughly Friday evening through Sunday morning Central during games.
+    - cron: '*/5 22-23 * 8-12 5'
+    - cron: '*/5 14-23 * 8-12 6'
+    - cron: '*/5 0-6 * 8-12 0'
+    # Bowl/playoff Saturdays and January games can be run manually.
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    concurrency:
+      group: rebuild-and-deploy-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fetch subscriber scoreboard
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          if [ -z "$CFBD_API_KEY" ]; then
+            echo 'Live scores inactive: set the CFBD_API_KEY secret with scoreboard access.'
+            exit 0
+          fi
+          python3 src/fetch_live_scores.py
+      - name: Publish changed snapshot
+        run: |
+          if git diff --quiet -- ui/data/live_scores.json; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add ui/data/live_scores.json
+          git commit -m 'Refresh live scoreboard [skip ci]'
+          git pull --rebase origin main
+          git push origin HEAD:main

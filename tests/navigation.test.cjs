@@ -327,3 +327,9 @@ test('the week-by-week view keeps every other rankings URL unchanged', () => {
   assert.equal(read('#section=rankings&view=elo-weekly').subview, 'elo-weekly');
   assert.equal(read('#section=rankings').subview, 'elo');
 });
+
+test('live scoreboard has a stable section URL with no season selector', () => {
+  const route = read('#section=live');
+  assert.equal(route.section, 'live');
+  assert.equal(hashFor(route), '#section=live');
+});
