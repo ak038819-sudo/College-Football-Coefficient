@@ -71,7 +71,13 @@ def test_every_routable_view_has_a_renderer_and_a_link(repo_root):
     assert "coverage" in sections
     for section in sections:
         assert f"state.section === '{section}'" in shell, f"section {section} is never rendered"
-        assert f'data-section="{section}"' in shell, f"section {section} has no navigation link"
+        if section == "live":
+            # Old #section=live URLs remain routable; Home now displays the same
+            # live scoreboard, so a second primary tab is unnecessary.
+            assert 'data-section="home"' in shell
+            assert "hydrateLiveScores(version)" in shell
+        else:
+            assert f'data-section="{section}"' in shell, f"section {section} has no navigation link"
 
 
 def test_the_coverage_page_is_the_one_place_the_season_table_lives(repo_root):
