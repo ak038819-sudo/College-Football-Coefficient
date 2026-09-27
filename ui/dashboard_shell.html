@@ -227,6 +227,23 @@
   .games-week { margin: 0 0 18px; }
   .games-week h3 { font-family: var(--font-display); font-size: 17px; margin: 0 0 8px; display: flex; align-items: baseline; gap: 8px; }
   .games-week h3 small { font: 11px var(--font-mono); color: var(--ink-dim); }
+  .matchup-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
+  .matchup-controls label { display: flex; flex-direction: column; gap: 6px; font: 11px var(--font-mono); color: var(--ink-dim); text-transform: uppercase; }
+  .matchup-controls select { width: 100%; min-width: 0; padding: 11px; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 3px; font: 15px var(--font-body, inherit); }
+  .matchup-controls .venue-control { grid-column: 1 / -1; max-width: 330px; }
+  .matchup-board { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; margin: 22px 0; }
+  .matchup-side { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; min-width: 0; }
+  .matchup-side .team-link { flex-direction: column; text-align: center; }
+  .matchup-side .team-link-name { white-space: normal; overflow-wrap: anywhere; }
+  .matchup-side strong { font: 700 clamp(28px, 5vw, 48px) var(--font-display); color: var(--amber); }
+  .matchup-side small { font: 12px var(--font-mono); color: var(--ink-dim); }
+  .matchup-mid { font: 13px var(--font-mono); color: var(--ink-dim); }
+  .matchup-bar { display: flex; height: 12px; overflow: hidden; border-radius: 3px; background: var(--panel-2); }
+  .matchup-bar span:first-child { background: var(--amber); }
+  .matchup-bar span:last-child { background: var(--ink-dim); flex: 1; }
+  .matchup-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .matchup-actions button { background: var(--panel-2); color: var(--ink); padding: 8px 12px; border: 1px solid var(--line); border-radius: 3px; cursor: pointer; }
+  @media (max-width: 520px) { .matchup-board { gap: 6px; } .matchup-controls { grid-template-columns: 1fr; } .matchup-controls .venue-control { grid-column: 1; } }
   .section-note { color: var(--ink-dim); font-size: 13px; line-height: 1.5; margin: 0 0 16px; }
   #content, .panel { min-width: 0; }
   .table-scroll { max-width: 100%; overflow-x: auto; }
@@ -829,6 +846,7 @@
     <nav class="tabs" id="tabs" aria-label="Primary">
       <a data-section="home" href="#section=home">Home</a>
       <a data-section="games" href="#section=games">Games</a>
+      <a data-section="matchups" href="#section=matchups">Matchups</a>
       <a data-section="teams" href="#section=teams">Teams</a>
       <a data-section="rankings" href="#section=rankings">Rankings</a>
       <a data-section="playoff" href="#section=playoff">Playoff</a>
@@ -1196,9 +1214,9 @@ const ROUTE_CONFIG = { yearsAll: DATA.years_all, playoffYears: DATA.years_playof
   gameSeasons: STATIC_MANIFEST.seasons || [] };
 let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult: null, simYear: null,
   homeGroup: null, homeTop25: false, homePoll: null };
-const SECTION_LABELS = { home: 'Home', live: 'Live Scores', games: 'Games', teams: 'Teams', rankings: 'Rankings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
+const SECTION_LABELS = { home: 'Home', live: 'Live Scores', games: 'Games', matchups: 'Matchups', teams: 'Teams', rankings: 'Rankings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
 const SUBVIEWS = {
-  rankings: [['elo', 'Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
+  rankings: [['elo', 'Elo'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
     ['conference-coe2', 'Conference CoE 2.0'], ['elo-weekly', 'Week by Week'],
     ['ap', 'AP'], ['cfp', 'CFP']],
   playoff: [['field', 'Field'], ['bracket', 'Bracket & Simulator'], ['odds', 'Title Odds'], ['history', 'History']]
@@ -1216,11 +1234,12 @@ function fmt(n) { return Number(n).toFixed(3); }
 function renderYearRow() {
   const row = document.getElementById('year-row');
   if (state.view === 'team' || state.view === 'conference' || state.view === 'game' ||
-      state.section === 'teams' || state.section === 'live' || state.section === 'methodology' || state.section === 'coverage') {
+      state.section === 'teams' || state.section === 'live' || state.section === 'matchups' || state.section === 'methodology' || state.section === 'coverage') {
     row.innerHTML = '';
     document.getElementById('year-caption').textContent = state.view === 'team' ? 'TEAM PAGE'
       : state.view === 'conference' ? 'CONFERENCE PAGE' : state.view === 'game' ? 'GAME'
-      : state.section === 'live' ? 'CURRENT SLATE' : state.section === 'methodology' ? 'METHODOLOGY'
+      : state.section === 'live' ? 'CURRENT SLATE' : state.section === 'matchups' ? 'WHAT IF · ' + UPCOMING.season
+      : state.section === 'methodology' ? 'METHODOLOGY'
       : state.section === 'coverage' ? 'EVERY SEASON' : 'TEAMS & CONFERENCES';
     return;
   }
@@ -1362,6 +1381,21 @@ function renderElo() {
       '. Arrows show each team’s most recent game in that export, not a change in rank.</p>' +
     (state.year === UPCOMING.season ? '<p class="rating-freshness" id="rating-freshness" role="status"></p>' : '') +
     rankTable(rows, 'value', 'Team', 'Elo', 'team') + '</div>';
+}
+
+function renderConferenceElo() {
+  const rows = (DATA.conference_elo_by_year || {})[state.year] || [];
+  if (!rows.length) return '<div class="panel"><h2 class="section-title">Conference Elo · ' + state.year +
+    '</h2><p class="empty-note">Season-specific conference membership and Elo are unavailable for this year.</p></div>';
+  return '<div class="panel"><h2 class="section-title">Conference Elo · ' + state.year + '</h2>' +
+    '<p class="section-note">Average end-of-season Elo of rated member teams. Membership is from ' + state.year +
+    ', not today. Each count shows rated teams / all members; teams without a completed game are excluded. ' +
+    'Independents are excluded. This is a strength comparison, not Conference CoE or the playoff bid order.' +
+    (state.year === UPCOMING.season && UPCOMING.ratings_as_of ? ' Ratings through ' + esc(UPCOMING.ratings_as_of) + '.' : '') + '</p>' +
+    '<table class="rank-table"><thead><tr><th></th><th>Conference</th><th class="num">Avg Elo</th><th class="num">Rated / members</th></tr></thead><tbody>' +
+    rows.map((r, i) => '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' +
+      conferenceLink(r.conference, 'sm', state.year) + '</div></td><td class="num coe-val">' + Number(r.elo).toFixed(1) +
+      '</td><td class="num">' + r.rated + ' / ' + r.members + '</td></tr>').join('') + '</tbody></table></div>';
 }
 
 // ---------------- Week by week (P1-05, P1-06) ----------------
@@ -2471,6 +2505,51 @@ const UPCOMING_GAMES = (UPCOMING.games || []).map(g => ({ id: g[0], season: g[1]
   pHome: g[11], homeProv: g[12] === 1, awayProv: g[13] === 1 }));
 const UPCOMING_BY_ID = new Map(UPCOMING_GAMES.map(g => [g.id, g]));
 const CURRENT_ELO = new Map((UPCOMING.current_elo || []).map(r => [r[0], { elo: r[1], rank: r[2] }]));
+
+function matchupProbability(a, b, venue, cfg) {
+  const bonus = venue === 'neutral' ? 0 : venue === 'away' ? -Number(cfg.home_field) : Number(cfg.home_field);
+  return 1 / (1 + Math.pow(10, (b - a - bonus) / Number(cfg.scale)));
+}
+
+function renderMatchups() {
+  const available = [...CURRENT_ELO.keys()].map(id => ({ team: TEAM_BY_ID.get(String(id)), id }))
+    .filter(x => x.team && Number.isFinite(CURRENT_ELO.get(x.id)?.elo))
+    .sort((a, b) => a.team.name.localeCompare(b.team.name));
+  if (available.length < 2) return '<div class="panel"><h2 class="view-title">Hypothetical matchups</h2>' +
+    '<p class="empty-note">Current Elo ratings are unavailable.</p></div>';
+  const ranked = (UPCOMING.current_elo || []).filter(r => TEAM_BY_ID.has(String(r[0])));
+  const defaultA = ranked[0]?.[0], defaultB = ranked.find(r => r[0] !== defaultA)?.[0];
+  const ids = new Set(available.map(x => x.id));
+  const aId = ids.has(state.matchupAway) ? state.matchupAway : defaultA;
+  const bId = ids.has(state.matchupHome) ? state.matchupHome : defaultB;
+  const option = selected => available.map(({team, id}) => '<option value="' + id + '"' +
+    (id === selected ? ' selected' : '') + '>' + esc(team.name) + '</option>').join('');
+  const controls = '<div class="matchup-controls"><label>Team A<select id="matchup-a">' + option(aId) + '</select></label>' +
+    '<label>Team B<select id="matchup-b">' + option(bId) + '</select></label>' +
+    '<label class="venue-control">Venue<select id="matchup-venue">' +
+    [['home', 'Team A hosts'], ['away', 'Team B hosts'], ['neutral', 'Neutral site']].map(([key, label]) =>
+      '<option value="' + key + '"' + (state.venue === key ? ' selected' : '') + '>' + label + '</option>').join('') +
+    '</select></label></div>';
+  let result = '<p class="empty-note">Choose two different teams to compare them.</p>';
+  const cfg = STATIC_MANIFEST.model_params?.elo || {};
+  if (aId !== bId && Number(cfg.scale) > 0 && Number.isFinite(Number(cfg.home_field))) {
+    const a = TEAM_BY_ID.get(String(aId)), b = TEAM_BY_ID.get(String(bId));
+    const ra = CURRENT_ELO.get(aId).elo, rb = CURRENT_ELO.get(bId).elo;
+    const pct = probPct(matchupProbability(ra, rb, state.venue, cfg));
+    const side = (t, rating, chance) => '<div class="matchup-side">' + teamLink(t.name, 'lg', UPCOMING.season) +
+      '<strong>' + chance + '%</strong><small>Elo ' + rating.toFixed(1) + '</small></div>';
+    result = '<div class="matchup-board">' + side(a, ra, pct.home) + '<span class="matchup-mid">vs</span>' +
+      side(b, rb, pct.away) + '</div><div class="matchup-bar" aria-label="Team A ' + pct.home +
+      ' percent, Team B ' + pct.away + ' percent"><span style="width:' + pct.home + '%"></span><span></span></div>';
+  }
+  return '<div class="panel"><h2 class="view-title">Hypothetical matchup</h2>' +
+    '<p class="section-note">Pick two teams and a venue. Win chances use the current exported Elo ratings and the ' +
+    'same home-field and probability formula as scheduled-game predictions. ' +
+    (UPCOMING.ratings_as_of ? 'Ratings through ' + esc(UPCOMING.ratings_as_of) + '. ' : '') +
+    'This is a pregame what-if, not a forecast of score or postgame Elo.</p>' + controls + result +
+    '<div class="matchup-actions"><button id="matchup-swap" type="button">Swap teams</button>' +
+    '<span class="section-note">The address updates as you choose, so you can share this matchup.</span></div></div>';
+}
 
 // One rounding rule everywhere: round the home side, give the away side the exact
 // remainder, so a matchup always sums to 100% on every page.
@@ -4317,6 +4396,12 @@ document.querySelector('.skip-link').addEventListener('click', e => {
 
 // Home controls retain their existing behavior.
 document.getElementById('content').addEventListener('click', e => {
+  if (e.target.id === 'matchup-swap' && state.section === 'matchups') {
+    const a = Number(document.getElementById('matchup-a').value);
+    const b = Number(document.getElementById('matchup-b').value);
+    navigate({ matchupAway: b, matchupHome: a });
+    return;
+  }
   const card = e.target.closest('[data-live-id]');
   if (card && !e.target.closest('a, button')) location.hash = liveGameHref({id: Number(card.dataset.liveId)});
   const b = e.target.closest('[data-poll]');
@@ -4329,6 +4414,13 @@ document.getElementById('content').addEventListener('click', e => {
   if (e.target.id === 'retry-games' || e.target.id === 'retry-directory') render();
 });
 document.getElementById('content').addEventListener('change', e => {
+  if (state.view === 'tab' && state.section === 'matchups' &&
+      ['matchup-a', 'matchup-b', 'matchup-venue'].includes(e.target.id)) {
+    navigate({ matchupAway: Number(document.getElementById('matchup-a').value),
+      matchupHome: Number(document.getElementById('matchup-b').value),
+      venue: document.getElementById('matchup-venue').value });
+    return;
+  }
   if (state.view !== 'tab' || state.section !== 'home') return;
   if (e.target.id === 'home-group') { state.homeGroup = e.target.value; render(); }
   else if (e.target.id === 'home-top25') { state.homeTop25 = e.target.checked; render(); }
@@ -4365,10 +4457,11 @@ function render() {
   else if (state.section === 'methodology') content.innerHTML = renderMethodology();
   else if (state.section === 'coverage') content.innerHTML = renderCoverage();
   else if (state.section === 'teams') { content.innerHTML = renderTeamDirectory(); hydrateDirectory(version); }
+  else if (state.section === 'matchups') content.innerHTML = renderMatchups();
   else if (state.section === 'games') { content.innerHTML = renderGames(); hydrateGames(version); }
   else if (state.section === 'live') { content.innerHTML = renderLiveScores(); hydrateLiveScores(version); }
   else if (state.section === 'rankings') {
-    const views = { elo: renderElo, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferences,
+    const views = { elo: renderElo, 'conference-elo': renderConferenceElo, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferences,
       'conference-coe2': renderConferenceCoe2, 'elo-weekly': renderEloWeekly,
       ap: () => renderRankingPoll('ap'), cfp: () => renderRankingPoll('cfp') };
     content.innerHTML = '<h2 class="view-title">Rankings</h2>' + views[state.subview]();

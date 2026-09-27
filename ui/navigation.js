@@ -6,13 +6,13 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
   const views = {
-    home: [], live: [], games: [], teams: [], methodology: [], coverage: [],
+    home: [], live: [], games: [], matchups: [], teams: [], methodology: [], coverage: [],
     // 'conference-coe' is CoE v1's five-year rolling value, which INCLUDES the
     // current season and feeds the live playoff model. 'conference-coe2' is CoE
     // 2.0's frozen value ENTERING the season. Separate views with separate names,
     // for the same reason they are separate tables: they must never be read as
     // one number.
-    rankings: ['elo', 'team-coe', 'conference-coe', 'conference-coe2', 'elo-weekly', 'ap', 'cfp'],
+    rankings: ['elo', 'conference-elo', 'team-coe', 'conference-coe', 'conference-coe2', 'elo-weekly', 'ap', 'cfp'],
     playoff: ['field', 'bracket', 'odds', 'history']
   };
   // Detail-page tabs (Milestone E). The first entry is the default and is left out
@@ -72,7 +72,7 @@
     const years = seasonsFor(section, config);
     let year = Number(p.get('season'));
     if (!p.has('season') || !years.includes(year)) year = latest(years);
-    if (section === 'home' || section === 'live' || section === 'teams' || section === 'methodology' || section === 'coverage')
+    if (section === 'home' || section === 'live' || section === 'matchups' || section === 'teams' || section === 'methodology' || section === 'coverage')
       year = latest(config.yearsAll || []);
     const season = (config.gameSeasons || []).find(s => s.season === year);
     const status = ['upcoming', 'completed', 'all'].includes(p.get('status')) ? p.get('status')
@@ -97,9 +97,14 @@
     const st = p.get('stage') || '';
     const stage = (section === 'rankings' && subview === 'elo-weekly' &&
       (st === 'pre' || st === 'post' || /^w\d{1,2}$/.test(st))) ? st : null;
+    const matchupId = key => /^\d{1,10}$/.test(p.get(key) || '') ? Number(p.get(key)) : null;
+    const venue = ['home', 'away', 'neutral'].includes(p.get('venue')) ? p.get('venue') : 'home';
     const route = { section, subview, year, status,
       query: section === 'teams' ? (p.get('q') || '').trim().slice(0, 150) : '',
-      game, week, team: teamFilter, conf, stage, view: 'tab', teamParam: null, conferenceParam: null,
+      game, week, team: teamFilter, conf, stage,
+      matchupHome: section === 'matchups' ? matchupId('home') : null,
+      matchupAway: section === 'matchups' ? matchupId('away') : null,
+      venue: section === 'matchups' ? venue : 'home', view: 'tab', teamParam: null, conferenceParam: null,
       gameParam: null, tab: '', returnTo: '' };
     const openPage = (kind, param) => {
       route.view = kind;
@@ -160,6 +165,11 @@
         if (route.game != null) p.set('game', route.game);
       }
       if (route.section === 'rankings' && route.subview === 'elo-weekly' && route.stage) p.set('stage', route.stage);
+      if (route.section === 'matchups') {
+        if (route.matchupAway != null) p.set('away', route.matchupAway);
+        if (route.matchupHome != null) p.set('home', route.matchupHome);
+        if (route.venue !== 'home') p.set('venue', route.venue);
+      }
       if (route.section === 'teams' && route.query) p.set('q', route.query);
     }
     return '#' + p.toString();

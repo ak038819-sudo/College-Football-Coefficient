@@ -85,6 +85,42 @@ def load_elo_by_season(db_path: str) -> dict:
     return dict(by_year)
 
 
+def build_conference_elo_by_year(db_path: str, team_elo: dict) -> dict:
+    """Mean member Elo by season, using that season's membership, never today's.
+
+    A team without a completed game has no exported season Elo and is excluded
+    from the mean; member/rated counts expose the coverage on the page.
+    Independents are not a conference and cannot form a conference rating.
+    """
+    conn = sqlite3.connect(db_path)
+    memberships = conn.execute(
+        """SELECT m.season_year, m.conference_real, t.team_name
+           FROM team_membership_by_season m
+           JOIN teams t ON t.team_id = m.team_id
+           WHERE m.conference_real IS NOT NULL
+           ORDER BY m.season_year, m.conference_real, t.team_name"""
+    ).fetchall()
+    conn.close()
+    ratings = {int(year): {r["team"]: r["elo"] for r in rows} for year, rows in team_elo.items()}
+    groups = defaultdict(lambda: defaultdict(lambda: {"members": set(), "rated": {}}))
+    for year, conference, team in memberships:
+        if conference == "FBS Independents":
+            continue
+        group = groups[year][conference]
+        group["members"].add(team)
+        if team in ratings.get(year, {}):
+            group["rated"][team] = ratings[year][team]
+    return {
+        str(year): sorted(({
+            "conference": conference,
+            "elo": round(sum(group["rated"].values()) / len(group["rated"]), 1),
+            "rated": len(group["rated"]), "members": len(group["members"]),
+        } for conference, group in leagues.items() if group["rated"]),
+            key=lambda r: (-r["elo"], r["conference"]))
+        for year, leagues in groups.items()
+    }
+
+
 def slugify(name: str) -> str:
     """
     URL slug for a team page (#team=<slug>). The dashboard's JS has a
@@ -460,6 +496,7 @@ def main() -> None:
         "team_elo_by_year": {
             str(y): rows for y, rows in team_elo.items()
         },
+        "conference_elo_by_year": build_conference_elo_by_year(args.db, team_elo),
         "conference_ratings_by_year": {
             str(y): sorted(
                 [{"conference": r["conference_name"], "rating": round(float(r["rating"]), 3)} for r in rows],

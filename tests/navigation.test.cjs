@@ -70,10 +70,35 @@ test('all eight legacy tabs retain their original destination', () => {
 
 test('season, subview, status and query survive URL round trips', () => {
   for (const hash of ['#section=rankings&view=conference-coe&season=1980',
+    '#section=rankings&view=conference-elo&season=2025',
+    '#section=matchups&away=12&home=17&venue=neutral',
     '#section=playoff&view=bracket&season=2025', '#section=games&season=1980&status=completed',
     '#section=teams&q=Texas%20A%26M']) {
     assert.deepEqual(read(hashFor(read(hash))), read(hash));
   }
+});
+
+test('matchups have shareable teams and a guarded venue', () => {
+  const route = read('#section=matchups&away=12&home=17&venue=away');
+  assert.equal(route.matchupAway, 12);
+  assert.equal(route.matchupHome, 17);
+  assert.equal(route.venue, 'away');
+  assert.equal(read('#section=matchups&away=bogus&venue=moon').matchupAway, null);
+  assert.equal(read('#section=matchups&away=bogus&venue=moon').venue, 'home');
+});
+
+test('hypothetical odds use the scheduled game Elo formula and symmetric venue edge', () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = shell.match(/function matchupProbability\(a, b, venue, cfg\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(source);
+  const context = {};
+  vm.runInNewContext(source + '\nthis.probability = matchupProbability;', context);
+  const cfg = { scale: 400, home_field: 50 };
+  assert.equal(context.probability(1500, 1500, 'neutral', cfg), 0.5);
+  assert.ok(context.probability(1500, 1500, 'home', cfg) > 0.5);
+  assert.equal(context.probability(1500, 1500, 'away', cfg), 1 - context.probability(1500, 1500, 'home', cfg));
+  assert.ok(Math.abs(context.probability(1600, 1400, 'home', cfg) -
+    1 / (1 + 10 ** ((1400 - 1600 - 50) / 400))) < 1e-12);
 });
 
 test('missing and invalid URLs have deterministic defaults', () => {
