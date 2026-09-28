@@ -3058,6 +3058,29 @@ function renderLiveCard(g) {
     (g.tv ? '<span class="live-tv">' + esc(g.tv) + '</span>' : '') + '</div>' + liveTeam(g.away, g, pct) + liveTeam(g.home, g, pct) +
     '<div class="gc-foot"><span>' + esc(footer) + '</span><span>Game details &rarr;</span></div></article>';
 }
+// The live endpoint may keep last week's finals until its next scoreboard window.
+ // Compare it with the first still-scheduled week in the published model export.
+ // Once the old slate is more than a day behind that week, show the next slate
+ // on Home. The Live Scores route still shows the raw feed and its finals.
+function homeSlate(feedGames) {
+  const next = upcomingGroups()[0];
+  if (!next || !next.games.length) return { games: feedGames, label: null };
+  const ids = new Set(next.games.map(g => g.id));
+  if (feedGames.some(g => ids.has(g.id) || g.status === 'in_progress')) {
+    return { games: feedGames, label: null };
+  }
+  const first = Math.min(...next.games.map(g => Date.parse(g.kickoff)).filter(Number.isFinite));
+  const last = Math.max(...feedGames.map(g => Date.parse(g.start_date)).filter(Number.isFinite));
+  if (!Number.isFinite(first) || feedGames.length && (!Number.isFinite(last) || last >= first - 24 * 60 * 60 * 1000)) {
+    return { games: feedGames, label: null };
+  }
+  const games = next.games.map(g => ({
+    id: g.id, start_date: g.kickoff, status: 'scheduled', neutral_site: g.neutral,
+    away: { name: TEAM_BY_ID.get(String(g.away))?.name || 'Unknown team', points: null },
+    home: { name: TEAM_BY_ID.get(String(g.home))?.name || 'Unknown team', points: null }
+  }));
+  return { games, label: next.label };
+}
 function hydrateLiveScores(version) {
   const request = ++liveRequest;
   fetch('data/live_scores.json?t=' + Date.now(), {cache: 'no-store'})
@@ -3068,14 +3091,16 @@ function hydrateLiveScores(version) {
       const target = document.getElementById('live-games');
       const board = document.getElementById('live-rankings');
       if (!status || !target || !board) return;
-      liveSnapshot = data;
+      const slate = state.section === 'home' ? homeSlate(Array.isArray(data.games) ? data.games : []) :
+        { games: Array.isArray(data.games) ? data.games : [], label: null };
+      liveSnapshot = { ...data, games: slate.games };
       const stamp = data.updated_at ? new Date(data.updated_at) : null;
       const validStamp = stamp && !Number.isNaN(stamp.getTime());
       const age = validStamp ? Date.now() - stamp.getTime() : Infinity;
-      status.textContent = validStamp
-        ? 'Updated ' + stamp.toLocaleString() + (age > 15 * 60 * 1000 ? ' · Feed may be delayed' : '')
-        : 'Live feed is not active yet.';
-      const games = Array.isArray(data.games) ? [...data.games] : [];
+      status.textContent = (slate.label ? 'Showing ' + slate.label + ' schedule · ' : '') + (validStamp
+        ? 'Feed updated ' + stamp.toLocaleString() + (age > 15 * 60 * 1000 ? ' · Feed may be delayed' : '')
+        : 'Live feed is not active yet.');
+      const games = [...slate.games];
       const order = {in_progress: 0, scheduled: 1, completed: 2};
       games.sort((a, b) => (order[a.status] ?? 3) - (order[b.status] ?? 3) ||
         String(a.start_date || '').localeCompare(String(b.start_date || '')));
