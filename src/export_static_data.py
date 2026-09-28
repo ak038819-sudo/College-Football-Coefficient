@@ -117,7 +117,7 @@ def build_season_payloads(conn: sqlite3.Connection, upcoming: dict) -> dict:
             _r(coe.get((gid, home)), 3), _r(coe.get((gid, away)), 3), 0, 0, ko_tbd])
 
     for g in upcoming.get("games", []):
-        gid, season, week, kickoff, _tbd, home, away, neutral, phase, h_elo, a_elo, p, h_prov, a_prov = g
+        gid, season, week, kickoff, _tbd, home, away, neutral, phase, h_elo, a_elo, p, h_prov, a_prov = g[:14]
         rows[season].append([
             gid, week, (kickoff or "1900-01-01")[:10], kickoff, 0, phase, neutral, 0, home, away, None, None,
             h_elo, a_elo, p, None, None, None, None, None, h_prov, a_prov, int(bool(_tbd))])
