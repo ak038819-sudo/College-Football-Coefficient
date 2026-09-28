@@ -863,7 +863,7 @@
       <a data-section="games" href="#section=games">Games</a>
       <a data-section="matchups" href="#section=matchups">Matchups</a>
       <a data-section="teams" href="#section=teams">Teams</a>
-      <a data-section="rankings" href="#section=rankings">Rankings</a>
+      <a data-section="rankings" href="#section=rankings">Standings</a>
       <a data-section="playoff" href="#section=playoff">Playoff</a>
       <a data-section="coverage" href="#section=coverage">Data coverage</a>
       <a data-section="methodology" href="#section=methodology">How it works</a>
@@ -1229,9 +1229,9 @@ const ROUTE_CONFIG = { yearsAll: DATA.years_all, playoffYears: DATA.years_playof
   gameSeasons: STATIC_MANIFEST.seasons || [] };
 let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult: null, simYear: null,
   homeGroup: null, homeTop25: false, homePoll: null };
-const SECTION_LABELS = { home: 'Home', live: 'Live Scores', games: 'Games', matchups: 'Matchups', teams: 'Teams', rankings: 'Rankings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
+const SECTION_LABELS = { home: 'Home', live: 'Live Scores', games: 'Games', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
 const SUBVIEWS = {
-  rankings: [['elo', 'Elo'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
+  rankings: [['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
     ['conference-coe2', 'Conference CoE 2.0'], ['elo-weekly', 'Week by Week'],
     ['ap', 'AP'], ['cfp', 'CFP']],
   playoff: [['field', 'Field'], ['bracket', 'Bracket & Simulator'], ['odds', 'Title Odds'], ['history', 'History']]
@@ -1285,7 +1285,7 @@ function renderYearRow() {
     const year = Number(select.value);
     const entry = ROUTE_CONFIG.gameSeasons.find(s => s.season === year);
     navigate({ year, status: state.section === 'games' && !entry?.scheduled && state.status === 'upcoming' ? 'completed' : state.status,
-               week: null });
+               week: null, conf: state.section === 'rankings' ? null : state.conf });
   });
 
   row.innerHTML = '';
@@ -4034,6 +4034,66 @@ function loadConferencePages() {
   return _confPagesPromise;
 }
 
+// The standings view reads the same generated conference-page export as the
+// conference detail pages. Its rank is the model's derived order; records are
+// computed from completed FBS games and reflect the selected season's members.
+function renderConferenceStandings() {
+  return '<div class="panel"><h2 class="section-title">Conference Standings · ' + state.year + '</h2>' +
+    '<p class="section-note">Conference and overall records use the selected season’s membership. ' +
+    'The order is derived from conference win percentage, then wins, losses and overall record; ' +
+    'it does not reproduce each league’s official tie-break rules. FCS games are not included.' +
+    (state.year === UPCOMING.season && UPCOMING.ratings_as_of ? ' Model data through ' + esc(UPCOMING.ratings_as_of) + '.' : '') +
+    '</p><div id="conference-standings-results" aria-live="polite"><p class="empty-note">Loading standings…</p></div></div>';
+}
+function fillConferenceStandings(cp) {
+  const target = document.getElementById('conference-standings-results');
+  if (!target) return;
+  const season = state.year, F = cp.mf;
+  const leagues = cp.raw.conferences.filter(c => c.name !== cp.raw.independents &&
+    cp.membersOf(c.slug, season).some(m => m[F.conf_rank] != null))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  if (!leagues.length) {
+    target.innerHTML = '<p class="empty-note">No derived conference standings for ' + season +
+      '. Conference records or ranks are unavailable for this season.</p>';
+    return;
+  }
+  const selected = leagues.find(c => c.name === state.conf) || leagues[0];
+  const members = [...cp.membersOf(selected.slug, season)].sort((a, b) =>
+    (a[F.conf_rank] ?? Infinity) - (b[F.conf_rank] ?? Infinity) ||
+    String(TEAM_BY_ID.get(String(a[F.team_id]))?.name || '').localeCompare(String(TEAM_BY_ID.get(String(b[F.team_id]))?.name || '')));
+  const record = (m, prefix) => {
+    const key = suffix => (prefix ? prefix + '_' : '') + suffix;
+    const w = m[F[key('w')]], l = m[F[key('l')]], t = m[F[key('t')]];
+    return w == null || l == null ? '—' : recStr(w, l, t || 0);
+  };
+  target.innerHTML = '<div class="filter-row"><label for="standings-conference">Conference</label>' +
+    '<select id="standings-conference" aria-label="Conference">' + leagues.map(c =>
+      '<option value="' + esc(c.name) + '"' + (c.name === selected.name ? ' selected' : '') + '>' +
+      esc(c.name) + '</option>').join('') + '</select></div>' +
+    '<p class="section-note">' + conferenceLink(selected.name, 'sm', season) + ' · ' + members.length +
+    ' member' + (members.length === 1 ? '' : 's') + ' · rank is the derived conference order.</p>' +
+    '<div class="table-scroll" tabindex="0" role="region" aria-label="' + esc(selected.name) + ' standings, ' + season + '">' +
+    '<table class="rank-table"><thead><tr><th scope="col">#</th><th scope="col">Team</th>' +
+    '<th scope="col" class="num">Conference</th><th scope="col" class="num">Overall</th></tr></thead><tbody>' +
+    members.map(m => {
+      const team = TEAM_BY_ID.get(String(m[F.team_id]));
+      return '<tr><td class="rk">' + (m[F.conf_rank] ?? '—') + '</td><td>' +
+        (team ? teamLink(team.name, 'sm', season) : 'Unknown team') + '</td>' +
+        '<td class="num">' + record(m, 'conf') + '</td><td class="num">' + record(m, '') + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+}
+function hydrateConferenceStandings(version) {
+  loadConferencePages().then(cp => {
+    if (version === renderVersion && state.section === 'rankings' && state.subview === 'conference-standings')
+      fillConferenceStandings(cp);
+  }).catch(() => {
+    if (version !== renderVersion || state.subview !== 'conference-standings') return;
+    const target = document.getElementById('conference-standings-results');
+    if (target) target.innerHTML = '<p class="empty-note">Standings could not be loaded. ' +
+      '<button class="action-button" id="retry-standings">Retry</button></p>';
+  });
+}
+
 // Won-lost-tied as a record plus win percentage (ties count half, as everywhere else).
 function wlt(w, l, t) { return recStr(w, l, t); }
 function wltPct(w, l, t) {
@@ -4450,7 +4510,7 @@ function searchResultsHtml(r) {
       '<a class="search-hit" href="' + esc(CfbNavigation.hashFor(CfbNavigation.readRoute('#section=games&season=' + y, ROUTE_CONFIG))) + '">' +
       '<span class="hit-text">' + y + ' season</span><small>games</small></a>' +
       '<a class="search-hit" href="' + esc(CfbNavigation.hashFor(CfbNavigation.readRoute('#section=rankings&view=elo&season=' + y, ROUTE_CONFIG))) + '">' +
-      '<span class="hit-text">' + y + ' rankings</span><small>Elo</small></a>').join('') + '</div>');
+      '<span class="hit-text">' + y + ' standings</span><small>Elo</small></a>').join('') + '</div>');
   }
   return groups.join('');
 }
@@ -4539,9 +4599,14 @@ document.getElementById('content').addEventListener('click', e => {
     document.querySelector('[data-poll="' + state.homePoll + '"]')?.focus();
   }
   if (e.target.id === 'simulate-btn' && state.section === 'playoff' && state.subview === 'bracket') runSimulationAndAnimate();
-  if (e.target.id === 'retry-games' || e.target.id === 'retry-directory') render();
+  if (e.target.id === 'retry-games' || e.target.id === 'retry-directory' || e.target.id === 'retry-standings') render();
 });
 document.getElementById('content').addEventListener('change', e => {
+  if (state.view === 'tab' && state.section === 'rankings' && state.subview === 'conference-standings' &&
+      e.target.id === 'standings-conference') {
+    navigate({ conf: e.target.value });
+    return;
+  }
   if (state.view === 'tab' && state.section === 'matchups' &&
       ['matchup-a', 'matchup-b', 'matchup-venue'].includes(e.target.id)) {
     navigate({ matchupAway: Number(document.getElementById('matchup-a').value),
@@ -4589,10 +4654,11 @@ function render() {
   else if (state.section === 'games') { content.innerHTML = renderGames(); hydrateGames(version); }
   else if (state.section === 'live') { content.innerHTML = renderLiveScores(); hydrateLiveScores(version); }
   else if (state.section === 'rankings') {
-    const views = { elo: renderElo, 'conference-elo': renderConferenceElo, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferences,
+    const views = { elo: renderElo, 'conference-standings': renderConferenceStandings, 'conference-elo': renderConferenceElo, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferences,
       'conference-coe2': renderConferenceCoe2, 'elo-weekly': renderEloWeekly,
       ap: () => renderRankingPoll('ap'), cfp: () => renderRankingPoll('cfp') };
-    content.innerHTML = '<h2 class="view-title">Rankings</h2>' + views[state.subview]();
+    content.innerHTML = '<h2 class="view-title">Standings</h2>' + views[state.subview]();
+    if (state.subview === 'conference-standings') hydrateConferenceStandings(version);
     if (state.subview === 'elo-weekly') hydrateEloWeekly(version);
     if (state.subview === 'elo') hydrateRatingFreshness(version);
   } else if (state.section === 'playoff') {

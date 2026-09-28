@@ -78,6 +78,54 @@ test('season, subview, status and query survive URL round trips', () => {
   }
 });
 
+test('conference standings keeps its selected league in a shareable URL', () => {
+  const route = read('#section=rankings&view=conference-standings&season=2025&conf=Big%2012');
+  assert.equal(route.subview, 'conference-standings');
+  assert.equal(route.conf, 'Big 12');
+  assert.deepEqual(read(hashFor(route)), route);
+  assert.equal(read('#section=rankings&view=elo&conf=Big%2012').conf, null);
+  assert.equal(read('#section=rankings&view=conference-standings&conf=' +
+    encodeURIComponent('SEC"><script>')).conf, null);
+  assert.equal(read('#section=rankings').subview, 'elo');
+});
+
+test('conference standings sorts generated ranks and displays both records', () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = shell.match(/function fillConferenceStandings\(cp\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(source);
+  const fields = ['team_id', 'conf_rank', 'w', 'l', 't', 'conf_w', 'conf_l', 'conf_t'];
+  const F = Object.fromEntries(fields.map((field, i) => [field, i]));
+  const target = { innerHTML: '' };
+  const context = {
+    document: { getElementById: () => target },
+    state: { year: 2025, conf: 'Big 12' },
+    TEAM_BY_ID: new Map([['1', { name: 'Alpha' }], ['2', { name: 'Beta' }]]),
+    esc: value => String(value),
+    conferenceLink: name => name,
+    teamLink: name => name,
+    recStr: (w, l, t) => `${w}–${l}${t ? '–' + t : ''}`
+  };
+  vm.runInNewContext(source + '\nthis.fill = fillConferenceStandings;', context);
+  const cp = {
+    mf: F,
+    raw: { independents: 'FBS Independents', conferences: [
+      { name: 'FBS Independents', slug: 'ind' }, { name: 'Big 12', slug: 'big12' }
+    ] },
+    membersOf: (slug, year) => slug === 'big12' && year === 2025 ? [
+      [2, 2, 8, 4, 0, 5, 3, 0], [1, 1, 11, 2, 0, 8, 1, 0]
+    ] : []
+  };
+  context.fill(cp);
+  assert.match(target.innerHTML, /Big 12.*2 members/);
+  assert.ok(target.innerHTML.indexOf('Alpha</td>') < target.innerHTML.indexOf('Beta</td>'));
+  assert.match(target.innerHTML, /Alpha<\/td><td class="num">8–1<\/td><td class="num">11–2/);
+  assert.match(target.innerHTML, /Beta<\/td><td class="num">5–3<\/td><td class="num">8–4/);
+  assert.doesNotMatch(target.innerHTML, /FBS Independents.*<option/);
+  context.state.year = 1980;
+  context.fill(cp);
+  assert.match(target.innerHTML, /No derived conference standings for 1980/);
+});
+
 test('matchups have shareable teams and a guarded venue', () => {
   const route = read('#section=matchups&away=12&home=17&venue=away');
   assert.equal(route.matchupAway, 12);
