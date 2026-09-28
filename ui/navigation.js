@@ -12,7 +12,7 @@
     // 2.0's frozen value ENTERING the season. Separate views with separate names,
     // for the same reason they are separate tables: they must never be read as
     // one number.
-    rankings: ['elo', 'conference-elo', 'team-coe', 'conference-coe', 'conference-coe2', 'elo-weekly', 'ap', 'cfp'],
+    rankings: ['elo', 'conference-standings', 'conference-elo', 'team-coe', 'conference-coe', 'conference-coe2', 'elo-weekly', 'ap', 'cfp'],
     playoff: ['field', 'bracket', 'odds', 'history']
   };
   // Detail-page tabs (Milestone E). The first entry is the default and is left out
@@ -89,7 +89,8 @@
     const t = p.get('school') || '';
     const teamFilter = isGames && /^[a-z0-9-]{1,60}$/.test(t) ? t : null;
     const c = (p.get('conf') || '').trim();
-    const conf = isGames && c.length <= 60 && /^[A-Za-z0-9 &().'-]+$/.test(c) ? c : null;
+    const isConfStandings = section === 'rankings' && subview === 'conference-standings';
+    const conf = (isGames || isConfStandings) && c.length <= 60 && /^[A-Za-z0-9 &().'-]+$/.test(c) ? c : null;
     // Which point in a season the week-by-week Elo table is showing (P1-05):
     // 'pre', 'w<week>' or 'post', the keys src/elo_timeline.py writes. Only the
     // shape is checked here; the page checks it against the season's real stages
@@ -164,6 +165,7 @@
         if (route.conf) p.set('conf', route.conf);
         if (route.game != null) p.set('game', route.game);
       }
+      if (route.section === 'rankings' && route.subview === 'conference-standings' && route.conf) p.set('conf', route.conf);
       if (route.section === 'rankings' && route.subview === 'elo-weekly' && route.stage) p.set('stage', route.stage);
       if (route.section === 'matchups') {
         if (route.matchupAway != null) p.set('away', route.matchupAway);
