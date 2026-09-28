@@ -34,7 +34,9 @@ def clean_game(item):
         teams.append({'id': team.get('id') if type(team.get('id')) is int else None,
                       'name': team['name'], 'points': points,
                       'classification': team.get('classification')})
+    venue = item.get('venue')
     return {'id': item['id'], 'start_date': item.get('startDate'),
+            'venue': venue.strip()[:120] if isinstance(venue, str) and venue.strip() else None,
             'status': item['status'], 'period': item.get('period'),
             'clock': item.get('clock'), 'tv': item.get('tv'),
             'neutral_site': item.get('neutralSite') is True,
