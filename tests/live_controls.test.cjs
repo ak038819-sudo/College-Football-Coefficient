@@ -7,9 +7,11 @@ const shell = fs.readFileSync('ui/dashboard_shell.html', 'utf8');
 const source = shell.match(/function visibleLiveGames\([^)]*\) \{[\s\S]*?\n\}/)?.[0];
 const sectionsSource = shell.match(/function liveSections\([^)]*\) \{[\s\S]*?\n\}/)?.[0];
 const homeSource = shell.match(/function renderLiveScores\([^)]*\) \{[\s\S]*?\n\}/)?.[0];
+const paintSource = shell.match(/function paintLiveGames\([^)]*\) \{[\s\S]*?\n\}/)?.[0];
 assert.ok(source, 'missing live game selector');
 assert.ok(sectionsSource, 'missing collapsible slate selector');
 assert.ok(homeSource, 'missing Home scoreboard');
+assert.ok(paintSource, 'missing scoreboard painter');
 
 test('status filter and kickoff order are independent of the featured order', () => {
   const ctx = {compareHype: (a, b) => b.hype - a.hype};
@@ -29,7 +31,7 @@ test('status filter and kickoff order are independent of the featured order', ()
   assert.deepEqual(games.map(g => g.id), [3, 2, 1, 4], 'the original slate remains in feed order');
 });
 
-test('rankings start folded on narrow screens and open on desktop', () => {
+test('rankings fold on phones only; desktop keeps its original sidebar', () => {
   const render = mobile => {
     const ctx = {window: {matchMedia: () => ({matches: mobile})},
       renderEloTop25: () => 'Elo board', renderConferenceBoard: () => 'Conference board',
@@ -39,7 +41,27 @@ test('rankings start folded on narrow screens and open on desktop', () => {
     return ctx.renderHome();
   };
   assert.match(render(true), /<details class="home-side-fold"><summary>/);
-  assert.match(render(false), /<details class="home-side-fold" open><summary>/);
+  assert.doesNotMatch(render(false), /home-side-fold/);
+  assert.match(render(false), /<aside class="home-side" aria-label="Rankings"><div id="live-rankings">/);
+});
+
+test('desktop keeps every game visible while mobile folds after six', () => {
+  const games = Array.from({length: 10}, (_, i) => ({id: i + 1, status: 'scheduled'}));
+  const paint = mobile => {
+    const target = {innerHTML: '', querySelector: () => null};
+    const ctx = {document: {getElementById: () => target},
+      window: {matchMedia: () => ({matches: mobile})},
+      liveSnapshot: {games}, liveFilter: 'all', liveOrder: 'hype',
+      visibleLiveGames: values => values, renderLiveCard: g => '<article>' + g.id + '</article>',
+      liveFold: (_, label, values) => '<details>' + label + ':' + values.length + '</details>'};
+    vm.runInNewContext(sectionsSource + '\n' + paintSource + '\nthis.paint = paintLiveGames;', ctx);
+    ctx.paint();
+    return target.innerHTML;
+  };
+  assert.equal((paint(false).match(/<article>/g) || []).length, 10);
+  assert.doesNotMatch(paint(false), /<details>/);
+  assert.equal((paint(true).match(/<article>/g) || []).length, 6);
+  assert.match(paint(true), /More live and upcoming games:4/);
 });
 
 test('Home shows a short current slate and folds the rest, including finals', () => {

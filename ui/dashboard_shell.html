@@ -3012,9 +3012,9 @@ function renderLiveBoard(games) {
       : 'Published Elo ratings; no live result projection is available yet.') + '</p></div>';
 }
 function renderLiveScores() {
-  const showSide = !window.matchMedia('(max-width: 960px)').matches;
+  const mobile = window.matchMedia('(max-width: 700px)').matches;
   return '<h2 class="view-title">Home · Live Scores</h2><p class="section-note">Scores from CollegeFootballData.com. ' +
-    'Live games lead, followed by featured matchups. Expand the rest of the slate and rankings as needed. The feed timestamp shows its freshness.</p>' +
+    'Featured games lead by Elo rank, matchup strength and projected closeness. The feed timestamp shows its freshness. Live Elo rankings are an illustrative scenario; published ratings update separately.</p>' +
     '<div id="live-status" role="status" aria-live="polite">Loading the scoreboard…</div>' +
     '<div class="live-controls"><fieldset aria-label="Game status"><legend>Game status</legend>' +
     [['all', 'All'], ['in_progress', 'Live'], ['scheduled', 'Upcoming'], ['completed', 'Final']]
@@ -3025,9 +3025,10 @@ function renderLiveScores() {
       .map(([value, label]) => '<button type="button" data-live-order="' + value + '" aria-pressed="' +
         (liveOrder === value) + '">' + label + '</button>').join('') + '</fieldset></div>' +
     '<div class="live-layout"><div id="live-games" class="live-grid"></div>' +
-    '<aside class="home-side" aria-label="Rankings"><details class="home-side-fold"' + (showSide ? ' open' : '') +
-    '><summary>Rankings and conference boards</summary><div id="live-rankings">' +
-    renderEloTop25() + '</div>' + renderConferenceBoard() + renderPollsPanel() + '</details></aside></div>';
+    '<aside class="home-side" aria-label="Rankings">' + (mobile ?
+      '<details class="home-side-fold"><summary>Rankings and conference boards</summary>' : '') +
+    '<div id="live-rankings">' + renderEloTop25() + '</div>' + renderConferenceBoard() + renderPollsPanel() +
+    (mobile ? '</details>' : '') + '</aside></div>';
 }
 function liveChange(g, t) {
   if (g.status !== 'completed' || !Number.isInteger(g.away?.points) || !Number.isInteger(g.home?.points)) return '';
@@ -3153,6 +3154,13 @@ function paintLiveGames() {
   const target = document.getElementById('live-games');
   if (!target || !liveSnapshot) return;
   const games = visibleLiveGames(liveSnapshot.games, liveFilter, liveOrder);
+  if (!window.matchMedia('(max-width: 700px)').matches) {
+    target.innerHTML = games.length ? games.map(renderLiveCard).join('') :
+      '<p class="empty-note">' + (liveFilter === 'all' ? 'No games in the current scoreboard window.' :
+        'No ' + ({in_progress: 'live', scheduled: 'upcoming', completed: 'final'}[liveFilter] || '') +
+        ' games in this slate. Choose All to see every game.') + '</p>';
+    return;
+  }
   const openMore = target.querySelector('[data-live-fold="more"]')?.open || false;
   const openFinals = target.querySelector('[data-live-fold="finals"]')?.open || false;
   const sections = liveSections(games, liveFilter);
