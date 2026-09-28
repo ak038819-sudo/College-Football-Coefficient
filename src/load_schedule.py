@@ -29,6 +29,9 @@ SCHEMA = Path(__file__).resolve().parent.parent / "sql" / "schedule_tables.sql"
 
 def ensure_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA.read_text(encoding="utf-8"))
+    # Existing local databases predate the display-only venue column.
+    if "venue" not in {row[1] for row in conn.execute("PRAGMA table_info(scheduled_games)")}:
+        conn.execute("ALTER TABLE scheduled_games ADD COLUMN venue TEXT")
 
 
 def load_schedule(conn: sqlite3.Connection, csv_path: str) -> dict:
@@ -59,11 +62,11 @@ def load_schedule(conn: sqlite3.Connection, csv_path: str) -> dict:
         cur.execute(
             """INSERT OR REPLACE INTO scheduled_games
                (game_id, season_year, week, season_type, kickoff_utc, start_time_tbd,
-                home_team_id, away_team_id, neutral_site, game_phase, notes)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                home_team_id, away_team_id, neutral_site, game_phase, notes, venue)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (gid, int(r["season_year"]), int(r["week"]) if r["week"] else None, r["season_type"] or None,
              r["kickoff_utc"] or None, int(r["start_time_tbd"] or 0), home, away,
-             int(r["neutral_site"] or 0), r["game_phase"] or "regular", r["notes"] or None),
+             int(r["neutral_site"] or 0), r["game_phase"] or "regular", r["notes"] or None, r.get("venue") or None),
         )
         stats["inserted"] += 1
     conn.commit()
