@@ -3070,7 +3070,7 @@ function homeSlate(feedGames) {
   }
   const first = Math.min(...next.games.map(g => Date.parse(g.kickoff)).filter(Number.isFinite));
   const last = Math.max(...feedGames.map(g => Date.parse(g.start_date)).filter(Number.isFinite));
-  if (!Number.isFinite(first) || !Number.isFinite(last) || last >= first - 24 * 60 * 60 * 1000) {
+  if (!Number.isFinite(first) || feedGames.length && (!Number.isFinite(last) || last >= first - 24 * 60 * 60 * 1000)) {
     return { games: feedGames, label: null };
   }
   const games = next.games.map(g => ({
