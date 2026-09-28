@@ -430,3 +430,31 @@ test('Home rolls from old finals to the next scheduled week, while a matching li
   const late = [{ id: 502, status: 'in_progress', start_date: '2026-09-27T23:00:00Z' }];
   assert.equal(context.choose(late).label, null, 'an ongoing Sunday game remains visible');
 });
+
+test('home scoreboard leads with ranked, competitive games instead of kickoff order', () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const score = shell.match(/function hypeScore\(g\) \{[\s\S]*?\n\}/)?.[0];
+  const compare = shell.match(/function compareHype\(a, b\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(score && compare);
+  const teams = new Map([
+    ['Elite A', { id: 1 }], ['Elite B', { id: 2 }],
+    ['Local A', { id: 3 }], ['Local B', { id: 4 }]
+  ]);
+  const context = {
+    liveTeamId: t => teams.get(t.name),
+    CURRENT_ELO: new Map([
+      [1, { elo: 1810, rank: 2 }], [2, { elo: 1770, rank: 5 }],
+      [3, { elo: 1420, rank: 75 }], [4, { elo: 1410, rank: 80 }]
+    ]),
+    livePrediction: g => ({ pHome: g.p })
+  };
+  vm.runInNewContext(score + '\n' + compare + '\nthis.compare = compareHype;', context);
+  const early = { id: 10, home: { name: 'Local A' }, away: { name: 'Local B' },
+    p: .5, start_date: '2026-10-03T16:00:00Z' };
+  const marquee = { id: 11, home: { name: 'Elite A' }, away: { name: 'Elite B' },
+    p: .52, start_date: '2026-10-03T23:00:00Z' };
+  assert.ok(context.compare(marquee, early) < 0, 'top-five matchup goes first despite later kickoff');
+  assert.ok(context.compare(early, marquee) > 0);
+  const other = { ...marquee, id: 12, start_date: '2026-10-04T00:00:00Z' };
+  assert.ok(context.compare(marquee, other) < 0, 'kickoff breaks equal-hype ties');
+});
