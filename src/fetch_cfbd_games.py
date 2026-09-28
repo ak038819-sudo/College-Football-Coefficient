@@ -268,7 +268,7 @@ def is_completed(g: dict) -> bool:
 
 SCHEDULE_FIELDS = [
     "game_id", "season_year", "week", "kickoff_utc", "start_time_tbd", "season_type",
-    "home_team", "away_team", "neutral_site", "game_phase", "notes",
+    "home_team", "away_team", "neutral_site", "game_phase", "notes", "venue",
 ]
 
 
@@ -288,6 +288,7 @@ def schedule_row(g: dict, year: int, cfp_top4) -> dict:
         "neutral_site": to_bool01(pick(g, "neutral_site", "neutralSite", default=False)),
         "game_phase": game_phase(season_type_val, classify_game(g, season_type_val, cfp_top4)),
         "notes": pick(g, "notes", default="") or "",
+        "venue": pick(g, "venue", default="") or "",
     }
 
 
