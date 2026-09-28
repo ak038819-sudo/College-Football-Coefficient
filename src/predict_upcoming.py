@@ -100,17 +100,21 @@ def build_upcoming(conn: sqlite3.Connection, cfg: dict) -> dict:
     {"season", "ratings_as_of", "games": [...], "current_elo": [[team_id, elo, rank], ...]}
 
     games rows: [game_id, season, week, kickoff_utc, start_time_tbd, home_id, away_id,
-                 neutral, phase_code, home_elo, away_elo, p_home, home_provisional, away_provisional]
+                 neutral, phase_code, home_elo, away_elo, p_home, home_provisional, away_provisional, venue]
     A *_provisional flag marks a team with no completed game yet (rating = the
     engine's starting rating), so the UI can say so instead of implying history.
     """
     empty = {"season": None, "ratings_as_of": None, "games": [], "current_elo": []}
     has_sched = conn.execute(
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name='scheduled_games'").fetchone()
+    venue_column = has_sched and "venue" in {
+        row[1] for row in conn.execute("PRAGMA table_info(scheduled_games)")
+    }
+    venue_expr = "venue" if venue_column else "NULL AS venue"
     sched = conn.execute(
-        """
+        f"""
         SELECT game_id, season_year, week, kickoff_utc, start_time_tbd, home_team_id, away_team_id,
-               neutral_site, game_phase
+               neutral_site, game_phase, {venue_expr}
         FROM scheduled_games
         WHERE game_id NOT IN (SELECT game_id FROM games)
         ORDER BY kickoff_utc IS NULL, kickoff_utc, week, game_id
@@ -133,14 +137,14 @@ def build_upcoming(conn: sqlite3.Connection, cfg: dict) -> dict:
         return cache[s]
 
     games_out = []
-    for gid, s, week, kickoff, tbd, home, away, neutral, phase in sched:
+    for gid, s, week, kickoff, tbd, home, away, neutral, phase, venue in sched:
         ratings = ratings_for(s)[0]
         r_home = ratings.get(home, cfg["initial_rating"])
         r_away = ratings.get(away, cfg["initial_rating"])
         p_home = game_expectation(r_home, r_away, neutral, cfg)
         games_out.append([gid, s, week, kickoff, int(tbd or 0), home, away, int(neutral or 0),
                           PHASE_CODE.get(phase, 0), round(r_home, 1), round(r_away, 1), round(p_home, 4),
-                          int(home not in ratings), int(away not in ratings)])
+                          int(home not in ratings), int(away not in ratings), venue])
 
     ratings, _, as_of = ratings_for(season)
     # Leaderboard population: teams active in `season` (played or scheduled);
