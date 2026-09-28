@@ -75,6 +75,12 @@
     if (section === 'home' || section === 'live' || section === 'matchups' || section === 'teams' || section === 'methodology' || section === 'coverage')
       year = latest(config.yearsAll || []);
     const season = (config.gameSeasons || []).find(s => s.season === year);
+    // The Games landing page searches every season. Explicit old explorer URLs
+    // keep their season/status/week filters and remain valid.
+    const finder = section === 'games' && (p.get('mode') === 'find' ||
+      (!p.has('season') && !p.has('status') && !p.has('week') && !p.has('conf') && !p.has('game')));
+    const findSeason = finder && (config.gameSeasons || []).some(s => s.season === Number(p.get('findseason')))
+      ? Number(p.get('findseason')) : null;
     const status = ['upcoming', 'completed', 'all'].includes(p.get('status')) ? p.get('status')
       : season && season.scheduled > 0 ? 'upcoming' : 'completed';
     // Games may point at one game (search results; game pages build on this later). Digits only.
@@ -88,6 +94,7 @@
     // "school", not "team": #team=<slug> already means "open that team's page".
     const t = p.get('school') || '';
     const teamFilter = isGames && /^[a-z0-9-]{1,60}$/.test(t) ? t : null;
+    const opponent = finder && /^[a-z0-9-]{1,60}$/.test(p.get('opponent') || '') ? p.get('opponent') : null;
     const c = (p.get('conf') || '').trim();
     const isConfStandings = section === 'rankings' && subview === 'conference-standings';
     const conf = (isGames || isConfStandings) && c.length <= 60 && /^[A-Za-z0-9 &().'-]+$/.test(c) ? c : null;
@@ -102,7 +109,7 @@
     const venue = ['home', 'away', 'neutral'].includes(p.get('venue')) ? p.get('venue') : 'home';
     const route = { section, subview, year, status,
       query: section === 'teams' ? (p.get('q') || '').trim().slice(0, 150) : '',
-      game, week, team: teamFilter, conf, stage,
+      game, week, team: teamFilter, opponent, finder, findSeason, conf, stage,
       matchupHome: section === 'matchups' ? matchupId('home') : null,
       matchupAway: section === 'matchups' ? matchupId('away') : null,
       venue: section === 'matchups' ? venue : 'home', view: 'tab', teamParam: null, conferenceParam: null,
@@ -112,7 +119,8 @@
       route.subview = '';
       route.query = '';
       route.game = null;
-      route.week = null; route.team = null; route.conf = null; route.stage = null;
+      route.week = null; route.team = null; route.opponent = null; route.finder = false;
+      route.findSeason = null; route.conf = null; route.stage = null;
       route[kind === 'game' ? 'gameParam' : kind + 'Param'] = param;
       const wanted = p.get('tab') || '';
       route.tab = pageTabs[kind].includes(wanted) ? wanted : (pageTabs[kind][0] || '');
@@ -156,10 +164,15 @@
     } else {
       p.set('section', route.section);
       if (route.subview) p.set('view', route.subview);
-      if (route.year != null && (route.section === 'games' || route.section === 'rankings' ||
+      if (route.year != null && ((route.section === 'games' && !route.finder) || route.section === 'rankings' ||
           (route.section === 'playoff' && route.subview !== 'history'))) p.set('season', route.year);
-      if (route.section === 'games') p.set('status', route.status);
-      if (route.section === 'games') {
+      if (route.section === 'games' && route.finder) {
+        p.set('mode', 'find');
+        if (route.team) p.set('school', route.team);
+        if (route.opponent) p.set('opponent', route.opponent);
+        if (route.findSeason != null) p.set('findseason', route.findSeason);
+      } else if (route.section === 'games') p.set('status', route.status);
+      if (route.section === 'games' && !route.finder) {
         if (route.week != null) p.set('week', route.week);
         if (route.team) p.set('school', route.team);
         if (route.conf) p.set('conf', route.conf);

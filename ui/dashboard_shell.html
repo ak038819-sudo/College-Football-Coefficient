@@ -224,6 +224,12 @@
   .games-filters form, .filter-row form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; margin: 0 0 14px; }
   .games-filters label, .filter-row label { display: flex; flex-direction: column; gap: 4px; font: 11px var(--font-mono); color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.4px; }
   .games-filters select, .filter-row select { padding: 8px; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 3px; font: 14px var(--font-body, inherit); max-width: 240px; }
+  .games-filters input { padding: 8px; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 3px; font: 14px var(--font-body); min-width: 180px; }
+  .finder-results { list-style: none; padding: 0; margin: 0; }
+  .finder-results li { border-top: 1px solid var(--line); padding: 10px 0; }
+  .finder-results a { color: var(--ink); display: flex; flex-wrap: wrap; gap: 5px 12px; align-items: baseline; text-decoration: none; }
+  .finder-results a:hover { color: var(--amber); }
+  .finder-results small { color: var(--ink-dim); }
   .games-week { margin: 0 0 18px; }
   .games-week h3 { font-family: var(--font-display); font-size: 17px; margin: 0 0 8px; display: flex; align-items: baseline; gap: 8px; }
   .games-week h3 small { font: 11px var(--font-mono); color: var(--ink-dim); }
@@ -1229,7 +1235,7 @@ const ROUTE_CONFIG = { yearsAll: DATA.years_all, playoffYears: DATA.years_playof
   gameSeasons: STATIC_MANIFEST.seasons || [] };
 let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult: null, simYear: null,
   homeGroup: null, homeTop25: false, homePoll: null };
-const SECTION_LABELS = { home: 'Home', live: 'Live Scores', games: 'Games', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
+const SECTION_LABELS = { home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
 const SUBVIEWS = {
   rankings: [['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
     ['conference-coe2', 'Conference CoE 2.0'], ['elo-weekly', 'Week by Week'],
@@ -1249,13 +1255,14 @@ function fmt(n) { return Number(n).toFixed(3); }
 function renderYearRow() {
   const row = document.getElementById('year-row');
   if (state.view === 'team' || state.view === 'conference' || state.view === 'game' ||
-      state.section === 'teams' || state.section === 'live' || state.section === 'matchups' || state.section === 'methodology' || state.section === 'coverage') {
+      state.section === 'teams' || state.section === 'live' || state.section === 'matchups' || state.section === 'methodology' || state.section === 'coverage' ||
+      (state.section === 'games' && state.finder)) {
     row.innerHTML = '';
     document.getElementById('year-caption').textContent = state.view === 'team' ? 'TEAM PAGE'
       : state.view === 'conference' ? 'CONFERENCE PAGE' : state.view === 'game' ? 'GAME'
       : state.section === 'live' ? 'CURRENT SLATE' : state.section === 'matchups' ? 'WHAT IF · ' + UPCOMING.season
       : state.section === 'methodology' ? 'METHODOLOGY'
-      : state.section === 'coverage' ? 'EVERY SEASON' : 'TEAMS & CONFERENCES';
+      : state.section === 'coverage' ? 'EVERY SEASON' : state.section === 'games' ? 'EVERY SEASON' : 'TEAMS & CONFERENCES';
     return;
   }
   if (state.section === 'home') {
@@ -3316,10 +3323,15 @@ setInterval(refreshVisibleLive, 60_000);
 document.addEventListener('visibilitychange', refreshVisibleLive);
 
 function renderGames() {
-  const tabs = [['upcoming', 'Upcoming'], ['completed', 'Completed'], ['all', 'All']].map(([status, label]) =>
-    '<a href="' + esc(routeHref({ status })) + '"' + (state.status === status ? ' aria-current="page"' : '') + '>' + label + '</a>').join('');
-  return '<div class="panel"><h2 class="view-title">Games</h2>' +
-    '<nav class="subnav" aria-label="Game status">' + tabs + '</nav>' +
+  if (state.finder) return '<div class="panel"><h2 class="view-title">Find a Game</h2>' +
+    '<p class="section-note">Choose a team, then add an opponent to find their meetings across every season. The season is optional.</p>' +
+    '<div id="games-filters" class="games-filters"><p class="empty-note">Loading teams…</p></div>' +
+    '<div id="games-results" aria-live="polite"></div></div>';
+  const status = [['upcoming', 'Upcoming'], ['completed', 'Completed'], ['all', 'All games']].map(([value, label]) =>
+    '<option value="' + value + '"' + (state.status === value ? ' selected' : '') + '>' + label + '</option>').join('');
+  return '<div class="panel"><h2 class="view-title">Find a Game</h2>' +
+    '<div class="games-filters"><label for="games-status">Game status</label> ' +
+    '<select id="games-status" aria-label="Game status">' + status + '</select></div>' +
     '<div id="games-filters" class="games-filters"></div>' +
     '<div id="games-results" aria-live="polite"><p class="empty-note">Loading ' + state.year + ' games…</p></div></div>';
 }
@@ -3372,7 +3384,58 @@ function listingGame(g, season) {
 // Games explorer (Milestone B): status + week/postseason + school + conference filters,
 // all held in the URL, applied to the season file; results grouped by week, oldest first.
 let gamesFocusAfterLoad = null;
+let finderCount = 10;
+let finderRows = [];
+let finderTeams = [];
+function finderResultsHtml() {
+  const shown = finderRows.slice(0, finderCount);
+  if (!state.team) return '<p class="empty-note">Start by choosing a team. Add a second team for head-to-head games.</p>';
+  if (!finderRows.length) return '<p class="empty-note">No games found. Try another season or clear the opponent.</p>';
+  const name = id => finderTeams.find(t => t.id === id)?.name || 'Unknown team';
+  return '<p class="section-note">' + finderRows.length + ' game' + (finderRows.length === 1 ? '' : 's') +
+    ' found · newest first</p><ol class="finder-results">' + shown.map(g => {
+      const score = g.completed ? g.away_score + '–' + g.home_score : 'Scheduled';
+      return '<li><a href="' + esc(gameHref(g.game_id, g.season)) + '"><small>' + esc(g.date || String(g.season)) +
+        '</small><span>' + esc(name(g.away_id)) + ' at ' + esc(name(g.home_id)) + '</span><strong>' +
+        esc(score) + '</strong></a></li>';
+    }).join('') + '</ol>' + (finderRows.length > shown.length
+      ? '<button class="action-button" id="finder-more">Show more (' + (finderRows.length - shown.length) + ' remaining)</button>' : '');
+}
+function hydrateGameFinder(version) {
+  loadSearchIndex().then(idx => {
+    if (version !== renderVersion) return;
+    finderTeams = idx.teams;
+    const bySlug = new Map(idx.teams.map(t => [t.slug, t]));
+    const first = bySlug.get(state.team), second = bySlug.get(state.opponent);
+    const option = (value, label) => '<option value="' + esc(value) + '" label="' + esc(label) + '"></option>';
+    const years = [...idx.seasons].sort((a, b) => b - a);
+    document.getElementById('games-filters').innerHTML = '<form id="games-filter-form" aria-label="Find a game" autocomplete="off">' +
+      '<label>Team 1<input id="finder-team" list="finder-teams" value="' + esc(first?.name || '') +
+      '" placeholder="Search for a team" aria-describedby="finder-help"></label>' +
+      '<label>Team 2 (optional)<input id="finder-opponent" list="finder-teams" value="' + esc(second?.name || '') +
+      '" placeholder="Search for an opponent"></label>' +
+      '<datalist id="finder-teams">' + idx.teams.map(t => option(t.name, t.aliases.join(', '))).join('') + '</datalist>' +
+      '<label>Season (optional)<select id="finder-season"><option value="">All seasons</option>' +
+      years.map(y => '<option value="' + y + '"' + (state.findSeason === y ? ' selected' : '') + '>' + y + '</option>').join('') +
+      '</select></label></form><p id="finder-help" class="section-note">Type a team name and choose it from the suggestions.</p>';
+    const firstId = first?.id, secondId = second?.id;
+    finderRows = firstId ? idx.games.filter(r =>
+      (r[2] === firstId || r[3] === firstId) &&
+      (!secondId || (r[2] === secondId || r[3] === secondId)) &&
+      (state.findSeason == null || r[1] === state.findSeason))
+      .map(([game_id, season, home_id, away_id, date, home_score, away_score, completed]) =>
+        ({game_id, season, home_id, away_id, date, home_score, away_score, completed}))
+      .sort((a, b) => b.season - a.season || String(b.date).localeCompare(String(a.date)) || b.game_id - a.game_id) : [];
+    finderCount = 10;
+    document.getElementById('games-results').innerHTML = finderResultsHtml();
+    if (gamesFocusAfterLoad) { document.getElementById(gamesFocusAfterLoad)?.focus(); gamesFocusAfterLoad = null; }
+  }).catch(() => {
+    if (version === renderVersion) document.getElementById('games-results').innerHTML =
+      '<p class="empty-note">Could not load game search. <button class="action-button" id="retry-games">Retry</button></p>';
+  });
+}
 function hydrateGames(version) {
+  if (state.finder) { hydrateGameFinder(version); return; }
   const season = state.year, status = state.status;
   loadSeasonGames(season).then(data => {
     if (version !== renderVersion) return;
@@ -3462,6 +3525,29 @@ document.getElementById('content').addEventListener('keydown', e => {
   }
 });
 document.getElementById('content').addEventListener('change', e => {
+  if (e.target.id === 'games-status' && state.section === 'games') {
+    navigate({ status: e.target.value }); return;
+  }
+  if (state.section === 'games' && state.finder) {
+    if (e.target.id === 'finder-season') {
+      gamesFocusAfterLoad = e.target.id;
+      navigate({ findSeason: e.target.value ? Number(e.target.value) : null }); return;
+    }
+    if (e.target.id === 'finder-team' || e.target.id === 'finder-opponent') {
+      const value = CfbNavigation.normalizeSearch(e.target.value);
+      const team = !value ? null : finderTeams.find(t =>
+        [t.name, ...t.aliases].some(n => CfbNavigation.normalizeSearch(n) === value));
+      if (value && !team) {
+        document.getElementById('finder-help').textContent = 'Choose a team from the suggestions.'; return;
+      }
+      if (e.target.id === 'finder-opponent' && team?.slug === state.team) {
+        document.getElementById('finder-help').textContent = 'Choose a different team as the opponent.'; return;
+      }
+      gamesFocusAfterLoad = e.target.id;
+      navigate(e.target.id === 'finder-team' ? { team: team?.slug || null, opponent: null }
+        : { opponent: team?.slug || null }); return;
+    }
+  }
   const stageSel = e.target.closest('#ew-filters select');
   if (stageSel) { navigate({ stage: stageSel.value || null }); return; }
   const sel = e.target.closest('#games-filters select');
@@ -4507,7 +4593,7 @@ function searchResultsHtml(r) {
   }
   if (r.seasons.length) {
     groups.push('<div class="search-group" role="group" aria-label="Seasons"><h3>Seasons</h3>' + r.seasons.map(y =>
-      '<a class="search-hit" href="' + esc(CfbNavigation.hashFor(CfbNavigation.readRoute('#section=games&season=' + y, ROUTE_CONFIG))) + '">' +
+      '<a class="search-hit" href="' + esc(CfbNavigation.hashFor(CfbNavigation.readRoute('#section=games&mode=find&findseason=' + y, ROUTE_CONFIG))) + '">' +
       '<span class="hit-text">' + y + ' season</span><small>games</small></a>' +
       '<a class="search-hit" href="' + esc(CfbNavigation.hashFor(CfbNavigation.readRoute('#section=rankings&view=elo&season=' + y, ROUTE_CONFIG))) + '">' +
       '<span class="hit-text">' + y + ' standings</span><small>Elo</small></a>').join('') + '</div>');
@@ -4599,6 +4685,12 @@ document.getElementById('content').addEventListener('click', e => {
     document.querySelector('[data-poll="' + state.homePoll + '"]')?.focus();
   }
   if (e.target.id === 'simulate-btn' && state.section === 'playoff' && state.subview === 'bracket') runSimulationAndAnimate();
+  if (e.target.id === 'finder-more' && state.section === 'games' && state.finder) {
+    finderCount += 10;
+    document.getElementById('games-results').innerHTML = finderResultsHtml();
+    document.querySelector('#games-results li:nth-child(' + (finderCount - 9) + ') a')?.focus();
+    return;
+  }
   if (e.target.id === 'retry-games' || e.target.id === 'retry-directory' || e.target.id === 'retry-standings') render();
 });
 document.getElementById('content').addEventListener('change', e => {

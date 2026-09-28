@@ -57,7 +57,7 @@ FIELDS = ["game_id", "week", "date", "kickoff_utc", "completed", "phase", "neutr
           "home_pre_elo", "away_pre_elo", "p_home", "home_post_elo", "away_post_elo", "home_elo_change",
           "home_game_coe", "away_game_coe", "home_provisional", "away_provisional",
           "time_tbd"]      # appended last so existing positions never move
-SEARCH_GAME_FIELDS = ["game_id", "season", "home_id", "away_id"]
+SEARCH_GAME_FIELDS = ["game_id", "season", "home_id", "away_id", "date", "home_score", "away_score", "completed"]
 
 # Game pages (Milestone C). Loaded only when a game page opens.
 DETAIL_FIELDS = ["game_id",
@@ -270,7 +270,8 @@ def build_search_index(conn: sqlite3.Connection, payloads: dict) -> dict:
             aliases[tid].append(alias)
     from export_dashboard_data import slugify
     teams = [[tid, name, slugify(name), aliases.get(tid, [])] for tid, name in sorted(names.items(), key=lambda x: x[1])]
-    games = [[r[0], season, r[8], r[9]] for season in sorted(payloads) for r in payloads[season]["games"]]
+    games = [[r[0], season, r[8], r[9], r[2], r[10], r[11], r[4]]
+             for season in sorted(payloads) for r in payloads[season]["games"]]
     return {"teams": teams, "seasons": sorted(payloads), "game_fields": SEARCH_GAME_FIELDS, "games": games,
             "conferences": build_conference_search_rows(conn)}
 

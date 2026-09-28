@@ -185,7 +185,64 @@ test('no-season exports stay usable without inventing a year', () => {
   const empty = { yearsAll: [], playoffYears: [], gameSeasons: [] };
   const route = readRoute('#section=games', empty);
   assert.equal(route.year, null);
-  assert.equal(hashFor(route), '#section=games&status=completed');
+  assert.equal(hashFor(route), '#section=games&mode=find');
+});
+
+test('Find a Game preserves two teams and an optional season, without changing legacy Games links', () => {
+  const finder = read('#section=games&mode=find&school=byu&opponent=utah&findseason=2025');
+  assert.equal(finder.finder, true);
+  assert.equal(finder.team, 'byu');
+  assert.equal(finder.opponent, 'utah');
+  assert.equal(finder.findSeason, 2025);
+  assert.deepEqual(read(hashFor(finder)), finder);
+  assert.equal(read('#section=games').finder, true);
+  assert.equal(read('#section=games&mode=find&findseason=3000').findSeason, null);
+  assert.equal(read('#section=games&season=2025&status=completed').finder, false);
+});
+
+test('Find a Game shows head-to-head results across seasons without an endless list', async () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = shell.match(/let finderCount = 10;[\s\S]*?\nfunction hydrateGames\(version\)/)?.[0];
+  assert.ok(source);
+  const filters = { innerHTML: '' }, results = { innerHTML: '' };
+  const context = {
+    state: { finder: true, team: 'byu', opponent: 'utah', findSeason: null },
+    renderVersion: 1, gamesFocusAfterLoad: null,
+    document: { getElementById: id => ({ 'games-filters': filters, 'games-results': results })[id] },
+    loadSearchIndex: () => Promise.resolve({
+      teams: [{ id: 1, name: 'BYU', slug: 'byu', aliases: [] },
+        { id: 2, name: 'Utah', slug: 'utah', aliases: [] },
+        { id: 3, name: 'Other', slug: 'other', aliases: [] }],
+      seasons: [2014, 2015, 2016],
+      games: [
+        ...Array.from({ length: 12 }, (_, i) => [100 + i, i < 2 ? 2014 : 2015, i % 2 ? 2 : 1,
+          i % 2 ? 1 : 2, '2015-09-01', 24, 17, 1]),
+        [999, 2016, 1, 3, '2016-09-01', 30, 7, 1]
+      ]
+    }),
+    esc: v => String(v), gameHref: (id, season) => '#game=' + id + '&season=' + season
+  };
+  vm.runInNewContext(source.replace(/\nfunction hydrateGames\(version\)$/, ''), context);
+  context.hydrateGameFinder(1);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.match(results.innerHTML, /12 games found/);
+  assert.equal((results.innerHTML.match(/<li>/g) || []).length, 10);
+  assert.match(results.innerHTML, /Show more \(2 remaining\)/);
+  assert.doesNotMatch(results.innerHTML, /#game=999/);
+});
+
+test('Games routes use a status dropdown rather than the old status tabs', () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = shell.match(/function renderGames\(\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(source);
+  const context = { state: { finder: false, status: 'completed', year: 2025 }, esc: String };
+  vm.runInNewContext(source + '\nthis.renderGames = renderGames;', context);
+  const legacy = context.renderGames();
+  assert.match(legacy, /<select id="games-status"/);
+  assert.match(legacy, /value="completed" selected/);
+  assert.doesNotMatch(legacy, /<nav class="subnav"/);
+  context.state.finder = true;
+  assert.doesNotMatch(context.renderGames(), /games-status|<nav class="subnav"/);
 });
 
 test('a games URL can point at one game; anything but digits is dropped', () => {
