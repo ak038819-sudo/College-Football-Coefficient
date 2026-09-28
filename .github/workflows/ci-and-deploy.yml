@@ -141,10 +141,19 @@ jobs:
         if: >-
           github.event_name == 'schedule' &&
           (github.event.schedule == '0 23 * * 0' || github.event.schedule == '0 0 * * 1')
+        env:
+          TRIGGER: ${{ github.event.schedule }}
         run: |
-          if [ "$(TZ=America/Chicago date +%u%H)" != "718" ]; then
+          # Pick the UTC cron for 6 PM Central on this Sunday. Do not require
+          # the runner to start at exactly 6 PM; GitHub can delay scheduled jobs.
+          if [ "$(TZ=America/Chicago date +%z)" = "-0500" ]; then
+            expected='0 23 * * 0'
+          else
+            expected='0 0 * * 1'
+          fi
+          if [ "$TRIGGER" != "$expected" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Outside Sunday 6 PM Central; this UTC trigger is a no-op."
+            echo "This UTC trigger is not the 6 PM Central slot."
           fi
 
       - name: Detect live finals missing from model inputs
