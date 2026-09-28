@@ -404,3 +404,29 @@ test('live scoreboard has a stable section URL with no season selector', () => {
   assert.equal(route.section, 'live');
   assert.equal(hashFor(route), '#section=live');
 });
+
+test('Home rolls from old finals to the next scheduled week, while a matching live week stays live', () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = shell.match(/function homeSlate\(feedGames\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(source, 'Home slate selection exists');
+  const next = { id: 501, season: 2026, week: 5, kickoff: '2026-10-02T00:00:00Z',
+    home: 1, away: 2, neutral: false };
+  const context = {
+    upcomingGroups: () => [{ label: 'Week 5', games: [next] }],
+    TEAM_BY_ID: new Map([['1', { name: 'BYU' }], ['2', { name: 'Utah' }]])
+  };
+  vm.runInNewContext(source + '\nthis.choose = homeSlate;', context);
+  const old = [{ id: 401, status: 'completed', start_date: '2026-09-26T19:00:00Z' }];
+  const rollover = context.choose(old);
+  assert.equal(rollover.label, 'Week 5');
+  assert.equal(rollover.games.length, 1);
+  assert.equal(rollover.games[0].id, 501);
+  assert.equal(rollover.games[0].status, 'scheduled');
+  assert.equal(rollover.games[0].home.name, 'BYU');
+  assert.equal(context.choose([]).games[0].id, 501);
+  const live = [{ id: 501, status: 'in_progress', start_date: next.kickoff }];
+  assert.equal(context.choose(live).label, null);
+  assert.equal(context.choose(live).games[0].status, 'in_progress');
+  const late = [{ id: 502, status: 'in_progress', start_date: '2026-09-27T23:00:00Z' }];
+  assert.equal(context.choose(late).label, null, 'an ongoing Sunday game remains visible');
+});
