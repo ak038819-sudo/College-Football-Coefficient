@@ -5,7 +5,7 @@ from fetch_live_scores import make_snapshot, clean_player_boxscores, merge_playe
 
 def sample(status='in_progress'):
     return {'id': 42, 'startDate': '2026-09-26T19:00:00Z', 'status': status,
-            'period': 3, 'clock': '06:15', 'tv': 'ESPN',
+            'period': 3, 'clock': '06:15', 'tv': 'ESPN', 'venue': 'LaVell Edwards Stadium',
             'homeTeam': {'id': 1, 'name': 'BYU', 'points': 21, 'classification': 'fbs', 'winProbability': .7},
             'awayTeam': {'id': 2, 'name': 'Utah', 'points': 17, 'classification': 'fbs'}}
 
@@ -14,6 +14,7 @@ def test_snapshot_strips_non_score_data():
     result = make_snapshot([sample()], dt.datetime(2026, 9, 26, tzinfo=dt.timezone.utc))
     assert result['games'][0]['home']['points'] == 21
     assert result['games'][0]['status'] == 'in_progress'
+    assert result['games'][0]['venue'] == 'LaVell Edwards Stadium'
     assert 'winProbability' not in str(result)
 
 
