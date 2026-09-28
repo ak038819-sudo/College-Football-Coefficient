@@ -773,6 +773,14 @@
   .live-controls button { padding: 7px 11px; border: 1px solid var(--line); border-radius: 5px;
     background: var(--panel-2); color: var(--ink); cursor: pointer; font: 12px var(--font-mono); }
   .live-controls button[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); background: #49391b55; }
+  .live-fold { grid-column: 1 / -1; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); }
+  .live-fold > summary, .home-side-fold > summary { padding: 12px 15px; cursor: pointer;
+    color: var(--amber); font: 13px var(--font-mono); }
+  .live-fold > summary:hover, .home-side-fold > summary:hover { background: #ffffff0b; }
+  .live-slate-title { grid-column: 1 / -1; margin: 0; font: 15px var(--font-display); color: var(--ink); }
+  .live-fold-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 0 12px 12px; }
+  .home-side-fold > summary { border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); }
+  .home-side-fold[open] > summary { margin-bottom: 12px; }
   .live-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
   .live-layout .live-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .live-card { min-width: 0; overflow: hidden; border: 1px solid #53605c; border-radius: 12px;
@@ -822,6 +830,7 @@
   @media (max-width: 700px) { .live-player-grid { grid-template-columns: 1fr; } }
   @media (max-width: 960px) { .live-layout { grid-template-columns: 1fr; } }
   @media (max-width: 700px) { .live-layout .live-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 700px) { .live-fold-grid { grid-template-columns: 1fr; } }
   @media (max-width: 400px) { .live-team { padding: 10px; } .live-team .logo-chip.xs,
     .live-team .monogram.xs { width: 39px; height: 39px; } .live-team .team-link-name { font-size: 15px; }
     .live-card .gc-foot { font-size: 10px; } }
@@ -3003,6 +3012,7 @@ function renderLiveBoard(games) {
       : 'Published Elo ratings; no live result projection is available yet.') + '</p></div>';
 }
 function renderLiveScores() {
+  const mobile = window.matchMedia('(max-width: 700px)').matches;
   return '<h2 class="view-title">Home · Live Scores</h2><p class="section-note">Scores from CollegeFootballData.com. ' +
     'Featured games lead by Elo rank, matchup strength and projected closeness. The feed timestamp shows its freshness. Live Elo rankings are an illustrative scenario; published ratings update separately.</p>' +
     '<div id="live-status" role="status" aria-live="polite">Loading the scoreboard…</div>' +
@@ -3015,8 +3025,10 @@ function renderLiveScores() {
       .map(([value, label]) => '<button type="button" data-live-order="' + value + '" aria-pressed="' +
         (liveOrder === value) + '">' + label + '</button>').join('') + '</fieldset></div>' +
     '<div class="live-layout"><div id="live-games" class="live-grid"></div>' +
-    '<aside class="home-side" aria-label="Rankings"><div id="live-rankings">' +
-    renderEloTop25() + '</div>' + renderConferenceBoard() + renderPollsPanel() + '</aside></div>';
+    '<aside class="home-side" aria-label="Rankings">' + (mobile ?
+      '<details class="home-side-fold"><summary>Rankings and conference boards</summary>' : '') +
+    '<div id="live-rankings">' + renderEloTop25() + '</div>' + renderConferenceBoard() + renderPollsPanel() +
+    (mobile ? '</details>' : '') + '</aside></div>';
 }
 function liveChange(g, t) {
   if (g.status !== 'completed' || !Number.isInteger(g.away?.points) || !Number.isInteger(g.home?.points)) return '';
@@ -3123,11 +3135,42 @@ function visibleLiveGames(games, filter, order) {
     ? (a, b) => String(a.start_date || '').localeCompare(String(b.start_date || '')) || Number(a.id) - Number(b.id)
     : compareHype);
 }
+function liveSections(games, filter) {
+  const limit = 6;
+  if (filter !== 'all') return {lead: games.slice(0, limit), more: games.slice(limit), finals: []};
+  const active = games.filter(g => g.status === 'in_progress');
+  const upcoming = games.filter(g => g.status === 'scheduled');
+  const finals = games.filter(g => g.status === 'completed');
+  const current = active.concat(upcoming);
+  if (!current.length) return {lead: finals.slice(0, limit), more: [], finals: finals.slice(limit)};
+  return {lead: current.slice(0, limit), more: current.slice(limit), finals};
+}
+function liveFold(kind, label, games, open) {
+  return games.length ? '<details class="live-fold" data-live-fold="' + kind + '"' + (open ? ' open' : '') +
+    '><summary>' + label + ' (' + games.length + ')</summary><div class="live-fold-grid">' +
+    games.map(renderLiveCard).join('') + '</div></details>' : '';
+}
 function paintLiveGames() {
   const target = document.getElementById('live-games');
   if (!target || !liveSnapshot) return;
   const games = visibleLiveGames(liveSnapshot.games, liveFilter, liveOrder);
-  target.innerHTML = games.length ? games.map(renderLiveCard).join('') :
+  if (!window.matchMedia('(max-width: 700px)').matches) {
+    target.innerHTML = games.length ? games.map(renderLiveCard).join('') :
+      '<p class="empty-note">' + (liveFilter === 'all' ? 'No games in the current scoreboard window.' :
+        'No ' + ({in_progress: 'live', scheduled: 'upcoming', completed: 'final'}[liveFilter] || '') +
+        ' games in this slate. Choose All to see every game.') + '</p>';
+    return;
+  }
+  const openMore = target.querySelector('[data-live-fold="more"]')?.open || false;
+  const openFinals = target.querySelector('[data-live-fold="finals"]')?.open || false;
+  const sections = liveSections(games, liveFilter);
+  target.innerHTML = games.length ? '<h3 class="live-slate-title">' +
+    (liveFilter === 'all' ? (sections.lead.some(g => g.status !== 'completed') ? 'Live and featured games' : 'Recent finals') :
+      ({in_progress: 'Live games', scheduled: 'Upcoming games', completed: 'Final scores'}[liveFilter] || 'Games')) +
+    '</h3>' + sections.lead.map(renderLiveCard).join('') +
+    liveFold('more', liveFilter === 'completed' ? 'More final scores' : 'More live and upcoming games', sections.more, openMore) +
+    liveFold('finals', sections.lead.some(g => g.status === 'completed') ? 'More final scores' : 'Final scores',
+      sections.finals, openFinals) :
     '<p class="empty-note">' + (liveFilter === 'all' ? 'No games in the current scoreboard window.' :
       'No ' + ({in_progress: 'live', scheduled: 'upcoming', completed: 'final'}[liveFilter] || '') +
       ' games in this slate. Choose All to see every game.') + '</p>';
