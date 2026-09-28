@@ -3150,7 +3150,7 @@ function hydrateLiveScores(version) {
       const validStamp = stamp && !Number.isNaN(stamp.getTime());
       const age = validStamp ? Date.now() - stamp.getTime() : Infinity;
       status.textContent = (slate.label ? 'Showing ' + slate.label + ' schedule · ' : '') + (validStamp
-        ? 'Feed updated ' + stamp.toLocaleString() + (age > 15 * 60 * 1000 ? ' · Feed may be delayed' : '')
+        ? 'Scores fetched ' + stamp.toLocaleString() + (age > 15 * 60 * 1000 ? ' · Feed may be delayed' : '')
         : 'Live feed is not active yet.');
       paintLiveGames();
       board.innerHTML = renderLiveBoard(slate.games);
