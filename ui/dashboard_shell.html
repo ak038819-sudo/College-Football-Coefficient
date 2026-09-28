@@ -767,6 +767,12 @@
   footer.foot a { color: var(--amber); }
 
   .live-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 18px; }
+  .live-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 16px; }
+  .live-controls fieldset { display: flex; flex-wrap: wrap; gap: 5px; margin: 0; padding: 0; border: 0; }
+  .live-controls legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .live-controls button { padding: 7px 11px; border: 1px solid var(--line); border-radius: 5px;
+    background: var(--panel-2); color: var(--ink); cursor: pointer; font: 12px var(--font-mono); }
+  .live-controls button[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); background: #49391b55; }
   .live-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
   .live-layout .live-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .live-card { min-width: 0; overflow: hidden; border: 1px solid #53605c; border-radius: 12px;
@@ -2861,6 +2867,8 @@ let liveRequest = 0;
 let liveGameRequest = 0;
 let liveSnapshot = null;
 let liveSeasonData = null;
+let liveFilter = 'all';
+let liveOrder = 'hype';
 const liveSeason = () => new Date().getFullYear();
 function liveGameHref(g) {
   // The CFBD scoreboard ID is the same ID used by the Games archive.
@@ -2998,6 +3006,14 @@ function renderLiveScores() {
   return '<h2 class="view-title">Home · Live Scores</h2><p class="section-note">Scores from CollegeFootballData.com. ' +
     'Featured games lead by Elo rank, matchup strength and projected closeness. The feed timestamp shows its freshness. Live Elo rankings are an illustrative scenario; published ratings update separately.</p>' +
     '<div id="live-status" role="status" aria-live="polite">Loading the scoreboard…</div>' +
+    '<div class="live-controls"><fieldset aria-label="Game status"><legend>Game status</legend>' +
+    [['all', 'All'], ['in_progress', 'Live'], ['scheduled', 'Upcoming'], ['completed', 'Final']]
+      .map(([value, label]) => '<button type="button" data-live-filter="' + value + '" aria-pressed="' +
+        (liveFilter === value) + '">' + label + '</button>').join('') +
+    '</fieldset><fieldset aria-label="Game order"><legend>Game order</legend>' +
+    [['hype', 'Featured'], ['time', 'Kickoff']]
+      .map(([value, label]) => '<button type="button" data-live-order="' + value + '" aria-pressed="' +
+        (liveOrder === value) + '">' + label + '</button>').join('') + '</fieldset></div>' +
     '<div class="live-layout"><div id="live-games" class="live-grid"></div>' +
     '<aside class="home-side" aria-label="Rankings"><div id="live-rankings">' +
     renderEloTop25() + '</div>' + renderConferenceBoard() + renderPollsPanel() + '</aside></div>';
@@ -3101,6 +3117,21 @@ function compareHype(a, b) {
     String(a.start_date || '').localeCompare(String(b.start_date || '')) ||
     Number(a.id) - Number(b.id);
 }
+function visibleLiveGames(games, filter, order) {
+  const visible = games.filter(g => filter === 'all' || g.status === filter);
+  return visible.sort(order === 'time'
+    ? (a, b) => String(a.start_date || '').localeCompare(String(b.start_date || '')) || Number(a.id) - Number(b.id)
+    : compareHype);
+}
+function paintLiveGames() {
+  const target = document.getElementById('live-games');
+  if (!target || !liveSnapshot) return;
+  const games = visibleLiveGames(liveSnapshot.games, liveFilter, liveOrder);
+  target.innerHTML = games.length ? games.map(renderLiveCard).join('') :
+    '<p class="empty-note">' + (liveFilter === 'all' ? 'No games in the current scoreboard window.' :
+      'No ' + ({in_progress: 'live', scheduled: 'upcoming', completed: 'final'}[liveFilter] || '') +
+      ' games in this slate. Choose All to see every game.') + '</p>';
+}
 function hydrateLiveScores(version) {
   const request = ++liveRequest;
   fetch('data/live_scores.json?t=' + Date.now(), {cache: 'no-store'})
@@ -3120,17 +3151,13 @@ function hydrateLiveScores(version) {
       status.textContent = (slate.label ? 'Showing ' + slate.label + ' schedule · ' : '') + (validStamp
         ? 'Feed updated ' + stamp.toLocaleString() + (age > 15 * 60 * 1000 ? ' · Feed may be delayed' : '')
         : 'Live feed is not active yet.');
-      const games = [...slate.games];
-      games.sort(compareHype);
-      target.innerHTML = games.length ? games.map(renderLiveCard).join('') :
-        '<p class="empty-note">No games in the current scoreboard window.</p>';
-      board.innerHTML = renderLiveBoard(games);
+      paintLiveGames();
+      board.innerHTML = renderLiveBoard(slate.games);
       if (!liveSeasonData) loadSeasonGames(liveSeason()).then(archive => {
         if (version !== renderVersion || request !== liveRequest) return;
         liveSeasonData = archive;
-        target.innerHTML = games.length ? games.map(renderLiveCard).join('') :
-          '<p class="empty-note">No games in the current scoreboard window.</p>';
-        board.innerHTML = renderLiveBoard(games);
+        paintLiveGames();
+        board.innerHTML = renderLiveBoard(slate.games);
       }).catch(() => {});
     }).catch(() => {
       if (version === renderVersion && (state.section === 'live' || state.section === 'home')) {
@@ -4442,6 +4469,18 @@ document.querySelector('.skip-link').addEventListener('click', e => {
 
 // Home controls retain their existing behavior.
 document.getElementById('content').addEventListener('click', e => {
+  const filterButton = e.target.closest('[data-live-filter]');
+  const orderButton = e.target.closest('[data-live-order]');
+  if (filterButton || orderButton) {
+    if (filterButton) liveFilter = filterButton.dataset.liveFilter;
+    if (orderButton) liveOrder = orderButton.dataset.liveOrder;
+    document.querySelectorAll('[data-live-filter], [data-live-order]').forEach(button => {
+      button.setAttribute('aria-pressed', String(button.dataset.liveFilter === liveFilter || button.dataset.liveOrder === liveOrder));
+    });
+    paintLiveGames();
+    (filterButton || orderButton).focus();
+    return;
+  }
   if (e.target.id === 'matchup-swap' && state.section === 'matchups') {
     const a = Number(document.getElementById('matchup-a').value);
     const b = Number(document.getElementById('matchup-b').value);
