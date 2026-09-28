@@ -10,7 +10,7 @@ import sqlite3
 import pytest
 
 from build_elo import effective_rating, expected_result, fetch_games_chronological, run_elo
-from fetch_cfbd_games import is_completed
+from fetch_cfbd_games import is_completed, schedule_row
 from load_schedule import load_schedule
 from predict_upcoming import build_upcoming, current_ratings, elo_config, game_expectation
 
@@ -65,7 +65,7 @@ def _schedule_csv(tmp_path, rows, season=2026):
     with path.open("w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["game_id", "season_year", "week", "kickoff_utc", "start_time_tbd", "season_type",
-                    "home_team", "away_team", "neutral_site", "game_phase", "notes"])
+                    "home_team", "away_team", "neutral_site", "game_phase", "notes", "venue"])
         w.writerows(rows)
     return str(path)
 
@@ -117,9 +117,30 @@ def test_build_upcoming_predictions(tmp_path):
     g20, g21 = up["games"]
     ratings = current_ratings(conn, CFG, 2026)[0]
     assert g20[11] == pytest.approx(game_expectation(ratings[1], ratings[2], True, CFG), abs=1e-4)
-    assert g20[12:] == [0, 0]
+    assert g20[12:14] == [0, 0]
     assert g21[13] == 1 and g21[10] == CFG["initial_rating"]      # Charlie never played: flagged provisional
     assert [r[0] for r in up["current_elo"]][:1] == [max(ratings, key=ratings.get)]
+
+
+def test_venue_flows_from_cfbd_schedule_to_upcoming_without_affecting_elo(tmp_path):
+    row = schedule_row({"id": 20, "week": 5, "startDate": "2026-10-03T16:00:00Z",
+                        "homeTeam": "Alpha", "awayTeam": "Bravo", "venue": "LaVell Edwards Stadium"},
+                       2026, set())
+    assert row["venue"] == "LaVell Edwards Stadium"
+    conn = _league(tmp_path, GAMES_2025)
+    load_schedule(conn, _schedule_csv(tmp_path, [list(row.values())]))
+    assert conn.execute("SELECT venue FROM scheduled_games WHERE game_id=20").fetchone()[0] == "LaVell Edwards Stadium"
+    assert build_upcoming(conn, CFG)["games"][0][14] == "LaVell Edwards Stadium"
+
+
+def test_existing_schedule_table_gains_venue_column(tmp_path):
+    conn = _league(tmp_path, GAMES_2025)
+    conn.execute("CREATE TABLE scheduled_games (game_id INTEGER PRIMARY KEY, season_year INTEGER)")
+    # The migration is additive; an existing database need not be deleted.
+    from load_schedule import ensure_schema
+    ensure_schema(conn)
+    assert "venue" in {r[1] for r in conn.execute("PRAGMA table_info(scheduled_games)")}
+
 
 
 # ---------------- real database ----------------
