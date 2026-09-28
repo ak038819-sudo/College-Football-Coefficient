@@ -214,7 +214,7 @@ jobs:
 
       # A stale push can fetch new data too, so retest whenever the feed ran.
       - name: Test the freshly fetched data before publishing
-        if: github.event_name != 'push' || steps.freshness.outputs.needed == 'true'
+        if: steps.sunday_time.outputs.skip != 'true' && (github.event_name != 'push' || steps.freshness.outputs.needed == 'true')
         run: pytest -q
 
       - name: Commit and push if anything actually changed
