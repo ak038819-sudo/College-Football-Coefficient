@@ -2502,7 +2502,7 @@ function fillSeasonHistoryPanel(tp, team) {
 const UPCOMING = DATA.upcoming || { games: [], current_elo: [], ratings_as_of: null };
 const UPCOMING_GAMES = (UPCOMING.games || []).map(g => ({ id: g[0], season: g[1], week: g[2], kickoff: g[3],
   tbd: g[4] === 1, home: g[5], away: g[6], neutral: g[7] === 1, phase: g[8], homeElo: g[9], awayElo: g[10],
-  pHome: g[11], homeProv: g[12] === 1, awayProv: g[13] === 1 }));
+  pHome: g[11], homeProv: g[12] === 1, awayProv: g[13] === 1, venue: g[14] || null }));
 const UPCOMING_BY_ID = new Map(UPCOMING_GAMES.map(g => [g.id, g]));
 const CURRENT_ELO = new Map((UPCOMING.current_elo || []).map(r => [r[0], { elo: r[1], rank: r[2] }]));
 
@@ -2996,7 +2996,7 @@ function renderLiveBoard(games) {
 }
 function renderLiveScores() {
   return '<h2 class="view-title">Home · Live Scores</h2><p class="section-note">Scores from CollegeFootballData.com. ' +
-    'The feed timestamp shows its freshness. Live Elo rankings are an illustrative scenario; published ratings update separately.</p>' +
+    'Featured games lead by Elo rank, matchup strength and projected closeness. The feed timestamp shows its freshness. Live Elo rankings are an illustrative scenario; published ratings update separately.</p>' +
     '<div id="live-status" role="status" aria-live="polite">Loading the scoreboard…</div>' +
     '<div class="live-layout"><div id="live-games" class="live-grid"></div>' +
     '<aside class="home-side" aria-label="Rankings"><div id="live-rankings">' +
@@ -3049,13 +3049,14 @@ function liveTeam(t, g, pct) {
 function renderLiveCard(g) {
   const p = livePrediction(g), pct = p ? probPct(p.pHome) : null;
   const footer = pct ? 'Pregame: ' + pct.away + '% away · ' + pct.home + '% home' : 'Win chance unavailable';
+  const venue = g.venue || UPCOMING_BY_ID.get(g.id)?.venue;
   return '<article class="live-card' + (g.status === 'in_progress' ? ' is-live' : '') +
     '" role="link" tabindex="0" data-live-id="' + Number(g.id) +
     '" aria-label="' + esc(String(g.away?.name || 'Away') + ' at ' + String(g.home?.name || 'Home') +
     ', ' + liveLabel(g) + '. Open game') + '"><div class="live-meta"><span class="gbadge ' +
     (g.status === 'completed' ? 'final' : 'upcoming') + '">' + esc(liveLabel(g)) + '</span>' +
     (g.tv ? '<span class="live-tv">' + esc(g.tv) + '</span>' : '') + '</div>' + liveTeam(g.away, g, pct) + liveTeam(g.home, g, pct) +
-    '<div class="gc-foot"><span>' + esc(footer) + '</span><span>Game details &rarr;</span></div></article>';
+    '<div class="gc-foot"><span>' + (venue ? esc(venue) + ' · ' : '') + esc(footer) + '</span><span>Game details &rarr;</span></div></article>';
 }
 // The live endpoint may keep last week's finals until its next scoreboard window.
  // Compare it with the first still-scheduled week in the published model export.
@@ -3074,11 +3075,31 @@ function homeSlate(feedGames) {
     return { games: feedGames, label: null };
   }
   const games = next.games.map(g => ({
-    id: g.id, start_date: g.kickoff, status: 'scheduled', neutral_site: g.neutral,
+    id: g.id, start_date: g.kickoff, status: 'scheduled', neutral_site: g.neutral, venue: g.venue,
     away: { name: TEAM_BY_ID.get(String(g.away))?.name || 'Unknown team', points: null },
     home: { name: TEAM_BY_ID.get(String(g.home))?.name || 'Unknown team', points: null }
   }));
   return { games, label: next.label };
+}
+// A deterministic editorial order from the model's own pregame information.
+ // Two ranked teams lead, followed by elite teams and competitive matchups.
+ // No final score enters the ranking, so completed games do not jump ahead
+ // merely because of the outcome. Kickoff and game ID settle equal scores.
+function hypeScore(g) {
+  const home = liveTeamId(g.home), away = liveTeamId(g.away);
+  const h = home && (CURRENT_ELO.get(home.id) || CURRENT_ELO.get(String(home.id)));
+  const a = away && (CURRENT_ELO.get(away.id) || CURRENT_ELO.get(String(away.id)));
+  const rankPoints = r => r?.rank <= 25 ? 26 - r.rank : 0;
+  const p = livePrediction(g);
+  const closeness = p && Number.isFinite(p.pHome) ? 1 - 2 * Math.abs(p.pHome - 0.5) : 0;
+  const quality = Math.max(0, ((h?.elo || 0) + (a?.elo || 0) - 2600) / 20);
+  return (rankPoints(h) && rankPoints(a) ? 100 : 0) +
+    3 * (rankPoints(h) + rankPoints(a)) + quality + 25 * closeness;
+}
+function compareHype(a, b) {
+  return hypeScore(b) - hypeScore(a) ||
+    String(a.start_date || '').localeCompare(String(b.start_date || '')) ||
+    Number(a.id) - Number(b.id);
 }
 function hydrateLiveScores(version) {
   const request = ++liveRequest;
@@ -3100,9 +3121,7 @@ function hydrateLiveScores(version) {
         ? 'Feed updated ' + stamp.toLocaleString() + (age > 15 * 60 * 1000 ? ' · Feed may be delayed' : '')
         : 'Live feed is not active yet.');
       const games = [...slate.games];
-      const order = {in_progress: 0, scheduled: 1, completed: 2};
-      games.sort((a, b) => (order[a.status] ?? 3) - (order[b.status] ?? 3) ||
-        String(a.start_date || '').localeCompare(String(b.start_date || '')));
+      games.sort(compareHype);
       target.innerHTML = games.length ? games.map(renderLiveCard).join('') :
         '<p class="empty-note">No games in the current scoreboard window.</p>';
       board.innerHTML = renderLiveBoard(games);
@@ -3179,7 +3198,9 @@ function liveDetail(g) {
     }).join('<div class="gp-mid">' + (g.neutral_site ? 'vs.' : 'at') + '</div>') + '</div></div>';
   return hero + '<div class="grid-2">' + liveEloPanel(g) +
     '<div class="panel"><h2 class="section-title">Game information</h2><p>' +
-    esc(liveLabel(g)) + (g.tv ? ' · ' + esc(g.tv) : '') + '</p><p class="section-note">' +
+    esc(liveLabel(g)) + (g.tv ? ' · ' + esc(g.tv) : '') +
+    ((g.venue || UPCOMING_BY_ID.get(g.id)?.venue) ? ' · ' + esc(g.venue || UPCOMING_BY_ID.get(g.id).venue) : '') +
+    '</p><p class="section-note">' +
     'Scores refresh when CFBD updates its feed. Historical results and official ratings update on their own schedule.</p></div></div>' +
     livePlayerPanel(g);
 }
