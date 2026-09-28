@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS scheduled_games (
     neutral_site   INTEGER NOT NULL DEFAULT 0 CHECK (neutral_site IN (0,1)),
     game_phase     TEXT NOT NULL DEFAULT 'regular' CHECK (game_phase IN ('regular','bowl','cfp')),
     notes          TEXT,
+    venue          TEXT,                          -- CFBD stadium name, display only
     FOREIGN KEY (home_team_id) REFERENCES teams(team_id),
     FOREIGN KEY (away_team_id) REFERENCES teams(team_id)
 );
