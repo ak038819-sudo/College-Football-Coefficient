@@ -31,9 +31,11 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    # 04:15 UTC Monday and Friday = Sunday and Thursday night in Central:
-    # 11:15 PM CDT / 10:15 PM CST. UTC keeps both slots on the intended local night.
-    - cron: "15 4 * * 1"
+    # Sunday 6 PM America/Chicago, across daylight and standard time.
+    # The local-time gate makes the other UTC trigger a no-op.
+    - cron: "0 23 * * 0"
+    - cron: "0 0 * * 1"
+    # Thursday-night ratings refresh remains on its established schedule.
     - cron: "15 4 * * 5"
   workflow_dispatch: {}
 
@@ -134,13 +136,33 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
+      - name: Gate Sunday refresh to 6 PM Central
+        id: sunday_time
+        if: >-
+          github.event_name == 'schedule' &&
+          (github.event.schedule == '0 23 * * 0' || github.event.schedule == '0 0 * * 1')
+        env:
+          TRIGGER: ${{ github.event.schedule }}
+        run: |
+          # Pick the UTC cron for 6 PM Central on this Sunday. Do not require
+          # the runner to start at exactly 6 PM; GitHub can delay scheduled jobs.
+          if [ "$(TZ=America/Chicago date +%z)" = "-0500" ]; then
+            expected='0 23 * * 0'
+          else
+            expected='0 0 * * 1'
+          fi
+          if [ "$TRIGGER" != "$expected" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "This UTC trigger is not the 6 PM Central slot."
+          fi
+
       - name: Detect live finals missing from model inputs
         if: github.event_name == 'push'
         id: freshness
         run: echo "needed=$(python3 src/model_refresh_needed.py)" >> "$GITHUB_OUTPUT"
 
       - name: Fetch fresh data from CFBD (scheduled, manual, or stale push)
-        if: github.event_name != 'push' || steps.freshness.outputs.needed == 'true'
+        if: steps.sunday_time.outputs.skip != 'true' && (github.event_name != 'push' || steps.freshness.outputs.needed == 'true')
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
           CFBD_FETCH_ADVANCED: ${{ vars.FETCH_ADVANCED_STATS || '1' }}
@@ -159,9 +181,11 @@ jobs:
           python3 src/fetch_cfbd_game_advanced.py "$SEASON"
 
       - name: Run full pipeline (bootstrap, load, ratings, standings)
+        if: steps.sunday_time.outputs.skip != 'true'
         run: python3 run_pipeline.py --force
 
       - name: Build Elo, hybrid, and conference CoE 2.0 tables
+        if: steps.sunday_time.outputs.skip != 'true'
         run: |
           # Refit the xSRDiff expectation curve BEFORE Elo, so the new season is
           # valued by a curve that includes it in its walk-forward history. A
@@ -181,17 +205,20 @@ jobs:
       # running a script locally. Reads the database, writes nothing to it and
       # never touches config, so it cannot change the site it reports on.
       - name: Score the model and write the validation report
+        if: steps.sunday_time.outputs.skip != 'true'
         run: python3 src/run_validation.py
 
       - name: Rebuild the dashboard
+        if: steps.sunday_time.outputs.skip != 'true'
         run: python3 build_dashboard.py --draw-seed 1
 
       # A stale push can fetch new data too, so retest whenever the feed ran.
       - name: Test the freshly fetched data before publishing
-        if: github.event_name != 'push' || steps.freshness.outputs.needed == 'true'
+        if: steps.sunday_time.outputs.skip != 'true' && (github.event_name != 'push' || steps.freshness.outputs.needed == 'true')
         run: pytest -q
 
       - name: Commit and push if anything actually changed
+        if: steps.sunday_time.outputs.skip != 'true'
         env:
           EVENT: ${{ github.event_name }}
           FRESH: ${{ steps.freshness.outputs.needed }}

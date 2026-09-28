@@ -34,7 +34,20 @@ def test_workflow_runs_on_schedule_and_on_demand():
     _, on = _workflow()
     assert "workflow_dispatch" in on
     crons = [c["cron"] for c in on["schedule"]]
-    assert crons == ["15 4 * * 1", "15 4 * * 5"]  # Sunday/Thursday night Central
+    assert crons == ["0 23 * * 0", "0 0 * * 1", "15 4 * * 5"]  # Sunday 18:00 Central; Thursday night
+
+
+def test_sunday_rollover_uses_the_central_time_dst_gate():
+    steps = _workflow()[0]["jobs"]["rebuild-and-deploy"]["steps"]
+    gate = next(s for s in steps if s.get("id") == "sunday_time")
+    assert "America/Chicago" in gate["run"]
+    assert "-0500" in gate["run"] and "0 23 * * 0" in gate["run"] and "0 0 * * 1" in gate["run"]
+    for name in ("Run full pipeline", "Build Elo", "Score the model", "Rebuild the dashboard",
+                 "Commit and push"):
+        step = next(s for s in steps if s.get("name", "").startswith(name))
+        assert "steps.sunday_time.outputs.skip != 'true'" in step["if"]
+
+
 
 
 def test_secret_reaches_only_the_fetch_step():
@@ -52,8 +65,10 @@ def test_fetched_data_is_tested_before_it_is_committed():
     gate = next(i for i, n in enumerate(names) if n.startswith("Test the freshly fetched data"))
     commit = next(i for i, n in enumerate(names) if n.startswith("Commit and push"))
     assert fetch < gate < commit
-    assert steps[fetch]["if"] == steps[gate]["if"] == \
-        "github.event_name != 'push' || steps.freshness.outputs.needed == 'true'"
+    fetch_when = steps[fetch]["if"]
+    assert steps[gate]["if"] == fetch_when
+    assert "steps.sunday_time.outputs.skip != 'true'" in fetch_when
+    assert "(github.event_name != 'push' || steps.freshness.outputs.needed == 'true')" in fetch_when
     detect = next(i for i, n in enumerate(names) if n.startswith("Detect live finals"))
     assert detect < fetch
     assert "data/raw/" in steps[commit]["run"], "fetched data must be committed or the next push rebuild undoes it"
