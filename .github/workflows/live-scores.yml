@@ -8,12 +8,16 @@ on:
       - '.github/workflows/live-scores.yml'
       - 'src/fetch_live_scores.py'
   schedule:
-    # UTC: Friday afternoons/evenings and the full Saturday slate in Central.
-    # The two adjacent UTC dates together cover each evening past midnight UTC.
-    - cron: '2/5 20-23 * 8-12 5'
-    - cron: '2/5 0-7,14-23 * 8-12 6'
-    - cron: '2/5 0-9 * 8-12 0'
-    # Bowl/playoff games outside this window can be run manually.
+    # Regular season: Thursday afternoon/night, Friday night, Saturday.
+    # UTC windows include the preceding Central evening after midnight UTC.
+    - cron: '2/5 19-23 * 8-11 4'
+    - cron: '2/5 0-7,20-23 * 8-11 5'
+    - cron: '2/5 0-7,14-23 * 8-11 6'
+    - cron: '2/5 0-9 * 8-11 0'
+    # Bowl/playoff season has games on any weekday. 15-minute polling keeps
+    # December/January coverage within the existing API call budget.
+    - cron: '7/15 15-23 * 12,1 *'
+    - cron: '7/15 0-7 * 12,1 *'
 
 permissions:
   contents: write
@@ -65,3 +69,9 @@ jobs:
           git commit -m 'Refresh live scoreboard [skip ci]'
           git pull --rebase origin main
           git push origin HEAD:main
+      - name: Measure delivery to GitHub Pages
+        if: success()
+        continue-on-error: true
+        env:
+          PAGES_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/ui/data/live_scores.json
+        run: python3 src/measure_live_delivery.py --url "$PAGES_URL" --timeout 120
