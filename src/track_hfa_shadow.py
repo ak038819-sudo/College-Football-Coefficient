@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import math
 import sqlite3
 from pathlib import Path
 
@@ -43,9 +44,14 @@ def settle(records, final_games, now):
             continue
         actual = 1.0 if game['home_score'] > game['away_score'] else (
             0.0 if game['home_score'] < game['away_score'] else 0.5)
+        record.pop('invalid_reason', None)
         record['result'] = actual
         record['flat_brier'] = round((record['p_flat'] - actual) ** 2, 8)
         record['candidate_brier'] = round((record['p_candidate'] - actual) ** 2, 8)
+        for label, p in (('flat', record['p_flat']), ('candidate', record['p_candidate'])):
+            prob = min(1 - 1e-12, max(1e-12, p))
+            record[label + '_log_loss'] = round(-actual * math.log(prob) -
+                                                 (1 - actual) * math.log(1 - prob), 8)
         record['scored_at'] = now.isoformat().replace('+00:00', 'Z')
         settled += 1
     return settled
@@ -54,11 +60,14 @@ def settle(records, final_games, now):
 def summary(records):
     scored = [r for r in records.values() if 'result' in r]
     if not scored:
-        return {'games': 0, 'flat_brier': None, 'candidate_brier': None}
+        return {'games': 0, 'flat_brier': None, 'candidate_brier': None,
+                'flat_log_loss': None, 'candidate_log_loss': None}
     n = len(scored)
     return {'games': n,
             'flat_brier': round(sum(r['flat_brier'] for r in scored) / n, 6),
-            'candidate_brier': round(sum(r['candidate_brier'] for r in scored) / n, 6)}
+            'candidate_brier': round(sum(r['candidate_brier'] for r in scored) / n, 6),
+            'flat_log_loss': round(sum(r['flat_log_loss'] for r in scored) / n, 6),
+            'candidate_log_loss': round(sum(r['candidate_log_loss'] for r in scored) / n, 6)}
 
 
 def update(conn, records, now, raw_cfg, frozen, horizon_days=7):

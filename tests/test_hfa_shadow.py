@@ -25,6 +25,7 @@ def test_shadow_scores_only_pregame_forecasts_of_same_game():
     assert settle(rows, finals, now) == 2
     assert rows['10']['flat_brier'] == .16
     assert rows['10']['candidate_brier'] == .1225
+    assert rows['10']['candidate_log_loss'] < rows['10']['flat_log_loss']
     assert rows['11']['invalid_reason'] == 'Forecast was not recorded before kickoff'
     assert rows['12']['invalid_reason'] == 'Game identity changed; forecast not scored'
     assert summary(rows)['games'] == 2
