@@ -109,6 +109,14 @@ jobs:
           python3 src/build_conference_coe2.py
           python3 src/build_coe2_rollups.py
 
+      - name: Record and score frozen HFA shadow forecasts
+        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 8-11 5,6,0,1' || steps.freshness.outputs.needed == 'true')
+        run: python3 src/track_hfa_shadow.py
+
+      - name: Audit game, efficiency, venue, and player coverage
+        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 8-11 5,6,0,1' || steps.freshness.outputs.needed == 'true')
+        run: python3 src/audit_game_coverage.py
+
       - name: Run tests
         run: pytest -v
 

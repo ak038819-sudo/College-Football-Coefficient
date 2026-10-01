@@ -4224,7 +4224,9 @@ function hydrateGamePage(version) {
         if (version !== renderVersion) return;
         const teams = archive[String(id)] || liveSnapshot?.player_boxscores?.[String(id)] || [];
         const panel = document.getElementById('gp-players');
-        if (panel) panel.outerHTML = playerBoxscorePanel(teams, null);
+        if (panel) panel.outerHTML = !teams.length && season < 2004
+          ? '<div class="panel"><h2 class="section-title">Player box score</h2><p class="empty-note">CFBD game player box scores begin in 2004; player lines are unavailable for this season.</p></div>'
+          : playerBoxscorePanel(teams, null);
       }).catch(() => {
         if (version === renderVersion && document.getElementById('gp-players'))
           document.getElementById('gp-players').innerHTML = '<h2 class="section-title">Player box score</h2><p class="empty-note">Player stats could not be loaded.</p>';

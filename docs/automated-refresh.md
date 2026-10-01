@@ -55,9 +55,12 @@ See `src/current_season.py`.
 3. Rebuilds the database, Elo, CoE and the dashboard.
    Finished games move from the live feed into the season archive at this step.
    Current-season player box scores are saved in `data/raw/player_boxscores/`
-   and exported into lazy-loaded historical game pages. To backfill an older
-   season with an authorized CFBD key, run `python3 src/fetch_cfbd_players.py YEAR`
-   followed by a dashboard build. Player coverage depends on the source feed.
+   and exported into lazy-loaded historical game pages. To backfill the
+   documented box-score range with an authorized CFBD key, run
+   `python3 src/fetch_cfbd_players.py 2004 2025` followed by a dashboard
+   build. Seasons are saved separately, so the range can resume after a failure.
+   Player coverage depends on the source feed. `src/audit_game_coverage.py`
+   records coverage by season for efficiency, verified venues, and player lines.
 4. Runs the full test suite against the freshly fetched data.
 5. Commits the new data and rebuilt site in **one** commit, named
    `Scheduled data refresh: season YYYY`, only if something changed.
