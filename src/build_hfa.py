@@ -66,7 +66,7 @@ def active_teams(conn: sqlite3.Connection, season: int) -> list:
     return sorted(ids)
 
 
-def build(conn: sqlite3.Connection, cfg: dict) -> tuple[list, list]:
+def build(conn: sqlite3.Connection, cfg: dict, current_only: bool = False) -> tuple[list, list]:
     """Returns (by_season_rows, current_rows) as dicts. Pure with respect to the database contents."""
     hcfg, scale = cfg["hfa"], cfg["elo"]["scale"]
     games, _skipped = load_home_games(conn, scale)
@@ -89,8 +89,9 @@ def build(conn: sqlite3.Connection, cfg: dict) -> tuple[list, list]:
 
     starts = season_starts(conn)
     by_season = []
-    for season in sorted(starts):
-        by_season += estimates_for(season, active_teams(conn, season), starts[season])
+    if not current_only:
+        for season in sorted(starts):
+            by_season += estimates_for(season, active_teams(conn, season), starts[season])
 
     last_game = conn.execute("SELECT MAX(game_date) FROM games WHERE home_score IS NOT NULL").fetchone()[0]
     latest = max(starts)
@@ -100,12 +101,16 @@ def build(conn: sqlite3.Connection, cfg: dict) -> tuple[list, list]:
     return by_season, current
 
 
-def write(conn: sqlite3.Connection, cfg: dict, by_season: list, current: list, out_dir: Path) -> None:
+def write(conn: sqlite3.Connection, cfg: dict, by_season: list, current: list, out_dir: Path,
+          current_only: bool = False) -> None:
     conn.executescript(SCHEMA.read_text(encoding="utf-8"))
     params = (cfg["hfa"]["half_life_years"], cfg["hfa"]["shrinkage_k"], cfg["hfa"]["effective_n_method"])
-    conn.execute("DELETE FROM team_hfa_by_season")
+    if not current_only:
+        conn.execute("DELETE FROM team_hfa_by_season")
     conn.execute("DELETE FROM team_hfa_current")
-    for table, rows in (("team_hfa_by_season", by_season), ("team_hfa_current", current)):
+    tables = (("team_hfa_current", current),) if current_only else (
+        ("team_hfa_by_season", by_season), ("team_hfa_current", current))
+    for table, rows in tables:
         cols = ["team_id", "season_year", "as_of"] + COLUMNS
         conn.executemany(
             f"INSERT INTO {table} ({', '.join(cols)}, half_life_years, shrinkage_k, effective_n_method) "
@@ -114,7 +119,9 @@ def write(conn: sqlite3.Connection, cfg: dict, by_season: list, current: list, o
     conn.commit()
     names = dict(conn.execute("SELECT team_id, team_name FROM teams"))
     out_dir.mkdir(parents=True, exist_ok=True)
-    for fname, rows in (("team_hfa_by_season.csv", by_season), ("team_hfa_current.csv", current)):
+    files = (("team_hfa_current.csv", current),) if current_only else (
+        ("team_hfa_by_season.csv", by_season), ("team_hfa_current.csv", current))
+    for fname, rows in files:
         with (out_dir / fname).open("w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
             w.writerow(["team", "season_year", "as_of"] + COLUMNS)
@@ -163,6 +170,8 @@ def main() -> None:
     p.add_argument("--db", default=str(REPO / "db" / "league.db"))
     p.add_argument("--diagnose", metavar="TEAM")
     p.add_argument("--as-of", type=dt.date.fromisoformat)
+    p.add_argument("--current-only", action="store_true",
+                   help="Build only the current-season estimates for the dashboard; leave historical HFA untouched.")
     args = p.parse_args()
     cfg = load_config()
     conn = sqlite3.connect(args.db)
@@ -171,8 +180,8 @@ def main() -> None:
     if args.diagnose:
         diagnose(conn, cfg, args.diagnose, args.as_of)
         return
-    by_season, current = build(conn, cfg)
-    write(conn, cfg, by_season, current, REPO / "data" / "processed")
+    by_season, current = build(conn, cfg, current_only=args.current_only)
+    write(conn, cfg, by_season, current, REPO / "data" / "processed", current_only=args.current_only)
     print(f"team_hfa_by_season: {len(by_season)} rows; team_hfa_current: {len(current)} teams "
           f"(L={cfg['hfa']['half_life_years']}, K={cfg['hfa']['shrinkage_k']}, "
           f"N_eff={cfg['hfa']['effective_n_method']})")

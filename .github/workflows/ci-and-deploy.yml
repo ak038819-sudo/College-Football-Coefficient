@@ -99,6 +99,9 @@ jobs:
           # that never ran the layer.
           python3 src/fit_xsrdiff.py || echo "xSRDiff curve not fitted; Elo will use its configured fallback."
           python3 src/build_elo.py
+          # Display-only team HFA estimates. Production Elo remains on its
+          # calibrated flat home-field value; no team-specific bonus is fed back.
+          python3 src/build_hfa.py --current-only
           python3 src/build_hybrid_coefficients.py
           python3 src/build_conference_coe2.py
           python3 src/build_coe2_rollups.py

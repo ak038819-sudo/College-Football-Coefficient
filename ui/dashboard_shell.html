@@ -147,6 +147,8 @@
   .ledger td small { display: block; color: var(--ink-dim); font-size: 10.5px; }
   .ledger td.pos { color: var(--green-hl); } .ledger td.neg { color: var(--red); }
   .rank-table td.pos { color: var(--green-hl); } .rank-table td.neg { color: var(--red); }
+  .hfa-search { width: min(100%, 360px); padding: 9px; margin: 0 0 12px; background: var(--panel-2);
+    color: var(--ink); border: 1px solid var(--line); border-radius: 3px; font: inherit; }
   .rank-table td.flat, .rank-table td.bye { color: var(--ink-dim); }
   .ledger tfoot td { font-weight: 600; border-top: 1px solid var(--line); }
   .ledger a, #tp-ledger .section-note a { color: var(--amber); }
@@ -1237,7 +1239,7 @@ let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult
   homeGroup: null, homeTop25: false, homePoll: null };
 const SECTION_LABELS = { home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
 const SUBVIEWS = {
-  rankings: [['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
+  rankings: [['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['home-field', 'Home-Field Advantage'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
     ['conference-coe2', 'Conference CoE 2.0'], ['elo-weekly', 'Week by Week'],
     ['ap', 'AP'], ['cfp', 'CFP']],
   playoff: [['field', 'Field'], ['bracket', 'Bracket & Simulator'], ['odds', 'Title Odds'], ['history', 'History']]
@@ -1256,13 +1258,14 @@ function renderYearRow() {
   const row = document.getElementById('year-row');
   if (state.view === 'team' || state.view === 'conference' || state.view === 'game' ||
       state.section === 'teams' || state.section === 'live' || state.section === 'matchups' || state.section === 'methodology' || state.section === 'coverage' ||
-      (state.section === 'games' && state.finder)) {
+      (state.section === 'games' && state.finder) || (state.section === 'rankings' && state.subview === 'home-field')) {
     row.innerHTML = '';
     document.getElementById('year-caption').textContent = state.view === 'team' ? 'TEAM PAGE'
       : state.view === 'conference' ? 'CONFERENCE PAGE' : state.view === 'game' ? 'GAME'
       : state.section === 'live' ? 'CURRENT SLATE' : state.section === 'matchups' ? 'WHAT IF · ' + UPCOMING.season
       : state.section === 'methodology' ? 'METHODOLOGY'
-      : state.section === 'coverage' ? 'EVERY SEASON' : state.section === 'games' ? 'EVERY SEASON' : 'TEAMS & CONFERENCES';
+      : state.section === 'coverage' ? 'EVERY SEASON' : state.section === 'games' ? 'EVERY SEASON'
+      : state.section === 'rankings' ? 'CURRENT ESTIMATES' : 'TEAMS & CONFERENCES';
     return;
   }
   if (state.section === 'home') {
@@ -1403,6 +1406,35 @@ function renderElo() {
       '. Arrows show each team’s most recent game in that export, not a change in rank.</p>' +
     (state.year === UPCOMING.season ? '<p class="rating-freshness" id="rating-freshness" role="status"></p>' : '') +
     rankTable(rows, 'value', 'Team', 'Elo', 'team') + '</div>';
+}
+
+function renderHomeFieldStandings() {
+  const feed = DATA.current_hfa || {}, rows = feed.teams || [];
+  const intro = '<p class="section-note">Experimental estimates as of ' + esc(feed.as_of || 'unavailable') +
+    '. These describe how teams have performed at home against a neutral-field Elo expectation; ' +
+    '<b>they do not drive live Elo, win chances, or playoff seeding.</b> The live model still uses one flat home-field bonus. ' +
+    'An HFA index of 1.10 means 10% more home wins than the neutral expectation, not a 10-point win-probability boost. ' +
+    'The estimate is pulled toward the FBS average when a team has little home-game evidence.</p>';
+  if (!rows.length) return '<div class="panel"><h2 class="section-title">Team Home-Field Advantage</h2>' + intro +
+    '<p class="empty-note">Team-specific estimates have not been built for this preview.</p></div>';
+  const body = rows.map((r, i) => '<tr data-team="' + esc(CfbNavigation.normalizeSearch(r.team)) + '">' +
+    '<td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + teamLink(r.team, 'sm') + '</div></td>' +
+    '<td class="num coe-val">' + Number(r.hfa).toFixed(3) + '×</td>' +
+    '<td class="num">' + (r.elo_points == null ? '—' : (r.elo_points >= 0 ? '+' : '') +
+      Number(r.elo_points).toFixed(1) + (r.points_at_bound ? '*' : '')) + '</td>' +
+    '<td class="num">' + Number(r.games) + '</td><td class="num">' + Number(r.effective_games).toFixed(1) +
+    '</td></tr>').join('');
+  return '<div class="panel"><h2 class="section-title">Team Home-Field Advantage</h2>' + intro +
+    '<label for="hfa-search">Find a team</label><br><input class="hfa-search" type="search" id="hfa-search" ' +
+    'placeholder="Search all ' + rows.length + ' teams" autocomplete="off">' +
+    '<p class="section-note" id="hfa-count" role="status">Showing all ' + rows.length + ' teams</p>' +
+    '<table class="rank-table" id="hfa-table"><thead><tr><th scope="col">#</th><th scope="col">Team</th>' +
+    '<th scope="col" class="num">HFA index</th><th scope="col" class="num">Elo equivalent</th>' +
+    '<th scope="col" class="num">Home games</th><th scope="col" class="num">Weighted sample</th>' +
+    '</tr></thead><tbody>' + body + '</tbody></table>' +
+    '<p class="section-note">Elo equivalent is an illustrative conversion of the estimate, not the bonus used in predictions. ' +
+    'Weighted sample discounts older games; zero-game teams use the league prior. * = conversion reached its configured bound. ' +
+    'Only completed, non-neutral FBS-vs-FBS home games with pregame Elo are counted.</p></div>';
 }
 
 function renderConferenceElo() {
@@ -3556,6 +3588,15 @@ document.getElementById('content').addEventListener('change', e => {
   const value = sel.value || null;
   navigate({ [sel.dataset.filter]: sel.dataset.filter === 'week' && value && value !== 'post' ? Number(value) : value });
 });
+document.getElementById('content').addEventListener('input', e => {
+  if (e.target.id !== 'hfa-search') return;
+  const query = CfbNavigation.normalizeSearch(e.target.value);
+  const rows = document.querySelectorAll('#hfa-table tbody tr');
+  let visible = 0;
+  rows.forEach(row => { row.hidden = !row.dataset.team.includes(query); if (!row.hidden) visible++; });
+  document.getElementById('hfa-count').textContent = visible === rows.length ? 'Showing all ' + visible + ' teams'
+    : 'Showing ' + visible + ' of ' + rows.length + ' teams';
+});
 
 function renderRankingPoll(key) {
   const polls = DATA.polls || {};
@@ -4746,7 +4787,7 @@ function render() {
   else if (state.section === 'games') { content.innerHTML = renderGames(); hydrateGames(version); }
   else if (state.section === 'live') { content.innerHTML = renderLiveScores(); hydrateLiveScores(version); }
   else if (state.section === 'rankings') {
-    const views = { elo: renderElo, 'conference-standings': renderConferenceStandings, 'conference-elo': renderConferenceElo, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferences,
+    const views = { elo: renderElo, 'conference-standings': renderConferenceStandings, 'home-field': renderHomeFieldStandings, 'conference-elo': renderConferenceElo, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferences,
       'conference-coe2': renderConferenceCoe2, 'elo-weekly': renderEloWeekly,
       ap: () => renderRankingPoll('ap'), cfp: () => renderRankingPoll('cfp') };
     content.innerHTML = '<h2 class="view-title">Standings</h2>' + views[state.subview]();

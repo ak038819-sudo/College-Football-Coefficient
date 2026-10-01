@@ -11,6 +11,29 @@ const config = {
 };
 const read = hash => readRoute(hash, config);
 
+test('home-field table is a current Standings view, not a historical season', () => {
+  const route = read('#section=rankings&view=home-field&season=1980');
+  assert.equal(route.subview, 'home-field');
+  assert.equal(route.year, 2026);
+  assert.equal(hashFor(route), '#section=rankings&view=home-field');
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = shell.match(/function renderHomeFieldStandings\(\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(source);
+  const context = {
+    DATA: { current_hfa: { as_of: '2026-09-28', teams: [
+      { team: 'BYU', hfa: 1.12, elo_points: 60.1, games: 240, effective_games: 54.4, points_at_bound: false },
+      { team: 'Sacramento State', hfa: 1.04, elo_points: 20, games: 0, effective_games: 0, points_at_bound: false }
+    ] } },
+    esc: String, teamLink: name => name, CfbNavigation: { normalizeSearch }
+  };
+  vm.runInNewContext(source + '\nthis.render = renderHomeFieldStandings;', context);
+  const html = context.render();
+  assert.match(html, /do not drive live Elo/);
+  assert.match(html, /BYU.*1\.120×.*\+60\.1.*240.*54\.4/);
+  assert.match(html, /Sacramento State.*1\.040×.*\+20\.0.*0.*0\.0/);
+  assert.match(html, /Search all 2 teams/);
+});
+
 test('live CFBD IDs cannot relabel another school', () => {
   const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
   const source = shell.match(/function liveTeamId\(t\) \{[\s\S]*?\n\}/)?.[0];

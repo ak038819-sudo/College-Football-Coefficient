@@ -7,6 +7,7 @@ Exports everything the dashboard needs into one JSON file:
   - conference 5yr rolling CoE
   - CoE 2.0 conference five-season (entering) values, in the canonical
     bid-allocation order, plus the bonus magnitudes they were built with
+  - current team-specific home-field estimates (analysis only, not live Elo)
   - playoff field + Round-of-24 bracket draw for every season that has
     both membership data AND enough of it to actually build a 24-team
     field (a year can have membership but still fail, e.g. too few
@@ -42,6 +43,35 @@ from build_coe2_rollups import conference_coe2_rank, load_bonus_config  # noqa: 
 import random
 
 DATA_DIR = Path("data/processed")
+
+
+def build_current_hfa(db_path: str) -> dict:
+    """Export the current analysis estimates without implying production Elo uses them."""
+    conn = sqlite3.connect(db_path)
+    try:
+        if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='team_hfa_current'").fetchone():
+            return {"as_of": None, "season": None, "teams": []}
+        rows = conn.execute("""
+            SELECT t.team_name, h.season_year, h.as_of, h.adjusted_hfa,
+                   h.elo_hfa_points, h.games_used, h.effective_n, h.lambda,
+                   h.elo_points_at_bound
+            FROM team_hfa_current h JOIN teams t ON t.team_id = h.team_id
+            ORDER BY h.adjusted_hfa DESC, t.team_name
+        """).fetchall()
+        if not rows:
+            return {"as_of": None, "season": None, "teams": []}
+        as_of, season = rows[0][2], rows[0][1]
+        if any(r[2] != as_of or r[1] != season for r in rows):
+            raise ValueError("Current HFA export contains inconsistent dates or seasons")
+        return {"as_of": as_of, "season": season, "teams": [
+            {"team": name, "hfa": round(adjusted, 3),
+             "elo_points": round(points, 1) if points is not None else None,
+             "games": games, "effective_games": round(effective, 1),
+             "evidence_weight": round(weight, 3), "points_at_bound": bool(at_bound)}
+            for name, _, _, adjusted, points, games, effective, weight, at_bound in rows
+        ]}
+    finally:
+        conn.close()
 
 
 def load_elo_by_season(db_path: str) -> dict:
@@ -496,6 +526,7 @@ def main() -> None:
         "team_elo_by_year": {
             str(y): rows for y, rows in team_elo.items()
         },
+        "current_hfa": build_current_hfa(args.db),
         "conference_elo_by_year": build_conference_elo_by_year(args.db, team_elo),
         "conference_ratings_by_year": {
             str(y): sorted(
