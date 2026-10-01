@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS stadiums (
     stadium_id INTEGER PRIMARY KEY,
     stadium_key TEXT NOT NULL UNIQUE,
     stadium_name TEXT NOT NULL,
+    cfbd_venue_id INTEGER UNIQUE,
     city TEXT,
     state TEXT,
     latitude REAL,

@@ -292,6 +292,40 @@ def build_search_index(conn: sqlite3.Connection, payloads: dict) -> dict:
             "conferences": build_conference_search_rows(conn)}
 
 
+def build_stadium_payload(conn: sqlite3.Connection, payloads: dict) -> dict:
+    """Verified venue metadata and a small, linked selection of games at each physical site."""
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='stadiums'").fetchone():
+        return {"stadiums": []}
+    hosts = defaultdict(list)
+    for sid, tid, name in conn.execute("""SELECT ts.stadium_id,t.team_id,t.team_name
+        FROM team_stadiums ts JOIN teams t ON t.team_id=ts.team_id
+        WHERE ts.start_season<=2026 AND (ts.end_season IS NULL OR ts.end_season>=2026)
+          AND ts.is_primary=1 ORDER BY t.team_name"""):
+        hosts[sid].append({"id": tid, "name": name})
+    by_stadium = defaultdict(list)
+    ix = {f: i for i, f in enumerate(FIELDS)}
+    for season, p in payloads.items():
+        for r in p["games"]:
+            sid = r[ix["stadium_id"]]
+            if sid is not None:
+                by_stadium[sid].append({"id": r[ix["game_id"]], "season": season,
+                    "date": r[ix["date"]], "home_id": r[ix["home_id"]], "away_id": r[ix["away_id"]],
+                    "home_score": r[ix["home_score"]], "away_score": r[ix["away_score"]],
+                    "completed": bool(r[ix["completed"]]), "neutral": bool(r[ix["neutral"]])})
+    stadiums = []
+    for sid, name, city, state, lat, lon, capacity in conn.execute(
+            "SELECT stadium_id,stadium_name,city,state,latitude,longitude,capacity FROM stadiums ORDER BY stadium_name,stadium_id"):
+        games = by_stadium[sid]
+        if not hosts[sid] and not games:
+            continue
+        completed = sorted((g for g in games if g["completed"]), key=lambda g: (g["date"], g["id"]), reverse=True)
+        upcoming = sorted((g for g in games if not g["completed"]), key=lambda g: (g["date"], g["id"]))
+        stadiums.append({"id": sid, "name": name, "city": city, "state": state,
+                         "lat": lat, "lon": lon, "capacity": capacity, "teams": hosts[sid],
+                         "completed_count": len(completed), "upcoming": upcoming[:5], "recent": completed[:5]})
+    return {"stadiums": stadiums}
+
+
 def _write_js(path: Path, global_expr: str, payload) -> str:
     body = json.dumps(payload, separators=(",", ":"))
     path.write_text(f"{global_expr}={body};\n", encoding="utf-8")
@@ -311,6 +345,7 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
         seasons.append({"season": season, "completed": sum(r[4] for r in p["games"]),
                         "scheduled": sum(1 - r[4] for r in p["games"]), "src": f"data/games/{season}.js?v={v}"})
     sv = _write_js(out_dir / "search_index.js", "window.__CFB_SEARCH__", build_search_index(conn, payloads))
+    stadium_version = _write_js(out_dir / "stadiums.js", "window.__CFB_STADIUMS__", build_stadium_payload(conn, payloads))
     details, series = {}, []
     for sub in ("details", "series"):
         if (out_dir / sub).exists():
@@ -335,7 +370,8 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
         p = shard_payloads.get(k, {"shard": k, "fields": SERIES_FIELDS, "pairs": {}})
         v = _write_js(out_dir / "series" / f"{k}.js", f"(window.__CFB_SERIES__=window.__CFB_SERIES__||{{}})[{k}]", p)
         series.append(f"data/series/{k}.js?v={v}")
-    manifest = {"seasons": seasons, "search_index": f"data/search_index.js?v={sv}", "game_fields": FIELDS,
+    manifest = {"seasons": seasons, "search_index": f"data/search_index.js?v={sv}",
+                "stadiums": f"data/stadiums.js?v={stadium_version}", "game_fields": FIELDS,
                 "details": details, "series": series, "series_shards": SERIES_SHARDS,
                 # P1-05/06: which seasons have a week-by-week Elo table, so the view
                 # knows whether it exists before fetching anything.

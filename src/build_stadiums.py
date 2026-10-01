@@ -23,6 +23,7 @@ from load_games import resolve_team_name, team_id  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA = ROOT / "sql/stadium_tables.sql"
 SEED = ROOT / "data/stadiums_2026.tsv"
+CATALOG = ROOT / "data/raw/venues.json"
 
 
 def key(value: str) -> str:
@@ -33,14 +34,20 @@ def key(value: str) -> str:
 def ensure_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA.read_text(encoding="utf-8"))
     for table, fields in (("games", {"stadium_id": "INTEGER REFERENCES stadiums(stadium_id)",
-                                    "venue_text": "TEXT"}),
-                          ("scheduled_games", {"stadium_id": "INTEGER REFERENCES stadiums(stadium_id)"})):
+                                    "venue_text": "TEXT", "source_venue_id": "INTEGER"}),
+                          ("scheduled_games", {"stadium_id": "INTEGER REFERENCES stadiums(stadium_id)",
+                                               "source_venue_id": "INTEGER"})):
         if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone():
             continue
         have = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
         for col, decl in fields.items():
             if col not in have:
                 conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
+    if "cfbd_venue_id" not in {r[1] for r in conn.execute("PRAGMA table_info(stadiums)")}:
+        # SQLite cannot add a UNIQUE column to an existing table. Older local
+        # databases already have the stadiums table without this column.
+        conn.execute("ALTER TABLE stadiums ADD COLUMN cfbd_venue_id INTEGER")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_stadiums_cfbd_venue_id ON stadiums(cfbd_venue_id)")
     conn.commit()
 
 
@@ -88,6 +95,61 @@ def stadium_candidates(conn: sqlite3.Connection) -> dict[str, set[int]]:
     return by_name
 
 
+def import_venue_catalog(conn: sqlite3.Connection, source: Path = CATALOG) -> dict:
+    """Enrich seeded stadiums and game venues by CFBD ID; never merge ambiguous names."""
+    if not source.exists():
+        return {"catalog_linked": 0, "catalog_created": 0, "catalog_ambiguous": 0}
+    venues = json.loads(source.read_text(encoding="utf-8"))
+    if not isinstance(venues, list):
+        raise ValueError("CFBD venue snapshot must be an array")
+    used = set()
+    for table in ("games", "scheduled_games"):
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone():
+            used.update(r[0] for r in conn.execute(
+                f"SELECT DISTINCT source_venue_id FROM {table} WHERE source_venue_id IS NOT NULL"))
+    candidates = stadium_candidates(conn)
+    counts = {"catalog_linked": 0, "catalog_created": 0, "catalog_ambiguous": 0}
+    for v in venues:
+        if not isinstance(v, dict) or not isinstance(v.get("id"), int) or not v.get("name"):
+            continue
+        cfbd_id, name = v["id"], str(v["name"]).strip()
+        existing = conn.execute("SELECT stadium_id FROM stadiums WHERE cfbd_venue_id=?", (cfbd_id,)).fetchone()
+        matches = set()
+        for sid in candidates.get(key(name), set()):
+            linked_id, city, state = conn.execute(
+                "SELECT cfbd_venue_id,city,state FROM stadiums WHERE stadium_id=?", (sid,)).fetchone()
+            if linked_id not in (None, cfbd_id):
+                continue
+            # A common name alone cannot establish that two physical venues
+            # are the same when both records have conflicting locations.
+            if city and v.get("city") and key(city) != key(str(v["city"])):
+                continue
+            if state and v.get("state") and key(state) != key(str(v["state"])):
+                continue
+            matches.add(sid)
+        if existing:
+            sid = existing[0]
+        elif len(matches) == 1:
+            sid = next(iter(matches))
+            counts["catalog_linked"] += 1
+        elif cfbd_id in used:
+            if len(matches) > 1:
+                counts["catalog_ambiguous"] += 1
+            conn.execute("INSERT OR IGNORE INTO stadiums (stadium_key, stadium_name) VALUES (?,?)",
+                         (f"cfbd-{cfbd_id}", name))
+            sid = conn.execute("SELECT stadium_id FROM stadiums WHERE stadium_key=?", (f"cfbd-{cfbd_id}",)).fetchone()[0]
+            counts["catalog_created"] += 1
+        else:
+            continue
+        conn.execute("""UPDATE stadiums SET cfbd_venue_id=?, city=?, state=?, latitude=?, longitude=?,
+            capacity=?, indoor=?, opened_year=? WHERE stadium_id=?""",
+            (cfbd_id, v.get("city"), v.get("state"), v.get("latitude"), v.get("longitude"),
+             v.get("capacity"), int(v["dome"]) if v.get("dome") is not None else None,
+             v.get("construction_year", v.get("constructionYear")), sid))
+    conn.commit()
+    return counts
+
+
 def primary_for(conn: sqlite3.Connection, team: int, season: int) -> int | None:
     rows = conn.execute("""SELECT stadium_id FROM team_stadiums
         WHERE team_id=? AND is_primary=1 AND start_season<=?
@@ -97,6 +159,7 @@ def primary_for(conn: sqlite3.Connection, team: int, season: int) -> int | None:
 
 def resolve_games(conn: sqlite3.Connection) -> dict:
     candidates = stadium_candidates(conn)
+    by_source_id = dict(conn.execute("SELECT cfbd_venue_id, stadium_id FROM stadiums WHERE cfbd_venue_id IS NOT NULL"))
     overrides = dict(conn.execute("SELECT game_id, stadium_id FROM game_venue_overrides"))
     report = {"games_backfilled": 0, "scheduled_backfilled": 0, "games_unresolved": 0,
               "scheduled_unresolved": 0, "explicitly_neutral": 0, "ambiguous": [],
@@ -106,13 +169,13 @@ def resolve_games(conn: sqlite3.Connection) -> dict:
             continue
         col = "venue_text" if table == "games" else "venue"
         rows = conn.execute(f"SELECT game_id, season_year, home_team_id, neutral_site, game_phase, "
-                            f"{('game_phase_check' if table == 'games' else 'notes')}, {col}, stadium_id "
+                            f"{('game_phase_check' if table == 'games' else 'notes')}, {col}, source_venue_id, stadium_id "
                             f"FROM {table}").fetchall()
-        for gid, season, home, neutral, phase, notes, source, before in rows:
+        for gid, season, home, neutral, phase, notes, source, source_id, before in rows:
             if neutral:
                 report["explicitly_neutral"] += 1
-            sid = None
-            if source and source.strip():
+            sid = by_source_id.get(source_id)
+            if sid is None and source and source.strip():
                 matches = candidates.get(key(source), set())
                 if len(matches) == 1:
                     sid = next(iter(matches))
@@ -122,7 +185,7 @@ def resolve_games(conn: sqlite3.Connection) -> dict:
             if sid is None:
                 sid = overrides.get(gid)
             # Only the 2026+ relationship is known; never project it into history.
-            if sid is None and not source and not neutral and phase == "regular" and not re.search(
+            if sid is None and not source and source_id is None and not neutral and phase == "regular" and not re.search(
                     r"bowl|championship|neutral|classic|kickoff", notes or "", re.I):
                 sid = primary_for(conn, home, season)
             if before != sid:
@@ -131,7 +194,7 @@ def resolve_games(conn: sqlite3.Connection) -> dict:
                 report["games_unresolved" if table == "games" else "scheduled_unresolved"] += 1
                 if len(report["unresolved_examples"]) < 30:
                     report["unresolved_examples"].append({"table": table, "game_id": gid,
-                                                            "source_venue": source})
+                                                            "source_venue": source, "source_venue_id": source_id})
             elif before is None:
                 report["games_backfilled" if table == "games" else "scheduled_backfilled"] += 1
     conn.commit()
@@ -142,13 +205,14 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--db", default=str(ROOT / "db/league.db"))
     p.add_argument("--seed", type=Path, default=SEED)
+    p.add_argument("--catalog", type=Path, default=CATALOG)
     p.add_argument("--report", type=Path, default=ROOT / "data/processed/stadium_resolution_report.json")
     args = p.parse_args()
     conn = sqlite3.connect(args.db)
     try:
         ensure_schema(conn)
         seeded = seed_stadiums(conn, args.seed)
-        result = {**seeded, **resolve_games(conn)}
+        result = {**seeded, **import_venue_catalog(conn, args.catalog), **resolve_games(conn)}
     finally:
         conn.close()
     args.report.parent.mkdir(parents=True, exist_ok=True)

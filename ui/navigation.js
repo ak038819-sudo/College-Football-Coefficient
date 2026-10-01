@@ -6,7 +6,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
   const views = {
-    home: [], live: [], games: [], matchups: [], teams: [], methodology: [], coverage: [],
+    home: [], live: [], games: [], matchups: [], teams: [], stadiums: [], methodology: [], coverage: [],
     // 'conference-coe' is CoE v1's five-year rolling value, which INCLUDES the
     // current season and feeds the live playoff model. 'conference-coe2' is CoE
     // 2.0's frozen value ENTERING the season. Separate views with separate names,
@@ -72,7 +72,7 @@
     const years = seasonsFor(section, config);
     let year = Number(p.get('season'));
     if (!p.has('season') || !years.includes(year)) year = latest(years);
-    if (section === 'home' || section === 'live' || section === 'matchups' || section === 'teams' || section === 'methodology' || section === 'coverage' ||
+    if (section === 'home' || section === 'live' || section === 'matchups' || section === 'teams' || section === 'stadiums' || section === 'methodology' || section === 'coverage' ||
         (section === 'rankings' && subview === 'home-field'))
       year = latest(config.yearsAll || []);
     const season = (config.gameSeasons || []).find(s => s.season === year);
@@ -111,6 +111,7 @@
     const route = { section, subview, year, status,
       query: section === 'teams' ? (p.get('q') || '').trim().slice(0, 150) : '',
       game, week, team: teamFilter, opponent, finder, findSeason, conf, stage,
+      stadium: section === 'stadiums' && /^\d{1,10}$/.test(p.get('stadium') || '') ? Number(p.get('stadium')) : null,
       matchupHome: section === 'matchups' ? matchupId('home') : null,
       matchupAway: section === 'matchups' ? matchupId('away') : null,
       venue: section === 'matchups' ? venue : 'home', view: 'tab', teamParam: null, conferenceParam: null,
@@ -187,6 +188,7 @@
         if (route.venue !== 'home') p.set('venue', route.venue);
       }
       if (route.section === 'teams' && route.query) p.set('q', route.query);
+      if (route.section === 'stadiums' && route.stadium != null) p.set('stadium', route.stadium);
     }
     return '#' + p.toString();
   }

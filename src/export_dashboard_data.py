@@ -51,10 +51,13 @@ def build_current_hfa(db_path: str) -> dict:
     try:
         if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='team_hfa_current'").fetchone():
             return {"as_of": None, "season": None, "teams": []}
-        rows = conn.execute("""
+        columns = {r[1] for r in conn.execute("PRAGMA table_info(team_hfa_current)")}
+        evidence = ", ".join(("h." + name) if name in columns else "NULL" for name in
+                             ("weighted_actual_wins", "weighted_expected_wins", "prior_hfa"))
+        rows = conn.execute(f"""
             SELECT t.team_name, h.season_year, h.as_of, h.adjusted_hfa,
                    h.elo_hfa_points, h.games_used, h.effective_n, h.lambda,
-                   h.elo_points_at_bound
+                   h.elo_points_at_bound, {evidence}
             FROM team_hfa_current h JOIN teams t ON t.team_id = h.team_id
             ORDER BY h.adjusted_hfa DESC, t.team_name
         """).fetchall()
@@ -67,8 +70,11 @@ def build_current_hfa(db_path: str) -> dict:
             {"team": name, "hfa": round(adjusted, 3),
              "elo_points": round(points, 1) if points is not None else None,
              "games": games, "effective_games": round(effective, 1),
-             "evidence_weight": round(weight, 3), "points_at_bound": bool(at_bound)}
-            for name, _, _, adjusted, points, games, effective, weight, at_bound in rows
+             "evidence_weight": round(weight, 3), "points_at_bound": bool(at_bound),
+             "weighted_actual_wins": round(actual, 2) if actual is not None else None,
+             "weighted_expected_wins": round(expected, 2) if expected is not None else None,
+             "prior_hfa": round(prior, 3) if prior is not None else None}
+            for name, _, _, adjusted, points, games, effective, weight, at_bound, actual, expected, prior in rows
         ]}
     finally:
         conn.close()

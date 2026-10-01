@@ -16,6 +16,47 @@ test('the local dashboard identifies the in-progress site release', () => {
   assert.match(shell, /class="release-label">v0\.1 · Homes of College Football<\/p>/);
 });
 
+test('stadium pages have shareable routes with safe IDs', () => {
+  const route = read('#section=stadiums&stadium=42&season=1980');
+  assert.equal(route.section, 'stadiums');
+  assert.equal(route.stadium, 42);
+  assert.equal(hashFor(route), '#section=stadiums&stadium=42');
+  assert.equal(read('#section=stadiums&stadium=42%22%3E').stadium, null);
+  assert.equal(read('#section=teams&stadium=42').stadium, null);
+});
+
+test('stadium explorer and venue-aware previews keep team HFA separate from physical venue', () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const funcs = ['hfaEvidence', 'stadiumHref', 'stadiumGameRow', 'stadiumMap',
+    'stadiumDetails', 'stadiumExplorerHtml', 'gameVenuePanel'].map(name => {
+    const source = shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))?.[0];
+    assert.ok(source, name + ' exists');
+    return source;
+  }).join('\n');
+  const context = {
+    esc: value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;'),
+    CfbNavigation: { normalizeSearch }, TEAM_BY_ID: new Map([
+      ['1', { name: 'Alpha' }], ['2', { name: 'Bravo' }]]),
+    teamLink: name => name, gameHref: id => '#game=' + id,
+    DATA: { current_hfa: { teams: [{ team: 'Alpha', hfa: 1.1, games: 10,
+      effective_games: 8, weighted_actual_wins: 6, weighted_expected_wins: 5,
+      prior_hfa: 1.0 }] } },
+    STATIC_MANIFEST: { model_params: { elo: { home_field: 55 } } }
+  };
+  vm.runInNewContext(funcs + '\nthis.explorer = stadiumExplorerHtml; this.preview = gameVenuePanel;', context);
+  const stadium = { id: 42, name: 'Alpha & Sons Field', city: 'Somewhere', state: 'UT',
+    lat: 40, lon: -111, teams: [{ name: 'Alpha' }], upcoming: [], recent: [], completed_count: 0 };
+  assert.match(context.explorer({ stadiums: [stadium] }, null), /Alpha &amp; Sons Field/);
+  assert.match(context.explorer({ stadiums: [stadium] }, 42), /No upcoming FBS games/);
+  assert.match(context.explorer({ stadiums: [stadium] }, 42), /not this stadium alone/);
+  assert.match(context.preview({ stadium_id: 42, stadium: stadium.name, neutral: false,
+    completed: false, phase: 0 }, 'Alpha'), /55 Elo points/);
+  assert.match(context.preview({ stadium_id: 42, stadium: stadium.name, neutral: true,
+    completed: false, phase: 0 }, 'Alpha'), /no home-field bonus/);
+  assert.doesNotMatch(context.preview({ stadium_id: null, stadium: null, neutral: false,
+    completed: false, phase: 0 }, 'Alpha'), /href="#section=stadiums/);
+});
+
 test('archived game cards display only resolved stadiums and retain neutral badges', () => {
   const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
   const source = shell.match(/function listingGame\(g, season\) \{[\s\S]*?\n\}/)?.[0];
@@ -43,6 +84,7 @@ test('home-field table is a current Standings view, not a historical season', ()
   assert.equal(hashFor(route), '#section=rankings&view=home-field');
   const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
   const source = shell.match(/function renderHomeFieldStandings\(\) \{[\s\S]*?\n\}/)?.[0];
+  const evidence = shell.match(/function hfaEvidence\(r\) \{[\s\S]*?\n\}/)?.[0];
   assert.ok(source);
   const context = {
     DATA: { current_hfa: { as_of: '2026-09-28', teams: [
@@ -51,7 +93,7 @@ test('home-field table is a current Standings view, not a historical season', ()
     ] } },
     esc: String, teamLink: name => name, CfbNavigation: { normalizeSearch }
   };
-  vm.runInNewContext(source + '\nthis.render = renderHomeFieldStandings;', context);
+  vm.runInNewContext(evidence + '\n' + source + '\nthis.render = renderHomeFieldStandings;', context);
   const html = context.render();
   assert.match(html, /do not drive live Elo/);
   assert.match(html, /BYU.*1\.120×.*\+60\.1.*240.*54\.4/);

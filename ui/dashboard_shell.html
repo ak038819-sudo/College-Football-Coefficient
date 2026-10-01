@@ -775,6 +775,20 @@
   }
   footer.foot a { color: var(--amber); }
   .release-label { margin: 3px 0 0; color: var(--ink-dim); font: 11px var(--font-mono); letter-spacing: .04em; }
+  .stadium-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(250px, .8fr); gap: 16px; }
+  .stadium-map { width: 100%; height: auto; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; }
+  .stadium-map circle { fill: var(--amber); stroke: var(--bg); stroke-width: 1.3; }
+  .stadium-map a:hover circle, .stadium-map a:focus circle { fill: var(--green-hl); stroke-width: 2.5; }
+  .stadium-list { max-height: 470px; overflow: auto; margin: 8px 0 0; padding: 0; list-style: none; }
+  .stadium-list li { border-bottom: 1px solid var(--line); padding: 8px 0; }
+  .stadium-list small { display: block; color: var(--ink-dim); }
+  .stadium-search { width: 100%; padding: 9px; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 5px; }
+  .stadium-facts { display: flex; flex-wrap: wrap; gap: 10px 25px; margin: 12px 0; }
+  .stadium-facts div { min-width: 110px; }
+  .stadium-facts b { display: block; color: var(--ink-dim); font-size: 11px; }
+  .stadium-games { padding-left: 20px; }
+  .stadium-games li { margin: 7px 0; }
+  @media (max-width: 720px) { .stadium-layout { grid-template-columns: 1fr; } .stadium-list { max-height: 340px; } }
 
   .live-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 18px; }
   .live-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 16px; }
@@ -874,6 +888,7 @@
       <a data-section="games" href="#section=games">Games</a>
       <a data-section="matchups" href="#section=matchups">Matchups</a>
       <a data-section="teams" href="#section=teams">Teams</a>
+      <a data-section="stadiums" href="#section=stadiums">Stadiums</a>
       <a data-section="rankings" href="#section=rankings">Standings</a>
       <a data-section="playoff" href="#section=playoff">Playoff</a>
       <a data-section="coverage" href="#section=coverage">Data coverage</a>
@@ -1240,7 +1255,7 @@ const ROUTE_CONFIG = { yearsAll: DATA.years_all, playoffYears: DATA.years_playof
   gameSeasons: STATIC_MANIFEST.seasons || [] };
 let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult: null, simYear: null,
   homeGroup: null, homeTop25: false, homePoll: null };
-const SECTION_LABELS = { home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
+const SECTION_LABELS = { home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', stadiums: 'Stadiums', rankings: 'Standings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
 const SUBVIEWS = {
   rankings: [['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['home-field', 'Home-Field Advantage'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
     ['conference-coe2', 'Conference CoE 2.0'], ['elo-weekly', 'Week by Week'],
@@ -1260,14 +1275,14 @@ function fmt(n) { return Number(n).toFixed(3); }
 function renderYearRow() {
   const row = document.getElementById('year-row');
   if (state.view === 'team' || state.view === 'conference' || state.view === 'game' ||
-      state.section === 'teams' || state.section === 'live' || state.section === 'matchups' || state.section === 'methodology' || state.section === 'coverage' ||
+      state.section === 'teams' || state.section === 'stadiums' || state.section === 'live' || state.section === 'matchups' || state.section === 'methodology' || state.section === 'coverage' ||
       (state.section === 'games' && state.finder) || (state.section === 'rankings' && state.subview === 'home-field')) {
     row.innerHTML = '';
     document.getElementById('year-caption').textContent = state.view === 'team' ? 'TEAM PAGE'
       : state.view === 'conference' ? 'CONFERENCE PAGE' : state.view === 'game' ? 'GAME'
       : state.section === 'live' ? 'CURRENT SLATE' : state.section === 'matchups' ? 'WHAT IF · ' + UPCOMING.season
       : state.section === 'methodology' ? 'METHODOLOGY'
-      : state.section === 'coverage' ? 'EVERY SEASON' : state.section === 'games' ? 'EVERY SEASON'
+      : state.section === 'coverage' ? 'EVERY SEASON' : state.section === 'stadiums' ? 'HOMES OF COLLEGE FOOTBALL' : state.section === 'games' ? 'EVERY SEASON'
       : state.section === 'rankings' ? 'CURRENT ESTIMATES' : 'TEAMS & CONFERENCES';
     return;
   }
@@ -1421,7 +1436,8 @@ function renderHomeFieldStandings() {
   if (!rows.length) return '<div class="panel"><h2 class="section-title">Team Home-Field Advantage</h2>' + intro +
     '<p class="empty-note">Team-specific estimates have not been built for this preview.</p></div>';
   const body = rows.map((r, i) => '<tr data-team="' + esc(CfbNavigation.normalizeSearch(r.team)) + '">' +
-    '<td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + teamLink(r.team, 'sm') + '</div></td>' +
+    '<td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + teamLink(r.team, 'sm') + '</div>' +
+    '<details class="help"><summary>Why this estimate?</summary>' + hfaEvidence(r) + '</details></td>' +
     '<td class="num coe-val">' + Number(r.hfa).toFixed(3) + '×</td>' +
     '<td class="num">' + (r.elo_points == null ? '—' : (r.elo_points >= 0 ? '+' : '') +
       Number(r.elo_points).toFixed(1) + (r.points_at_bound ? '*' : '')) + '</td>' +
@@ -1438,6 +1454,17 @@ function renderHomeFieldStandings() {
     '<p class="section-note">Elo equivalent is an illustrative conversion of the estimate, not the bonus used in predictions. ' +
     'Weighted sample discounts older games; zero-game teams use the league prior. * = conversion reached its configured bound. ' +
     'Only completed, non-neutral FBS-vs-FBS home games with pregame Elo are counted.</p></div>';
+}
+
+function hfaEvidence(r) {
+  if (r.weighted_actual_wins == null || r.weighted_expected_wins == null)
+    return '<p class="section-note">The current export does not include the home-win evidence.</p>';
+  const wins = Number(r.weighted_actual_wins).toFixed(2), expected = Number(r.weighted_expected_wins).toFixed(2);
+  return '<p class="section-note">Recency-weighted home wins: <b>' + wins + '</b>; neutral-field Elo expected wins: <b>' +
+    expected + '</b> across ' + Number(r.games) + ' eligible games. Older games count less, leaving a weighted sample of ' +
+    Number(r.effective_games).toFixed(1) + '. The estimate is pulled toward the league prior (' +
+    Number(r.prior_hfa).toFixed(3) + '×) when evidence is thin. This is a team home-game estimate, ' +
+    'not a measured effect of one physical stadium and not the live Elo bonus.</p>';
 }
 
 function renderConferenceElo() {
@@ -2868,6 +2895,96 @@ function renderTeamDirectory() {
     '<div id="directory-results" aria-live="polite"></div></div>' + renderConferenceDirectory();
 }
 
+let stadiumData = null;
+function loadStadiumExplorer() {
+  if (stadiumData) return Promise.resolve(stadiumData);
+  if (!STATIC_MANIFEST.stadiums) return Promise.resolve({ stadiums: [] });
+  return loadDataScript(STATIC_MANIFEST.stadiums).then(() => {
+    stadiumData = window.__CFB_STADIUMS__ || { stadiums: [] };
+    return stadiumData;
+  });
+}
+function stadiumHref(id) { return '#section=stadiums&stadium=' + encodeURIComponent(id); }
+function stadiumGameRow(g) {
+  const away = TEAM_BY_ID.get(String(g.away_id)), home = TEAM_BY_ID.get(String(g.home_id));
+  const score = g.completed ? ' · ' + (g.away_score == null ? '—' : g.away_score) + '–' +
+    (g.home_score == null ? '—' : g.home_score) : '';
+  return '<li><a href="' + esc(gameHref(g.id, g.season)) + '">' + esc(g.date) + ': ' +
+    esc(away?.name || 'Unknown') + (g.neutral ? ' vs. ' : ' at ') + esc(home?.name || 'Unknown') + score + '</a></li>';
+}
+function stadiumMap(stadiums, hawaii) {
+  const points = stadiums.filter(s => Number.isFinite(Number(s.lat)) && Number.isFinite(Number(s.lon)) &&
+    s.lat != null && s.lon != null && (hawaii ? Number(s.lon) < -150 && Number(s.lat) >= 18 && Number(s.lat) <= 23
+      : Number(s.lon) >= -125 && Number(s.lon) <= -66 && Number(s.lat) >= 24 && Number(s.lat) <= 50));
+  const bounds = hawaii ? [-161, -154, 18, 23] : [-125, -66, 24, 50];
+  const [left, right, bottom, top] = bounds;
+  return '<svg class="stadium-map" viewBox="0 0 640 320" role="img" aria-label="' +
+    (hawaii ? 'Hawaii' : 'Contiguous United States') + ' stadium location plot; use the searchable list for links">' +
+    '<text x="18" y="25" fill="currentColor" font-size="15">' + (hawaii ? 'Hawaii' : 'Contiguous United States') + '</text>' +
+    '<path d="M30 38H610V285H30Z" fill="none" stroke="currentColor" opacity=".3"/>' +
+    points.map(s => {
+      const x = 30 + (Number(s.lon) - left) / (right - left) * 580;
+      const y = 38 + (top - Number(s.lat)) / (top - bottom) * 247;
+      return '<a href="' + esc(stadiumHref(s.id)) + '"><circle cx="' + x.toFixed(1) + '" cy="' +
+        y.toFixed(1) + '" r="4"><title>' + esc(s.name) + (s.state ? ', ' + esc(s.state) : '') + '</title></circle></a>';
+    }).join('') + '<text x="30" y="308" fill="currentColor" font-size="12">' +
+    (hawaii ? '161°W' : '125°W') + '</text><text x="570" y="308" fill="currentColor" font-size="12">' +
+    (hawaii ? '154°W' : '66°W') + '</text></svg>';
+}
+function stadiumDetails(s) {
+  const location = [s.city, s.state].filter(Boolean).join(', ');
+  const teams = (s.teams || []).map(t => teamLink(t.name, 'xs')).join(', ') || 'No current primary FBS team recorded';
+  const hfa = (s.teams || []).map(t => (DATA.current_hfa?.teams || []).find(r => r.team === t.name))
+    .filter(Boolean).map(r => '<details class="help"><summary>' + esc(r.team) + ' home-field evidence: ' +
+      Number(r.hfa).toFixed(3) + '×</summary>' + hfaEvidence(r) + '</details>').join('');
+  const games = (heading, rows, empty) => '<h3>' + heading + '</h3>' + (rows.length
+    ? '<ol class="stadium-games">' + rows.map(stadiumGameRow).join('') + '</ol>'
+    : '<p class="empty-note">' + empty + '</p>');
+  return '<div class="panel"><a class="back-link" href="#section=stadiums">&larr; All stadiums</a>' +
+    '<h2 class="view-title">' + esc(s.name) + '</h2>' +
+    '<div class="stadium-facts"><div><b>Location</b>' + esc(location || 'Not yet verified') + '</div>' +
+    '<div><b>Capacity</b>' + (s.capacity == null ? 'Not available' : Number(s.capacity).toLocaleString()) + '</div>' +
+    '<div><b>Current home team</b>' + teams + '</div></div>' +
+    '<p class="section-note">Games here are linked by resolved physical venue. The home-field estimates below ' +
+    'measure each team’s qualifying home games across venues, not this stadium alone; they are analysis only.</p>' +
+    hfa + games('Upcoming here', s.upcoming || [], 'No upcoming FBS games with this verified venue.') +
+    games('Recent games here', s.recent || [], 'No completed FBS games linked to this venue yet.') +
+    '<p class="section-note">' + Number(s.completed_count || 0) + ' completed games linked in the archive. ' +
+    'Older schedules may lack a resolvable venue, so this is not a complete all-time total.</p></div>';
+}
+function stadiumExplorerHtml(data, selected) {
+  const stadiums = data.stadiums || [];
+  if (selected != null) {
+    const s = stadiums.find(x => x.id === selected);
+    return s ? stadiumDetails(s) : '<div class="panel"><h2>Stadium not found</h2><a href="#section=stadiums">Browse stadiums</a></div>';
+  }
+  if (!stadiums.length) return '<div class="panel"><h2 class="view-title">Stadium Explorer</h2>' +
+    '<p class="empty-note">Stadium data will appear after the next full data build.</p></div>';
+  const withCoords = stadiums.filter(s => s.lat != null && s.lon != null).length;
+  return '<div class="panel"><h2 class="view-title">Stadium Explorer</h2>' +
+    '<p class="section-note">Explore the homes of FBS football. ' + withCoords + ' of ' + stadiums.length +
+    ' listed venues have verified coordinates. Dots show location, not home-field strength; ' +
+    'the list includes venues without coordinates and is searchable.</p>' +
+    '<div class="stadium-layout"><div>' + stadiumMap(stadiums, false) + stadiumMap(stadiums, true) + '</div>' +
+    '<div><label for="stadium-search">Find a stadium or team</label><input class="stadium-search" id="stadium-search" type="search" autocomplete="off">' +
+    '<p class="section-note" id="stadium-count" role="status">Showing all ' + stadiums.length + ' stadiums</p>' +
+    '<ul class="stadium-list" id="stadium-list">' + stadiums.map(s => '<li data-search="' +
+      esc(CfbNavigation.normalizeSearch(s.name + ' ' + (s.city || '') + ' ' + (s.state || '') + ' ' +
+        (s.teams || []).map(t => t.name).join(' '))) + '"><a href="' + esc(stadiumHref(s.id)) + '">' +
+      esc(s.name) + '</a><small>' + esc((s.teams || []).map(t => t.name).join(', ') ||
+        [s.city, s.state].filter(Boolean).join(', ') || 'Game venue') + '</small></li>').join('') +
+    '</ul></div></div></div>';
+}
+function hydrateStadiumExplorer(version) {
+  loadStadiumExplorer().then(data => {
+    if (version === renderVersion && state.section === 'stadiums')
+      document.getElementById('stadium-explorer').innerHTML = stadiumExplorerHtml(data, state.stadium);
+  }).catch(() => {
+    if (version === renderVersion && state.section === 'stadiums')
+      document.getElementById('stadium-explorer').innerHTML = '<div class="panel"><h2>Stadium Explorer</h2><p class="empty-note">Stadium data could not be loaded.</p></div>';
+  });
+}
+
 // Conferences are browsable objects too (Milestone E), filtered by the same search box.
 function renderConferenceDirectory() {
   const q = CfbNavigation.normalizeSearch(state.query);
@@ -3593,6 +3710,14 @@ document.getElementById('content').addEventListener('change', e => {
   navigate({ [sel.dataset.filter]: sel.dataset.filter === 'week' && value && value !== 'post' ? Number(value) : value });
 });
 document.getElementById('content').addEventListener('input', e => {
+  if (e.target.id === 'stadium-search') {
+    const query = CfbNavigation.normalizeSearch(e.target.value);
+    const rows = document.querySelectorAll('#stadium-list li');
+    let visible = 0;
+    rows.forEach(row => { row.hidden = !row.dataset.search.includes(query); if (!row.hidden) visible++; });
+    document.getElementById('stadium-count').textContent = 'Showing ' + visible + ' of ' + rows.length + ' stadiums';
+    return;
+  }
   if (e.target.id !== 'hfa-search') return;
   const query = CfbNavigation.normalizeSearch(e.target.value);
   const rows = document.querySelectorAll('#hfa-table tbody tr');
@@ -3899,6 +4024,23 @@ function gameHref(id, season) {
   const back = state.view === 'game' ? state.returnTo : CfbNavigation.hashFor(state);
   return CfbNavigation.hashFor({ view: 'game', gameParam: id, year: season ?? null, returnTo: back });
 }
+function gameVenuePanel(g, homeName) {
+  const venue = g.stadium_id != null && g.stadium
+    ? '<a href="' + esc(stadiumHref(g.stadium_id)) + '">' + esc(g.stadium) + '</a>'
+    : 'Venue has not been verified in this dataset';
+  const flat = STATIC_MANIFEST.model_params?.elo?.home_field;
+  const model = g.neutral ? 'Neutral site: the Elo prediction applies no home-field bonus.'
+    : 'The Elo prediction applies the production flat home-field bonus to designated home team ' + esc(homeName) +
+      (flat == null ? '.' : ' (' + Number(flat).toFixed(0) + ' Elo points).');
+  const current = !g.completed && g.phase === 0 && (DATA.current_hfa?.teams || []).find(r => r.team === homeName);
+  const experimental = current && !g.neutral ? '<p class="section-note">Experimental team estimate: ' +
+    Number(current.hfa).toFixed(3) + '× for ' + esc(homeName) + '. This is a current team home-game estimate, ' +
+    'not a stadium-specific value, and it is not used in the live win chance. ' +
+    '<a href="#section=rankings&view=home-field">See the evidence</a>.</p>' : '';
+  return '<div class="panel"><h2 class="section-title">Where it’s played</h2><p>' + venue + '</p>' +
+    '<p class="section-note">' + model + ' Physical venue and designated home team are separate fields.</p>' +
+    experimental + '</div>';
+}
 function backLink() {
   const r = state.returnTo || '#section=home';
   let label;
@@ -4067,7 +4209,7 @@ function hydrateGamePage(version) {
         esc(coverageReason('game_advanced', season) || 'Available for this season.') + '</div>' +
         (g.completed ? '<div class="gp-fact"><b>Highlights</b><a href="https://www.youtube.com/results?search_query=' + q + '" target="_blank" rel="noopener noreferrer">Search YouTube &rarr;</a></div>' : '') +
         '<div class="gp-fact"><b>Teams</b>' + (away ? teamLink(an, 'xs', season) : esc(an)) + ' ' + (home ? teamLink(hn, 'xs', season) : esc(hn)) + '</div></div></div>';
-      target().innerHTML = hero + '<div class="grid-2">' + eloPanel + coePanel + '</div>' + srPanel +
+      target().innerHTML = hero + gameVenuePanel(g, hn) + '<div class="grid-2">' + eloPanel + coePanel + '</div>' + srPanel +
         '<div class="panel" id="gp-series"><h2 class="section-title">Series history</h2><p class="empty-note">Loading meetings…</p></div>' + more;
       loadSeries(g.home_id, g.away_id).then(rows => {
         if (version === renderVersion) document.getElementById('gp-series').innerHTML = seriesHtml(rows, g, an, hn);
@@ -4787,6 +4929,7 @@ function render() {
   else if (state.section === 'methodology') content.innerHTML = renderMethodology();
   else if (state.section === 'coverage') content.innerHTML = renderCoverage();
   else if (state.section === 'teams') { content.innerHTML = renderTeamDirectory(); hydrateDirectory(version); }
+  else if (state.section === 'stadiums') { content.innerHTML = '<div id="stadium-explorer"><div class="panel">Loading stadiums…</div></div>'; hydrateStadiumExplorer(version); }
   else if (state.section === 'matchups') content.innerHTML = renderMatchups();
   else if (state.section === 'games') { content.innerHTML = renderGames(); hydrateGames(version); }
   else if (state.section === 'live') { content.innerHTML = renderLiveScores(); hydrateLiveScores(version); }
