@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Read-only, forward-only comparison of flat Elo and team HFA Elo.
 
-Prerequisite: build the flat reference with src/build_elo.py, then run the
-full src/build_hfa.py (without --current-only). Those HFA rows are frozen
-entering each season and derived from the flat reference. This script never
-replaces elo_game_history or any production predictions.
+Prerequisite: build the flat reference with src/build_elo.py. The default
+entering-season comparison also requires full src/build_hfa.py (without
+--current-only). --in-season recomputes each bonus from earlier game dates
+using the flat reference. Neither mode replaces production predictions.
 
 Usage: python src/compare_dynamic_hfa.py --from-year 2018
 """
@@ -72,7 +72,9 @@ def verify_flat_reference(conn: sqlite3.Connection, flat_rows: list) -> None:
 
 
 def compare(conn: sqlite3.Connection, cfg: dict, from_year: int,
-            config_path: Path = CONFIG_PATH, in_season: bool = False) -> dict:
+            config_path: Path = CONFIG_PATH, in_season: bool = False,
+            centered_alpha: float | None = None, max_deviation: float | None = None,
+            half_life: float | None = None, shrinkage_k: float | None = None) -> dict:
     prev = conn.row_factory
     conn.row_factory = sqlite3.Row
     try:
@@ -84,8 +86,13 @@ def compare(conn: sqlite3.Connection, cfg: dict, from_year: int,
     verify_flat_reference(conn, flat_rows)
     if in_season:
         hfa_cfg = json.loads(Path(config_path).read_text())['hfa']
+        if half_life is not None:
+            hfa_cfg['half_life_years'] = half_life
+        if shrinkage_k is not None:
+            hfa_cfg['shrinkage_k'] = shrinkage_k
         reference = home_games_from_flat(games, flat_rows, cfg['scale'])
-        bonus = pregame_bonus_provider(reference, hfa_cfg, cfg['scale'], cfg['home_field'])
+        bonus = pregame_bonus_provider(reference, hfa_cfg, cfg['scale'], cfg['home_field'],
+                                      centered_alpha=centered_alpha, max_deviation=max_deviation)
         bounded = set()
     else:
         bonus, bounded = entering_home_bonuses(conn, games, cfg["home_field"])
@@ -112,6 +119,8 @@ def compare(conn: sqlite3.Connection, cfg: dict, from_year: int,
         return {"games": n, **{k: round(rec[k] / n, 6) for k in
                 ("flat_brier", "dynamic_brier", "flat_log_loss", "dynamic_log_loss")}}
     return {"from_year": from_year, "mode": "pregame in-season" if in_season else "entering-season",
+            "centered_alpha": centered_alpha, "max_deviation": max_deviation,
+            "half_life": half_life, "shrinkage_k": shrinkage_k,
             "note": "Diagnostic only; HFA hyperparameters are not calibrated for deployment",
             "bounded_or_missing_point_fallback_teams": len(bounded),
             "overall": summarize(total),
@@ -124,10 +133,20 @@ def main() -> None:
     parser.add_argument("--config", default="config/model_config.json")
     parser.add_argument("--from-year", type=int, default=2018)
     parser.add_argument("--in-season", action="store_true", help="Recalculate team HFA before each game date from flat reference")
+    parser.add_argument("--centered-alpha", type=float, help="Blend team deviation around calibrated flat bonus (0 to 1)")
+    parser.add_argument("--max-deviation", type=float, help="Cap blended team deviation in Elo points")
+    parser.add_argument("--half-life", type=float, help="Override HFA recency half-life for this replay")
+    parser.add_argument("--shrinkage-k", type=float, help="Override HFA sample shrinkage for this replay")
     args = parser.parse_args()
+    if not args.in_season and any(x is not None for x in (
+            args.centered_alpha, args.max_deviation, args.half_life, args.shrinkage_k)):
+        parser.error('HFA tuning options require --in-season')
+    if args.max_deviation is not None and args.centered_alpha is None:
+        parser.error('--max-deviation requires --centered-alpha')
     conn = sqlite3.connect(args.db)
     try:
-        result = compare(conn, load_config(args.config)["elo"], args.from_year, Path(args.config), args.in_season)
+        result = compare(conn, load_config(args.config)["elo"], args.from_year, Path(args.config), args.in_season,
+                         args.centered_alpha, args.max_deviation, args.half_life, args.shrinkage_k)
     finally:
         conn.close()
     print(json.dumps(result, indent=2))

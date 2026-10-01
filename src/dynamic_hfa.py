@@ -18,7 +18,8 @@ def home_games_from_flat(games, flat_rows, scale):
         raise ValueError('Flat reference must have two Elo rows per game')
     result = []
     for g, home, away in zip(games, flat_rows[::2], flat_rows[1::2]):
-        if home[0] != g['game_id'] or away[0] != g['game_id'] or home[1] != g['home_team_id']:
+        if (home[0] != g['game_id'] or away[0] != g['game_id'] or
+                home[1] != g['home_team_id'] or away[1] != g['away_team_id']):
             raise ValueError('Flat reference game order differs from source games')
         if g['neutral_site']:
             continue
@@ -31,8 +32,13 @@ def home_games_from_flat(games, flat_rows, scale):
     return result
 
 
-def pregame_bonus_provider(reference_games, hfa_cfg, scale, flat_bonus):
+def pregame_bonus_provider(reference_games, hfa_cfg, scale, flat_bonus,
+                           centered_alpha=None, max_deviation=None):
     """Return a callback for run_elo; never reads its dynamic ratings/results."""
+    if centered_alpha is not None and not 0 <= centered_alpha <= 1:
+        raise ValueError('centered_alpha must lie between 0 and 1')
+    if max_deviation is not None and max_deviation < 0:
+        raise ValueError('max_deviation must be nonnegative')
     by_team = defaultdict(list)
     for game in reference_games:
         by_team[game.team_id].append(game)
@@ -65,6 +71,14 @@ def pregame_bonus_provider(reference_games, hfa_cfg, scale, flat_bonus):
             value = est['elo_hfa_points']
             if value is None or est['elo_points_at_bound']:
                 value = flat_bonus
+            elif centered_alpha is not None:
+                # The team estimate measures deviation from its contemporary
+                # national baseline. Keep the separately calibrated flat
+                # intercept, then shrink/cap only the team-specific residual.
+                residual = centered_alpha * (value - national_points)
+                if max_deviation is not None:
+                    residual = max(-max_deviation, min(max_deviation, residual))
+                value = flat_bonus + residual
         team_cache[key] = value
         return value
 

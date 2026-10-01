@@ -24,10 +24,12 @@ no bonus from `run_elo`.
 On the local database (6,239 games, 2018–2026), the current untuned parameters
 score 0.187292 Brier and 0.552001 log loss versus 0.186831 and 0.551177 for
 flat Elo. This is insufficient to switch production predictions. Tune using
-earlier seasons only, then evaluate once on later held-out seasons; keep a
+earlier seasons and track the fixed choice prospectively; keep a
 separate flat reference so team bonuses never feed their own estimator. Update
 the upcoming-game prediction and display pipeline together when activation is
-validated. Until then the table and replay remain experimental.
+validated. A centered, capped candidate modestly improved exploratory scores;
+see [the tuning report](dynamic-hfa-tuning.md). Until then the table and replay
+remain experimental.
 
 ## Before publishing
 
