@@ -12,8 +12,10 @@ integration step (build_hybrid_coefficients.py).
 
 Formulas:
   Pregame effective rating: R* = R + H
-    (H = home_field, added to the home team, only when the game is not
-    at a neutral site; 0 otherwise)
+    (H = configured flat home_field in production, added to the home team
+    only when the game is not at a neutral site; 0 otherwise. The pure
+    run_elo() function also accepts an opt-in team-specific provider for
+    a read-only research replay; main() never enables it.)
   Expected result: E_A = 1 / (1 + 10^((R*_B - R*_A) / scale))
   Actual result S: 1 (win), 0.5 (tie), 0 (loss) -- an OT loss is NOT
     special here (S=0, same as a regulation loss). That distinction is
@@ -50,6 +52,7 @@ import sqlite3
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from srdiff import (XsrModel, actual_sr_diff, build_layer, expected_sr_diff,  # noqa: E402
@@ -152,7 +155,8 @@ def load_game_success_rates(conn: sqlite3.Connection) -> dict:
         "SELECT game_id, team_id, off_success_rate FROM game_team_advanced WHERE off_success_rate IS NOT NULL")}
 
 
-def run_elo(games, cfg: dict, layer=None, success_rates: dict | None = None):
+def run_elo(games, cfg: dict, layer=None, success_rates: dict | None = None,
+            home_bonus_for_game: Callable | None = None):
     """
     Pure function (no DB writes): given chronologically-ordered game rows
     and an elo config dict, returns (rows_to_insert, final_ratings,
@@ -164,6 +168,9 @@ def run_elo(games, cfg: dict, layer=None, success_rates: dict | None = None):
     keeps the exact behavior it had before the performance layer existed.
     `success_rates` is {(game_id, team_id): Success Rate} for the xSRDiff and
     raw-SRDiff variants; the MOV and result-only layers never read it.
+    `home_bonus_for_game` is an optional, experimental point-in-time provider.
+    It receives the pregame row and returns that home's Elo-point bonus. The
+    production path omits it and remains bit-for-bit on the flat config value.
     """
     initial_rating = cfg["initial_rating"]
     scale = cfg["scale"]
@@ -202,7 +209,8 @@ def run_elo(games, cfg: dict, layer=None, success_rates: dict | None = None):
         r_home, r_away = ratings[home_id], ratings[away_id]
         neutral = bool(g["neutral_site"])
 
-        eff_home = effective_rating(r_home, True, neutral, home_field)
+        game_home_field = home_field if neutral or home_bonus_for_game is None else float(home_bonus_for_game(g))
+        eff_home = effective_rating(r_home, True, neutral, game_home_field)
         eff_away = effective_rating(r_away, False, neutral, home_field)
 
         e_home = expected_result(eff_home, eff_away, scale)
