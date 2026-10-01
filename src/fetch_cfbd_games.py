@@ -384,6 +384,7 @@ def main(year: int) -> int:
                 "game_phase",      # ✅ add this
                 "neutral_site",
                 "notes",
+                "venue",          # explicit upstream physical venue, display only
             ],
         )
 
@@ -460,6 +461,7 @@ def main(year: int) -> int:
                 "game_phase": phase,
                 "neutral_site": neutral_site,
                 "notes": notes,
+                "venue": pick(g, "venue", default="") or "",
             })
 
 

@@ -222,6 +222,7 @@
   .gl-row.lost .gl-team, .gl-row.lost .gl-main { opacity: 0.55; }
   .gl-row.won .gl-main { color: var(--amber); }
   .gl-foot { font: 11px var(--font-mono); color: var(--ink-dim); border-top: 1px dotted var(--line); padding-top: 6px; }
+  .gl-venue { font: 11px var(--font-mono); color: var(--ink-dim); padding: 3px 0 6px; }
   /* Shared by the games filters and the week-by-week stage picker (P1-05). */
   .games-filters form, .filter-row form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; margin: 0 0 14px; }
   .games-filters label, .filter-row label { display: flex; flex-direction: column; gap: 4px; font: 11px var(--font-mono); color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.4px; }
@@ -3410,6 +3411,7 @@ function listingGame(g, season) {
     '<a class="gl-more" href="' + esc(gameHref(g.game_id, season)) + '">' + (g.completed ? 'Game page' : 'Preview') + ' &rarr;</a>';
   return '<li class="listing-game" data-game-id="' + g.game_id + '"><div class="gl-top">' + badges.join('') +
     '<span class="gl-when">' + esc(when) + '</span></div>' + row(g.away_id, false) + row(g.home_id, true) +
+    (g.stadium ? '<div class="gl-venue">Venue: ' + esc(g.stadium) + '</div>' : '') +
     '<div class="gl-foot">' + foot + '</div></li>';
 }
 
@@ -3985,7 +3987,7 @@ function hydrateGamePage(version) {
           (g.completed ? '<span class="gp-score">' + score + '</span>' : '<span class="gp-score">' + (pct ? (isHome ? pct.home : pct.away) + '%' : '—') + '</span>') + '</div>';
       };
       const hero = '<div class="panel gp-hero"><div class="gl-top">' + badges.join('') + '<span class="gl-when">' + esc(when) + '</span></div>' +
-        '<p class="gp-meta">' + season + ' season · ' + stage + ' · Venue not in this dataset</p>' +
+        '<p class="gp-meta">' + season + ' season · ' + stage + (g.stadium ? ' · Venue: ' + esc(g.stadium) : '') + '</p>' +
         '<div class="gp-board">' + side(away, an, g.away_score, false) + '<div class="gp-mid">' + (g.neutral ? 'vs.' : 'at') +
         (g.completed ? '' : '<br>win chance') + '</div>' + side(home, hn, g.home_score, true) + '</div></div>';
 

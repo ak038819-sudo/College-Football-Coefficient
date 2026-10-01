@@ -56,7 +56,7 @@ FIELDS = ["game_id", "week", "date", "kickoff_utc", "completed", "phase", "neutr
           "home_id", "away_id", "home_score", "away_score",
           "home_pre_elo", "away_pre_elo", "p_home", "home_post_elo", "away_post_elo", "home_elo_change",
           "home_game_coe", "away_game_coe", "home_provisional", "away_provisional",
-          "time_tbd"]      # appended last so existing positions never move
+          "time_tbd", "stadium_id", "stadium"]  # append-only; older field positions never move
 SEARCH_GAME_FIELDS = ["game_id", "season", "home_id", "away_id", "date", "home_score", "away_score", "completed"]
 
 # Game pages (Milestone C). Loaded only when a game page opens.
@@ -94,6 +94,17 @@ def _r(v, nd):
     return None if v is None else round(v, nd)
 
 
+def stadium_map(conn: sqlite3.Connection, table: str) -> dict:
+    """Game ID -> resolved physical venue. Never infer from a home team here."""
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='stadiums'").fetchone():
+        return {}
+    if "stadium_id" not in {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}:
+        return {}
+    return {gid: (sid, name) for gid, sid, name in conn.execute(
+        f"SELECT g.game_id, g.stadium_id, s.stadium_name FROM {table} g "
+        "LEFT JOIN stadiums s ON s.stadium_id = g.stadium_id")}
+
+
 def build_season_payloads(conn: sqlite3.Connection, upcoming: dict) -> dict:
     """{season: payload}. Pure with respect to the database contents + the upcoming export."""
     elo = {(g, t): (pre, exp, chg, post) for g, t, pre, exp, chg, post in conn.execute(
@@ -102,6 +113,9 @@ def build_season_payloads(conn: sqlite3.Connection, upcoming: dict) -> dict:
     coe = {(g, t): c for g, t, c in conn.execute("SELECT game_id, team_id, game_coe FROM hybrid_game_ratings")} \
         if has_hybrid else {}
     kickoff = kickoff_map(conn)
+    final_stadiums = stadium_map(conn, "games")
+    scheduled_stadiums = stadium_map(conn, "scheduled_games") if conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='scheduled_games'").fetchone() else {}
     rows = defaultdict(list)
 
     for (gid, season, week, date, home, away, hs, as_, neutral, ot, phase) in conn.execute(
@@ -109,18 +123,20 @@ def build_season_payloads(conn: sqlite3.Connection, upcoming: dict) -> dict:
                       neutral_site, went_ot, game_phase FROM games WHERE home_score IS NOT NULL"""):
         he, ae = elo.get((gid, home)), elo.get((gid, away))
         ko, ko_tbd = kickoff.get(gid, (None, None))                 # display only; null when not fetched
+        sid, stadium = final_stadiums.get(gid, (None, None))
         rows[season].append([
             gid, week, str(date)[:10], ko, 1, PHASE_CODE.get(phase, 0), int(bool(neutral)), int(bool(ot)),
             home, away, hs, as_,
             _r(he[0], 1) if he else None, _r(ae[0], 1) if ae else None, _r(he[1], 4) if he else None,
             _r(he[3], 1) if he else None, _r(ae[3], 1) if ae else None, _r(he[2], 2) if he else None,
-            _r(coe.get((gid, home)), 3), _r(coe.get((gid, away)), 3), 0, 0, ko_tbd])
+            _r(coe.get((gid, home)), 3), _r(coe.get((gid, away)), 3), 0, 0, ko_tbd, sid, stadium])
 
     for g in upcoming.get("games", []):
         gid, season, week, kickoff, _tbd, home, away, neutral, phase, h_elo, a_elo, p, h_prov, a_prov = g[:14]
+        sid, stadium = scheduled_stadiums.get(gid, (None, None))
         rows[season].append([
             gid, week, (kickoff or "1900-01-01")[:10], kickoff, 0, phase, neutral, 0, home, away, None, None,
-            h_elo, a_elo, p, None, None, None, None, None, h_prov, a_prov, int(bool(_tbd))])
+            h_elo, a_elo, p, None, None, None, None, None, h_prov, a_prov, int(bool(_tbd)), sid, stadium])
 
     conf = defaultdict(dict)
     for tid, season, c in conn.execute("SELECT team_id, season_year, conference_real FROM team_membership_by_season"):

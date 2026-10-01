@@ -11,6 +11,26 @@ const config = {
 };
 const read = hash => readRoute(hash, config);
 
+test('archived game cards display only resolved stadiums and retain neutral badges', () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = shell.match(/function listingGame\(g, season\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(source);
+  const context = {
+    UPCOMING_BY_ID: new Map(), fmtGameDate: () => 'Saturday', fmtKickoff: () => 'Saturday',
+    probPct: () => ({ home: 50, away: 50 }), TEAM_BY_ID: new Map([
+      ['1', { name: 'Alpha' }], ['2', { name: 'Bravo' }]]),
+    teamLink: name => name, esc: value => String(value).replaceAll('<', '&lt;'),
+    gameHref: () => '#game=1'
+  };
+  vm.runInNewContext(source + '\nthis.card = listingGame;', context);
+  const game = { game_id: 1, completed: true, home_id: 1, away_id: 2,
+    home_score: 3, away_score: 7, phase: 0, neutral: true, stadium: 'Actual <Field>' };
+  assert.match(context.card(game, 2026), /Neutral site/);
+  assert.match(context.card(game, 2026), /Venue: Actual &lt;Field>/);
+  assert.doesNotMatch(context.card({ ...game, stadium: null }, 2026), /Venue:/);
+  assert.match(shell, /g\.stadium \? ' · Venue: ' \+ esc\(g\.stadium\)/);
+});
+
 test('home-field table is a current Standings view, not a historical season', () => {
   const route = read('#section=rankings&view=home-field&season=1980');
   assert.equal(route.subview, 'home-field');

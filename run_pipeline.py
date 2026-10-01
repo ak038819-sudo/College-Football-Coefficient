@@ -154,6 +154,11 @@ def main() -> None:
     else:
         print(">>> --skip-load: assuming db/league.db is already bootstrapped and loaded")
 
+    # Physical venue data is display-only. The seed starts in 2026; older
+    # home-team designations must not be turned into guessed stadiums.
+    run([python, "src/build_stadiums.py", "--db", str(DB_PATH)],
+        "Seed stadiums and conservatively resolve game venues")
+
     run([python, "src/build_coefficients.py"], "Compute iterative team + conference ratings (all years)")
 
     for year in MEMBERSHIP_SEASONS:
