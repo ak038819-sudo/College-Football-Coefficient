@@ -354,6 +354,23 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
     for season, p in sorted(build_game_details(conn).items()):
         v = _write_js(out_dir / "details" / f"{season}.js", f"(window.__CFB_DETAILS__=window.__CFB_DETAILS__||{{}})[{season}]", p)
         details[str(season)] = f"data/details/{season}.js?v={v}"
+    # Player lines have independent coverage. Only export known game IDs and
+    # never imply that the absence of a box score means a player recorded zero.
+    players_dir = out_dir / "players"
+    players_dir.mkdir(parents=True, exist_ok=True)
+    players = {}
+    raw_players = REPO / "data" / "raw" / "player_boxscores"
+    for season, payload in sorted(payloads.items()):
+        source = raw_players / f"{season}.json"
+        if not source.exists():
+            continue
+        known = {str(row[0]) for row in payload["games"] if row[4]}
+        archive = json.loads(source.read_text(encoding="utf-8"))
+        selected = {gid: value for gid, value in archive.items() if gid in known and value}
+        if selected:
+            v = _write_js(players_dir / f"{season}.js",
+                          f"(window.__CFB_PLAYERS__=window.__CFB_PLAYERS__||{{}})[{season}]", selected)
+            players[str(season)] = f"data/players/{season}.js?v={v}"
     # P1-05/06: one file per season, loaded only when the week-by-week view opens.
     timeline_dir = out_dir / "elo_timeline"
     if timeline_dir.exists():
@@ -372,7 +389,7 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
         series.append(f"data/series/{k}.js?v={v}")
     manifest = {"seasons": seasons, "search_index": f"data/search_index.js?v={sv}",
                 "stadiums": f"data/stadiums.js?v={stadium_version}", "game_fields": FIELDS,
-                "details": details, "series": series, "series_shards": SERIES_SHARDS,
+                "details": details, "players": players, "series": series, "series_shards": SERIES_SHARDS,
                 # P1-05/06: which seasons have a week-by-week Elo table, so the view
                 # knows whether it exists before fetching anything.
                 "elo_timeline": elo_timeline,

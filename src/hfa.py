@@ -294,11 +294,12 @@ def convert_hfa_to_elo_points(games: Sequence[HomeGame], as_of: dt.date, half_li
 # ---------------------------------------------------------------- one team
 def calculate_team_hfa(team_games: Sequence[HomeGame], national_games: Sequence[HomeGame], as_of: dt.date,
                        cfg: dict, scale: float, fcs_hfa: Optional[float] = None,
-                       national_points: Optional[float] = None) -> dict:
+                       national_points: Optional[float] = None,
+                       national_sums: Optional[WeightedSums] = None) -> dict:
     """Every field of one team's estimate as of `as_of`. `national_points` may be passed in to avoid recomputing it."""
     L, K = cfg["half_life_years"], cfg["shrinkage_k"]
     bounds = tuple(cfg.get("point_bounds", (-400.0, 400.0)))
-    nat = weighted_sums(national_games, as_of, L)
+    nat = national_sums if national_sums is not None else weighted_sums(national_games, as_of, L)
     baseline = calculate_raw_hfa(nat)
     if baseline is None:
         raise ValueError(f"no qualifying home games before {as_of}: no national baseline can be formed")

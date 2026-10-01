@@ -19,6 +19,7 @@ from pathlib import Path
 
 from build_elo import fetch_games_chronological, load_config, load_game_success_rates, run_elo
 from predict_upcoming import CONFIG_PATH, performance_layer
+from dynamic_hfa import home_games_from_flat, pregame_bonus_provider
 
 
 def entering_home_bonuses(conn: sqlite3.Connection, games: list, flat_bonus: float):
@@ -71,7 +72,7 @@ def verify_flat_reference(conn: sqlite3.Connection, flat_rows: list) -> None:
 
 
 def compare(conn: sqlite3.Connection, cfg: dict, from_year: int,
-            config_path: Path = CONFIG_PATH) -> dict:
+            config_path: Path = CONFIG_PATH, in_season: bool = False) -> dict:
     prev = conn.row_factory
     conn.row_factory = sqlite3.Row
     try:
@@ -81,7 +82,13 @@ def compare(conn: sqlite3.Connection, cfg: dict, from_year: int,
     layer, success_rates = performance_layer(conn, cfg, path=config_path)
     flat_rows = run_elo(games, cfg, layer, success_rates)[0]
     verify_flat_reference(conn, flat_rows)
-    bonus, bounded = entering_home_bonuses(conn, games, cfg["home_field"])
+    if in_season:
+        hfa_cfg = json.loads(Path(config_path).read_text())['hfa']
+        reference = home_games_from_flat(games, flat_rows, cfg['scale'])
+        bonus = pregame_bonus_provider(reference, hfa_cfg, cfg['scale'], cfg['home_field'])
+        bounded = set()
+    else:
+        bonus, bounded = entering_home_bonuses(conn, games, cfg["home_field"])
     dynamic_rows = run_elo(games, cfg, layer, success_rates, home_bonus_for_game=bonus)[0]
     by_season = defaultdict(lambda: {"games": 0, "flat_brier": 0.0, "dynamic_brier": 0.0,
                                      "flat_log_loss": 0.0, "dynamic_log_loss": 0.0})
@@ -104,7 +111,8 @@ def compare(conn: sqlite3.Connection, cfg: dict, from_year: int,
         n = rec["games"]
         return {"games": n, **{k: round(rec[k] / n, 6) for k in
                 ("flat_brier", "dynamic_brier", "flat_log_loss", "dynamic_log_loss")}}
-    return {"from_year": from_year, "note": "Diagnostic only; HFA hyperparameters are not calibrated for deployment",
+    return {"from_year": from_year, "mode": "pregame in-season" if in_season else "entering-season",
+            "note": "Diagnostic only; HFA hyperparameters are not calibrated for deployment",
             "bounded_or_missing_point_fallback_teams": len(bounded),
             "overall": summarize(total),
             "by_season": {str(y): summarize(r) for y, r in sorted(by_season.items())}}
@@ -115,10 +123,11 @@ def main() -> None:
     parser.add_argument("--db", default="db/league.db")
     parser.add_argument("--config", default="config/model_config.json")
     parser.add_argument("--from-year", type=int, default=2018)
+    parser.add_argument("--in-season", action="store_true", help="Recalculate team HFA before each game date from flat reference")
     args = parser.parse_args()
     conn = sqlite3.connect(args.db)
     try:
-        result = compare(conn, load_config(args.config)["elo"], args.from_year, Path(args.config))
+        result = compare(conn, load_config(args.config)["elo"], args.from_year, Path(args.config), args.in_season)
     finally:
         conn.close()
     print(json.dumps(result, indent=2))

@@ -4,7 +4,7 @@ A structural college football simulation engine that replaces the current postse
 
 ## Site releases
 
-The published site is **v0.0 · Alpha**. The current local update is **v0.1 · Homes of College Football**; it includes the new game finder, home-field standings, an opt-in dynamic home-field Elo comparison, and physical stadium data. The v0.1 update has not been published. See [release history](docs/CHANGELOG.md).
+The published site is **v0.0 · Alpha**. The current local update is **v0.1 · People and Places of the Game**; it includes the game finder, stadium pages, home-field standings, a pregame dynamic-HFA replay, and archived player box scores where available. Live Elo still uses flat home field while the in-season replay is validated. The v0.1 update has not been published. See [release history](docs/CHANGELOG.md).
 
 ## Core Rules
 

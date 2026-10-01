@@ -874,7 +874,7 @@
   <header class="top">
     <div class="title-block">
       <h1>CoE <span>Playoff Model</span></h1>
-      <p class="release-label">v0.1 · Homes of College Football</p>
+      <p class="release-label">v0.1 · People and Places of the Game</p>
     </div>
     <div class="scope-note">
       <span id="coverage-caption"></span><br>
@@ -3371,6 +3371,9 @@ function livePlayerPanel(g) {
   const teams = liveSnapshot?.player_boxscores?.[String(g.id)] || [];
   const checked = liveSnapshot?.player_stats_checked_at;
   const updated = liveSnapshot?.player_boxscore_times?.[String(g.id)];
+  return playerBoxscorePanel(teams, updated, checked);
+}
+function playerBoxscorePanel(teams, updated, checked) {
   const timestamp = value => {
     const date = value ? new Date(value) : null;
     return date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : null;
@@ -4067,6 +4070,11 @@ function loadGameDetails(season) {
     return data;
   });
 }
+function loadPlayerArchive(season) {
+  const src = (STATIC_MANIFEST.players || {})[String(season)];
+  if (!src) return Promise.resolve({});
+  return loadDataScript(src).then(() => (window.__CFB_PLAYERS__ || {})[season] || {});
+}
 function seriesShard(a, b) {                     // must match export_static_data.series_shard()
   const lo = Math.min(a, b), hi = Math.max(a, b);
   return (lo * 131 + hi) % (STATIC_MANIFEST.series_shards || 32);
@@ -4210,7 +4218,17 @@ function hydrateGamePage(version) {
         (g.completed ? '<div class="gp-fact"><b>Highlights</b><a href="https://www.youtube.com/results?search_query=' + q + '" target="_blank" rel="noopener noreferrer">Search YouTube &rarr;</a></div>' : '') +
         '<div class="gp-fact"><b>Teams</b>' + (away ? teamLink(an, 'xs', season) : esc(an)) + ' ' + (home ? teamLink(hn, 'xs', season) : esc(hn)) + '</div></div></div>';
       target().innerHTML = hero + gameVenuePanel(g, hn) + '<div class="grid-2">' + eloPanel + coePanel + '</div>' + srPanel +
+        (g.completed ? '<div id="gp-players" class="panel"><h2 class="section-title">Player box score</h2><p class="empty-note">Loading player stats…</p></div>' : '') +
         '<div class="panel" id="gp-series"><h2 class="section-title">Series history</h2><p class="empty-note">Loading meetings…</p></div>' + more;
+      if (g.completed) loadPlayerArchive(season).then(archive => {
+        if (version !== renderVersion) return;
+        const teams = archive[String(id)] || liveSnapshot?.player_boxscores?.[String(id)] || [];
+        const panel = document.getElementById('gp-players');
+        if (panel) panel.outerHTML = playerBoxscorePanel(teams, null);
+      }).catch(() => {
+        if (version === renderVersion && document.getElementById('gp-players'))
+          document.getElementById('gp-players').innerHTML = '<h2 class="section-title">Player box score</h2><p class="empty-note">Player stats could not be loaded.</p>';
+      });
       loadSeries(g.home_id, g.away_id).then(rows => {
         if (version === renderVersion) document.getElementById('gp-series').innerHTML = seriesHtml(rows, g, an, hn);
       }).catch(() => {

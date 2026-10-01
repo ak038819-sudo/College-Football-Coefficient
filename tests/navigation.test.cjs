@@ -13,7 +13,7 @@ const read = hash => readRoute(hash, config);
 
 test('the local dashboard identifies the in-progress site release', () => {
   const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
-  assert.match(shell, /class="release-label">v0\.1 · Homes of College Football<\/p>/);
+  assert.match(shell, /class="release-label">v0\.1 · People and Places of the Game<\/p>/);
 });
 
 test('stadium pages have shareable routes with safe IDs', () => {

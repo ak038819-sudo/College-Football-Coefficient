@@ -43,7 +43,7 @@ def clean_game(item):
             'away': teams[0], 'home': teams[1]}
 
 
-def clean_player_boxscores(payload, game_ids):
+def clean_player_boxscores(payload, game_ids, max_athletes=8):
     """Keep only displayable player lines for games in the current scoreboard."""
     if not isinstance(payload, list):
         raise ValueError('invalid player box-score response')
@@ -58,8 +58,9 @@ def clean_player_boxscores(payload, game_ids):
             categories = []
             for category in team.get('categories', []):
                 for typ in category.get('types', []):
+                    athletes = typ.get('athletes', [])
                     lines = [{'name': str(a['name'])[:100], 'stat': str(a['stat'])[:80]}
-                             for a in typ.get('athletes', [])[:8]
+                             for a in (athletes if max_athletes is None else athletes[:max_athletes])
                              if isinstance(a, dict) and a.get('name') and a.get('stat') is not None]
                     if lines:
                         categories.append({'name': str(category.get('name', ''))[:60],

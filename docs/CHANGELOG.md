@@ -1,15 +1,19 @@
 # Site release history
 
-## v0.1 — Homes of College Football (in progress, local branch)
+## v0.1 — People and Places of the Game (in progress, local branch)
 
 - Cross-season Find a Game page.
 - Team home-field advantage table under Standings.
 - Opt-in dynamic home-field Elo replay and comparison; production Elo remains unchanged.
 - Canonical stadiums and season-specific team relationships, with conservative game venue resolution and stadium names on game cards and details.
+- Stadium Explorer and verified venue links on game pages.
+- Pregame, in-season team HFA comparison against flat Elo, using earlier games only. Production activation awaits held-out validation.
+- Hourly finalization checks during regular-season game windows, with retries for late efficiency and player feeds.
+- Player box-score archive and historical game-page display where CFBD supplies lines; older years require a backfill.
 
 ## v0.0 — Alpha (currently published)
 
-- The published baseline before the Homes of College Football update. This label describes the current live site; the new label appears on the site when v0.1 is published.
+- The published baseline before the People and Places of the Game update. This label describes the current live site; the new label appears on the site when v0.1 is published.
 
 ## Historical development notes
 
