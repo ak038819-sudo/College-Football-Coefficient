@@ -11,6 +11,11 @@ const config = {
 };
 const read = hash => readRoute(hash, config);
 
+test('the local dashboard identifies the in-progress site release', () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  assert.match(shell, /class="release-label">v0\.1 · Homes of College Football<\/p>/);
+});
+
 test('archived game cards display only resolved stadiums and retain neutral badges', () => {
   const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
   const source = shell.match(/function listingGame\(g, season\) \{[\s\S]*?\n\}/)?.[0];

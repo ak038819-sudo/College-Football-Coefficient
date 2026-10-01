@@ -2,6 +2,10 @@
 
 A structural college football simulation engine that replaces the current postseason model with a coefficient-driven, standings-qualified 24-team playoff.
 
+## Site releases
+
+The published site is **v0.0 · Alpha**. The current local update is **v0.1 · Homes of College Football**; it includes the new game finder, home-field standings, an opt-in dynamic home-field Elo comparison, and physical stadium data. The v0.1 update has not been published. See [release history](docs/CHANGELOG.md).
+
 ## Core Rules
 
 1. Every FBS team must belong to a conference (no independents in the new format)

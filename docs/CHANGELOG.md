@@ -1,4 +1,21 @@
-# v0.1 – Data & Playoff Foundation
+# Site release history
+
+## v0.1 — Homes of College Football (in progress, local branch)
+
+- Cross-season Find a Game page.
+- Team home-field advantage table under Standings.
+- Opt-in dynamic home-field Elo replay and comparison; production Elo remains unchanged.
+- Canonical stadiums and season-specific team relationships, with conservative game venue resolution and stadium names on game cards and details.
+
+## v0.0 — Alpha (currently published)
+
+- The published baseline before the Homes of College Football update. This label describes the current live site; the new label appears on the site when v0.1 is published.
+
+## Historical development notes
+
+The earlier `v0.1-foundation` tag and the notes below refer to a development milestone, not the site release named v0.1 above.
+
+### Data & Playoff Foundation
 ## Added:
 - FBS-only filtering in fetch_cfbd_games.py
 - game_phase classification (regular / bowl / cfp)
