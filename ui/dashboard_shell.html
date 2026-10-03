@@ -4486,11 +4486,22 @@ function playerPanels(p, id) {
     '<td>' + (s.weight ? esc(s.weight) : '&mdash;') + '</td></tr>').join('');
   // One row per season AND team, so a mid-year transfer shows both schools
   // rather than one of them silently winning.
+  // The caveat the database recorded, said on the page. A roster feed that gives
+  // one athlete id thirteen seasons at four schools is either reusing the id or
+  // repeating a stale row, and sometimes it is a real career on NCAA waivers --
+  // nothing in the feed says which, so the page says that rather than choosing.
+  const note = p.identity_note ? '<div class="panel team-section">' +
+    '<h2 class="section-title">About this identity</h2><p class="section-note">' +
+    'The roster feed puts this player\u2019s id on ' + esc(p.identity_note.replace('source id spanning ', '')) +
+    '. That is longer than eligibility normally allows, so it is either one ' +
+    'unusually long career \u2014 which does happen, on NCAA waivers \u2014 or the source ' +
+    'reusing an id across two people. The feed does not say which, and this site does ' +
+    'not guess, so every season it lists is shown as given.</p></div>' : '';
   const table = '<div class="panel team-section"><h2 class="section-title">Seasons</h2>' +
     '<table class="data-table"><thead><tr><th>Season</th><th>Team</th><th>No.</th>' +
     '<th>Pos</th><th>Class</th><th>Ht</th><th>Wt</th></tr></thead><tbody>' + rows +
     '</tbody></table>' + personStatsNote() + '</div>';
-  return header + table;
+  return header + note + table;
 }
 
 function coachRecord(tenures) {

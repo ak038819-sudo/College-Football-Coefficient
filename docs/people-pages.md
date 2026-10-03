@@ -9,7 +9,7 @@ refuses to do, and where the data runs out. It is updated as each phase lands.
 | Phase | What it covers | State |
 | --- | --- | --- |
 | 1 — Identity and schema | Person tables, identity resolution, CFBD roster and coaching ingestion | Landed |
-| 1 — Data synced | 2026 rosters (31,382 source rows, 15,910 player-seasons at schools in this database) and head coaches 1980-2026 (827 coaches, 5,657 tenures) | Landed |
+| 1 — Data synced | Rosters 2009-2026 (99,813 people, 271,131 player-seasons at schools in this database, 10,846 people at more than one school) and head coaches 1980-2026 (827 coaches, 5,657 tenures) | Landed |
 | 2 — Player pages | Player export and detail pages, roster and box-score links, player search | Landed |
 | 3 — Coach pages | Coach export and detail pages, team-page coach links | Landed |
 | 4 — Stats integration | Season leaderboards linking into player pages | Not started |
@@ -165,7 +165,7 @@ from "no such feature".
 
 | File | Loaded when | Why it is its own file |
 | --- | --- | --- |
-| `player_<n>.js` | a player page opens | 16 shards on `player_id % 16`; one page loads one |
+| `player_<n>.js` | a player page opens | 64 shards on `player_id % PLAYER_SHARDS`; one page loads one. The page reads the count from the manifest, so it can be raised as seasons accumulate: 16 shards over 2009-2026 made each file 3.0 MB, and 64 puts it near 750 KB |
 | `index_<key>.js` | a name is typed in search | one shard per first letter of a name's words |
 | `roster_<season>.js` | a Roster tab or a box score opens | carries the rows a roster table displays, so one team's roster does not depend on every player-detail shard |
 | `coaches.js` | a coach page opens | every coach's whole career |
@@ -177,14 +177,34 @@ not become an empty page.
 
 ### Searching for a person
 
-People are not in the search index: there are 15,909 of them for one synced
-season, and the backfill reaches 2009. Search loads the shard for the letter
+People are not in the search index: there are 99,813 of them across 2009-2026. Search loads the shard for the letter
 being typed and matches on word prefixes, the same way team suggestions work, so
 a query may begin at any word of a name but never mid-word. A person is indexed
 under the first letter of **each word** of their name, because sharding on the
 whole name put Cade Klubnik in `c` alone and a search for "Klubnik" loaded shard
 `k` and found nobody. Fewer than three characters is not a search; two letters
 matches most of the country.
+
+### An unusually long career is flagged, never corrected
+
+Four hundred and forty-six of the 99,813 people carry a CFBD athlete id whose
+roster rows span more than six seasons -- four years of eligibility, a redshirt
+year and the free year the NCAA granted for 2020. The feed asserts this, so the
+two readings are genuinely different and nothing in it says which applies:
+
+- athlete 4571882 appears on thirteen roster rows from 2015 to 2024, at West
+  Virginia, Kansas State and Baylor, every one reading "LB, #2, SR" -- an id
+  reused, or a stale row repeated; and
+- Cam McCormick really did play nine seasons, Oregon 2016-2022 then Miami, on
+  injury waivers.
+
+So `person_identity.flag_implausible_careers` keeps every row exactly as given
+and records the person for review, and the player page says in plain words that
+the career is longer than eligibility normally allows and the site is not
+guessing. The flag is recomputed from scratch on each load, because a career is
+only whole once the last season has been read, and it is keyed on `player_id`
+rather than on the name: two players called John Smith must not share one
+caveat.
 
 ## Known gap: statistics are not attributed to people
 

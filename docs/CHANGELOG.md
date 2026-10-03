@@ -23,6 +23,13 @@
   identity caveat in plain words.
 - A Roster tab on every team page, and the head coach named in the team header.
 - Players and coaches in the header search, by first name or surname.
+- Rosters backfilled to 2009: 99,813 people and 271,131 player-seasons, of whom
+  10,846 played at more than one school. Player detail is sharded 64 ways so one
+  page downloads about 750 KB rather than the 3.0 MB that 16 shards had become.
+- An athlete id whose roster rows span more than six seasons is flagged for
+  review and said so on the page, not corrected: 446 of them do, and some are
+  real careers on NCAA injury waivers while others are the feed repeating a
+  stale row. Every season the source gave is still shown.
 - Box-score names on a game page link to player pages where the name matches
   exactly one player on that school's roster for that season. The archive
   carries no player id, so a shared name is left unlinked rather than guessed

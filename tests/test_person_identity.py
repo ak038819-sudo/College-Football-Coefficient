@@ -348,6 +348,86 @@ def test_two_coaches_differing_only_by_a_suffix_are_flagged(conn, tmp_path):
         "Mike Sanford Jr. / Mike Sanford Sr."
 
 
+def test_a_career_longer_than_eligibility_allows_is_flagged_not_discarded(conn, tmp_path):
+    """The 2009-2026 backfill found 446 of these. CFBD gives athlete 4571882
+    thirteen roster rows from 2015 to 2024 at three schools, every one reading
+    "LB, #2, SR" -- but Cam McCormick's nine real seasons look the same from
+    here. The rows are kept and the person is flagged; neither reading is
+    asserted."""
+    long_player = identity.create_player(conn, "Stale Row")
+    for year in range(2015, 2024):
+        conn.execute("INSERT INTO player_team_seasons (player_id, season_year, team_id, "
+                     "source) VALUES (?, ?, ?, 'cfbd')", (long_player, year, 1))
+    normal = identity.create_player(conn, "Ordinary Career")
+    for year in range(2021, 2027):            # six seasons: redshirt plus the 2020 year
+        conn.execute("INSERT INTO player_team_seasons (player_id, season_year, team_id, "
+                     "source) VALUES (?, ?, ?, 'cfbd')", (normal, year, 1))
+
+    assert identity.flag_implausible_careers(conn) == 1
+    rows = conn.execute("SELECT display_name, reason FROM person_unresolved "
+                        "WHERE entity = 'player'").fetchall()
+    assert rows == [("Stale Row", "source id spanning 9 seasons at 1 school")]
+    # Nothing is deleted: every season the source gave is still there to show.
+    assert conn.execute("SELECT COUNT(*) FROM player_team_seasons WHERE player_id = ?",
+                        (long_player,)).fetchone()[0] == 9
+
+
+def test_the_career_flag_counts_schools_and_is_recomputed_not_accumulated(conn, tmp_path):
+    """A career is only whole once the last season is loaded, so the check reruns
+    from scratch -- which must not leave a duplicate flag behind, and must drop a
+    flag that a corrected snapshot has made untrue."""
+    pid = identity.create_player(conn, "Three Schools")
+    for i, year in enumerate(range(2015, 2023)):
+        conn.execute("INSERT INTO player_team_seasons (player_id, season_year, team_id, "
+                     "source) VALUES (?, ?, ?, 'cfbd')", (pid, year, 1 + i % len(TEAMS)))
+    identity.flag_implausible_careers(conn)
+    identity.flag_implausible_careers(conn)
+    assert conn.execute("SELECT reason FROM person_unresolved WHERE entity = 'player'") \
+        .fetchall() == [("source id spanning 8 seasons at 3 schools",)]
+
+    # The snapshot is corrected and the career is ordinary again.
+    conn.execute("DELETE FROM player_team_seasons WHERE player_id = ? AND season_year > 2018",
+                 (pid,))
+    assert identity.flag_implausible_careers(conn) == 0
+    assert conn.execute("SELECT COUNT(*) FROM person_unresolved WHERE entity = 'player'") \
+        .fetchone()[0] == 0
+
+
+def test_the_career_flag_counts_seasons_not_rows(conn, tmp_path):
+    """Two rows for one season is normal -- a player on two schools' rosters in
+    the same year appears twice -- so a career is measured in seasons. Counting
+    rows would flag an ordinary four-year career as impossibly long."""
+    pid = identity.create_player(conn, "Listed Twice")
+    for year in range(2019, 2023):
+        for team_id in (1, 2):
+            conn.execute("INSERT INTO player_team_seasons (player_id, season_year, team_id, "
+                         "source) VALUES (?, ?, ?, 'cfbd')", (pid, year, team_id))
+    assert conn.execute("SELECT COUNT(*) FROM player_team_seasons").fetchone()[0] == 8
+    assert identity.flag_implausible_careers(conn) == 0
+
+    # And where a career IS long enough to flag, the number in the note is the
+    # seasons it spans, not the rows it happens to have.
+    long_id = identity.create_player(conn, "Listed Twice And Long")
+    for year in range(2015, 2022):
+        conn.execute("INSERT INTO player_team_seasons (player_id, season_year, team_id, "
+                     "source) VALUES (?, ?, ?, 'cfbd')", (long_id, year, 1))
+    conn.execute("INSERT INTO player_team_seasons (player_id, season_year, team_id, "
+                 "source) VALUES (?, 2015, 2, 'cfbd')", (long_id,))
+    assert identity.flag_implausible_careers(conn) == 1
+    assert conn.execute("SELECT reason FROM person_unresolved WHERE entity = 'player'") \
+        .fetchone()[0] == "source id spanning 7 seasons at 2 schools"
+
+
+def test_the_career_flag_leaves_other_unresolved_records_alone(conn, tmp_path):
+    """It clears only its own rows. An unknown-team record is a different fact and
+    there are 79,539 of them after the backfill."""
+    identity.record_unresolved(conn, "player", "cfbd", "rosters", "Fcs Player",
+                               "unknown team", 2015, "Not In This Database")
+    identity.flag_implausible_careers(conn)
+    assert conn.execute("SELECT COUNT(*) FROM person_unresolved WHERE reason = 'unknown team'") \
+        .fetchone()[0] == 1
+
+
 def test_a_database_keyed_by_the_previous_loader_is_migrated_not_duplicated(conn, tmp_path):
     """The first version keyed on name|hire-date. Without migration the next run
     inserts a second coach per name, moves the tenures to it, and orphans the

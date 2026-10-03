@@ -95,6 +95,10 @@ def load_roster(conn: sqlite3.Connection, path: str | Path) -> dict:
         stats["loaded"] += 1
 
     identity.refresh_latest_seasons(conn)
+    # Across every season loaded so far, not just this one: a career is only
+    # whole when the last snapshot has been read, so this recomputes and is
+    # correct after whichever season happens to be loaded last.
+    stats["implausible"] = identity.flag_implausible_careers(conn, SOURCE)
     conn.commit()
     return stats
 
@@ -112,7 +116,9 @@ def main() -> None:
           f"({stats['created']} new people, {stats['matched']} existing)"
           + (f", {stats['unknown_team']} rows for schools outside this database"
              if stats["unknown_team"] else "")
-          + (f", {stats['skipped']} unresolved" if stats["skipped"] else ""))
+          + (f", {stats['skipped']} unresolved" if stats["skipped"] else "")
+          + (f", {stats['implausible']} unusually long careers flagged for review"
+             if stats.get("implausible") else ""))
 
 
 if __name__ == "__main__":

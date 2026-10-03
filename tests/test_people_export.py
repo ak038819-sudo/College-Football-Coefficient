@@ -109,6 +109,17 @@ def test_a_name_only_identity_note_reaches_the_page(conn):
         "name-only identity with a gap after 1985"
 
 
+def test_an_unusually_long_career_notes_only_the_player_who_earned_it(conn):
+    """The caveat belongs to a player_id, not to a name. Two players share a name
+    here, and only the one whose id spans too many seasons may carry the note --
+    the whole point of the identity work is that a name is not a person."""
+    long_id = _player(conn, "John Smith", [(y, 1) for y in range(2015, 2024)])
+    short_id = _player(conn, "John Smith", [(2026, 1)])
+    players = build_players(conn)
+    assert players[long_id]["identity_note"] == "source id spanning 9 seasons at 1 school"
+    assert "identity_note" not in players[short_id]
+
+
 def test_rosters_group_by_season_and_team(conn):
     a = _player(conn, "Clemson Guy", [(2026, 1, "QB", 7, "JR")])
     b = _player(conn, "Oregon Guy", [(2026, 2)])

@@ -170,6 +170,65 @@ def record_unresolved(conn: sqlite3.Connection, entity: str, source: str, contex
         (entity, source, context, display_name, season_year, source_team, reason, _now()))
 
 
+# The seasons a career normally holds: four years of eligibility, a redshirt
+# year, and the free year the NCAA granted for 2020. More than this is unusual
+# rather than impossible -- Cam McCormick really did play nine, from 2016 to
+# 2024, on injury waivers -- so exceeding it is a reason to check, never a
+# reason to discard a row.
+MAX_CAREER_SEASONS = 6
+
+
+def flag_implausible_careers(conn: sqlite3.Connection, source: str = "cfbd") -> int:
+    """Record players whose source id spans more seasons than a career usually does.
+
+    The 2009-2026 backfill turned up 446 of these out of 99,813 people. Every
+    one carries a CFBD athlete id, so this is the FEED asserting it rather than
+    a contextual match guessing, and the two readings are genuinely different:
+
+      - Athlete 4571882 is on thirteen roster rows from 2015 to 2024, at West
+        Virginia, Kansas State and Baylor, every one reading "LB, #2, SR". That
+        is CFBD reusing an id or repeating a stale row.
+      - Cam McCormick's nine seasons, Oregon 2016-2022 then Miami, are real. The
+        NCAA granted the waivers.
+
+    Nothing in the feed separates them, so the rows are kept exactly as given
+    and the person is flagged, the same way a name-only coach identity is. A
+    page can then say the career is unusually long and worth checking, instead
+    of either presenting thirteen seasons as fact or quietly dropping a real
+    one.
+
+    Recomputed from scratch on every call, because a career is only whole once
+    every season has been loaded -- the same reason the coach loader checks
+    after reading all its records rather than during.
+    """
+    conn.execute("DELETE FROM person_unresolved WHERE entity = 'player' "
+                 "AND reason LIKE 'source id spanning%'")
+    flagged = implausible_careers(conn, source)
+    for player_id, (name, reason, first) in flagged.items():
+        record_unresolved(conn, "player", source, "rosters", name, reason, first)
+    return len(flagged)
+
+
+def implausible_careers(conn: sqlite3.Connection, source: str = "cfbd") -> dict:
+    """{player_id: (display_name, reason, first season)} for the careers above.
+
+    Keyed on player_id, not on the name, because the point of this project's
+    identity work is that a name is not a person: two players called John Smith
+    would otherwise both carry a caveat only one of them earned. The exporter
+    reads this rather than person_unresolved for the same reason -- that table
+    records names, having been written for people who have no player_id at all.
+    """
+    rows = conn.execute(
+        "SELECT s.player_id, p.display_name, COUNT(DISTINCT s.season_year) seasons, "
+        "COUNT(DISTINCT s.team_id) teams, MIN(s.season_year) first "
+        "FROM player_team_seasons s JOIN players p USING (player_id) "
+        "WHERE s.source = ? GROUP BY s.player_id "
+        "HAVING COUNT(DISTINCT s.season_year) > ?", (source, MAX_CAREER_SEASONS)).fetchall()
+    return {int(player_id): (name, "source id spanning %d seasons at %d school%s"
+                             % (seasons, teams, "" if teams == 1 else "s"), first)
+            for player_id, name, seasons, teams, first in rows}
+
+
 def add_alias(conn: sqlite3.Connection, player_id: int, raw_name: str) -> None:
     alias = normalize_name(raw_name)
     if not alias:
