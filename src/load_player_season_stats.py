@@ -21,12 +21,17 @@ Idempotent: the snapshot is the whole season, so the season's rows for this
 source are replaced wholesale. A statistic CFBD has since corrected must change
 rather than accumulate beside the old value.
 
+Snapshots are gzipped (a season is 27 MB of JSON and 1.07 MB compressed); a
+plain .json file is still read, so a snapshot archived before that change loads
+unchanged.
+
 Usage:
-    python src/load_player_season_stats.py data/raw/player_season_stats/2025.json
+    python src/load_player_season_stats.py data/raw/player_season_stats/2025.json.gz
 """
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import sqlite3
 from pathlib import Path
@@ -39,7 +44,10 @@ CONTEXT = "season stats"
 
 def load_season_stats(conn: sqlite3.Connection, path: str | Path) -> dict:
     identity.apply_schema(conn)
-    rows = json.loads(Path(path).read_text(encoding="utf-8"))
+    snapshot = Path(path)
+    opener = gzip.open if snapshot.suffix == ".gz" else open
+    with opener(snapshot, "rt", encoding="utf-8") as fh:
+        rows = json.load(fh)
     if not isinstance(rows, list):
         raise ValueError(f"{path}: season stats snapshot must be a list")
 

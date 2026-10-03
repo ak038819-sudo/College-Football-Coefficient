@@ -18,6 +18,11 @@ snapshot is kept in that shape. Reducing it here would mean deciding now which
 statistics the pages will ever want, and a season re-fetched later would then
 silently differ from one archived today.
 
+Written gzipped, because keeping that shape is only affordable compressed: a
+season is 27 MB of JSON and 1.07 MB gzipped, so eighteen seasons are 19 MB in a
+checkout rather than 490 MB. The repository already carries a 237 MB box-score
+archive, and this container and every CI run check the whole tree out.
+
 Coverage: `category` is the feed's own grouping (passing, rushing, receiving,
 defensive, kicking, punting, interceptions, fumbles, puntReturns, kickReturns).
 Nothing here is a rate or an efficiency metric: those are the model's own work
@@ -29,6 +34,7 @@ Usage:
 """
 from __future__ import annotations
 
+import gzip
 import json
 import os
 import sys
@@ -135,12 +141,20 @@ def write_season(year: int, headers: Dict[str, str], out_dir: Path = OUT_DIR) ->
     if rows is None:
         return None
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / f"{year}.json"
+    path = out_dir / f"{year}.json.gz"
     # Sorted so re-fetching an unchanged season writes an identical file and
     # produces no commit, which is what keeps the sync workflow quiet.
     rows.sort(key=lambda r: (r["team"], r["name"], r["athlete_id"],
                              r["category"], r["stat_type"]))
-    path.write_text(json.dumps(rows, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    # mtime=0 so re-fetching an unchanged season writes an identical file: gzip
+    # stamps the time by default, which would make every run look like a change.
+    with gzip.GzipFile(path, "wb", compresslevel=9, mtime=0) as fh:
+        fh.write((json.dumps(rows, indent=1, sort_keys=True) + "\n").encode("utf-8"))
+    # A snapshot from before this was compressed would otherwise be loaded too,
+    # and the pipeline would read the same season twice.
+    legacy = out_dir / f"{year}.json"
+    if legacy.exists():
+        legacy.unlink()
     people = len({r["athlete_id"] for r in rows})
     categories = len({r["category"] for r in rows})
     print(f"Wrote {path} ({len(rows)} stat rows, {people} people, {categories} categories)")

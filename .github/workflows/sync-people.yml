@@ -164,20 +164,22 @@ jobs:
         if: always()
         run: |
           python3 - <<'PY'
-          import json, pathlib
+          import gzip, json, pathlib
           rosters = sorted(pathlib.Path('data/raw/rosters').glob('*.json'))
           for f in rosters:
               rows = json.loads(f.read_text())
               with_id = sum(1 for r in rows if r.get('athlete_id'))
               print(f'{f.stem}: {len(rows)} players, {with_id} with a CFBD athlete id')
           print(f'rosters: {len(rosters)} seasons')
-          stats = sorted(pathlib.Path('data/raw/player_season_stats').glob('*.json')) \
+          stats = sorted(pathlib.Path('data/raw/player_season_stats').glob('*.json*')) \
               if pathlib.Path('data/raw/player_season_stats').exists() else []
           for f in stats:
-              rows = json.loads(f.read_text())
+              opener = gzip.open if f.suffix == '.gz' else open
+              with opener(f, 'rt') as fh:
+                  rows = json.load(fh)
               people = len({r['athlete_id'] for r in rows})
               cats = sorted({r['category'] for r in rows})
-              print(f'{f.stem} stats: {len(rows)} rows, {people} people, '
+              print(f'{f.name.split(".")[0]} stats: {len(rows)} rows, {people} people, '
                     f'categories {", ".join(cats)}')
           print(f'season stats: {len(stats)} seasons')
           coaches = pathlib.Path('data/raw/coaches/coaches.json')
