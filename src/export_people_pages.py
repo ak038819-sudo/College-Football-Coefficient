@@ -43,11 +43,17 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import person_identity as identity  # noqa: E402
 from person_identity import normalize_name  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 OUT_DIR = REPO / "ui" / "data" / "people"
-PLAYER_SHARDS = 16
+# Chosen against the real archive, not guessed: 99,813 people across 2009-2026
+# make a 16-shard file 3.0 MB, which is what a reader would download to open one
+# player page. 64 shards puts it near 750 KB. The page reads this number from
+# the manifest it emits, so it can be raised again as seasons accumulate without
+# touching the UI -- which is why the layout was sharded in the first place.
+PLAYER_SHARDS = 64
 
 
 def shard_key(name: str) -> str:
@@ -101,6 +107,14 @@ def build_players(conn: sqlite3.Connection) -> dict:
         season = _row_dict(row)
         season.pop("player_id", None)
         player["seasons"].append(season)
+
+    # The identity the feed could not vouch for, carried through to the page so
+    # the weakness is visible to a reader rather than only to the database --
+    # the same treatment a name-only coach identity gets.
+    for player_id, (_, reason, _first) in identity.implausible_careers(conn).items():
+        player = players.get(player_id)
+        if player is not None:
+            player["identity_note"] = reason
 
     # A person with no season row is not displayable: the roster that justified
     # them is gone, so the page would have nothing true to show.

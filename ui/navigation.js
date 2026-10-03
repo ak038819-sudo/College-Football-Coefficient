@@ -169,12 +169,14 @@
       // the leaderboards live. Ids are immutable integers, never names.
       const id = p.get('player') || '';
       route.section = 'stats';
-      openPage('player', /^\d{1,12}$/.test(id) ? Number(id) : null);
+      // A person id is the source's own: a CFBD athlete id can be negative, and
+      // an id derived for a person the source does not number reaches 13 digits.
+      openPage('player', /^-?\d{1,13}$/.test(id) ? Number(id) : null);
       route.year = latest(config.yearsAll || []);
     } else if (p.has('coach') && !p.has('section')) {
       const id = p.get('coach') || '';
       route.section = 'teams';
-      openPage('coach', /^\d{1,12}$/.test(id) ? Number(id) : null);
+      openPage('coach', /^-?\d{1,13}$/.test(id) ? Number(id) : null);
       route.year = latest(config.yearsAll || []);
     } else if (p.has('game') && !p.has('section')) {
       // A game page (Milestone C) belongs to the Games section. #section=games&...&game=

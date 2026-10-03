@@ -109,6 +109,37 @@ def test_a_name_only_identity_note_reaches_the_page(conn):
         "name-only identity with a gap after 1985"
 
 
+def test_an_unusually_long_career_notes_only_the_player_who_earned_it(conn):
+    """The caveat belongs to a player_id, not to a name. Two players share a name
+    here, and only the one whose id spans too many seasons may carry the note --
+    the whole point of the identity work is that a name is not a person."""
+    long_id = _player(conn, "John Smith", [(y, 1) for y in range(2015, 2024)])
+    short_id = _player(conn, "John Smith", [(2026, 1)])
+    players = build_players(conn)
+    assert players[long_id]["identity_note"] == "source id spanning 9 seasons at 1 school"
+    assert "identity_note" not in players[short_id]
+
+
+def test_a_negative_player_id_is_sharded_the_way_the_page_asks_for_it(conn, tmp_path):
+    """29,162 of the archive's CFBD athlete ids are negative. The page computes
+    its shard with a floored modulo, so the exporter must use the same one or
+    those people are written to a file nothing ever loads."""
+    pid = -1044360
+    identity.create_player(conn, "Placeholder Id", player_id=pid)
+    conn.execute("INSERT INTO player_team_seasons (player_id, season_year, team_id, source) "
+                 "VALUES (?, 2020, 1, 'cfbd')", (pid,))
+    manifest = export(conn, tmp_path)
+    expected = pid % PLAYER_SHARDS          # floored: 56, not -56 and not abs()
+    written = json.loads(subprocess.run(
+        ["node", "-e", "global.window=global;"
+         f"require({str(tmp_path / f'player_{expected}.js')!r});"
+         "process.stdout.write(JSON.stringify(Object.keys("
+         f"window.__CFB_PEOPLE_PLAYERS__[{expected}])))"],
+        capture_output=True, text=True, check=True).stdout)
+    assert written == [str(pid)]
+    assert str(expected) in manifest["players"]
+
+
 def test_rosters_group_by_season_and_team(conn):
     a = _player(conn, "Clemson Guy", [(2026, 1, "QB", 7, "JR")])
     b = _player(conn, "Oregon Guy", [(2026, 2)])

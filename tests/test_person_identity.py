@@ -348,6 +348,163 @@ def test_two_coaches_differing_only_by_a_suffix_are_flagged(conn, tmp_path):
         "Mike Sanford Jr. / Mike Sanford Sr."
 
 
+def test_a_career_longer_than_eligibility_allows_is_flagged_not_discarded(conn, tmp_path):
+    """The 2009-2026 backfill found 446 of these. CFBD gives athlete 4571882
+    thirteen roster rows from 2015 to 2024 at three schools, every one reading
+    "LB, #2, SR" -- but Cam McCormick's nine real seasons look the same from
+    here. The rows are kept and the person is flagged; neither reading is
+    asserted."""
+    long_player = identity.create_player(conn, "Stale Row")
+    for year in range(2015, 2024):
+        conn.execute("INSERT INTO player_team_seasons (player_id, season_year, team_id, "
+                     "source) VALUES (?, ?, ?, 'cfbd')", (long_player, year, 1))
+    normal = identity.create_player(conn, "Ordinary Career")
+    for year in range(2021, 2027):            # six seasons: redshirt plus the 2020 year
+        conn.execute("INSERT INTO player_team_seasons (player_id, season_year, team_id, "
+                     "source) VALUES (?, ?, ?, 'cfbd')", (normal, year, 1))
+
+    assert identity.flag_implausible_careers(conn) == 1
+    rows = conn.execute("SELECT display_name, reason FROM person_unresolved "
+                        "WHERE entity = 'player'").fetchall()
+    assert rows == [("Stale Row", "source id spanning 9 seasons at 1 school")]
+    # Nothing is deleted: every season the source gave is still there to show.
+    assert conn.execute("SELECT COUNT(*) FROM player_team_seasons WHERE player_id = ?",
+                        (long_player,)).fetchone()[0] == 9
+
+
+def test_the_career_flag_counts_schools_and_is_recomputed_not_accumulated(conn, tmp_path):
+    """A career is only whole once the last season is loaded, so the check reruns
+    from scratch -- which must not leave a duplicate flag behind, and must drop a
+    flag that a corrected snapshot has made untrue."""
+    pid = identity.create_player(conn, "Three Schools")
+    for i, year in enumerate(range(2015, 2023)):
+        conn.execute("INSERT INTO player_team_seasons (player_id, season_year, team_id, "
+                     "source) VALUES (?, ?, ?, 'cfbd')", (pid, year, 1 + i % len(TEAMS)))
+    identity.flag_implausible_careers(conn)
+    identity.flag_implausible_careers(conn)
+    assert conn.execute("SELECT reason FROM person_unresolved WHERE entity = 'player'") \
+        .fetchall() == [("source id spanning 8 seasons at 3 schools",)]
+
+    # The snapshot is corrected and the career is ordinary again.
+    conn.execute("DELETE FROM player_team_seasons WHERE player_id = ? AND season_year > 2018",
+                 (pid,))
+    assert identity.flag_implausible_careers(conn) == 0
+    assert conn.execute("SELECT COUNT(*) FROM person_unresolved WHERE entity = 'player'") \
+        .fetchone()[0] == 0
+
+
+def test_the_career_flag_counts_seasons_not_rows(conn, tmp_path):
+    """Two rows for one season is normal -- a player on two schools' rosters in
+    the same year appears twice -- so a career is measured in seasons. Counting
+    rows would flag an ordinary four-year career as impossibly long."""
+    pid = identity.create_player(conn, "Listed Twice")
+    for year in range(2019, 2023):
+        for team_id in (1, 2):
+            conn.execute("INSERT INTO player_team_seasons (player_id, season_year, team_id, "
+                         "source) VALUES (?, ?, ?, 'cfbd')", (pid, year, team_id))
+    assert conn.execute("SELECT COUNT(*) FROM player_team_seasons").fetchone()[0] == 8
+    assert identity.flag_implausible_careers(conn) == 0
+
+    # And where a career IS long enough to flag, the number in the note is the
+    # seasons it spans, not the rows it happens to have.
+    long_id = identity.create_player(conn, "Listed Twice And Long")
+    for year in range(2015, 2022):
+        conn.execute("INSERT INTO player_team_seasons (player_id, season_year, team_id, "
+                     "source) VALUES (?, ?, ?, 'cfbd')", (long_id, year, 1))
+    conn.execute("INSERT INTO player_team_seasons (player_id, season_year, team_id, "
+                 "source) VALUES (?, 2015, 2, 'cfbd')", (long_id,))
+    assert identity.flag_implausible_careers(conn) == 1
+    assert conn.execute("SELECT reason FROM person_unresolved WHERE entity = 'player'") \
+        .fetchone()[0] == "source id spanning 7 seasons at 2 schools"
+
+
+def test_the_career_flag_leaves_other_unresolved_records_alone(conn, tmp_path):
+    """It clears only its own rows. An unknown-team record is a different fact and
+    there are 79,539 of them after the backfill."""
+    identity.record_unresolved(conn, "player", "cfbd", "rosters", "Fcs Player",
+                               "unknown team", 2015, "Not In This Database")
+    identity.flag_implausible_careers(conn)
+    assert conn.execute("SELECT COUNT(*) FROM person_unresolved WHERE reason = 'unknown team'") \
+        .fetchone()[0] == 1
+
+
+# --- ids that survive a rebuild ---------------------------------------------
+
+def _fresh_db(repo_root):
+    c = sqlite3.connect(":memory:")
+    c.execute("PRAGMA foreign_keys = ON")
+    c.executescript((repo_root / "sql" / "schema.sql").read_text(encoding="utf-8"))
+    c.executescript((repo_root / "sql" / "person_tables.sql").read_text(encoding="utf-8"))
+    for team_id, name in TEAMS.items():
+        c.execute("INSERT INTO teams (team_id, team_name) VALUES (?, ?)", (team_id, name))
+    return c
+
+
+def test_a_players_id_does_not_depend_on_the_order_the_seasons_were_loaded(repo_root, tmp_path):
+    """The defect this guards: db/league.db is not committed, so every deploy
+    builds it from scratch. With an autoincrement id, a database built
+    2026-first put player 16 on one person and the pipeline's sorted 2009-first
+    load put a different person there -- so a #player=<id> link shared today
+    pointed at someone else after the next deploy."""
+    old = _roster(tmp_path, 2009, [
+        {"athlete_id": 4000001, "name": "Early Guy", "team": "Clemson", "position": "QB"},
+        {"athlete_id": 4000002, "name": "Other Guy", "team": "Oregon", "position": "RB"}])
+    new = _roster(tmp_path, 2026, [
+        {"athlete_id": 4000003, "name": "Late Guy", "team": "Clemson", "position": "WR"}])
+
+    maps = []
+    for order in ([old, new], [new, old]):
+        c = _fresh_db(repo_root)
+        for path in order:
+            load_roster(c, path)
+        maps.append(dict(c.execute("SELECT player_id, display_name FROM players")))
+    assert maps[0] == maps[1]
+    # And the id is the source's own, not a number this project invented.
+    assert maps[0][4000001] == "Early Guy"
+
+
+def test_a_negative_athlete_id_is_kept_as_the_source_wrote_it(repo_root, tmp_path):
+    """29,162 of the archive's ids are negative -- CFBD's own placeholder form,
+    still one id per person. Folding the sign would collide two people onto one
+    page, so the id is used as given and the routes accept it."""
+    c = _fresh_db(repo_root)
+    load_roster(c, _roster(tmp_path, 2020, [
+        {"athlete_id": -1044360, "name": "Placeholder Id", "team": "Clemson"},
+        {"athlete_id": 1044360, "name": "Real Id", "team": "Oregon"}]))
+    assert dict(c.execute("SELECT player_id, display_name FROM players")) == \
+        {-1044360: "Placeholder Id", 1044360: "Real Id"}
+
+
+def test_a_coachs_id_does_not_depend_on_the_order_the_records_arrived(repo_root, tmp_path):
+    """Same guarantee for #coach=<id>. This feed has no coach id, so the id is
+    derived from the key the loader builds from the name."""
+    records = [{"name": "Dabo Swinney", "hire_date": None,
+                "seasons": [_season(2024, "Clemson", "2008-10-13")]},
+               {"name": "Al Golden", "hire_date": None,
+                "seasons": [_season(2011, "Oregon", "2010-12-12")]}]
+    maps = []
+    for order in (records, list(reversed(records))):
+        c = _fresh_db(repo_root)
+        load_coaches(c, _coaches(tmp_path, order))
+        maps.append(dict(c.execute("SELECT coach_id, display_name FROM coaches")))
+    assert maps[0] == maps[1]
+
+
+def test_a_person_the_source_does_not_number_still_gets_a_rebuild_stable_id(repo_root, tmp_path):
+    """An id-less row has no source id to use, so the id comes from the context
+    that identified them instead of from an autoincrement counter."""
+    maps = []
+    for extra in ([], [{"name": "Padding Person", "team": "Oregon"}]):
+        c = _fresh_db(repo_root)
+        load_roster(c, _roster(tmp_path, 2015, extra + [
+            {"name": "No Id Here", "team": "Clemson", "position": "TE"}]))
+        maps.append(dict(c.execute(
+            "SELECT display_name, player_id FROM players WHERE display_name = 'No Id Here'")))
+    assert maps[0] == maps[1]
+    # Clear of every CFBD athlete id, so a derived id can never land on a real one.
+    assert maps[0]["No Id Here"] >= identity.SURROGATE_BASE
+
+
 def test_a_database_keyed_by_the_previous_loader_is_migrated_not_duplicated(conn, tmp_path):
     """The first version keyed on name|hire-date. Without migration the next run
     inserts a second coach per name, moves the tenures to it, and orphans the
@@ -367,8 +524,13 @@ def test_a_database_keyed_by_the_previous_loader_is_migrated_not_duplicated(conn
                     _season(2025, "Clemson", "2008-10-13")]}]))
 
     assert conn.execute("SELECT COUNT(*) FROM coaches").fetchone()[0] == 1
-    # The id survives the migration rather than being reissued.
-    assert conn.execute("SELECT coach_id FROM coaches").fetchone()[0] == legacy_id
+    # The id is derived from the key, so the migration lands on the same id this
+    # coach would get in a rebuild from scratch -- not on whatever the old
+    # autoincrement happened to hand out.
+    assert conn.execute("SELECT coach_id FROM coaches").fetchone()[0] == \
+        identity.derived_id("cfbd:dabo swinney")
+    assert conn.execute("SELECT COUNT(*) FROM coaches WHERE coach_id = ?",
+                        (legacy_id,)).fetchone()[0] == 0
     assert conn.execute("SELECT external_id FROM coach_external_ids").fetchall() == \
         [("cfbd:dabo swinney",)]
     assert conn.execute("SELECT COUNT(*) FROM coaches WHERE coach_id NOT IN "
@@ -399,16 +561,19 @@ def test_a_legacy_row_folds_into_a_coach_that_already_holds_the_current_key(conn
                  "is_primary) VALUES (?, 'cfbd', 'cfbd:dabo swinney', 'name only', 1)",
                  (current_id,))
     assert legacy_id < current_id, "the legacy id must be the lower one for this to bite"
+    assert current_id != identity.derived_id("cfbd:dabo swinney")
 
     load_coaches(conn, _coaches(tmp_path, [{
         "name": "Dabo Swinney", "hire_date": None,
         "seasons": [_season(2024, "Clemson", "2008-10-13")]}]))
 
-    assert conn.execute("SELECT coach_id FROM coaches").fetchall() == [(current_id,)]
+    assert conn.execute("SELECT coach_id FROM coaches").fetchall() == \
+        [(identity.derived_id("cfbd:dabo swinney"),)]
     assert conn.execute("SELECT external_id FROM coach_external_ids").fetchall() == \
         [("cfbd:dabo swinney",)]
-    assert conn.execute("SELECT COUNT(*) FROM coach_tenures WHERE coach_id = ?",
-                        (legacy_id,)).fetchone()[0] == 0
+    for stale in (legacy_id, current_id):
+        assert conn.execute("SELECT COUNT(*) FROM coach_tenures WHERE coach_id = ?",
+                            (stale,)).fetchone()[0] == 0
 
 
 def test_legacy_rows_split_across_hire_dates_collapse_onto_one_coach(conn, tmp_path):
@@ -426,8 +591,11 @@ def test_legacy_rows_split_across_hire_dates_collapse_onto_one_coach(conn, tmp_p
         "name": "Al Golden", "hire_date": None,
         "seasons": [_season(2010, "Clemson", "2005-12-08"),
                     _season(2011, "Oregon", "2010-12-12")]}]))
-    assert conn.execute("SELECT coach_id FROM coaches").fetchall() == [(min(ids),)]
+    assert conn.execute("SELECT coach_id FROM coaches").fetchall() == \
+        [(identity.derived_id("cfbd:al golden"),)]
     assert conn.execute("SELECT COUNT(*) FROM coach_tenures").fetchone()[0] == 2
+    assert conn.execute("SELECT COUNT(*) FROM coach_tenures WHERE coach_id NOT IN "
+                        "(SELECT coach_id FROM coaches)").fetchone()[0] == 0
 
 
 @pytest.mark.parametrize("value,expected", [

@@ -73,10 +73,13 @@ def _upsert_coach(conn: sqlite3.Connection, record: dict, external_id: str) -> i
                      "updated_at = ? WHERE coach_id = ?",
                      (record["name"], first, last, now, coach_id))
         return coach_id
-    cur = conn.execute("INSERT INTO coaches (display_name, first_name, last_name, "
-                       "created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-                       (record["name"], first, last, now, now))
-    coach_id = int(cur.lastrowid)
+    # Derived from the key, not allocated in load order: the key is the same on
+    # every rebuild, so the published #coach=<id> URL is too. This feed has no
+    # coach id of its own to use instead -- see coach_key.
+    coach_id = identity.free_id(conn, "coaches", "coach_id", identity.derived_id(external_id))
+    conn.execute("INSERT INTO coaches (coach_id, display_name, first_name, last_name, "
+                 "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                 (coach_id, record["name"], first, last, now, now))
     conn.execute("INSERT INTO coach_external_ids (coach_id, source, external_id, confidence, is_primary) "
                  "VALUES (?, ?, ?, ?, 1)", (coach_id, SOURCE, external_id, "name only"))
     return coach_id
@@ -144,6 +147,14 @@ def load_coaches(conn: sqlite3.Connection, path: str | Path) -> dict:
     if "hire_date" not in {r[1] for r in conn.execute("PRAGMA table_info(coach_tenures)")}:
         conn.execute("ALTER TABLE coach_tenures ADD COLUMN hire_date TEXT")
     _migrate_legacy_keys(conn)
+    # Same reason as the key migration above, for the id itself: a database
+    # written before ids were derived holds coaches at load-ordered ids, which
+    # the loader would otherwise reuse forever.
+    identity.remap_ids(
+        conn, "coaches", "coach_id",
+        [("coach_external_ids", "coach_id"), ("coach_tenures", "coach_id")],
+        {int(cid): identity.derived_id(ext) for cid, ext in conn.execute(
+            "SELECT coach_id, external_id FROM coach_external_ids WHERE source = ?", (SOURCE,))})
     records = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(records, list):
         raise ValueError(f"{path}: coaching snapshot must be a list")
