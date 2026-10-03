@@ -270,3 +270,34 @@ def test_compressing_a_season_removes_the_uncompressed_one(tmp_path, monkeypatch
     path = fetcher.write_season(2025, {}, tmp_path)
     assert path.name == "2025.json.gz"
     assert not (tmp_path / "2025.json").exists()
+
+
+def test_a_statistics_backfill_can_run_without_refetching_the_rosters():
+    """The reason this gate exists, and why it is tested rather than trusted.
+
+    A statistics backfill names the same years the rosters already cover, and
+    CFBD's /roster is a LIVE view -- the whole point of committing roster
+    snapshots is that rebuilding an old season must not ask CFBD what it thinks
+    today. An ungated roster step would therefore rewrite sixteen years of
+    committed history as a side effect of fetching statistics.
+    """
+    import yaml
+    from pathlib import Path
+    path = Path(__file__).resolve().parents[1] / ".github/workflows/sync-people.yml"
+    workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
+    inputs = workflow[True]["workflow_dispatch"]["inputs"]
+    # Default on, so the ordinary weekly run is unchanged by the gate.
+    assert inputs["rosters"]["default"] is True
+
+    def runs(step, chosen):
+        condition = step.get("if")
+        if condition is None:
+            return True
+        name = condition.strip().removeprefix("${{").removesuffix("}}").strip()
+        assert name.startswith("inputs."), f"unhandled condition {condition!r}"
+        return bool(chosen[name[len("inputs."):]])
+
+    chosen = {"rosters": False, "coaches": False, "season_stats": True}
+    fetching = [s["name"] for s in workflow["jobs"]["sync"]["steps"]
+                if "Fetch and commit" in s.get("name", "") and runs(s, chosen)]
+    assert fetching == ["Fetch and commit one season of player statistics at a time"]
