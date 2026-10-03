@@ -317,11 +317,117 @@ def test_one_season_per_record_is_assembled_into_one_career(tmp_path):
     assert by_year[2006] == "2005-12-08" and by_year[2011] == "2010-12-12"
 
 
-def test_the_coach_key_is_the_folded_name_and_nothing_else():
+def test_the_coach_key_is_the_name_and_not_the_hire_date():
     """The feed offers no person-level signal beyond the name, so the key cannot
     include the hire date -- that would split a coach at every job change."""
-    assert coach_key({"name": "Al Golden"}) == coach_key({"name": "Al  Golden Jr."})
+    assert coach_key({"name": "Al Golden", "hire_date": "2005-12-08"}) == \
+        coach_key({"name": "Al  Golden", "hire_date": "2010-12-12"})
     assert coach_key({"name": "A.J. Golden"}) == coach_key({"name": "AJ Golden"})
+
+
+def test_the_coach_key_keeps_a_generational_suffix():
+    """Mike Sanford Sr. (UNLV 2005-2009) and Mike Sanford Jr. (Western Kentucky
+    and Colorado 2017-2022) are a father and son who both held FBS head-coaching
+    jobs. Folding the suffix put both careers under one coach_id -- a false
+    statement on a page that no later correction could detect."""
+    assert coach_key({"name": "Mike Sanford Jr."}) != coach_key({"name": "Mike Sanford Sr."})
+
+
+def test_two_coaches_differing_only_by_a_suffix_are_flagged(conn, tmp_path):
+    """The inverse risk of keeping the suffix: a source omitting it on some rows
+    splits one person. Recorded, so that failure is visible too."""
+    stats = load_coaches(conn, _coaches(tmp_path, [
+        {"name": "Mike Sanford Sr.", "hire_date": None,
+         "seasons": [_season(y, "Clemson", "2005-01-01") for y in range(2005, 2010)]},
+        {"name": "Mike Sanford Jr.", "hire_date": None,
+         "seasons": [_season(y, "Oregon", "2017-01-01") for y in range(2017, 2020)]}]))
+    assert stats["coaches"] == 2
+    assert conn.execute(
+        "SELECT display_name FROM person_unresolved WHERE reason = "
+        "'names differing only by a generational suffix'").fetchone()[0] == \
+        "Mike Sanford Jr. / Mike Sanford Sr."
+
+
+def test_a_database_keyed_by_the_previous_loader_is_migrated_not_duplicated(conn, tmp_path):
+    """The first version keyed on name|hire-date. Without migration the next run
+    inserts a second coach per name, moves the tenures to it, and orphans the
+    old row under a supposedly immutable id."""
+    cur = conn.execute("INSERT INTO coaches (display_name, created_at, updated_at) "
+                       "VALUES ('Dabo Swinney', '', '')")
+    legacy_id = int(cur.lastrowid)
+    conn.execute("INSERT INTO coach_external_ids (coach_id, source, external_id, confidence, "
+                 "is_primary) VALUES (?, 'cfbd', 'cfbd:dabo swinney|2008-10-13', 'derived key', 1)",
+                 (legacy_id,))
+    conn.execute("INSERT INTO coach_tenures (coach_id, team_id, season_year, source) "
+                 "VALUES (?, 1, 2024, 'cfbd')", (legacy_id,))
+
+    load_coaches(conn, _coaches(tmp_path, [{
+        "name": "Dabo Swinney", "hire_date": None,
+        "seasons": [_season(2024, "Clemson", "2008-10-13"),
+                    _season(2025, "Clemson", "2008-10-13")]}]))
+
+    assert conn.execute("SELECT COUNT(*) FROM coaches").fetchone()[0] == 1
+    # The id survives the migration rather than being reissued.
+    assert conn.execute("SELECT coach_id FROM coaches").fetchone()[0] == legacy_id
+    assert conn.execute("SELECT external_id FROM coach_external_ids").fetchall() == \
+        [("cfbd:dabo swinney",)]
+    assert conn.execute("SELECT COUNT(*) FROM coaches WHERE coach_id NOT IN "
+                        "(SELECT coach_id FROM coach_tenures)").fetchone()[0] == 0
+
+
+def test_a_legacy_row_folds_into_a_coach_that_already_holds_the_current_key(conn, tmp_path):
+    """The half-migrated database: one run of the new loader created a coach under
+    `cfbd:<name>`, and a legacy `cfbd:<name>|<hire date>` row is still there.
+
+    The current key can only belong to one coach, so the legacy row has to fold
+    into the coach that already holds it. Taking the legacy id as the keeper
+    instead leaves it behind with the old key, and the next load quietly keeps
+    two Dabo Swinneys -- which is the duplication this migration exists to stop.
+    """
+    cur = conn.execute("INSERT INTO coaches (display_name, created_at, updated_at) "
+                       "VALUES ('Dabo Swinney', '', '')")
+    legacy_id = int(cur.lastrowid)
+    conn.execute("INSERT INTO coach_external_ids (coach_id, source, external_id, confidence, "
+                 "is_primary) VALUES (?, 'cfbd', 'cfbd:dabo swinney|2008-10-13', 'derived key', 1)",
+                 (legacy_id,))
+    conn.execute("INSERT INTO coach_tenures (coach_id, team_id, season_year, source) "
+                 "VALUES (?, 1, 2023, 'cfbd')", (legacy_id,))
+    cur = conn.execute("INSERT INTO coaches (display_name, created_at, updated_at) "
+                       "VALUES ('Dabo Swinney', '', '')")
+    current_id = int(cur.lastrowid)
+    conn.execute("INSERT INTO coach_external_ids (coach_id, source, external_id, confidence, "
+                 "is_primary) VALUES (?, 'cfbd', 'cfbd:dabo swinney', 'name only', 1)",
+                 (current_id,))
+    assert legacy_id < current_id, "the legacy id must be the lower one for this to bite"
+
+    load_coaches(conn, _coaches(tmp_path, [{
+        "name": "Dabo Swinney", "hire_date": None,
+        "seasons": [_season(2024, "Clemson", "2008-10-13")]}]))
+
+    assert conn.execute("SELECT coach_id FROM coaches").fetchall() == [(current_id,)]
+    assert conn.execute("SELECT external_id FROM coach_external_ids").fetchall() == \
+        [("cfbd:dabo swinney",)]
+    assert conn.execute("SELECT COUNT(*) FROM coach_tenures WHERE coach_id = ?",
+                        (legacy_id,)).fetchone()[0] == 0
+
+
+def test_legacy_rows_split_across_hire_dates_collapse_onto_one_coach(conn, tmp_path):
+    """The old key gave a coach one row per job. Those extra rows are the split
+    this release undoes, so they go rather than linger as orphans."""
+    ids = []
+    for hire in ("2005-12-08", "2010-12-12"):
+        cur = conn.execute("INSERT INTO coaches (display_name, created_at, updated_at) "
+                           "VALUES ('Al Golden', '', '')")
+        ids.append(int(cur.lastrowid))
+        conn.execute("INSERT INTO coach_external_ids (coach_id, source, external_id, confidence, "
+                     "is_primary) VALUES (?, 'cfbd', ?, 'derived key', 1)",
+                     (ids[-1], f"cfbd:al golden|{hire}"))
+    load_coaches(conn, _coaches(tmp_path, [{
+        "name": "Al Golden", "hire_date": None,
+        "seasons": [_season(2010, "Clemson", "2005-12-08"),
+                    _season(2011, "Oregon", "2010-12-12")]}]))
+    assert conn.execute("SELECT coach_id FROM coaches").fetchall() == [(min(ids),)]
+    assert conn.execute("SELECT COUNT(*) FROM coach_tenures").fetchone()[0] == 2
 
 
 @pytest.mark.parametrize("value,expected", [

@@ -11,9 +11,10 @@
   for review instead of guessed at; no person is created from a name match.
 - Coach identity keyed on the name, which is the only person-level signal CFBD's
   coaching feed carries: each record is one season and its hire date belongs to
-  the job, so the hire date lives on the tenure. Careers the feed cannot vouch
-  for (a second hire date, or a gap in seasons) are flagged for review rather
-  than asserted.
+  the job, so the hire date lives on the tenure. The name keeps its generational
+  suffix, so a father and son who both coached stay two people. Careers the feed
+  cannot vouch for (a second hire date, a gap in seasons, or two names differing
+  only by a suffix) are flagged for review rather than asserted.
 - A roster class year is only accepted as 1-5. CFBD's stub rows put the season
   in that field, which displayed as a class year of "2026".
 - No UI changes yet, and no rating engine reads any of it. See

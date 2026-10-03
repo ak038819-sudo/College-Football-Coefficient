@@ -81,6 +81,31 @@ def _join_initials(parts: list[str]) -> list[str]:
     return out
 
 
+def identity_name(name: str) -> str:
+    """A comparison key that KEEPS generational suffixes.
+
+    normalize_name folds 'Jr.' away, which is right where a source id carries the
+    identity and the name is only a lookup hint: a box score printing 'Jerome
+    Gaillard Jr.' and a roster printing 'Jerome Gaillard' are one player, and the
+    athlete id proves it.
+
+    It is wrong where the NAME is the identity. CFBD's coaching feed has no coach
+    id, and it contains Mike Sanford Sr. (UNLV, 2005-2009) and Mike Sanford Jr.
+    (Western Kentucky and Colorado, 2017-2022) -- a father and son who both held
+    FBS head-coaching jobs. Folding the suffix put both careers under one
+    coach_id, which is a false statement on a page and one no later correction
+    could detect.
+
+    The cost of keeping the suffix is the opposite error: a source that omits it
+    on one row splits one person in two. That is the safer failure -- both halves
+    stay truthful, and two coaches sharing a display name are visible to a reader
+    and to load_coaches.py's own check, where a silent merge is visible to
+    nobody.
+    """
+    cleaned = re.sub(r"[^a-z0-9 ]+", " ", (name or "").lower())
+    return " ".join(_join_initials([p for p in cleaned.split() if p]))
+
+
 def split_name(first: Optional[str], last: Optional[str], display: str) -> tuple[Optional[str], Optional[str]]:
     """Source-provided name parts, falling back to a split of the display name."""
     if first or last:

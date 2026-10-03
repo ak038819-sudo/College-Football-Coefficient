@@ -9,7 +9,7 @@ refuses to do, and where the data runs out. It is updated as each phase lands.
 | Phase | What it covers | State |
 | --- | --- | --- |
 | 1 — Identity and schema | Person tables, identity resolution, CFBD roster and coaching ingestion | Landed |
-| 1 — Data synced | 2026 rosters (31,382 source rows, 15,910 player-seasons at schools in this database) and head coaches 1980-2026 (826 coaches, 5,657 tenures) | Landed |
+| 1 — Data synced | 2026 rosters (31,382 source rows, 15,910 player-seasons at schools in this database) and head coaches 1980-2026 (827 coaches, 5,657 tenures) | Landed |
 | 2 — Player pages | Player export and detail pages, roster and box-score links, player search | Not started |
 | 3 — Coach pages | Coach export and detail pages, team-page coach links | Not started |
 | 4 — Stats integration | Season leaderboards linking into player pages | Not started |
@@ -49,6 +49,12 @@ no source ever wrote. That key is for lookup only. Two
 `Mike Williams` normalize identically, which is exactly why step 2 also requires
 team, season and position, and refuses a double match.
 
+`identity_name` is the same folding with the generational suffix **kept**, and it
+is used where the name *is* the identity rather than a hint beside a source id —
+which is the coaching feed, and nothing else. Dropping a suffix is harmless when
+an athlete id decides who someone is; it merges two people when the name is all
+there is.
+
 ## Tables
 
 `sql/person_tables.sql`, applied with `CREATE TABLE IF NOT EXISTS` so it adds to
@@ -83,7 +89,13 @@ CFBD's coaching feed was not the shape this project first assumed. A full
 
 So the name is the only *person-level* signal the feed carries, and the key is:
 
-    cfbd:<normalized name>
+    cfbd:<normalized name, generational suffix kept>
+
+The suffix is kept deliberately. Folding it merged Mike Sanford Sr. (UNLV,
+2005-2009) with his son Mike Sanford Jr. (Western Kentucky and Colorado,
+2017-2022) into one coach — a false statement that no later correction could
+have detected, because the merged career looks perfectly ordinary. Dotted
+initials are still folded, so `A.J.` and `AJ` are one key.
 
 Grouping on name *and* hire date would split one person into one record per job
 (Al Golden becomes two coaches); grouping on overlapping seasons would split
@@ -99,6 +111,11 @@ as anything stronger. `coach_external_ids.confidence` records it as
 | --- | --- | --- |
 | `name-only identity spanning N hire dates` | A coach who changed jobs, **or** two people sharing a name | 160 |
 | `name-only identity with a gap after <year>` | A coach who returned years later, **or** two people sharing a name | 66 |
+| `names differing only by a generational suffix` | A father and son, **or** one person a source spelled both ways | 1 |
+
+The last flag is the inverse risk of keeping the suffix: a source that omits it
+on some rows splits one person in two. Recording it makes that failure visible
+where a silent merge would not be.
 
 Both readings are genuinely possible, and neither is settled by guesswork. Two
 coaches who truly share a name cannot be separated by this feed at all; saying
@@ -108,6 +125,16 @@ can be added beside this key later without a migration.
 `hire_date` lives on `coach_tenures`, not `coaches`, because that is where it is
 actually true: a single column on the person would have to pick one of a coach's
 hire dates and be wrong about the rest.
+
+The loader also migrates databases written by the first version of itself, which
+keyed on `cfbd:<name>|<hire date>`. Those ids are rewritten to the current key,
+keeping the lowest `coach_id` so an id survives wherever one can; where several
+legacy rows collapse onto one key — a coach with two hire dates had one row per
+job — the extras go, because that split is what this release undoes. Without the
+migration the next run inserts a second coach per name and orphans the old row
+under a supposedly immutable id. Reissuing a `coach_id` is acceptable only
+because no page has published one yet; once coach URLs are live this must
+migrate ids, never reissue them.
 
 ### Known gap: a class year that is really a season
 
