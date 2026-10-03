@@ -97,6 +97,9 @@ def test_export_only_uses_resolved_id_and_2026_seed_covers_canonical_teams(tmp_p
     conn.executemany("INSERT INTO teams VALUES (?,?)", source.execute("SELECT team_id,team_name FROM teams"))
     conn.executemany("INSERT INTO team_aliases VALUES (?,?)", source.execute("SELECT alias,team_name FROM team_aliases"))
     source.close()
+    # The production bootstrap replaces the backup's dead UMass duplicate
+    # with the canonical Massachusetts team before the stadium seed runs.
+    conn.execute("UPDATE teams SET team_name='Massachusetts' WHERE team_name='UMass'")
     ensure_schema(conn)
     from build_stadiums import SEED
     result = seed_stadiums(conn, SEED)
