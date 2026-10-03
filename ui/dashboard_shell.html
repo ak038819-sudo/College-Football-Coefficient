@@ -3667,10 +3667,20 @@ function boxScorePlayerCell(name, lookup) {
 // probably that person. The id is tried first and never overridden by a name:
 // where CFBD has numbered a line, no amount of name agreement should move it.
 function boxScoreLineCell(line, lookup, idSet) {
-  const id = line && line.id;
-  if (id != null && idSet && idSet.has(String(id))) {
-    return {html: '<a href="' + esc(playerHref(id)) + '">' + esc(line.name) + '</a>',
-            attributed: true};
+  const raw = line && line.id;
+  const id = raw == null || String(raw).trim() === '' ? null : String(raw).trim();
+  if (id !== null) {
+    if (idSet && idSet.has(id)) {
+      return {html: '<a href="' + esc(playerHref(id)) + '">' + esc(line.name) + '</a>',
+              attributed: true};
+    }
+    // The source numbered this line and this dataset does not hold that person,
+    // so the name must not speak for it. The only name it could match is a
+    // DIFFERENT athlete id on the same roster -- which is the case where CFBD
+    // records one person twice, or where two players share a name -- so a
+    // fallback here would put one player's work on another player's page under
+    // the appearance of the source's own attribution.
+    return {html: esc(line.name), attributed: false, matched: false};
   }
   const cell = boxScorePlayerCell(line ? line.name : '', lookup);
   return {html: cell, attributed: false, matched: cell.startsWith('<a ')};

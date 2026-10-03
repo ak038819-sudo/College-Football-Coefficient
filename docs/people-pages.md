@@ -355,6 +355,14 @@ database at all: rosters start in 2009, so a 2004 line can carry a perfectly
 good id for somebody with no page, and linking it would send a reader to "player
 not found".
 
+A numbered line whose id this dataset lacks shows as plain text; it does NOT
+fall back to the name. The only name it could match is a *different* athlete id
+on the same roster, which is precisely the case where CFBD holds two ids under
+one name (172 player-seasons, see above) or where two players genuinely share
+one. Linking it there would put one player's work on another player's page, and
+the panel would count it as a name match while the source had already named
+somebody else.
+
 Checked in the browser on a 2025 game whose lines had been numbered the way the
 re-fetch numbers them: 429 of 438 lines linked, and the nine that did not were
 CFBD's eight "Team" aggregate rows and one player absent from the roster
