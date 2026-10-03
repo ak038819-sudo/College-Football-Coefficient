@@ -219,3 +219,5 @@ db/*backup*
 
 # Local repository snapshots
 repo-snapshot*.zip
+# UI test dependencies
+node_modules/

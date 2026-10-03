@@ -67,5 +67,28 @@
     for(const r of rows.values()){r.boxGames=covered.get(r.teamId)?.size||0;r.ppg=r.games?r.pointsFor/r.games:null;r.oppPpg=r.games?r.pointsAgainst/r.games:null;r.passYpg=r.passYards!=null&&r.boxGames?r.passYards/r.boxGames:null;r.rushYpg=r.rushYards!=null&&r.boxGames?r.rushYards/r.boxGames:null;r.fgPct=r.fgAttempts?r.fgMade/r.fgAttempts*100:null;Object.assign(r,ratings[r.name]||{});}
     return [...rows.values()];
   }
-  return {categories,labels,num,sortRows,filterRows,aggregatePlayers,aggregateTeams};
+  // Adapter for existing statistical tables: reuse the same comparator, retain
+  // row links and hidden/filter state, and leave their initial order untouched.
+  function enhanceTable(table) {
+    if(table.dataset.sortable || table.classList.contains('stats-table') || !table.tHead || !table.tBodies.length || table.tHead.rows.length!==1)return;
+    table.dataset.sortable='true';
+    const headers=[...table.tHead.rows[0].cells],body=table.tBodies[0];
+    headers.forEach((header,index)=>{
+      const label=header.textContent.trim();if(!label)return;
+      const values=[...body.rows].map(row=>row.cells[index]?.textContent.trim()||'');
+      const numeric=values.filter(v=>v&&!/^[-—–]$/.test(v)).every(v=>/^[-+]?\d/.test(v));
+      const value=row=>{const text=row.cells[index]?.textContent.trim()||'';if(!text||/^[-—–]$/.test(text))return null;if(!numeric)return text;const match=text.replaceAll(',','').match(/^[-+]?\d+(?:\.\d+)?/);return match?Number(match[0]):null;};
+      const button=table.ownerDocument.createElement('button');button.type='button';button.className='sort-button';button.textContent=label;
+      header.replaceChildren(button);header.setAttribute('scope','col');
+      let direction='asc';
+      button.addEventListener('click',()=>{
+        direction=direction==='asc'?'desc':'asc';
+        for(const h of headers){h.setAttribute('aria-sort','none');const b=h.querySelector('.sort-button');if(b)b.textContent=b.dataset.label||b.textContent.replace(/ [▲▼]$/,'');}
+        header.setAttribute('aria-sort',direction==='asc'?'ascending':'descending');button.dataset.label=label;button.textContent=label+(direction==='asc'?' ▲':' ▼');
+        const rows=[...body.rows].map(element=>({element,value:value(element)}));
+        for(const row of sortRows(rows,'value',direction,numeric?'number':'string'))body.appendChild(row.element);
+      });
+    });
+  }
+  return {categories,labels,num,sortRows,filterRows,aggregatePlayers,aggregateTeams,enhanceTable};
 });

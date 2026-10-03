@@ -2907,8 +2907,9 @@ function renderHome() {
 
 // Home discovery uses the same season exports and feed statuses as the game pages.
 let homeDiscoveryRows = [], homeDiscoveryCount = 30;
+let currentStatusGames = [];
 function archiveStatus(g) {
-  const feed = liveSnapshot?.games?.find(x => Number(x.id) === Number(g.game_id));
+  const feed = currentStatusGames.find(x => Number(x.id) === Number(g.game_id));
   return feed?.status === 'in_progress' ? 'live' : feed?.status === 'completed' || g.completed ? 'completed' : 'upcoming';
 }
 function discoveryMatch(g, filters, conferences) {
@@ -3107,7 +3108,8 @@ function stadiumExplorerHtml(data, selected) {
 function hydrateStadiumExplorer(version) {
   loadStadiumExplorer().then(data => {
     if (version === renderVersion && state.section === 'teams' && state.subview === 'stadiums')
-      document.getElementById('stadium-explorer').innerHTML = teamsSwitch('stadiums') + stadiumExplorerHtml(data, state.stadium);
+      {document.getElementById('stadium-explorer').innerHTML = teamsSwitch('stadiums') + stadiumExplorerHtml(data, state.stadium);
+       if (state.stadium != null) document.querySelector('[data-stadium-marker="' + state.stadium + '"]')?.focus();}
   }).catch(() => {
     if (version === renderVersion && state.section === 'teams' && state.subview === 'stadiums')
       document.getElementById('stadium-explorer').innerHTML = teamsSwitch('stadiums') + '<div class="panel"><h2>Stadium Explorer</h2><p class="empty-note">Stadium data could not be loaded.</p></div>';
@@ -3480,7 +3482,8 @@ function hydrateLiveScores(version) {
       const target = document.getElementById('live-games');
       const board = document.getElementById('live-rankings');
       if (!status || !target || !board) return;
-      if (state.section === 'home' && state.slateWeek != null) return;
+      currentStatusGames = Array.isArray(data.games) ? data.games : [];
+      if (state.section === 'home' && state.slateWeek != null) {hydrateHomeDiscovery(version); return;}
       const slate = state.section === 'home' ? homeSlate(Array.isArray(data.games) ? data.games : []) :
         { games: Array.isArray(data.games) ? data.games : [], label: null };
       liveSnapshot = { ...data, games: slate.games };
@@ -3491,6 +3494,7 @@ function hydrateLiveScores(version) {
         ? 'Scores fetched ' + stamp.toLocaleString() + (age > 15 * 60 * 1000 ? ' · Feed may be delayed' : '')
         : 'Live feed is not active yet.');
       paintLiveGames();
+      if (state.section === 'home') hydrateHomeDiscovery(version);
       board.innerHTML = renderLiveBoard(slate.games);
       if (!liveSeasonData) loadSeasonGames(liveSeason()).then(archive => {
         if (version !== renderVersion || request !== liveRequest) return;
@@ -3656,6 +3660,9 @@ function renderGames() {
 // One game card. Every number is the stored point-in-time value from the season file:
 // pregame Elo and pregame win probability as they were BEFORE kickoff, never today's ratings.
 function listingGame(g, season) {
+  const feed = typeof currentStatusGames !== 'undefined' ? currentStatusGames.find(x => Number(x.id) === Number(g.game_id)) : null;
+  if (feed?.status === 'in_progress') return '<li class="listing-game" data-game-id="' + g.game_id + '">' + renderLiveCard(feed) + '</li>';
+  if (feed?.status === 'completed' && !g.completed) g = {...g,completed:true,home_score:feed.home?.points,away_score:feed.away?.points};
   const scheduled = UPCOMING_BY_ID.get(g.game_id);
   const when = g.completed ? fmtGameDate(g)
     : g.kickoff_utc ? fmtKickoff(g.kickoff_utc, Boolean(g.time_tbd ?? scheduled?.tbd)) : 'Kickoff TBA';
@@ -3837,6 +3844,8 @@ function hydrateGames(version) {
 }
 
 document.getElementById('content').addEventListener('keydown', e => {
+  const marker = e.target.closest('[data-stadium-marker]');
+  if (marker && (e.key === 'Enter' || e.key === ' ')) {e.preventDefault(); marker.dispatchEvent(new MouseEvent('click', {bubbles:true,cancelable:true})); return;}
   const card = e.target.closest('[data-live-id]');
   if (card && e.target === card && (e.key === 'Enter' || e.key === ' ')) {
     e.preventDefault(); location.hash = liveGameHref({id: Number(card.dataset.liveId)});
@@ -5093,6 +5102,8 @@ document.querySelector('.skip-link').addEventListener('click', e => {
 
 // Home controls retain their existing behavior.
 document.getElementById('content').addEventListener('click', e => {
+  const marker=e.target.closest('[data-stadium-marker]');
+  if(marker){e.preventDefault();navigate({section:'teams',subview:'stadiums',stadium:Number(marker.dataset.stadiumMarker),view:'tab'});return;}
   const filterButton = e.target.closest('[data-live-filter]');
   const orderButton = e.target.closest('[data-live-order]');
   if (filterButton || orderButton) {
@@ -5154,7 +5165,9 @@ document.getElementById('content').addEventListener('submit', e => {
 });
 
 function wrapWideTables() {
-  document.querySelectorAll('#content .rank-table').forEach(table => {
+  document.querySelectorAll('#content table').forEach(table => {
+    CfbStats.enhanceTable(table);
+    if (table.parentElement?.classList.contains('table-scroll')) return;
     const wrapper = document.createElement('div');
     wrapper.className = 'table-scroll';
     wrapper.tabIndex = 0;
@@ -5321,6 +5334,7 @@ function render() {
 function coverageRange(years) { return years?.length ? Math.min(...years) + '–' + Math.max(...years) : 'unavailable'; }
 document.getElementById('coverage-caption').textContent = 'RATINGS: ' + coverageRange(DATA.years_all) +
   ' · PLAYOFF: ' + coverageRange(DATA.years_playoff);
+new MutationObserver(() => wrapWideTables()).observe(document.getElementById('content'), {childList:true,subtree:true});
 applyRoute();
 </script>
 </body>

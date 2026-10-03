@@ -122,7 +122,10 @@ jobs:
           node-version: "22"
 
       - name: Test dashboard navigation and search
-        run: node --test tests/*.test.cjs
+        run: |
+          npm ci --ignore-scripts
+          npm run check
+          npm test
 
   rebuild-and-deploy:
     needs: test
