@@ -56,9 +56,16 @@ See `src/current_season.py`.
    Finished games move from the live feed into the season archive at this step.
    Current-season player box scores are saved in `data/raw/player_boxscores/`
    and exported into lazy-loaded historical game pages. To backfill the
-   documented box-score range with an authorized CFBD key, run
-   `python3 src/fetch_cfbd_players.py 2004 2025` followed by a dashboard
-   build. Seasons are saved separately, so the range can resume after a failure.
+   documented box-score range with an authorized CFBD key, run the
+   **Backfill player box scores** workflow (`.github/workflows/backfill-players.yml`)
+   from the Actions tab, giving it a season range; it uses the repository's
+   `CFBD_API_KEY` secret, so no key is needed locally. It commits and pushes one
+   season at a time and stops at the first season that fails, naming the season
+   to resume from, so a range can be re-run safely. Running
+   `python3 src/fetch_cfbd_players.py 2004 2025` locally does the same fetch if
+   you have a key. Either way, follow a backfill with a dashboard build.
+   A full 2004-2025 backfill adds roughly 290 MB to the repository, since the
+   archive is committed like the rest of `data/raw/`.
    Player coverage depends on the source feed. `src/audit_game_coverage.py`
    records coverage by season for efficiency, verified venues, and player lines.
 4. Runs the full test suite against the freshly fetched data.
