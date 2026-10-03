@@ -393,11 +393,13 @@
   .back-link { display: inline-block; margin-bottom: 14px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-dim); text-decoration: none; }
   .back-link:hover, .back-link:focus-visible { color: var(--amber); }
   .team-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
-  .team-header-main { display: flex; align-items: center; gap: 20px; min-width: 0; }
+  .team-header-main { display: flex; align-items: center; gap: 20px; min-width: 0; flex: 1 1 300px; }
+  .team-header-text { min-width: 0; }
   .team-title { font-family: var(--font-display); font-size: 38px; line-height: 1.05; margin: 0 0 6px; }
   .team-sub { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-dim); }
-  .team-stats { display: grid; grid-template-columns: repeat(4, minmax(110px, 1fr)); gap: 10px; }
+  .team-stats { display: grid; grid-template-columns: repeat(4, minmax(110px, 1fr)); gap: 10px; flex: 0 0 auto; }
   @media (max-width: 760px) { .team-stats { grid-template-columns: repeat(2, 1fr); width: 100%; } .team-title { font-size: 30px; } }
+  @media (max-width: 520px) { .team-header-main { gap: 14px; } .team-title { font-size: 24px; overflow-wrap: anywhere; } }
   .team-stat { background: var(--panel-2); border-radius: 3px; padding: 10px 12px; }
   .team-stat .lbl { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.5px; color: var(--ink-dim); text-transform: uppercase; }
   .team-stat .val { font-family: var(--font-display); font-size: 22px; color: var(--amber); margin-top: 2px; }
@@ -800,7 +802,7 @@
   .stadium-facts b { display: block; color: var(--ink-dim); font-size: 11px; }
   .stadium-games { padding-left: 20px; }
   .stadium-games li { margin: 7px 0; }
-  .team-stadiums { margin-top: 8px; font-size: 13px; color: var(--ink-dim); }
+  .team-stadiums { margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-dim); overflow-wrap: anywhere; }
   .team-stadiums a, .directory-stadiums a { color: var(--amber); }
   .directory-stadiums { padding: 10px 14px; margin-top: -1px; font-size: 12px;
     background: var(--panel-2); border: 1px solid var(--line); border-radius: 0 0 4px 4px; }
@@ -1989,7 +1991,7 @@ function renderTeamPage(param) {
   const header =
     '<div class="panel team-header">' +
       '<div class="team-header-main">' + logoMarkup(team.name, 'team', 'lg', season || undefined) +
-        '<div><h1 class="team-title">' + team.name + '</h1>' +
+        '<div class="team-header-text"><h1 class="team-title">' + team.name + '</h1>' +
         '<div class="team-sub">' +
           (team.conference ? conferenceLink(team.conference, null, team.conference_year || season) : 'No conference data') +
           (season ? ' &middot; ' + season + ' season' : '') + '</div>' +
