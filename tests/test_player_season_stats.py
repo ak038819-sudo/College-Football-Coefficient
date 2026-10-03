@@ -301,3 +301,78 @@ def test_a_statistics_backfill_can_run_without_refetching_the_rosters():
     fetching = [s["name"] for s in workflow["jobs"]["sync"]["steps"]
                 if "Fetch and commit" in s.get("name", "") and runs(s, chosen)]
     assert fetching == ["Fetch and commit one season of player statistics at a time"]
+
+
+def test_a_season_split_across_two_athlete_ids_is_flagged_not_silently_halved(conn, tmp_path):
+    """Measured on the real archive: across 2009-2025, 104 of 147,830
+    name-and-team groups carry more than one athlete id, and 172 player-seasons
+    are affected. Sherod White's 2022 at New Mexico reads 17 carries for 41
+    yards under the id his roster row carries, while CFBD's other record for
+    that name holds 23 carries, 101 yards and 3 touchdowns. A page that prints
+    the first and says nothing asserts a third of a season as the whole of it.
+    """
+    pid = _person(conn, 111, "Split Person")
+    rows = [{"athlete_id": "111", "name": "Split Person", "team": "Oregon",
+             "category": "rushing", "stat_type": "YDS", "stat": 41},
+            # The same name at the same school under an id this database has
+            # never seen: the other half of the person, as the feed has it.
+            {"athlete_id": "222", "name": "Split Person", "team": "Oregon",
+             "category": "rushing", "stat_type": "YDS", "stat": 101}]
+    stats = load_season_stats(conn, _snapshot(tmp_path, 2022, rows))
+
+    assert stats["partial_seasons"] == 1
+    reason, = conn.execute("SELECT reason FROM player_season_stat_caveats "
+                           "WHERE player_id = ? AND season_year = 2022", (pid,)).fetchone()
+    assert "more than one athlete id" in reason
+    assert "Oregon" in reason and "2022" in reason
+
+
+def test_both_halves_are_flagged_when_the_database_holds_both_ids(conn, tmp_path):
+    """The other shape of the same defect, and the more misleading one: when
+    both ids are on the roster the site shows TWO people, each holding part of
+    one career, and neither page looks incomplete. Both are flagged."""
+    a = _person(conn, 333, "Twice Recorded")
+    b = _person(conn, 444, "Twice Recorded")
+    rows = [{"athlete_id": "333", "name": "Twice Recorded", "team": "Oregon",
+             "category": "rushing", "stat_type": "YDS", "stat": 10},
+            {"athlete_id": "444", "name": "Twice Recorded", "team": "Oregon",
+             "category": "rushing", "stat_type": "YDS", "stat": 20}]
+    load_season_stats(conn, _snapshot(tmp_path, 2018, rows))
+
+    flagged = {r[0] for r in conn.execute(
+        "SELECT player_id FROM player_season_stat_caveats WHERE season_year = 2018")}
+    assert flagged == {a, b}
+
+
+def test_one_athlete_id_under_a_name_is_not_flagged(conn, tmp_path):
+    """The flag has to stay rare to mean anything. Two players who share a name
+    at DIFFERENT schools are two people with two ids and nothing to caveat."""
+    _person(conn, 555, "Common Name")
+    _person(conn, 666, "Common Name")
+    rows = [{"athlete_id": "555", "name": "Common Name", "team": "Oregon",
+             "category": "rushing", "stat_type": "YDS", "stat": 10},
+            {"athlete_id": "666", "name": "Common Name", "team": "Alabama",
+             "category": "rushing", "stat_type": "YDS", "stat": 20}]
+    stats = load_season_stats(conn, _snapshot(tmp_path, 2019, rows))
+
+    assert stats["partial_seasons"] == 0
+    assert conn.execute("SELECT COUNT(*) FROM player_season_stat_caveats").fetchone()[0] == 0
+
+
+def test_a_corrected_season_drops_a_caveat_that_no_longer_applies(conn, tmp_path):
+    """The snapshot is the whole season, so a caveat must be replaced with it. A
+    flag CFBD has since fixed would otherwise stay on the page for ever."""
+    pid = _person(conn, 777, "Fixed Later")
+    split = [{"athlete_id": "777", "name": "Fixed Later", "team": "Oregon",
+              "category": "rushing", "stat_type": "YDS", "stat": 5},
+             {"athlete_id": "888", "name": "Fixed Later", "team": "Oregon",
+              "category": "rushing", "stat_type": "YDS", "stat": 7}]
+    load_season_stats(conn, _snapshot(tmp_path, 2020, split))
+    assert conn.execute("SELECT COUNT(*) FROM player_season_stat_caveats").fetchone()[0] == 1
+
+    merged = [{"athlete_id": "777", "name": "Fixed Later", "team": "Oregon",
+               "category": "rushing", "stat_type": "YDS", "stat": 12}]
+    load_season_stats(conn, _snapshot(tmp_path, 2020, merged))
+    assert conn.execute("SELECT COUNT(*) FROM player_season_stat_caveats").fetchone()[0] == 0
+    assert conn.execute("SELECT stat FROM player_season_stats WHERE player_id = ?",
+                        (pid,)).fetchall() == [(12,)]

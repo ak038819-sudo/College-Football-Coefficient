@@ -124,6 +124,18 @@ def build_players(conn: sqlite3.Connection) -> dict:
         category = season.setdefault(row["category"], {"team_id": int(row["team_id"])})
         category[row["stat_type"]] = row["stat"]
 
+    # A season the source itself holds more of than this page can show. Kept
+    # beside the statistics rather than on the player, because it is true of one
+    # season and not of the player's career.
+    for row in conn.execute(
+            "SELECT player_id, season_year, reason FROM player_season_stat_caveats"):
+        player = players.get(int(row["player_id"]))
+        if player is None:
+            continue
+        season = player.setdefault("stats", {}).get(str(row["season_year"]))
+        if season is not None:
+            season["_partial"] = row["reason"]
+
     # The identity the feed could not vouch for, carried through to the page so
     # the weakness is visible to a reader rather than only to the database --
     # the same treatment a name-only coach identity gets.

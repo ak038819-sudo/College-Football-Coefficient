@@ -31,6 +31,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import collections
 import gzip
 import json
 import sqlite3
@@ -55,13 +56,28 @@ def load_season_stats(conn: sqlite3.Connection, path: str | Path) -> dict:
     if not seasons:
         raise ValueError(f"{path}: no season_year on any row")
 
-    stats = {"loaded": 0, "people": 0, "unknown_athlete": 0, "unknown_team": 0, "skipped": 0}
+    stats = {"loaded": 0, "people": 0, "unknown_athlete": 0, "unknown_team": 0, "skipped": 0,
+             "partial_seasons": 0}
+
+    # CFBD sometimes carries two athlete ids under one name at one school in one
+    # season. A statistic attaches by id, so each id holds a fraction of that
+    # season and a page built from one of them asserts the fraction as the whole.
+    # Collected before anything is stored, because the caveat is a property of
+    # the snapshot, not of what happened to resolve.
+    ids_by_name = collections.defaultdict(set)
+    for row in rows:
+        name = (row.get("name") or "").strip()
+        external_id = row.get("athlete_id")
+        if name and external_id not in (None, ""):
+            ids_by_name[(name, (row.get("team") or "").strip())].add(str(external_id))
+    shared_ids = {i for ids in ids_by_name.values() if len(ids) > 1 for i in ids}
     # Resolution happens before anything is deleted, for the same reason the
     # roster loader stages its rows: a failed resolution must not be able to
     # leave the season with fewer statistics than it had.
     staged = []
     unresolved = []
     people = set()
+    partial: dict = {}
     for row in rows:
         name = (row.get("name") or "").strip()
         category = (row.get("category") or "").strip()
@@ -86,17 +102,28 @@ def load_season_stats(conn: sqlite3.Connection, path: str | Path) -> dict:
             continue
         staged.append((player_id, season, team_id, category, stat_type, row.get("stat"), SOURCE))
         people.add(player_id)
+        if str(external_id) in shared_ids:
+            partial[(player_id, season)] = (
+                f"CFBD lists more than one athlete id under this name at "
+                f"{row.get('team') or 'this school'} in {season}; these totals cover only one of them")
 
     for season in sorted(seasons):
         conn.execute("DELETE FROM player_season_stats WHERE season_year = ? AND source = ?",
                      (season, SOURCE))
         conn.execute("DELETE FROM person_unresolved WHERE entity = 'player' AND context = ? "
                      "AND season_year = ?", (CONTEXT, season))
+        conn.execute("DELETE FROM player_season_stat_caveats WHERE season_year = ? AND source = ?",
+                     (season, SOURCE))
     conn.executemany(
         "INSERT OR REPLACE INTO player_season_stats (player_id, season_year, team_id, category, "
         "stat_type, stat, source) VALUES (?, ?, ?, ?, ?, ?, ?)", staged)
+    conn.executemany(
+        "INSERT OR REPLACE INTO player_season_stat_caveats (player_id, season_year, reason, source) "
+        "VALUES (?, ?, ?, ?)",
+        [(pid, year, reason, SOURCE) for (pid, year), reason in sorted(partial.items())])
     stats["loaded"] = len(staged)
     stats["people"] = len(people)
+    stats["partial_seasons"] = len(partial)
 
     # Recorded per person rather than per row: one player with ten statistics at
     # a school outside this database is one fact, and writing it ten times would
@@ -122,7 +149,9 @@ def main() -> None:
              if stats["unknown_athlete"] else "")
           + (f", {stats['unknown_team']} rows for schools outside this database"
              if stats["unknown_team"] else "")
-          + (f", {stats['skipped']} unusable rows" if stats["skipped"] else ""))
+          + (f", {stats['skipped']} unusable rows" if stats["skipped"] else "")
+          + (f", {stats['partial_seasons']} player-seasons flagged partial"
+             if stats["partial_seasons"] else ""))
 
 
 if __name__ == "__main__":

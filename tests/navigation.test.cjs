@@ -906,3 +906,49 @@ test('a name in the Stats table links by the same rule a box-score name does', (
   // A string team id from the row still finds its roster.
   assert.match(context.cell('Drew Mestemaker', context.lookup(roster, '7')), /#player=4369001/);
 });
+
+test('a season split across two athlete ids is marked on every table and named once', () => {
+  // Measured on the real archive: 172 player-seasons across 2009-2025 carry
+  // more than one CFBD athlete id under one name at one school. The totals a
+  // page can show are then part of the season, and a page that prints them
+  // bare asserts a fraction as the whole -- Sherod White's 2022 at New Mexico
+  // reads 17 carries for 41 yards while CFBD's other record for that name
+  // holds 23 for 101 and 3 touchdowns.
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = ['statCell', 'playerStatsPanel'].map(name =>
+    shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))[0]).join('\n');
+  const context = {FRACTION_STATS: {PCT: true}, esc: String,
+    teamCellById: id => 'TEAM' + id, personStatsNote: () => '<p>NO STATS</p>',
+    STAT_CATEGORY_LABELS: {rushing: 'Rushing', receiving: 'Receiving'},
+    STAT_CATEGORY_ORDER: ['rushing', 'receiving']};
+  vm.runInNewContext(source + '\nthis.panel = playerStatsPanel;', context);
+
+  const html = context.panel({
+    2022: {rushing: {team_id: 1, YDS: 41}, receiving: {team_id: 1, YDS: 20},
+           _partial: 'CFBD lists more than one athlete id under this name at New Mexico in 2022'},
+    2023: {rushing: {team_id: 1, YDS: 155}},
+  });
+  // Marked in BOTH categories: a reader looks at one table, not all of them.
+  const marks = html.match(/<td>2022 <abbr class="stat-partial"/g) || [];
+  assert.equal(marks.length, 2);
+  assert.match(html, /title="CFBD lists more than one athlete id[^"]*New Mexico in 2022"/);
+  // The season that is whole carries no mark.
+  assert.match(html, /<td>2023<\/td>/);
+  // And the reason is spelled out once, in words, not left to a dagger.
+  assert.match(html, /In 2022, CFBD holds more than one athlete id/);
+  assert.match(html, /part of that season rather than all of it/);
+  assert.match(html, /not merged here/);
+
+  // No caveat, no note and no dagger: the flag has to stay rare to mean anything.
+  const clean = context.panel({2023: {rushing: {team_id: 1, YDS: 155}}});
+  assert.doesNotMatch(clean, /stat-partial/);
+  assert.doesNotMatch(clean, /CFBD holds more than one/);
+
+  // Two flagged seasons read as a list, and the wording agrees with itself.
+  const two = context.panel({
+    2022: {rushing: {team_id: 1, YDS: 41}, _partial: 'a'},
+    2021: {rushing: {team_id: 1, YDS: 30}, _partial: 'b'},
+  });
+  assert.match(two, /In 2022, 2021, CFBD holds/);
+  assert.match(two, /part of those seasons rather than all of them/);
+});

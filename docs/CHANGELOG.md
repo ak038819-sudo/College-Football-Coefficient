@@ -4,8 +4,19 @@
 
 - Season statistics on player pages, from CFBD's season player feed, which
   numbers every row with an athlete id: a statistic is attached to a person
-  because the source says so, never because two names matched. 2025 is loaded
-  and every one of its FBS rows found its person.
+  because the source says so, never because two names matched. **2009 to 2025
+  are loaded: 1,048,998 statistics for 45,805 people.** Snapshots are gzipped,
+  which is what makes keeping the feed's own long form affordable -- 17 seasons
+  are 11 MB in a checkout rather than about 400 MB.
+- `defensive` and `fumbles` statistics begin in 2016; before that CFBD's feed
+  carries eight categories, so a defensive player's page for 2009-2015 shows no
+  statistics.
+- A season CFBD splits across two athlete ids under one name at one school is
+  marked on the page and the reason given, rather than printed as if whole: 172
+  player-seasons are affected, and one of them read 17 carries for 41 yards
+  where the source also held 23 carries, 101 yards and 3 touchdowns under its
+  other id. The ids are not merged, because the feed cannot distinguish one
+  person recorded twice from two players who share a name.
 - Player names in the Stats tab's table and leaders cards link to person pages,
   by the same rule the box scores use. No second leaderboard was added: the
   Stats tab already has one, and two boards would disagree.
