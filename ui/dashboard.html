@@ -2937,7 +2937,7 @@ function hydrateHomeDiscovery(version) {
     if (version !== renderVersion) return;
     const weeks = [...new Set(data.games.filter(g => !g.phase && g.week != null).map(g=>g.week))].sort((a,b)=>a-b);
     if (data.games.some(g=>g.phase)) weeks.push('post');
-    const activeFeed = homeSlate(liveSnapshot?.games || []).games;
+    const activeFeed = homeSlate(currentStatusGames).games;
     const first = activeFeed.find(g=>g.status === 'in_progress') || activeFeed.find(g=>g.status === 'scheduled') || activeFeed[0];
     const defaultWeek = data.byId.get(Number(first?.id))?.week || upcomingGroups()[0]?.games[0]?.week || weeks[weeks.length-1];
     const week = state.slateWeek ?? defaultWeek;
@@ -2946,9 +2946,20 @@ function hydrateHomeDiscovery(version) {
     document.getElementById('home-weeks').innerHTML = link(weeks[i-1],'← Previous Week') + '<strong>' + (week === 'post' ? 'Postseason' : 'Week ' + week) + '</strong>' + link(weeks[i+1],'Next Week →') + '<a href="' + esc(routeHref({slateWeek:null})) + '">Current week</a>';
     if (state.slateWeek != null) {
       const games = data.games.filter(g=>week === 'post' ? g.phase : !g.phase && g.week === week);
-      const asFeed = g => ({id:g.game_id,start_date:g.kickoff_utc,home:{name:TEAM_BY_ID.get(String(g.home_id))?.name},away:{name:TEAM_BY_ID.get(String(g.away_id))?.name}});
-      games.sort((a,b)=>compareHype(asFeed(a),asFeed(b)));
-      document.getElementById('live-games').innerHTML = '<ul class="games-grid" style="grid-column:1/-1">' + games.map(g=>listingGame(g,data.season)).join('') + '</ul>';
+      liveSeasonData = data;
+      // Week browsing shares the scoreboard renderer and its filter/order state.
+      // Archive rows provide point-in-time ratings; fresh feed rows retain live
+      // clocks, scores and broadcast details when that game is still in the feed.
+      liveSnapshot = {...liveSnapshot, games: games.map(g => {
+        const feed = currentStatusGames.find(x => Number(x.id) === Number(g.game_id));
+        const scheduled = UPCOMING_BY_ID.get(g.game_id);
+        return {id:g.game_id, start_date:g.kickoff_utc, neutral_site:g.neutral,
+          venue:g.venue || scheduled?.venue, status:g.completed ? 'completed' : 'scheduled',
+          home:{name:TEAM_BY_ID.get(String(g.home_id))?.name, points:g.home_score},
+          away:{name:TEAM_BY_ID.get(String(g.away_id))?.name, points:g.away_score},
+          ...feed};
+      })};
+      paintLiveGames();
       document.getElementById('live-status').textContent = 'Browsing ' + data.season + ' · ' + (week === 'post' ? 'Postseason' : 'Week ' + week);
     }
   }).catch(()=> { if(version===renderVersion) document.getElementById('home-weeks').textContent='Week navigation could not be loaded.'; });
