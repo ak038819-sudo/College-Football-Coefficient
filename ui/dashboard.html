@@ -3640,6 +3640,18 @@ function rosterNameLookup(rosterData, teamId) {
   });
   return byName;
 }
+// The ids of the people this dataset holds for a team-season. A box-score line
+// numbered by CFBD is that person -- the id IS the player_id here -- but only if
+// the person is in this database at all: rosters start in 2009, so a 2004 line
+// can carry a perfectly good id for somebody who has no page. Linking it would
+// send a reader to "player not found", so the id is checked against the roster
+// first and the link is withheld rather than broken.
+function rosterIdSet(rosterData, teamId) {
+  if (!rosterData || teamId == null) return null;
+  const rows = rosterData.teams.get(Number(teamId));
+  if (!rows || !rows.length) return null;
+  return new Set(rows.map(r => String(r.player_id)));
+}
 function boxScoreNameLookup(rosterData, teamName) {
   const team = TEAM_BY_NAME.get(teamName);
   return team ? rosterNameLookup(rosterData, team.id) : null;
@@ -3649,6 +3661,20 @@ function boxScorePlayerCell(name, lookup) {
   const ids = key ? lookup.get(key) : null;
   if (!ids || ids.length !== 1) return esc(name);
   return '<a href="' + esc(playerHref(ids[0])) + '">' + esc(name) + '</a>';
+}
+// Two different claims, and the difference is the whole point. An id is the
+// SOURCE saying who this line belongs to, so the line is attributed. A name
+// matching one roster row is this project's own inference, so the line is only
+// probably that person. The id is tried first and never overridden by a name:
+// where CFBD has numbered a line, no amount of name agreement should move it.
+function boxScoreLineCell(line, lookup, idSet) {
+  const id = line && line.id;
+  if (id != null && idSet && idSet.has(String(id))) {
+    return {html: '<a href="' + esc(playerHref(id)) + '">' + esc(line.name) + '</a>',
+            attributed: true};
+  }
+  const cell = boxScorePlayerCell(line ? line.name : '', lookup);
+  return {html: cell, attributed: false, matched: cell.startsWith('<a ')};
 }
 
 function playerBoxscorePanel(teams, updated, checked, rosterData) {
@@ -3660,13 +3686,17 @@ function playerBoxscorePanel(teams, updated, checked, rosterData) {
     '<p class="section-note">Player lines appear here when CFBD publishes this game’s box score.' +
     (timestamp(checked) ? ' Last checked ' + esc(timestamp(checked)) + '.' : '') + '</p></div>';
   let linked = 0;
+  let attributed = 0;
   const groups = teams.flatMap(team => {
     const lookup = boxScoreNameLookup(rosterData, team.name);
+    const teamRow = TEAM_BY_NAME.get(team.name);
+    const idSet = teamRow ? rosterIdSet(rosterData, teamRow.id) : null;
     return (team.categories || []).map(c => {
     const lines = (c.lines || []).map(a => {
-      const cell = boxScorePlayerCell(a.name, lookup);
-      if (cell.startsWith('<a ')) linked += 1;
-      return '<div class="live-player-row"><span>' + cell +
+      const cell = boxScoreLineCell(a, lookup, idSet);
+      if (cell.attributed) attributed += 1;
+      else if (cell.matched) linked += 1;
+      return '<div class="live-player-row"><span>' + cell.html +
         '</span><strong>' + esc(a.stat) + '</strong></div>';
     }).join('');
     return '<div class="live-player-group"><h3>' + esc(team.name) + ' · ' + esc(c.name) +
@@ -3677,9 +3707,12 @@ function playerBoxscorePanel(teams, updated, checked, rosterData) {
     '<p class="section-note">From CFBD.' +
     (timestamp(updated) ? ' Player stats updated ' + esc(timestamp(updated)) + '.' : '') +
     ' Availability and timing vary by game.' +
-    (linked ? ' A name links to a player page where it matches exactly one player on that ' +
-      'school\u2019s roster for this season; the archive carries no player id, so a shared ' +
-      'name is left unlinked rather than guessed at.' : '') + '</p>' +
+    (attributed ? ' A line CFBD numbers with an athlete id links to that person because ' +
+      'the source says whose line it is.' : '') +
+    (linked ? (attributed ? ' An unnumbered line links' : ' A name links') +
+      ' where the name matches exactly one player on that school\u2019s roster for this ' +
+      'season, which is this project\u2019s own inference rather than the source\u2019s; a ' +
+      'shared name is left unlinked rather than guessed at.' : '') + '</p>' +
     '<div class="live-player-grid">' + groups.join('') + '</div></div>';
 }
 function liveEloPanel(g) {
