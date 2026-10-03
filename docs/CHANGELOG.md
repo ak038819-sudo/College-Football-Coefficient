@@ -9,6 +9,13 @@
   Actions and committed to `data/raw`, loaded idempotently by the pipeline.
 - Rows that cannot be confidently attached to a person or a team are recorded
   for review instead of guessed at; no person is created from a name match.
+- Coach identity keyed on the name, which is the only person-level signal CFBD's
+  coaching feed carries: each record is one season and its hire date belongs to
+  the job, so the hire date lives on the tenure. Careers the feed cannot vouch
+  for (a second hire date, or a gap in seasons) are flagged for review rather
+  than asserted.
+- A roster class year is only accepted as 1-5. CFBD's stub rows put the season
+  in that field, which displayed as a class year of "2026".
 - No UI changes yet, and no rating engine reads any of it. See
   [player and coach pages](people-pages.md) for coverage limits and known gaps.
 

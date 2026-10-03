@@ -9,6 +9,7 @@ refuses to do, and where the data runs out. It is updated as each phase lands.
 | Phase | What it covers | State |
 | --- | --- | --- |
 | 1 — Identity and schema | Person tables, identity resolution, CFBD roster and coaching ingestion | Landed |
+| 1 — Data synced | 2026 rosters (31,382 source rows, 15,910 player-seasons at schools in this database) and head coaches 1980-2026 (826 coaches, 5,657 tenures) | Landed |
 | 2 — Player pages | Player export and detail pages, roster and box-score links, player search | Not started |
 | 3 — Coach pages | Coach export and detail pages, team-page coach links | Not started |
 | 4 — Stats integration | Season leaderboards linking into player pages | Not started |
@@ -66,32 +67,56 @@ an existing `db/league.db` without dropping anything.
 | Source | Used for | Coverage limit |
 | --- | --- | --- |
 | CFBD `/roster` | Rosters: identity, team-season, jersey, position, class, optional bio | CFBD's published schema starts at **2009**. Earlier seasons are refused rather than written as empty snapshots. |
-| CFBD `/coaches` | Head-coaching history and season records | **Head coaches only.** The feed carries no coordinator or assistant history, and nothing here may be presented as though it did. It also carries **no coach identifier** — see below. |
+| CFBD `/coaches` | Head-coaching history and season records | **Head coaches only.** The feed carries no coordinator or assistant history, and nothing here may be presented as though it did. It carries **no coach identifier**, and its hire date belongs to the job rather than the person — see below. |
 | Existing player box-score archive | Game logs and box scores, 2004 onward | `data/raw/player_boxscores/` stores **names only**: the archive's cleaning step drops CFBD's athlete ids. See the known gap below. |
 
-### Coach identity, with no source id
+### Coach identity, and what the feed cannot tell us
 
-CFBD's coaching feed supplies no identifier, so `src/load_coaches.py` derives a
-deterministic one:
+CFBD's coaching feed was not the shape this project first assumed. A full
+1980-2026 pull settled it: **5,714 records carrying 5,716 seasons between them.**
 
-    cfbd:<normalized name>|<hire date>
+- **Each record is one season**, not a career. `/coaches?year=N` returns that
+  year's row for every coach who worked it.
+- **`hire_date` belongs to the job, not the person.** Al Golden comes back with
+  `2005-12-08` for his five Temple seasons and `2010-12-12` for his five at
+  Miami.
 
-and, only when that key collides inside one snapshot, appends the record's first
-season. Two people who share a name *and* a hire date are indistinguishable in
-this feed; appending the first season keeps them two people, and the collision
-is written to `person_unresolved` so the pair can be looked at rather than
-trusted. The key is stored in `coach_external_ids` rather than assumed in code,
-so a source with real coach ids can be added beside it without a migration.
+So the name is the only *person-level* signal the feed carries, and the key is:
 
-The fetcher must not pre-merge those two people, and that is subtler than it
-looks. Each year slice of `/coaches` returns a coach's *whole* career, so the
-same person arrives once per slice covering them, with overlapping season lists.
-That overlap is the merge signal: records sharing a name and hire date are
-merged only when their seasons actually intersect. Grouping on name and hire
-date alone would hand one `coach_id` two unrelated careers, and because the
-loader would then see a single record its collision handling would never run, so
-the blend would be permanent and undetectable. Disjoint careers under one name
-therefore stay separate records and reach the loader as a recorded collision.
+    cfbd:<normalized name>
+
+Grouping on name *and* hire date would split one person into one record per job
+(Al Golden becomes two coaches); grouping on overlapping seasons would split
+them into one record per season (Al Golden becomes ten). Both were tried before
+the real data was in hand, and both were wrong.
+
+A name is weak evidence by this project's own standard, so it is not dressed up
+as anything stronger. `coach_external_ids.confidence` records it as
+`name only`, and every career the feed cannot vouch for goes to
+`person_unresolved` for review rather than being asserted:
+
+| Flag | What it means | 2026 snapshot |
+| --- | --- | --- |
+| `name-only identity spanning N hire dates` | A coach who changed jobs, **or** two people sharing a name | 160 |
+| `name-only identity with a gap after <year>` | A coach who returned years later, **or** two people sharing a name | 66 |
+
+Both readings are genuinely possible, and neither is settled by guesswork. Two
+coaches who truly share a name cannot be separated by this feed at all; saying
+so plainly is better than inventing a distinction. A source with real coach ids
+can be added beside this key later without a migration.
+
+`hire_date` lives on `coach_tenures`, not `coaches`, because that is where it is
+actually true: a single column on the person would have to pick one of a coach's
+hire dates and be wrong about the rest.
+
+### Known gap: a class year that is really a season
+
+CFBD overloads the roster's `year` field. On the stub rows it returns for
+players with no listed position, jersey or bio, it holds the **season** rather
+than a class — 1,625 of the 31,382 rows in the 2026 snapshot carried `2026`
+there. `class_year_label` accepts only 1-5 as a class and returns nothing for
+any other number, so those players show no class year instead of a confident
+`2026`. A non-numeric value (`Freshman`, `RS-FR`) is still kept as given.
 
 ### Known gap: the box-score archive carries no athlete ids
 

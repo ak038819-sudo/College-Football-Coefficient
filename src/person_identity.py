@@ -92,16 +92,25 @@ def split_name(first: Optional[str], last: Optional[str], display: str) -> tuple
 
 
 def class_year_label(value) -> Optional[str]:
-    """CFBD sends class as 1-4 (sometimes 5); anything else is kept verbatim."""
-    if value is None or value == "":
-        return None
-    if isinstance(value, bool):
+    """CFBD sends class as 1-4, sometimes 5. A NUMBER outside that range is not a
+    class and becomes None.
+
+    CFBD overloads the roster's `year` field: on the stub rows it returns for
+    players with no listed position or jersey, it holds the SEASON (2026), not a
+    class. Passing that through displayed a class year of "2026" on 1,625 of the
+    2026 rows. A season is not a class, and an unknown class must read as
+    unknown rather than as a confident wrong answer.
+
+    A non-numeric value is kept verbatim: 'Freshman' or 'RS-FR' is a real class
+    some sources give, and this is not the place to start renaming them.
+    """
+    if value is None or value == "" or isinstance(value, bool):
         return None
     if isinstance(value, int):
-        return CLASS_YEARS.get(value, str(value))
+        return CLASS_YEARS.get(value)
     text = str(value).strip()
     if text.isdigit():
-        return CLASS_YEARS.get(int(text), text)
+        return CLASS_YEARS.get(int(text))
     return text or None
 
 
