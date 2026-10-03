@@ -54,3 +54,50 @@ def test_player_stats_survive_empty_or_failed_refresh():
                                     result, None, '2026-09-27T01:00:00Z')
     assert failed['player_boxscores'] == lines
     assert failed['player_stats_checked_at'] == '2026-09-27T00:00:00Z'
+
+
+def test_the_live_scoreboard_carries_no_athlete_ids():
+    """Every visitor downloads this file on every page load. Measured on the
+    real file: 7,410 player lines, so ids would add about 96 KB to 358 KB -- for
+    in-progress games whose lines the roster-name rule already links. The
+    archive, which is gzipped and read only when a game page opens, asks for
+    them instead."""
+    payload = [{'id': 42, 'teams': [{'team': 'BYU', 'homeAway': 'home',
+        'categories': [{'name': 'passing', 'types': [{'name': 'YDS',
+        'athletes': [{'id': 4361182, 'name': 'Quarterback', 'stat': '288'}]}]}]}]}]
+    [line] = clean_player_boxscores(payload, {42})['42'][0]['categories'][0]['lines']
+    assert line == {'name': 'Quarterback', 'stat': '288'}
+
+
+def test_the_archive_keeps_the_athlete_id_so_a_line_can_be_attributed():
+    """The reason for the whole re-fetch. Without an id a box-score line can
+    only be matched to a person by name, which is a guess the project refuses to
+    present as attribution."""
+    payload = [{'id': 42, 'teams': [{'team': 'BYU', 'homeAway': 'home',
+        'categories': [{'name': 'passing', 'types': [{'name': 'YDS', 'athletes': [
+            {'id': 4361182, 'name': 'Numbered', 'stat': '288'},
+            {'name': 'Unnumbered', 'stat': '12'},
+            {'id': 'team-total', 'name': 'Not A Number', 'stat': '300'},
+        ]}]}]}]}]
+    lines = clean_player_boxscores(payload, {42}, max_athletes=None,
+                                   keep_ids=True)['42'][0]['categories'][0]['lines']
+    assert lines[0] == {'name': 'Numbered', 'stat': '288', 'id': '4361182'}
+    # No key at all, not a null: a reader has to be able to tell "CFBD did not
+    # number this line" from "this line is numbered 0".
+    assert lines[1] == {'name': 'Unnumbered', 'stat': '12'}
+    assert 'id' not in lines[1]
+    # An id that is not a number cannot be a CFBD athlete id, and storing a
+    # name-shaped one would invite the name matching the id exists to replace.
+    assert lines[2] == {'name': 'Not A Number', 'stat': '300'}
+
+
+def test_a_negative_athlete_id_is_kept():
+    """29,162 of CFBD's athlete ids are negative and this project uses the id
+    verbatim as player_id, so dropping the sign would point a line at a
+    different person or at nobody."""
+    payload = [{'id': 42, 'teams': [{'team': 'BYU', 'categories': [{'name': 'passing',
+        'types': [{'name': 'YDS', 'athletes': [
+            {'id': -1044305, 'name': 'Placeholder', 'stat': '1'}]}]}]}]}]
+    [line] = clean_player_boxscores(payload, {42}, max_athletes=None,
+                                    keep_ids=True)['42'][0]['categories'][0]['lines']
+    assert line['id'] == '-1044305'

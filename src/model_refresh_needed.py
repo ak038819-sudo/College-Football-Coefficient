@@ -12,6 +12,7 @@ import csv
 import json
 from pathlib import Path
 
+import player_archive
 from current_season import season_for
 from datetime import date, datetime, timezone, timedelta
 
@@ -71,8 +72,7 @@ def main() -> None:
                     gid = row['game_id']
                     advanced_counts[gid] = advanced_counts.get(gid, 0) + 1
     advanced_ids = {gid for gid, count in advanced_counts.items() if count >= 2}
-    players = Path(f'data/raw/player_boxscores/{season}.json')
-    player_ids = set(json.loads(players.read_text())) if players.exists() else set()
+    player_ids = set(player_archive.read_season(player_archive.DEFAULT_DIR, season))
     print("true" if needs_refresh(snapshot, rows, season, advanced_ids, player_ids) else "false")
 
 

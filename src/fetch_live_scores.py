@@ -43,8 +43,40 @@ def clean_game(item):
             'away': teams[0], 'home': teams[1]}
 
 
-def clean_player_boxscores(payload, game_ids, max_athletes=8):
-    """Keep only displayable player lines for games in the current scoreboard."""
+def _player_line(athlete, keep_ids):
+    line = {'name': str(athlete['name'])[:100], 'stat': str(athlete['stat'])[:80]}
+    if keep_ids:
+        # Whatever key the feed uses, and only if it is actually a number: an
+        # id this project cannot match to a CFBD athlete id is not an identity,
+        # and storing a name-shaped one would invite exactly the name matching
+        # the id exists to replace.
+        for key in ('id', 'athleteId', 'athlete_id'):
+            value = athlete.get(key)
+            if value is None:
+                continue
+            text = str(value).strip()
+            if text.lstrip('-').isdigit():
+                line['id'] = text
+                break
+    return line
+
+
+def clean_player_boxscores(payload, game_ids, max_athletes=8, keep_ids=False):
+    """Keep only displayable player lines for games in the current scoreboard.
+
+    `keep_ids` carries CFBD's athlete id through onto each line, which is what
+    lets a box-score line be ATTRIBUTED to a person rather than matched to one
+    by name. It is off by default because this function also builds the live
+    scoreboard file, which every visitor downloads on every page load: ids would
+    add about 96 KB to a 358 KB file for games whose lines the roster-name rule
+    already links. The archive pays no such toll -- it is gzipped and read only
+    when a game page opens -- so the backfill asks for them.
+
+    A line gets no `id` key at all when the source gave none, rather than a null:
+    a reader must be able to tell "CFBD did not number this line" from "the line
+    is numbered 0", and an absent key says the first without being mistaken for
+    an identity.
+    """
     if not isinstance(payload, list):
         raise ValueError('invalid player box-score response')
     result = {}
@@ -59,7 +91,7 @@ def clean_player_boxscores(payload, game_ids, max_athletes=8):
             for category in team.get('categories', []):
                 for typ in category.get('types', []):
                     athletes = typ.get('athletes', [])
-                    lines = [{'name': str(a['name'])[:100], 'stat': str(a['stat'])[:80]}
+                    lines = [_player_line(a, keep_ids)
                              for a in (athletes if max_athletes is None else athletes[:max_athletes])
                              if isinstance(a, dict) and a.get('name') and a.get('stat') is not None]
                     if lines:

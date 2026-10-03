@@ -15,6 +15,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+import player_archive
 from fetch_live_scores import clean_player_boxscores
 
 BASE = 'https://api.collegefootballdata.com'
@@ -58,7 +59,8 @@ def fetch_season(year: int, key: str, previous: dict,
         if not isinstance(rows, list):
             raise ValueError(f'Invalid player response for {year} week {period["week"]}')
         ids = {r.get('id') for r in rows if isinstance(r, dict) and type(r.get('id')) is int}
-        archive = merge_archive(archive, clean_player_boxscores(rows, ids, max_athletes=None))
+        archive = merge_archive(archive, clean_player_boxscores(
+            rows, ids, max_athletes=None, keep_ids=True))
     return archive
 
 
@@ -75,15 +77,22 @@ def main():
     if args.year < FIRST_SEASON or end < args.year:
         parser.error(f'Choose a season range from {FIRST_SEASON} onward, in ascending order')
     for year in range(args.year, end + 1):
-        path = args.out_dir / f'{year}.json'
-        previous = json.loads(path.read_text()) if path.exists() else {}
+        previous = player_archive.read_season(args.out_dir, year)
         archive = fetch_season(year, key, previous)
         if archive != previous:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            temp = path.with_suffix('.tmp')
-            temp.write_text(json.dumps(archive, ensure_ascii=False, separators=(',', ':')) + '\n')
-            temp.replace(path)
-        print(f'{year}: {len(archive)} games with player box scores', flush=True)
+            player_archive.write_season(args.out_dir, year, archive)
+        # The numbered count is the point of a re-fetch: a season that comes back
+        # with no ids has been archived from a feed that did not carry them, and
+        # saying so beats discovering it when no line attributes to anybody.
+        lines = numbered = 0
+        for teams in archive.values():
+            for team in teams:
+                for category in team.get('categories', []):
+                    for line in category.get('lines', []):
+                        lines += 1
+                        numbered += 'id' in line
+        print(f'{year}: {len(archive)} games with player box scores, '
+              f'{numbered} of {lines} lines carry an athlete id', flush=True)
 
 
 if __name__ == '__main__':

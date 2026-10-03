@@ -353,8 +353,24 @@ and players absent from the roster snapshot. The link is navigation, not
 attribution: it says "this is probably the same person, go and look", and nothing
 on either page claims the stat line as that person's record.
 
-Closing this gap means re-fetching the archive with athlete ids, which is a
-237 MB re-download and Austin's call.
+Closing this gap means re-fetching the archive with athlete ids. The fetcher now
+keeps them (`clean_player_boxscores(..., keep_ids=True)`), so the re-fetch is
+what fills them in; until a season has been re-archived its lines carry no id
+and the contextual rule above is still all a page has.
+
+The live scoreboard file deliberately does NOT carry ids. Every visitor
+downloads it on every page load, and measured on the real file its 7,410 player
+lines would add about 96 KB to 358 KB -- for in-progress games whose lines the
+roster-name rule already links. The archive pays no such toll: it is gzipped and
+read only when a game page opens.
+
+The archive is gzipped for the same reason the season-statistics snapshots are.
+It is the largest thing in the repository and every CI run and container checks
+it out; a season measured at 7.08 MB of JSON packs to 0.74 MB. Its encoding
+lives in `src/player_archive.py` because four modules read it -- the exporter,
+the refresh check, the coverage audit and the fetcher -- and a reader left on
+the old encoding would not have failed. It would have seen an empty season and
+reported the box scores as missing.
 
 ## Known gap: a class year that is really a season
 
