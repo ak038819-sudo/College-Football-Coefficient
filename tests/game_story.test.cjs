@@ -10,7 +10,7 @@ function sourceOf(name) {
   return source;
 }
 const ctx = {esc: value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;'),
-  stadiumHref: id => `#section=stadiums&stadium=${id}`};
+  stadiumHref: id => `#section=teams&view=stadiums&stadium=${id}`};
 vm.runInNewContext(sourceOf('gameStory') + '\n' + sourceOf('storyPlayerLeaders') +
   '\nthis.story = gameStory; this.leaders = storyPlayerLeaders;', ctx);
 

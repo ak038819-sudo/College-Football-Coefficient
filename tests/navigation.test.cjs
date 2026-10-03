@@ -18,11 +18,53 @@ test('the local dashboard identifies the in-progress site release', () => {
 
 test('stadium pages have shareable routes with safe IDs', () => {
   const route = read('#section=stadiums&stadium=42&season=1980');
-  assert.equal(route.section, 'stadiums');
+  assert.equal(route.section, 'teams');
+  assert.equal(route.subview, 'stadiums');
   assert.equal(route.stadium, 42);
-  assert.equal(hashFor(route), '#section=stadiums&stadium=42');
+  assert.equal(hashFor(route), '#section=teams&view=stadiums&stadium=42');
+  assert.equal(read('#section=teams&view=stadiums&stadium=42').stadium, 42);
   assert.equal(read('#section=stadiums&stadium=42%22%3E').stadium, null);
   assert.equal(read('#section=teams&stadium=42').stadium, null);
+});
+
+test('team pages link only verified current home stadiums, including shared homes', () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = ['stadiumHref', 'teamHomeStadiums', 'stadiumLinks'].map(name => {
+    const hit = shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))?.[0];
+    assert.ok(hit, name);
+    return hit;
+  }).join('\n');
+  const context = {esc: value => String(value).replaceAll('&', '&amp;')};
+  vm.runInNewContext(source + '\nthis.homes = teamHomeStadiums; this.links = stadiumLinks;', context);
+  const data = {stadiums: [
+    {id: 42, name: 'Shared & Field', teams: [{id: 1}, {id: 2}]},
+    {id: 43, name: 'Former home', teams: []},
+  ]};
+  assert.match(context.links(context.homes(data, '1')), /#section=teams&amp;view=stadiums&amp;stadium=42/);
+  assert.match(context.links(context.homes(data, 2)), /Shared &amp; Field/);
+  assert.equal(context.homes(data, 3).length, 0);
+  assert.doesNotMatch(context.links(context.homes(data, 1)), /Former home/);
+  assert.doesNotMatch(shell, /data-section="stadiums"/);
+});
+
+test('a team page fills its home stadium link after the stadium file loads', async () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = ['stadiumHref', 'teamHomeStadiums', 'stadiumLinks', 'hydrateTeamStadium']
+    .map(name => shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))?.[0]).join('\n');
+  const target = {innerHTML: '', textContent: ''};
+  const context = {esc: String, document: {getElementById: () => target},
+    state: {view: 'team'}, renderVersion: 3,
+    loadStadiumExplorer: () => Promise.resolve({stadiums: [
+      {id: 42, name: 'Alpha Field', teams: [{id: 1}]},
+    ]})};
+  vm.runInNewContext(source + '\nthis.hydrate = hydrateTeamStadium;', context);
+  context.hydrate(3, 1);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.match(target.innerHTML, /Current home stadium: <a href="#section=teams&view=stadiums&stadium=42">Alpha Field<\/a>/);
+  context.hydrate(3, 2);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(target.innerHTML, 'Current home stadium not verified');
+  assert.match(shell, /if \(team\) hydrateTeamStadium\(version, team\.id\)/);
 });
 
 test('stadium explorer and venue-aware previews keep team HFA separate from physical venue', () => {
@@ -54,7 +96,7 @@ test('stadium explorer and venue-aware previews keep team HFA separate from phys
   assert.match(context.preview({ stadium_id: 42, stadium: stadium.name, neutral: true,
     completed: false, phase: 0 }, 'Alpha'), /no home-field bonus/);
   assert.doesNotMatch(context.preview({ stadium_id: null, stadium: null, neutral: false,
-    completed: false, phase: 0 }, 'Alpha'), /href="#section=stadiums/);
+    completed: false, phase: 0 }, 'Alpha'), /href="#section=teams&amp;view=stadiums/);
 });
 
 test('archived game cards display only resolved stadiums and retain neutral badges', () => {

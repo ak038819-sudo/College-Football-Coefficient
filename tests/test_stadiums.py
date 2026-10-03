@@ -180,3 +180,17 @@ def test_stadium_export_keeps_games_at_physical_site_including_neutral(tmp_path)
     assert alpha["completed_count"] == 1 and alpha["recent"][0]["neutral"] is True
     assert alpha["upcoming"][0]["id"] == 4
     conn.close()
+
+
+def test_stadium_hosts_follow_latest_exported_season_and_allow_shared_homes(tmp_path):
+    conn, _ = stadium_db(tmp_path)
+    alpha = conn.execute("SELECT stadium_id FROM stadiums WHERE stadium_key='home-alpha'").fetchone()[0]
+    bravo = conn.execute("SELECT stadium_id FROM stadiums WHERE stadium_key='home-bravo'").fetchone()[0]
+    conn.execute("UPDATE team_stadiums SET end_season=2026 WHERE team_id=2 AND stadium_id=?", (bravo,))
+    conn.execute("INSERT INTO team_stadiums VALUES (2,?,2027,NULL,1,'shared site')", (alpha,))
+    in_2026 = build_stadium_payload(conn, {2026: {"games": []}})["stadiums"]
+    in_2027 = build_stadium_payload(conn, {2027: {"games": []}})["stadiums"]
+    assert {t['name'] for s in in_2026 for t in s['teams'] if s['id'] == bravo} == {'Bravo'}
+    assert {t['name'] for s in in_2027 for t in s['teams'] if s['id'] == alpha} == {'Alpha', 'Bravo'}
+    assert all(s['id'] != bravo for s in in_2027)
+    conn.close()

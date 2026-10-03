@@ -297,10 +297,11 @@ def build_stadium_payload(conn: sqlite3.Connection, payloads: dict) -> dict:
     if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='stadiums'").fetchone():
         return {"stadiums": []}
     hosts = defaultdict(list)
+    current_season = max(payloads) if payloads else None
     for sid, tid, name in conn.execute("""SELECT ts.stadium_id,t.team_id,t.team_name
         FROM team_stadiums ts JOIN teams t ON t.team_id=ts.team_id
-        WHERE ts.start_season<=2026 AND (ts.end_season IS NULL OR ts.end_season>=2026)
-          AND ts.is_primary=1 ORDER BY t.team_name"""):
+        WHERE ts.start_season<=? AND (ts.end_season IS NULL OR ts.end_season>=?)
+          AND ts.is_primary=1 ORDER BY t.team_name""", (current_season, current_season)):
         hosts[sid].append({"id": tid, "name": name})
     by_stadium = defaultdict(list)
     ix = {f: i for i, f in enumerate(FIELDS)}

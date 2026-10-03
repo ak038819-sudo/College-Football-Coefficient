@@ -800,6 +800,13 @@
   .stadium-facts b { display: block; color: var(--ink-dim); font-size: 11px; }
   .stadium-games { padding-left: 20px; }
   .stadium-games li { margin: 7px 0; }
+  .team-stadiums { margin-top: 8px; font-size: 13px; color: var(--ink-dim); }
+  .team-stadiums a, .directory-stadiums a { color: var(--amber); }
+  .directory-stadiums { padding: 10px 14px; margin-top: -1px; font-size: 12px;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 0 0 4px 4px; }
+  .teams-switch { display: flex; gap: 8px; margin-bottom: 14px; }
+  .teams-switch a { border: 1px solid var(--line); border-radius: 4px; padding: 8px 12px; color: var(--ink); text-decoration: none; }
+  .teams-switch a[aria-current="page"] { border-color: var(--amber); color: var(--amber); }
   @media (max-width: 720px) { .stadium-layout { grid-template-columns: 1fr; } .stadium-list { max-height: 340px; } }
 
   .live-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 18px; }
@@ -900,7 +907,6 @@
       <a data-section="games" href="#section=games">Games</a>
       <a data-section="matchups" href="#section=matchups">Matchups</a>
       <a data-section="teams" href="#section=teams">Teams</a>
-      <a data-section="stadiums" href="#section=stadiums">Stadiums</a>
       <a data-section="rankings" href="#section=rankings">Standings</a>
       <a data-section="playoff" href="#section=playoff">Playoff</a>
       <a data-section="coverage" href="#section=coverage">Data coverage</a>
@@ -1267,7 +1273,7 @@ const ROUTE_CONFIG = { yearsAll: DATA.years_all, playoffYears: DATA.years_playof
   gameSeasons: STATIC_MANIFEST.seasons || [] };
 let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult: null, simYear: null,
   homeGroup: null, homeTop25: false, homePoll: null };
-const SECTION_LABELS = { home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', stadiums: 'Stadiums', rankings: 'Standings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
+const SECTION_LABELS = { home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
 const SUBVIEWS = {
   rankings: [['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['home-field', 'Home-Field Advantage'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
     ['conference-coe2', 'Conference CoE 2.0'], ['elo-weekly', 'Week by Week'],
@@ -1287,14 +1293,14 @@ function fmt(n) { return Number(n).toFixed(3); }
 function renderYearRow() {
   const row = document.getElementById('year-row');
   if (state.view === 'team' || state.view === 'conference' || state.view === 'game' ||
-      state.section === 'teams' || state.section === 'stadiums' || state.section === 'live' || state.section === 'matchups' || state.section === 'methodology' || state.section === 'coverage' ||
+      state.section === 'teams' || state.section === 'live' || state.section === 'matchups' || state.section === 'methodology' || state.section === 'coverage' ||
       (state.section === 'games' && state.finder) || (state.section === 'rankings' && state.subview === 'home-field')) {
     row.innerHTML = '';
     document.getElementById('year-caption').textContent = state.view === 'team' ? 'TEAM PAGE'
       : state.view === 'conference' ? 'CONFERENCE PAGE' : state.view === 'game' ? 'GAME'
       : state.section === 'live' ? 'CURRENT SLATE' : state.section === 'matchups' ? 'WHAT IF · ' + UPCOMING.season
       : state.section === 'methodology' ? 'METHODOLOGY'
-      : state.section === 'coverage' ? 'EVERY SEASON' : state.section === 'stadiums' ? 'HOMES OF COLLEGE FOOTBALL' : state.section === 'games' ? 'EVERY SEASON'
+      : state.section === 'coverage' ? 'EVERY SEASON' : state.section === 'teams' && state.subview === 'stadiums' ? 'HOMES OF COLLEGE FOOTBALL' : state.section === 'games' ? 'EVERY SEASON'
       : state.section === 'rankings' ? 'CURRENT ESTIMATES' : 'TEAMS & CONFERENCES';
     return;
   }
@@ -1986,7 +1992,8 @@ function renderTeamPage(param) {
         '<div><h1 class="team-title">' + team.name + '</h1>' +
         '<div class="team-sub">' +
           (team.conference ? conferenceLink(team.conference, null, team.conference_year || season) : 'No conference data') +
-          (season ? ' &middot; ' + season + ' season' : '') + '</div></div>' +
+          (season ? ' &middot; ' + season + ' season' : '') + '</div>' +
+          '<div class="team-stadiums" id="team-stadiums">Loading home stadium…</div></div>' +
       '</div>' +
       '<div class="team-stats">' +
         teamStat('Elo', elo ? Number(elo.value).toFixed(1) + eloChangeMarkup(teamEloChange(season, team.name), team.name) : 'N/A', rankSub(elo)) +
@@ -2891,14 +2898,14 @@ function renderNavigation() {
     if (selected) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
-  const items = state.view === 'team' ? [] : SUBVIEWS[state.section] || [];
+  const items = state.view === 'team' || state.section === 'teams' ? [] : SUBVIEWS[state.section] || [];
   document.getElementById('subnav').innerHTML = items.map(([view, label]) =>
     '<a href="' + esc(routeHref({ subview: view })) + '"' +
     (view === state.subview ? ' aria-current="page"' : '') + '>' + label + '</a>').join('');
 }
 
 function renderTeamDirectory() {
-  return '<div class="panel"><h2 class="view-title">Teams</h2>' +
+  return teamsSwitch('') + '<div class="panel"><h2 class="view-title">Teams</h2>' +
     '<p class="section-note">Browse every program in this dataset. Conference labels show each team\'s latest available membership.</p>' +
     '<form class="directory-form" id="directory-form"><label for="team-query">Search by team name or alias</label>' +
     '<input type="search" id="team-query" name="q" maxlength="150" placeholder="BYU, Florida Atlantic, Miami…" value="' + esc(state.query) + '">' +
@@ -2908,6 +2915,12 @@ function renderTeamDirectory() {
 }
 
 let stadiumData = null;
+function teamsSwitch(selected) {
+  return '<nav class="teams-switch" aria-label="Explore teams and stadiums">' +
+    [['', 'Teams & conferences', '#section=teams'], ['stadiums', 'Stadiums', '#section=teams&view=stadiums']]
+      .map(([key, label, href]) => '<a href="' + href + '"' + (key === selected ? ' aria-current="page"' : '') +
+        '>' + label + '</a>').join('') + '</nav>';
+}
 function loadStadiumExplorer() {
   if (stadiumData) return Promise.resolve(stadiumData);
   if (!STATIC_MANIFEST.stadiums) return Promise.resolve({ stadiums: [] });
@@ -2916,7 +2929,28 @@ function loadStadiumExplorer() {
     return stadiumData;
   });
 }
-function stadiumHref(id) { return '#section=stadiums&stadium=' + encodeURIComponent(id); }
+function stadiumHref(id) { return '#section=teams&view=stadiums&stadium=' + encodeURIComponent(id); }
+function teamHomeStadiums(data, teamId) {
+  return (data.stadiums || []).filter(s => (s.teams || []).some(t => String(t.id) === String(teamId)));
+}
+function stadiumLinks(stadiums) {
+  return stadiums.map(s => '<a href="' + esc(stadiumHref(s.id)) + '">' + esc(s.name) + '</a>').join(', ');
+}
+function hydrateTeamStadium(version, teamId) {
+  const target = document.getElementById('team-stadiums');
+  if (!target) return;
+  loadStadiumExplorer().then(data => {
+    if (version !== renderVersion || state.view !== 'team') return;
+    const el = document.getElementById('team-stadiums');
+    if (!el) return;
+    const homes = teamHomeStadiums(data, teamId);
+    el.innerHTML = homes.length ? 'Current home stadium' + (homes.length > 1 ? 's' : '') + ': ' + stadiumLinks(homes)
+      : 'Current home stadium not verified';
+  }).catch(() => {
+    if (version === renderVersion && document.getElementById('team-stadiums'))
+      document.getElementById('team-stadiums').textContent = 'Home stadium could not be loaded';
+  });
+}
 function stadiumGameRow(g) {
   const away = TEAM_BY_ID.get(String(g.away_id)), home = TEAM_BY_ID.get(String(g.home_id));
   const score = g.completed ? ' · ' + (g.away_score == null ? '—' : g.away_score) + '–' +
@@ -2952,7 +2986,7 @@ function stadiumDetails(s) {
   const games = (heading, rows, empty) => '<h3>' + heading + '</h3>' + (rows.length
     ? '<ol class="stadium-games">' + rows.map(stadiumGameRow).join('') + '</ol>'
     : '<p class="empty-note">' + empty + '</p>');
-  return '<div class="panel"><a class="back-link" href="#section=stadiums">&larr; All stadiums</a>' +
+  return '<div class="panel"><a class="back-link" href="#section=teams&view=stadiums">&larr; All stadiums</a>' +
     '<h2 class="view-title">' + esc(s.name) + '</h2>' +
     '<div class="stadium-facts"><div><b>Location</b>' + esc(location || 'Not yet verified') + '</div>' +
     '<div><b>Capacity</b>' + (s.capacity == null ? 'Not available' : Number(s.capacity).toLocaleString()) + '</div>' +
@@ -2968,7 +3002,7 @@ function stadiumExplorerHtml(data, selected) {
   const stadiums = data.stadiums || [];
   if (selected != null) {
     const s = stadiums.find(x => x.id === selected);
-    return s ? stadiumDetails(s) : '<div class="panel"><h2>Stadium not found</h2><a href="#section=stadiums">Browse stadiums</a></div>';
+    return s ? stadiumDetails(s) : '<div class="panel"><h2>Stadium not found</h2><a href="#section=teams&view=stadiums">Browse stadiums</a></div>';
   }
   if (!stadiums.length) return '<div class="panel"><h2 class="view-title">Stadium Explorer</h2>' +
     '<p class="empty-note">Stadium data will appear after the next full data build.</p></div>';
@@ -2989,11 +3023,11 @@ function stadiumExplorerHtml(data, selected) {
 }
 function hydrateStadiumExplorer(version) {
   loadStadiumExplorer().then(data => {
-    if (version === renderVersion && state.section === 'stadiums')
-      document.getElementById('stadium-explorer').innerHTML = stadiumExplorerHtml(data, state.stadium);
+    if (version === renderVersion && state.section === 'teams' && state.subview === 'stadiums')
+      document.getElementById('stadium-explorer').innerHTML = teamsSwitch('stadiums') + stadiumExplorerHtml(data, state.stadium);
   }).catch(() => {
-    if (version === renderVersion && state.section === 'stadiums')
-      document.getElementById('stadium-explorer').innerHTML = '<div class="panel"><h2>Stadium Explorer</h2><p class="empty-note">Stadium data could not be loaded.</p></div>';
+    if (version === renderVersion && state.section === 'teams' && state.subview === 'stadiums')
+      document.getElementById('stadium-explorer').innerHTML = teamsSwitch('stadiums') + '<div class="panel"><h2>Stadium Explorer</h2><p class="empty-note">Stadium data could not be loaded.</p></div>';
   });
 }
 
@@ -3028,7 +3062,10 @@ function fillDirectoryResults(aliasTeams, message) {
     (state.query ? ' matching “' + esc(state.query) + '”' : '') + '.</p>' + (message || '') +
     (teams.length ? '<ul class="directory-grid">' + teams.map(t => '<li><a class="directory-card" href="' + esc(teamHref(t.name)) + '">' +
       '<span class="name-cell">' + logoMarkup(t.name, 'team', 'sm', t.conference_year || state.year) + '<span>' + esc(t.name) + '</span></span>' +
-      '<small>' + esc(t.conference || 'Conference unavailable') + (t.conference_year ? ' · ' + t.conference_year : '') + '</small></a></li>').join('') + '</ul>'
+      '<small>' + esc(t.conference || 'Conference unavailable') + (t.conference_year ? ' · ' + t.conference_year : '') + '</small></a>' +
+      (stadiumData && teamHomeStadiums(stadiumData, t.id).length
+        ? '<div class="directory-stadiums">Home: ' + stadiumLinks(teamHomeStadiums(stadiumData, t.id)) + '</div>' : '') +
+      '</li>').join('') + '</ul>'
       : '<p class="empty-note">No matching teams. Try another name or clear your search.</p>');
 }
 
@@ -3039,6 +3076,10 @@ function hydrateDirectory(version) {
   }).catch(() => {
     if (version === renderVersion) fillDirectoryResults([], '<p class="section-note">Aliases could not be loaded. Team-name search is still available. <button class="action-button" id="retry-directory">Retry aliases</button></p>');
   });
+  loadStadiumExplorer().then(() => {
+    if (version === renderVersion && state.section === 'teams' && state.subview !== 'stadiums')
+      fillDirectoryResults(_searchIndex?.teams, '');
+  }).catch(() => {});
 }
 
 // The live feed is a separate static snapshot. It never changes the game archive,
@@ -5045,14 +5086,25 @@ function render() {
   renderNavigation();
   renderYearRow();
   const content = document.getElementById('content');
-  if (state.view === 'team') { content.innerHTML = renderTeamPage(state.teamParam); hydrateTeamPage(); hydrateRatingFreshness(version); return; }
+  if (state.view === 'team') {
+    content.innerHTML = renderTeamPage(state.teamParam);
+    hydrateTeamPage();
+    const team = resolveTeam(state.teamParam);
+    if (team) hydrateTeamStadium(version, team.id);
+    hydrateRatingFreshness(version);
+    return;
+  }
   if (state.view === 'conference') { content.innerHTML = renderConferencePage(state.conferenceParam); hydrateConferencePage(); return; }
   if (state.view === 'game') { content.innerHTML = renderGamePage(); hydrateLiveGamePage(version); return; }
   if (state.section === 'home') { content.innerHTML = renderHome(); hydrateLiveScores(version); }
   else if (state.section === 'methodology') content.innerHTML = renderMethodology();
   else if (state.section === 'coverage') content.innerHTML = renderCoverage();
-  else if (state.section === 'teams') { content.innerHTML = renderTeamDirectory(); hydrateDirectory(version); }
-  else if (state.section === 'stadiums') { content.innerHTML = '<div id="stadium-explorer"><div class="panel">Loading stadiums…</div></div>'; hydrateStadiumExplorer(version); }
+  else if (state.section === 'teams') {
+    if (state.subview === 'stadiums') {
+      content.innerHTML = '<div id="stadium-explorer">' + teamsSwitch('stadiums') + '<div class="panel">Loading stadiums…</div></div>';
+      hydrateStadiumExplorer(version);
+    } else { content.innerHTML = renderTeamDirectory(); hydrateDirectory(version); }
+  }
   else if (state.section === 'matchups') content.innerHTML = renderMatchups();
   else if (state.section === 'games') { content.innerHTML = renderGames(); hydrateGames(version); }
   else if (state.section === 'live') { content.innerHTML = renderLiveScores(); hydrateLiveScores(version); }
