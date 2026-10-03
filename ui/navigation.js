@@ -6,7 +6,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
   const views = {
-    home: [], live: [], games: [], matchups: [], teams: ['', 'stadiums'], methodology: [], coverage: [],
+    stats: ['overview', 'teams', 'players'], home: [], live: [], games: [], matchups: [], teams: ['', 'stadiums'], methodology: [], coverage: [],
     // 'conference-coe' is CoE v1's five-year rolling value, which INCLUDES the
     // current season and feeds the live playoff model. 'conference-coe2' is CoE
     // 2.0's frozen value ENTERING the season. Separate views with separate names,
@@ -64,6 +64,11 @@
     const p = new URLSearchParams(String(hash || '').replace(/^#/, ''));
     let section = p.get('section');
     let subview = p.get('view');
+    // Canonical destinations retain the existing feature controllers during migration.
+    if (section === 'home' && subview === 'games') { section = 'games'; subview = ''; }
+    if (section === 'stats' && subview === 'matchup') { section = 'matchups'; subview = ''; }
+    if (section === 'stats' && subview === 'playoff') { section = 'playoff'; subview = p.get('tool') || 'field'; }
+    if (section === 'standings') section = 'rankings';
     // Older stadium bookmarks stay valid after the explorer moves under Teams.
     if (section === 'stadiums') { section = 'teams'; subview = 'stadiums'; }
     // `tab` means a detail page's tab when one is open, and only otherwise the pre-A1 tab names.
@@ -111,6 +116,12 @@
     const matchupId = key => /^\d{1,10}$/.test(p.get(key) || '') ? Number(p.get(key)) : null;
     const venue = ['home', 'away', 'neutral'].includes(p.get('venue')) ? p.get('venue') : 'home';
     const route = { section, subview, year, status,
+      category: (p.get('category') || '').replace(/[^a-z-]/g, '').slice(0, 30),
+      statTeam: (p.get('statTeam') || '').slice(0, 100), statConf: (p.get('statConf') || '').slice(0, 100),
+      statQuery: (p.get('statQuery') || '').slice(0, 100),
+      minimum: Math.max(0, Math.min(10000, Number(p.get('minimum')) || 0)),
+      sort: (p.get('sort') || '').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 40),
+      dir: p.get('dir') === 'asc' ? 'asc' : 'desc', page: Math.max(1, Math.min(10000, Number(p.get('page')) || 1)),
       query: section === 'teams' && subview !== 'stadiums' ? (p.get('q') || '').trim().slice(0, 150) : '',
       game, week, team: teamFilter, opponent, finder, findSeason, conf, stage,
       stadium: section === 'teams' && subview === 'stadiums' && /^\d{1,10}$/.test(p.get('stadium') || '') ? Number(p.get('stadium')) : null,
@@ -166,8 +177,16 @@
       if (route.year != null) p.set('season', route.year);
       if (route.returnTo && route.returnTo !== pageHome.game) p.set('from', route.returnTo);
     } else {
-      p.set('section', route.section);
-      if (route.subview) p.set('view', route.subview);
+      p.set('section', route.section === 'games' ? 'home' : ['playoff', 'matchups'].includes(route.section) ? 'stats' : route.section);
+      if (route.section === 'games') p.set('view', 'games');
+      else if (route.section === 'matchups') p.set('view', 'matchup');
+      else if (route.section === 'playoff') { p.set('view', 'playoff'); p.set('tool', route.subview || 'field'); }
+      else if (route.subview) p.set('view', route.subview);
+      if (route.section === 'stats') {
+        if (route.year != null) p.set('season', route.year);
+        for (const key of ['category', 'statTeam', 'statConf', 'statQuery', 'minimum', 'sort', 'dir', 'page'])
+          if (route[key] != null && route[key] !== '') p.set(key, route[key]);
+      }
       if (route.year != null && ((route.section === 'games' && !route.finder) || (route.section === 'rankings' && route.subview !== 'home-field') ||
           (route.section === 'playoff' && route.subview !== 'history'))) p.set('season', route.year);
       if (route.section === 'games' && route.finder) {

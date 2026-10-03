@@ -903,16 +903,13 @@
     </div>
   </header>
 
+  <p class="section-note"><a href="#section=coverage">Data coverage</a> · <a href="#section=methodology">How it works</a></p>
   <div class="nav-row">
     <nav class="tabs" id="tabs" aria-label="Primary">
       <a data-section="home" href="#section=home">Home</a>
-      <a data-section="games" href="#section=games">Games</a>
-      <a data-section="matchups" href="#section=matchups">Matchups</a>
-      <a data-section="teams" href="#section=teams">Teams</a>
+      <a data-section="stats" href="#section=stats">Stats</a>
       <a data-section="rankings" href="#section=rankings">Standings</a>
-      <a data-section="playoff" href="#section=playoff">Playoff</a>
-      <a data-section="coverage" href="#section=coverage">Data coverage</a>
-      <a data-section="methodology" href="#section=methodology">How it works</a>
+      <a data-section="teams" href="#section=teams">Teams</a>
     </nav>
     <div class="global-search" role="search">
       <label class="visually-hidden" for="global-search">Search teams, games and seasons</label>
@@ -1275,7 +1272,7 @@ const ROUTE_CONFIG = { yearsAll: DATA.years_all, playoffYears: DATA.years_playof
   gameSeasons: STATIC_MANIFEST.seasons || [] };
 let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult: null, simYear: null,
   homeGroup: null, homeTop25: false, homePoll: null };
-const SECTION_LABELS = { home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
+const SECTION_LABELS = { stats: 'Stats', home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
 const SUBVIEWS = {
   rankings: [['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['home-field', 'Home-Field Advantage'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
     ['conference-coe2', 'Conference CoE 2.0'], ['elo-weekly', 'Week by Week'],
@@ -2895,15 +2892,18 @@ let renderVersion = 0;
 
 function renderNavigation() {
   document.querySelectorAll('#tabs a').forEach(a => {
-    const selected = a.dataset.section === state.section;
+    const destination = state.section === 'games' || state.section === 'live' ? 'home' : ['matchups', 'playoff'].includes(state.section) ? 'stats' : state.section;
+    const selected = a.dataset.section === destination;
     a.classList.toggle('active', selected);
     if (selected) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
-  const items = state.view === 'team' || state.section === 'teams' ? [] : SUBVIEWS[state.section] || [];
+  const statsNav = [['overview', 'Overview'], ['teams', 'Teams'], ['players', 'Players'], ['matchup', 'Matchup'], ['playoff', 'Playoff']];
+  const inStats = ['stats', 'matchups', 'playoff'].includes(state.section);
+  const items = inStats ? statsNav : state.view === 'team' || state.section === 'teams' ? [] : SUBVIEWS[state.section] || [];
   document.getElementById('subnav').innerHTML = items.map(([view, label]) =>
-    '<a href="' + esc(routeHref({ subview: view })) + '"' +
-    (view === state.subview ? ' aria-current="page"' : '') + '>' + label + '</a>').join('');
+    '<a href="' + esc(inStats ? '#section=stats&view=' + view + '&season=' + state.year : routeHref({ subview: view })) + '"' +
+    (view === (state.section === 'matchups' ? 'matchup' : state.section === 'playoff' ? 'playoff' : state.subview) ? ' aria-current="page"' : '') + '>' + label + '</a>').join('');
 }
 
 function renderTeamDirectory() {
@@ -5099,6 +5099,7 @@ function render() {
   if (state.view === 'conference') { content.innerHTML = renderConferencePage(state.conferenceParam); hydrateConferencePage(); return; }
   if (state.view === 'game') { content.innerHTML = renderGamePage(); hydrateLiveGamePage(version); return; }
   if (state.section === 'home') { content.innerHTML = renderHome(); hydrateLiveScores(version); }
+  else if (state.section === 'stats') content.innerHTML = '<div class="panel"><h2 class="view-title">Stats</h2><p>Explore team and player statistics, matchup projections and the playoff simulator.</p></div>';
   else if (state.section === 'methodology') content.innerHTML = renderMethodology();
   else if (state.section === 'coverage') content.innerHTML = renderCoverage();
   else if (state.section === 'teams') {
@@ -5120,7 +5121,7 @@ function render() {
     if (state.subview === 'elo') hydrateRatingFreshness(version);
   } else if (state.section === 'playoff') {
     const views = { field: renderField, bracket: renderBracket, odds: renderOdds, history: renderHistory };
-    content.innerHTML = playoffIntro() + views[state.subview]();
+    content.innerHTML = '<nav class="subnav" aria-label="Playoff views">' + SUBVIEWS.playoff.map(([view,label]) => '<a href="' + esc(routeHref({subview:view})) + '">' + label + '</a>').join('') + '</nav>' + playoffIntro() + views[state.subview]();
     // A simulation restored after navigating away should already be visible.
     content.querySelectorAll('.bracket-round-col.pending').forEach(el => el.classList.remove('pending'));
   }

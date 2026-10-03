@@ -317,7 +317,7 @@ test('no-season exports stay usable without inventing a year', () => {
   const empty = { yearsAll: [], playoffYears: [], gameSeasons: [] };
   const route = readRoute('#section=games', empty);
   assert.equal(route.year, null);
-  assert.equal(hashFor(route), '#section=games&mode=find');
+  assert.equal(hashFor(route), '#section=home&view=games&mode=find');
 });
 
 test('Find a Game preserves two teams and an optional season, without changing legacy Games links', () => {
@@ -432,7 +432,7 @@ test('#game=<id> opens a game page in the Games section; the list highlight is u
 test('game pages: bad ids and seasons are dropped, return links stay safe', () => {
   assert.equal(read('#game=abc').gameParam, null);
   assert.equal(read('#game=401110869&season=1066').year, null);
-  const from = '#section=games&season=2025&status=completed&week=post';
+  const from = '#section=home&view=games&season=2025&status=completed&week=post';
   const r = read('#game=5&from=' + encodeURIComponent(from));
   assert.equal(r.returnTo, from);
   assert.deepEqual(read(hashFor(r)), r);
