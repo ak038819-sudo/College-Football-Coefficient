@@ -12,13 +12,17 @@ on:
   workflow_dispatch:
     inputs:
       start_year:
-        description: "First roster season to fetch (2009 or later)"
+        description: "First season to fetch (2009 or later)"
         required: true
         default: "2026"
       end_year:
-        description: "Last roster season to fetch"
+        description: "Last season to fetch"
         required: true
         default: "2026"
+      rosters:
+        description: "Fetch the rosters for these years (turn OFF to backfill statistics alone)"
+        type: boolean
+        default: true
       coaches:
         description: "Also refresh the whole head-coaching history"
         type: boolean
@@ -50,7 +54,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
+      # Guarded because /roster is a LIVE view, as the header above says. A
+      # statistics backfill names the same years the rosters already cover, and
+      # without this gate it would re-fetch each of those rosters and overwrite
+      # a committed historical snapshot with what CFBD thinks today -- which is
+      # the very thing committing the snapshots exists to prevent.
       - name: Fetch and commit one roster season at a time
+        if: ${{ inputs.rosters }}
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
           START: ${{ inputs.start_year }}
