@@ -152,6 +152,13 @@ def main() -> None:
             run([python, "src/load_rosters.py", str(roster_path), "--db", str(DB_PATH)],
                 f"Load roster snapshot: {roster_path.stem}")
 
+        # After the rosters, never before: a statistic attaches to a person by
+        # athlete id, and the roster snapshots are what put those people in the
+        # database. Loaded in the other order, every row would be unresolved.
+        for stats_path in sorted(Path("data/raw/player_season_stats").glob("*.json")):
+            run([python, "src/load_player_season_stats.py", str(stats_path), "--db", str(DB_PATH)],
+                f"Load season player statistics: {stats_path.stem}")
+
         coaches_path = Path("data/raw/coaches/coaches.json")
         if coaches_path.exists():
             run([python, "src/load_coaches.py", str(coaches_path), "--db", str(DB_PATH)],

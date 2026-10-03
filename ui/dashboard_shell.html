@@ -3624,10 +3624,9 @@ function livePlayerPanel(g) {
 // ingestion resolver uses, and for the same reason: a single candidate is
 // evidence, two candidates is a collision, and a guess would put one player's
 // work on another player's page.
-function boxScoreNameLookup(rosterData, teamName) {
-  const team = TEAM_BY_NAME.get(teamName);
-  if (!rosterData || !team) return null;
-  const rows = rosterData.teams.get(team.id);
+function rosterNameLookup(rosterData, teamId) {
+  if (!rosterData || teamId == null) return null;
+  const rows = rosterData.teams.get(Number(teamId));
   if (!rows || !rows.length) return null;
   const byName = new Map();
   rows.forEach(r => {
@@ -3637,6 +3636,10 @@ function boxScoreNameLookup(rosterData, teamName) {
     byName.get(key).push(r.player_id);
   });
   return byName;
+}
+function boxScoreNameLookup(rosterData, teamName) {
+  const team = TEAM_BY_NAME.get(teamName);
+  return team ? rosterNameLookup(rosterData, team.id) : null;
 }
 function boxScorePlayerCell(name, lookup) {
   const key = lookup && CfbNavigation.normalizeSearch(name);
@@ -4436,6 +4439,75 @@ function personStatsNote() {
     '">Data coverage</a> records what each source carries.</p>';
 }
 
+// Season statistics, from CFBD's season player feed rather than the box-score
+// archive. The difference is identity: that feed numbers every row with an
+// athlete id, which is this player's id, so these are facts about THIS person
+// rather than about everyone who has ever been called by their name.
+//
+// The stat labels are the feed's own. Renaming YDS to "Yards" would be this
+// project asserting a reading of a statistic it did not compute, and the
+// categories are the feed's groupings too.
+const STAT_CATEGORY_LABELS = {
+  passing: 'Passing', rushing: 'Rushing', receiving: 'Receiving',
+  defensive: 'Defense', interceptions: 'Interceptions', fumbles: 'Fumbles',
+  kicking: 'Kicking', punting: 'Punting',
+  kickReturns: 'Kick returns', puntReturns: 'Punt returns'
+};
+// Rendered in the order a reader looks for them, not alphabetically, which
+// would open a quarterback's page on his fumbles.
+const STAT_CATEGORY_ORDER = ['passing', 'rushing', 'receiving', 'defensive', 'interceptions',
+  'fumbles', 'kicking', 'punting', 'kickReturns', 'puntReturns'];
+
+// The feed sends PCT as a fraction: a 68.6% passer arrives as 0.686, and every
+// PCT value in the archive is between 0 and 1. Printed as given under a header
+// reading PCT, that says 0.69 percent -- wrong by a hundredfold in the reader's
+// head. It is the one value shown in a different unit from the source's, and the
+// panel's note says so.
+const FRACTION_STATS = {PCT: true};
+
+function statCell(value, statType) {
+  if (value == null) return '&mdash;';
+  const number = Number(value);
+  if (!Number.isFinite(number) || String(value).trim() === '') return esc(value);
+  if (FRACTION_STATS[statType]) return esc((number * 100).toFixed(1)) + '%';
+  return esc(number.toLocaleString(undefined, { maximumFractionDigits: 2 }));
+}
+
+function playerStatsPanel(stats) {
+  const seasons = Object.keys(stats || {}).map(Number).sort((a, b) => b - a);
+  if (!seasons.length) return personStatsNote();
+  const blocks = [];
+  for (const category of STAT_CATEGORY_ORDER) {
+    // One table per category, a row per season: a reader comparing a player's
+    // years should not have to open four pages to do it.
+    const rows = seasons.filter(season => stats[String(season)][category]);
+    if (!rows.length) continue;
+    const types = [];
+    rows.forEach(season => Object.keys(stats[String(season)][category])
+      .filter(key => key !== 'team_id')
+      .forEach(key => { if (!types.includes(key)) types.push(key); }));
+    // A category present with no stat types would render a Season/Team table
+    // with no statistics in it, which says nothing and looks like a bug.
+    if (!types.length) continue;
+    const head = types.map(t => '<th scope="col">' + esc(t) + '</th>').join('');
+    const body = rows.map(season => {
+      const row = stats[String(season)][category];
+      return '<tr><td>' + esc(season) + '</td><td>' + teamCellById(row.team_id) + '</td>' +
+        types.map(t => '<td class="num">' + statCell(row[t], t) + '</td>').join('') + '</tr>';
+    }).join('');
+    blocks.push('<h3>' + esc(STAT_CATEGORY_LABELS[category] || category) + '</h3>' +
+      '<table class="data-table"><thead><tr><th scope="col">Season</th>' +
+      '<th scope="col">Team</th>' + head + '</tr></thead><tbody>' + body + '</tbody></table>');
+  }
+  if (!blocks.length) return personStatsNote();
+  return '<div class="panel team-section"><h2 class="section-title">Statistics</h2>' +
+    blocks.join('') +
+    '<p class="section-note">Season totals from CFBD, attached to this person by their ' +
+    'athlete id, with the feed\u2019s own category and statistic labels. PCT is the only ' +
+    'value shown in a different unit from the source, which sends it as a fraction. ' +
+    'Per-game lines are on each game\u2019s own page.</p></div>';
+}
+
 function renderPlayerPage() {
   return backLink() + '<div id="person-page" aria-live="polite">' +
     '<div class="panel"><p class="empty-note">Loading player&hellip;</p></div></div>';
@@ -4490,8 +4562,8 @@ function playerPanels(p, id) {
   const table = '<div class="panel team-section"><h2 class="section-title">Seasons</h2>' +
     '<table class="data-table"><thead><tr><th>Season</th><th>Team</th><th>No.</th>' +
     '<th>Pos</th><th>Class</th><th>Ht</th><th>Wt</th></tr></thead><tbody>' + rows +
-    '</tbody></table>' + personStatsNote() + '</div>';
-  return header + note + table;
+    '</tbody></table></div>';
+  return header + note + table + playerStatsPanel(p.stats);
 }
 
 function coachRecord(tenures) {
@@ -5621,13 +5693,16 @@ function statsHref(changes) {
   return CfbNavigation.hashFor({...state,section:'stats',view:'tab',subview:'players',page:1,...changes});
 }
 function loadStats(season) {
-  if(!statsCache.has(season)) statsCache.set(season,Promise.all([loadSeasonGames(season),loadPlayerArchive(season)]).then(([games,archive])=>{
+  // The roster rides along so the Players table can link a name to the person it
+  // belongs to. It resolves to null where a season has no roster snapshot, which
+  // leaves the names as plain text rather than failing the whole page.
+  if(!statsCache.has(season)) statsCache.set(season,Promise.all([loadSeasonGames(season),loadPlayerArchive(season),loadRoster(season).catch(()=>null)]).then(([games,archive,roster])=>{
     const players=CfbStats.aggregatePlayers(archive,games.byId,games.conferences||{},TEAM_BY_ID);
     const ratings={};
     for(const r of DATA.team_elo_by_year[season]||[]) ratings[r.team]={elo:r.elo,change:r.change};
     for(const r of DATA.team_ratings_by_year[season]||[]) {ratings[r.team]??={};ratings[r.team].coefficient=r.rating;}
     for(const r of DATA.team_rolling_by_year[season]||[]) {ratings[r.team]??={};ratings[r.team].rolling=r.coeff_5yr;}
-    return {season,players:players.rows,teams:CfbStats.aggregateTeams(games.games,players,games.conferences||{},TEAM_BY_ID,ratings),completed:games.games.filter(g=>g.completed).length,covered:new Set([...players.covered].map(k=>k.split('|')[0])).size};
+    return {season,roster,players:players.rows,teams:CfbStats.aggregateTeams(games.games,players,games.conferences||{},TEAM_BY_ID,ratings),completed:games.games.filter(g=>g.completed).length,covered:new Set([...players.covered].map(k=>k.split('|')[0])).size};
   }).catch(error=>{statsCache.delete(season);throw error;}));
   return statsCache.get(season);
 }
@@ -5681,18 +5756,33 @@ function statsViewHtml(data) {
     '<label>Search '+(isPlayer?'players':'teams')+'<input id="stats-query" type="search" value="'+esc(state.statQuery)+'" placeholder="Name"></label>'+
     '<label>Minimum '+(CfbStats.labels[minimumKey]||minimumKey)+'<input id="stats-minimum" type="number" min="0" max="10000" value="'+state.minimum+'"></label><button class="action-button" type="submit">Apply filters</button></form>';
   const filtered=CfbStats.filterRows(rows,{team:state.statTeam,conference:state.statConf,query:state.statQuery,minimum:state.minimum,minimumKey});
-  const columns=[{key:'name',label:isPlayer?'Player':'Team',type:'string',render:r=>isPlayer?'<span class="player-name" data-player-key="'+esc(r.key)+'">'+esc(r.name)+'</span>':teamLink(r.name,'xs',state.year)}];
+  const lookups=new Map();
+  const statsPlayerCell=r=>{
+    if(!lookups.has(r.teamId))lookups.set(r.teamId,rosterNameLookup(data.roster,r.teamId));
+    return boxScorePlayerCell(r.name,lookups.get(r.teamId));
+  };
+  const columns=[{key:'name',label:isPlayer?'Player':'Team',type:'string',render:r=>isPlayer?'<span class="player-name" data-player-key="'+esc(r.key)+'">'+statsPlayerCell(r)+'</span>':teamLink(r.name,'xs',state.year)}];
   if(isPlayer)columns.push({key:'team',label:'Team',type:'string',render:r=>teamLink(r.team,'xs',state.year)},{key:'games',label:'Recorded G'});
   columns.push({key:'conference',label:'Conference',type:'string'},...fields.map(key=>({key,label:CfbStats.labels[key]||key})));
   return coverage+nav+filters+SortableTable(filtered,columns,{sort:isPlayer?schema.sort:category==='ratings'?'elo':category==='defense'?'oppPpg':'ppg',dir:category==='defense'?'asc':'desc'});
 }
 function statsOverviewHtml(data) {
   const cards=[];
+  // The leaders cards are where a reader meets a player, so a name here links
+  // to the person too -- by the same roster rule, so this page and the Players
+  // table cannot disagree about whose name it is. Team cards keep plain text:
+  // their own heading already links the team.
+  const lookups=new Map();
+  const nameCell=r=>{
+    if(r.teamId==null)return esc(r.name);
+    if(!lookups.has(r.teamId))lookups.set(r.teamId,rosterNameLookup(data.roster,r.teamId));
+    return boxScorePlayerCell(r.name,lookups.get(r.teamId));
+  };
   const card=(title,rows,key,target,dir='desc',minimum=0)=>{
     const available=rows.filter(r=>r[key]!=null);if(!available.length)return;
     const leaders=CfbStats.sortRows(available,key,dir).slice(0,3);
     const href=statsHref({...target,sort:key,dir,minimum,statTeam:'',statConf:'',statQuery:''});
-    cards.push('<article class="panel"><h3><a href="'+esc(href)+'">'+title+' →</a></h3><ol>'+leaders.map(r=>'<li><span>'+esc(r.name)+'</span> <strong>'+statValue(r[key])+'</strong></li>').join('')+'</ol></article>');
+    cards.push('<article class="panel"><h3><a href="'+esc(href)+'">'+title+' →</a></h3><ol>'+leaders.map(r=>'<li><span>'+nameCell(r)+'</span> <strong>'+statValue(r[key])+'</strong></li>').join('')+'</ol></article>');
   };
   for(const [category,key,title,minimum] of [['passing','yards','Passing yards',0],['passing','td','Passing TDs',0],['passing','completionPct','Completion % · minimum 30 attempts',30],['rushing','yards','Rushing yards',0],['rushing','td','Rushing TDs',0],['receiving','yards','Receiving yards',0],['receiving','receptions','Receptions',0],['receiving','td','Receiving TDs',0],['defense','tackles','Tackles',0],['defense','sacks','Sacks',0],['defense','interceptions','Interceptions',0]]){
     card(title,data.players.filter(r=>r.category===category&&(!minimum||r.attempts>=minimum)),key,{subview:'players',category},'desc',minimum);

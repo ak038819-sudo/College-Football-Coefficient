@@ -108,6 +108,22 @@ def build_players(conn: sqlite3.Connection) -> dict:
         season.pop("player_id", None)
         player["seasons"].append(season)
 
+    # A player's own season statistics, grouped by season and category so the
+    # page can render one table per category without re-sorting 85,768 rows in
+    # the browser. The stat types stay the feed's own labels: renaming YDS to
+    # "Yards" here would be this project asserting a reading of a statistic it
+    # did not compute.
+    for row in conn.execute(
+            "SELECT player_id, season_year, team_id, category, stat_type, stat "
+            "FROM player_season_stats ORDER BY season_year DESC, category, stat_type"):
+        player = players.get(int(row["player_id"]))
+        if player is None:
+            continue
+        seasons = player.setdefault("stats", {})
+        season = seasons.setdefault(str(row["season_year"]), {})
+        category = season.setdefault(row["category"], {"team_id": int(row["team_id"])})
+        category[row["stat_type"]] = row["stat"]
+
     # The identity the feed could not vouch for, carried through to the page so
     # the weakness is visible to a reader rather than only to the database --
     # the same treatment a name-only coach identity gets.
@@ -275,7 +291,10 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
     manifest["counts"] = {"players": len(players), "coaches": len(coaches),
                           "player_seasons": sum(len(p["seasons"]) for p in players.values()),
                           "coach_seasons": sum(len(c["tenures"]) for c in coaches.values()),
-                          "seasons": sorted(rosters)}
+                          "seasons": sorted(rosters),
+                          "stat_seasons": sorted(
+                              {int(y) for p in players.values() for y in p.get("stats", {})},
+                              reverse=True)}
     return manifest
 
 

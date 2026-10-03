@@ -2,6 +2,14 @@
 
 ## v0.1.1 — Players and Coaches (in progress, local branch)
 
+- Season statistics on player pages, from CFBD's season player feed, which
+  numbers every row with an athlete id: a statistic is attached to a person
+  because the source says so, never because two names matched. 2025 is loaded
+  and every one of its FBS rows found its person.
+- Player names in the Stats tab's table and leaders cards link to person pages,
+  by the same rule the box scores use. No second leaderboard was added: the
+  Stats tab already has one, and two boards would disagree.
+
 - Player and head-coach identity: person tables keyed on immutable ids, with
   source identifiers and name aliases stored separately so a display name can
   change without breaking a link. A transfer stays one person across schools.

@@ -52,8 +52,10 @@ def _pick(d: dict, *keys):
 
 def _as_number(value):
     """A stat as a number where it is one, and as the source's own text where it
-    is not -- completions are "19/30" and a long is sometimes "T80". Coercing
-    those to a number would invent a value the source never gave."""
+    is not. Every row in the 2025 season is numeric and `COMPLETIONS` is its own
+    stat type, so nothing yet needs this; it is here because coercing an
+    unexpected value would invent a number the source never gave, and the older
+    seasons have not been fetched."""
     if value is None:
         return None
     if isinstance(value, (int, float)) and not isinstance(value, bool):

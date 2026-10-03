@@ -161,3 +161,35 @@ CREATE TABLE IF NOT EXISTS person_unresolved (
 );
 
 CREATE INDEX IF NOT EXISTS idx_person_unresolved_reason ON person_unresolved(entity, reason);
+
+-- Season statistics as CFBD's /stats/player/season sends them: one row per
+-- person per season per team per category per stat type. The long form is kept
+-- rather than pivoted into columns because the feed's stat types differ by
+-- category and change between seasons, and a column per statistic would need a
+-- migration every time CFBD added one.
+--
+-- player_id is NOT NULL and references players: a statistic is attached to a
+-- person the source numbered, never to a name. A row whose athlete id this
+-- database does not know goes to person_unresolved instead -- in the 2025
+-- season every one of those is a player at a school outside this FBS-only
+-- database, not a person this project failed to identify.
+--
+-- `stat` has NUMERIC affinity so a number is stored as one and text the source
+-- wrote as text stays text, which is what makes sorting a leaderboard correct
+-- without having to decide here which statistics are numbers.
+CREATE TABLE IF NOT EXISTS player_season_stats (
+    player_id   INTEGER NOT NULL,
+    season_year INTEGER NOT NULL,
+    team_id     INTEGER NOT NULL,
+    category    TEXT NOT NULL,     -- the feed's own grouping: passing, rushing, ...
+    stat_type   TEXT NOT NULL,     -- the feed's own label: YDS, TD, PCT, ...
+    stat        NUMERIC,
+    source      TEXT NOT NULL,
+    PRIMARY KEY (player_id, season_year, team_id, category, stat_type, source),
+    FOREIGN KEY (player_id) REFERENCES players(player_id),
+    FOREIGN KEY (team_id) REFERENCES teams(team_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_player_season_stats_player ON player_season_stats(player_id);
+CREATE INDEX IF NOT EXISTS idx_player_season_stats_leaders
+    ON player_season_stats(season_year, category, stat_type);
