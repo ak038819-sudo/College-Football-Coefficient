@@ -182,6 +182,18 @@
   .gp-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 10px; margin: 12px 0; }
   .gp-fact { background: var(--panel-2); padding: 10px 12px; border-radius: 3px; font-size: 13px; }
   .gp-fact b { display: block; font: 10.5px var(--font-mono); color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; font-weight: 400; }
+  .story-panel { border-top: 3px solid var(--amber); }
+  .story-intro { font: 18px/1.45 var(--font-display); margin: 8px 0 18px; max-width: 72ch; }
+  .story-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .story-item { background: var(--panel-2); border: 1px solid var(--line); padding: 14px; min-width: 0; }
+  .story-item small { display: block; color: var(--ink-dim); font: 11px var(--font-mono); text-transform: uppercase; margin-bottom: 8px; }
+  .story-item strong { display: block; font: 20px var(--font-display); overflow-wrap: anywhere; }
+  .story-item p { color: var(--ink-dim); font-size: 12px; line-height: 1.5; margin: 5px 0 0; }
+  .story-item a, .story-links a { color: var(--amber); }
+  .story-links { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 16px; font-size: 13px; }
+  .story-leaders { margin-top: 18px; }
+  .story-leaders h3 { font: 16px var(--font-display); margin: 0 0 10px; }
+  @media (max-width: 700px) { .story-grid { grid-template-columns: 1fr; } }
   .gp-side .team-link { flex-direction: column; align-items: center; max-width: 100%; text-align: center; }
   .gp-side .team-link-name { white-space: normal; overflow-wrap: anywhere; }
   @media (max-width: 520px) { .gp-side .logo-chip.lg { width: 84px; height: 84px; padding: 6px; } .gp-board { gap: 8px; } }
@@ -3417,6 +3429,31 @@ function liveDetail(g) {
     ? ' · Updated ' + stamp.toLocaleString() +
       (Date.now() - stamp.getTime() > 10 * 60 * 1000 ? ' · Feed may be delayed' : '') : '';
   const p = livePrediction(g), pct = p && probPct(p.pHome);
+  const archive = liveSeasonData?.byId?.get(g.id);
+  const venueName = g.venue || archive?.stadium || UPCOMING_BY_ID.get(g.id)?.venue;
+  const venue = archive?.stadium_id != null && archive.stadium
+    ? '<a href="' + esc(stadiumHref(archive.stadium_id)) + '">' + esc(archive.stadium) + '</a>'
+    : venueName ? esc(venueName) + ' (venue unverified)' : 'Venue unverified';
+  const an = liveTeamId(g.away)?.name || String(g.away?.name || 'Away');
+  const hn = liveTeamId(g.home)?.name || String(g.home?.name || 'Home');
+  const scored = Number.isInteger(g.away?.points) && Number.isInteger(g.home?.points);
+  const intro = g.status === 'scheduled' ? an + (g.neutral_site ? ' vs. ' : ' at ') + hn + ' is coming up.'
+    : scored && g.status === 'completed' && g.away.points !== g.home.points
+      ? (g.away.points > g.home.points ? an : hn) + ' beat ' + (g.away.points > g.home.points ? hn : an) +
+        ', ' + Math.max(g.away.points, g.home.points) + '–' + Math.min(g.away.points, g.home.points) + '.'
+      : an + (g.neutral_site ? ' vs. ' : ' at ') + hn + ' · ' + liveLabel(g) + '.';
+  const storyCard = (label, value, note) => '<div class="story-item"><small>' + label + '</small><strong>' + value +
+    '</strong><p>' + note + '</p></div>';
+  const story = '<section class="panel story-panel" aria-label="Game Story"><h2 class="section-title">Game Story</h2>' +
+    '<p class="story-intro">' + esc(intro) + '</p><div class="story-grid">' +
+    storyCard('The place', venue, g.neutral_site ? 'Neutral site' : 'Designated home team: ' + esc(hn)) +
+    storyCard('Pregame favorite', pct ? esc(p.pHome >= 0.5 ? hn : an) + ' ' + Math.max(pct.home, pct.away) + '%' : 'Unavailable',
+      p?.estimated ? 'Estimated from currently published Elo.' : 'Pregame Elo win chance.') +
+    storyCard('Model update', archive?.completed && Number.isFinite(archive.home_elo_change)
+      ? esc(archive.home_elo_change >= 0 ? hn : an) + ' +' + Math.abs(archive.home_elo_change).toFixed(1)
+      : 'Pending', 'Official Elo and game efficiency follow the model rebuild.') +
+    '</div><div class="story-leaders">' + storyPlayerLeaders(liveSnapshot?.player_boxscores?.[String(g.id)] || []) +
+    '</div></section>';
   const hero = '<div class="panel gp-hero"><div class="gl-top"><span class="gbadge ' +
     (g.status === 'completed' ? 'final' : 'upcoming') + '">' + esc(liveLabel(g)) + '</span>' +
     '<span>' + esc(String(g.tv || '')) + esc(freshness) + '</span></div><div class="gp-board">' +
@@ -3428,7 +3465,7 @@ function liveDetail(g) {
         '<span class="gp-score">' + (Number.isInteger(t?.points) ? t.points :
           chance != null ? chance + '%' : '—') + '</span></div>';
     }).join('<div class="gp-mid">' + (g.neutral_site ? 'vs.' : 'at') + '</div>') + '</div></div>';
-  return hero + '<div class="grid-2">' + liveEloPanel(g) +
+  return hero + story + '<div class="grid-2">' + liveEloPanel(g) +
     '<div class="panel"><h2 class="section-title">Game information</h2><p>' +
     esc(liveLabel(g)) + (g.tv ? ' · ' + esc(g.tv) : '') +
     ((g.venue || UPCOMING_BY_ID.get(g.id)?.venue) ? ' · ' + esc(g.venue || UPCOMING_BY_ID.get(g.id).venue) : '') +
@@ -4075,6 +4112,67 @@ function loadPlayerArchive(season) {
   if (!src) return Promise.resolve({});
   return loadDataScript(src).then(() => (window.__CFB_PLAYERS__ || {})[season] || {});
 }
+// The story uses recorded game values; a missing stat never becomes a zero or a claimed edge.
+function gameStory(g, d, season, an, hn) {
+  const tie = g.completed && g.home_score === g.away_score;
+  const homeWon = g.completed && g.home_score > g.away_score;
+  const winner = homeWon ? hn : an;
+  const loser = homeWon ? an : hn;
+  const chance = g.p_home == null ? null : (homeWon ? g.p_home : 1 - g.p_home);
+  const intro = !g.completed ? 'A look at ' + an + (g.neutral ? ' vs. ' : ' at ') + hn + ' before kickoff.'
+    : tie ? an + ' and ' + hn + ' finished level, ' + g.away_score + '–' + g.home_score + '.'
+    : winner + ' beat ' + loser + ', ' + (homeWon ? g.home_score : g.away_score) + '–' +
+      (homeWon ? g.away_score : g.home_score) + '.' +
+      (chance != null && chance < 0.35 ? ' The winner had a ' + Math.round(chance * 100) + '% pregame win chance.' : '');
+  const venue = g.stadium_id != null && g.stadium
+    ? '<a href="' + esc(stadiumHref(g.stadium_id)) + '">' + esc(g.stadium) + '</a>'
+    : g.stadium ? esc(g.stadium) + ' (venue unverified)' : 'Venue unverified';
+  const edge = d && Number.isFinite(d.home_sr_plus) && Number.isFinite(d.away_sr_plus)
+    ? (d.home_sr_plus > d.away_sr_plus ? [hn, d.home_sr_plus] : [an, d.away_sr_plus]) : null;
+  const edgeValue = edge && edge[1] > 0 ? esc(edge[0]) + ' +' + (edge[1] * 100).toFixed(1) + ' pp'
+    : edge ? 'Even' : 'Unavailable';
+  const swing = g.completed && Number.isFinite(g.home_elo_change) && g.home_elo_change !== 0
+    ? (g.home_elo_change >= 0 ? [hn, g.home_elo_change] : [an, -g.home_elo_change]) : null;
+  const card = (label, value, note) => '<div class="story-item"><small>' + label + '</small><strong>' + value +
+    '</strong><p>' + note + '</p></div>';
+  return '<section class="panel story-panel" aria-label="Game Story"><h2 class="section-title">Game Story</h2>' +
+    '<p class="story-intro">' + esc(intro) + '</p><div class="story-grid">' +
+    card('The place', venue, g.neutral ? 'Neutral site' : 'Designated home team: ' + esc(hn)) +
+    card('Efficiency edge', edgeValue, edge ? 'Success Rate above pregame expectation (SR+).' :
+      'Game efficiency data is not available yet.') +
+    card(g.completed ? 'Elo movement' : 'Pregame favorite',
+      swing ? esc(swing[0]) + ' +' + swing[1].toFixed(1) : !g.completed && g.p_home != null
+        ? esc(g.p_home >= 0.5 ? hn : an) + ' ' + Math.round(100 * Math.max(g.p_home, 1 - g.p_home)) + '%'
+        : 'Unavailable',
+      swing ? 'Recorded rating change after this game.' : !g.completed && g.p_home != null
+        ? 'Stored pregame Elo win chance.' : 'A rating or win chance is not available yet.') +
+    '</div><div id="story-leaders" class="story-leaders" aria-live="polite">' +
+    (g.completed ? '<h3>Player leaders</h3><p class="section-note">Loading player lines…</p>' : '') + '</div>' +
+    '<nav class="story-links" aria-label="Explore this game">' +
+    (g.stadium_id != null && g.stadium ? '<a href="' + esc(stadiumHref(g.stadium_id)) + '">Explore the stadium →</a>' : '') +
+    (edge ? '<a href="#gp-efficiency">Efficiency details →</a>' : '') +
+    (g.completed ? '<a href="#gp-players">Player box score →</a>' : '') +
+    '<a href="#gp-series">Series history →</a></nav></section>';
+}
+function storyPlayerLeaders(teams, season) {
+  const specs = [['Passing', /pass/i], ['Rushing', /rush/i], ['Receiving', /receiv/i]];
+  const leaders = specs.map(([label, category]) => {
+    const candidates = (teams || []).flatMap(team => (team.categories || [])
+      .filter(c => category.test(c.name || '') && /^(yds|yards)$/i.test((c.type || '').trim()))
+      .flatMap(c => (c.lines || []).map(line => ({...line, team: team.name}))));
+    const ranked = candidates.map(line => ({...line, yards: Number(line.stat)}))
+      .filter(line => Number.isFinite(line.yards) && line.yards >= 0)
+      .sort((a, b) => b.yards - a.yards);
+    return ranked.length ? {label, ...ranked[0]} : null;
+  }).filter(Boolean);
+  if (!leaders.length) return '<h3>Player leaders</h3><p class="section-note">' +
+    (season != null && season < 2004 ? 'CFBD player box scores begin in 2004.' :
+      'Player lines are not available for this game yet.') + '</p>';
+  return '<h3>Player leaders</h3><div class="story-grid">' + leaders.map(line =>
+    '<div class="story-item"><small>' + line.label + '</small><strong>' + esc(line.name) +
+    '</strong><p>' + esc(line.team) + ' · ' + line.yards + ' yards</p></div>').join('') + '</div>' +
+    '<p class="section-note">Leaders shown from available CFBD player box scores.</p>';
+}
 function seriesShard(a, b) {                     // must match export_static_data.series_shard()
   const lo = Math.min(a, b), hi = Math.max(a, b);
   return (lo * 131 + hi) % (STATIC_MANIFEST.series_shards || 32);
@@ -4217,17 +4315,22 @@ function hydrateGamePage(version) {
         esc(coverageReason('game_advanced', season) || 'Available for this season.') + '</div>' +
         (g.completed ? '<div class="gp-fact"><b>Highlights</b><a href="https://www.youtube.com/results?search_query=' + q + '" target="_blank" rel="noopener noreferrer">Search YouTube &rarr;</a></div>' : '') +
         '<div class="gp-fact"><b>Teams</b>' + (away ? teamLink(an, 'xs', season) : esc(an)) + ' ' + (home ? teamLink(hn, 'xs', season) : esc(hn)) + '</div></div></div>';
-      target().innerHTML = hero + gameVenuePanel(g, hn) + '<div class="grid-2">' + eloPanel + coePanel + '</div>' + srPanel +
+      target().innerHTML = hero + gameStory(g, d, season, an, hn) + gameVenuePanel(g, hn) +
+        '<div class="grid-2">' + eloPanel + coePanel + '</div>' + srPanel +
         (g.completed ? '<div id="gp-players" class="panel"><h2 class="section-title">Player box score</h2><p class="empty-note">Loading player stats…</p></div>' : '') +
         '<div class="panel" id="gp-series"><h2 class="section-title">Series history</h2><p class="empty-note">Loading meetings…</p></div>' + more;
       if (g.completed) loadPlayerArchive(season).then(archive => {
         if (version !== renderVersion) return;
         const teams = archive[String(id)] || liveSnapshot?.player_boxscores?.[String(id)] || [];
+        const leaders = document.getElementById('story-leaders');
+        if (leaders) leaders.innerHTML = storyPlayerLeaders(teams, season);
         const panel = document.getElementById('gp-players');
         if (panel) panel.outerHTML = !teams.length && season < 2004
           ? '<div class="panel"><h2 class="section-title">Player box score</h2><p class="empty-note">CFBD game player box scores begin in 2004; player lines are unavailable for this season.</p></div>'
           : playerBoxscorePanel(teams, null);
       }).catch(() => {
+        if (version === renderVersion && document.getElementById('story-leaders'))
+          document.getElementById('story-leaders').innerHTML = storyPlayerLeaders([], season);
         if (version === renderVersion && document.getElementById('gp-players'))
           document.getElementById('gp-players').innerHTML = '<h2 class="section-title">Player box score</h2><p class="empty-note">Player stats could not be loaded.</p>';
       });
