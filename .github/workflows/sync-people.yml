@@ -23,6 +23,10 @@ on:
         description: "Also refresh the whole head-coaching history"
         type: boolean
         default: true
+      season_stats:
+        description: "Also fetch season player statistics for the same years"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -89,6 +93,44 @@ jobs:
             echo "::endgroup::"
           done
 
+      - name: Fetch and commit one season of player statistics at a time
+        if: ${{ inputs.season_stats }}
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          START: ${{ inputs.start_year }}
+          END: ${{ inputs.end_year }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Same shape as the roster loop above, and for the same reason: one
+          # season per commit so a timeout costs the season in flight, with every
+          # fetch, rebase and push checked explicitly because `set -e` does not
+          # stop a shell loop.
+          for year in $(seq "$START" "$END"); do
+            echo "::group::season stats $year"
+            if ! python3 src/fetch_cfbd_player_season_stats.py "$year"; then
+              echo "::endgroup::"
+              echo "::error::Season stats $year failed to fetch. Earlier seasons are committed; re-run this workflow from $year to resume."
+              exit 1
+            fi
+            git add data/raw/player_season_stats/
+            if git diff --staged --quiet; then
+              echo "season stats $year: unchanged"
+            else
+              git commit -m "Snapshot $year season player statistics [skip ci]"
+              if ! git pull --rebase origin main; then
+                echo "::error::Could not rebase season stats $year onto main. Nothing was published for it; re-run this workflow from $year."
+                exit 1
+              fi
+              if ! git push origin HEAD:main; then
+                echo "::error::Could not push season stats $year to main. Re-run this workflow from $year."
+                exit 1
+              fi
+            fi
+            echo "::endgroup::"
+          done
+
       - name: Fetch and commit the head-coaching history
         if: ${{ inputs.coaches }}
         env:
@@ -129,6 +171,15 @@ jobs:
               with_id = sum(1 for r in rows if r.get('athlete_id'))
               print(f'{f.stem}: {len(rows)} players, {with_id} with a CFBD athlete id')
           print(f'rosters: {len(rosters)} seasons')
+          stats = sorted(pathlib.Path('data/raw/player_season_stats').glob('*.json')) \
+              if pathlib.Path('data/raw/player_season_stats').exists() else []
+          for f in stats:
+              rows = json.loads(f.read_text())
+              people = len({r['athlete_id'] for r in rows})
+              cats = sorted({r['category'] for r in rows})
+              print(f'{f.stem} stats: {len(rows)} rows, {people} people, '
+                    f'categories {", ".join(cats)}')
+          print(f'season stats: {len(stats)} seasons')
           coaches = pathlib.Path('data/raw/coaches/coaches.json')
           if coaches.exists():
               records = json.loads(coaches.read_text())
