@@ -74,7 +74,7 @@ test('active game story waits for the official model update', () => {
 // link at all.
 
 test('a box-score name links only when it matches exactly one player on that roster', () => {
-  const source = ['boxScoreNameLookup', 'boxScorePlayerCell']
+  const source = ['rosterNameLookup', 'boxScoreNameLookup', 'boxScorePlayerCell']
     .map(name => {
       const fn = shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))?.[0];
       assert.ok(fn, name + ' exists');
@@ -114,7 +114,7 @@ test('a box-score name links only when it matches exactly one player on that ros
 });
 
 test('no roster, an unknown school, or an empty roster means no link at all', () => {
-  const source = ['boxScoreNameLookup', 'boxScorePlayerCell']
+  const source = ['rosterNameLookup', 'boxScoreNameLookup', 'boxScorePlayerCell']
     .map(name => shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))[0]).join('\n');
   const context = {
     esc: String, CfbNavigation: { normalizeSearch: require('../ui/navigation.js').normalizeSearch },

@@ -235,7 +235,8 @@ def test_every_emitted_file_parses_and_round_trips_through_a_js_runtime(conn, tm
     manifest = export(conn, tmp_path)
 
     assert manifest["counts"] == {"players": 2, "coaches": 1, "player_seasons": 3,
-                                  "coach_seasons": 2, "seasons": [2025, 2026]}
+                                  "coach_seasons": 2, "seasons": [2025, 2026],
+                                  "stat_seasons": []}
     # Every manifest path must name a file that was actually written.
     for path in ([manifest["coaches"]] + list(manifest["players"].values())
                  + list(manifest["index"].values()) + list(manifest["rosters"].values())):

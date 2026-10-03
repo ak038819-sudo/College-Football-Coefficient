@@ -819,3 +819,90 @@ test('a negative athlete id loads the shard its data is actually in', async () =
   assert.deepEqual(await context.load(-1044360), {display_name: 'Placeholder Id'});
   assert.deepEqual(asked, ['player_56.js']);
 });
+
+test('a player page shows the season statistics attached to their athlete id', () => {
+  // The panel exists because the season feed numbers every row with an athlete
+  // id. Before it, a player page could only say who someone was.
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = ['statCell', 'playerStatsPanel'].map(name =>
+    shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))[0]).join('\n');
+  const context = {FRACTION_STATS: {PCT: true},
+    esc: value => String(value).replaceAll('&', '&amp;'),
+    teamCellById: id => 'TEAM' + id, personStatsNote: () => '<p>NO STATS</p>',
+    STAT_CATEGORY_LABELS: {passing: 'Passing', fumbles: 'Fumbles'},
+    STAT_CATEGORY_ORDER: ['passing', 'fumbles']};
+  vm.runInNewContext(source + '\nthis.panel = playerStatsPanel;', context);
+
+  const html = context.panel({
+    2025: {passing: {team_id: 7, YDS: 4369, TD: 31}, fumbles: {team_id: 7, FUM: 2}},
+    2024: {passing: {team_id: 7, YDS: 1200, TD: 9}},
+  });
+  // Newest season first, and a row per season inside one table per category.
+  assert.match(html, /Passing[^]*?<td>2025<\/td><td>TEAM7<\/td>[^]*?4,369[^]*?<td>2024<\/td>/);
+  assert.match(html, /Fumbles[^]*?<td>2025<\/td>/);
+  // Categories in reading order, not alphabetical: a passer's page does not
+  // open on his fumbles.
+  assert.ok(html.indexOf('Passing') < html.indexOf('Fumbles'));
+  assert.doesNotMatch(html, /NO STATS/);
+
+  // A statistic the source wrote as text stays text; a missing one is a dash.
+  assert.match(context.panel({2025: {passing: {team_id: 1, COMP: '19/30'}}}), /19\/30/);
+  // A stat type one season has and another does not is a dash in that row, not
+  // a missing cell that would shift the column under the wrong heading.
+  assert.match(context.panel({2025: {passing: {team_id: 1, YDS: 5, TD: 1}},
+                              2024: {passing: {team_id: 1, YDS: 3}}}), /&mdash;/);
+  // A category the feed named but gave no statistics for is left out entirely:
+  // a Season and Team table with no statistics in it says nothing.
+  const bare = context.panel({2025: {passing: {team_id: 1, YDS: 5}, fumbles: {team_id: 1}}});
+  assert.doesNotMatch(bare, /Fumbles/);
+  // And with nothing at all, the page says why rather than showing an empty table.
+  // The feed sends a 68.6% passer as 0.686. Printed as given under a PCT
+  // header that reads as two thirds of one percent.
+  assert.match(context.panel({2025: {passing: {team_id: 1, PCT: 0.686}}}), />68\.6%</);
+  assert.equal(context.panel({}), '<p>NO STATS</p>');
+  assert.equal(context.panel(undefined), '<p>NO STATS</p>');
+});
+
+test('a season a player has no statistics for is left out of their stat table', () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = ['statCell', 'playerStatsPanel'].map(name =>
+    shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))[0]).join('\n');
+  const context = {esc: String, teamCellById: id => 'TEAM' + id, FRACTION_STATS: {PCT: true},
+    personStatsNote: () => '<p>NO STATS</p>',
+    STAT_CATEGORY_LABELS: {rushing: 'Rushing'}, STAT_CATEGORY_ORDER: ['rushing']};
+  vm.runInNewContext(source + '\nthis.panel = playerStatsPanel;', context);
+  const html = context.panel({2025: {rushing: {team_id: 1, YDS: 100}}, 2024: {}});
+  assert.match(html, /<td>2025<\/td>/);
+  assert.doesNotMatch(html, /<td>2024<\/td>/);
+});
+
+test('a name in the Stats table links by the same rule a box-score name does', () => {
+  // One rule, one answer. A second rule here would mean the Stats page and the
+  // game page could disagree about who a name belongs to.
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = ['rosterNameLookup', 'boxScorePlayerCell', 'playerHref'].map(name =>
+    shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))[0]).join('\n');
+  const context = {esc: String, state: {view: 'stats'}, CfbNavigation: {normalizeSearch: v =>
+    String(v).toLowerCase().replace(/[^a-z ]/g, '').trim(),
+    hashFor: r => '#player=' + (r.playerParam ?? '')}};
+  vm.runInNewContext(source + '\nthis.lookup = rosterNameLookup; this.cell = boxScorePlayerCell;',
+    context);
+  const roster = {teams: new Map([[7, [
+    {player_id: 4369001, name: 'Drew Mestemaker'},
+    {player_id: 111, name: 'Same Name'},
+    {player_id: 222, name: 'Same Name'},
+  ]]])};
+
+  const unique = context.lookup(roster, 7);
+  assert.match(context.cell('Drew Mestemaker', unique), /#player=4369001/);
+  // Two players on one roster share the name, so neither gets the link: a
+  // leaderboard row must not guess which of them earned the statistic.
+  assert.equal(context.cell('Same Name', unique), 'Same Name');
+  // A team with no roster rows, and a season with no snapshot at all, leave the
+  // name as plain text rather than failing the table.
+  assert.equal(context.lookup(roster, 99), null);
+  assert.equal(context.lookup(null, 7), null);
+  assert.equal(context.cell('Drew Mestemaker', null), 'Drew Mestemaker');
+  // A string team id from the row still finds its roster.
+  assert.match(context.cell('Drew Mestemaker', context.lookup(roster, '7')), /#player=4369001/);
+});

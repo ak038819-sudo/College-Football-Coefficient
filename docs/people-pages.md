@@ -12,7 +12,7 @@ refuses to do, and where the data runs out. It is updated as each phase lands.
 | 1 — Data synced | Rosters 2009-2026 (99,813 people, 271,131 player-seasons at schools in this database, 10,846 people at more than one school) and head coaches 1980-2026 (827 coaches, 5,657 tenures) | Landed |
 | 2 — Player pages | Player export and detail pages, roster and box-score links, player search | Landed |
 | 3 — Coach pages | Coach export and detail pages, team-page coach links | Landed |
-| 4 — Stats integration | Season leaderboards linking into player pages | Not started |
+| 4 — Stats integration | Season statistics on player pages; Stats tab names linked to people | Landed for 2025 |
 | 5 — Coefficient metrics | Coach Elo and CoE analysis | Not started |
 | 6 — Visual assets | Portraits, with licensing cleared before anything is committed | Not started |
 
@@ -238,7 +238,56 @@ only whole once the last season has been read, and it is keyed on `player_id`
 rather than on the name: two players called John Smith must not share one
 caveat.
 
-## Known gap: statistics are not attributed to people
+## Statistics, and how they reach a person
+
+A statistic attaches to a person by the source's athlete id or not at all.
+There is no contextual fallback and there should not be one: a roster row with
+no id can still be recognised by name AND team AND season AND position, because
+a roster says who was PRESENT, but a statistic says what somebody DID, and a
+wrong attachment puts one player's yards on another player's page.
+
+`/stats/player/season` carries that id on every row, which is why phase 4 reads
+it rather than the box-score archive. The archive covers 2004 onward but stores
+only a name and a number, so it cannot identify anybody; this feed can, and the
+237 MB re-fetch the archive would have needed is therefore not required for
+season totals.
+
+- `src/fetch_cfbd_player_season_stats.py` archives a season to
+  `data/raw/player_season_stats/<year>.json`, in the feed's own long form (one
+  row per person per category per stat type).
+- `src/load_player_season_stats.py` loads it into `player_season_stats`,
+  replacing the season's rows wholesale so a corrected statistic changes rather
+  than accumulating. It runs AFTER the roster loaders, because the rosters are
+  what put those people in the database.
+- The exporter puts a player's own statistics in their detail payload, grouped
+  by season and category, so a page renders them without re-reading a season.
+
+Measured on the real 2025 snapshot: of 141,627 rows, 85,768 are stored for 8,819
+people. 40,291 carry an athlete id with no roster row here and 15,568 belong to
+a person here but name a school outside this FBS-only database -- a player who
+has since moved to an FCS programme still appears in this feed. **Not one row
+was lost for want of an identity**: every unknown athlete id in 2025 is at a
+school this database does not carry. Both counts are written to
+`person_unresolved` so that claim can be re-checked rather than believed.
+
+Labels on the page are the feed's own -- `YDS`, `TD`, `PCT` -- because renaming
+them would be this project asserting a reading of a statistic it did not
+compute. `PCT` is the single exception and the page says so: the feed sends it
+as a fraction between 0 and 1, and printing 0.686 under a header reading PCT
+tells a reader two thirds of one percent.
+
+### Linking the Stats tab to people
+
+The Stats tab already had a sortable player table and leaders cards, built from
+the box-score archive. Phase 4 did not add a second leaderboard beside them --
+that would be two boards disagreeing. Instead the names in both now link to
+person pages, through the SAME rule the box scores use: a name links only when
+it matches exactly one player on that school's roster that season. One rule, so
+the Stats page and a game page cannot give different answers about whose name it
+is. On the 2025 Players table, 47 of the first 50 rows link; the three that do
+not are names that match more than one person or none.
+
+## Known gap: per-game statistics are not attributed to people
 
 The player box-score archive identifies a player by **name only** — it carries no
 athlete id — so no statistic is attached to a `player_id` anywhere on the site. A
