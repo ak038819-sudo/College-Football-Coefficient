@@ -1,0 +1,334 @@
+{
+  "seasons": {
+    "1980": {
+      "completed_fbs_games": 532,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1981": {
+      "completed_fbs_games": 538,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1982": {
+      "completed_fbs_games": 503,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1983": {
+      "completed_fbs_games": 510,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1984": {
+      "completed_fbs_games": 525,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1985": {
+      "completed_fbs_games": 529,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1986": {
+      "completed_fbs_games": 531,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1987": {
+      "completed_fbs_games": 531,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1988": {
+      "completed_fbs_games": 528,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1989": {
+      "completed_fbs_games": 553,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1990": {
+      "completed_fbs_games": 553,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1991": {
+      "completed_fbs_games": 559,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1992": {
+      "completed_fbs_games": 571,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1993": {
+      "completed_fbs_games": 575,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1994": {
+      "completed_fbs_games": 584,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1995": {
+      "completed_fbs_games": 586,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1996": {
+      "completed_fbs_games": 614,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1997": {
+      "completed_fbs_games": 628,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1998": {
+      "completed_fbs_games": 627,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "1999": {
+      "completed_fbs_games": 633,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "2000": {
+      "completed_fbs_games": 646,
+      "both_team_success_rates": 0,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "2001": {
+      "completed_fbs_games": 652,
+      "both_team_success_rates": 402,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "2002": {
+      "completed_fbs_games": 707,
+      "both_team_success_rates": 31,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "2003": {
+      "completed_fbs_games": 699,
+      "both_team_success_rates": 462,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": false
+    },
+    "2004": {
+      "completed_fbs_games": 657,
+      "both_team_success_rates": 438,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2005": {
+      "completed_fbs_games": 664,
+      "both_team_success_rates": 563,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2006": {
+      "completed_fbs_games": 714,
+      "both_team_success_rates": 625,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2007": {
+      "completed_fbs_games": 712,
+      "both_team_success_rates": 642,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2008": {
+      "completed_fbs_games": 717,
+      "both_team_success_rates": 693,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2009": {
+      "completed_fbs_games": 714,
+      "both_team_success_rates": 699,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2010": {
+      "completed_fbs_games": 718,
+      "both_team_success_rates": 701,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2011": {
+      "completed_fbs_games": 715,
+      "both_team_success_rates": 707,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2012": {
+      "completed_fbs_games": 732,
+      "both_team_success_rates": 722,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2013": {
+      "completed_fbs_games": 737,
+      "both_team_success_rates": 737,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2014": {
+      "completed_fbs_games": 760,
+      "both_team_success_rates": 744,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2015": {
+      "completed_fbs_games": 765,
+      "both_team_success_rates": 758,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2016": {
+      "completed_fbs_games": 760,
+      "both_team_success_rates": 747,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2017": {
+      "completed_fbs_games": 776,
+      "both_team_success_rates": 772,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2018": {
+      "completed_fbs_games": 772,
+      "both_team_success_rates": 770,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2019": {
+      "completed_fbs_games": 774,
+      "both_team_success_rates": 773,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2020": {
+      "completed_fbs_games": 534,
+      "both_team_success_rates": 534,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2021": {
+      "completed_fbs_games": 770,
+      "both_team_success_rates": 770,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2022": {
+      "completed_fbs_games": 776,
+      "both_team_success_rates": 776,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2023": {
+      "completed_fbs_games": 792,
+      "both_team_success_rates": 792,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2024": {
+      "completed_fbs_games": 798,
+      "both_team_success_rates": 794,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2025": {
+      "completed_fbs_games": 808,
+      "both_team_success_rates": 808,
+      "verified_venue_id": 0,
+      "player_boxscores": 0,
+      "player_source_supported": true
+    },
+    "2026": {
+      "completed_fbs_games": 220,
+      "both_team_success_rates": 220,
+      "verified_venue_id": 220,
+      "player_boxscores": 220,
+      "player_source_supported": true
+    }
+  },
+  "note": "Coverage counts are source availability, not zero-valued statistics."
+}

@@ -1,0 +1,196 @@
+{
+  "teams_seeded": 138,
+  "stadiums_created": 138,
+  "stadiums_total": 138,
+  "catalog_linked": 110,
+  "catalog_created": 42,
+  "catalog_ambiguous": 2,
+  "games_backfilled": 220,
+  "scheduled_backfilled": 541,
+  "games_unresolved": 30079,
+  "scheduled_unresolved": 0,
+  "explicitly_neutral": 1655,
+  "ambiguous": [],
+  "unresolved_examples": [
+    {
+      "table": "games",
+      "game_id": 49660,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49662,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49666,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49669,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49670,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49671,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49672,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49674,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49677,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49679,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49683,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49684,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49685,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49689,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49694,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49695,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49696,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49697,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49698,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49699,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49701,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49705,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49708,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49709,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49711,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49713,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49715,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49718,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49719,
+      "source_venue": null,
+      "source_venue_id": null
+    },
+    {
+      "table": "games",
+      "game_id": 49720,
+      "source_venue": null,
+      "source_venue_id": null
+    }
+  ]
+}
