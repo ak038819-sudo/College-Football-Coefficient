@@ -4,7 +4,7 @@ A structural college football simulation engine that replaces the current postse
 
 ## Site releases
 
-The published site is **v0.0 · Alpha**. The current local update is **v0.1 · People and Places of the Game**; it includes the game finder, stadium pages, home-field standings, a pregame dynamic-HFA replay, and archived player box scores where available. Live Elo still uses flat home field while the in-season replay is validated. The v0.1 update has not been published. See [release history](docs/CHANGELOG.md).
+The published site is **v0.0 · Alpha**. The current local update is **v0.1 · People and Places of the Game**; it includes the game finder, stadium pages, home-field standings, a pregame dynamic-HFA replay, and archived player box scores where available. Live Elo still uses flat home field while the in-season replay is validated. The v0.1 update has not been published. The in-progress **v0.1.1 · Players and Coaches** update adds player and head-coach identity and CFBD roster/coaching ingestion; see [player and coach pages](docs/people-pages.md) for its coverage limits. See [release history](docs/CHANGELOG.md).
 
 ## Core Rules
 

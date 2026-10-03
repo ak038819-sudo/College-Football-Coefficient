@@ -144,6 +144,19 @@ def main() -> None:
             "Patch known conference-membership gaps",
         )
 
+        # People of the game: roster snapshots and head-coaching history. Display
+        # data only -- no rating engine reads any of it. Both loaders are no-ops
+        # when their snapshots have not been fetched yet (a fresh checkout has
+        # none), so the pipeline runs identically with or without them.
+        for roster_path in sorted(Path("data/raw/rosters").glob("*.json")):
+            run([python, "src/load_rosters.py", str(roster_path), "--db", str(DB_PATH)],
+                f"Load roster snapshot: {roster_path.stem}")
+
+        coaches_path = Path("data/raw/coaches/coaches.json")
+        if coaches_path.exists():
+            run([python, "src/load_coaches.py", str(coaches_path), "--db", str(DB_PATH)],
+                "Load head-coaching history")
+
         for snapshot_path in sorted(Path("data/raw").glob("membership_*.csv")):
             year_str = snapshot_path.stem.replace("membership_", "")
             if year_str.isdigit():
