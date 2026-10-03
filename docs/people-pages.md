@@ -10,8 +10,8 @@ refuses to do, and where the data runs out. It is updated as each phase lands.
 | --- | --- | --- |
 | 1 — Identity and schema | Person tables, identity resolution, CFBD roster and coaching ingestion | Landed |
 | 1 — Data synced | 2026 rosters (31,382 source rows, 15,910 player-seasons at schools in this database) and head coaches 1980-2026 (827 coaches, 5,657 tenures) | Landed |
-| 2 — Player pages | Player export and detail pages, roster and box-score links, player search | Not started |
-| 3 — Coach pages | Coach export and detail pages, team-page coach links | Not started |
+| 2 — Player pages | Player export and detail pages, roster and box-score links, player search | Landed |
+| 3 — Coach pages | Coach export and detail pages, team-page coach links | Landed |
 | 4 — Stats integration | Season leaderboards linking into player pages | Not started |
 | 5 — Coefficient metrics | Coach Elo and CoE analysis | Not started |
 | 6 — Visual assets | Portraits, with licensing cleared before anything is committed | Not started |
@@ -136,7 +136,76 @@ under a supposedly immutable id. Reissuing a `coach_id` is acceptable only
 because no page has published one yet; once coach URLs are live this must
 migrate ids, never reissue them.
 
-### Known gap: a class year that is really a season
+### The pages
+
+| URL | What it shows |
+| --- | --- |
+| `#player=<player_id>` | Listed position, number, height, weight and hometown, and a row per season and team. A mid-year transfer has a row for each school. |
+| `#coach=<coach_id>` | Record and win rate over the seasons this dataset covers, a season-by-season table with each poll finish and that job's hire date, and the identity caveat where the database recorded one. |
+| `#team=<slug>&tab=roster` | That season's roster by jersey number, each name linking to its player page. The team header names the head coach. |
+
+An id is the whole address. `navigation.js` accepts an integer and nothing else,
+so `#player=Cade%20Klubnik` opens a page that says the id is unknown rather than
+guessing at a person.
+
+**No tabs on a person page, deliberately.** What is known about a person today —
+who they are, and which teams and seasons they appear in — is one page's worth,
+and per-game statistics are not attributed to people at all (below). Tabs would
+be four addresses pointing at three empty panels. The `tab` parameter works for
+every kind of page, so adding them with the stats layer will not change a URL
+published before it.
+
+### Where the data comes from
+
+`src/export_people_pages.py` writes `ui/data/people/`, and
+`src/export_static_data.py` records it under the static manifest's `people` key.
+That call is guarded: a database built before the person tables exist produces a
+manifest with no `people` key at all, which is how the UI tells "no data here"
+from "no such feature".
+
+| File | Loaded when | Why it is its own file |
+| --- | --- | --- |
+| `player_<n>.js` | a player page opens | 16 shards on `player_id % 16`; one page loads one |
+| `index_<key>.js` | a name is typed in search | one shard per first letter of a name's words |
+| `roster_<season>.js` | a Roster tab or a box score opens | carries the rows a roster table displays, so one team's roster does not depend on every player-detail shard |
+| `coaches.js` | a coach page opens | every coach's whole career |
+| `team_coaches.js` | a team page opens | season → team → coach id and name, so a line of text in a header does not cost 800 KB of careers |
+
+A person with no season row is not exported. The roster that justified them is
+gone, so the page would have nothing true to show, and an unresolved person must
+not become an empty page.
+
+### Searching for a person
+
+People are not in the search index: there are 15,909 of them for one synced
+season, and the backfill reaches 2009. Search loads the shard for the letter
+being typed and matches on word prefixes, the same way team suggestions work, so
+a query may begin at any word of a name but never mid-word. A person is indexed
+under the first letter of **each word** of their name, because sharding on the
+whole name put Cade Klubnik in `c` alone and a search for "Klubnik" loaded shard
+`k` and found nobody. Fewer than three characters is not a search; two letters
+matches most of the country.
+
+## Known gap: statistics are not attributed to people
+
+The player box-score archive identifies a player by **name only** — it carries no
+athlete id — so no statistic is attached to a `player_id` anywhere on the site. A
+player page says so instead of showing an empty Stats panel.
+
+Box-score names on a game page do link to player pages, but only through the same
+contextual rule the ingestion resolver uses: a name links when it matches
+**exactly one** player on that school's roster for that season. Two players
+sharing a name get no link, and neither does a school outside this dataset or a
+season with no roster. On a 2026 game checked in the browser, 305 of 335 lines
+linked; the 30 that did not were the team-total rows CFBD puts in every category
+and players absent from the roster snapshot. The link is navigation, not
+attribution: it says "this is probably the same person, go and look", and nothing
+on either page claims the stat line as that person's record.
+
+Closing this gap means re-fetching the archive with athlete ids, which is a
+237 MB re-download and Austin's call.
+
+## Known gap: a class year that is really a season
 
 CFBD overloads the roster's `year` field. On the stub rows it returns for
 players with no listed position, jersey or bio, it holds the **season** rather

@@ -3638,7 +3638,36 @@ function livePlayerPanel(g) {
   const updated = liveSnapshot?.player_boxscore_times?.[String(g.id)];
   return playerBoxscorePanel(teams, updated, checked);
 }
-function playerBoxscorePanel(teams, updated, checked) {
+// Linking a box-score line to a player page (v0.1.1). The archive identifies a
+// player by NAME ONLY -- it carries no athlete id -- so a link is made only where
+// the name matches exactly one player on that school's roster for that season.
+// Two players sharing a name get no link, and neither does a school outside this
+// dataset or a season with no roster. That is the same contextual rule the
+// ingestion resolver uses, and for the same reason: a single candidate is
+// evidence, two candidates is a collision, and a guess would put one player's
+// work on another player's page.
+function boxScoreNameLookup(rosterData, teamName) {
+  const team = TEAM_BY_NAME.get(teamName);
+  if (!rosterData || !team) return null;
+  const rows = rosterData.teams.get(team.id);
+  if (!rows || !rows.length) return null;
+  const byName = new Map();
+  rows.forEach(r => {
+    const key = CfbNavigation.normalizeSearch(r.name);
+    if (!key) return;
+    if (!byName.has(key)) byName.set(key, []);
+    byName.get(key).push(r.player_id);
+  });
+  return byName;
+}
+function boxScorePlayerCell(name, lookup) {
+  const key = lookup && CfbNavigation.normalizeSearch(name);
+  const ids = key ? lookup.get(key) : null;
+  if (!ids || ids.length !== 1) return esc(name);
+  return '<a href="' + esc(playerHref(ids[0])) + '">' + esc(name) + '</a>';
+}
+
+function playerBoxscorePanel(teams, updated, checked, rosterData) {
   const timestamp = value => {
     const date = value ? new Date(value) : null;
     return date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : null;
@@ -3646,16 +3675,27 @@ function playerBoxscorePanel(teams, updated, checked) {
   if (!teams.length) return '<div class="panel"><h2 class="section-title">Player box score</h2>' +
     '<p class="section-note">Player lines appear here when CFBD publishes this game’s box score.' +
     (timestamp(checked) ? ' Last checked ' + esc(timestamp(checked)) + '.' : '') + '</p></div>';
-  const groups = teams.flatMap(team => (team.categories || []).map(c => {
-    const lines = (c.lines || []).map(a => '<div class="live-player-row"><span>' + esc(a.name) +
-      '</span><strong>' + esc(a.stat) + '</strong></div>').join('');
+  let linked = 0;
+  const groups = teams.flatMap(team => {
+    const lookup = boxScoreNameLookup(rosterData, team.name);
+    return (team.categories || []).map(c => {
+    const lines = (c.lines || []).map(a => {
+      const cell = boxScorePlayerCell(a.name, lookup);
+      if (cell.startsWith('<a ')) linked += 1;
+      return '<div class="live-player-row"><span>' + cell +
+        '</span><strong>' + esc(a.stat) + '</strong></div>';
+    }).join('');
     return '<div class="live-player-group"><h3>' + esc(team.name) + ' · ' + esc(c.name) +
       (c.type && c.type !== c.name ? ' · ' + esc(c.type) : '') + '</h3>' + lines + '</div>';
-  }));
+    });
+  });
   return '<div class="panel"><h2 class="section-title">Player box score</h2>' +
     '<p class="section-note">From CFBD.' +
     (timestamp(updated) ? ' Player stats updated ' + esc(timestamp(updated)) + '.' : '') +
-    ' Availability and timing vary by game.</p>' +
+    ' Availability and timing vary by game.' +
+    (linked ? ' A name links to a player page where it matches exactly one player on that ' +
+      'school\u2019s roster for this season; the archive carries no player id, so a shared ' +
+      'name is left unlinked rather than guessed at.' : '') + '</p>' +
     '<div class="live-player-grid">' + groups.join('') + '</div></div>';
 }
 function liveEloPanel(g) {
@@ -4801,7 +4841,8 @@ function hydrateGamePage(version) {
         '<div class="grid-2">' + eloPanel + coePanel + '</div>' + srPanel +
         (g.completed ? '<div id="gp-players" class="panel"><h2 class="section-title">Player box score</h2><p class="empty-note">Loading player stats…</p></div>' : '') +
         '<div class="panel" id="gp-series"><h2 class="section-title">Series history</h2><p class="empty-note">Loading meetings…</p></div>' + more;
-      if (g.completed) loadPlayerArchive(season).then(archive => {
+      if (g.completed) Promise.all([loadPlayerArchive(season), loadRoster(season).catch(() => null)])
+        .then(([archive, rosterData]) => {
         if (version !== renderVersion) return;
         const teams = archive[String(id)] || liveSnapshot?.player_boxscores?.[String(id)] || [];
         const leaders = document.getElementById('story-leaders');
@@ -4809,7 +4850,7 @@ function hydrateGamePage(version) {
         const panel = document.getElementById('gp-players');
         if (panel) panel.outerHTML = !teams.length && season < 2004
           ? '<div class="panel"><h2 class="section-title">Player box score</h2><p class="empty-note">CFBD game player box scores begin in 2004; player lines are unavailable for this season.</p></div>'
-          : playerBoxscorePanel(teams, null);
+          : playerBoxscorePanel(teams, null, null, rosterData);
       }).catch(() => {
         if (version === renderVersion && document.getElementById('story-leaders'))
           document.getElementById('story-leaders').innerHTML = storyPlayerLeaders([], season);

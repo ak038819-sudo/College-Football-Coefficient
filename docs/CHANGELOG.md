@@ -17,7 +17,17 @@
   only by a suffix) are flagged for review rather than asserted.
 - A roster class year is only accepted as 1-5. CFBD's stub rows put the season
   in that field, which displayed as a class year of "2026".
-- No UI changes yet, and no rating engine reads any of it. See
+- Player and coach pages: `#player=<id>` and `#coach=<id>`. A player page gives
+  their listed bio and a row per season and team; a coach page gives their
+  record, a season-by-season table and, where the database flagged one, the
+  identity caveat in plain words.
+- A Roster tab on every team page, and the head coach named in the team header.
+- Players and coaches in the header search, by first name or surname.
+- Box-score names on a game page link to player pages where the name matches
+  exactly one player on that school's roster for that season. The archive
+  carries no player id, so a shared name is left unlinked rather than guessed
+  at, and no statistic is attributed to a person anywhere.
+- No rating engine reads any of it. See
   [player and coach pages](people-pages.md) for coverage limits and known gaps.
 
 ## v0.1 — People and Places of the Game (in progress, local branch)
