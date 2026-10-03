@@ -343,15 +343,25 @@ the site. Season totals are: they come from `/stats/player/season`, which
 numbers every row. A player page with neither says so instead of showing an
 empty Stats panel.
 
-Box-score names on a game page do link to player pages, but only through the same
-contextual rule the ingestion resolver uses: a name links when it matches
+A box-score line now links in one of two ways, and the page says which. A line
+CFBD numbers with an athlete id is **attributed**: the id is this project's
+`player_id`, so the source itself says whose line it is, and no amount of name
+agreement overrides it. A line the source left unnumbered falls back to the same
+contextual rule the ingestion resolver uses: the name links when it matches
 **exactly one** player on that school's roster for that season. Two players
 sharing a name get no link, and neither does a school outside this dataset or a
-season with no roster. On a 2026 game checked in the browser, 305 of 335 lines
-linked; the 30 that did not were the team-total rows CFBD puts in every category
-and players absent from the roster snapshot. The link is navigation, not
-attribution: it says "this is probably the same person, go and look", and nothing
-on either page claims the stat line as that person's record.
+season with no roster. An id is only followed when the person is in this
+database at all: rosters start in 2009, so a 2004 line can carry a perfectly
+good id for somebody with no page, and linking it would send a reader to "player
+not found".
+
+Checked in the browser on a 2025 game whose lines had been numbered the way the
+re-fetch numbers them: 429 of 438 lines linked, and the nine that did not were
+CFBD's eight "Team" aggregate rows and one player absent from the roster
+snapshot. An attributed link IS a claim about whose line it is, because the
+source made it. A name-matched link is still only navigation -- "this is
+probably the same person, go and look" -- and the page's note keeps the two
+apart rather than presenting an inference as a fact.
 
 Closing this gap means re-fetching the archive with athlete ids. The fetcher now
 keeps them (`clean_player_boxscores(..., keep_ids=True)`), so the re-fetch is

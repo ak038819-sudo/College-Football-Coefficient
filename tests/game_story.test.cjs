@@ -133,3 +133,103 @@ test('no roster, an unknown school, or an empty roster means no link at all', ()
     assert.equal(context.cell('Ed Small', lookup), 'Ed Small');
   }
 });
+
+// ---- Attribution, once the archive carries athlete ids ----------------------
+// The re-fetch's whole point. An id is the SOURCE saying whose line this is; a
+// name matching one roster row is this project's own inference. The page has to
+// keep those apart, and prefer the first.
+
+test('a numbered box-score line is attributed by its id, not matched by name', () => {
+  const source = ['rosterNameLookup', 'rosterIdSet', 'boxScoreNameLookup',
+                  'boxScorePlayerCell', 'boxScoreLineCell']
+    .map(name => {
+      const fn = shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))?.[0];
+      assert.ok(fn, name + ' exists');
+      return fn;
+    }).join('\n');
+  const context = {
+    esc: value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;'),
+    CfbNavigation: { normalizeSearch: require('../ui/navigation.js').normalizeSearch },
+    TEAM_BY_NAME: new Map([['TCU', { id: 38 }]]),
+    playerHref: id => '#player=' + id
+  };
+  vm.runInNewContext(source + '\nthis.cell = boxScoreLineCell; this.ids = rosterIdSet;' +
+    '\nthis.names = boxScoreNameLookup;', context);
+
+  const roster = { fields: [], teams: new Map([[38, [
+    { player_id: 4361182, name: 'Numbered Passer' },
+    { player_id: 3, name: 'Mike Williams' },
+    { player_id: 4, name: 'Mike Williams' },        // two real people, one name
+    { player_id: -1044305, name: 'Placeholder Id' },
+    { player_id: 9, name: 'Sam <b>Ash' }
+  ]]]) };
+  const idSet = context.ids(roster, 38);
+  const lookup = context.names(roster, 'TCU');
+
+  // Numbered: the source's own attribution.
+  const numbered = context.cell({ name: 'Numbered Passer', stat: '288', id: '4361182' },
+                                lookup, idSet);
+  assert.equal(numbered.attributed, true);
+  assert.match(numbered.html, /#player=4361182/);
+
+  // An id beats a name collision. Two Mike Williamses leave the name rule with
+  // nothing, but CFBD numbering the line settles it.
+  const settled = context.cell({ name: 'Mike Williams', stat: '7', id: '4' }, lookup, idSet);
+  assert.equal(settled.attributed, true);
+  assert.match(settled.html, /#player=4"/);
+
+  // Unnumbered: the old contextual rule, and still only an inference.
+  const unnumbered = context.cell({ name: 'Sam <b>Ash', stat: '1' }, lookup, idSet);
+  assert.equal(unnumbered.attributed, false);
+  assert.equal(unnumbered.matched, true);
+  assert.match(unnumbered.html, /#player=9/);
+  // The source's text is displayed either way, so the linked branch escapes it.
+  assert.match(unnumbered.html, /Sam &lt;b/);
+  assert.doesNotMatch(unnumbered.html, /<b>/);
+
+  // An unnumbered shared name is still left alone rather than guessed at.
+  const shared = context.cell({ name: 'Mike Williams', stat: '2' }, lookup, idSet);
+  assert.equal(shared.attributed, false);
+  assert.equal(shared.matched, false);
+  assert.equal(shared.html, 'Mike Williams');
+
+  // A negative id is a real CFBD athlete id and must link.
+  const negative = context.cell({ name: 'Placeholder Id', stat: '3', id: '-1044305' },
+                                lookup, idSet);
+  assert.equal(negative.attributed, true);
+  assert.match(negative.html, /#player=-1044305/);
+});
+
+test('an id for somebody this dataset has no page for is not linked', () => {
+  // Rosters start in 2009, so a 2004 line can carry a perfectly good CFBD id
+  // for a person with no page here. Linking it would send a reader to "player
+  // not found", which is worse than plain text.
+  const source = ['rosterNameLookup', 'rosterIdSet', 'boxScoreNameLookup',
+                  'boxScorePlayerCell', 'boxScoreLineCell']
+    .map(name => shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))[0]).join('\n');
+  const context = {
+    esc: String,
+    CfbNavigation: { normalizeSearch: require('../ui/navigation.js').normalizeSearch },
+    TEAM_BY_NAME: new Map([['TCU', { id: 38 }]]),
+    playerHref: id => '#player=' + id
+  };
+  vm.runInNewContext(source + '\nthis.cell = boxScoreLineCell; this.ids = rosterIdSet;' +
+    '\nthis.names = boxScoreNameLookup;', context);
+
+  const roster = { fields: [], teams: new Map([[38, [{ player_id: 7, name: 'On The Roster' }]]]) };
+  const idSet = context.ids(roster, 38);
+  const lookup = context.names(roster, 'TCU');
+
+  const stranger = context.cell({ name: 'Not In This Dataset', stat: '40', id: '999999' },
+                                lookup, idSet);
+  assert.equal(stranger.attributed, false);
+  assert.equal(stranger.matched, false);
+  assert.equal(stranger.html, 'Not In This Dataset');
+
+  // With no roster for the season at all, nothing links and nothing throws.
+  const noRoster = context.cell({ name: 'On The Roster', stat: '1', id: '7' }, null, null);
+  assert.equal(noRoster.attributed, false);
+  assert.equal(noRoster.html, 'On The Roster');
+  assert.equal(context.ids(null, 38), null);
+  assert.equal(context.ids(roster, 99), null);
+});
