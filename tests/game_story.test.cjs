@@ -233,3 +233,53 @@ test('an id for somebody this dataset has no page for is not linked', () => {
   assert.equal(context.ids(null, 38), null);
   assert.equal(context.ids(roster, 99), null);
 });
+
+test('a numbered line whose id this dataset lacks is never matched by its name', () => {
+  // The case CFBD actually produces: it holds TWO athlete ids under one name at
+  // one school, and only one of them is in the roster snapshot. Falling back to
+  // the name here would link the line to the OTHER id -- a different person as
+  // far as this database is concerned -- and the panel would count it as a link
+  // made from a name when the source had already named somebody else. The same
+  // shape covers two players who genuinely share a name on one roster.
+  const source = ['rosterNameLookup', 'rosterIdSet', 'boxScoreNameLookup',
+                  'boxScorePlayerCell', 'boxScoreLineCell']
+    .map(name => shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))[0]).join('\n');
+  const context = {
+    esc: String,
+    CfbNavigation: { normalizeSearch: require('../ui/navigation.js').normalizeSearch },
+    TEAM_BY_NAME: new Map([['TCU', { id: 38 }]]),
+    playerHref: id => '#player=' + id
+  };
+  vm.runInNewContext(source + '\nthis.cell = boxScoreLineCell; this.ids = rosterIdSet;' +
+    '\nthis.names = boxScoreNameLookup;', context);
+
+  // One Sherod White is on the roster, under id 4432577. The box-score line
+  // carries CFBD's other id for that name, 4686532.
+  const roster = { fields: [], teams: new Map([[38, [
+    { player_id: 4432577, name: 'Sherod White' }
+  ]]]) };
+  const idSet = context.ids(roster, 38);
+  const lookup = context.names(roster, 'TCU');
+
+  // The name alone would have linked, and that is exactly what must not happen.
+  assert.equal(context.cell({ name: 'Sherod White', stat: '41' }, lookup, idSet).matched, true);
+
+  const other = context.cell({ name: 'Sherod White', stat: '101', id: '4686532' },
+                             lookup, idSet);
+  assert.equal(other.attributed, false);
+  assert.equal(other.matched, false);
+  assert.equal(other.html, 'Sherod White');
+
+  // A blank or absent id is not an id, so those lines keep the name rule.
+  for (const blank of [null, undefined, '', '   ']) {
+    const line = context.cell({ name: 'Sherod White', stat: '41', id: blank }, lookup, idSet);
+    assert.equal(line.matched, true, 'blank id falls back: ' + JSON.stringify(blank));
+    assert.equal(line.attributed, false);
+  }
+
+  // Whitespace around a real id is still that id.
+  const padded = context.cell({ name: 'Sherod White', stat: '41', id: ' 4432577 ' },
+                              lookup, idSet);
+  assert.equal(padded.attributed, true);
+  assert.match(padded.html, /#player=4432577/);
+});
