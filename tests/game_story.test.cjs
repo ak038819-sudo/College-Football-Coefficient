@@ -67,3 +67,69 @@ test('active game story waits for the official model update', () => {
   assert.match(html, /Model update<\/small><strong>Pending/);
   assert.match(html, /Sample Field \(venue unverified\)/);
 });
+
+// ---- Linking a box-score name to a player page (v0.1.1) ---------------------
+// The archive carries no player id, so a link rests on name + team + season.
+// These cover the one rule that keeps that honest: exactly one candidate, or no
+// link at all.
+
+test('a box-score name links only when it matches exactly one player on that roster', () => {
+  const source = ['boxScoreNameLookup', 'boxScorePlayerCell']
+    .map(name => {
+      const fn = shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))?.[0];
+      assert.ok(fn, name + ' exists');
+      return fn;
+    }).join('\n');
+  const context = {
+    esc: value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;'),
+    CfbNavigation: { normalizeSearch: require('../ui/navigation.js').normalizeSearch },
+    TEAM_BY_NAME: new Map([['TCU', { id: 38 }], ['North Carolina', { id: 153 }]]),
+    playerHref: id => '#player=' + id
+  };
+  vm.runInNewContext(source + '\nthis.lookup = boxScoreNameLookup; this.cell = boxScorePlayerCell;', context);
+
+  const roster = { fields: [], teams: new Map([[38, [
+    { player_id: 1, name: 'Ed Small' },
+    { player_id: 2, name: "Na'eem Offord" },
+    { player_id: 3, name: 'Mike Williams' },
+    { player_id: 4, name: 'Mike Williams' },     // two real people, one name
+    // The source's own text is what gets displayed, so the LINKED branch has to
+    // escape it too -- not only the unlinked fallback.
+    { player_id: 5, name: 'Sam <b>Ash' }
+  ]]]) };
+
+  const tcu = context.lookup(roster, 'TCU');
+  assert.equal(context.cell('Ed Small', tcu), '<a href="#player=1">Ed Small</a>');
+  // Punctuation and case are folded on both sides, the way search folds them.
+  assert.equal(context.cell('naeem offord', tcu), '<a href="#player=2">naeem offord</a>');
+  // Two candidates is a collision, not a tie-break: no link, just the name.
+  assert.equal(context.cell('Mike Williams', tcu), 'Mike Williams');
+  // A name nobody on the roster has: the walk-on added after the snapshot.
+  assert.equal(context.cell('Gil Jackson', tcu), 'Gil Jackson');
+  // The team-total row CFBD puts in every category.
+  assert.equal(context.cell(' Team', tcu), ' Team');
+  // And a name is escaped whether or not it becomes a link.
+  assert.equal(context.cell('<script>', tcu), '&lt;script>');
+  assert.equal(context.cell('Sam <b>Ash', tcu), '<a href="#player=5">Sam &lt;b>Ash</a>');
+});
+
+test('no roster, an unknown school, or an empty roster means no link at all', () => {
+  const source = ['boxScoreNameLookup', 'boxScorePlayerCell']
+    .map(name => shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))[0]).join('\n');
+  const context = {
+    esc: String, CfbNavigation: { normalizeSearch: require('../ui/navigation.js').normalizeSearch },
+    TEAM_BY_NAME: new Map([['TCU', { id: 38 }]]), playerHref: id => '#player=' + id
+  };
+  vm.runInNewContext(source + '\nthis.lookup = boxScoreNameLookup; this.cell = boxScorePlayerCell;', context);
+  const roster = { teams: new Map([[38, [{ player_id: 1, name: 'Ed Small' }]], [99, []]]) };
+
+  // A season with no roster file: the whole feature is simply absent.
+  assert.equal(context.lookup(null, 'TCU'), null);
+  // A school outside this FBS-only dataset.
+  assert.equal(context.lookup(roster, 'Alabama A&M'), null);
+  // A school in the dataset with no roster row for that season.
+  assert.equal(context.lookup({ teams: new Map([[38, []]]) }, 'TCU'), null);
+  for (const lookup of [null, undefined]) {
+    assert.equal(context.cell('Ed Small', lookup), 'Ed Small');
+  }
+});

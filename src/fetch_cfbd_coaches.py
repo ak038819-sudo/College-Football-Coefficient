@@ -9,9 +9,11 @@ caps a response, and merged back into one coach-per-object file.
 Head coaches ONLY. The feed carries no coordinator or assistant history, and
 nothing downstream may present it as though it did.
 
-The feed also carries no coach identifier -- see load_coaches.py for the
-deterministic composite key the loader derives, and why it is stored as an
-external id rather than assumed in code.
+The feed carries no coach identifier, and its hire_date belongs to the JOB
+rather than the person (one coach has one per school). The name is therefore
+the only person-level signal available; see merge_records below and
+load_coaches.py for how that is keyed and why the weakness is recorded rather
+than hidden.
 
 Usage:
     python src/fetch_cfbd_coaches.py              # 1980 to the current season
@@ -25,6 +27,8 @@ import os
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional
+
+from person_identity import normalize_name
 
 BASE = "https://api.collegefootballdata.com"
 OUT_PATH = Path("data/raw/coaches/coaches.json")
@@ -88,54 +92,47 @@ def coach_records(payload) -> List[dict]:
 
 
 def merge_records(records: List[dict]) -> List[dict]:
-    """One object per coach, seasons unioned across the year slices fetched.
+    """One object per PERSON, with hire date carried on each season.
 
-    Each year slice returns a coach's WHOLE career, so the same person appears
-    once per slice that covers them, with overlapping season lists. That overlap
-    is the signal used here: records sharing a name and hire date are merged only
-    when their seasons actually intersect.
+    What the live feed actually returns, confirmed against a full 1980-2026 pull
+    (5,714 records carrying 5,716 seasons between them):
 
-    Grouping on name and hire date ALONE would be wrong, and quietly so. Two
-    different coaches can share a name and have no hire date at all (CFBD often
-    omits it for older seasons); merging them would hand one coach_id two
-    unrelated careers, and because the loader would then see a single record its
-    collision handling would never run -- the blend would be permanent and
-    undetectable. Disjoint careers under one name therefore stay separate
-    records, and load_coaches.py separates them as a recorded collision.
+      - Each record is ONE season, not a career. /coaches?year=N returns that
+        year's row for every coach who worked it.
+      - hire_date belongs to the JOB, not the person. Al Golden comes back with
+        2005-12-08 for his five Temple seasons and 2010-12-12 for his five at
+        Miami.
+
+    So grouping on name AND hire date would split one person into one record per
+    job, and grouping on overlapping seasons would split them into one record
+    per season. The name is the only PERSON-level signal this feed carries, so
+    that is what groups a career here -- and because a name is weak evidence,
+    load_coaches.py records the resulting identity as name-only and flags the
+    ambiguous ones for review rather than asserting them. Two coaches who truly
+    share a name cannot be separated by this feed, and saying so is better than
+    inventing a distinction.
+
+    hire_date moves onto each season, which is where it is actually true.
     """
-    groups: Dict[tuple, List[dict]] = {}
+    people: Dict[str, dict] = {}
     for record in records:
-        groups.setdefault((record["name"], record["hire_date"] or ""), []).append(record)
-
-    out: List[dict] = []
-    for (name, _hire), group in groups.items():
-        careers: List[dict] = []
-        for record in group:
-            seasons = {(s["year"], s["school"]) for s in record["seasons"]}
-            # Any existing career this record shares a season with is the same
-            # person. It can touch more than one, so they are folded together.
-            touching = [c for c in careers if c["keys"] & seasons]
-            if not touching:
-                careers.append({"record": {**record, "seasons": list(record["seasons"])},
-                                "keys": set(seasons)})
+        key = normalize_name(record["name"])
+        if not key:
+            continue
+        person = people.setdefault(key, {"name": record["name"],
+                                         "first_name": record.get("first_name"),
+                                         "last_name": record.get("last_name"),
+                                         "seasons": []})
+        seen = {(s["year"], s["school"]) for s in person["seasons"]}
+        for season in record["seasons"]:
+            if (season["year"], season["school"]) in seen:
                 continue
-            first = touching[0]
-            for other in touching[1:]:
-                for season in other["record"]["seasons"]:
-                    if (season["year"], season["school"]) not in first["keys"]:
-                        first["record"]["seasons"].append(season)
-                        first["keys"].add((season["year"], season["school"]))
-                careers.remove(other)
-            for season in record["seasons"]:
-                if (season["year"], season["school"]) not in first["keys"]:
-                    first["record"]["seasons"].append(season)
-                    first["keys"].add((season["year"], season["school"]))
-        out.extend(career["record"] for career in careers)
-
+            person["seasons"].append({**season, "hire_date": record.get("hire_date")})
+            seen.add((season["year"], season["school"]))
+    out = list(people.values())
     for record in out:
         record["seasons"].sort(key=lambda s: (s["year"], s["school"]))
-    out.sort(key=lambda r: (r["name"], r["hire_date"] or "",
-                            r["seasons"][0]["year"] if r["seasons"] else 0))
+    out.sort(key=lambda r: normalize_name(r["name"]))
     return out
 
 

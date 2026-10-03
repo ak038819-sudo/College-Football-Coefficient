@@ -283,7 +283,11 @@ def test_a_roster_row_with_no_name_is_skipped(conn, tmp_path):
     assert conn.execute("SELECT display_name FROM players").fetchall() == [("Real Guy",)]
 
 
-# --- coach ingestion --------------------------------------------------------
+# --- coach ingestion -------------------------------------------------------
+# Shaped like the LIVE feed, which a full 1980-2026 pull settled: one record per
+# SEASON, and hire_date belonging to the job rather than the person. Al Golden
+# arrives as ten records, five under each of his two hire dates.
+
 
 def _coaches(tmp_path, records):
     path = tmp_path / "coaches.json"
@@ -291,68 +295,268 @@ def _coaches(tmp_path, records):
     return path
 
 
+def _season(year, school, hire_date=None, **extra):
+    return {"year": year, "school": school, "hire_date": hire_date, **extra}
+
+
+def test_one_season_per_record_is_assembled_into_one_career(tmp_path):
+    """The shape the feed really sends. Grouping on name and hire date would make
+    this coach two people; grouping on overlapping seasons would make them five."""
+    import fetch_cfbd_coaches as fc
+    slices = ([{"name": "Al Golden", "first_name": "Al", "last_name": "Golden",
+                "hire_date": "2005-12-08", "seasons": [{"year": y, "school": "Oregon"}]}
+               for y in range(2006, 2011)]
+              + [{"name": "Al Golden", "first_name": "Al", "last_name": "Golden",
+                  "hire_date": "2010-12-12", "seasons": [{"year": y, "school": "Clemson"}]}
+                 for y in range(2011, 2016)])
+    merged = fc.merge_records(slices)
+    assert len(merged) == 1
+    assert [s["year"] for s in merged[0]["seasons"]] == list(range(2006, 2016))
+    # The hire date rides the season, which is where it is true.
+    by_year = {s["year"]: s["hire_date"] for s in merged[0]["seasons"]}
+    assert by_year[2006] == "2005-12-08" and by_year[2011] == "2010-12-12"
+
+
+def test_the_coach_key_is_the_name_and_not_the_hire_date():
+    """The feed offers no person-level signal beyond the name, so the key cannot
+    include the hire date -- that would split a coach at every job change."""
+    assert coach_key({"name": "Al Golden", "hire_date": "2005-12-08"}) == \
+        coach_key({"name": "Al  Golden", "hire_date": "2010-12-12"})
+    assert coach_key({"name": "A.J. Golden"}) == coach_key({"name": "AJ Golden"})
+
+
+def test_the_coach_key_keeps_a_generational_suffix():
+    """Mike Sanford Sr. (UNLV 2005-2009) and Mike Sanford Jr. (Western Kentucky
+    and Colorado 2017-2022) are a father and son who both held FBS head-coaching
+    jobs. Folding the suffix put both careers under one coach_id -- a false
+    statement on a page that no later correction could detect."""
+    assert coach_key({"name": "Mike Sanford Jr."}) != coach_key({"name": "Mike Sanford Sr."})
+
+
+def test_two_coaches_differing_only_by_a_suffix_are_flagged(conn, tmp_path):
+    """The inverse risk of keeping the suffix: a source omitting it on some rows
+    splits one person. Recorded, so that failure is visible too."""
+    stats = load_coaches(conn, _coaches(tmp_path, [
+        {"name": "Mike Sanford Sr.", "hire_date": None,
+         "seasons": [_season(y, "Clemson", "2005-01-01") for y in range(2005, 2010)]},
+        {"name": "Mike Sanford Jr.", "hire_date": None,
+         "seasons": [_season(y, "Oregon", "2017-01-01") for y in range(2017, 2020)]}]))
+    assert stats["coaches"] == 2
+    assert conn.execute(
+        "SELECT display_name FROM person_unresolved WHERE reason = "
+        "'names differing only by a generational suffix'").fetchone()[0] == \
+        "Mike Sanford Jr. / Mike Sanford Sr."
+
+
+def test_a_database_keyed_by_the_previous_loader_is_migrated_not_duplicated(conn, tmp_path):
+    """The first version keyed on name|hire-date. Without migration the next run
+    inserts a second coach per name, moves the tenures to it, and orphans the
+    old row under a supposedly immutable id."""
+    cur = conn.execute("INSERT INTO coaches (display_name, created_at, updated_at) "
+                       "VALUES ('Dabo Swinney', '', '')")
+    legacy_id = int(cur.lastrowid)
+    conn.execute("INSERT INTO coach_external_ids (coach_id, source, external_id, confidence, "
+                 "is_primary) VALUES (?, 'cfbd', 'cfbd:dabo swinney|2008-10-13', 'derived key', 1)",
+                 (legacy_id,))
+    conn.execute("INSERT INTO coach_tenures (coach_id, team_id, season_year, source) "
+                 "VALUES (?, 1, 2024, 'cfbd')", (legacy_id,))
+
+    load_coaches(conn, _coaches(tmp_path, [{
+        "name": "Dabo Swinney", "hire_date": None,
+        "seasons": [_season(2024, "Clemson", "2008-10-13"),
+                    _season(2025, "Clemson", "2008-10-13")]}]))
+
+    assert conn.execute("SELECT COUNT(*) FROM coaches").fetchone()[0] == 1
+    # The id survives the migration rather than being reissued.
+    assert conn.execute("SELECT coach_id FROM coaches").fetchone()[0] == legacy_id
+    assert conn.execute("SELECT external_id FROM coach_external_ids").fetchall() == \
+        [("cfbd:dabo swinney",)]
+    assert conn.execute("SELECT COUNT(*) FROM coaches WHERE coach_id NOT IN "
+                        "(SELECT coach_id FROM coach_tenures)").fetchone()[0] == 0
+
+
+def test_a_legacy_row_folds_into_a_coach_that_already_holds_the_current_key(conn, tmp_path):
+    """The half-migrated database: one run of the new loader created a coach under
+    `cfbd:<name>`, and a legacy `cfbd:<name>|<hire date>` row is still there.
+
+    The current key can only belong to one coach, so the legacy row has to fold
+    into the coach that already holds it. Taking the legacy id as the keeper
+    instead leaves it behind with the old key, and the next load quietly keeps
+    two Dabo Swinneys -- which is the duplication this migration exists to stop.
+    """
+    cur = conn.execute("INSERT INTO coaches (display_name, created_at, updated_at) "
+                       "VALUES ('Dabo Swinney', '', '')")
+    legacy_id = int(cur.lastrowid)
+    conn.execute("INSERT INTO coach_external_ids (coach_id, source, external_id, confidence, "
+                 "is_primary) VALUES (?, 'cfbd', 'cfbd:dabo swinney|2008-10-13', 'derived key', 1)",
+                 (legacy_id,))
+    conn.execute("INSERT INTO coach_tenures (coach_id, team_id, season_year, source) "
+                 "VALUES (?, 1, 2023, 'cfbd')", (legacy_id,))
+    cur = conn.execute("INSERT INTO coaches (display_name, created_at, updated_at) "
+                       "VALUES ('Dabo Swinney', '', '')")
+    current_id = int(cur.lastrowid)
+    conn.execute("INSERT INTO coach_external_ids (coach_id, source, external_id, confidence, "
+                 "is_primary) VALUES (?, 'cfbd', 'cfbd:dabo swinney', 'name only', 1)",
+                 (current_id,))
+    assert legacy_id < current_id, "the legacy id must be the lower one for this to bite"
+
+    load_coaches(conn, _coaches(tmp_path, [{
+        "name": "Dabo Swinney", "hire_date": None,
+        "seasons": [_season(2024, "Clemson", "2008-10-13")]}]))
+
+    assert conn.execute("SELECT coach_id FROM coaches").fetchall() == [(current_id,)]
+    assert conn.execute("SELECT external_id FROM coach_external_ids").fetchall() == \
+        [("cfbd:dabo swinney",)]
+    assert conn.execute("SELECT COUNT(*) FROM coach_tenures WHERE coach_id = ?",
+                        (legacy_id,)).fetchone()[0] == 0
+
+
+def test_legacy_rows_split_across_hire_dates_collapse_onto_one_coach(conn, tmp_path):
+    """The old key gave a coach one row per job. Those extra rows are the split
+    this release undoes, so they go rather than linger as orphans."""
+    ids = []
+    for hire in ("2005-12-08", "2010-12-12"):
+        cur = conn.execute("INSERT INTO coaches (display_name, created_at, updated_at) "
+                           "VALUES ('Al Golden', '', '')")
+        ids.append(int(cur.lastrowid))
+        conn.execute("INSERT INTO coach_external_ids (coach_id, source, external_id, confidence, "
+                     "is_primary) VALUES (?, 'cfbd', ?, 'derived key', 1)",
+                     (ids[-1], f"cfbd:al golden|{hire}"))
+    load_coaches(conn, _coaches(tmp_path, [{
+        "name": "Al Golden", "hire_date": None,
+        "seasons": [_season(2010, "Clemson", "2005-12-08"),
+                    _season(2011, "Oregon", "2010-12-12")]}]))
+    assert conn.execute("SELECT coach_id FROM coaches").fetchall() == [(min(ids),)]
+    assert conn.execute("SELECT COUNT(*) FROM coach_tenures").fetchone()[0] == 2
+
+
+@pytest.mark.parametrize("value,expected", [
+    (1, "FR"), (4, "SR"), (5, "GR"), ("3", "JR"),
+    # CFBD overloads the roster's `year` field: on its stub rows it holds the
+    # SEASON, not a class. 1,625 of the 2026 rows carried 2026 there, which
+    # displayed as a class year of "2026" until this returned None.
+    (2026, None), ("2026", None), (0, None), (9, None),
+    # A real class some sources spell out is kept as given.
+    ("Freshman", "Freshman"), ("RS-FR", "RS-FR"),
+    (None, None), ("", None), (True, None),
+])
+def test_a_number_that_is_not_a_class_does_not_become_a_class_year(value, expected):
+    assert identity.class_year_label(value) == expected
+
+
+def test_a_snapshot_with_the_hire_date_at_record_level_still_loads(conn, tmp_path):
+    """The snapshot committed before the hire date moved onto the season carries
+    it at record level; reading both keeps those snapshots loadable."""
+    load_coaches(conn, _coaches(tmp_path, [{
+        "name": "Older Snapshot", "hire_date": "2008-10-13",
+        "seasons": [{"year": 2024, "school": "Clemson"}, {"year": 2025, "school": "Clemson"}]}]))
+    assert conn.execute("SELECT DISTINCT hire_date FROM coach_tenures").fetchall() == [("2008-10-13",)]
+
+
+def test_a_career_at_two_schools_is_one_coach_with_both_tenures(conn, tmp_path):
+    load_coaches(conn, _coaches(tmp_path, [{
+        "name": "Al Golden", "hire_date": None,
+        "seasons": [_season(2010, "Oregon", "2005-12-08"),
+                    _season(2011, "Ohio St", "2010-12-12")]}]))
+    assert conn.execute("SELECT COUNT(*) FROM coaches").fetchone()[0] == 1
+    assert conn.execute("SELECT season_year, team_id, hire_date FROM coach_tenures "
+                        "ORDER BY season_year").fetchall() == [
+        (2010, 2, "2005-12-08"), (2011, 3, "2010-12-12")]
+
+
 def test_rerunning_the_coaching_snapshot_creates_no_duplicate_coaches(conn, tmp_path):
-    path = _coaches(tmp_path, [{"name": "Dabo Swinney", "hire_date": "2008-10-13", "seasons": [
-        {"year": 2024, "school": "Clemson", "games": 13, "wins": 10, "losses": 4, "ties": 0,
-         "postseason_rank": 16},
-        {"year": 2025, "school": "Clemson", "games": 12, "wins": 9, "losses": 3, "ties": 0}]}])
+    path = _coaches(tmp_path, [{"name": "Dabo Swinney", "hire_date": None, "seasons": [
+        _season(2024, "Clemson", "2008-10-13", games=13, wins=10, losses=4, ties=0,
+                postseason_rank=16),
+        _season(2025, "Clemson", "2008-10-13", games=12, wins=9, losses=3, ties=0)]}])
     first = load_coaches(conn, path)
     second = load_coaches(conn, path)
     assert first == second == {"coaches": 1, "tenures": 2, "unknown_team": 0,
-                               "collisions": 0, "skipped": 0}
+                               "ambiguous": 0, "skipped": 0}
     assert conn.execute("SELECT COUNT(*) FROM coaches").fetchone()[0] == 1
     assert conn.execute("SELECT COUNT(*) FROM coach_tenures").fetchone()[0] == 2
     assert conn.execute("SELECT latest_season FROM coaches").fetchone()[0] == 2025
 
 
-def test_a_coach_at_two_schools_is_one_coach_with_a_chronological_tenure(conn, tmp_path):
-    load_coaches(conn, _coaches(tmp_path, [{"name": "Moving Coach", "hire_date": "2015-01-01",
-                                            "seasons": [{"year": 2016, "school": "Oregon"},
-                                                        {"year": 2017, "school": "Ohio St"}]}]))
+def test_many_records_for_one_coach_are_counted_as_one_coach(conn, tmp_path):
+    """The feed's real shape: one record per SEASON, so several records are
+    routinely the same person. Counting records reported 5,714 coaches for the
+    826 the table actually held."""
+    records = [{"name": "Kirk Ferentz", "hire_date": "1998-12-02",
+                "seasons": [_season(y, "Clemson", "1998-12-02")]}
+               for y in range(2020, 2026)]
+    stats = load_coaches(conn, _coaches(tmp_path, records))
+    assert stats["coaches"] == 1
+    assert stats["tenures"] == 6
     assert conn.execute("SELECT COUNT(*) FROM coaches").fetchone()[0] == 1
-    assert conn.execute("SELECT season_year, team_id FROM coach_tenures ORDER BY season_year"
-                        ).fetchall() == [(2016, 2), (2017, 3)]
+    assert conn.execute("SELECT COUNT(*) FROM coach_tenures").fetchone()[0] == 6
+    # One unbroken job, so nothing to flag even though it arrived as six records.
+    assert stats["ambiguous"] == 0
 
 
-def test_two_coaches_sharing_a_name_and_hire_date_stay_two_people(conn, tmp_path):
-    stats = load_coaches(conn, _coaches(tmp_path, [
-        {"name": "Bobby Johnson", "hire_date": None, "seasons": [{"year": 1990, "school": "Oregon"}]},
-        {"name": "Bobby Johnson", "hire_date": None, "seasons": [{"year": 2005, "school": "Clemson"}]}]))
-    assert stats["coaches"] == 2 and stats["collisions"] == 1
-    assert conn.execute("SELECT COUNT(DISTINCT coach_id) FROM coach_tenures").fetchone()[0] == 2
-    assert conn.execute("SELECT COUNT(*) FROM person_unresolved WHERE entity = 'coach'"
-                        ).fetchone()[0] == 1
+def test_the_identity_is_recorded_as_name_only_rather_than_dressed_up(conn, tmp_path):
+    load_coaches(conn, _coaches(tmp_path, [
+        {"name": "Some Coach", "hire_date": None, "seasons": [_season(2020, "Clemson")]}]))
+    assert conn.execute("SELECT source, external_id, confidence FROM coach_external_ids"
+                        ).fetchone() == ("cfbd", "cfbd:some coach", "name only")
+
+
+def test_a_career_spanning_two_hire_dates_is_flagged_for_review(conn, tmp_path):
+    """One coach with two jobs, or two people sharing a name. The feed cannot say,
+    so it is recorded rather than asserted either way."""
+    stats = load_coaches(conn, _coaches(tmp_path, [{
+        "name": "Al Golden", "hire_date": None,
+        "seasons": [_season(2010, "Oregon", "2005-12-08"),
+                    _season(2011, "Ohio St", "2010-12-12")]}]))
+    assert stats["ambiguous"] == 1
+    assert conn.execute("SELECT reason FROM person_unresolved WHERE entity = 'coach'"
+                        ).fetchone()[0] == "name-only identity spanning 2 hire dates"
+
+
+def test_a_career_with_a_gap_is_flagged_for_review(conn, tmp_path):
+    """Al Kincaid: Wyoming 1981-85 then Arkansas State 1990-91, no hire date at all."""
+    stats = load_coaches(conn, _coaches(tmp_path, [{
+        "name": "Al Kincaid", "hire_date": None,
+        "seasons": [_season(y, "Oregon") for y in range(1981, 1986)]
+                   + [_season(y, "Clemson") for y in (1990, 1991)]}]))
+    assert stats["ambiguous"] == 1
+    assert conn.execute("SELECT reason FROM person_unresolved WHERE entity = 'coach'"
+                        ).fetchone()[0] == "name-only identity with a gap after 1985"
+    # Flagged, but still one coach with the whole career available.
+    assert conn.execute("SELECT COUNT(*) FROM coaches").fetchone()[0] == 1
+    assert conn.execute("SELECT COUNT(*) FROM coach_tenures").fetchone()[0] == 7
+
+
+def test_an_unbroken_single_job_career_is_not_flagged(conn, tmp_path):
+    stats = load_coaches(conn, _coaches(tmp_path, [{
+        "name": "Dabo Swinney", "hire_date": None,
+        "seasons": [_season(y, "Clemson", "2008-10-13") for y in range(2020, 2026)]}]))
+    assert stats["ambiguous"] == 0
+    assert conn.execute("SELECT COUNT(*) FROM person_unresolved").fetchone()[0] == 0
 
 
 def test_a_corrected_season_record_replaces_the_old_one(conn, tmp_path):
-    load_coaches(conn, _coaches(tmp_path, [{"name": "Dabo Swinney", "hire_date": "2008-10-13",
-                                            "seasons": [{"year": 2025, "school": "Clemson", "wins": 8}]}]))
-    load_coaches(conn, _coaches(tmp_path, [{"name": "Dabo Swinney", "hire_date": "2008-10-13",
-                                            "seasons": [{"year": 2025, "school": "Clemson", "wins": 9}]}]))
+    load_coaches(conn, _coaches(tmp_path, [{"name": "Dabo Swinney", "hire_date": None,
+                                            "seasons": [_season(2025, "Clemson", wins=8)]}]))
+    load_coaches(conn, _coaches(tmp_path, [{"name": "Dabo Swinney", "hire_date": None,
+                                            "seasons": [_season(2025, "Clemson", wins=9)]}]))
     assert conn.execute("SELECT wins FROM coach_tenures").fetchone()[0] == 9
     assert conn.execute("SELECT COUNT(*) FROM coaches").fetchone()[0] == 1
 
 
 def test_every_loaded_tenure_is_head_coach_and_keeps_the_source_school_string(conn, tmp_path):
     load_coaches(conn, _coaches(tmp_path, [{"name": "Some Coach", "hire_date": None,
-                                            "seasons": [{"year": 2020, "school": "Ohio St"}]}]))
+                                            "seasons": [_season(2020, "Ohio St")]}]))
     assert conn.execute("SELECT role, source_team FROM coach_tenures").fetchone() == ("head coach", "Ohio St")
 
 
 def test_a_coach_season_at_an_unknown_school_is_recorded_not_dropped_silently(conn, tmp_path):
-    stats = load_coaches(conn, _coaches(tmp_path, [
-        {"name": "Fcs Coach", "hire_date": None, "seasons": [{"year": 2020, "school": "Mercer"},
-                                                             {"year": 2021, "school": "Clemson"}]}]))
+    stats = load_coaches(conn, _coaches(tmp_path, [{
+        "name": "Fcs Coach", "hire_date": None,
+        "seasons": [_season(2020, "Mercer"), _season(2021, "Clemson")]}]))
     assert stats["unknown_team"] == 1 and stats["tenures"] == 1
     assert conn.execute("SELECT season_year FROM person_unresolved WHERE entity = 'coach' "
                         "AND reason = 'unknown team'").fetchone()[0] == 2020
-
-
-def test_the_derived_coach_key_ignores_name_punctuation_but_not_the_hire_date():
-    assert coach_key({"name": "Dabo Swinney", "hire_date": "2008-10-13"}) == \
-        coach_key({"name": "Dabo  Swinney Jr.", "hire_date": "2008-10-13"})
-    assert coach_key({"name": "Dabo Swinney", "hire_date": "2008-10-13"}) != \
-        coach_key({"name": "Dabo Swinney", "hire_date": None})
 
 
 # --- fetchers ---------------------------------------------------------------
@@ -413,67 +617,39 @@ def test_coach_records_keep_head_coaching_seasons_and_drop_recordless_coaches():
                                       "postseason_rank": 16}]
 
 
-def test_disjoint_careers_under_one_name_are_not_merged_by_the_fetcher():
-    """Grouping on name and hire date alone blends two coaches into one record,
-    and the loader -- seeing a single record -- never gets to flag the
-    collision, so the blend is permanent. CFBD omits hire dates for older
-    seasons, which is exactly when this bites."""
+
+
+
+
+def test_two_same_name_coaches_are_merged_and_the_ambiguity_is_recorded(tmp_path):
+    """End to end, and deliberately NOT the conservative split.
+
+    This feed gives one season per record and a hire date per job, so a name is
+    its only person-level signal. Splitting on a gap or a second hire date would
+    shatter real careers -- Al Golden coached ten seasons under two hire dates.
+    So the name groups the career, and the cases a name cannot vouch for are
+    recorded for review instead of being settled by guesswork either way.
+    """
     import fetch_cfbd_coaches as fc
     merged = fc.merge_records([
         {"name": "Bobby Johnson", "hire_date": None, "seasons": [{"year": 1990, "school": "Oregon"}]},
         {"name": "Bobby Johnson", "hire_date": None, "seasons": [{"year": 2005, "school": "Clemson"}]}])
-    assert len(merged) == 2
-    assert [[s["year"] for s in r["seasons"]] for r in merged] == [[1990], [2005]]
-
-
-def test_slices_that_share_a_season_are_folded_into_one_career():
-    """A slice overlapping two clusters joins them: one person, not three."""
-    import fetch_cfbd_coaches as fc
-    merged = fc.merge_records([
-        {"name": "B Coach", "hire_date": None, "seasons": [{"year": 2000, "school": "Oregon"}]},
-        {"name": "B Coach", "hire_date": None, "seasons": [{"year": 2002, "school": "Clemson"}]},
-        {"name": "B Coach", "hire_date": None, "seasons": [{"year": 2000, "school": "Oregon"},
-                                                           {"year": 2002, "school": "Clemson"}]}])
     assert len(merged) == 1
-    assert [s["year"] for s in merged[0]["seasons"]] == [2000, 2002]
-
-
-def test_the_fetcher_and_loader_together_keep_two_same_name_coaches_apart(tmp_path):
-    """End to end, because each half looked correct on its own: the fetcher
-    merged the pair, so the loader's collision branch never ran."""
-    import json as _json
-    import fetch_cfbd_coaches as fc
-    merged = fc.merge_records([
-        {"name": "Bobby Johnson", "hire_date": None, "seasons": [{"year": 1990, "school": "Oregon"}]},
-        {"name": "Bobby Johnson", "hire_date": None, "seasons": [{"year": 2005, "school": "Clemson"}]}])
     path = tmp_path / "coaches.json"
-    path.write_text(_json.dumps(merged), encoding="utf-8")
+    path.write_text(json.dumps(merged), encoding="utf-8")
 
-    conn = sqlite3.connect(":memory:")
-    conn.execute("PRAGMA foreign_keys = ON")
+    c = sqlite3.connect(":memory:")
+    c.execute("PRAGMA foreign_keys = ON")
     repo = Path(__file__).resolve().parent.parent
-    conn.executescript((repo / "sql" / "schema.sql").read_text(encoding="utf-8"))
-    conn.executescript((repo / "sql" / "person_tables.sql").read_text(encoding="utf-8"))
+    c.executescript((repo / "sql" / "schema.sql").read_text(encoding="utf-8"))
+    c.executescript((repo / "sql" / "person_tables.sql").read_text(encoding="utf-8"))
     for team_id, name in TEAMS.items():
-        conn.execute("INSERT INTO teams (team_id, team_name) VALUES (?, ?)", (team_id, name))
+        c.execute("INSERT INTO teams (team_id, team_name) VALUES (?, ?)", (team_id, name))
 
-    stats = load_coaches(conn, path)
-    assert stats["coaches"] == 2 and stats["collisions"] == 1
-    assert conn.execute("SELECT COUNT(DISTINCT coach_id) FROM coach_tenures").fetchone()[0] == 2
-
-
-def test_year_slices_merge_into_one_career_per_coach():
-    import fetch_cfbd_coaches as fc
-    merged = fc.merge_records([
-        {"name": "A Coach", "first_name": "A", "last_name": "Coach", "hire_date": "2010-01-01",
-         "seasons": [{"year": 2011, "school": "Oregon"}]},
-        {"name": "A Coach", "first_name": "A", "last_name": "Coach", "hire_date": "2010-01-01",
-         "seasons": [{"year": 2011, "school": "Oregon"}, {"year": 2012, "school": "Oregon"}]},
-        {"name": "A Coach", "first_name": "A", "last_name": "Coach", "hire_date": None,
-         "seasons": [{"year": 1995, "school": "Clemson"}]}])
-    assert len(merged) == 2
-    career = next(r for r in merged if r["hire_date"] == "2010-01-01")
-    assert [s["year"] for s in career["seasons"]] == [2011, 2012]
+    stats = load_coaches(c, path)
+    assert stats["coaches"] == 1 and stats["ambiguous"] == 1
+    assert c.execute("SELECT reason FROM person_unresolved WHERE entity = 'coach'"
+                     ).fetchone()[0] == "name-only identity with a gap after 1990"
 
 
 def test_a_failed_year_slice_abandons_the_whole_coach_fetch(tmp_path):
@@ -515,13 +691,25 @@ def _real_db_copy(db_path):
 def test_the_person_tables_apply_to_the_real_database_without_touching_it(db_path, repo_root):
     """Adding people to an already-built league.db must not disturb what is there."""
     conn = _real_db_copy(db_path)
-    before = {t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-              for t in ("teams", "games", "team_membership_by_season")}
+    def counts():
+        tables = ("teams", "games", "team_membership_by_season")
+        rows = {t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in tables}
+        # Counted, never asserted to be zero: once the pipeline has run, the real
+        # database HAS people in it. The claim being tested is that applying the
+        # schema changes nothing, which is true either way -- and an assertion of
+        # zero turned into a false failure the day the loaders first ran.
+        people = conn.execute("SELECT name FROM sqlite_master WHERE type = 'table' "
+                              "AND name = 'players'").fetchone()
+        rows["players"] = conn.execute("SELECT COUNT(*) FROM players").fetchone()[0] if people else None
+        return rows
+
+    before = counts()
     identity.apply_schema(conn)
     identity.apply_schema(conn)  # a rebuild applies it again
-    after = {t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in before}
-    assert after == before
-    assert conn.execute("SELECT COUNT(*) FROM players").fetchone()[0] == 0
+    after = counts()
+    assert after["players"] == (before["players"] or 0)
+    assert {k: v for k, v in after.items() if k != "players"} == \
+           {k: v for k, v in before.items() if k != "players"}
 
 
 def test_real_team_names_and_aliases_resolve_for_roster_ingestion(db_path, tmp_path):
@@ -531,6 +719,9 @@ def test_real_team_names_and_aliases_resolve_for_roster_ingestion(db_path, tmp_p
     conn = _real_db_copy(db_path)
     names = [r[0] for r in conn.execute("SELECT team_name FROM teams ORDER BY team_name LIMIT 5")]
     alias = conn.execute("SELECT alias FROM team_aliases LIMIT 1").fetchone()[0]
+    # Single-digit athlete ids on purpose: real CFBD ids are six and seven digits
+    # (245322 to 5454594 in the 2026 snapshot), so these cannot collide with a
+    # real person and silently link to them instead of creating one.
     rows = [{"season_year": 2026, "athlete_id": str(i), "name": f"Player {i}", "team": team,
              "position": "QB"} for i, team in enumerate(names + [alias], start=1)]
     rows.append({"season_year": 2026, "athlete_id": "999", "name": "Fcs Player",
@@ -538,11 +729,18 @@ def test_real_team_names_and_aliases_resolve_for_roster_ingestion(db_path, tmp_p
     path = tmp_path / "2026.json"
     path.write_text(json.dumps(rows), encoding="utf-8")
 
+    # A delta, not a total: the real database may already hold the synced 2026
+    # roster, and asserting a total made this test fail the day it did.
+    identity.apply_schema(conn)
+    before = conn.execute("SELECT COUNT(*) FROM players").fetchone()[0]
+
     stats = load_roster(conn, path)
     assert stats["loaded"] == len(names) + 1 and stats["unknown_team"] == 1
+    # The snapshot replaces its own season wholesale, so this IS the 2026 total.
     assert conn.execute(
         "SELECT COUNT(*) FROM player_team_seasons s JOIN teams t USING (team_id) "
         "WHERE s.season_year = 2026").fetchone()[0] == len(names) + 1
     # Still idempotent with the real alias table in play.
     assert load_roster(conn, path)["loaded"] == stats["loaded"]
-    assert conn.execute("SELECT COUNT(*) FROM players").fetchone()[0] == len(names) + 1
+    after = conn.execute("SELECT COUNT(*) FROM players").fetchone()[0]
+    assert after - before == len(names) + 1

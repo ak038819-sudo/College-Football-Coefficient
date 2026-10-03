@@ -80,12 +80,16 @@ CREATE TABLE IF NOT EXISTS player_team_seasons (
 CREATE INDEX IF NOT EXISTS idx_player_team_seasons_team ON player_team_seasons(team_id, season_year);
 CREATE INDEX IF NOT EXISTS idx_player_team_seasons_season ON player_team_seasons(season_year);
 
+-- No hire_date here on purpose. CFBD's hire date belongs to the JOB, not the
+-- person: one coach carries a different one per school (Al Golden has
+-- 2005-12-08 for Temple and 2010-12-12 for Miami), so a single column on the
+-- person would have to pick one and be wrong about the rest. It lives on
+-- coach_tenures instead, which is where it is actually true.
 CREATE TABLE IF NOT EXISTS coaches (
     coach_id      INTEGER PRIMARY KEY,
     display_name  TEXT NOT NULL,
     first_name    TEXT,
     last_name     TEXT,
-    hire_date     TEXT,
     headshot_path TEXT,
     headshot_url  TEXT,
     latest_season INTEGER,
@@ -93,11 +97,14 @@ CREATE TABLE IF NOT EXISTS coaches (
     updated_at    TEXT NOT NULL
 );
 
--- CFBD's /coaches feed carries no coach identifier of its own, so the external_id
--- stored here is a deterministic composite built by load_coaches.py from the
--- normalized name plus hire date (plus first season when that still collides).
--- It is recorded as an external id rather than hidden in code so a later source
--- with real coach ids can be added beside it without a migration.
+-- CFBD's /coaches feed carries no coach identifier, and its hire date belongs to
+-- the job rather than the person, so the NAME is the only person-level signal it
+-- offers. The external_id stored here is therefore the normalized name, and
+-- confidence records that honestly as 'name only': two coaches who genuinely
+-- share a name cannot be separated by this feed, and load_coaches.py flags the
+-- ambiguous careers in person_unresolved instead of asserting them. Keeping the
+-- key here rather than in code means a later source with real coach ids can be
+-- added beside it without a migration.
 CREATE TABLE IF NOT EXISTS coach_external_ids (
     coach_id    INTEGER NOT NULL,
     source      TEXT NOT NULL,
@@ -121,6 +128,7 @@ CREATE TABLE IF NOT EXISTS coach_tenures (
     team_id         INTEGER NOT NULL,
     season_year     INTEGER NOT NULL,
     role            TEXT NOT NULL DEFAULT 'head coach',
+    hire_date       TEXT,
     games           INTEGER,
     wins            INTEGER,
     losses          INTEGER,

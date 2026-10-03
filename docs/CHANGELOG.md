@@ -9,7 +9,25 @@
   Actions and committed to `data/raw`, loaded idempotently by the pipeline.
 - Rows that cannot be confidently attached to a person or a team are recorded
   for review instead of guessed at; no person is created from a name match.
-- No UI changes yet, and no rating engine reads any of it. See
+- Coach identity keyed on the name, which is the only person-level signal CFBD's
+  coaching feed carries: each record is one season and its hire date belongs to
+  the job, so the hire date lives on the tenure. The name keeps its generational
+  suffix, so a father and son who both coached stay two people. Careers the feed
+  cannot vouch for (a second hire date, a gap in seasons, or two names differing
+  only by a suffix) are flagged for review rather than asserted.
+- A roster class year is only accepted as 1-5. CFBD's stub rows put the season
+  in that field, which displayed as a class year of "2026".
+- Player and coach pages: `#player=<id>` and `#coach=<id>`. A player page gives
+  their listed bio and a row per season and team; a coach page gives their
+  record, a season-by-season table and, where the database flagged one, the
+  identity caveat in plain words.
+- A Roster tab on every team page, and the head coach named in the team header.
+- Players and coaches in the header search, by first name or surname.
+- Box-score names on a game page link to player pages where the name matches
+  exactly one player on that school's roster for that season. The archive
+  carries no player id, so a shared name is left unlinked rather than guessed
+  at, and no statistic is attributed to a person anywhere.
+- No rating engine reads any of it. See
   [player and coach pages](people-pages.md) for coverage limits and known gaps.
 
 ## v0.1 — People and Places of the Game (in progress, local branch)

@@ -81,6 +81,31 @@ def _join_initials(parts: list[str]) -> list[str]:
     return out
 
 
+def identity_name(name: str) -> str:
+    """A comparison key that KEEPS generational suffixes.
+
+    normalize_name folds 'Jr.' away, which is right where a source id carries the
+    identity and the name is only a lookup hint: a box score printing 'Jerome
+    Gaillard Jr.' and a roster printing 'Jerome Gaillard' are one player, and the
+    athlete id proves it.
+
+    It is wrong where the NAME is the identity. CFBD's coaching feed has no coach
+    id, and it contains Mike Sanford Sr. (UNLV, 2005-2009) and Mike Sanford Jr.
+    (Western Kentucky and Colorado, 2017-2022) -- a father and son who both held
+    FBS head-coaching jobs. Folding the suffix put both careers under one
+    coach_id, which is a false statement on a page and one no later correction
+    could detect.
+
+    The cost of keeping the suffix is the opposite error: a source that omits it
+    on one row splits one person in two. That is the safer failure -- both halves
+    stay truthful, and two coaches sharing a display name are visible to a reader
+    and to load_coaches.py's own check, where a silent merge is visible to
+    nobody.
+    """
+    cleaned = re.sub(r"[^a-z0-9 ]+", " ", (name or "").lower())
+    return " ".join(_join_initials([p for p in cleaned.split() if p]))
+
+
 def split_name(first: Optional[str], last: Optional[str], display: str) -> tuple[Optional[str], Optional[str]]:
     """Source-provided name parts, falling back to a split of the display name."""
     if first or last:
@@ -91,17 +116,44 @@ def split_name(first: Optional[str], last: Optional[str], display: str) -> tuple
     return parts[0], " ".join(parts[1:])
 
 
-def class_year_label(value) -> Optional[str]:
-    """CFBD sends class as 1-4 (sometimes 5); anything else is kept verbatim."""
-    if value is None or value == "":
+def date_only(value) -> Optional[str]:
+    """The date part of a timestamp CFBD sends as one.
+
+    Every hire date in the coaching feed arrives as `2010-12-12T00:00:00.000Z`.
+    The time is not information -- it is midnight UTC on all 566 of them -- and
+    carrying it through meant a coach page printed the whole timestamp where a
+    date belongs. Anything that is not a leading ISO date is returned unchanged
+    rather than discarded, so a source that sends a different shape is visible
+    instead of silently emptied.
+    """
+    if value is None:
         return None
-    if isinstance(value, bool):
+    text = str(value).strip()
+    if len(text) >= 10 and text[4] == "-" and text[7] == "-" and text[:4].isdigit():
+        return text[:10]
+    return text or None
+
+
+def class_year_label(value) -> Optional[str]:
+    """CFBD sends class as 1-4, sometimes 5. A NUMBER outside that range is not a
+    class and becomes None.
+
+    CFBD overloads the roster's `year` field: on the stub rows it returns for
+    players with no listed position or jersey, it holds the SEASON (2026), not a
+    class. Passing that through displayed a class year of "2026" on 1,625 of the
+    2026 rows. A season is not a class, and an unknown class must read as
+    unknown rather than as a confident wrong answer.
+
+    A non-numeric value is kept verbatim: 'Freshman' or 'RS-FR' is a real class
+    some sources give, and this is not the place to start renaming them.
+    """
+    if value is None or value == "" or isinstance(value, bool):
         return None
     if isinstance(value, int):
-        return CLASS_YEARS.get(value, str(value))
+        return CLASS_YEARS.get(value)
     text = str(value).strip()
     if text.isdigit():
-        return CLASS_YEARS.get(int(text), text)
+        return CLASS_YEARS.get(int(text))
     return text or None
 
 
