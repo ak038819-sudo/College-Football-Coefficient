@@ -11,6 +11,138 @@ const config = {
 };
 const read = hash => readRoute(hash, config);
 
+test('the local dashboard identifies the in-progress site release', () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  assert.match(shell, /class="release-label">v0\.1 · People and Places of the Game<\/p>/);
+});
+
+test('stadium pages have shareable routes with safe IDs', () => {
+  const route = read('#section=stadiums&stadium=42&season=1980');
+  assert.equal(route.section, 'teams');
+  assert.equal(route.subview, 'stadiums');
+  assert.equal(route.stadium, 42);
+  assert.equal(hashFor(route), '#section=teams&view=stadiums&stadium=42');
+  assert.equal(read('#section=teams&view=stadiums&stadium=42').stadium, 42);
+  assert.equal(read('#section=stadiums&stadium=42%22%3E').stadium, null);
+  assert.equal(read('#section=teams&stadium=42').stadium, null);
+});
+
+test('team pages link only verified current home stadiums, including shared homes', () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = ['stadiumHref', 'teamHomeStadiums', 'stadiumLinks'].map(name => {
+    const hit = shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))?.[0];
+    assert.ok(hit, name);
+    return hit;
+  }).join('\n');
+  const context = {esc: value => String(value).replaceAll('&', '&amp;')};
+  vm.runInNewContext(source + '\nthis.homes = teamHomeStadiums; this.links = stadiumLinks;', context);
+  const data = {stadiums: [
+    {id: 42, name: 'Shared & Field', teams: [{id: 1}, {id: 2}]},
+    {id: 43, name: 'Former home', teams: []},
+  ]};
+  assert.match(context.links(context.homes(data, '1')), /#section=teams&amp;view=stadiums&amp;stadium=42/);
+  assert.match(context.links(context.homes(data, 2)), /Shared &amp; Field/);
+  assert.equal(context.homes(data, 3).length, 0);
+  assert.doesNotMatch(context.links(context.homes(data, 1)), /Former home/);
+  assert.doesNotMatch(shell, /data-section="stadiums"/);
+});
+
+test('a team page fills its home stadium link after the stadium file loads', async () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = ['stadiumHref', 'teamHomeStadiums', 'stadiumLinks', 'hydrateTeamStadium']
+    .map(name => shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))?.[0]).join('\n');
+  const target = {innerHTML: '', textContent: ''};
+  const context = {esc: String, document: {getElementById: () => target},
+    state: {view: 'team'}, renderVersion: 3,
+    loadStadiumExplorer: () => Promise.resolve({stadiums: [
+      {id: 42, name: 'Alpha Field', teams: [{id: 1}]},
+    ]})};
+  vm.runInNewContext(source + '\nthis.hydrate = hydrateTeamStadium;', context);
+  context.hydrate(3, 1);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.match(target.innerHTML, /Current home stadium: <a href="#section=teams&view=stadiums&stadium=42">Alpha Field<\/a>/);
+  context.hydrate(3, 2);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(target.innerHTML, 'Current home stadium not verified');
+  assert.match(shell, /if \(team\) hydrateTeamStadium\(version, team\.id\)/);
+});
+
+test('stadium explorer and venue-aware previews keep team HFA separate from physical venue', () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const funcs = ['hfaEvidence', 'stadiumHref', 'stadiumGameRow', 'stadiumMap',
+    'stadiumDetails', 'stadiumExplorerHtml', 'gameVenuePanel'].map(name => {
+    const source = shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))?.[0];
+    assert.ok(source, name + ' exists');
+    return source;
+  }).join('\n');
+  const context = {
+    esc: value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;'),
+    CfbNavigation: { normalizeSearch }, TEAM_BY_ID: new Map([
+      ['1', { name: 'Alpha' }], ['2', { name: 'Bravo' }]]),
+    teamLink: name => name, gameHref: id => '#game=' + id,
+    DATA: { current_hfa: { teams: [{ team: 'Alpha', hfa: 1.1, games: 10,
+      effective_games: 8, weighted_actual_wins: 6, weighted_expected_wins: 5,
+      prior_hfa: 1.0 }] } },
+    STATIC_MANIFEST: { model_params: { elo: { home_field: 55 } } }
+  };
+  vm.runInNewContext(funcs + '\nthis.explorer = stadiumExplorerHtml; this.preview = gameVenuePanel;', context);
+  const stadium = { id: 42, name: 'Alpha & Sons Field', city: 'Somewhere', state: 'UT',
+    lat: 40, lon: -111, teams: [{ name: 'Alpha' }], upcoming: [], recent: [], completed_count: 0 };
+  assert.match(context.explorer({ stadiums: [stadium] }, null), /Alpha &amp; Sons Field/);
+  assert.match(context.explorer({ stadiums: [stadium] }, 42), /No upcoming FBS games/);
+  assert.match(context.explorer({ stadiums: [stadium] }, 42), /not this stadium alone/);
+  assert.match(context.preview({ stadium_id: 42, stadium: stadium.name, neutral: false,
+    completed: false, phase: 0 }, 'Alpha'), /55 Elo points/);
+  assert.match(context.preview({ stadium_id: 42, stadium: stadium.name, neutral: true,
+    completed: false, phase: 0 }, 'Alpha'), /no home-field bonus/);
+  assert.doesNotMatch(context.preview({ stadium_id: null, stadium: null, neutral: false,
+    completed: false, phase: 0 }, 'Alpha'), /href="#section=teams&amp;view=stadiums/);
+});
+
+test('archived game cards display only resolved stadiums and retain neutral badges', () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = shell.match(/function listingGame\(g, season\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(source);
+  const context = {
+    UPCOMING_BY_ID: new Map(), fmtGameDate: () => 'Saturday', fmtKickoff: () => 'Saturday',
+    probPct: () => ({ home: 50, away: 50 }), TEAM_BY_ID: new Map([
+      ['1', { name: 'Alpha' }], ['2', { name: 'Bravo' }]]),
+    teamLink: name => name, esc: value => String(value).replaceAll('<', '&lt;'),
+    gameHref: () => '#game=1'
+  };
+  vm.runInNewContext(source + '\nthis.card = listingGame;', context);
+  const game = { game_id: 1, completed: true, home_id: 1, away_id: 2,
+    home_score: 3, away_score: 7, phase: 0, neutral: true, stadium: 'Actual <Field>' };
+  assert.match(context.card(game, 2026), /Neutral site/);
+  assert.match(context.card(game, 2026), /Venue: Actual &lt;Field>/);
+  assert.doesNotMatch(context.card({ ...game, stadium: null }, 2026), /Venue:/);
+  assert.match(shell, /g\.stadium \? ' · Venue: ' \+ esc\(g\.stadium\)/);
+});
+
+test('home-field table is a current Standings view, not a historical season', () => {
+  const route = read('#section=rankings&view=home-field&season=1980');
+  assert.equal(route.subview, 'home-field');
+  assert.equal(route.year, 2026);
+  assert.equal(hashFor(route), '#section=rankings&view=home-field');
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = shell.match(/function renderHomeFieldStandings\(\) \{[\s\S]*?\n\}/)?.[0];
+  const evidence = shell.match(/function hfaEvidence\(r\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(source);
+  const context = {
+    DATA: { current_hfa: { as_of: '2026-09-28', teams: [
+      { team: 'BYU', hfa: 1.12, elo_points: 60.1, games: 240, effective_games: 54.4, points_at_bound: false },
+      { team: 'Sacramento State', hfa: 1.04, elo_points: 20, games: 0, effective_games: 0, points_at_bound: false }
+    ] } },
+    esc: String, teamLink: name => name, CfbNavigation: { normalizeSearch }
+  };
+  vm.runInNewContext(evidence + '\n' + source + '\nthis.render = renderHomeFieldStandings;', context);
+  const html = context.render();
+  assert.match(html, /do not drive live Elo/);
+  assert.match(html, /BYU.*1\.120×.*\+60\.1.*240.*54\.4/);
+  assert.match(html, /Sacramento State.*1\.040×.*\+20\.0.*0.*0\.0/);
+  assert.match(html, /Search all 2 teams/);
+});
+
 test('live CFBD IDs cannot relabel another school', () => {
   const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
   const source = shell.match(/function liveTeamId\(t\) \{[\s\S]*?\n\}/)?.[0];
@@ -185,7 +317,64 @@ test('no-season exports stay usable without inventing a year', () => {
   const empty = { yearsAll: [], playoffYears: [], gameSeasons: [] };
   const route = readRoute('#section=games', empty);
   assert.equal(route.year, null);
-  assert.equal(hashFor(route), '#section=games&status=completed');
+  assert.equal(hashFor(route), '#section=games&mode=find');
+});
+
+test('Find a Game preserves two teams and an optional season, without changing legacy Games links', () => {
+  const finder = read('#section=games&mode=find&school=byu&opponent=utah&findseason=2025');
+  assert.equal(finder.finder, true);
+  assert.equal(finder.team, 'byu');
+  assert.equal(finder.opponent, 'utah');
+  assert.equal(finder.findSeason, 2025);
+  assert.deepEqual(read(hashFor(finder)), finder);
+  assert.equal(read('#section=games').finder, true);
+  assert.equal(read('#section=games&mode=find&findseason=3000').findSeason, null);
+  assert.equal(read('#section=games&season=2025&status=completed').finder, false);
+});
+
+test('Find a Game shows head-to-head results across seasons without an endless list', async () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = shell.match(/let finderCount = 10;[\s\S]*?\nfunction hydrateGames\(version\)/)?.[0];
+  assert.ok(source);
+  const filters = { innerHTML: '' }, results = { innerHTML: '' };
+  const context = {
+    state: { finder: true, team: 'byu', opponent: 'utah', findSeason: null },
+    renderVersion: 1, gamesFocusAfterLoad: null,
+    document: { getElementById: id => ({ 'games-filters': filters, 'games-results': results })[id] },
+    loadSearchIndex: () => Promise.resolve({
+      teams: [{ id: 1, name: 'BYU', slug: 'byu', aliases: [] },
+        { id: 2, name: 'Utah', slug: 'utah', aliases: [] },
+        { id: 3, name: 'Other', slug: 'other', aliases: [] }],
+      seasons: [2014, 2015, 2016],
+      games: [
+        ...Array.from({ length: 12 }, (_, i) => [100 + i, i < 2 ? 2014 : 2015, i % 2 ? 2 : 1,
+          i % 2 ? 1 : 2, '2015-09-01', 24, 17, 1]),
+        [999, 2016, 1, 3, '2016-09-01', 30, 7, 1]
+      ]
+    }),
+    esc: v => String(v), gameHref: (id, season) => '#game=' + id + '&season=' + season
+  };
+  vm.runInNewContext(source.replace(/\nfunction hydrateGames\(version\)$/, ''), context);
+  context.hydrateGameFinder(1);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.match(results.innerHTML, /12 games found/);
+  assert.equal((results.innerHTML.match(/<li>/g) || []).length, 10);
+  assert.match(results.innerHTML, /Show more \(2 remaining\)/);
+  assert.doesNotMatch(results.innerHTML, /#game=999/);
+});
+
+test('Games routes use a status dropdown rather than the old status tabs', () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = shell.match(/function renderGames\(\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(source);
+  const context = { state: { finder: false, status: 'completed', year: 2025 }, esc: String };
+  vm.runInNewContext(source + '\nthis.renderGames = renderGames;', context);
+  const legacy = context.renderGames();
+  assert.match(legacy, /<select id="games-status"/);
+  assert.match(legacy, /value="completed" selected/);
+  assert.doesNotMatch(legacy, /<nav class="subnav"/);
+  context.state.finder = true;
+  assert.doesNotMatch(context.renderGames(), /games-status|<nav class="subnav"/);
 });
 
 test('a games URL can point at one game; anything but digits is dropped', () => {

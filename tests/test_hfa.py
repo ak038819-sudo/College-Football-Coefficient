@@ -9,7 +9,7 @@ import sqlite3
 import pytest
 
 from build_elo import expected_result, run_elo
-from build_hfa import build, load_config, resolve_team
+from build_hfa import build, load_config, resolve_team, write
 from hfa import (HomeGame, WeightedSums, apply_hfa_shrinkage, calculate_effective_sample_size,
                  calculate_hfa_prior, calculate_raw_hfa, calculate_team_hfa, convert_hfa_to_elo_points,
                  game_age_years, load_home_games, neutral_win_probability, recency_weight, weighted_sums)
@@ -171,6 +171,19 @@ def test_aliases_resolve_to_the_canonical_team(tmp_path):
 def test_same_input_gives_identical_output(tmp_path):
     conn = _league(tmp_path)
     assert build(conn, CFG) == build(conn, CFG)
+
+
+def test_current_only_refresh_preserves_historical_analysis(tmp_path):
+    conn = _league(tmp_path)
+    history, current = build(conn, CFG)
+    write(conn, CFG, history, current, tmp_path)
+    before = conn.execute("SELECT COUNT(*) FROM team_hfa_by_season").fetchone()[0]
+    assert before > 0
+    fast_history, fast_current = build(conn, CFG, current_only=True)
+    assert fast_history == [] and fast_current == current
+    write(conn, CFG, fast_history, fast_current, tmp_path, current_only=True)
+    assert conn.execute("SELECT COUNT(*) FROM team_hfa_by_season").fetchone()[0] == before
+    assert conn.execute("SELECT COUNT(*) FROM team_hfa_current").fetchone()[0] == len(current)
 
 
 # ---------------- real database ----------------

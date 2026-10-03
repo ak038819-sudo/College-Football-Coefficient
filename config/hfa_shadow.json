@@ -1,0 +1,10 @@
+{
+  "version": "centered_hfa_v1",
+  "frozen_at": "2026-10-01",
+  "half_life_years": 5.0,
+  "shrinkage_k": 60.0,
+  "alpha": 0.25,
+  "max_deviation": 40.0,
+  "baseline_elo_points": 50.0,
+  "note": "Shadow forecast only. Keep production Elo flat while prospective games accumulate."
+}

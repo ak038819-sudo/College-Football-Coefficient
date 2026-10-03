@@ -1,0 +1,407 @@
+{
+  "baseline": {
+    "2018": {
+      "games": 772,
+      "brier": 0.175386,
+      "log_loss": 0.522614
+    },
+    "train": {
+      "games": 3626,
+      "brier": 0.18571,
+      "log_loss": 0.548384
+    },
+    "2019": {
+      "games": 774,
+      "brier": 0.175297,
+      "log_loss": 0.521656
+    },
+    "2020": {
+      "games": 534,
+      "brier": 0.189936,
+      "log_loss": 0.56171
+    },
+    "2021": {
+      "games": 770,
+      "brier": 0.18721,
+      "log_loss": 0.551332
+    },
+    "2022": {
+      "games": 776,
+      "brier": 0.20197,
+      "log_loss": 0.588586
+    },
+    "2023": {
+      "games": 792,
+      "brier": 0.187559,
+      "log_loss": 0.553857
+    },
+    "validation": {
+      "games": 2398,
+      "brier": 0.190223,
+      "log_loss": 0.558687
+    },
+    "2024": {
+      "games": 798,
+      "brier": 0.199018,
+      "log_loss": 0.578113
+    },
+    "2025": {
+      "games": 808,
+      "brier": 0.184148,
+      "log_loss": 0.544235
+    },
+    "2026": {
+      "games": 215,
+      "brier": 0.167914,
+      "log_loss": 0.5145
+    },
+    "current": {
+      "games": 215,
+      "brier": 0.167914,
+      "log_loss": 0.5145
+    }
+  },
+  "candidates": [
+    {
+      "half_life": 5.0,
+      "shrinkage_k": 60.0,
+      "alpha": 0.25,
+      "cap": 40.0,
+      "scores": {
+        "2018": {
+          "games": 772,
+          "brier": 0.175215,
+          "log_loss": 0.522162
+        },
+        "train": {
+          "games": 3626,
+          "brier": 0.185683,
+          "log_loss": 0.548256
+        },
+        "2019": {
+          "games": 774,
+          "brier": 0.175208,
+          "log_loss": 0.521278
+        },
+        "2020": {
+          "games": 534,
+          "brier": 0.190174,
+          "log_loss": 0.562473
+        },
+        "2021": {
+          "games": 770,
+          "brier": 0.187274,
+          "log_loss": 0.551187
+        },
+        "2022": {
+          "games": 776,
+          "brier": 0.201876,
+          "log_loss": 0.588433
+        },
+        "2023": {
+          "games": 792,
+          "brier": 0.18717,
+          "log_loss": 0.552772
+        },
+        "validation": {
+          "games": 2398,
+          "brier": 0.19,
+          "log_loss": 0.558027
+        },
+        "2024": {
+          "games": 798,
+          "brier": 0.198856,
+          "log_loss": 0.577586
+        },
+        "2025": {
+          "games": 808,
+          "brier": 0.184027,
+          "log_loss": 0.54386
+        },
+        "2026": {
+          "games": 215,
+          "brier": 0.167183,
+          "log_loss": 0.512364
+        },
+        "current": {
+          "games": 215,
+          "brier": 0.167183,
+          "log_loss": 0.512364
+        }
+      }
+    },
+    {
+      "half_life": 5.0,
+      "shrinkage_k": 60.0,
+      "alpha": 0.5,
+      "cap": 40.0,
+      "scores": {
+        "2018": {
+          "games": 772,
+          "brier": 0.175105,
+          "log_loss": 0.521866
+        },
+        "train": {
+          "games": 3626,
+          "brier": 0.185744,
+          "log_loss": 0.54836
+        },
+        "2019": {
+          "games": 774,
+          "brier": 0.17523,
+          "log_loss": 0.521181
+        },
+        "2020": {
+          "games": 534,
+          "brier": 0.190483,
+          "log_loss": 0.563425
+        },
+        "2021": {
+          "games": 770,
+          "brier": 0.187428,
+          "log_loss": 0.551273
+        },
+        "2022": {
+          "games": 776,
+          "brier": 0.201885,
+          "log_loss": 0.58857
+        },
+        "2023": {
+          "games": 792,
+          "brier": 0.186847,
+          "log_loss": 0.551845
+        },
+        "validation": {
+          "games": 2398,
+          "brier": 0.18987,
+          "log_loss": 0.557608
+        },
+        "2024": {
+          "games": 798,
+          "brier": 0.198812,
+          "log_loss": 0.577404
+        },
+        "2025": {
+          "games": 808,
+          "brier": 0.184001,
+          "log_loss": 0.543706
+        },
+        "2026": {
+          "games": 215,
+          "brier": 0.166638,
+          "log_loss": 0.510731
+        },
+        "current": {
+          "games": 215,
+          "brier": 0.166638,
+          "log_loss": 0.510731
+        }
+      }
+    },
+    {
+      "half_life": 15.0,
+      "shrinkage_k": 60.0,
+      "alpha": 0.25,
+      "cap": 40.0,
+      "scores": {
+        "2018": {
+          "games": 772,
+          "brier": 0.175154,
+          "log_loss": 0.522079
+        },
+        "train": {
+          "games": 3626,
+          "brier": 0.185689,
+          "log_loss": 0.5483
+        },
+        "2019": {
+          "games": 774,
+          "brier": 0.17525,
+          "log_loss": 0.521414
+        },
+        "2020": {
+          "games": 534,
+          "brier": 0.190217,
+          "log_loss": 0.562535
+        },
+        "2021": {
+          "games": 770,
+          "brier": 0.187319,
+          "log_loss": 0.551355
+        },
+        "2022": {
+          "games": 776,
+          "brier": 0.201847,
+          "log_loss": 0.588374
+        },
+        "2023": {
+          "games": 792,
+          "brier": 0.187104,
+          "log_loss": 0.552626
+        },
+        "validation": {
+          "games": 2398,
+          "brier": 0.189984,
+          "log_loss": 0.558003
+        },
+        "2024": {
+          "games": 798,
+          "brier": 0.198855,
+          "log_loss": 0.577605
+        },
+        "2025": {
+          "games": 808,
+          "brier": 0.184045,
+          "log_loss": 0.543914
+        },
+        "2026": {
+          "games": 215,
+          "brier": 0.167201,
+          "log_loss": 0.512378
+        },
+        "current": {
+          "games": 215,
+          "brier": 0.167201,
+          "log_loss": 0.512378
+        }
+      }
+    },
+    {
+      "half_life": 15.0,
+      "shrinkage_k": 60.0,
+      "alpha": 0.5,
+      "cap": 40.0,
+      "scores": {
+        "2018": {
+          "games": 772,
+          "brier": 0.174988,
+          "log_loss": 0.521688
+        },
+        "train": {
+          "games": 3626,
+          "brier": 0.185762,
+          "log_loss": 0.548446
+        },
+        "2019": {
+          "games": 774,
+          "brier": 0.17534,
+          "log_loss": 0.521501
+        },
+        "2020": {
+          "games": 534,
+          "brier": 0.190562,
+          "log_loss": 0.563547
+        },
+        "2021": {
+          "games": 770,
+          "brier": 0.187527,
+          "log_loss": 0.551595
+        },
+        "2022": {
+          "games": 776,
+          "brier": 0.201821,
+          "log_loss": 0.588425
+        },
+        "2023": {
+          "games": 792,
+          "brier": 0.186756,
+          "log_loss": 0.551649
+        },
+        "validation": {
+          "games": 2398,
+          "brier": 0.189859,
+          "log_loss": 0.557596
+        },
+        "2024": {
+          "games": 798,
+          "brier": 0.19878,
+          "log_loss": 0.577332
+        },
+        "2025": {
+          "games": 808,
+          "brier": 0.184091,
+          "log_loss": 0.543934
+        },
+        "2026": {
+          "games": 215,
+          "brier": 0.166652,
+          "log_loss": 0.510716
+        },
+        "current": {
+          "games": 215,
+          "brier": 0.166652,
+          "log_loss": 0.510716
+        }
+      }
+    }
+  ],
+  "selected_by_train_only": {
+    "half_life": 5.0,
+    "shrinkage_k": 60.0,
+    "alpha": 0.25,
+    "cap": 40.0
+  },
+  "selected_scores": {
+    "2018": {
+      "games": 772,
+      "brier": 0.175215,
+      "log_loss": 0.522162
+    },
+    "train": {
+      "games": 3626,
+      "brier": 0.185683,
+      "log_loss": 0.548256
+    },
+    "2019": {
+      "games": 774,
+      "brier": 0.175208,
+      "log_loss": 0.521278
+    },
+    "2020": {
+      "games": 534,
+      "brier": 0.190174,
+      "log_loss": 0.562473
+    },
+    "2021": {
+      "games": 770,
+      "brier": 0.187274,
+      "log_loss": 0.551187
+    },
+    "2022": {
+      "games": 776,
+      "brier": 0.201876,
+      "log_loss": 0.588433
+    },
+    "2023": {
+      "games": 792,
+      "brier": 0.18717,
+      "log_loss": 0.552772
+    },
+    "validation": {
+      "games": 2398,
+      "brier": 0.19,
+      "log_loss": 0.558027
+    },
+    "2024": {
+      "games": 798,
+      "brier": 0.198856,
+      "log_loss": 0.577586
+    },
+    "2025": {
+      "games": 808,
+      "brier": 0.184027,
+      "log_loss": 0.54386
+    },
+    "2026": {
+      "games": 215,
+      "brier": 0.167183,
+      "log_loss": 0.512364
+    },
+    "current": {
+      "games": 215,
+      "brier": 0.167183,
+      "log_loss": 0.512364
+    }
+  },
+  "caveat": "2023-26 were inspected in a prior exploratory probe; a genuinely untouched final test requires future games."
+}

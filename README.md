@@ -2,6 +2,10 @@
 
 A structural college football simulation engine that replaces the current postseason model with a coefficient-driven, standings-qualified 24-team playoff.
 
+## Site releases
+
+The published site is **v0.0 · Alpha**. The current local update is **v0.1 · People and Places of the Game**; it includes the game finder, stadium pages, home-field standings, a pregame dynamic-HFA replay, and archived player box scores where available. Live Elo still uses flat home field while the in-season replay is validated. The v0.1 update has not been published. See [release history](docs/CHANGELOG.md).
+
 ## Core Rules
 
 1. Every FBS team must belong to a conference (no independents in the new format)
@@ -192,6 +196,10 @@ The **Live Scores** tab reads `ui/data/live_scores.json`, a display-only snapsho
 The live view combines the scoreboard with team logos, pregame Elo/probabilities where a matching upcoming game exists, and an Elo sidebar. Cards open a live game detail view using the CFBD game ID; the team logos/names still link to team pages. The game detail view also refreshes while open. Games outside the historical export (such as FCS opponents) still have a live detail view.
 
 The Home tab now shows the live scoreboard and the Elo, conference and poll rankings beside it; `#section=live` remains available for older links. Team Elo and win chances appear directly on game cards. If a stored pregame prediction is unavailable, both are estimated from the latest published Elo and configured home-field value. Completed games show the official Elo change when the archive has processed them; otherwise a triangle marked `≈` is a result-only estimate, not the full postgame model.
+
+The Standings → Home-Field Advantage view lists current team-specific HFA estimates, including their neutral-field expected-win ratio, illustrative Elo-point equivalent, and home-game sample. These are **analysis only**: production Elo and win probabilities still use the single flat `elo.home_field` setting. The automated build refreshes only the current estimates after Elo; `python src/build_hfa.py` remains available for the full historical research tables. An export made without the HFA table displays an explicit unavailable state rather than invented values.
+
+To begin validating team-specific HFA in Elo without changing the live model, run `python src/build_elo.py`, then `python src/build_hfa.py` (full historical estimates, not `--current-only`), then `python src/compare_dynamic_hfa.py --from-year 2018` on a populated local database. The comparison replays Elo with each team's **entering-season** estimate (built only from earlier games), compares its Brier score and log loss against the flat replay by season, and refuses a stale or non-flat reference history. Neutral games get no bonus; a bounded HFA-to-Elo conversion falls back to the flat value. The current HFA half-life and shrinkage are not tuned for deployment, and the existing flat model has historical calibration choices, so a favorable diagnostic alone is not a release gate. The script writes nothing and the automated build continues to run flat Elo.
 
 The server-side refresh also requests CFBD's weekly `/games/players` box scores for games underway or final in the current scoreboard. Player lines are published in the same snapshot and appear on game details when available. The API key stays in the Actions secret; a player-data failure leaves the score update working. Player box-score availability and timing vary by game.
 

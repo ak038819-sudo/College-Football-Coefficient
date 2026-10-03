@@ -11,7 +11,7 @@ from collections import Counter
 import pytest
 
 import export_logo_files as lf
-from export_static_data import (CONFERENCE_ALIASES, FIELDS, build_conference_search_rows,
+from export_static_data import (CONFERENCE_ALIASES, FIELDS, SEARCH_GAME_FIELDS, build_conference_search_rows,
                                 build_search_index, build_season_payloads)
 from predict_upcoming import build_upcoming, elo_config
 
@@ -103,6 +103,32 @@ def test_search_index_covers_teams_aliases_and_games(payloads):
     for alias, canonical in conn.execute("SELECT alias, team_name FROM team_aliases"):
         assert alias in names[canonical][3]
     assert len(idx["games"]) == sum(len(s["games"]) for s in p.values())
+    f = {name: i for i, name in enumerate(SEARCH_GAME_FIELDS)}
+    assert all(len(row) == len(f) for row in idx["games"])
+    for row in idx["games"]:
+        assert row[f["date"]] is not None
+        assert isinstance(row[f["completed"]], int)
+        if row[f["completed"]]:
+            assert row[f["home_score"]] is not None and row[f["away_score"]] is not None
+        else:
+            assert row[f["home_score"]] is None and row[f["away_score"]] is None
+
+
+def test_game_finder_index_has_dates_scores_and_unplayed_status():
+    conn = sqlite3.connect(":memory:")
+    conn.executescript("""
+        CREATE TABLE teams (team_id INTEGER, team_name TEXT);
+        CREATE TABLE team_aliases (alias TEXT, team_name TEXT);
+        CREATE TABLE team_membership_by_season (team_id INTEGER, season_year INTEGER, conference_real TEXT);
+        INSERT INTO teams VALUES (1, 'BYU'), (2, 'Utah');
+    """)
+    row = lambda gid, date, done, hs, away: [gid, 1, date, None, done, 0, 0, 0,
+                                             1, 2, hs, away] + [None] * (len(FIELDS) - 12)
+    idx = build_search_index(conn, {2025: {"games": [row(5, '2025-09-01', 1, 27, 20),
+                                                      row(6, '2025-10-01', 0, None, None)]}})
+    assert idx["games"] == [[5, 2025, 1, 2, '2025-09-01', 27, 20, 1],
+                            [6, 2025, 1, 2, '2025-10-01', None, None, 0]]
+    conn.close()
 
 
 # ---------------- conference search rows (Milestone E pages) ----------------

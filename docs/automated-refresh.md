@@ -25,6 +25,11 @@ in logs, and nothing in the project prints it.
   picks up midweek and Thursday results before the Saturday slate.
 - **On demand:** **Actions** tab -> **Test, Rebuild Dashboard, and Deploy** ->
   **Run workflow** -> **Run workflow**.
+- **Regular-season game windows:** an hourly check on Thursday through Sunday
+  (Central time, with UTC spillover). It rebuilds only if a final score is new
+  or changed, or if a recent final is still missing available game efficiency
+  or player lines. The latter are retried for two days; unavailable coverage
+  remains explicitly absent.
 - **On a code push with newer live finals:** the workflow checks the live feed
   against the committed raw game scores. If an FBS final is missing or changed,
   it fetches the season and retests it before publishing. A routine UI push
@@ -48,6 +53,14 @@ See `src/current_season.py`.
 1. Tests the committed code and data (the normal `test` job).
 2. Fetches the current season from CFBD.
 3. Rebuilds the database, Elo, CoE and the dashboard.
+   Finished games move from the live feed into the season archive at this step.
+   Current-season player box scores are saved in `data/raw/player_boxscores/`
+   and exported into lazy-loaded historical game pages. To backfill the
+   documented box-score range with an authorized CFBD key, run
+   `python3 src/fetch_cfbd_players.py 2004 2025` followed by a dashboard
+   build. Seasons are saved separately, so the range can resume after a failure.
+   Player coverage depends on the source feed. `src/audit_game_coverage.py`
+   records coverage by season for efficiency, verified venues, and player lines.
 4. Runs the full test suite against the freshly fetched data.
 5. Commits the new data and rebuilt site in **one** commit, named
    `Scheduled data refresh: season YYYY`, only if something changed.

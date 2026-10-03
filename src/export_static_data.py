@@ -56,8 +56,8 @@ FIELDS = ["game_id", "week", "date", "kickoff_utc", "completed", "phase", "neutr
           "home_id", "away_id", "home_score", "away_score",
           "home_pre_elo", "away_pre_elo", "p_home", "home_post_elo", "away_post_elo", "home_elo_change",
           "home_game_coe", "away_game_coe", "home_provisional", "away_provisional",
-          "time_tbd"]      # appended last so existing positions never move
-SEARCH_GAME_FIELDS = ["game_id", "season", "home_id", "away_id"]
+          "time_tbd", "stadium_id", "stadium"]  # append-only; older field positions never move
+SEARCH_GAME_FIELDS = ["game_id", "season", "home_id", "away_id", "date", "home_score", "away_score", "completed"]
 
 # Game pages (Milestone C). Loaded only when a game page opens.
 DETAIL_FIELDS = ["game_id",
@@ -94,6 +94,17 @@ def _r(v, nd):
     return None if v is None else round(v, nd)
 
 
+def stadium_map(conn: sqlite3.Connection, table: str) -> dict:
+    """Game ID -> resolved physical venue. Never infer from a home team here."""
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='stadiums'").fetchone():
+        return {}
+    if "stadium_id" not in {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}:
+        return {}
+    return {gid: (sid, name) for gid, sid, name in conn.execute(
+        f"SELECT g.game_id, g.stadium_id, s.stadium_name FROM {table} g "
+        "LEFT JOIN stadiums s ON s.stadium_id = g.stadium_id")}
+
+
 def build_season_payloads(conn: sqlite3.Connection, upcoming: dict) -> dict:
     """{season: payload}. Pure with respect to the database contents + the upcoming export."""
     elo = {(g, t): (pre, exp, chg, post) for g, t, pre, exp, chg, post in conn.execute(
@@ -102,6 +113,9 @@ def build_season_payloads(conn: sqlite3.Connection, upcoming: dict) -> dict:
     coe = {(g, t): c for g, t, c in conn.execute("SELECT game_id, team_id, game_coe FROM hybrid_game_ratings")} \
         if has_hybrid else {}
     kickoff = kickoff_map(conn)
+    final_stadiums = stadium_map(conn, "games")
+    scheduled_stadiums = stadium_map(conn, "scheduled_games") if conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='scheduled_games'").fetchone() else {}
     rows = defaultdict(list)
 
     for (gid, season, week, date, home, away, hs, as_, neutral, ot, phase) in conn.execute(
@@ -109,18 +123,20 @@ def build_season_payloads(conn: sqlite3.Connection, upcoming: dict) -> dict:
                       neutral_site, went_ot, game_phase FROM games WHERE home_score IS NOT NULL"""):
         he, ae = elo.get((gid, home)), elo.get((gid, away))
         ko, ko_tbd = kickoff.get(gid, (None, None))                 # display only; null when not fetched
+        sid, stadium = final_stadiums.get(gid, (None, None))
         rows[season].append([
             gid, week, str(date)[:10], ko, 1, PHASE_CODE.get(phase, 0), int(bool(neutral)), int(bool(ot)),
             home, away, hs, as_,
             _r(he[0], 1) if he else None, _r(ae[0], 1) if ae else None, _r(he[1], 4) if he else None,
             _r(he[3], 1) if he else None, _r(ae[3], 1) if ae else None, _r(he[2], 2) if he else None,
-            _r(coe.get((gid, home)), 3), _r(coe.get((gid, away)), 3), 0, 0, ko_tbd])
+            _r(coe.get((gid, home)), 3), _r(coe.get((gid, away)), 3), 0, 0, ko_tbd, sid, stadium])
 
     for g in upcoming.get("games", []):
         gid, season, week, kickoff, _tbd, home, away, neutral, phase, h_elo, a_elo, p, h_prov, a_prov = g[:14]
+        sid, stadium = scheduled_stadiums.get(gid, (None, None))
         rows[season].append([
             gid, week, (kickoff or "1900-01-01")[:10], kickoff, 0, phase, neutral, 0, home, away, None, None,
-            h_elo, a_elo, p, None, None, None, None, None, h_prov, a_prov, int(bool(_tbd))])
+            h_elo, a_elo, p, None, None, None, None, None, h_prov, a_prov, int(bool(_tbd)), sid, stadium])
 
     conf = defaultdict(dict)
     for tid, season, c in conn.execute("SELECT team_id, season_year, conference_real FROM team_membership_by_season"):
@@ -270,9 +286,45 @@ def build_search_index(conn: sqlite3.Connection, payloads: dict) -> dict:
             aliases[tid].append(alias)
     from export_dashboard_data import slugify
     teams = [[tid, name, slugify(name), aliases.get(tid, [])] for tid, name in sorted(names.items(), key=lambda x: x[1])]
-    games = [[r[0], season, r[8], r[9]] for season in sorted(payloads) for r in payloads[season]["games"]]
+    games = [[r[0], season, r[8], r[9], r[2], r[10], r[11], r[4]]
+             for season in sorted(payloads) for r in payloads[season]["games"]]
     return {"teams": teams, "seasons": sorted(payloads), "game_fields": SEARCH_GAME_FIELDS, "games": games,
             "conferences": build_conference_search_rows(conn)}
+
+
+def build_stadium_payload(conn: sqlite3.Connection, payloads: dict) -> dict:
+    """Verified venue metadata and a small, linked selection of games at each physical site."""
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='stadiums'").fetchone():
+        return {"stadiums": []}
+    hosts = defaultdict(list)
+    current_season = max(payloads) if payloads else None
+    for sid, tid, name in conn.execute("""SELECT ts.stadium_id,t.team_id,t.team_name
+        FROM team_stadiums ts JOIN teams t ON t.team_id=ts.team_id
+        WHERE ts.start_season<=? AND (ts.end_season IS NULL OR ts.end_season>=?)
+          AND ts.is_primary=1 ORDER BY t.team_name""", (current_season, current_season)):
+        hosts[sid].append({"id": tid, "name": name})
+    by_stadium = defaultdict(list)
+    ix = {f: i for i, f in enumerate(FIELDS)}
+    for season, p in payloads.items():
+        for r in p["games"]:
+            sid = r[ix["stadium_id"]]
+            if sid is not None:
+                by_stadium[sid].append({"id": r[ix["game_id"]], "season": season,
+                    "date": r[ix["date"]], "home_id": r[ix["home_id"]], "away_id": r[ix["away_id"]],
+                    "home_score": r[ix["home_score"]], "away_score": r[ix["away_score"]],
+                    "completed": bool(r[ix["completed"]]), "neutral": bool(r[ix["neutral"]])})
+    stadiums = []
+    for sid, name, city, state, lat, lon, capacity in conn.execute(
+            "SELECT stadium_id,stadium_name,city,state,latitude,longitude,capacity FROM stadiums ORDER BY stadium_name,stadium_id"):
+        games = by_stadium[sid]
+        if not hosts[sid] and not games:
+            continue
+        completed = sorted((g for g in games if g["completed"]), key=lambda g: (g["date"], g["id"]), reverse=True)
+        upcoming = sorted((g for g in games if not g["completed"]), key=lambda g: (g["date"], g["id"]))
+        stadiums.append({"id": sid, "name": name, "city": city, "state": state,
+                         "lat": lat, "lon": lon, "capacity": capacity, "teams": hosts[sid],
+                         "completed_count": len(completed), "upcoming": upcoming[:5], "recent": completed[:5]})
+    return {"stadiums": stadiums}
 
 
 def _write_js(path: Path, global_expr: str, payload) -> str:
@@ -294,6 +346,7 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
         seasons.append({"season": season, "completed": sum(r[4] for r in p["games"]),
                         "scheduled": sum(1 - r[4] for r in p["games"]), "src": f"data/games/{season}.js?v={v}"})
     sv = _write_js(out_dir / "search_index.js", "window.__CFB_SEARCH__", build_search_index(conn, payloads))
+    stadium_version = _write_js(out_dir / "stadiums.js", "window.__CFB_STADIUMS__", build_stadium_payload(conn, payloads))
     details, series = {}, []
     for sub in ("details", "series"):
         if (out_dir / sub).exists():
@@ -302,6 +355,23 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
     for season, p in sorted(build_game_details(conn).items()):
         v = _write_js(out_dir / "details" / f"{season}.js", f"(window.__CFB_DETAILS__=window.__CFB_DETAILS__||{{}})[{season}]", p)
         details[str(season)] = f"data/details/{season}.js?v={v}"
+    # Player lines have independent coverage. Only export known game IDs and
+    # never imply that the absence of a box score means a player recorded zero.
+    players_dir = out_dir / "players"
+    players_dir.mkdir(parents=True, exist_ok=True)
+    players = {}
+    raw_players = REPO / "data" / "raw" / "player_boxscores"
+    for season, payload in sorted(payloads.items()):
+        source = raw_players / f"{season}.json"
+        if not source.exists():
+            continue
+        known = {str(row[0]) for row in payload["games"] if row[4]}
+        archive = json.loads(source.read_text(encoding="utf-8"))
+        selected = {gid: value for gid, value in archive.items() if gid in known and value}
+        if selected:
+            v = _write_js(players_dir / f"{season}.js",
+                          f"(window.__CFB_PLAYERS__=window.__CFB_PLAYERS__||{{}})[{season}]", selected)
+            players[str(season)] = f"data/players/{season}.js?v={v}"
     # P1-05/06: one file per season, loaded only when the week-by-week view opens.
     timeline_dir = out_dir / "elo_timeline"
     if timeline_dir.exists():
@@ -318,8 +388,9 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
         p = shard_payloads.get(k, {"shard": k, "fields": SERIES_FIELDS, "pairs": {}})
         v = _write_js(out_dir / "series" / f"{k}.js", f"(window.__CFB_SERIES__=window.__CFB_SERIES__||{{}})[{k}]", p)
         series.append(f"data/series/{k}.js?v={v}")
-    manifest = {"seasons": seasons, "search_index": f"data/search_index.js?v={sv}", "game_fields": FIELDS,
-                "details": details, "series": series, "series_shards": SERIES_SHARDS,
+    manifest = {"seasons": seasons, "search_index": f"data/search_index.js?v={sv}",
+                "stadiums": f"data/stadiums.js?v={stadium_version}", "game_fields": FIELDS,
+                "details": details, "players": players, "series": series, "series_shards": SERIES_SHARDS,
                 # P1-05/06: which seasons have a week-by-week Elo table, so the view
                 # knows whether it exists before fetching anything.
                 "elo_timeline": elo_timeline,

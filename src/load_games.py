@@ -66,6 +66,11 @@ def main(csv_path: str):
 
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
+    # Additive display-only migration for databases created before venue data.
+    if "venue_text" not in {r[1] for r in cur.execute("PRAGMA table_info(games)")}:
+        cur.execute("ALTER TABLE games ADD COLUMN venue_text TEXT")
+    if "source_venue_id" not in {r[1] for r in cur.execute("PRAGMA table_info(games)")}:
+        cur.execute("ALTER TABLE games ADD COLUMN source_venue_id INTEGER")
 
     inserted = 0
     skipped_dupes = 0
@@ -159,9 +164,10 @@ def main(csv_path: str):
                         game_date,
                         neutral_site,
                         game_phase,
-                        game_phase_check
+                        game_phase_check,
+                        venue_text, source_venue_id
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         game_id_val,
@@ -178,6 +184,8 @@ def main(csv_path: str):
                         neutral_site,
                         phase,
                         game_phase_check,
+                        norm(row.get("venue")) or None,
+                        int(row["venue_id"]) if norm(row.get("venue_id")) else None,
                     ),
                 )
 
@@ -185,6 +193,12 @@ def main(csv_path: str):
                     inserted += 1
                 else:
                     skipped_dupes += 1
+                    if game_id_val is not None and norm(row.get("venue")):
+                        cur.execute("UPDATE games SET venue_text=? WHERE game_id=? AND venue_text IS NULL",
+                                    (norm(row["venue"]), game_id_val))
+                    if game_id_val is not None and norm(row.get("venue_id")):
+                        cur.execute("UPDATE games SET source_venue_id=? WHERE game_id=? AND source_venue_id IS NULL",
+                                    (int(row["venue_id"]), game_id_val))
 
             except sqlite3.IntegrityError:
                 skipped_dupes += 1

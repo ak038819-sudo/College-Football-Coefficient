@@ -12,6 +12,7 @@ Key features:
 """
 
 import csv
+import json
 import os
 import re
 import sys
@@ -268,7 +269,7 @@ def is_completed(g: dict) -> bool:
 
 SCHEDULE_FIELDS = [
     "game_id", "season_year", "week", "kickoff_utc", "start_time_tbd", "season_type",
-    "home_team", "away_team", "neutral_site", "game_phase", "notes", "venue",
+    "home_team", "away_team", "neutral_site", "game_phase", "notes", "venue", "venue_id",
 ]
 
 
@@ -289,6 +290,7 @@ def schedule_row(g: dict, year: int, cfp_top4) -> dict:
         "game_phase": game_phase(season_type_val, classify_game(g, season_type_val, cfp_top4)),
         "notes": pick(g, "notes", default="") or "",
         "venue": pick(g, "venue", default="") or "",
+        "venue_id": pick(g, "venue_id", "venueId", default="") or "",
     }
 
 
@@ -367,6 +369,18 @@ def main(year: int) -> int:
         r.raise_for_status()
         all_games.extend(r.json())
 
+    # Display-only venue catalog. A failed optional request keeps the last
+    # verified snapshot, while game ingestion and ratings can still proceed.
+    try:
+        venues_response = requests.get(f"{BASE}/venues", headers=headers, timeout=60)
+        venues_response.raise_for_status()
+        venues = venues_response.json()
+        if not isinstance(venues, list) or not venues:
+            raise ValueError("empty or malformed venue catalog")
+        (OUT_DIR / "venues.json").write_text(json.dumps(venues, ensure_ascii=False) + "\n", encoding="utf-8")
+    except Exception as exc:
+        print(f"WARNING: venue catalog unavailable ({exc}); keeping the previous snapshot")
+
     scheduled: List[dict] = []
     out_path = OUT_DIR / f"games_{year}.csv"
     with out_path.open("w", newline="", encoding="utf-8") as f:
@@ -384,6 +398,8 @@ def main(year: int) -> int:
                 "game_phase",      # ✅ add this
                 "neutral_site",
                 "notes",
+                "venue",          # explicit upstream physical venue, display only
+                "venue_id",       # CFBD's physical venue identity
             ],
         )
 
@@ -460,6 +476,8 @@ def main(year: int) -> int:
                 "game_phase": phase,
                 "neutral_site": neutral_site,
                 "notes": notes,
+                "venue": pick(g, "venue", default="") or "",
+                "venue_id": pick(g, "venue_id", "venueId", default="") or "",
             })
 
 
