@@ -30,13 +30,20 @@ test('Elo rankings pass each audited change to the table', () => {
 });
 
 test('a newer final marks only its teams as waiting for a model rebuild', () => {
-  const ctx = {liveTeamId: t => ({name: t.name})};
-  vm.runInNewContext(sourceOf('newerFinalTeams') + '\nthis.newer = newerFinalTeams;', ctx);
+  // "Newer" means the scoreboard has a final the published model still lists as
+  // upcoming. The Ole Miss game is the one the export has not absorbed; the
+  // Georgia game is already rated, so its teams are not pending.
+  const ctx = {
+    liveTeamId: t => ({name: t.name}),
+    UPCOMING_BY_ID: new Map([[11, {}], [22, {}]]),
+  };
+  vm.runInNewContext(sourceOf('pendingFinals') + '\n' + sourceOf('newerFinalTeams') +
+    '\nthis.newer = newerFinalTeams;', ctx);
   const games = [
-    {status: 'completed', start_date: '2026-09-26T19:30:00Z', away: {name: 'Ole Miss'}, home: {name: 'Florida'}},
-    {status: 'scheduled', start_date: '2026-10-01T19:30:00Z', away: {name: 'BYU'}, home: {name: 'Utah'}},
-    {status: 'completed', start_date: '2026-09-20T19:30:00Z', away: {name: 'Texas'}, home: {name: 'Georgia'}},
+    {id: 11, status: 'completed', start_date: '2026-09-26T19:30:00Z', away: {name: 'Ole Miss'}, home: {name: 'Florida'}},
+    {id: 22, status: 'scheduled', start_date: '2026-10-01T19:30:00Z', away: {name: 'BYU'}, home: {name: 'Utah'}},
+    {id: 33, status: 'completed', start_date: '2026-09-20T19:30:00Z', away: {name: 'Texas'}, home: {name: 'Georgia'}},
   ];
-  assert.deepEqual([...ctx.newer(games, '2026-09-20')].sort(), ['Florida', 'Ole Miss']);
-  assert.equal(ctx.newer(games, '2026-09-26').size, 0);
+  assert.deepEqual([...ctx.newer(games)].sort(), ['Florida', 'Ole Miss']);
+  assert.equal(ctx.newer(games.filter(g => g.id !== 11)).size, 0);
 });
