@@ -34,7 +34,7 @@ def test_workflow_runs_on_schedule_and_on_demand():
     _, on = _workflow()
     assert "workflow_dispatch" in on
     crons = [c["cron"] for c in on["schedule"]]
-    assert crons == ["0 23 * * 0", "0 0 * * 1", "15 4 * * 5", "35 * * 8-11 5,6,0,1"]
+    assert crons == ["0 23 * * 0", "0 0 * * 1", "15 4 * * 5", "35 * * 1,8-12 5,6,0,1"]
 
 
 def test_sunday_rollover_uses_the_central_time_dst_gate():
@@ -68,7 +68,7 @@ def test_fetched_data_is_tested_before_it_is_committed():
     fetch_when = steps[fetch]["if"]
     assert steps[gate]["if"] == fetch_when
     assert "steps.sunday_time.outputs.skip != 'true'" in fetch_when
-    assert "github.event.schedule != '35 * * 8-11 5,6,0,1'" in fetch_when
+    assert "github.event.schedule != '35 * * 1,8-12 5,6,0,1'" in fetch_when
     assert "steps.freshness.outputs.needed == 'true'" in fetch_when
     detect = next(i for i, n in enumerate(names) if n.startswith("Detect live finals"))
     assert detect < fetch

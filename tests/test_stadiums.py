@@ -197,3 +197,32 @@ def test_stadium_hosts_follow_latest_exported_season_and_allow_shared_homes(tmp_
     assert {t['name'] for s in in_2027 for t in s['teams'] if s['id'] == alpha} == {'Alpha', 'Bravo'}
     assert all(s['id'] != bravo for s in in_2027)
     conn.close()
+
+
+def test_stadiums_still_build_when_the_venue_catalog_is_absent(tmp_path):
+    """A missing CFBD catalog costs ids and coordinates, nothing else.
+
+    The deploy only warns when data/raw/venues.json is missing, instead of
+    failing and taking the whole publish (live scoreboard included) with it.
+    That is only safe while the seed and game resolution stand on their own,
+    so drive them with no catalog rather than trusting the early return.
+    """
+    conn, _ = stadium_db(tmp_path)
+    alpha = conn.execute("SELECT stadium_id FROM stadiums WHERE stadium_key='home-alpha'").fetchone()[0]
+    conn.execute("INSERT INTO games (game_id,season_year,home_team_id,neutral_site,game_phase) "
+                 "VALUES (1,2026,1,0,'regular')")
+
+    missing = tmp_path / "no-such-venues.json"
+    assert not missing.exists()
+    assert import_venue_catalog(conn, missing) == {
+        "catalog_linked": 0, "catalog_created": 0, "catalog_ambiguous": 0}
+
+    # The home game still resolves to the seeded venue, and it carries no
+    # invented CFBD id or location.
+    assert resolve_games(conn)["ambiguous"] == []
+    assert conn.execute("SELECT stadium_id FROM games WHERE game_id=1").fetchone()[0] == alpha
+    assert conn.execute(
+        "SELECT cfbd_venue_id, latitude, longitude FROM stadiums WHERE stadium_id=?", (alpha,)
+    ).fetchone() == (None, None, None)
+    assert conn.execute("SELECT COUNT(*) FROM stadiums").fetchone()[0] == 2
+    conn.close()

@@ -39,7 +39,9 @@ on:
     - cron: "15 4 * * 5"
     # Final scores move from the live snapshot to History during game windows.
     # These UTC slots span Thursday evening through Sunday night in Central time.
-    - cron: "35 * * 8-11 5,6,0,1"
+    # August through January: the regular season plus conference championships,
+    # bowls and the playoff, which are the games most worth updating promptly.
+    - cron: "35 * * 1,8-12 5,6,0,1"
   workflow_dispatch: {}
 
 permissions:
@@ -163,7 +165,7 @@ jobs:
           fi
 
       - name: Detect live finals missing from model inputs
-        if: github.event_name == 'push' || github.event.schedule == '35 * * 8-11 5,6,0,1'
+        if: github.event_name == 'push' || github.event.schedule == '35 * * 1,8-12 5,6,0,1'
         id: freshness
         run: |
           # The v0.1 stadium pages need the venue catalog even if no new game
@@ -175,7 +177,7 @@ jobs:
           fi
 
       - name: Fetch fresh data from CFBD (scheduled, manual, or stale push)
-        if: steps.sunday_time.outputs.skip != 'true' && (github.event_name != 'push' && github.event.schedule != '35 * * 8-11 5,6,0,1' || steps.freshness.outputs.needed == 'true')
+        if: steps.sunday_time.outputs.skip != 'true' && (github.event_name != 'push' && github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
           CFBD_FETCH_ADVANCED: ${{ vars.FETCH_ADVANCED_STATS || '1' }}
@@ -196,20 +198,24 @@ jobs:
           # A temporary CFBD failure leaves the last complete archive intact.
           python3 src/fetch_cfbd_players.py "$SEASON" || echo "Player archive unavailable; retry next refresh."
 
-      - name: Require a stadium venue catalog for v0.1
-        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 8-11 5,6,0,1' || steps.freshness.outputs.needed == 'true')
+      # The catalog only enriches stadiums with CFBD ids and coordinates.
+      # build_stadiums.py's import_venue_catalog() returns zero counts when the
+      # file is absent, so the seed, game-venue resolution and every other page
+      # still build. Warn and carry on rather than failing the deploy: a missing
+      # venue catalog must not stop the live scoreboard from publishing.
+      - name: Check for a stadium venue catalog
+        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
         run: |
           if [ ! -s data/raw/venues.json ]; then
-            echo "::error::Stadium venue catalog is missing. Check CFBD venue access or the fetch step before publishing v0.1."
-            exit 1
+            echo "::warning::Stadium venue catalog is missing, so venue imports are skipped and the Stadium Explorer map will have no coordinates. Check CFBD venue access."
           fi
 
       - name: Run full pipeline (bootstrap, load, ratings, standings)
-        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 8-11 5,6,0,1' || steps.freshness.outputs.needed == 'true')
+        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
         run: python3 run_pipeline.py --force
 
       - name: Build Elo, hybrid, and conference CoE 2.0 tables
-        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 8-11 5,6,0,1' || steps.freshness.outputs.needed == 'true')
+        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
         run: |
           # Refit the xSRDiff expectation curve BEFORE Elo, so the new season is
           # valued by a curve that includes it in its walk-forward history. A
@@ -230,11 +236,11 @@ jobs:
       # this job, not the test job: the test job's bootstrap has no
       # scheduled_games table, and anything it wrote would be thrown away.
       - name: Record and score frozen HFA shadow forecasts
-        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 8-11 5,6,0,1' || steps.freshness.outputs.needed == 'true')
+        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
         run: python3 src/track_hfa_shadow.py
 
       - name: Audit game, efficiency, venue, and player coverage
-        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 8-11 5,6,0,1' || steps.freshness.outputs.needed == 'true')
+        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
         run: python3 src/audit_game_coverage.py
 
       # MODEL-07. Scores the ratings that were just built and writes
@@ -244,20 +250,20 @@ jobs:
       # running a script locally. Reads the database, writes nothing to it and
       # never touches config, so it cannot change the site it reports on.
       - name: Score the model and write the validation report
-        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 8-11 5,6,0,1' || steps.freshness.outputs.needed == 'true')
+        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
         run: python3 src/run_validation.py
 
       - name: Rebuild the dashboard
-        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 8-11 5,6,0,1' || steps.freshness.outputs.needed == 'true')
+        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
         run: python3 build_dashboard.py --draw-seed 1
 
       # A stale push can fetch new data too, so retest whenever the feed ran.
       - name: Test the freshly fetched data before publishing
-        if: steps.sunday_time.outputs.skip != 'true' && (github.event_name != 'push' && github.event.schedule != '35 * * 8-11 5,6,0,1' || steps.freshness.outputs.needed == 'true')
+        if: steps.sunday_time.outputs.skip != 'true' && (github.event_name != 'push' && github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
         run: pytest -q
 
       - name: Commit and push if anything actually changed
-        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 8-11 5,6,0,1' || steps.freshness.outputs.needed == 'true')
+        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
         env:
           EVENT: ${{ github.event_name }}
           FRESH: ${{ steps.freshness.outputs.needed }}
