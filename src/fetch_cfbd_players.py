@@ -15,6 +15,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+import cfbd_http
 import player_archive
 from fetch_live_scores import clean_player_boxscores
 
@@ -31,8 +32,15 @@ def get_json(path: str, params: dict, key: str):
     url = BASE + path + '?' + urlencode(params)
     request = Request(url, headers={'Authorization': 'Bearer ' + key, 'Accept': 'application/json',
                                    'User-Agent': 'cfb-coefficient-player-archive/1.0'})
-    with urlopen(request, timeout=120) as response:
-        return json.load(response)
+
+    def once():
+        with urlopen(request, timeout=120) as response:
+            return json.load(response)
+
+    # A backfill makes hundreds of these calls in a row, so one reset must not
+    # end the run: on 2026-10-03 a reset on the 2005 calendar stopped a
+    # 23-season archive after a single season.
+    return cfbd_http.with_retries(once, describe=f'GET {path} {params}')
 
 
 def fetch_season(year: int, key: str, previous: dict,

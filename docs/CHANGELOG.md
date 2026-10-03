@@ -2,6 +2,11 @@
 
 ## v0.1.1 — Players and Coaches (in progress, local branch)
 
+- A CFBD request that never got an answer is retried with an exponential
+  backoff instead of ending the run. A reset killed the deploy's own fetch
+  twice on 2026-10-03, so nothing published either time, and killed a
+  23-season box-score backfill after one season. A request the API *answered*
+  is not retried: 401 and 404 mean something, and repeating them only waits.
 - Season statistics on player pages, from CFBD's season player feed, which
   numbers every row with an athlete id: a statistic is attached to a person
   because the source says so, never because two names matched. **2009 to 2025
