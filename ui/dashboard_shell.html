@@ -269,6 +269,8 @@
   .matchup-actions button { background: var(--panel-2); color: var(--ink); padding: 8px 12px; border: 1px solid var(--line); border-radius: 3px; cursor: pointer; }
   @media (max-width: 520px) { .matchup-board { gap: 6px; } .matchup-controls { grid-template-columns: 1fr; } .matchup-controls .venue-control { grid-column: 1; } }
   .section-note { color: var(--ink-dim); font-size: 13px; line-height: 1.5; margin: 0 0 16px; }
+  .stat-partial { color: var(--amber); cursor: help; text-decoration: none;
+                  border: 0; font-size: 12px; }
   #content, .panel { min-width: 0; }
   .table-scroll { max-width: 100%; overflow-x: auto; }
   @media (max-width: 520px) {
@@ -4492,7 +4494,14 @@ function playerStatsPanel(stats) {
     const head = types.map(t => '<th scope="col">' + esc(t) + '</th>').join('');
     const body = rows.map(season => {
       const row = stats[String(season)][category];
-      return '<tr><td>' + esc(season) + '</td><td>' + teamCellById(row.team_id) + '</td>' +
+      const caveat = stats[String(season)]._partial;
+      // A season the source holds more of than this page can show is marked in
+      // every category, because a reader looks at one table, not all of them.
+      const cell = caveat
+        ? '<td>' + esc(season) + ' <abbr class="stat-partial" title="' + esc(caveat) +
+          '">\u2020</abbr></td>'
+        : '<td>' + esc(season) + '</td>';
+      return '<tr>' + cell + '<td>' + teamCellById(row.team_id) + '</td>' +
         types.map(t => '<td class="num">' + statCell(row[t], t) + '</td>').join('') + '</tr>';
     }).join('');
     blocks.push('<h3>' + esc(STAT_CATEGORY_LABELS[category] || category) + '</h3>' +
@@ -4500,8 +4509,20 @@ function playerStatsPanel(stats) {
       '<th scope="col">Team</th>' + head + '</tr></thead><tbody>' + body + '</tbody></table>');
   }
   if (!blocks.length) return personStatsNote();
+  const partial = seasons.filter(season => stats[String(season)]._partial);
+  // Named rather than left to the dagger alone: a total that is not the whole
+  // season must say so where a reader cannot miss it.
+  const partialNote = partial.length
+    ? '<p class="section-note">\u2020 ' + (partial.length === 1 ? 'In ' : 'In ') +
+      partial.map(esc).join(', ') + ', CFBD holds more than one athlete id under this ' +
+      'name at this school, and a statistic attaches to a person by that id. The totals ' +
+      'above cover one id, so they are part of ' +
+      (partial.length === 1 ? 'that season' : 'those seasons') + ' rather than all of ' +
+      (partial.length === 1 ? 'it' : 'them') + '. The ids are not merged here: the feed ' +
+      'gives no way to tell one person recorded twice from two players who share a name.</p>'
+    : '';
   return '<div class="panel team-section"><h2 class="section-title">Statistics</h2>' +
-    blocks.join('') +
+    blocks.join('') + partialNote +
     '<p class="section-note">Season totals from CFBD, attached to this person by their ' +
     'athlete id, with the feed\u2019s own category and statistic labels. PCT is the only ' +
     'value shown in a different unit from the source, which sends it as a fraction. ' +
@@ -4520,7 +4541,7 @@ function personMissing(kind, id) {
   return '<div class="panel"><h1 class="team-title">' + (kind === 'player' ? 'Player' : 'Coach') +
     ' not found</h1><p class="empty-note">No ' + kind + ' in this dataset has the id ' +
     esc(id == null ? '(none)' : id) + '. ' + (kind === 'player'
-      ? 'Rosters are synced from 2026 onward so far; earlier seasons are not loaded yet.'
+      ? 'Rosters cover 2009 onward; a player from an earlier season is not in this dataset.'
       : 'Head-coaching history covers 1980 onward.') + '</p></div>';
 }
 

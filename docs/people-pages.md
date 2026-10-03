@@ -268,13 +268,55 @@ season totals.
 - The exporter puts a player's own statistics in their detail payload, grouped
   by season and category, so a page renders them without re-reading a season.
 
-Measured on the real 2025 snapshot: of 141,627 rows, 85,768 are stored for 8,819
-people. 40,291 carry an athlete id with no roster row here and 15,568 belong to
-a person here but name a school outside this FBS-only database -- a player who
-has since moved to an FCS programme still appears in this feed. **Not one row
-was lost for want of an identity**: every unknown athlete id in 2025 is at a
-school this database does not carry. Both counts are written to
-`person_unresolved` so that claim can be re-checked rather than believed.
+Measured across the whole archive, 2009 to 2025: **1,048,998 statistics for
+45,805 people** over 17 seasons. On the 2025 snapshot alone, of 141,627 rows
+85,768 are stored for 8,819 people; 40,291 carry an athlete id with no roster
+row here and 15,568 belong to a person here but name a school outside this
+FBS-only database -- a player who has since moved to an FCS programme still
+appears in this feed. Every count is written to `person_unresolved` so it can be
+re-checked rather than believed.
+
+The backfill corrected a claim this document used to make. On 2025 alone, every
+unknown athlete id was at a school this database does not carry, so "not one row
+was lost for want of an identity" held. Across 17 seasons it does not: of 30,891
+unknown-athlete entries, 30,877 are at schools outside this database and **14
+are at schools it does carry**. Nine of those are a school's pre-FBS seasons
+(North Dakota State and Sam Houston in 2021, James Madison in 2021), where the
+team exists today but had no roster that year. The remaining five are people
+genuinely absent from a roster snapshot that does exist. A claim measured on one
+season is not a claim about the archive.
+
+### Coverage begins in different places
+
+- Rosters, and therefore people, start at **2009**.
+- Season statistics start at **2009** too, but with eight categories. `defensive`
+  and `fumbles` appear first in **2016**, and the row count roughly doubles with
+  them (41,273 rows in 2015, 98,529 in 2016). So a defensive player's page for
+  2009-2015 shows no statistics, and that is the source, not a fault.
+- 2026 has no statistics snapshot yet: the sync workflow's `season_stats` input
+  is off by default, so the current season has to be asked for.
+
+### A season the source holds more of than a page can show
+
+CFBD sometimes carries **two athlete ids under one name at one school in one
+season**. Across 2009-2025 this affects 104 of 147,830 name-and-team groups and
+**172 player-seasons**. A statistic attaches by id, so each id holds a fraction
+of the season: Sherod White's 2022 at New Mexico reads 17 carries for 41 yards
+under the id his roster row carries, while CFBD's other record for that name
+holds 23 carries, 101 yards and 3 touchdowns. A page printing the first and
+saying nothing asserts a third of a season as the whole of it.
+
+In 85 of the 104 groups both ids are on the roster, which is the more misleading
+shape: the site then shows TWO people, each holding part of one career, and
+neither page looks incomplete.
+
+`player_season_stat_caveats` records the affected player-seasons at load time,
+the exporter hangs the note on that season's statistics rather than on the
+player, and the page marks the season in **every** category table with a dagger
+and spells the reason out once in words. Flagged, never merged, for the same
+reason an implausible career is flagged: the feed gives no way to tell one
+person CFBD recorded twice from two players who share a name on one roster, and
+merging the second case would invent a person.
 
 Labels on the page are the feed's own -- `YDS`, `TD`, `PCT` -- because renaming
 them would be this project asserting a reading of a statistic it did not
@@ -296,8 +338,10 @@ not are names that match more than one person or none.
 ## Known gap: per-game statistics are not attributed to people
 
 The player box-score archive identifies a player by **name only** — it carries no
-athlete id — so no statistic is attached to a `player_id` anywhere on the site. A
-player page says so instead of showing an empty Stats panel.
+athlete id — so no PER-GAME statistic is attached to a `player_id` anywhere on
+the site. Season totals are: they come from `/stats/player/season`, which
+numbers every row. A player page with neither says so instead of showing an
+empty Stats panel.
 
 Box-score names on a game page do link to player pages, but only through the same
 contextual rule the ingestion resolver uses: a name links when it matches

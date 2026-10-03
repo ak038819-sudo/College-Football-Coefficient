@@ -193,3 +193,27 @@ CREATE TABLE IF NOT EXISTS player_season_stats (
 CREATE INDEX IF NOT EXISTS idx_player_season_stats_player ON player_season_stats(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_season_stats_leaders
     ON player_season_stats(season_year, category, stat_type);
+
+-- A season whose statistics are known to be only part of what the source holds
+-- for that person. CFBD sometimes carries TWO athlete ids under one name at one
+-- school in one season: measured across 2009-2025, 104 of 147,830 name-and-team
+-- groups do. A statistic attaches by id, so a page built from one of those ids
+-- shows a fraction of the season and asserts it as the whole -- Sherod White's
+-- 2022 at New Mexico reads 17 carries for 41 yards under one id while the other
+-- holds 23 for 101 and 3 touchdowns.
+--
+-- Flagged, never merged, for the same reason an implausible career is flagged:
+-- the feed gives no way to tell a person CFBD recorded twice from two players
+-- who share a name on one roster, and merging the second case would invent a
+-- person. The note says what the source does, and lets a reader judge.
+CREATE TABLE IF NOT EXISTS player_season_stat_caveats (
+    player_id   INTEGER NOT NULL,
+    season_year INTEGER NOT NULL,
+    reason      TEXT NOT NULL,
+    source      TEXT NOT NULL,
+    PRIMARY KEY (player_id, season_year, source),
+    FOREIGN KEY (player_id) REFERENCES players(player_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_player_season_stat_caveats_player
+    ON player_season_stat_caveats(player_id);

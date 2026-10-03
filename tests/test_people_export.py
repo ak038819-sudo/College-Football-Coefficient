@@ -271,3 +271,32 @@ def test_the_content_version_changes_when_the_data_does(conn, tmp_path):
     before = export(conn, tmp_path)["coaches"]
     _coach(conn, "A Coach", [(2026, 1, None)])
     assert export(conn, tmp_path)["coaches"] != before
+
+
+def test_a_partial_season_caveat_rides_with_that_season_not_the_player(conn):
+    """It is true of one season, so it belongs beside that season's statistics.
+    Hung on the player, a page would caveat a 2018 total because 2022 was
+    split -- and a reader would stop believing the flag."""
+    pid = _player(conn, "Split Person", [(2021, 1, "RB"), (2022, 1, "RB")])
+    for year, yards in ((2021, 900), (2022, 41)):
+        conn.execute("INSERT INTO player_season_stats (player_id, season_year, team_id, category, "
+                     "stat_type, stat, source) VALUES (?, ?, 1, 'rushing', 'YDS', ?, 'cfbd')",
+                     (pid, year, yards))
+    conn.execute("INSERT INTO player_season_stat_caveats (player_id, season_year, reason, source) "
+                 "VALUES (?, 2022, 'two athlete ids at Clemson in 2022', 'cfbd')", (pid,))
+
+    player = build_players(conn)[pid]
+    assert player["stats"]["2022"]["_partial"] == "two athlete ids at Clemson in 2022"
+    assert "_partial" not in player["stats"]["2021"]
+
+
+def test_a_caveat_for_a_season_with_no_statistics_is_not_invented(conn):
+    """A caveat is a note ON a total. With no total to annotate there is nothing
+    for a page to mark, and writing an empty season in would make the page
+    render a heading for statistics it does not have."""
+    pid = _player(conn, "No Stats", [(2022, 1, "RB")])
+    conn.execute("INSERT INTO player_season_stat_caveats (player_id, season_year, reason, source) "
+                 "VALUES (?, 2022, 'two athlete ids', 'cfbd')", (pid,))
+
+    player = build_players(conn)[pid]
+    assert "2022" not in player.get("stats", {})
