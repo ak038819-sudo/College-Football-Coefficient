@@ -32,13 +32,14 @@ TEAM_BRAND_COLORS_PATH = Path("ui/team_brand_colors.json")
 STATIC_MANIFEST_PATH = Path("ui/data/static_manifest.json")
 NAVIGATION_PATH = Path("ui/navigation.js")
 SEARCH_PATH = Path("ui/search.js")
+STATS_PATH = Path("ui/stats.js")
 
 
 def render_from_exports() -> None:
     """Render the template from existing exports, without touching model data."""
     required = [SHELL_PATH, DATA_PATH, TEAM_PAGES_PATH, CONFERENCE_PAGES_PATH, LOGO_MANIFEST_PATH,
                 TEAM_BRAND_COLORS_PATH,
-                STATIC_MANIFEST_PATH, NAVIGATION_PATH, SEARCH_PATH]
+                STATIC_MANIFEST_PATH, NAVIGATION_PATH, SEARCH_PATH, STATS_PATH]
     missing = [str(path) for path in required if not path.exists()]
     if missing:
         raise SystemExit("Missing dashboard inputs: " + ", ".join(missing) +
@@ -51,6 +52,7 @@ def render_from_exports() -> None:
              .replace("__TEAM_PAGES_VERSION__", hashlib.sha256(TEAM_PAGES_PATH.read_bytes()).hexdigest()[:12])
              .replace("__CONFERENCE_PAGES_VERSION__", hashlib.sha256(CONFERENCE_PAGES_PATH.read_bytes()).hexdigest()[:12])
              .replace("__NAVIGATION_VERSION__", hashlib.sha256(NAVIGATION_PATH.read_bytes()).hexdigest()[:12])
+             .replace("__STATS_VERSION__", hashlib.sha256(STATS_PATH.read_bytes()).hexdigest()[:12])
              .replace("__SEARCH_VERSION__", hashlib.sha256(SEARCH_PATH.read_bytes()).hexdigest()[:12]))
     OUT_PATH.write_text(final, encoding="utf-8")
     print(f"\nBuilt {OUT_PATH} ({OUT_PATH.stat().st_size:,} bytes)")

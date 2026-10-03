@@ -886,6 +886,19 @@
     padding: 30px 0;
     text-align: center;
   }
+
+  .stats-leaders { display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px; }
+  .stats-leaders li { padding:8px 0; }
+  .stats-categories,.table-pagination {display:flex;gap:16px;flex-wrap:wrap;margin:16px 0;}
+  .stats-categories [aria-current] {color:var(--amber);text-decoration:underline;}
+  .sort-button {background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:10px 4px;white-space:nowrap;}
+  .sort-button:focus-visible {outline:2px solid var(--amber);}
+  .stats-table {min-width:740px;}
+  .stats-table th:first-child,.stats-table td:first-child {position:sticky;left:0;background:var(--panel);z-index:1;min-width:150px;}
+  .stats-table th:first-child {z-index:2;}
+  .table-scroll {overflow-x:auto;max-width:100%;}
+  .tabs {flex-wrap:wrap;}
+  #home-weeks {align-items:center;gap:20px;flex-wrap:wrap;}
 </style>
 </head>
 <body>
@@ -949,6 +962,7 @@ __TEAM_BRAND_COLORS_JSON__
 <script id="static-manifest" type="application/json">
 __STATIC_MANIFEST_JSON__
 </script>
+<script src="stats.js?v=__STATS_VERSION__"></script>
 <script src="navigation.js?v=__NAVIGATION_VERSION__"></script>
 <script src="search.js?v=__SEARCH_VERSION__"></script>
 <script>
@@ -5155,6 +5169,114 @@ function wrapWideTables() {
   });
 }
 
+// Statistics hub: cached season aggregation; filtering and paging never refetch data.
+const statsCache = new Map();
+let statsData = null;
+const TEAM_STAT_CATEGORIES = {
+  overall: ['games','wins','losses','pointsFor','pointsAgainst','ppg','oppPpg'],
+  offense: ['games','boxGames','pointsFor','ppg','passYards','rushYards','passYpg','rushYpg'],
+  defense: ['games','boxGames','pointsAgainst','oppPpg','tackles','sacks','tfl','interceptions','passesDefended'],
+  'special-teams': ['games','boxGames','fgMade','fgAttempts','fgPct','xpMade','xpAttempts'],
+  ratings: ['games','elo','coefficient','rolling','change']
+};
+function statsHref(changes) {
+  return CfbNavigation.hashFor({...state,section:'stats',view:'tab',subview:'players',page:1,...changes});
+}
+function loadStats(season) {
+  if(!statsCache.has(season)) statsCache.set(season,Promise.all([loadSeasonGames(season),loadPlayerArchive(season)]).then(([games,archive])=>{
+    const players=CfbStats.aggregatePlayers(archive,games.byId,games.conferences||{},TEAM_BY_ID);
+    const ratings={};
+    for(const r of DATA.team_elo_by_year[season]||[]) ratings[r.team]={elo:r.elo,change:r.change};
+    for(const r of DATA.team_ratings_by_year[season]||[]) {ratings[r.team]??={};ratings[r.team].coefficient=r.rating;}
+    for(const r of DATA.team_rolling_by_year[season]||[]) {ratings[r.team]??={};ratings[r.team].rolling=r.coeff_5yr;}
+    return {season,players:players.rows,teams:CfbStats.aggregateTeams(games.games,players,games.conferences||{},TEAM_BY_ID,ratings),completed:games.games.filter(g=>g.completed).length,covered:new Set([...players.covered].map(k=>k.split('|')[0])).size};
+  }).catch(error=>{statsCache.delete(season);throw error;}));
+  return statsCache.get(season);
+}
+function renderStats() {
+  return '<div class="panel"><h2 class="view-title">Stats · ' + esc(state.subview === 'overview' ? 'National leaders' : state.subview === 'teams' ? 'Team statistics' : 'Player statistics') + '</h2>' +
+    '<p class="section-note">Counting stats from recorded completed FBS-vs-FBS games. Missing values remain unavailable. Player games count appearances in recorded category box scores.</p>' +
+    '<div id="stats-body" aria-live="polite">Loading ' + state.year + ' statistics…</div></div>';
+}
+function hydrateStats(version) {
+  loadStats(state.year).then(data=>{
+    if(version!==renderVersion||state.section!=='stats')return;
+    statsData=data;
+    document.getElementById('stats-body').innerHTML=statsViewHtml(data);
+    wrapWideTables();
+  }).catch(()=>{if(version===renderVersion)document.getElementById('stats-body').innerHTML='<p class="empty-note">Statistics could not be loaded. <button id="retry-stats" class="action-button">Retry</button></p>';});
+}
+function statValue(value) {
+  return value==null||!Number.isFinite(Number(value))?'—':Number.isInteger(Number(value))?Number(value).toLocaleString():Number(value).toLocaleString(undefined,{maximumFractionDigits:2});
+}
+function SortableTable(rows,columns,options={}) {
+  const sort=columns.some(c=>c.key===state.sort)?state.sort:options.sort||columns.find(c=>c.type!=='string')?.key;
+  const dir=state.sort?state.dir:options.dir||'desc';
+  const column=columns.find(c=>c.key===sort);
+  const sorted=CfbStats.sortRows(rows,sort,dir,column?.type||'number');
+  const pageSize=50,pages=Math.max(1,Math.ceil(sorted.length/pageSize)),page=Math.min(state.page||1,pages);
+  const view=sorted.slice((page-1)*pageSize,page*pageSize);
+  const heads=columns.map(c=>'<th scope="col" aria-sort="'+(c.key===sort?(dir==='desc'?'descending':'ascending'):'none')+'"><button class="sort-button" data-stat-sort="'+esc(c.key)+'" data-next-dir="'+(c.key===sort&&dir==='desc'?'asc':'desc')+'">'+esc(c.label)+(c.key===sort?(dir==='desc'?' ▼':' ▲'):'')+'</button></th>').join('');
+  const body=view.map(r=>'<tr>'+columns.map(c=>'<td'+(c.type!=='string'?' class="num"':'')+'>'+(c.render?c.render(r):c.type==='string'?esc(r[c.key]??'—'):statValue(r[c.key]))+'</td>').join('')+'</tr>').join('');
+  const pager=(p,label)=>'<a href="'+esc(statsHref({subview:state.subview,page:p}))+'">'+label+'</a>';
+  return '<p class="section-note">'+rows.length+' results · Page '+page+' of '+pages+'</p><div class="table-scroll" role="region" aria-label="Scrollable statistics table" tabindex="0"><table class="rank-table stats-table"><thead><tr>'+heads+'</tr></thead><tbody>'+body+'</tbody></table></div>'+
+    (!view.length?'<p class="empty-note">No statistics match these filters.</p>':'')+'<nav class="table-pagination" aria-label="Table pages">'+(page>1?pager(page-1,'← Previous'):'')+' '+(page<pages?pager(page+1,'Next →'):'')+'</nav>';
+}
+function statsViewHtml(data) {
+  const coverage='<p class="section-note">Player box scores available for '+data.covered+' of '+data.completed+' completed archived games in '+data.season+'. Team scoring uses the full game archive. Box score totals and rates cover recorded games only; “Box score G” shows coverage.</p>';
+  if(state.subview==='overview')return coverage+statsOverviewHtml(data);
+  const isPlayer=state.subview==='players';
+  const supportedPlayers=Object.keys(CfbStats.categories).filter(cat=>data.players.some(r=>r.category===cat));
+  const supportedTeams=Object.keys(TEAM_STAT_CATEGORIES).filter(cat=>cat==='overall'||TEAM_STAT_CATEGORIES[cat].some(k=>!['games','boxGames'].includes(k)&&data.teams.some(r=>r[k]!=null)));
+  const cats=isPlayer?supportedPlayers:supportedTeams;
+  if(!cats.length)return coverage+'<p class="empty-note">No player box scores are available for this season. Try a later season.</p>';
+  const category=cats.includes(state.category)?state.category:cats[0];
+  const schema=isPlayer?CfbStats.categories[category]:null;
+  const rows=isPlayer?data.players.filter(r=>r.category===category):data.teams;
+  const fields=(isPlayer?schema.fields:TEAM_STAT_CATEGORIES[category]).filter(k=>rows.some(r=>r[k]!=null));
+  const label=cat=>isPlayer?CfbStats.categories[cat].label:cat==='special-teams'?'Special Teams':cat[0].toUpperCase()+cat.slice(1);
+  const nav='<nav class="stats-categories" aria-label="Statistic categories">'+cats.map(cat=>'<a href="'+esc(statsHref({subview:state.subview,category:cat,sort:'',minimum:0}))+'"'+(category===cat?' aria-current="page"':'')+'>'+label(cat)+'</a>').join('')+'</nav>';
+  const select=(id,name,choices,value)=>'<label>'+name+'<select id="'+id+'"><option value="">All</option>'+choices.map(c=>'<option'+(c===value?' selected':'')+' value="'+esc(c)+'">'+esc(c)+'</option>').join('')+'</select></label>';
+  const teams=[...new Set(rows.map(r=>r.team))].sort(),confs=[...new Set(rows.map(r=>r.conference).filter(Boolean))].sort();
+  const minimumKey=isPlayer?schema.minimum:'games';
+  const filters='<form class="games-filters" id="stats-filters">'+select('stats-team','Team',teams,state.statTeam)+select('stats-conf','Conference',confs,state.statConf)+
+    '<label>Search '+(isPlayer?'players':'teams')+'<input id="stats-query" type="search" value="'+esc(state.statQuery)+'" placeholder="Name"></label>'+
+    '<label>Minimum '+(CfbStats.labels[minimumKey]||minimumKey)+'<input id="stats-minimum" type="number" min="0" max="10000" value="'+state.minimum+'"></label><button class="action-button" type="submit">Apply filters</button></form>';
+  const filtered=CfbStats.filterRows(rows,{team:state.statTeam,conference:state.statConf,query:state.statQuery,minimum:state.minimum,minimumKey});
+  const columns=[{key:'name',label:isPlayer?'Player':'Team',type:'string',render:r=>isPlayer?'<span class="player-name" data-player-key="'+esc(r.key)+'">'+esc(r.name)+'</span>':teamLink(r.name,'xs',state.year)}];
+  if(isPlayer)columns.push({key:'team',label:'Team',type:'string',render:r=>teamLink(r.team,'xs',state.year)},{key:'games',label:'Recorded G'});
+  columns.push({key:'conference',label:'Conference',type:'string'},...fields.map(key=>({key,label:CfbStats.labels[key]||key})));
+  return coverage+nav+filters+SortableTable(filtered,columns,{sort:isPlayer?schema.sort:category==='ratings'?'elo':category==='defense'?'oppPpg':'ppg',dir:category==='defense'?'asc':'desc'});
+}
+function statsOverviewHtml(data) {
+  const cards=[];
+  const card=(title,rows,key,target,dir='desc',minimum=0)=>{
+    const available=rows.filter(r=>r[key]!=null);if(!available.length)return;
+    const leaders=CfbStats.sortRows(available,key,dir).slice(0,3);
+    const href=statsHref({...target,sort:key,dir,minimum,statTeam:'',statConf:'',statQuery:''});
+    cards.push('<article class="panel"><h3><a href="'+esc(href)+'">'+title+' →</a></h3><ol>'+leaders.map(r=>'<li><span>'+esc(r.name)+'</span> <strong>'+statValue(r[key])+'</strong></li>').join('')+'</ol></article>');
+  };
+  for(const [category,key,title,minimum] of [['passing','yards','Passing yards',0],['passing','td','Passing TDs',0],['passing','completionPct','Completion % · minimum 30 attempts',30],['rushing','yards','Rushing yards',0],['rushing','td','Rushing TDs',0],['receiving','yards','Receiving yards',0],['receiving','receptions','Receptions',0],['receiving','td','Receiving TDs',0],['defense','tackles','Tackles',0],['defense','sacks','Sacks',0],['defense','interceptions','Interceptions',0]]){
+    card(title,data.players.filter(r=>r.category===category&&(!minimum||r.attempts>=minimum)),key,{subview:'players',category},'desc',minimum);
+  }
+  card('Team points per game',data.teams,'ppg',{subview:'teams',category:'overall'});
+  card('Fewest opponent points per game',data.teams,'oppPpg',{subview:'teams',category:'defense'},'asc');
+  card('Elo',data.teams,'elo',{subview:'teams',category:'ratings'});
+  card('Season CoE',data.teams,'coefficient',{subview:'teams',category:'ratings'});
+  card('Most Elo gained · last game',data.teams.filter(r=>r.change>0),'change',{subview:'teams',category:'ratings'});
+  card('Most Elo lost · last game',data.teams.filter(r=>r.change<0),'change',{subview:'teams',category:'ratings'},'asc');
+  return cards.length?'<div class="stats-leaders">'+cards.join('')+'</div>':'<p class="empty-note">No leaders available for this season.</p>';
+}
+document.getElementById('content').addEventListener('click',e=>{
+  const sort=e.target.closest('[data-stat-sort]');
+  if(sort&&state.section==='stats')navigate({sort:sort.dataset.statSort,dir:sort.dataset.nextDir,page:1});
+  if(e.target.id==='retry-stats')hydrateStats(renderVersion);
+});
+document.getElementById('content').addEventListener('submit',e=>{
+  if(e.target.id!=='stats-filters')return;e.preventDefault();
+  navigate({statTeam:document.getElementById('stats-team').value,statConf:document.getElementById('stats-conf').value,statQuery:document.getElementById('stats-query').value,minimum:Number(document.getElementById('stats-minimum').value)||0,page:1});
+});
+
 function render() {
   const version = ++renderVersion;
   renderNavigation();
@@ -5171,7 +5293,7 @@ function render() {
   if (state.view === 'conference') { content.innerHTML = renderConferencePage(state.conferenceParam); hydrateConferencePage(); return; }
   if (state.view === 'game') { content.innerHTML = renderGamePage(); hydrateLiveGamePage(version); return; }
   if (state.section === 'home') { content.innerHTML = renderHome(); hydrateLiveScores(version); hydrateHomeDiscovery(version); }
-  else if (state.section === 'stats') content.innerHTML = '<div class="panel"><h2 class="view-title">Stats</h2><p>Explore team and player statistics, matchup projections and the playoff simulator.</p></div>';
+  else if (state.section === 'stats') {content.innerHTML = renderStats(); hydrateStats(version);}
   else if (state.section === 'methodology') content.innerHTML = renderMethodology();
   else if (state.section === 'coverage') content.innerHTML = renderCoverage();
   else if (state.section === 'teams') {
