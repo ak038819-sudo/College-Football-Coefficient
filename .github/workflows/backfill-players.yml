@@ -88,5 +88,21 @@ jobs:
             echo "::endgroup::"
           done
 
-      - name: Report coverage
-        run: python3 src/audit_game_coverage.py
+      # Summarised from the archive files, not from audit_game_coverage.py:
+      # that reads db/league.db, which this job never builds. The database-backed
+      # coverage report belongs to the pipeline, and runs there on the next build.
+      - name: Summarise the archive
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, pathlib
+          d = pathlib.Path('data/raw/player_boxscores')
+          files = sorted(d.glob('*.json'))
+          games = size = 0
+          for f in files:
+              n = len(json.loads(f.read_text()))
+              games += n
+              size += f.stat().st_size
+              print(f'{f.stem}: {n} games with player box scores ({f.stat().st_size / 1e6:.1f} MB)')
+          print(f'archive total: {games} games across {len(files)} seasons, {size / 1e6:.1f} MB')
+          PY
