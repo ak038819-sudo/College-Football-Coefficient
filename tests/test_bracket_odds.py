@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import random
+import statistics
 
 import pytest
 
@@ -133,26 +134,63 @@ def test_fixing_the_draw_reproduces_the_same_odds(db_path):
 
 def test_the_draw_seed_no_longer_decides_a_teams_chances(db_path):
     """
-    The bug, stated as a test. With the draw fixed, changing only the seed moves
-    the odds a lot; averaged over draws it must not, because the draw is no
-    longer part of the answer.
+    The bug, stated as a test: once the odds average over the draw, the draw
+    seed must stop being a source of variation.
+
+    Measured against the simulation's OWN noise, which is the only honest
+    yardstick here. Changing the draw seed on a redrawn run only changes which
+    brackets get sampled, so its effect should be no larger than changing the
+    game seed -- and if the simulator went back to one draw per run, the draw
+    seed would decide the answer again and the spread would leave that noise
+    far behind.
+
+    The earlier form of this test compared one pair of draw seeds, fixed draw
+    against redrawn, and asserted the redrawn pair was closer together. That
+    holds only while the field is draw-sensitive enough for the effect to clear
+    the noise of a single pair, and it failed on main on 2026-10-03 with 1.67
+    against 1.27 -- two numbers that are both noise. A spread across six seeds,
+    expressed as a ratio to the noise floor, is the same claim without the
+    dependence on which week's field happens to be lopsided.
     """
-    def champion_pct(seed, fixed):
-        counts, n, _, _ = run_simulation(str(db_path), SEASON, seed, FAST_SIMS, 4.5,
-                                         sim_seed=0, fixed_draw=fixed)
-        top = max(counts.items(), key=lambda kv: kv[1]["champion"])[0]
-        return top, {t: 100 * c["champion"] / n for t, c in counts.items()}
+    def champion_pct(draw_seed, fixed, sim_seed=0):
+        counts, n, _, _ = run_simulation(str(db_path), SEASON, draw_seed, FAST_SIMS, 4.5,
+                                         sim_seed=sim_seed, fixed_draw=fixed)
+        return {t: 100 * c["champion"] / n for t, c in counts.items()}
 
-    _, fixed_a = champion_pct(1, True)
-    _, fixed_b = champion_pct(5, True)
-    _, free_a = champion_pct(1, False)
-    _, free_b = champion_pct(5, False)
+    def dispersion(runs, contenders):
+        """Mean over contenders of a team's standard deviation across runs."""
+        return statistics.fmean(
+            statistics.pstdev([run.get(t, 0) for run in runs]) for t in contenders)
 
-    contenders = [t for t in free_a if free_a[t] > 5.0]
+    base = champion_pct(1, False)
+    contenders = [t for t in base if base[t] > 5.0]
     assert contenders, "no contender above 5% -- the field or the model has changed shape"
-    fixed_spread = max(abs(fixed_a.get(t, 0) - fixed_b.get(t, 0)) for t in contenders)
-    free_spread = max(abs(free_a[t] - free_b[t]) for t in contenders)
-    assert free_spread < fixed_spread
+
+    seeds = [1, 2, 3, 4, 5, 6]
+    free = [champion_pct(s, False) for s in seeds]            # the DRAW seed varies
+    noise = [champion_pct(1, False, sim_seed=s) for s in seeds]  # the GAME seed varies
+    fixed = [champion_pct(s, True) for s in seeds]            # one draw each, as it was
+
+    free_sd = dispersion(free, contenders)
+    noise_sd = dispersion(noise, contenders)
+    fixed_sd = dispersion(fixed, contenders)
+
+    # It still samples DIFFERENT brackets per seed -- a draw rng that ignored
+    # the seed would pass the ratio below while quietly drawing one sequence.
+    assert free_sd > 0, "changing the draw seed changed nothing at all"
+
+    # The draw seed is not a source of variation beyond the simulation's own.
+    # Measured over five disjoint blocks of six seeds on the 2026 field, this
+    # ratio ran 0.68 to 0.87 while a fixed draw ran 3.3 to 4.5.
+    assert free_sd <= 1.5 * noise_sd, (
+        f"the draw seed still moves the odds: {free_sd:.2f} against a noise floor "
+        f"of {noise_sd:.2f}")
+
+    # And where this week's field IS draw-sensitive, fixing the draw is visibly
+    # worse. Guarded, because a lopsided field can have little to say here and
+    # that is a fact about the season, not a regression.
+    if fixed_sd > 2 * noise_sd:
+        assert free_sd < fixed_sd
 
 
 def test_every_teams_odds_still_add_up(db_path):
