@@ -77,7 +77,7 @@ test('stadium explorer and venue-aware previews keep team HFA separate from phys
   }).join('\n');
   const context = {
     esc: value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;'),
-    CfbNavigation: { normalizeSearch }, TEAM_BY_ID: new Map([
+    CfbGeography: require('../ui/geography.js'), CfbNavigation: { normalizeSearch }, TEAM_BY_ID: new Map([
       ['1', { name: 'Alpha' }], ['2', { name: 'Bravo' }]]),
     teamLink: name => name, gameHref: id => '#game=' + id,
     DATA: { current_hfa: { teams: [{ team: 'Alpha', hfa: 1.1, games: 10,

@@ -791,6 +791,8 @@
   .release-label { margin: 3px 0 0; color: var(--ink-dim); font: 11px var(--font-mono); letter-spacing: .04em; }
   .stadium-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(250px, .8fr); gap: 16px; }
   .stadium-map { width: 100%; height: auto; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; }
+  .state-boundary {fill:#243548;stroke:#718092;stroke-width:.8;}
+  .stadium-map .selected-stadium {fill:var(--green-hl);stroke:white;stroke-width:2;}
   .stadium-map circle { fill: var(--amber); stroke: var(--bg); stroke-width: 1.3; }
   .stadium-map a:hover circle, .stadium-map a:focus circle { fill: var(--green-hl); stroke-width: 2.5; }
   .stadium-list { max-height: 470px; overflow: auto; margin: 8px 0 0; padding: 0; list-style: none; }
@@ -962,6 +964,7 @@ __TEAM_BRAND_COLORS_JSON__
 <script id="static-manifest" type="application/json">
 __STATIC_MANIFEST_JSON__
 </script>
+<script src="geography.js?v=__GEOGRAPHY_VERSION__"></script>
 <script src="stats.js?v=__STATS_VERSION__"></script>
 <script src="navigation.js?v=__NAVIGATION_VERSION__"></script>
 <script src="search.js?v=__SEARCH_VERSION__"></script>
@@ -3045,24 +3048,17 @@ function stadiumGameRow(g) {
   return '<li><a href="' + esc(gameHref(g.id, g.season)) + '">' + esc(g.date) + ': ' +
     esc(away?.name || 'Unknown') + (g.neutral ? ' vs. ' : ' at ') + esc(home?.name || 'Unknown') + score + '</a></li>';
 }
-function stadiumMap(stadiums, hawaii) {
-  const points = stadiums.filter(s => Number.isFinite(Number(s.lat)) && Number.isFinite(Number(s.lon)) &&
-    s.lat != null && s.lon != null && (hawaii ? Number(s.lon) < -150 && Number(s.lat) >= 18 && Number(s.lat) <= 23
-      : Number(s.lon) >= -125 && Number(s.lon) <= -66 && Number(s.lat) >= 24 && Number(s.lat) <= 50));
-  const bounds = hawaii ? [-161, -154, 18, 23] : [-125, -66, 24, 50];
-  const [left, right, bottom, top] = bounds;
-  return '<svg class="stadium-map" viewBox="0 0 640 320" role="img" aria-label="' +
-    (hawaii ? 'Hawaii' : 'Contiguous United States') + ' stadium location plot; use the searchable list for links">' +
-    '<text x="18" y="25" fill="currentColor" font-size="15">' + (hawaii ? 'Hawaii' : 'Contiguous United States') + '</text>' +
-    '<path d="M30 38H610V285H30Z" fill="none" stroke="currentColor" opacity=".3"/>' +
-    points.map(s => {
-      const x = 30 + (Number(s.lon) - left) / (right - left) * 580;
-      const y = 38 + (top - Number(s.lat)) / (top - bottom) * 247;
-      return '<a href="' + esc(stadiumHref(s.id)) + '"><circle cx="' + x.toFixed(1) + '" cy="' +
-        y.toFixed(1) + '" r="4"><title>' + esc(s.name) + (s.state ? ', ' + esc(s.state) : '') + '</title></circle></a>';
-    }).join('') + '<text x="30" y="308" fill="currentColor" font-size="12">' +
-    (hawaii ? '161°W' : '125°W') + '</text><text x="570" y="308" fill="currentColor" font-size="12">' +
-    (hawaii ? '154°W' : '66°W') + '</text></svg>';
+function stadiumMap(stadiums, selected) {
+  const points=stadiums.filter(s=>s.lat!=null&&s.lon!=null&&Number.isFinite(Number(s.lat))&&Number.isFinite(Number(s.lon))&&Number(s.lat)>0&&Number(s.lat)<85);
+  const alaska=points.some(s=>Number(s.lat)>55);
+  const map=CfbGeography.projection(alaska);
+  return '<svg class="stadium-map" viewBox="0 0 '+map.width+' '+map.height+'" role="group" aria-label="United States stadium map including Hawaii in one geographic view">'+
+    '<g aria-label="United States state boundaries">'+CfbGeography.statePaths(alaska).map(s=>'<path class="state-boundary" d="'+s.d+'"><title>'+esc(s.name)+'</title></path>').join('')+'</g>'+
+    points.map(s=>{
+      const [x,y]=map.project(Number(s.lon),Number(s.lat));
+      const label=[s.name,(s.teams||[]).map(t=>t.name).join(', '),[s.city,s.state].filter(Boolean).join(', '),s.capacity==null?'':'Capacity: '+Number(s.capacity).toLocaleString()].filter(Boolean).join(' · ');
+      return '<a tabindex="0" href="'+esc(stadiumHref(s.id))+'" aria-label="'+esc(label)+'" data-stadium-marker="'+s.id+'"><circle cx="'+x.toFixed(2)+'" cy="'+y.toFixed(2)+'" r="'+(s.id===selected?'7':'4')+'"'+(s.id===selected?' class="selected-stadium"':'')+'><title>'+esc(label)+'</title></circle></a>';
+    }).join('')+'<text x="24" y="'+(map.height-12)+'" fill="currentColor" font-size="12">Mercator · real coordinates · Hawaii and mainland in one view</text></svg>';
 }
 function stadiumDetails(s) {
   const location = [s.city, s.state].filter(Boolean).join(', ');
@@ -3089,7 +3085,7 @@ function stadiumExplorerHtml(data, selected) {
   const stadiums = data.stadiums || [];
   if (selected != null) {
     const s = stadiums.find(x => x.id === selected);
-    return s ? stadiumDetails(s) : '<div class="panel"><h2>Stadium not found</h2><a href="#section=teams&view=stadiums">Browse stadiums</a></div>';
+    return s ? stadiumMap(stadiums, selected) + stadiumDetails(s) : '<div class="panel"><h2>Stadium not found</h2><a href="#section=teams&view=stadiums">Browse stadiums</a></div>';
   }
   if (!stadiums.length) return '<div class="panel"><h2 class="view-title">Stadium Explorer</h2>' +
     '<p class="empty-note">Stadium data will appear after the next full data build.</p></div>';
@@ -3098,7 +3094,7 @@ function stadiumExplorerHtml(data, selected) {
     '<p class="section-note">Explore the homes of FBS football. ' + withCoords + ' of ' + stadiums.length +
     ' listed venues have verified coordinates. Dots show location, not home-field strength; ' +
     'the list includes venues without coordinates and is searchable.</p>' +
-    '<div class="stadium-layout"><div>' + stadiumMap(stadiums, false) + stadiumMap(stadiums, true) + '</div>' +
+    '<div class="stadium-layout"><div>' + stadiumMap(stadiums, null) + '</div>' +
     '<div><label for="stadium-search">Find a stadium or team</label><input class="stadium-search" id="stadium-search" type="search" autocomplete="off">' +
     '<p class="section-note" id="stadium-count" role="status">Showing all ' + stadiums.length + ' stadiums</p>' +
     '<ul class="stadium-list" id="stadium-list">' + stadiums.map(s => '<li data-search="' +
