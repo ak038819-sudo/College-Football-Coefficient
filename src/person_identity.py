@@ -50,7 +50,35 @@ def normalize_name(name: str) -> str:
     parts = [p for p in cleaned.split() if p]
     while len(parts) > 1 and parts[-1] in SUFFIXES:
         parts.pop()
-    return " ".join(parts)
+    return " ".join(_join_initials(parts))
+
+
+def _join_initials(parts: list[str]) -> list[str]:
+    """Collapse a RUN of single characters into one token: ['d', 'j'] -> ['dj'].
+
+    Stripping the periods from 'D.J.' leaves two tokens where 'DJ' leaves one,
+    so without this the two commonest spellings of the same name produce
+    different keys -- and a box-score line spelled one way would never match the
+    roster row spelled the other.
+
+    Only runs of two or more are joined. A lone middle initial ('John F
+    Kennedy') is left alone, because gluing it to a real name would invent a
+    token no source ever wrote.
+    """
+    out: list[str] = []
+    run: list[str] = []
+    for part in parts + [None]:
+        if part is not None and len(part) == 1:
+            run.append(part)
+            continue
+        if len(run) > 1:
+            out.append("".join(run))
+        else:
+            out.extend(run)
+        run = []
+        if part is not None:
+            out.append(part)
+    return out
 
 
 def split_name(first: Optional[str], last: Optional[str], display: str) -> tuple[Optional[str], Optional[str]]:

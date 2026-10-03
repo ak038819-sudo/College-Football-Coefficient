@@ -40,16 +40,19 @@ def load_roster(conn: sqlite3.Connection, path: str | Path) -> dict:
     seasons = {int(r["season_year"]) for r in rows if r.get("season_year") is not None}
     if not seasons:
         raise ValueError(f"{path}: no season_year on any row")
-    # This snapshot is the authority for the seasons it covers, so its own rows are
-    # replaced wholesale. A player who left the roster between fetches must
-    # disappear from that season, which an upsert alone would never achieve.
     for season in seasons:
-        conn.execute("DELETE FROM player_team_seasons WHERE season_year = ? AND source = ?",
-                     (season, SOURCE))
         conn.execute("DELETE FROM person_unresolved WHERE entity = 'player' AND context = 'roster' "
                      "AND season_year = ?", (season,))
 
     stats = {"loaded": 0, "created": 0, "matched": 0, "unknown_team": 0, "skipped": 0}
+
+    # Resolution happens BEFORE the season's rows are deleted, and the rows to
+    # write are staged until it is done. A row with no athlete id can only be
+    # recognised by its existing player_team_seasons row (name + team + season +
+    # position), so deleting first would hide the very evidence the match needs:
+    # every run would then create another person and orphan the last one, which
+    # is exactly what a reload of an id-less roster used to do.
+    staged = []
     for row in rows:
         name = (row.get("name") or "").strip()
         season = row.get("season_year")
@@ -74,13 +77,21 @@ def load_roster(conn: sqlite3.Connection, path: str | Path) -> dict:
             stats["skipped"] += 1
             continue
         stats["created" if reason.startswith("created") else "matched"] += 1
+        staged.append((player_id, season, team_id, row.get("jersey"), position,
+                       identity.class_year_label(row.get("class_year")), row.get("height"),
+                       row.get("weight"), SOURCE, row.get("source_updated_at")))
+
+    # This snapshot is the authority for the seasons it covers, so its own rows are
+    # replaced wholesale. A player who left the roster between fetches must
+    # disappear from that season, which an upsert alone would never achieve.
+    for season in seasons:
+        conn.execute("DELETE FROM player_team_seasons WHERE season_year = ? AND source = ?",
+                     (season, SOURCE))
+    for values in staged:
         conn.execute(
             "INSERT OR REPLACE INTO player_team_seasons (player_id, season_year, team_id, jersey, "
             "position, class_year, height, weight, source, source_updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (player_id, season, team_id, row.get("jersey"), position,
-             identity.class_year_label(row.get("class_year")), row.get("height"),
-             row.get("weight"), SOURCE, row.get("source_updated_at")))
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", values)
         stats["loaded"] += 1
 
     identity.refresh_latest_seasons(conn)

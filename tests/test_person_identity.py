@@ -8,6 +8,7 @@ into one page, a re-run doubling a roster.
 """
 import json
 import sqlite3
+from pathlib import Path
 
 import pytest
 
@@ -65,6 +66,33 @@ def test_suffix_and_punctuation_variants_share_one_lookup_key(variant):
     assert identity.normalize_name(variant) == "jerome gaillard"
 
 
+@pytest.mark.parametrize("variant", ["D.J. Uiagalelei", "DJ Uiagalelei", "D J Uiagalelei"])
+def test_dotted_and_undotted_initials_share_one_lookup_key(variant):
+    """Stripping the periods from 'D.J.' leaves two tokens where 'DJ' leaves one.
+    Without collapsing the run, a box-score line spelled one way would never
+    match the roster row spelled the other."""
+    assert identity.normalize_name(variant) == "dj uiagalelei"
+
+
+def test_a_lone_middle_initial_is_not_glued_to_the_next_name():
+    """Only runs of two or more collapse; gluing a single initial to a real name
+    would invent a token no source ever wrote."""
+    assert identity.normalize_name("John F Kennedy") == "john f kennedy"
+    assert identity.normalize_name("John F. Kennedy") == "john f kennedy"
+
+
+def test_an_id_less_box_score_line_matches_the_roster_spelled_the_other_way(conn):
+    """The whole point of folding the key: resolution across spellings."""
+    player_id, _ = identity.resolve_player(conn, "cfbd", "D.J. Uiagalelei", external_id="900",
+                                           season_year=2025, team_id=1, position="QB")
+    conn.execute("INSERT INTO player_team_seasons (player_id, season_year, team_id, position, source) "
+                 "VALUES (?, 2025, 1, 'QB', 'cfbd')", (player_id,))
+    matched, reason = identity.resolve_player(conn, "cfbd", "DJ Uiagalelei", season_year=2025,
+                                              team_id=1, position="QB", context="boxscore",
+                                              create=False)
+    assert (matched, reason) == (player_id, "context")
+
+
 def test_normalization_is_a_lookup_key_not_an_identity(conn):
     """Two same-name players must not merge just because their keys match."""
     a = identity.create_player(conn, "Mike Williams")
@@ -91,9 +119,10 @@ def test_a_renamed_player_keeps_one_id_and_gains_an_alias(conn):
     again, _ = identity.resolve_player(conn, "cfbd", "DJ Uiagalelei", external_id="900",
                                        season_year=2026, team_id=1)
     assert again == first
+    # Both spellings fold to ONE key, so a feed using either reaches this person.
     aliases = {r[0] for r in conn.execute("SELECT alias FROM player_name_aliases WHERE player_id = ?",
                                           (first,))}
-    assert aliases == {"d j uiagalelei", "dj uiagalelei"}
+    assert aliases == {"dj uiagalelei"}
 
 
 def test_a_box_score_line_can_link_but_never_create_a_person(conn):
@@ -173,6 +202,36 @@ def test_rerunning_one_roster_season_is_idempotent(conn, tmp_path):
     assert conn.execute("SELECT COUNT(*) FROM player_team_seasons").fetchone()[0] == 2
     assert conn.execute("SELECT class_year FROM player_team_seasons WHERE jersey = 2"
                         ).fetchone()[0] == "JR"
+
+
+def test_rerunning_a_roster_with_no_athlete_ids_does_not_duplicate_people(conn, tmp_path):
+    """A row with no athlete id can only be recognised by its existing season
+    row, so deleting the season before resolving would hide the only evidence
+    the match has -- and every run would create another person, orphaning the
+    last. Three runs, because the second alone can look fine by accident."""
+    path = _roster(tmp_path, 2026, [{"name": "No Id Player", "team": "Clemson", "position": "QB"},
+                                    {"name": "Also No Id", "team": "Oregon", "position": "RB"}])
+    first = load_roster(conn, path)
+    assert (first["loaded"], first["created"]) == (2, 2)
+    for _ in range(2):
+        again = load_roster(conn, path)
+        assert (again["loaded"], again["created"], again["matched"]) == (2, 0, 2)
+    assert conn.execute("SELECT COUNT(*) FROM players").fetchone()[0] == 2
+    assert conn.execute("SELECT COUNT(*) FROM player_team_seasons").fetchone()[0] == 2
+    # No person left behind without the season row that justifies them.
+    assert conn.execute("SELECT COUNT(*) FROM players p WHERE NOT EXISTS ("
+                        "SELECT 1 FROM player_team_seasons s WHERE s.player_id = p.player_id)"
+                        ).fetchone()[0] == 0
+
+
+def test_an_id_less_roster_row_still_leaves_the_season_when_it_drops_off(conn, tmp_path):
+    """Resolving before the delete must not cost the wholesale replacement."""
+    load_roster(conn, _roster(tmp_path, 2026, [
+        {"name": "Stays On", "team": "Clemson"}, {"name": "Drops Off", "team": "Clemson"}]))
+    load_roster(conn, _roster(tmp_path, 2026, [{"name": "Stays On", "team": "Clemson"}]))
+    assert [r[0] for r in conn.execute(
+        "SELECT p.display_name FROM player_team_seasons s JOIN players p USING (player_id) "
+        "WHERE s.season_year = 2026")] == ["Stays On"]
 
 
 def test_a_transfer_is_two_team_seasons_for_one_player(conn, tmp_path):
@@ -352,6 +411,55 @@ def test_coach_records_keep_head_coaching_seasons_and_drop_recordless_coaches():
     assert records[0]["seasons"] == [{"year": 2025, "school": "Clemson", "games": None, "wins": 9,
                                       "losses": 3, "ties": None, "preseason_rank": None,
                                       "postseason_rank": 16}]
+
+
+def test_disjoint_careers_under_one_name_are_not_merged_by_the_fetcher():
+    """Grouping on name and hire date alone blends two coaches into one record,
+    and the loader -- seeing a single record -- never gets to flag the
+    collision, so the blend is permanent. CFBD omits hire dates for older
+    seasons, which is exactly when this bites."""
+    import fetch_cfbd_coaches as fc
+    merged = fc.merge_records([
+        {"name": "Bobby Johnson", "hire_date": None, "seasons": [{"year": 1990, "school": "Oregon"}]},
+        {"name": "Bobby Johnson", "hire_date": None, "seasons": [{"year": 2005, "school": "Clemson"}]}])
+    assert len(merged) == 2
+    assert [[s["year"] for s in r["seasons"]] for r in merged] == [[1990], [2005]]
+
+
+def test_slices_that_share_a_season_are_folded_into_one_career():
+    """A slice overlapping two clusters joins them: one person, not three."""
+    import fetch_cfbd_coaches as fc
+    merged = fc.merge_records([
+        {"name": "B Coach", "hire_date": None, "seasons": [{"year": 2000, "school": "Oregon"}]},
+        {"name": "B Coach", "hire_date": None, "seasons": [{"year": 2002, "school": "Clemson"}]},
+        {"name": "B Coach", "hire_date": None, "seasons": [{"year": 2000, "school": "Oregon"},
+                                                           {"year": 2002, "school": "Clemson"}]}])
+    assert len(merged) == 1
+    assert [s["year"] for s in merged[0]["seasons"]] == [2000, 2002]
+
+
+def test_the_fetcher_and_loader_together_keep_two_same_name_coaches_apart(tmp_path):
+    """End to end, because each half looked correct on its own: the fetcher
+    merged the pair, so the loader's collision branch never ran."""
+    import json as _json
+    import fetch_cfbd_coaches as fc
+    merged = fc.merge_records([
+        {"name": "Bobby Johnson", "hire_date": None, "seasons": [{"year": 1990, "school": "Oregon"}]},
+        {"name": "Bobby Johnson", "hire_date": None, "seasons": [{"year": 2005, "school": "Clemson"}]}])
+    path = tmp_path / "coaches.json"
+    path.write_text(_json.dumps(merged), encoding="utf-8")
+
+    conn = sqlite3.connect(":memory:")
+    conn.execute("PRAGMA foreign_keys = ON")
+    repo = Path(__file__).resolve().parent.parent
+    conn.executescript((repo / "sql" / "schema.sql").read_text(encoding="utf-8"))
+    conn.executescript((repo / "sql" / "person_tables.sql").read_text(encoding="utf-8"))
+    for team_id, name in TEAMS.items():
+        conn.execute("INSERT INTO teams (team_id, team_name) VALUES (?, ?)", (team_id, name))
+
+    stats = load_coaches(conn, path)
+    assert stats["coaches"] == 2 and stats["collisions"] == 1
+    assert conn.execute("SELECT COUNT(DISTINCT coach_id) FROM coach_tenures").fetchone()[0] == 2
 
 
 def test_year_slices_merge_into_one_career_per_coach():

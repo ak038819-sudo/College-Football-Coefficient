@@ -40,7 +40,11 @@ Resolution is tried in a fixed order (`src/person_identity.py`):
 
 `normalize_name` folds case, punctuation and generational suffixes, so
 `Jerome Gaillard Jr.` and `Jerome Gaillard` share a lookup key, as do
-`D.J. Uiagalelei` and `DJ Uiagalelei`. That key is for lookup only. Two
+`D.J. Uiagalelei`, `DJ Uiagalelei` and `D J Uiagalelei` — stripping the periods
+leaves two tokens where the undotted spelling leaves one, so a run of single
+characters is collapsed into a single token. A *lone* middle initial is left
+alone (`John F Kennedy`), because gluing it to a real name would invent a token
+no source ever wrote. That key is for lookup only. Two
 `Mike Williams` normalize identically, which is exactly why step 2 also requires
 team, season and position, and refuses a double match.
 
@@ -78,6 +82,16 @@ this feed; appending the first season keeps them two people, and the collision
 is written to `person_unresolved` so the pair can be looked at rather than
 trusted. The key is stored in `coach_external_ids` rather than assumed in code,
 so a source with real coach ids can be added beside it without a migration.
+
+The fetcher must not pre-merge those two people, and that is subtler than it
+looks. Each year slice of `/coaches` returns a coach's *whole* career, so the
+same person arrives once per slice covering them, with overlapping season lists.
+That overlap is the merge signal: records sharing a name and hire date are
+merged only when their seasons actually intersect. Grouping on name and hire
+date alone would hand one `coach_id` two unrelated careers, and because the
+loader would then see a single record its collision handling would never run, so
+the blend would be permanent and undetectable. Disjoint careers under one name
+therefore stay separate records and reach the loader as a recorded collision.
 
 ### Known gap: the box-score archive carries no athlete ids
 
