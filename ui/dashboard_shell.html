@@ -504,6 +504,7 @@
   .ledger th.tr, .ledger td.tr { text-align: right; }
   .ledger tbody tr:hover td { background: var(--panel-2); }
   .ledger td.win { color: var(--green-hl); } .ledger td.loss { color: var(--red); }
+  .ledger td.live-now { color: var(--amber); }
   .dim, .ledger td.dim { color: var(--ink-dim); }
   .ledger caption { caption-side: bottom; font: 11px var(--font-mono); color: var(--ink-dim); text-align: left; padding-top: 8px; }
   .sched-group { font: 10.5px var(--font-mono); color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.4px; }
@@ -2458,9 +2459,11 @@ function teamScheduleSeasons(tp, team) {
   return [...new Set([...ahead, ...played])].sort((a, b) => b - a);
 }
 
+let paintedLiveSignature = null;
 function fillSchedulePanel(tp, team) {
   const el = document.getElementById('tp-schedule');
   if (!el) return;
+  paintedLiveSignature = liveResultsSignature;
   const seasons = teamScheduleSeasons(tp, team);
   if (!seasons.length) {
     el.innerHTML = panelHead('Schedule') + '<div class="empty-note">No games in the dataset for this team.</div>';
@@ -2486,24 +2489,51 @@ function fillSchedulePanel(tp, team) {
       '<td class="' + (r.chg >= 0 ? 'pos' : 'neg') + '">' + signed(r.chg, 1) + '</td>' +
       '<td>' + r.post.toFixed(0) + '</td></tr>';
   });
-  if (ahead.length) {
+  // The scoreboard refreshes every few minutes; the model export rebuilds on its
+  // own schedule. Anything the scoreboard has a score for is shown here with
+  // that score, above the games still waiting to kick off, so a finished game
+  // stops reading as upcoming hours before the next rebuild deploys.
+  const aheadRow = (g, live) => {
+    const home = g.home === team.id, oppId = home ? g.away : g.home;
+    const opp = TEAM_BY_ID.get(String(oppId));
+    const myElo = home ? g.homeElo : g.awayElo, oppElo = home ? g.awayElo : g.homeElo;
+    const pct = probPct(g.pHome);
+    let when = esc(fmtKickoff(g.kickoff, g.tbd)), result = '<td class="dim">—</td>';
+    if (live) {
+      const mine = home ? live.home.points : live.away.points;
+      const theirs = home ? live.away.points : live.home.points;
+      const score = mine + '–' + theirs;
+      if (live.status === 'completed') {
+        const outcome = mine > theirs ? 'W' : mine < theirs ? 'L' : 'T';
+        when = esc(fmtGameDate({ kickoff_utc: live.start_date || g.kickoff }));
+        result = '<td class="' + (outcome === 'W' ? 'win' : outcome === 'L' ? 'loss' : '') + '">' +
+          outcome + ' ' + score + '</td>';
+      } else {
+        result = '<td class="live-now">Live ' + score +
+          (live.period ? ' · Q' + esc(String(live.period)) : '') + '</td>';
+      }
+    }
+    return '<tr>' +
+      '<td><a href="' + esc(gameHref(g.id, g.season)) + '">' + when + '</a></td>' +
+      '<td class="opp"><span class="swing-where">' + (g.neutral || home ? 'vs' : 'at') + '</span> ' +
+        (opp ? oppLink(opp.name, g.season) : 'Unknown') + (g.neutral ? ' <span class="swing-where">(N)</span>' : '') + '</td>' +
+      '<td>' + (g.phase === 2 ? 'CFP' : g.phase === 1 ? 'Bowl' : wk(g)) + '</td>' +
+      result +
+      '<td>' + Number(myElo).toFixed(0) + '</td><td>' + Number(oppElo).toFixed(0) + '</td>' +
+      '<td>' + (home ? pct.home : pct.away) + '%</td>' +
+      '<td class="dim">—</td><td class="dim">—</td></tr>';
+  };
+  const scored = ahead.filter(g => liveResults.has(g.id));
+  const unplayed = ahead.filter(g => !liveResults.has(g.id));
+  if (scored.length) {
+    rows.push('<tr class="sched-post"><td colspan="9" class="sched-group">Live scoreboard · ' +
+      'score is in, the ratings have not rebuilt yet</td></tr>');
+    scored.forEach(g => rows.push(aheadRow(g, liveResults.get(g.id))));
+  }
+  if (unplayed.length) {
     rows.push('<tr class="sched-post"><td colspan="9" class="sched-group">Scheduled · ' +
       'current ratings, not yet played</td></tr>');
-    ahead.forEach(g => {
-      const home = g.home === team.id, oppId = home ? g.away : g.home;
-      const opp = TEAM_BY_ID.get(String(oppId));
-      const myElo = home ? g.homeElo : g.awayElo, oppElo = home ? g.awayElo : g.homeElo;
-      const pct = probPct(g.pHome);
-      rows.push('<tr>' +
-        '<td>' + esc(fmtKickoff(g.kickoff, g.tbd)) + '</td>' +
-        '<td class="opp"><span class="swing-where">' + (g.neutral || home ? 'vs' : 'at') + '</span> ' +
-          (opp ? oppLink(opp.name, g.season) : 'Unknown') + (g.neutral ? ' <span class="swing-where">(N)</span>' : '') + '</td>' +
-        '<td>' + (g.phase === 2 ? 'CFP' : g.phase === 1 ? 'Bowl' : wk(g)) + '</td>' +
-        '<td class="dim">—</td>' +
-        '<td>' + Number(myElo).toFixed(0) + '</td><td>' + Number(oppElo).toFixed(0) + '</td>' +
-        '<td>' + (home ? pct.home : pct.away) + '%</td>' +
-        '<td class="dim">—</td><td class="dim">—</td></tr>');
-    });
+    unplayed.forEach(g => rows.push(aheadRow(g, null)));
   }
 
   const sRow = (tp.seasonsByTeam.get(team.id) || new Map()).get(season);
@@ -2532,6 +2562,9 @@ function fillSchedulePanel(tp, team) {
       '<li><b>Elo &Delta;</b> is K × (S − E) × M for that game; the Rating Ledger under <i>Analytics</i> shows the arithmetic.</li>' +
       '<li>Scheduled rows use current ratings from <code>src/predict_upcoming.py</code> and have no result, no Elo change ' +
         'and no post-game rating, because the game hasn’t been played.</li>' +
+      '<li>A row under <b>Live scoreboard</b> has a score from the live feed, which refreshes every few minutes. ' +
+        'Its Elo, win probability and record are still the pregame values: the rating columns fill in, and the row ' +
+        'joins the results above, once the model rebuilds.</li>' +
       '<li>FBS opponents only — the database doesn’t store FCS games.</li>' +
     '</ul></details>';
   const sel = document.getElementById('tp-sched-season');
@@ -2714,6 +2747,16 @@ function renderUpcomingCard(team) {
       }).join('') + '</ol>';
   }
   return '<div class="panel team-section" id="tp-upcoming"><h2 class="section-title">Upcoming Schedule</h2>' + body + '</div>';
+}
+
+// Called when a fresh scoreboard lands while a team page is open. The schedule
+// is the only panel built from the upcoming-games export, so it is the only one
+// a newer final changes without a rebuild.
+function repaintTeamScheduleLive(version) {
+  if (version !== renderVersion || state.view !== 'team' || !TP) return;
+  if (liveResultsSignature === paintedLiveSignature) return;
+  const team = resolveTeam(state.teamParam);
+  if (team && document.getElementById('tp-schedule')) fillSchedulePanel(TP, team);
 }
 
 function hydrateTeamPage() {
@@ -3087,6 +3130,27 @@ function hydrateDirectory(version) {
 let liveRequest = 0;
 let liveGameRequest = 0;
 let liveSnapshot = null;
+// Finals and in-progress scores from the scoreboard, keyed by CFBD game id.
+// The static model export is rebuilt on its own schedule and can trail the
+// scoreboard by hours, so team pages read this to show a result the ratings
+// have not ingested yet instead of leaving the row blank.
+let liveResults = new Map();
+// What the schedule table would draw from the current scoreboard. Repainting a
+// panel the viewer is reading closes their open help section and loses their
+// place in the table, so a repaint waits until a score actually moves.
+let liveResultsSignature = '';
+function setLiveResults(games) {
+  const next = new Map();
+  for (const g of games || []) {
+    if (g.status !== 'completed' && g.status !== 'in_progress') continue;
+    if (!Number.isInteger(g.home?.points) || !Number.isInteger(g.away?.points)) continue;
+    next.set(g.id, g);
+  }
+  liveResults = next;
+  liveResultsSignature = [...next.values()]
+    .map(g => [g.id, g.status, g.period || '', g.home.points, g.away.points].join(':')).sort().join('|');
+  return next;
+}
 let liveSeasonData = null;
 let liveFilter = 'all';
 let liveOrder = 'hype';
@@ -3123,13 +3187,18 @@ function liveTeamId(t) {
 }
 // A static model export can trail the independently refreshed live scoreboard.
 // Never attach the prior game's green/red movement to a team with a newer final.
-function newerFinalTeams(games, asOf) {
-  const cutoff = new Date(String(asOf || '') + 'T23:59:59.999Z');
+//
+// A game counts as newer when the scoreboard calls it final AND the published
+// model still lists it as upcoming. Comparing kickoff against the export's
+// as-of DATE used to miss the common case: a Friday night game kicks off before
+// midnight UTC and ends after it, so it never looked newer than that day's
+// export even though no rebuild had seen the result.
+function pendingFinals(games) {
+  return (games || []).filter(g => g.status === 'completed' && UPCOMING_BY_ID.has(g.id));
+}
+function newerFinalTeams(games) {
   const names = new Set();
-  if (Number.isNaN(cutoff.getTime())) return names;
-  for (const game of games || []) {
-    const kickoff = new Date(game.start_date);
-    if (game.status !== 'completed' || Number.isNaN(kickoff.getTime()) || kickoff <= cutoff) continue;
+  for (const game of pendingFinals(games)) {
     for (const side of [game.away, game.home]) {
       const team = liveTeamId(side);
       if (team) names.add(team.name);
@@ -3138,13 +3207,18 @@ function newerFinalTeams(games, asOf) {
   return names;
 }
 function hydrateRatingFreshness(version) {
-  const note = document.getElementById('rating-freshness');
-  if (!note || !UPCOMING.ratings_as_of) return;
   fetch('data/live_scores.json?t=' + Date.now(), {cache: 'no-store'})
     .then(r => { if (!r.ok) throw new Error('scoreboard unavailable'); return r.json(); })
     .then(data => {
-      if (version !== renderVersion || !document.getElementById('rating-freshness')) return;
-      const newer = newerFinalTeams(data.games, UPCOMING.ratings_as_of);
+      if (version !== renderVersion) return;
+      setLiveResults(data.games);
+      // The schedule table is built from the model export, so it has to be
+      // repainted once the scoreboard lands; otherwise a finished game keeps
+      // showing as an upcoming kickoff until the next rebuild deploys.
+      repaintTeamScheduleLive(version);
+      const note = document.getElementById('rating-freshness');
+      if (!note || !UPCOMING.ratings_as_of) return;
+      const newer = newerFinalTeams(data.games);
       const current = state.view === 'team' ? resolveTeam(state.teamParam)?.name : null;
       if (!newer.size || current && !newer.has(current)) return;
       const affected = current ? new Set([current]) : newer;
@@ -3399,6 +3473,7 @@ function hydrateLiveScores(version) {
       if (!status || !target || !board) return;
       const slate = state.section === 'home' ? homeSlate(Array.isArray(data.games) ? data.games : []) :
         { games: Array.isArray(data.games) ? data.games : [], label: null };
+      setLiveResults(data.games);
       liveSnapshot = { ...data, games: slate.games };
       const stamp = data.updated_at ? new Date(data.updated_at) : null;
       const validStamp = stamp && !Number.isNaN(stamp.getTime());
@@ -3522,6 +3597,7 @@ function hydrateLiveGamePage(version) {
     const g = (data?.games || []).find(g => g.id === id);
     if (!g) return false;
     liveSnapshot = data;
+    setLiveResults(data.games);
     const target = document.getElementById('game-page');
     if (target) target.innerHTML = liveDetail(g);
     return true;
