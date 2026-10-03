@@ -86,38 +86,38 @@
     line-height: 1.5;
   }
 
-  /* Tabs and the global search share one row, so the search sits with the
-     navigation rather than competing with the title. */
+  /* Primary navigation sits inside the masthead, above its divider. */
   .nav-row {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 10px 16px;
-    margin-bottom: 18px;
+    width: 100%;
+    margin-top: 8px;
   }
   nav.tabs {
     display: flex;
-    gap: 6px;
+    gap: 24px;
     flex-wrap: wrap;
   }
   nav.tabs a {
     font-family: var(--font-display);
-    font-size: 15px;
+    font-size: 17px;
     letter-spacing: 0.3px;
     background: transparent;
-    color: var(--ink-dim);
-    border: 2px solid var(--line);
-    padding: 8px 18px;
+    color: var(--amber);
+    border: 0;
+    border-bottom: 2px solid transparent;
+    padding: 8px 0;
     cursor: pointer;
-    border-radius: 3px;
+    border-radius: 0;
     text-decoration: none;
   }
   nav.tabs a.active {
-    color: var(--bg);
-    background: var(--amber);
-    border-color: var(--amber);
+    color: var(--amber);
+    border-bottom-color: var(--amber);
   }
-  nav.tabs a:hover:not(.active) { border-color: var(--amber-dim); color: var(--ink); }
+  nav.tabs a:hover:not(.active) { border-bottom-color: var(--amber-dim); }
   a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
   .skip-link { position: absolute; left: -10000px; }
   .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -271,8 +271,9 @@
   @media (max-width: 520px) {
     .wrap { padding: 20px 12px 60px; }
     .nav-row { display: block; }
-    nav.tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin-bottom: 10px; }
-    nav.tabs a { padding: 9px 3px; font-size: 13px; text-align: center; }
+    nav.tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
+    nav.tabs a { padding: 9px 0; font-size: 15px; text-align: center; }
+    .global-search { max-width: none; }
     .panel { padding: 14px; }
     .subnav a { padding: 9px 8px; font-size: 14px; }
   }
@@ -866,6 +867,7 @@
   .live-team .live-right .live-odds { color: #ffde91; font: 21px/1 var(--font-display); }
   .live-card .gc-foot { display: flex; justify-content: space-between; gap: 8px; align-items: center;
     padding: 10px 13px; background: #17241f; color: #bec9c2; font: 11px var(--font-mono); }
+  .live-card .live-venue { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .live-card .gc-foot span:last-child { color: #f1cb77; white-space: nowrap; }
   .live-delta { font: 11px var(--font-mono); white-space: nowrap; }
   .live-delta.up { color: #7ddca3; }
@@ -901,8 +903,7 @@
   .table-scroll {overflow-x:auto;max-width:100%;}
   .tabs {flex-wrap:wrap;}
   #home-weeks {align-items:center;gap:20px;flex-wrap:wrap;}
-  /* Keep text links on the theme accent, including visited links. Active
-     filled tabs/buttons retain their contrasting foreground. */
+  /* Keep text links on the theme accent, including visited links. */
   :root a:any-link:not(.active):not(.action-button) { color: var(--amber); }
 </style>
 </head>
@@ -919,25 +920,25 @@
       <span id="coverage-caption"></span><br>
       <span id="year-caption">—</span>
     </div>
+    <div class="nav-row">
+      <nav class="tabs" id="tabs" aria-label="Primary">
+        <a data-section="home" href="#section=home">Home</a>
+        <a data-section="stats" href="#section=stats">Stats</a>
+        <a data-section="rankings" href="#section=rankings">Standings</a>
+        <a data-section="teams" href="#section=teams">Teams</a>
+      </nav>
+      <div class="global-search" role="search">
+        <label class="visually-hidden" for="global-search">Search teams, games and seasons</label>
+        <input type="search" id="global-search" autocomplete="off" spellcheck="false" maxlength="150"
+               placeholder="Search teams, games, seasons  ( / )"
+               aria-controls="search-results" aria-expanded="false" aria-describedby="search-status">
+        <div id="search-results" class="search-results" hidden></div>
+        <p id="search-status" class="visually-hidden" aria-live="polite"></p>
+      </div>
+    </div>
   </header>
 
   <p class="section-note"><a href="#section=coverage">Data coverage</a> · <a href="#section=methodology">How it works</a></p>
-  <div class="nav-row">
-    <nav class="tabs" id="tabs" aria-label="Primary">
-      <a data-section="home" href="#section=home">Home</a>
-      <a data-section="stats" href="#section=stats">Stats</a>
-      <a data-section="rankings" href="#section=rankings">Standings</a>
-      <a data-section="teams" href="#section=teams">Teams</a>
-    </nav>
-    <div class="global-search" role="search">
-      <label class="visually-hidden" for="global-search">Search teams, games and seasons</label>
-      <input type="search" id="global-search" autocomplete="off" spellcheck="false" maxlength="150"
-             placeholder="Search teams, games, seasons  ( / )"
-             aria-controls="search-results" aria-expanded="false" aria-describedby="search-status">
-      <div id="search-results" class="search-results" hidden></div>
-      <p id="search-status" class="visually-hidden" aria-live="polite"></p>
-    </div>
-  </div>
 
   <nav class="subnav" id="subnav" aria-label="Section views"></nav>
   <div class="year-row" id="year-row"></div>
@@ -3328,8 +3329,7 @@ function renderLiveBoard(games) {
 }
 function renderLiveScores() {
   const mobile = window.matchMedia('(max-width: 700px)').matches;
-  return '<h2 class="view-title">Home · Live Scores</h2><p class="section-note">Scores from CollegeFootballData.com. ' +
-    'Featured games lead by Elo rank, matchup strength and projected closeness. The feed timestamp shows its freshness. Live Elo rankings are an illustrative scenario; published ratings update separately.</p>' +
+  return '<h2 class="view-title">Home · Live Scores</h2>' +
     '<div id="live-status" role="status" aria-live="polite">Loading the scoreboard…</div>' +
     '<div class="live-controls"><fieldset aria-label="Game status"><legend>Game status</legend>' +
     [['all', 'All'], ['in_progress', 'Live'], ['scheduled', 'Upcoming'], ['completed', 'Final']]
@@ -3385,13 +3385,12 @@ function liveTeam(t, g, pct) {
     (logo ? '<img class="live-watermark" src="' + esc(logo.src) + '" alt="" aria-hidden="true" loading="lazy">' : '') +
     '<span class="name-cell">' + teamAnchor(name, identity) + '</span><span class="live-right">' +
     (g.status === 'scheduled'
-      ? '<span class="live-odds">' + (chance == null ? 'N/A' : chance + '%') + '</span>'
+      ? '<span class="live-odds" title="Pregame win chance">' + (chance == null ? 'N/A' : chance + '%') + '</span>'
       : '<strong>' + (Number.isInteger(t?.points) ? t.points : '—') + '</strong>') +
     liveChange(g, t) + '</span></div>';
 }
 function renderLiveCard(g) {
   const p = livePrediction(g), pct = p ? probPct(p.pHome) : null;
-  const footer = pct ? 'Pregame: ' + pct.away + '% away · ' + pct.home + '% home' : 'Win chance unavailable';
   const venue = g.venue || UPCOMING_BY_ID.get(g.id)?.venue;
   return '<article class="live-card' + (g.status === 'in_progress' ? ' is-live' : '') +
     '" role="link" tabindex="0" data-live-id="' + Number(g.id) +
@@ -3399,7 +3398,8 @@ function renderLiveCard(g) {
     ', ' + liveLabel(g) + '. Open game') + '"><div class="live-meta"><span class="gbadge ' +
     (g.status === 'completed' ? 'final' : 'upcoming') + '">' + esc(liveLabel(g)) + '</span>' +
     (g.tv ? '<span class="live-tv">' + esc(g.tv) + '</span>' : '') + '</div>' + liveTeam(g.away, g, pct) + liveTeam(g.home, g, pct) +
-    '<div class="gc-foot"><span>' + (venue ? esc(venue) + ' · ' : '') + esc(footer) + '</span><span>Game details &rarr;</span></div></article>';
+    '<div class="gc-foot"><span class="live-venue"' + (venue ? ' title="' + esc(venue) + '"' : '') + '>' +
+    esc(venue || 'Venue unavailable') + '</span><span>Game details &rarr;</span></div></article>';
 }
 // The live endpoint may keep last week's finals until its next scoreboard window.
  // Compare it with the first still-scheduled week in the published model export.
@@ -4152,6 +4152,10 @@ function renderMethodology() {
     '<b>CoE</b> asks what a team has actually earned through results against the schedule it played; and the <b>efficiency stats</b> on team pages ' +
     '(EPA, success rate) describe how well it played, independent of the scoreboard. Every number shown is computed once, from information available ' +
     'before each game, and never rewritten later.</p>' +
+
+    '<h3>Live scoreboard</h3><p>Scores from CollegeFootballData.com. ' +
+    'Featured games lead by Elo rank, matchup strength and projected closeness. The feed timestamp shows its freshness. ' +
+    'Live Elo rankings are an illustrative scenario; published ratings update separately.</p>' +
 
     '<h3>Elo: strength right now</h3><p>Every team carries a rating, starting at ' + E.initial_rating + '. Before each game, the gap between the two ' +
     'ratings (plus a home-field bump for the home team, none at neutral sites) gives each side\'s chance of winning. Afterward, the winner takes points ' +
