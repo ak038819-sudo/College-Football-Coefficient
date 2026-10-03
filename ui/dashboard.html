@@ -78,13 +78,16 @@
     line-height: 1;
   }
   .title-block h1 span { color: var(--amber); }
-  .scope-note {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--ink-dim);
-    text-align: right;
-    line-height: 1.5;
+  .header-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    margin-left: auto;
+    align-self: center;
+    font: 14px var(--font-display);
   }
+  .header-links a { text-decoration: none; }
+  .header-links a:hover { text-decoration: underline; }
 
   /* Primary navigation sits inside the masthead, above its divider. */
   .nav-row {
@@ -917,10 +920,10 @@
       <h1>CoE <span>Playoff Model</span></h1>
       <p class="release-label">v0.1 · People and Places of the Game</p>
     </div>
-    <div class="scope-note">
-      <span id="coverage-caption"></span><br>
-      <span id="year-caption">—</span>
-    </div>
+    <nav class="header-links" aria-label="About the data">
+      <a href="#section=coverage">Data Coverage</a>
+      <a href="#section=methodology">How It Works</a>
+    </nav>
     <div class="nav-row">
       <nav class="tabs" id="tabs" aria-label="Primary">
         <a data-section="home" href="#section=home">Home</a>
@@ -938,8 +941,6 @@
       </div>
     </div>
   </header>
-
-  <p class="section-note"><a href="#section=coverage">Data coverage</a> · <a href="#section=methodology">How it works</a></p>
 
   <nav class="subnav" id="subnav" aria-label="Section views"></nav>
   <div class="year-row" id="year-row"></div>
@@ -1318,22 +1319,14 @@ function renderYearRow() {
       state.section === 'teams' || state.section === 'live' || state.section === 'matchups' || state.section === 'methodology' || state.section === 'coverage' ||
       (state.section === 'games' && state.finder) || (state.section === 'rankings' && state.subview === 'home-field')) {
     row.innerHTML = '';
-    document.getElementById('year-caption').textContent = state.view === 'team' ? 'TEAM PAGE'
-      : state.view === 'conference' ? 'CONFERENCE PAGE' : state.view === 'game' ? 'GAME'
-      : state.section === 'live' ? 'CURRENT SLATE' : state.section === 'matchups' ? 'WHAT IF · ' + UPCOMING.season
-      : state.section === 'methodology' ? 'METHODOLOGY'
-      : state.section === 'coverage' ? 'EVERY SEASON' : state.section === 'teams' && state.subview === 'stadiums' ? 'HOMES OF COLLEGE FOOTBALL' : state.section === 'games' ? 'EVERY SEASON'
-      : state.section === 'rankings' ? 'CURRENT ESTIMATES' : 'TEAMS & CONFERENCES';
     return;
   }
   if (state.section === 'home') {
     row.innerHTML = '';
-    document.getElementById('year-caption').textContent = 'CURRENT SEASON' + (UPCOMING.season ? ' \u00b7 ' + UPCOMING.season : '');
     return;
   }
   if (state.section === 'playoff' && state.subview === 'history') {
     row.innerHTML = '';
-    document.getElementById('year-caption').textContent = 'ALL SEASONS, ' + DATA.years_playoff[0] + '\u2013' + DATA.years_playoff[DATA.years_playoff.length - 1];
     return;
   }
   const years = CfbNavigation.seasonsFor(state.section, ROUTE_CONFIG);
@@ -1358,7 +1351,6 @@ function renderYearRow() {
 
   row.innerHTML = '';
   row.appendChild(select);
-  document.getElementById('year-caption').textContent = 'VIEWING ' + state.year;
 }
 
 function rankTable(rows, valueKey, labelKey, valueLabel, kind) {
@@ -2962,7 +2954,7 @@ function hydrateHomeDiscovery(version) {
           ...feed};
       })};
       paintLiveGames();
-      document.getElementById('live-status').textContent = 'Browsing ' + data.season + ' · ' + (week === 'post' ? 'Postseason' : 'Week ' + week);
+      document.getElementById('live-status').textContent = '';
     }
   }).catch(()=> { if(version===renderVersion) document.getElementById('home-weeks').textContent='Week navigation could not be loaded.'; });
   loadSeasonGames(selectedSeason).then(data => {
@@ -3330,8 +3322,7 @@ function renderLiveBoard(games) {
 }
 function renderLiveScores() {
   const mobile = window.matchMedia('(max-width: 700px)').matches;
-  return '<h2 class="view-title">Home · Live Scores</h2>' +
-    '<div id="live-status" role="status" aria-live="polite">Loading the scoreboard…</div>' +
+  return '<div id="live-status" role="status" aria-live="polite">Loading the scoreboard…</div>' +
     '<div class="live-controls"><fieldset aria-label="Game status"><legend>Game status</legend>' +
     [['all', 'All'], ['in_progress', 'Live'], ['scheduled', 'Upcoming'], ['completed', 'Final']]
       .map(([value, label]) => '<button type="button" data-live-filter="' + value + '" aria-pressed="' +
@@ -5357,8 +5348,6 @@ function render() {
 }
 
 function coverageRange(years) { return years?.length ? Math.min(...years) + '–' + Math.max(...years) : 'unavailable'; }
-document.getElementById('coverage-caption').textContent = 'RATINGS: ' + coverageRange(DATA.years_all) +
-  ' · PLAYOFF: ' + coverageRange(DATA.years_playoff);
 new MutationObserver(() => wrapWideTables()).observe(document.getElementById('content'), {childList:true,subtree:true});
 applyRoute();
 </script>
