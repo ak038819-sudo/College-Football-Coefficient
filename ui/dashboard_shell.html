@@ -2660,6 +2660,9 @@ function renderMatchups() {
     result = '<div class="matchup-board">' + side(a, ra, pct.home) + '<span class="matchup-mid">vs</span>' +
       side(b, rb, pct.away) + '</div><div class="matchup-bar" aria-label="Team A ' + pct.home +
       ' percent, Team B ' + pct.away + ' percent"><span style="width:' + pct.home + '%"></span><span></span></div>';
+    const adjustment = state.venue === 'neutral' ? 0 : state.venue === 'away' ? -Number(cfg.home_field) : Number(cfg.home_field);
+    result += '<div class="story-grid"><div class="story-item"><small>Team A − Team B Elo</small><strong>' + (ra-rb).toFixed(1) + '</strong><p>Current published rating difference</p></div>' +
+      '<div class="story-item"><small>Venue adjustment for Team A</small><strong>' + (adjustment>0?'+':'') + adjustment.toFixed(1) + '</strong><p>Existing flat Elo home-field bonus; neutral venues receive zero</p></div></div>';
   }
   return '<div class="panel"><h2 class="view-title">Hypothetical matchup</h2>' +
     '<p class="section-note">Pick two teams and a venue. Win chances use the current exported Elo ratings and the ' +
@@ -3050,7 +3053,7 @@ function stadiumGameRow(g) {
     esc(away?.name || 'Unknown') + (g.neutral ? ' vs. ' : ' at ') + esc(home?.name || 'Unknown') + score + '</a></li>';
 }
 function stadiumMap(stadiums, selected) {
-  const points=stadiums.filter(s=>s.lat!=null&&s.lon!=null&&Number.isFinite(Number(s.lat))&&Number.isFinite(Number(s.lon))&&Number(s.lat)>0&&Number(s.lat)<85);
+  const points=stadiums.filter(s=>s.lat!=null&&s.lon!=null&&Number.isFinite(Number(s.lat))&&Number.isFinite(Number(s.lon))&&Number(s.lat)>=15&&Number(s.lat)<=73&&Number(s.lon)>=-180&&Number(s.lon)<=-60);
   const alaska=points.some(s=>Number(s.lat)>55);
   const map=CfbGeography.projection(alaska);
   return '<svg class="stadium-map" viewBox="0 0 '+map.width+' '+map.height+'" role="group" aria-label="United States stadium map including Hawaii in one geographic view">'+
