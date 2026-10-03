@@ -1,7 +1,8 @@
 // Dependency-free search regressions: node --test tests/search.test.cjs
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { buildSearcher, words } = require('../ui/search.js');
+const CfbSearch = require('../ui/search.js');
+const { buildSearcher, words } = CfbSearch;
 
 const teams = [
   { id: 1, name: 'Texas', slug: 'texas', aliases: [] },
@@ -139,4 +140,84 @@ test('an index with no conferences still searches teams', () => {
   assert.deepEqual(none.search('texas a&m').mentioned, [2]);
   assert.deepEqual(none.search('sec').conferences, []);
   assert.equal(none.search('sec').conferencesTotal, 0);
+});
+
+// ---- People in search (v0.1.1) ----------------------------------------------
+// People are not in the search index: 15,909 for one synced season, with a
+// backfill to 2009 ahead. They live in per-letter shards, and these cover the
+// matching the page runs over whichever shard it loaded.
+
+const peopleRows = [
+  ['p', 1, 'Cade Klubnik', 10, 'QB'],
+  ['p', 2, 'Klub Jones', 20, 'RB'],
+  ['p', 3, 'Jaylen Klubnik', 30, 'WR'],
+  ['c', 4, 'Dan Lanning', 10, 'head coach'],
+  ['p', 5, "Na'eem Offord", 20, 'DB'],
+  ['p', 6, 'Aaron Karas', null, null]
+];
+
+test('the shard a query needs is the first letter of the word being typed', () => {
+  // "cade klub" is a surname in progress, so it needs k, not c.
+  assert.equal(CfbSearch.peopleShardKey('klubnik'), 'k');
+  assert.equal(CfbSearch.peopleShardKey('cade klub'), 'k');
+  assert.equal(CfbSearch.peopleShardKey('  Lanning '), 'l');
+  assert.equal(CfbSearch.peopleShardKey("Na'eem"), 'n');
+  assert.equal(CfbSearch.peopleShardKey('2026'), '0');
+  for (const none of ['', '   ', '!!', '#']) assert.equal(CfbSearch.peopleShardKey(none), null);
+});
+
+test('a person is found by surname, which is how anyone searches', () => {
+  const r = CfbSearch.matchPeople(peopleRows, 'klubnik', 8);
+  assert.deepEqual(r.people.map(p => p.name), ['Cade Klubnik', 'Jaylen Klubnik']);
+  assert.equal(r.total, 2);
+  assert.deepEqual(r.people[0], { kind: 'player', id: 1, name: 'Cade Klubnik', teamId: 10, role: 'QB' });
+});
+
+test('a whole-name prefix outranks a later word, and a coach is labelled as one', () => {
+  // "klub" starts Klub Jones' whole name, and Klubnik's second word.
+  assert.deepEqual(CfbSearch.matchPeople(peopleRows, 'klub', 8).people.map(p => p.name),
+    ['Klub Jones', 'Cade Klubnik', 'Jaylen Klubnik']);
+  const coach = CfbSearch.matchPeople(peopleRows, 'lanning', 8).people[0];
+  assert.equal(coach.kind, 'coach');
+  assert.equal(coach.id, 4);
+});
+
+test('a two-word query matches a first and last name together', () => {
+  assert.deepEqual(CfbSearch.matchPeople(peopleRows, 'cade klub', 8).people.map(p => p.name),
+    ['Cade Klubnik']);
+  assert.deepEqual(CfbSearch.matchPeople(peopleRows, 'jaylen klubnik', 8).people.map(p => p.name),
+    ['Jaylen Klubnik']);
+  // Words in the wrong order are not a match: that would make every pair of
+  // common names match every player.
+  assert.deepEqual(CfbSearch.matchPeople(peopleRows, 'klubnik cade', 8).people, []);
+});
+
+test('matching never begins mid-word, and punctuation in a name is folded', () => {
+  assert.deepEqual(CfbSearch.matchPeople(peopleRows, 'lub', 8).people, []);
+  assert.deepEqual(CfbSearch.matchPeople(peopleRows, 'arning', 8).people, []);
+  assert.deepEqual(CfbSearch.matchPeople(peopleRows, 'naeem', 8).people.map(p => p.id), [5]);
+  assert.deepEqual(CfbSearch.matchPeople(peopleRows, "na'eem", 8).people.map(p => p.id), [5]);
+});
+
+test('two letters is every roster in the country, so it is not a search', () => {
+  assert.deepEqual(CfbSearch.matchPeople(peopleRows, 'kl', 8), { people: [], total: 0 });
+  assert.deepEqual(CfbSearch.matchPeople(peopleRows, '', 8), { people: [], total: 0 });
+  assert.equal(CfbSearch.matchPeople(peopleRows, 'klu', 8).total, 3);
+});
+
+test('the limit caps what is shown but not what is counted', () => {
+  const r = CfbSearch.matchPeople(peopleRows, 'klu', 2);
+  assert.equal(r.people.length, 2);
+  assert.equal(r.total, 3);      // so the panel can say "+1 more"
+});
+
+test('a person with no team or position still matches, with nulls not blanks', () => {
+  const r = CfbSearch.matchPeople(peopleRows, 'karas', 8);
+  assert.deepEqual(r.people, [{ kind: 'player', id: 6, name: 'Aaron Karas', teamId: null, role: null }]);
+});
+
+test('an absent or empty shard is not an error', () => {
+  for (const rows of [null, undefined, []]) {
+    assert.deepEqual(CfbSearch.matchPeople(rows, 'klubnik', 8), { people: [], total: 0 });
+  }
 });

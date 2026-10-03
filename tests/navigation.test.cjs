@@ -65,7 +65,28 @@ test('a team page fills its home stadium link after the stadium file loads', asy
   context.hydrate(3, 2);
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(target.innerHTML, 'Current home stadium not verified');
-  assert.match(shell, /if \(team\) hydrateTeamStadium\(version, team\.id\)/);
+});
+
+test('rendering a team page hydrates both its stadium and its head coach', () => {
+  // Drives render()'s own team branch rather than matching the source text for a
+  // call: a regex over the shell passes or fails on spelling, and said nothing
+  // about whether the call happens.
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = shell.match(/function render\(\) \{[^]*?\n\}/)[0];
+  const called = [];
+  const context = {
+    state: { view: 'team', teamParam: 'alpha' }, renderVersion: 0,
+    document: { getElementById: () => ({ innerHTML: '', textContent: '' }) },
+    renderNavigation: () => {}, renderYearRow: () => {}, wrapWideTables: () => {},
+    renderTeamPage: () => '', hydrateTeamPage: () => {},
+    resolveTeam: () => ({ id: 7, name: 'Alpha' }),
+    hydrateTeamStadium: (v, id) => called.push(['stadium', id]),
+    hydrateTeamCoach: (v, id) => called.push(['coach', id]),
+    hydrateRatingFreshness: () => {}
+  };
+  vm.runInNewContext(source + '\nthis.render = render;', context);
+  context.render();
+  assert.deepEqual(called, [['stadium', 7], ['coach', 7]]);
 });
 
 test('stadium explorer and venue-aware previews keep team HFA separate from physical venue', () => {

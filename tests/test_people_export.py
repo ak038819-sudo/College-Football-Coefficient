@@ -12,7 +12,8 @@ import pytest
 
 import person_identity as identity
 from export_people_pages import (PLAYER_SHARDS, build_coaches, build_name_index,
-                                 build_players, build_rosters, export, shard_key)
+                                 build_players, build_rosters, build_team_coaches, export,
+                                 shard_key)
 
 TEAMS = {1: "Clemson", 2: "Oregon"}
 
@@ -155,6 +156,23 @@ def test_a_roster_is_ordered_by_jersey_with_the_unnumbered_last(conn):
     assert [r[1] for r in rows] == ["Beta Nine", "Zeta Ninety", "Alpha None"]
 
 
+def test_a_person_is_indexed_under_every_word_of_their_name(conn):
+    """How anyone actually searches. Sharding on the full name alone put Cade
+    Klubnik in `c` only, so typing "Klubnik" loaded shard `k` and found nobody."""
+    pid = _player(conn, "Cade Klubnik", [(2026, 1, "QB")])
+    index = build_name_index(build_players(conn), {})
+    assert [r[1] for r in index["c"]] == [pid]
+    assert [r[1] for r in index["k"]] == [pid]
+    assert sorted(index) == ["c", "k"]
+
+
+def test_a_repeated_initial_does_not_list_a_person_twice_in_one_shard(conn):
+    pid = _player(conn, "Cade Carter", [(2026, 1, "QB")])
+    index = build_name_index(build_players(conn), {})
+    assert [r[1] for r in index["c"]] == [pid]
+    assert sorted(index) == ["c"]
+
+
 def test_the_name_index_badges_each_entity_type(conn):
     """Search must be able to label a result without a second lookup."""
     pid = _player(conn, "Cade Klubnik", [(2026, 1, "QB")])
@@ -162,6 +180,15 @@ def test_the_name_index_badges_each_entity_type(conn):
     rows = build_name_index(build_players(conn), build_coaches(conn))["c"]
     assert ["p", pid, "Cade Klubnik", 1, "QB"] in rows
     assert ["c", cid, "Cade Coach", 1, "head coach"] in rows
+
+
+def test_a_team_coach_index_names_one_coach_per_team_and_season(conn):
+    """A team page needs one name, not 800 KB of careers."""
+    a = _coach(conn, "Dan Lanning", [(2025, 2, None), (2026, 2, None)])
+    b = _coach(conn, "Dabo Swinney", [(2026, 1, None)])
+    index = build_team_coaches(build_coaches(conn))
+    assert index[2026] == {"2": [a, "Dan Lanning"], "1": [b, "Dabo Swinney"]}
+    assert index[2025] == {"2": [a, "Dan Lanning"]}
 
 
 # --- the emitted files ------------------------------------------------------
@@ -195,10 +222,14 @@ def test_every_emitted_file_parses_and_round_trips_through_a_js_runtime(conn, tm
         "console.log(JSON.stringify({shards: Object.keys(P).length, players,"
         "  coaches: Object.keys(C).length,"
         "  indexed: Object.values(I).reduce((n, s) => n + s.length, 0),"
+        # Entries are one per word of a name, so the distinct people behind them
+        # is the number that must match what was exported.
+        "  people: new Set(Object.values(I).flat().map(r => r[0] + r[1])).size,"
         "  seasons: Object.keys(R).sort()}));")
     out = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
-    assert json.loads(out.stdout) == {"shards": PLAYER_SHARDS, "players": 2, "coaches": 1,
-                                      "indexed": 3, "seasons": ["2025", "2026"]}
+    read = json.loads(out.stdout)
+    assert read == {"shards": PLAYER_SHARDS, "players": 2, "coaches": 1,
+                    "indexed": 6, "seasons": ["2025", "2026"], "people": 3}, read
 
 
 def test_the_content_version_changes_when_the_data_does(conn, tmp_path):

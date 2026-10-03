@@ -2016,7 +2016,8 @@ function renderTeamPage(param) {
         '<div class="team-sub">' +
           (team.conference ? conferenceLink(team.conference, null, team.conference_year || season) : 'No conference data') +
           (season ? ' &middot; ' + season + ' season' : '') + '</div>' +
-          '<div class="team-stadiums" id="team-stadiums">Loading home stadium…</div></div>' +
+          '<div class="team-stadiums" id="team-stadiums">Loading home stadium…</div>' +
+          '<div class="team-stadiums" id="team-coach"></div></div>' +
       '</div>' +
       '<div class="team-stats">' +
         teamStat('Elo', elo ? Number(elo.value).toFixed(1) + eloChangeMarkup(teamEloChange(season, team.name), team.name) : 'N/A', rankSub(elo)) +
@@ -2033,6 +2034,8 @@ function renderTeamPage(param) {
   let body;
   if (tab === 'schedule') {
     body = loading('tp-schedule', 'Schedule');
+  } else if (tab === 'roster') {
+    body = loading('tp-roster', 'Roster');
   } else if (tab === 'history') {
     body = loading('tp-seasons', 'Season by Season') + loading('tp-history', 'Program History');
   } else if (tab === 'analytics') {
@@ -2048,7 +2051,8 @@ function renderTeamPage(param) {
 // ---------------- Detail-page tabs (Milestone E) ----------------
 // The tab lives in the URL (see ui/navigation.js), so every tab is a shareable
 // address and Back moves between tabs like any other navigation.
-const TEAM_TAB_LABELS = { overview: 'Overview', schedule: 'Schedule', history: 'History', analytics: 'Analytics' };
+const TEAM_TAB_LABELS = { overview: 'Overview', schedule: 'Schedule', roster: 'Roster',
+  history: 'History', analytics: 'Analytics' };
 const CONF_TAB_LABELS = { overview: 'Overview', members: 'Members', history: 'History', external: 'External' };
 
 function activeTab(kind) {
@@ -2075,7 +2079,7 @@ function loading(id, title) {
 const TEAM_PAGES_VERSION = '__TEAM_PAGES_VERSION__';
 let TP = null;
 let _teamPagesPromise = null;
-let teamPageState = { teamId: null, chartSeason: 'all', season: null };
+let teamPageState = { teamId: null, chartSeason: 'all', season: null, rosterSeason: null };
 
 function indexTeamPages(raw) {
   const gamesById = new Map();
@@ -2481,6 +2485,66 @@ function teamScheduleSeasons(tp, team) {
   return [...new Set([...ahead, ...played])].sort((a, b) => b - a);
 }
 
+// The Roster tab (v0.1.1). One season file per visit, from the people exports.
+// Rosters are synced forward from 2026 so far, so a season with no file says so
+// rather than rendering as a team with no players.
+function rosterSeasons() {
+  return Object.keys((PEOPLE && PEOPLE.rosters) || {}).map(Number)
+    .filter(Number.isInteger).sort((a, b) => b - a);
+}
+function rosterSeasonSelect(season, seasons) {
+  if (seasons.length < 2) return '';
+  return seasonSelect('tp-roster-season', seasons.slice().sort((a, b) => a - b), season, false);
+}
+function rosterTable(rows) {
+  const cell = v => (v == null || v === '') ? '&mdash;' : esc(v);
+  return '<table class="data-table"><thead><tr><th>No.</th><th>Player</th><th>Pos</th>' +
+    '<th>Class</th><th>Ht</th><th>Wt</th></tr></thead><tbody>' +
+    rows.map(r => '<tr><td>' + cell(r.jersey) + '</td>' +
+      '<td><a href="' + esc(playerHref(r.player_id)) + '">' + esc(r.name) + '</a></td>' +
+      '<td>' + cell(r.position) + '</td><td>' + cell(r.class_year) + '</td>' +
+      '<td>' + (heightLabel(r.height) || '&mdash;') + '</td><td>' + cell(r.weight) + '</td></tr>').join('') +
+    '</tbody></table>';
+}
+function fillRosterPanel(team) {
+  const el = document.getElementById('tp-roster');
+  if (!el) return;                                  // another tab is open
+  const seasons = rosterSeasons();
+  if (!seasons.length) {
+    el.innerHTML = '<h2 class="section-title">Roster</h2><p class="empty-note">No roster has been ' +
+      'synced yet.</p>';
+    return;
+  }
+  const season = seasons.includes(teamPageState.rosterSeason) ? teamPageState.rosterSeason : seasons[0];
+  teamPageState.rosterSeason = season;
+  const head = panelHead('Roster', rosterSeasonSelect(season, seasons));
+  loadRoster(season).then(data => {
+    if (state.view !== 'team' || teamPageState.teamId !== team.id) return;
+    const target = document.getElementById('tp-roster');
+    if (!target || teamPageState.rosterSeason !== season) return;
+    const rows = data && data.teams.get(team.id);
+    // Absent and empty are different facts: no file for that season, versus a
+    // file that carries no row for this team. Neither is "this team has nobody".
+    const body = !data ? '<p class="empty-note">The ' + season + ' roster has not been synced.</p>'
+      : !rows || !rows.length
+        ? '<p class="empty-note">No ' + season + ' roster rows for ' + esc(team.name) +
+          '. The source lists rosters by school, and this one is not among them for that season.</p>'
+        : rosterTable(rows) + '<p class="section-note">' + rows.length + ' players listed, from the ' +
+          season + ' CFBD roster. Numbers, class and listed size are the source\u2019s own for that ' +
+          'season. Statistics are not attributed to players yet.</p>';
+    target.innerHTML = head + body;
+    const sel = document.getElementById('tp-roster-season');
+    if (sel) sel.addEventListener('change', () => {
+      teamPageState.rosterSeason = Number(sel.value);
+      fillRosterPanel(team);
+    });
+  }).catch(err => {
+    const target = document.getElementById('tp-roster');
+    if (target) target.innerHTML = head + '<p class="empty-note">Could not load the ' + season +
+      ' roster (' + esc(err.message) + ').</p>';
+  });
+}
+
 function fillSchedulePanel(tp, team) {
   const el = document.getElementById('tp-schedule');
   if (!el) return;
@@ -2746,8 +2810,13 @@ function hydrateTeamPage() {
   const team = resolveTeam(state.teamParam);
   if (!team) return;
   if (teamPageState.teamId !== team.id) {
-    teamPageState = { teamId: team.id, chartSeason: 'all', season: null, schedSeason: null, ledgerSeason: null };
+    teamPageState = { teamId: team.id, chartSeason: 'all', season: null, schedSeason: null,
+                      ledgerSeason: null, rosterSeason: null };
   }
+  // The roster is in the people exports, a different file from team_pages.js, so
+  // it fills on its own: a missing roster must not blank the Elo panel, and a
+  // missing team history must not blank the roster.
+  fillRosterPanel(team);
   loadTeamPages().then(tp => {
     const cur = resolveTeam(state.teamParam);
     if (state.view !== 'team' || !cur || cur.id !== team.id) return;   // user navigated away meanwhile
@@ -3047,6 +3116,39 @@ function teamHomeStadiums(data, teamId) {
 }
 function stadiumLinks(stadiums) {
   return stadiums.map(s => '<a href="' + esc(stadiumHref(s.id)) + '">' + esc(s.name) + '</a>').join(', ');
+}
+// The head coach in the team header (v0.1.1), from the small per-team index
+// rather than coaches.js: one line of text must not cost every coach's career.
+// Empty, not a placeholder, when there is nothing to say -- the coaching feed
+// stops in a given year and a team page for a later season would otherwise
+// carry a permanent "unknown".
+let _teamCoaches = null;
+function loadTeamCoaches() {
+  if (_teamCoaches) return Promise.resolve(_teamCoaches);
+  const src = PEOPLE && PEOPLE.team_coaches;
+  if (!src) return Promise.resolve(null);
+  return loadDataScript(src).then(() => {
+    _teamCoaches = window.__CFB_PEOPLE_TEAM_COACHES__ || null;
+    return _teamCoaches;
+  });
+}
+function hydrateTeamCoach(version, teamId) {
+  const target = document.getElementById('team-coach');
+  if (!target) return;
+  loadTeamCoaches().then(data => {
+    if (version !== renderVersion || state.view !== 'team' || !data) return;
+    const el = document.getElementById('team-coach');
+    if (!el) return;
+    // The latest season this team actually has a coach for, which is not always
+    // the latest season in the file: a program's coaching row can be missing.
+    const seasons = Object.keys(data).map(Number).filter(y => data[String(y)][String(teamId)])
+      .sort((a, b) => b - a);
+    if (!seasons.length) return;
+    const season = seasons[0];
+    const [id, name] = data[String(season)][String(teamId)];
+    el.innerHTML = 'Head coach, ' + season + ': <a href="' + esc(coachHref(id)) + '">' +
+      esc(name) + '</a>';
+  }).catch(() => {});                 // a header line, not worth an error message
 }
 function hydrateTeamStadium(version, teamId) {
   const target = document.getElementById('team-stadiums');
@@ -5294,6 +5396,50 @@ function searchResultsHtml(r) {
   return groups.join('');
 }
 
+// People are appended after the synchronous results, because their shard is a
+// separate file loaded for the letter being typed. The group replaces itself in
+// place rather than re-rendering the panel, so a slow shard never discards the
+// team results already on screen.
+function peopleResultsHtml(r, query) {
+  if (!r.people.length) return '';
+  return '<div class="search-group" role="group" aria-label="People"><h3>People</h3>' +
+    r.people.map(x => {
+      const href = x.kind === 'coach' ? coachHref(x.id) : playerHref(x.id);
+      const team = x.teamId == null ? null : TEAM_BY_ID.get(String(x.teamId));
+      const aside = [x.kind === 'coach' ? 'Head coach' : x.role, team ? team.name : null]
+        .filter(Boolean).join(' \u00b7 ');
+      return '<a class="search-hit" href="' + esc(href) + '">' +
+        (team ? logoMarkup(team.name, 'team', 'xs', state.year) : '') +
+        '<span class="hit-text">' + esc(x.name) + '</span>' +
+        (aside ? '<small>' + esc(aside) + '</small>' : '') + '</a>';
+    }).join('') +
+    (r.total > r.people.length
+      ? '<p class="search-note">+' + (r.total - r.people.length) +
+        ' more people \u2014 keep typing to narrow.</p>' : '') +
+    '</div>';
+}
+
+function appendPeopleResults(query, seq) {
+  if (!PEOPLE || !PEOPLE.index) return;
+  const key = CfbSearch.peopleShardKey(query);
+  if (!key) return;
+  loadPersonIndex(key).then(rows => {
+    if (seq !== SEARCH.seq || SEARCH.panel.hidden) return;   // a newer keystroke already ran
+    const r = CfbSearch.matchPeople(rows, query, 6);
+    const html = peopleResultsHtml(r, query);
+    if (!html) return;
+    const existing = SEARCH.panel.querySelector('[aria-label="People"]');
+    if (existing) existing.outerHTML = html;
+    else {
+      const empty = SEARCH.panel.querySelector('.search-note.no-matches');
+      if (empty) empty.remove();
+      SEARCH.panel.insertAdjacentHTML('beforeend', html);
+    }
+    const hits = SEARCH.panel.querySelectorAll('.search-hit').length;
+    SEARCH.status.textContent = hits + ' result' + (hits === 1 ? '' : 's') + '. Press Down to browse.';
+  }).catch(() => {});                 // the other groups are already on screen
+}
+
 function runSearch() {
   const query = SEARCH.input.value.trim();
   const seq = ++SEARCH.seq;
@@ -5305,8 +5451,9 @@ function runSearch() {
     const r = SEARCH.searcher.search(query);
     const count = r.teams.length + (r.conferences || []).length + r.games.length + r.seasons.length * 2;
     openSearch(count ? searchResultsHtml(r)
-      : '<p class="search-note">No matches for “' + esc(query) + '”. Try a team name, an alias, a conference, a year, or two teams.</p>',
+      : '<p class="search-note no-matches">No matches for “' + esc(query) + '”. Try a team name, an alias, a conference, a year, a player or a coach.</p>',
       count ? count + ' result' + (count === 1 ? '' : 's') + '. Press Down to browse.' : 'No matches');
+    appendPeopleResults(query, seq);
   }).catch(() => {
     if (seq !== SEARCH.seq) return;
     openSearch('<p class="search-note">Search is unavailable right now. <button class="action-button" id="search-retry">Retry</button></p>', 'Search unavailable');
@@ -5544,7 +5691,7 @@ function render() {
     content.innerHTML = renderTeamPage(state.teamParam);
     hydrateTeamPage();
     const team = resolveTeam(state.teamParam);
-    if (team) hydrateTeamStadium(version, team.id);
+    if (team) { hydrateTeamStadium(version, team.id); hydrateTeamCoach(version, team.id); }
     hydrateRatingFreshness(version);
     return;
   }

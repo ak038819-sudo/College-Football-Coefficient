@@ -62,6 +62,55 @@
     return best;
   }
 
+  // ---- People (v0.1.1) ------------------------------------------------------
+  // People are not in the search index: there are 15,909 of them for one synced
+  // season and the backfill reaches 2009, so they live in per-letter shards that
+  // the page loads for the letter being typed (src/export_people_pages.py). The
+  // matching is here so it can be tested without a browser.
+  //
+  // A shard row is [kind, id, name, latest_team_id, position_or_role], where kind
+  // is 'p' or 'c'.
+
+  // Which shard a query needs: the first letter of its last word, because that is
+  // the word still being typed. "cade klub" asks for `k`.
+  function peopleShardKey(query) {
+    const w = words(query);
+    const first = (w.length ? w[w.length - 1] : '')[0] || '';
+    if (first >= 'a' && first <= 'z') return first;
+    return first >= '0' && first <= '9' ? '0' : null;
+  }
+
+  // Prefix matching on the name's words, exactly like team suggestions: a query
+  // may begin at any WORD of a name but never mid-word, so "klub" finds Cade
+  // Klubnik and "lub" finds nobody.
+  function matchPeople(rows, query, limit) {
+    const q = words(query).join('');
+    const whole = words(query);
+    if (q.length < 3) return { people: [], total: 0 };    // two letters is every roster
+    const scored = [];
+    (rows || []).forEach(row => {
+      const w = words(row[2]);
+      const joined = w.join('');
+      // 0: the whole name starts with the query. 1: a later word does. 2: the
+      // query's words each start a word of the name, in order ("cade klub").
+      let score = joined.startsWith(q) ? 0
+        : w.some((_, i) => w.slice(i).join('').startsWith(q)) ? 1 : null;
+      if (score === null && whole.length > 1) {
+        const at = w.findIndex(x => x.startsWith(whole[0]));
+        if (at >= 0 && whole.every((part, i) => (w[at + i] || '').startsWith(part))) score = 2;
+      }
+      if (score !== null) scored.push({ row, score });
+    });
+    scored.sort((a, b) => a.score - b.score || String(a.row[2]).localeCompare(String(b.row[2])));
+    return {
+      people: scored.slice(0, limit == null ? 8 : limit).map(x => ({
+        kind: x.row[0] === 'c' ? 'coach' : 'player', id: x.row[1], name: x.row[2],
+        teamId: x.row[3] == null ? null : x.row[3], role: x.row[4] || null
+      })),
+      total: scored.length
+    };
+  }
+
   function buildSearcher(index) {
     const teams = (index && index.teams) || [];
     // Conferences (Milestone E pages): [slug, name, [aliases]].
@@ -158,5 +207,5 @@
     return { search };
   }
 
-  return { buildSearcher, words };
+  return { buildSearcher, words, matchPeople, peopleShardKey };
 });

@@ -18,7 +18,7 @@
   // Detail-page tabs (Milestone E). The first entry is the default and is left out
   // of the URL, so every existing #team= link keeps opening the same page.
   const pageTabs = {
-    team: ['overview', 'schedule', 'history', 'analytics'],
+    team: ['overview', 'schedule', 'roster', 'history', 'analytics'],
     conference: ['overview', 'members', 'history', 'external'],
     game: [],
     // People pages (v0.1.1) carry no tabs yet, like #game=. What is known about a

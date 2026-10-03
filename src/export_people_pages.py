@@ -3,11 +3,11 @@
 
 Writes, under ui/data/people/:
 
-  index_<key>.js     name -> person, sharded on the first character of the
-                     normalized name, so search loads one small shard per
+  index_<key>.js     name -> person, sharded on the first character of each WORD
+                     of the normalized name, so search loads one small shard per
                      keystroke instead of a directory of every person who ever
-                     played. Key is 'a'-'z', '0' for a leading digit, '_' for
-                     anything else.
+                     played, and a surname finds its owner. Key is 'a'-'z', '0'
+                     for a leading digit, '_' for anything else.
   player_<n>.js      player detail payloads, sharded on player_id % PLAYER_SHARDS.
                      A player page loads exactly one.
   roster_<season>.js one season's rosters grouped by team, carrying the rows a
@@ -15,6 +15,8 @@ Writes, under ui/data/people/:
   coaches.js         every coach with their whole tenure history. Head coaches
                      number in the hundreds, not the hundred-thousands, so this
                      stays one file.
+  team_coaches.js    season -> team -> the head coach's id and name, so a team
+                     page can name its coach without loading every career.
 
 Sharded from the start on purpose. Only 2026 rosters are synced today (15,909
 people), but the backfill reaches 2009, and a design that only works at one
@@ -50,13 +52,28 @@ PLAYER_SHARDS = 16
 
 def shard_key(name: str) -> str:
     """The first character of the normalized name, folded to a safe filename."""
-    normalized = normalize_name(name)
-    if not normalized:
+    return _fold_initial(normalize_name(name)[:1])
+
+
+def _fold_initial(first: str) -> str:
+    if not first:
         return "_"
-    first = normalized[0]
     if "a" <= first <= "z":
         return first
     return "0" if first.isdigit() else "_"
+
+
+def shard_keys(name: str) -> list[str]:
+    """Every shard a name belongs in: the first letter of each of its words.
+
+    Sharding on the full name alone put Cade Klubnik in `c` and nothing else, so
+    searching "Klubnik" -- which is how anyone looks for a player -- loaded shard
+    `k` and found nobody. A person is listed under each word of their name, which
+    costs roughly twice the index and makes a surname searchable.
+    """
+    words = [w for w in normalize_name(name).split(" ") if w]
+    keys = {_fold_initial(w[0]) for w in words}
+    return sorted(keys) or ["_"]
 
 
 def _row_dict(row: sqlite3.Row) -> dict:
@@ -156,22 +173,43 @@ def build_rosters(players: dict) -> dict:
             for season, teams in rosters.items()}
 
 
+def build_team_coaches(coaches: dict) -> dict:
+    """season -> team_id -> [coach_id, display_name], for a team page's header.
+
+    Its own small file. A team header asking coaches.js for one name would pull
+    every coach's whole career -- 800 KB for a line of text -- and it would do
+    it on every team page.
+    """
+    by_season: dict[int, dict[str, list]] = defaultdict(dict)
+    for cid, coach in coaches.items():
+        for tenure in coach["tenures"]:
+            by_season[tenure["season_year"]][str(tenure["team_id"])] = [cid, coach["display_name"]]
+    return {season: teams for season, teams in sorted(by_season.items())}
+
+
 def build_name_index(players: dict, coaches: dict) -> dict:
     """shard -> [[kind, id, display_name, latest_team_id, position_or_role], ...]
 
     kind is 'p' or 'c' so a result can be badged by entity type without a second
-    lookup, which is what the guide asks of search.
+    lookup, which is what the guide asks of search. A person appears in one shard
+    per word of their name, so a search for a surname reaches them -- see
+    shard_keys.
     """
     shards: dict[str, list] = defaultdict(list)
+
+    def add(row, name):
+        for key in shard_keys(name):
+            shards[key].append(row)
+
     for pid, player in players.items():
         last = player["seasons"][-1]
-        shards[shard_key(player["display_name"])].append(
-            ["p", pid, player["display_name"], last.get("team_id"),
-             last.get("position") or player.get("primary_position")])
+        add(["p", pid, player["display_name"], last.get("team_id"),
+             last.get("position") or player.get("primary_position")],
+            player["display_name"])
     for cid, coach in coaches.items():
         last = coach["tenures"][-1]
-        shards[shard_key(coach["display_name"])].append(
-            ["c", cid, coach["display_name"], last.get("team_id"), "head coach"])
+        add(["c", cid, coach["display_name"], last.get("team_id"), "head coach"],
+            coach["display_name"])
     for rows in shards.values():
         rows.sort(key=lambda r: (normalize_name(r[2]), r[1]))
     return shards
@@ -216,6 +254,10 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
 
     version = _write(out_dir / "coaches.js", "window.__CFB_PEOPLE_COACHES__", coaches)
     manifest["coaches"] = f"data/people/coaches.js?v={version}"
+
+    version = _write(out_dir / "team_coaches.js", "window.__CFB_PEOPLE_TEAM_COACHES__",
+                     build_team_coaches(coaches))
+    manifest["team_coaches"] = f"data/people/team_coaches.js?v={version}"
     manifest["counts"] = {"players": len(players), "coaches": len(coaches),
                           "player_seasons": sum(len(p["seasons"]) for p in players.values()),
                           "coach_seasons": sum(len(c["tenures"]) for c in coaches.values()),
