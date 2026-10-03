@@ -8,6 +8,8 @@ import sqlite3
 from collections import defaultdict
 from pathlib import Path
 
+import player_archive
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -25,8 +27,7 @@ def audit(conn, player_dir):
         games[year].append((gid, home, away, venue))
     out = {}
     for year, season_games in sorted(games.items()):
-        source = player_dir / f'{year}.json'
-        players = json.loads(source.read_text()) if source.exists() else {}
+        players = player_archive.read_season(player_dir, year)
         ids = {str(g[0]) for g in season_games}
         out[str(year)] = {
             'completed_fbs_games': len(season_games),

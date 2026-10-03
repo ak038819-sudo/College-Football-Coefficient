@@ -47,6 +47,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from coverage import build_coverage  # noqa: E402
 from elo_timeline import build_timeline  # noqa: E402
+import player_archive  # noqa: E402
 from export_people_pages import export as export_people  # noqa: E402
 from predict_upcoming import build_upcoming, elo_config  # noqa: E402
 
@@ -363,11 +364,10 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
     players = {}
     raw_players = REPO / "data" / "raw" / "player_boxscores"
     for season, payload in sorted(payloads.items()):
-        source = raw_players / f"{season}.json"
-        if not source.exists():
+        archive = player_archive.read_season(raw_players, season)
+        if not archive:
             continue
         known = {str(row[0]) for row in payload["games"] if row[4]}
-        archive = json.loads(source.read_text(encoding="utf-8"))
         selected = {gid: value for gid, value in archive.items() if gid in known and value}
         if selected:
             v = _write_js(players_dir / f"{season}.js",
