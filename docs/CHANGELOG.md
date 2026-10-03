@@ -1,5 +1,17 @@
 # Site release history
 
+## v0.1.1 — Players and Coaches (in progress, local branch)
+
+- Player and head-coach identity: person tables keyed on immutable ids, with
+  source identifiers and name aliases stored separately so a display name can
+  change without breaking a link. A transfer stays one person across schools.
+- CFBD roster snapshots (2009 onward) and head-coaching history, fetched in
+  Actions and committed to `data/raw`, loaded idempotently by the pipeline.
+- Rows that cannot be confidently attached to a person or a team are recorded
+  for review instead of guessed at; no person is created from a name match.
+- No UI changes yet, and no rating engine reads any of it. See
+  [player and coach pages](people-pages.md) for coverage limits and known gaps.
+
 ## v0.1 — People and Places of the Game (in progress, local branch)
 
 - Cross-season Find a Game page.

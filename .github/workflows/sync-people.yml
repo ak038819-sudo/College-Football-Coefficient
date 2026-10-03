@@ -1,0 +1,139 @@
+# Roster and head-coaching snapshots from CFBD, committed to data/raw.
+#
+# Run by hand. It lives apart from ci-and-deploy.yml for the same reason the
+# player backfill does: it is the only job that walks many seasons of CFBD's
+# roster feed at once, and it must be able to stop and resume. Snapshots are
+# committed rather than fetched at build time because /roster is a LIVE view of
+# a team's roster -- without a committed snapshot, rebuilding an old season's
+# pages would ask CFBD what it thinks today.
+name: Sync rosters and coaches
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_year:
+        description: "First roster season to fetch (2009 or later)"
+        required: true
+        default: "2026"
+      end_year:
+        description: "Last roster season to fetch"
+        required: true
+        default: "2026"
+      coaches:
+        description: "Also refresh the whole head-coaching history"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    # Share the deploy job's lock: this pushes to main, and the scheduled
+    # refresh rewrites data/raw too.
+    concurrency:
+      group: rebuild-and-deploy-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Fetch and commit one roster season at a time
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          START: ${{ inputs.start_year }}
+          END: ${{ inputs.end_year }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CFBD_API_KEY:-}" ]; then
+            echo "::error::CFBD_API_KEY is not set for this repository."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # One season per commit, pushed as it lands, so a timeout costs the
+          # season in flight rather than the whole range.
+          for year in $(seq "$START" "$END"); do
+            echo "::group::roster $year"
+            # Every fetch, rebase and push is checked explicitly. `set -e` does
+            # NOT stop a shell loop, so an unchecked failure here would let later
+            # seasons commit on top of a gap and leave the snapshots looking
+            # complete while a year was missing.
+            if ! python3 src/fetch_cfbd_rosters.py "$year"; then
+              echo "::endgroup::"
+              echo "::error::Roster $year failed to fetch. Earlier seasons are committed; re-run this workflow from $year to resume."
+              exit 1
+            fi
+            git add data/raw/rosters/
+            if git diff --staged --quiet; then
+              echo "roster $year: unchanged"
+            else
+              git commit -m "Snapshot $year roster [skip ci]"
+              if ! git pull --rebase origin main; then
+                echo "::error::Could not rebase roster $year onto main. Nothing was published for it; re-run this workflow from $year."
+                exit 1
+              fi
+              if ! git push origin HEAD:main; then
+                echo "::error::Could not push roster $year to main. Re-run this workflow from $year."
+                exit 1
+              fi
+            fi
+            echo "::endgroup::"
+          done
+
+      - name: Fetch and commit the head-coaching history
+        if: ${{ inputs.coaches }}
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # One whole-history file, so this is a single all-or-nothing fetch: the
+          # fetcher refuses to write a partial pull over the committed snapshot.
+          if ! python3 src/fetch_cfbd_coaches.py; then
+            echo "::error::Could not fetch the coaching history. The committed snapshot is unchanged."
+            exit 1
+          fi
+          git add data/raw/coaches/
+          if git diff --staged --quiet; then
+            echo "coaching history: unchanged"
+          else
+            git commit -m "Snapshot head-coaching history [skip ci]"
+            if ! git pull --rebase origin main; then
+              echo "::error::Could not rebase the coaching history onto main. Nothing was published; re-run this workflow."
+              exit 1
+            fi
+            if ! git push origin HEAD:main; then
+              echo "::error::Could not push the coaching history to main. Re-run this workflow."
+              exit 1
+            fi
+          fi
+
+      - name: Summarise the snapshots
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, pathlib
+          rosters = sorted(pathlib.Path('data/raw/rosters').glob('*.json'))
+          for f in rosters:
+              rows = json.loads(f.read_text())
+              with_id = sum(1 for r in rows if r.get('athlete_id'))
+              print(f'{f.stem}: {len(rows)} players, {with_id} with a CFBD athlete id')
+          print(f'rosters: {len(rosters)} seasons')
+          coaches = pathlib.Path('data/raw/coaches/coaches.json')
+          if coaches.exists():
+              records = json.loads(coaches.read_text())
+              seasons = sum(len(r['seasons']) for r in records)
+              print(f'coaches: {len(records)} head coaches, {seasons} coach-seasons')
+          else:
+              print('coaches: no snapshot committed yet')
+          PY
