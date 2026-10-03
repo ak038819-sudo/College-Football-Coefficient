@@ -791,6 +791,8 @@
   .release-label { margin: 3px 0 0; color: var(--ink-dim); font: 11px var(--font-mono); letter-spacing: .04em; }
   .stadium-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(250px, .8fr); gap: 16px; }
   .stadium-map { width: 100%; height: auto; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; }
+  .state-boundary {fill:#243548;stroke:#718092;stroke-width:.8;}
+  .stadium-map .selected-stadium {fill:var(--green-hl);stroke:white;stroke-width:2;}
   .stadium-map circle { fill: var(--amber); stroke: var(--bg); stroke-width: 1.3; }
   .stadium-map a:hover circle, .stadium-map a:focus circle { fill: var(--green-hl); stroke-width: 2.5; }
   .stadium-list { max-height: 470px; overflow: auto; margin: 8px 0 0; padding: 0; list-style: none; }
@@ -886,6 +888,19 @@
     padding: 30px 0;
     text-align: center;
   }
+
+  .stats-leaders { display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px; }
+  .stats-leaders li { padding:8px 0; }
+  .stats-categories,.table-pagination {display:flex;gap:16px;flex-wrap:wrap;margin:16px 0;}
+  .stats-categories [aria-current] {color:var(--amber);text-decoration:underline;}
+  .sort-button {background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:10px 4px;white-space:nowrap;}
+  .sort-button:focus-visible {outline:2px solid var(--amber);}
+  .stats-table {min-width:740px;}
+  .stats-table th:first-child,.stats-table td:first-child {position:sticky;left:0;background:var(--panel);z-index:1;min-width:150px;}
+  .stats-table th:first-child {z-index:2;}
+  .table-scroll {overflow-x:auto;max-width:100%;}
+  .tabs {flex-wrap:wrap;}
+  #home-weeks {align-items:center;gap:20px;flex-wrap:wrap;}
 </style>
 </head>
 <body>
@@ -903,16 +918,13 @@
     </div>
   </header>
 
+  <p class="section-note"><a href="#section=coverage">Data coverage</a> · <a href="#section=methodology">How it works</a></p>
   <div class="nav-row">
     <nav class="tabs" id="tabs" aria-label="Primary">
       <a data-section="home" href="#section=home">Home</a>
-      <a data-section="games" href="#section=games">Games</a>
-      <a data-section="matchups" href="#section=matchups">Matchups</a>
-      <a data-section="teams" href="#section=teams">Teams</a>
+      <a data-section="stats" href="#section=stats">Stats</a>
       <a data-section="rankings" href="#section=rankings">Standings</a>
-      <a data-section="playoff" href="#section=playoff">Playoff</a>
-      <a data-section="coverage" href="#section=coverage">Data coverage</a>
-      <a data-section="methodology" href="#section=methodology">How it works</a>
+      <a data-section="teams" href="#section=teams">Teams</a>
     </nav>
     <div class="global-search" role="search">
       <label class="visually-hidden" for="global-search">Search teams, games and seasons</label>
@@ -952,6 +964,8 @@ __TEAM_BRAND_COLORS_JSON__
 <script id="static-manifest" type="application/json">
 __STATIC_MANIFEST_JSON__
 </script>
+<script src="geography.js?v=__GEOGRAPHY_VERSION__"></script>
+<script src="stats.js?v=__STATS_VERSION__"></script>
 <script src="navigation.js?v=__NAVIGATION_VERSION__"></script>
 <script src="search.js?v=__SEARCH_VERSION__"></script>
 <script>
@@ -1275,7 +1289,7 @@ const ROUTE_CONFIG = { yearsAll: DATA.years_all, playoffYears: DATA.years_playof
   gameSeasons: STATIC_MANIFEST.seasons || [] };
 let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult: null, simYear: null,
   homeGroup: null, homeTop25: false, homePoll: null };
-const SECTION_LABELS = { home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
+const SECTION_LABELS = { stats: 'Stats', home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
 const SUBVIEWS = {
   rankings: [['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['home-field', 'Home-Field Advantage'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
     ['conference-coe2', 'Conference CoE 2.0'], ['elo-weekly', 'Week by Week'],
@@ -2646,6 +2660,9 @@ function renderMatchups() {
     result = '<div class="matchup-board">' + side(a, ra, pct.home) + '<span class="matchup-mid">vs</span>' +
       side(b, rb, pct.away) + '</div><div class="matchup-bar" aria-label="Team A ' + pct.home +
       ' percent, Team B ' + pct.away + ' percent"><span style="width:' + pct.home + '%"></span><span></span></div>';
+    const adjustment = state.venue === 'neutral' ? 0 : state.venue === 'away' ? -Number(cfg.home_field) : Number(cfg.home_field);
+    result += '<div class="story-grid"><div class="story-item"><small>Team A − Team B Elo</small><strong>' + (ra-rb).toFixed(1) + '</strong><p>Current published rating difference</p></div>' +
+      '<div class="story-item"><small>Venue adjustment for Team A</small><strong>' + (adjustment>0?'+':'') + adjustment.toFixed(1) + '</strong><p>Existing flat Elo home-field bonus; neutral venues receive zero</p></div></div>';
   }
   return '<div class="panel"><h2 class="view-title">Hypothetical matchup</h2>' +
     '<p class="section-note">Pick two teams and a venue. Win chances use the current exported Elo ratings and the ' +
@@ -2887,23 +2904,98 @@ function renderPollsPanel() {
 }
 
 function renderHome() {
-  return renderLiveScores();
+  return '<nav id="home-weeks" class="live-controls" aria-label="Browse weeks"></nav>' + renderLiveScores() + '<section class="panel"><h2>Find a Game / Game History</h2><div id="home-filters" class="games-filters">Loading filters…</div><div id="home-results" aria-live="polite"></div></section>';
 }
+
+
+// Home discovery uses the same season exports and feed statuses as the game pages.
+let homeDiscoveryRows = [], homeDiscoveryCount = 30;
+let currentStatusGames = [];
+function archiveStatus(g) {
+  const feed = currentStatusGames.find(x => Number(x.id) === Number(g.game_id));
+  return feed?.status === 'in_progress' ? 'live' : feed?.status === 'completed' || g.completed ? 'completed' : 'upcoming';
+}
+function discoveryMatch(g, filters, conferences) {
+  return (filters.week == null || (filters.week === 'post' ? g.phase > 0 : !g.phase && g.week === filters.week)) &&
+    (!filters.teamId || g.home_id === filters.teamId || g.away_id === filters.teamId) &&
+    (!filters.conf || conferences[String(g.home_id)] === filters.conf || conferences[String(g.away_id)] === filters.conf) &&
+    (filters.status === 'all' || archiveStatus(g) === filters.status);
+}
+function homeResultsHtml() {
+  return '<p class="section-note">' + homeDiscoveryRows.length + ' games · newest first</p><ul class="games-grid">' +
+    homeDiscoveryRows.slice(0,homeDiscoveryCount).map(g => listingGame(g,g.season)).join('') + '</ul>' +
+    (!homeDiscoveryRows.length ? '<p class="empty-note">No games match these filters.</p>' : '') +
+    (homeDiscoveryRows.length > homeDiscoveryCount ? '<button id="home-more" class="action-button">Show more games</button>' : '');
+}
+function hydrateHomeDiscovery(version) {
+  const selectedSeason = state.findSeason || liveSeason();
+  loadSeasonGames(liveSeason()).then(data => {
+    if (version !== renderVersion) return;
+    const weeks = [...new Set(data.games.filter(g => !g.phase && g.week != null).map(g=>g.week))].sort((a,b)=>a-b);
+    if (data.games.some(g=>g.phase)) weeks.push('post');
+    const activeFeed = homeSlate(liveSnapshot?.games || []).games;
+    const first = activeFeed.find(g=>g.status === 'in_progress') || activeFeed.find(g=>g.status === 'scheduled') || activeFeed[0];
+    const defaultWeek = data.byId.get(Number(first?.id))?.week || upcomingGroups()[0]?.games[0]?.week || weeks[weeks.length-1];
+    const week = state.slateWeek ?? defaultWeek;
+    const i = weeks.indexOf(week);
+    const link = (w,label) => w == null ? '<span aria-disabled="true">' + label + '</span>' : '<a href="' + esc(routeHref({slateWeek:w})) + '">' + label + '</a>';
+    document.getElementById('home-weeks').innerHTML = link(weeks[i-1],'← Previous Week') + '<strong>' + (week === 'post' ? 'Postseason' : 'Week ' + week) + '</strong>' + link(weeks[i+1],'Next Week →') + '<a href="' + esc(routeHref({slateWeek:null})) + '">Current week</a>';
+    if (state.slateWeek != null) {
+      const games = data.games.filter(g=>week === 'post' ? g.phase : !g.phase && g.week === week);
+      const asFeed = g => ({id:g.game_id,start_date:g.kickoff_utc,home:{name:TEAM_BY_ID.get(String(g.home_id))?.name},away:{name:TEAM_BY_ID.get(String(g.away_id))?.name}});
+      games.sort((a,b)=>compareHype(asFeed(a),asFeed(b)));
+      document.getElementById('live-games').innerHTML = '<ul class="games-grid" style="grid-column:1/-1">' + games.map(g=>listingGame(g,data.season)).join('') + '</ul>';
+      document.getElementById('live-status').textContent = 'Browsing ' + data.season + ' · ' + (week === 'post' ? 'Postseason' : 'Week ' + week);
+    }
+  }).catch(()=> { if(version===renderVersion) document.getElementById('home-weeks').textContent='Week navigation could not be loaded.'; });
+  loadSeasonGames(selectedSeason).then(data => {
+    if (version !== renderVersion) return;
+    const teams = [...new Set(data.games.flatMap(g=>[g.home_id,g.away_id]))].map(id=>TEAM_BY_ID.get(String(id))).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name));
+    const conferences = [...new Set(Object.values(data.conferences || {}).filter(Boolean))].sort();
+    const weeks = [...new Set(data.games.filter(g=>!g.phase && g.week != null).map(g=>g.week))].sort((a,b)=>a-b);
+    const select = (id,label,options,value) => '<label>' + label + '<select id="' + id + '">' + options.map(([v,l])=>'<option value="' + esc(v) + '"' + (String(v)===String(value??'')?' selected':'') + '>' + esc(l) + '</option>').join('') + '</select></label>';
+    document.getElementById('home-filters').innerHTML =
+      select('home-season','Season',ROUTE_CONFIG.gameSeasons.map(s=>[s.season,s.season]).reverse(),selectedSeason) +
+      select('home-week','Week',[['','All weeks'],...weeks.map(w=>[w,'Week '+w]),['post','Postseason']],state.week) +
+      select('home-team','Team',[['','All teams'],...teams.map(t=>[t.slug,t.name])],state.team) +
+      select('home-conf','Conference',[['','All conferences'],...conferences.map(c=>[c,c])],state.conf) +
+      select('home-status','Status',[['all','All'],['upcoming','Upcoming'],['live','Live'],['completed','Final']],state.status);
+    const school = TEAM_BY_SLUG.get(state.team);
+    homeDiscoveryRows = data.games.filter(g=>discoveryMatch(g,{week:state.week,teamId:school?.id,conf:state.conf,status:state.status},data.conferences||{}))
+      .map(g=>({...g,season:selectedSeason})).sort((a,b)=>String(b.date).localeCompare(String(a.date))||b.game_id-a.game_id);
+    homeDiscoveryCount=30;
+    document.getElementById('home-results').innerHTML=homeResultsHtml();
+  }).catch(()=> { if(version===renderVersion) document.getElementById('home-results').textContent='Games could not be loaded. Try another season.'; });
+}
+document.getElementById('content').addEventListener('change',e=>{
+  if(state.section !== 'home') return;
+  const key = {'home-season':'findSeason','home-week':'week','home-team':'team','home-conf':'conf','home-status':'status'}[e.target.id];
+  if(!key) return;
+  let value=e.target.value || null;
+  if(key==='findSeason' || key==='week' && value && value!=='post') value=Number(value);
+  navigate({[key]:value,...(key==='findSeason'?{week:null,team:null,conf:null}:{} )});
+});
+document.getElementById('content').addEventListener('click',e=>{
+  if(e.target.id==='home-more') {homeDiscoveryCount+=30;document.getElementById('home-results').innerHTML=homeResultsHtml();}
+});
 
 // ---------------- Milestone A1 landing views ----------------
 let renderVersion = 0;
 
 function renderNavigation() {
   document.querySelectorAll('#tabs a').forEach(a => {
-    const selected = a.dataset.section === state.section;
+    const destination = state.section === 'games' || state.section === 'live' ? 'home' : ['matchups', 'playoff'].includes(state.section) ? 'stats' : state.section;
+    const selected = a.dataset.section === destination;
     a.classList.toggle('active', selected);
     if (selected) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
-  const items = state.view === 'team' || state.section === 'teams' ? [] : SUBVIEWS[state.section] || [];
+  const statsNav = [['overview', 'Overview'], ['teams', 'Teams'], ['players', 'Players'], ['matchup', 'Matchup'], ['playoff', 'Playoff']];
+  const inStats = ['stats', 'matchups', 'playoff'].includes(state.section);
+  const items = inStats ? statsNav : state.view === 'team' || state.section === 'teams' ? [] : SUBVIEWS[state.section] || [];
   document.getElementById('subnav').innerHTML = items.map(([view, label]) =>
-    '<a href="' + esc(routeHref({ subview: view })) + '"' +
-    (view === state.subview ? ' aria-current="page"' : '') + '>' + label + '</a>').join('');
+    '<a href="' + esc(inStats ? '#section=stats&view=' + view + '&season=' + state.year : routeHref({ subview: view })) + '"' +
+    (view === (state.section === 'matchups' ? 'matchup' : state.section === 'playoff' ? 'playoff' : state.subview) ? ' aria-current="page"' : '') + '>' + label + '</a>').join('');
 }
 
 function renderTeamDirectory() {
@@ -2960,24 +3052,17 @@ function stadiumGameRow(g) {
   return '<li><a href="' + esc(gameHref(g.id, g.season)) + '">' + esc(g.date) + ': ' +
     esc(away?.name || 'Unknown') + (g.neutral ? ' vs. ' : ' at ') + esc(home?.name || 'Unknown') + score + '</a></li>';
 }
-function stadiumMap(stadiums, hawaii) {
-  const points = stadiums.filter(s => Number.isFinite(Number(s.lat)) && Number.isFinite(Number(s.lon)) &&
-    s.lat != null && s.lon != null && (hawaii ? Number(s.lon) < -150 && Number(s.lat) >= 18 && Number(s.lat) <= 23
-      : Number(s.lon) >= -125 && Number(s.lon) <= -66 && Number(s.lat) >= 24 && Number(s.lat) <= 50));
-  const bounds = hawaii ? [-161, -154, 18, 23] : [-125, -66, 24, 50];
-  const [left, right, bottom, top] = bounds;
-  return '<svg class="stadium-map" viewBox="0 0 640 320" role="img" aria-label="' +
-    (hawaii ? 'Hawaii' : 'Contiguous United States') + ' stadium location plot; use the searchable list for links">' +
-    '<text x="18" y="25" fill="currentColor" font-size="15">' + (hawaii ? 'Hawaii' : 'Contiguous United States') + '</text>' +
-    '<path d="M30 38H610V285H30Z" fill="none" stroke="currentColor" opacity=".3"/>' +
-    points.map(s => {
-      const x = 30 + (Number(s.lon) - left) / (right - left) * 580;
-      const y = 38 + (top - Number(s.lat)) / (top - bottom) * 247;
-      return '<a href="' + esc(stadiumHref(s.id)) + '"><circle cx="' + x.toFixed(1) + '" cy="' +
-        y.toFixed(1) + '" r="4"><title>' + esc(s.name) + (s.state ? ', ' + esc(s.state) : '') + '</title></circle></a>';
-    }).join('') + '<text x="30" y="308" fill="currentColor" font-size="12">' +
-    (hawaii ? '161°W' : '125°W') + '</text><text x="570" y="308" fill="currentColor" font-size="12">' +
-    (hawaii ? '154°W' : '66°W') + '</text></svg>';
+function stadiumMap(stadiums, selected) {
+  const points=stadiums.filter(s=>s.lat!=null&&s.lon!=null&&Number.isFinite(Number(s.lat))&&Number.isFinite(Number(s.lon))&&Number(s.lat)>=15&&Number(s.lat)<=73&&Number(s.lon)>=-180&&Number(s.lon)<=-60);
+  const alaska=points.some(s=>Number(s.lat)>55);
+  const map=CfbGeography.projection(alaska);
+  return '<svg class="stadium-map" viewBox="0 0 '+map.width+' '+map.height+'" role="group" aria-label="United States stadium map including Hawaii in one geographic view">'+
+    '<g aria-label="United States state boundaries">'+CfbGeography.statePaths(alaska).map(s=>'<path class="state-boundary" d="'+s.d+'"><title>'+esc(s.name)+'</title></path>').join('')+'</g>'+
+    points.map(s=>{
+      const [x,y]=map.project(Number(s.lon),Number(s.lat));
+      const label=[s.name,(s.teams||[]).map(t=>t.name).join(', '),[s.city,s.state].filter(Boolean).join(', '),s.capacity==null?'':'Capacity: '+Number(s.capacity).toLocaleString()].filter(Boolean).join(' · ');
+      return '<a tabindex="0" href="'+esc(stadiumHref(s.id))+'" aria-label="'+esc(label)+'" data-stadium-marker="'+s.id+'"><circle cx="'+x.toFixed(2)+'" cy="'+y.toFixed(2)+'" r="'+(s.id===selected?'7':'4')+'"'+(s.id===selected?' class="selected-stadium"':'')+'><title>'+esc(label)+'</title></circle></a>';
+    }).join('')+'<text x="24" y="'+(map.height-12)+'" fill="currentColor" font-size="12">Mercator · real coordinates · Hawaii and mainland in one view</text></svg>';
 }
 function stadiumDetails(s) {
   const location = [s.city, s.state].filter(Boolean).join(', ');
@@ -3004,7 +3089,7 @@ function stadiumExplorerHtml(data, selected) {
   const stadiums = data.stadiums || [];
   if (selected != null) {
     const s = stadiums.find(x => x.id === selected);
-    return s ? stadiumDetails(s) : '<div class="panel"><h2>Stadium not found</h2><a href="#section=teams&view=stadiums">Browse stadiums</a></div>';
+    return s ? stadiumMap(stadiums, selected) + stadiumDetails(s) : '<div class="panel"><h2>Stadium not found</h2><a href="#section=teams&view=stadiums">Browse stadiums</a></div>';
   }
   if (!stadiums.length) return '<div class="panel"><h2 class="view-title">Stadium Explorer</h2>' +
     '<p class="empty-note">Stadium data will appear after the next full data build.</p></div>';
@@ -3013,7 +3098,7 @@ function stadiumExplorerHtml(data, selected) {
     '<p class="section-note">Explore the homes of FBS football. ' + withCoords + ' of ' + stadiums.length +
     ' listed venues have verified coordinates. Dots show location, not home-field strength; ' +
     'the list includes venues without coordinates and is searchable.</p>' +
-    '<div class="stadium-layout"><div>' + stadiumMap(stadiums, false) + stadiumMap(stadiums, true) + '</div>' +
+    '<div class="stadium-layout"><div>' + stadiumMap(stadiums, null) + '</div>' +
     '<div><label for="stadium-search">Find a stadium or team</label><input class="stadium-search" id="stadium-search" type="search" autocomplete="off">' +
     '<p class="section-note" id="stadium-count" role="status">Showing all ' + stadiums.length + ' stadiums</p>' +
     '<ul class="stadium-list" id="stadium-list">' + stadiums.map(s => '<li data-search="' +
@@ -3026,7 +3111,8 @@ function stadiumExplorerHtml(data, selected) {
 function hydrateStadiumExplorer(version) {
   loadStadiumExplorer().then(data => {
     if (version === renderVersion && state.section === 'teams' && state.subview === 'stadiums')
-      document.getElementById('stadium-explorer').innerHTML = teamsSwitch('stadiums') + stadiumExplorerHtml(data, state.stadium);
+      {document.getElementById('stadium-explorer').innerHTML = teamsSwitch('stadiums') + stadiumExplorerHtml(data, state.stadium);
+       if (state.stadium != null) document.querySelector('[data-stadium-marker="' + state.stadium + '"]')?.focus();}
   }).catch(() => {
     if (version === renderVersion && state.section === 'teams' && state.subview === 'stadiums')
       document.getElementById('stadium-explorer').innerHTML = teamsSwitch('stadiums') + '<div class="panel"><h2>Stadium Explorer</h2><p class="empty-note">Stadium data could not be loaded.</p></div>';
@@ -3369,7 +3455,7 @@ function paintLiveGames() {
   if (!target || !liveSnapshot) return;
   const games = visibleLiveGames(liveSnapshot.games, liveFilter, liveOrder);
   if (!window.matchMedia('(max-width: 700px)').matches) {
-    target.innerHTML = games.length ? games.map(renderLiveCard).join('') :
+    target.innerHTML = games.length ? [['in_progress','Live Games'],['scheduled','Upcoming Games'],['completed','Recent Finals']].map(([status,label]) => { const group = games.filter(g => g.status === status); return group.length ? '<section style="grid-column:1/-1"><h3>' + label + '</h3><div class="live-grid">' + group.map(renderLiveCard).join('') + '</div></section>' : ''; }).join('') :
       '<p class="empty-note">' + (liveFilter === 'all' ? 'No games in the current scoreboard window.' :
         'No ' + ({in_progress: 'live', scheduled: 'upcoming', completed: 'final'}[liveFilter] || '') +
         ' games in this slate. Choose All to see every game.') + '</p>';
@@ -3399,6 +3485,8 @@ function hydrateLiveScores(version) {
       const target = document.getElementById('live-games');
       const board = document.getElementById('live-rankings');
       if (!status || !target || !board) return;
+      currentStatusGames = Array.isArray(data.games) ? data.games : [];
+      if (state.section === 'home' && state.slateWeek != null) {hydrateHomeDiscovery(version); return;}
       const slate = state.section === 'home' ? homeSlate(Array.isArray(data.games) ? data.games : []) :
         { games: Array.isArray(data.games) ? data.games : [], label: null };
       liveSnapshot = { ...data, games: slate.games };
@@ -3409,6 +3497,7 @@ function hydrateLiveScores(version) {
         ? 'Scores fetched ' + stamp.toLocaleString() + (age > 15 * 60 * 1000 ? ' · Feed may be delayed' : '')
         : 'Live feed is not active yet.');
       paintLiveGames();
+      if (state.section === 'home') hydrateHomeDiscovery(version);
       board.innerHTML = renderLiveBoard(slate.games);
       if (!liveSeasonData) loadSeasonGames(liveSeason()).then(archive => {
         if (version !== renderVersion || request !== liveRequest) return;
@@ -3574,6 +3663,9 @@ function renderGames() {
 // One game card. Every number is the stored point-in-time value from the season file:
 // pregame Elo and pregame win probability as they were BEFORE kickoff, never today's ratings.
 function listingGame(g, season) {
+  const feed = typeof currentStatusGames !== 'undefined' ? currentStatusGames.find(x => Number(x.id) === Number(g.game_id)) : null;
+  if (feed?.status === 'in_progress') return '<li class="listing-game" data-game-id="' + g.game_id + '">' + renderLiveCard(feed) + '</li>';
+  if (feed?.status === 'completed' && !g.completed) g = {...g,completed:true,home_score:feed.home?.points,away_score:feed.away?.points};
   const scheduled = UPCOMING_BY_ID.get(g.game_id);
   const when = g.completed ? fmtGameDate(g)
     : g.kickoff_utc ? fmtKickoff(g.kickoff_utc, Boolean(g.time_tbd ?? scheduled?.tbd)) : 'Kickoff TBA';
@@ -3755,6 +3847,8 @@ function hydrateGames(version) {
 }
 
 document.getElementById('content').addEventListener('keydown', e => {
+  const marker = e.target.closest('[data-stadium-marker]');
+  if (marker && (e.key === 'Enter' || e.key === ' ')) {e.preventDefault(); marker.dispatchEvent(new MouseEvent('click', {bubbles:true,cancelable:true})); return;}
   const card = e.target.closest('[data-live-id]');
   if (card && e.target === card && (e.key === 'Enter' || e.key === ' ')) {
     e.preventDefault(); location.hash = liveGameHref({id: Number(card.dataset.liveId)});
@@ -5011,6 +5105,8 @@ document.querySelector('.skip-link').addEventListener('click', e => {
 
 // Home controls retain their existing behavior.
 document.getElementById('content').addEventListener('click', e => {
+  const marker=e.target.closest('[data-stadium-marker]');
+  if(marker){e.preventDefault();navigate({section:'teams',subview:'stadiums',stadium:Number(marker.dataset.stadiumMarker),view:'tab'});return;}
   const filterButton = e.target.closest('[data-live-filter]');
   const orderButton = e.target.closest('[data-live-order]');
   if (filterButton || orderButton) {
@@ -5072,7 +5168,9 @@ document.getElementById('content').addEventListener('submit', e => {
 });
 
 function wrapWideTables() {
-  document.querySelectorAll('#content .rank-table').forEach(table => {
+  document.querySelectorAll('#content table').forEach(table => {
+    CfbStats.enhanceTable(table);
+    if (table.parentElement?.classList.contains('table-scroll')) return;
     const wrapper = document.createElement('div');
     wrapper.className = 'table-scroll';
     wrapper.tabIndex = 0;
@@ -5082,6 +5180,114 @@ function wrapWideTables() {
     wrapper.appendChild(table);
   });
 }
+
+// Statistics hub: cached season aggregation; filtering and paging never refetch data.
+const statsCache = new Map();
+let statsData = null;
+const TEAM_STAT_CATEGORIES = {
+  overall: ['games','wins','losses','pointsFor','pointsAgainst','ppg','oppPpg'],
+  offense: ['games','boxGames','pointsFor','ppg','passYards','rushYards','passYpg','rushYpg'],
+  defense: ['games','boxGames','pointsAgainst','oppPpg','tackles','sacks','tfl','interceptions','passesDefended'],
+  'special-teams': ['games','boxGames','fgMade','fgAttempts','fgPct','xpMade','xpAttempts'],
+  ratings: ['games','elo','coefficient','rolling','change']
+};
+function statsHref(changes) {
+  return CfbNavigation.hashFor({...state,section:'stats',view:'tab',subview:'players',page:1,...changes});
+}
+function loadStats(season) {
+  if(!statsCache.has(season)) statsCache.set(season,Promise.all([loadSeasonGames(season),loadPlayerArchive(season)]).then(([games,archive])=>{
+    const players=CfbStats.aggregatePlayers(archive,games.byId,games.conferences||{},TEAM_BY_ID);
+    const ratings={};
+    for(const r of DATA.team_elo_by_year[season]||[]) ratings[r.team]={elo:r.elo,change:r.change};
+    for(const r of DATA.team_ratings_by_year[season]||[]) {ratings[r.team]??={};ratings[r.team].coefficient=r.rating;}
+    for(const r of DATA.team_rolling_by_year[season]||[]) {ratings[r.team]??={};ratings[r.team].rolling=r.coeff_5yr;}
+    return {season,players:players.rows,teams:CfbStats.aggregateTeams(games.games,players,games.conferences||{},TEAM_BY_ID,ratings),completed:games.games.filter(g=>g.completed).length,covered:new Set([...players.covered].map(k=>k.split('|')[0])).size};
+  }).catch(error=>{statsCache.delete(season);throw error;}));
+  return statsCache.get(season);
+}
+function renderStats() {
+  return '<div class="panel"><h2 class="view-title">Stats · ' + esc(state.subview === 'overview' ? 'National leaders' : state.subview === 'teams' ? 'Team statistics' : 'Player statistics') + '</h2>' +
+    '<p class="section-note">Counting stats from recorded completed FBS-vs-FBS games. Missing values remain unavailable. Player games count appearances in recorded category box scores.</p>' +
+    '<div id="stats-body" aria-live="polite">Loading ' + state.year + ' statistics…</div></div>';
+}
+function hydrateStats(version) {
+  loadStats(state.year).then(data=>{
+    if(version!==renderVersion||state.section!=='stats')return;
+    statsData=data;
+    document.getElementById('stats-body').innerHTML=statsViewHtml(data);
+    wrapWideTables();
+  }).catch(()=>{if(version===renderVersion)document.getElementById('stats-body').innerHTML='<p class="empty-note">Statistics could not be loaded. <button id="retry-stats" class="action-button">Retry</button></p>';});
+}
+function statValue(value) {
+  return value==null||!Number.isFinite(Number(value))?'—':Number.isInteger(Number(value))?Number(value).toLocaleString():Number(value).toLocaleString(undefined,{maximumFractionDigits:2});
+}
+function SortableTable(rows,columns,options={}) {
+  const sort=columns.some(c=>c.key===state.sort)?state.sort:options.sort||columns.find(c=>c.type!=='string')?.key;
+  const dir=state.sort?state.dir:options.dir||'desc';
+  const column=columns.find(c=>c.key===sort);
+  const sorted=CfbStats.sortRows(rows,sort,dir,column?.type||'number');
+  const pageSize=50,pages=Math.max(1,Math.ceil(sorted.length/pageSize)),page=Math.min(state.page||1,pages);
+  const view=sorted.slice((page-1)*pageSize,page*pageSize);
+  const heads=columns.map(c=>'<th scope="col" aria-sort="'+(c.key===sort?(dir==='desc'?'descending':'ascending'):'none')+'"><button class="sort-button" data-stat-sort="'+esc(c.key)+'" data-next-dir="'+(c.key===sort&&dir==='desc'?'asc':'desc')+'">'+esc(c.label)+(c.key===sort?(dir==='desc'?' ▼':' ▲'):'')+'</button></th>').join('');
+  const body=view.map(r=>'<tr>'+columns.map(c=>'<td'+(c.type!=='string'?' class="num"':'')+'>'+(c.render?c.render(r):c.type==='string'?esc(r[c.key]??'—'):statValue(r[c.key]))+'</td>').join('')+'</tr>').join('');
+  const pager=(p,label)=>'<a href="'+esc(statsHref({subview:state.subview,page:p}))+'">'+label+'</a>';
+  return '<p class="section-note">'+rows.length+' results · Page '+page+' of '+pages+'</p><div class="table-scroll" role="region" aria-label="Scrollable statistics table" tabindex="0"><table class="rank-table stats-table"><thead><tr>'+heads+'</tr></thead><tbody>'+body+'</tbody></table></div>'+
+    (!view.length?'<p class="empty-note">No statistics match these filters.</p>':'')+'<nav class="table-pagination" aria-label="Table pages">'+(page>1?pager(page-1,'← Previous'):'')+' '+(page<pages?pager(page+1,'Next →'):'')+'</nav>';
+}
+function statsViewHtml(data) {
+  const coverage='<p class="section-note">Player box scores available for '+data.covered+' of '+data.completed+' completed archived games in '+data.season+'. Team scoring uses the full game archive. Box score totals and rates cover recorded games only; “Box score G” shows coverage.</p>';
+  if(state.subview==='overview')return coverage+statsOverviewHtml(data);
+  const isPlayer=state.subview==='players';
+  const supportedPlayers=Object.keys(CfbStats.categories).filter(cat=>data.players.some(r=>r.category===cat));
+  const supportedTeams=Object.keys(TEAM_STAT_CATEGORIES).filter(cat=>cat==='overall'||TEAM_STAT_CATEGORIES[cat].some(k=>!['games','boxGames'].includes(k)&&data.teams.some(r=>r[k]!=null)));
+  const cats=isPlayer?supportedPlayers:supportedTeams;
+  if(!cats.length)return coverage+'<p class="empty-note">No player box scores are available for this season. Try a later season.</p>';
+  const category=cats.includes(state.category)?state.category:cats[0];
+  const schema=isPlayer?CfbStats.categories[category]:null;
+  const rows=isPlayer?data.players.filter(r=>r.category===category):data.teams;
+  const fields=(isPlayer?schema.fields:TEAM_STAT_CATEGORIES[category]).filter(k=>rows.some(r=>r[k]!=null));
+  const label=cat=>isPlayer?CfbStats.categories[cat].label:cat==='special-teams'?'Special Teams':cat[0].toUpperCase()+cat.slice(1);
+  const nav='<nav class="stats-categories" aria-label="Statistic categories">'+cats.map(cat=>'<a href="'+esc(statsHref({subview:state.subview,category:cat,sort:'',minimum:0}))+'"'+(category===cat?' aria-current="page"':'')+'>'+label(cat)+'</a>').join('')+'</nav>';
+  const select=(id,name,choices,value)=>'<label>'+name+'<select id="'+id+'"><option value="">All</option>'+choices.map(c=>'<option'+(c===value?' selected':'')+' value="'+esc(c)+'">'+esc(c)+'</option>').join('')+'</select></label>';
+  const teams=[...new Set(rows.map(r=>r.team))].sort(),confs=[...new Set(rows.map(r=>r.conference).filter(Boolean))].sort();
+  const minimumKey=isPlayer?schema.minimum:'games';
+  const filters='<form class="games-filters" id="stats-filters">'+select('stats-team','Team',teams,state.statTeam)+select('stats-conf','Conference',confs,state.statConf)+
+    '<label>Search '+(isPlayer?'players':'teams')+'<input id="stats-query" type="search" value="'+esc(state.statQuery)+'" placeholder="Name"></label>'+
+    '<label>Minimum '+(CfbStats.labels[minimumKey]||minimumKey)+'<input id="stats-minimum" type="number" min="0" max="10000" value="'+state.minimum+'"></label><button class="action-button" type="submit">Apply filters</button></form>';
+  const filtered=CfbStats.filterRows(rows,{team:state.statTeam,conference:state.statConf,query:state.statQuery,minimum:state.minimum,minimumKey});
+  const columns=[{key:'name',label:isPlayer?'Player':'Team',type:'string',render:r=>isPlayer?'<span class="player-name" data-player-key="'+esc(r.key)+'">'+esc(r.name)+'</span>':teamLink(r.name,'xs',state.year)}];
+  if(isPlayer)columns.push({key:'team',label:'Team',type:'string',render:r=>teamLink(r.team,'xs',state.year)},{key:'games',label:'Recorded G'});
+  columns.push({key:'conference',label:'Conference',type:'string'},...fields.map(key=>({key,label:CfbStats.labels[key]||key})));
+  return coverage+nav+filters+SortableTable(filtered,columns,{sort:isPlayer?schema.sort:category==='ratings'?'elo':category==='defense'?'oppPpg':'ppg',dir:category==='defense'?'asc':'desc'});
+}
+function statsOverviewHtml(data) {
+  const cards=[];
+  const card=(title,rows,key,target,dir='desc',minimum=0)=>{
+    const available=rows.filter(r=>r[key]!=null);if(!available.length)return;
+    const leaders=CfbStats.sortRows(available,key,dir).slice(0,3);
+    const href=statsHref({...target,sort:key,dir,minimum,statTeam:'',statConf:'',statQuery:''});
+    cards.push('<article class="panel"><h3><a href="'+esc(href)+'">'+title+' →</a></h3><ol>'+leaders.map(r=>'<li><span>'+esc(r.name)+'</span> <strong>'+statValue(r[key])+'</strong></li>').join('')+'</ol></article>');
+  };
+  for(const [category,key,title,minimum] of [['passing','yards','Passing yards',0],['passing','td','Passing TDs',0],['passing','completionPct','Completion % · minimum 30 attempts',30],['rushing','yards','Rushing yards',0],['rushing','td','Rushing TDs',0],['receiving','yards','Receiving yards',0],['receiving','receptions','Receptions',0],['receiving','td','Receiving TDs',0],['defense','tackles','Tackles',0],['defense','sacks','Sacks',0],['defense','interceptions','Interceptions',0]]){
+    card(title,data.players.filter(r=>r.category===category&&(!minimum||r.attempts>=minimum)),key,{subview:'players',category},'desc',minimum);
+  }
+  card('Team points per game',data.teams,'ppg',{subview:'teams',category:'overall'});
+  card('Fewest opponent points per game',data.teams,'oppPpg',{subview:'teams',category:'defense'},'asc');
+  card('Elo',data.teams,'elo',{subview:'teams',category:'ratings'});
+  card('Season CoE',data.teams,'coefficient',{subview:'teams',category:'ratings'});
+  card('Most Elo gained · last game',data.teams.filter(r=>r.change>0),'change',{subview:'teams',category:'ratings'});
+  card('Most Elo lost · last game',data.teams.filter(r=>r.change<0),'change',{subview:'teams',category:'ratings'},'asc');
+  return cards.length?'<div class="stats-leaders">'+cards.join('')+'</div>':'<p class="empty-note">No leaders available for this season.</p>';
+}
+document.getElementById('content').addEventListener('click',e=>{
+  const sort=e.target.closest('[data-stat-sort]');
+  if(sort&&state.section==='stats')navigate({sort:sort.dataset.statSort,dir:sort.dataset.nextDir,page:1});
+  if(e.target.id==='retry-stats')hydrateStats(renderVersion);
+});
+document.getElementById('content').addEventListener('submit',e=>{
+  if(e.target.id!=='stats-filters')return;e.preventDefault();
+  navigate({statTeam:document.getElementById('stats-team').value,statConf:document.getElementById('stats-conf').value,statQuery:document.getElementById('stats-query').value,minimum:Number(document.getElementById('stats-minimum').value)||0,page:1});
+});
 
 function render() {
   const version = ++renderVersion;
@@ -5098,7 +5304,8 @@ function render() {
   }
   if (state.view === 'conference') { content.innerHTML = renderConferencePage(state.conferenceParam); hydrateConferencePage(); return; }
   if (state.view === 'game') { content.innerHTML = renderGamePage(); hydrateLiveGamePage(version); return; }
-  if (state.section === 'home') { content.innerHTML = renderHome(); hydrateLiveScores(version); }
+  if (state.section === 'home') { content.innerHTML = renderHome(); hydrateLiveScores(version); hydrateHomeDiscovery(version); }
+  else if (state.section === 'stats') {content.innerHTML = renderStats(); hydrateStats(version);}
   else if (state.section === 'methodology') content.innerHTML = renderMethodology();
   else if (state.section === 'coverage') content.innerHTML = renderCoverage();
   else if (state.section === 'teams') {
@@ -5120,7 +5327,7 @@ function render() {
     if (state.subview === 'elo') hydrateRatingFreshness(version);
   } else if (state.section === 'playoff') {
     const views = { field: renderField, bracket: renderBracket, odds: renderOdds, history: renderHistory };
-    content.innerHTML = playoffIntro() + views[state.subview]();
+    content.innerHTML = '<nav class="subnav" aria-label="Playoff views">' + SUBVIEWS.playoff.map(([view,label]) => '<a href="' + esc(routeHref({subview:view})) + '">' + label + '</a>').join('') + '</nav>' + playoffIntro() + views[state.subview]();
     // A simulation restored after navigating away should already be visible.
     content.querySelectorAll('.bracket-round-col.pending').forEach(el => el.classList.remove('pending'));
   }
@@ -5130,6 +5337,7 @@ function render() {
 function coverageRange(years) { return years?.length ? Math.min(...years) + '–' + Math.max(...years) : 'unavailable'; }
 document.getElementById('coverage-caption').textContent = 'RATINGS: ' + coverageRange(DATA.years_all) +
   ' · PLAYOFF: ' + coverageRange(DATA.years_playoff);
+new MutationObserver(() => wrapWideTables()).observe(document.getElementById('content'), {childList:true,subtree:true});
 applyRoute();
 </script>
 </body>

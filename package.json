@@ -1,0 +1,9 @@
+{
+  "name": "college-football-coefficient-ui-tests",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.cjs",
+    "check": "node --check ui/navigation.js && node --check ui/search.js && node --check ui/stats.js && node --check ui/geography.js"
+  },
+  "devDependencies": {"jsdom": "26.1.0"}
+}

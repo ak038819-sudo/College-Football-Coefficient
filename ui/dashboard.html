@@ -791,6 +791,8 @@
   .release-label { margin: 3px 0 0; color: var(--ink-dim); font: 11px var(--font-mono); letter-spacing: .04em; }
   .stadium-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(250px, .8fr); gap: 16px; }
   .stadium-map { width: 100%; height: auto; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; }
+  .state-boundary {fill:#243548;stroke:#718092;stroke-width:.8;}
+  .stadium-map .selected-stadium {fill:var(--green-hl);stroke:white;stroke-width:2;}
   .stadium-map circle { fill: var(--amber); stroke: var(--bg); stroke-width: 1.3; }
   .stadium-map a:hover circle, .stadium-map a:focus circle { fill: var(--green-hl); stroke-width: 2.5; }
   .stadium-list { max-height: 470px; overflow: auto; margin: 8px 0 0; padding: 0; list-style: none; }
@@ -886,6 +888,19 @@
     padding: 30px 0;
     text-align: center;
   }
+
+  .stats-leaders { display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px; }
+  .stats-leaders li { padding:8px 0; }
+  .stats-categories,.table-pagination {display:flex;gap:16px;flex-wrap:wrap;margin:16px 0;}
+  .stats-categories [aria-current] {color:var(--amber);text-decoration:underline;}
+  .sort-button {background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:10px 4px;white-space:nowrap;}
+  .sort-button:focus-visible {outline:2px solid var(--amber);}
+  .stats-table {min-width:740px;}
+  .stats-table th:first-child,.stats-table td:first-child {position:sticky;left:0;background:var(--panel);z-index:1;min-width:150px;}
+  .stats-table th:first-child {z-index:2;}
+  .table-scroll {overflow-x:auto;max-width:100%;}
+  .tabs {flex-wrap:wrap;}
+  #home-weeks {align-items:center;gap:20px;flex-wrap:wrap;}
 </style>
 </head>
 <body>
@@ -903,16 +918,13 @@
     </div>
   </header>
 
+  <p class="section-note"><a href="#section=coverage">Data coverage</a> · <a href="#section=methodology">How it works</a></p>
   <div class="nav-row">
     <nav class="tabs" id="tabs" aria-label="Primary">
       <a data-section="home" href="#section=home">Home</a>
-      <a data-section="games" href="#section=games">Games</a>
-      <a data-section="matchups" href="#section=matchups">Matchups</a>
-      <a data-section="teams" href="#section=teams">Teams</a>
+      <a data-section="stats" href="#section=stats">Stats</a>
       <a data-section="rankings" href="#section=rankings">Standings</a>
-      <a data-section="playoff" href="#section=playoff">Playoff</a>
-      <a data-section="coverage" href="#section=coverage">Data coverage</a>
-      <a data-section="methodology" href="#section=methodology">How it works</a>
+      <a data-section="teams" href="#section=teams">Teams</a>
     </nav>
     <div class="global-search" role="search">
       <label class="visually-hidden" for="global-search">Search teams, games and seasons</label>
@@ -953,7 +965,9 @@
 <script id="static-manifest" type="application/json">
 {"seasons":[{"season":1980,"completed":532,"scheduled":0,"src":"data/games/1980.js?v=e261e40e59"},{"season":1981,"completed":538,"scheduled":0,"src":"data/games/1981.js?v=d34498b2eb"},{"season":1982,"completed":503,"scheduled":0,"src":"data/games/1982.js?v=679cddbf91"},{"season":1983,"completed":510,"scheduled":0,"src":"data/games/1983.js?v=a27e5c21ed"},{"season":1984,"completed":525,"scheduled":0,"src":"data/games/1984.js?v=a59f1ea0d6"},{"season":1985,"completed":529,"scheduled":0,"src":"data/games/1985.js?v=72db1599bd"},{"season":1986,"completed":531,"scheduled":0,"src":"data/games/1986.js?v=0c97a656ea"},{"season":1987,"completed":531,"scheduled":0,"src":"data/games/1987.js?v=ccc5ab34fc"},{"season":1988,"completed":528,"scheduled":0,"src":"data/games/1988.js?v=8fafbdddb7"},{"season":1989,"completed":553,"scheduled":0,"src":"data/games/1989.js?v=1c6a3e2e68"},{"season":1990,"completed":553,"scheduled":0,"src":"data/games/1990.js?v=f05cb93767"},{"season":1991,"completed":559,"scheduled":0,"src":"data/games/1991.js?v=dfafd7a3d0"},{"season":1992,"completed":571,"scheduled":0,"src":"data/games/1992.js?v=783b3fba3b"},{"season":1993,"completed":575,"scheduled":0,"src":"data/games/1993.js?v=1519f996b5"},{"season":1994,"completed":584,"scheduled":0,"src":"data/games/1994.js?v=e2f2359ed4"},{"season":1995,"completed":586,"scheduled":0,"src":"data/games/1995.js?v=d78dc9a365"},{"season":1996,"completed":614,"scheduled":0,"src":"data/games/1996.js?v=677df57342"},{"season":1997,"completed":628,"scheduled":0,"src":"data/games/1997.js?v=f868386f69"},{"season":1998,"completed":627,"scheduled":0,"src":"data/games/1998.js?v=84e6c0ebca"},{"season":1999,"completed":633,"scheduled":0,"src":"data/games/1999.js?v=e511c2dade"},{"season":2000,"completed":646,"scheduled":0,"src":"data/games/2000.js?v=89088d0730"},{"season":2001,"completed":652,"scheduled":0,"src":"data/games/2001.js?v=088cf540fe"},{"season":2002,"completed":707,"scheduled":0,"src":"data/games/2002.js?v=b20abba512"},{"season":2003,"completed":699,"scheduled":0,"src":"data/games/2003.js?v=865a01a43c"},{"season":2004,"completed":657,"scheduled":0,"src":"data/games/2004.js?v=282a0069a6"},{"season":2005,"completed":664,"scheduled":0,"src":"data/games/2005.js?v=88a2964eb9"},{"season":2006,"completed":714,"scheduled":0,"src":"data/games/2006.js?v=28372c3e6e"},{"season":2007,"completed":712,"scheduled":0,"src":"data/games/2007.js?v=3936d2b7c6"},{"season":2008,"completed":717,"scheduled":0,"src":"data/games/2008.js?v=ed2fe5eab7"},{"season":2009,"completed":714,"scheduled":0,"src":"data/games/2009.js?v=cc72dd01e0"},{"season":2010,"completed":718,"scheduled":0,"src":"data/games/2010.js?v=d4af7c7bc5"},{"season":2011,"completed":715,"scheduled":0,"src":"data/games/2011.js?v=4721b4dfde"},{"season":2012,"completed":732,"scheduled":0,"src":"data/games/2012.js?v=1df755001f"},{"season":2013,"completed":737,"scheduled":0,"src":"data/games/2013.js?v=1c53342fca"},{"season":2014,"completed":760,"scheduled":0,"src":"data/games/2014.js?v=971f8b37c3"},{"season":2015,"completed":765,"scheduled":0,"src":"data/games/2015.js?v=e6d33f3a55"},{"season":2016,"completed":760,"scheduled":0,"src":"data/games/2016.js?v=832b01c599"},{"season":2017,"completed":776,"scheduled":0,"src":"data/games/2017.js?v=c0f4dca3b9"},{"season":2018,"completed":772,"scheduled":0,"src":"data/games/2018.js?v=7883837747"},{"season":2019,"completed":774,"scheduled":0,"src":"data/games/2019.js?v=efb6d7ffcc"},{"season":2020,"completed":534,"scheduled":0,"src":"data/games/2020.js?v=7b6ceccd45"},{"season":2021,"completed":770,"scheduled":0,"src":"data/games/2021.js?v=a485c4508b"},{"season":2022,"completed":776,"scheduled":0,"src":"data/games/2022.js?v=756ea78053"},{"season":2023,"completed":792,"scheduled":0,"src":"data/games/2023.js?v=52b62aa1a8"},{"season":2024,"completed":798,"scheduled":0,"src":"data/games/2024.js?v=2b4359888b"},{"season":2025,"completed":808,"scheduled":0,"src":"data/games/2025.js?v=833606c74a"},{"season":2026,"completed":220,"scheduled":541,"src":"data/games/2026.js?v=d0a18829dc"}],"search_index":"data/search_index.js?v=2616f6a243","stadiums":"data/stadiums.js?v=32c9fa7da0","game_fields":["game_id","week","date","kickoff_utc","completed","phase","neutral","ot","home_id","away_id","home_score","away_score","home_pre_elo","away_pre_elo","p_home","home_post_elo","away_post_elo","home_elo_change","home_game_coe","away_game_coe","home_provisional","away_provisional","time_tbd","stadium_id","stadium"],"details":{"1985":"data/details/1985.js?v=664ba7b680","1986":"data/details/1986.js?v=ef3bc482f8","1987":"data/details/1987.js?v=ccf87c5b43","1988":"data/details/1988.js?v=336d5fb289","1989":"data/details/1989.js?v=4d8229592d","1990":"data/details/1990.js?v=6338ce9e03","1991":"data/details/1991.js?v=e10b8f6688","1992":"data/details/1992.js?v=8c146ad41e","1993":"data/details/1993.js?v=c7b136b496","1994":"data/details/1994.js?v=d202de4ab4","1995":"data/details/1995.js?v=b422876a0e","1996":"data/details/1996.js?v=98264fe61a","1997":"data/details/1997.js?v=f3ef33d1ce","1998":"data/details/1998.js?v=9ad8ef575a","1999":"data/details/1999.js?v=e211c3cf6a","2000":"data/details/2000.js?v=1a27c46e22","2001":"data/details/2001.js?v=5b830e70f7","2002":"data/details/2002.js?v=a994f985a9","2003":"data/details/2003.js?v=40794149cc","2004":"data/details/2004.js?v=a9b253fb2a","2005":"data/details/2005.js?v=85ee633109","2006":"data/details/2006.js?v=0fff1f4a15","2007":"data/details/2007.js?v=5d6398551c","2008":"data/details/2008.js?v=768659b787","2009":"data/details/2009.js?v=8a8970f393","2010":"data/details/2010.js?v=90d0750b3c","2011":"data/details/2011.js?v=4744e57b9b","2012":"data/details/2012.js?v=4687f05ee7","2013":"data/details/2013.js?v=1d936c1fea","2014":"data/details/2014.js?v=77c1a95d08","2015":"data/details/2015.js?v=c6aca28213","2016":"data/details/2016.js?v=6d9a684f45","2017":"data/details/2017.js?v=30cf52925c","2018":"data/details/2018.js?v=0ed713bb3e","2019":"data/details/2019.js?v=d641355e39","2020":"data/details/2020.js?v=a9caf2495d","2021":"data/details/2021.js?v=484d211ea0","2022":"data/details/2022.js?v=063bd6e0d0","2023":"data/details/2023.js?v=534c71fc33","2024":"data/details/2024.js?v=abc573d5af","2025":"data/details/2025.js?v=10b035448b","2026":"data/details/2026.js?v=6c38e4b1cf"},"players":{"2004":"data/players/2004.js?v=193a7ca426","2005":"data/players/2005.js?v=e206288d33","2006":"data/players/2006.js?v=8bd8edda3e","2007":"data/players/2007.js?v=aa499c0071","2008":"data/players/2008.js?v=b9953733c3","2009":"data/players/2009.js?v=80d6319798","2010":"data/players/2010.js?v=83f763bf42","2011":"data/players/2011.js?v=449c1aff3f","2012":"data/players/2012.js?v=62e45c5fd6","2013":"data/players/2013.js?v=b2d4b74309","2014":"data/players/2014.js?v=3de23a6b83","2015":"data/players/2015.js?v=d7b9834490","2016":"data/players/2016.js?v=c434b22ac2","2017":"data/players/2017.js?v=44240913e2","2018":"data/players/2018.js?v=645341b999","2019":"data/players/2019.js?v=32d4d0b348","2020":"data/players/2020.js?v=aa8dd09772","2021":"data/players/2021.js?v=c7e718edf1","2022":"data/players/2022.js?v=a9a862c58f","2023":"data/players/2023.js?v=e64f6c47c3","2024":"data/players/2024.js?v=1115b3735a","2025":"data/players/2025.js?v=7afe515d0e","2026":"data/players/2026.js?v=836695f96b"},"series":["data/series/0.js?v=d7bd65e5fa","data/series/1.js?v=391676d967","data/series/2.js?v=a763ba1158","data/series/3.js?v=6abb56d542","data/series/4.js?v=80f4c729d6","data/series/5.js?v=0b219e81d9","data/series/6.js?v=b325d23b75","data/series/7.js?v=9aaf0dd673","data/series/8.js?v=181d73937d","data/series/9.js?v=2aca78ebe5","data/series/10.js?v=91103b3353","data/series/11.js?v=6f37cb02e9","data/series/12.js?v=91cb480088","data/series/13.js?v=a3a849b72b","data/series/14.js?v=dc2bdf7b7f","data/series/15.js?v=ab9b25d5b7","data/series/16.js?v=41853ad2a9","data/series/17.js?v=e134eb6090","data/series/18.js?v=e0d217d828","data/series/19.js?v=5f7b03654a","data/series/20.js?v=cba8ede2fa","data/series/21.js?v=ebfcf7694d","data/series/22.js?v=92abba117e","data/series/23.js?v=6d035d69af","data/series/24.js?v=1b30d64a08","data/series/25.js?v=c47c71647b","data/series/26.js?v=1286072614","data/series/27.js?v=686d216bd5","data/series/28.js?v=37d8543543","data/series/29.js?v=88615f3577","data/series/30.js?v=45af2cde3e","data/series/31.js?v=56ad736e21"],"series_shards":32,"elo_timeline":{"1980":"data/elo_timeline/1980.js?v=5c7878f06c","1981":"data/elo_timeline/1981.js?v=6f156dcc17","1982":"data/elo_timeline/1982.js?v=4e377b214c","1983":"data/elo_timeline/1983.js?v=4f6fcabce5","1984":"data/elo_timeline/1984.js?v=ab0823c922","1985":"data/elo_timeline/1985.js?v=1562b95158","1986":"data/elo_timeline/1986.js?v=f40968bac9","1987":"data/elo_timeline/1987.js?v=d6df7ab617","1988":"data/elo_timeline/1988.js?v=c35e2d47f4","1989":"data/elo_timeline/1989.js?v=2c58bbfe63","1990":"data/elo_timeline/1990.js?v=564ddc5671","1991":"data/elo_timeline/1991.js?v=94be2fd240","1992":"data/elo_timeline/1992.js?v=1a36cba8dd","1993":"data/elo_timeline/1993.js?v=41e1a5b9db","1994":"data/elo_timeline/1994.js?v=3ed560a166","1995":"data/elo_timeline/1995.js?v=5191a5affe","1996":"data/elo_timeline/1996.js?v=eb60c185cf","1997":"data/elo_timeline/1997.js?v=d9027f7db7","1998":"data/elo_timeline/1998.js?v=dc1a86b9f1","1999":"data/elo_timeline/1999.js?v=fb4c9637cf","2000":"data/elo_timeline/2000.js?v=b8174d6dbc","2001":"data/elo_timeline/2001.js?v=cd7196c98d","2002":"data/elo_timeline/2002.js?v=31fe5ff476","2003":"data/elo_timeline/2003.js?v=aa5f126d64","2004":"data/elo_timeline/2004.js?v=801311692d","2005":"data/elo_timeline/2005.js?v=78163271c9","2006":"data/elo_timeline/2006.js?v=2c2d4db455","2007":"data/elo_timeline/2007.js?v=559419e985","2008":"data/elo_timeline/2008.js?v=75bbef477b","2009":"data/elo_timeline/2009.js?v=942c390914","2010":"data/elo_timeline/2010.js?v=64b28f4dae","2011":"data/elo_timeline/2011.js?v=7fa993cae7","2012":"data/elo_timeline/2012.js?v=af9b505f55","2013":"data/elo_timeline/2013.js?v=8b0d29c99f","2014":"data/elo_timeline/2014.js?v=e5a303a279","2015":"data/elo_timeline/2015.js?v=235ed01d93","2016":"data/elo_timeline/2016.js?v=ea622fb8cc","2017":"data/elo_timeline/2017.js?v=3c731e0be3","2018":"data/elo_timeline/2018.js?v=1ae1ece738","2019":"data/elo_timeline/2019.js?v=bb41fe496a","2020":"data/elo_timeline/2020.js?v=4327e24581","2021":"data/elo_timeline/2021.js?v=65e339c4f9","2022":"data/elo_timeline/2022.js?v=e857fe7c9d","2023":"data/elo_timeline/2023.js?v=60e1b970a0","2024":"data/elo_timeline/2024.js?v=12886b8034","2025":"data/elo_timeline/2025.js?v=0818eab2d2","2026":"data/elo_timeline/2026.js?v=50e89949bf"},"model_params":{"elo":{"initial_rating":1500,"scale":400,"k":40,"home_field":50,"offseason_retention":0.8,"mov_c":2.2,"mov_d":0.001},"hybrid":{"elo_weight":0.85,"coe_weight":0.15,"rating_scale":200},"coe2":{"win_base":2.0,"ot_loss":1.0,"regulation_loss":0.0,"difficulty_alpha":2.0,"tie_delta":2.0},"coe_v1":{"ITERATIONS":15,"PHASE_WEIGHTS":{"regular":1.0,"bowl":2.0,"cfp":3.0},"ROLLING_YEARS":5,"USE_WITHIN_WINDOW_DECAY":true,"WITHIN_WINDOW_DECAY_BASE":0.92,"CONFIDENCE_GAMES":8,"LOSS_PENALTY":0.15,"PRIOR_REGRESSION":0.5},"playoff_bids":[[1,4,4],[5,5,3],[6,10,1]],"performance":{"modifier":"xsrdiff","fallback":"mov","beta":12.0,"m_min":0.25,"m_max":5.0,"model_path":"data/processed/xsrdiff_model.json"}},"coverage":{"dimensions":[{"key":"scores","label":"Final scores","source":"CollegeFootballData.com game results","absent":"No completed games recorded for this season."},{"key":"kickoff","label":"Kickoff times","source":"CollegeFootballData.com start times","absent":"Only the calendar date was collected for this season, not a clock time."},{"key":"team_advanced","label":"Season efficiency","source":"CollegeFootballData.com /stats/season/advanced","absent":"Play-by-play efficiency was not collected for this season."},{"key":"game_advanced","label":"Per-game efficiency","source":"CollegeFootballData.com /stats/game/advanced","absent":"Per-game efficiency has not been collected for this season."},{"key":"elo","label":"Elo ratings","source":"src/build_elo.py","absent":"No Elo history for this season."},{"key":"coe2","label":"CoE 2.0","source":"src/build_hybrid_coefficients.py","absent":"CoE 2.0 needs five prior seasons of CoE, which this season does not have."}],"seasons":{"1980":{"scores":[532,532],"kickoff":[0,532],"team_advanced":[0,107],"game_advanced":[0,532],"elo":[532,532],"coe2":[0,532]},"1981":{"scores":[538,538],"kickoff":[0,538],"team_advanced":[0,107],"game_advanced":[0,538],"elo":[538,538],"coe2":[0,538]},"1982":{"scores":[503,503],"kickoff":[0,503],"team_advanced":[0,100],"game_advanced":[0,503],"elo":[503,503],"coe2":[0,503]},"1983":{"scores":[510,510],"kickoff":[0,510],"team_advanced":[0,100],"game_advanced":[0,510],"elo":[510,510],"coe2":[0,510]},"1984":{"scores":[525,525],"kickoff":[0,525],"team_advanced":[0,101],"game_advanced":[0,525],"elo":[525,525],"coe2":[0,525]},"1985":{"scores":[529,529],"kickoff":[0,529],"team_advanced":[0,101],"game_advanced":[0,529],"elo":[529,529],"coe2":[529,529]},"1986":{"scores":[531,531],"kickoff":[0,531],"team_advanced":[0,101],"game_advanced":[0,531],"elo":[531,531],"coe2":[531,531]},"1987":{"scores":[531,531],"kickoff":[0,531],"team_advanced":[0,101],"game_advanced":[0,531],"elo":[531,531],"coe2":[524,531]},"1988":{"scores":[528,528],"kickoff":[0,528],"team_advanced":[0,101],"game_advanced":[0,528],"elo":[528,528],"coe2":[528,528]},"1989":{"scores":[553,553],"kickoff":[0,553],"team_advanced":[0,103],"game_advanced":[0,553],"elo":[553,553],"coe2":[545,553]},"1990":{"scores":[553,553],"kickoff":[0,553],"team_advanced":[0,104],"game_advanced":[0,553],"elo":[553,553],"coe2":[546,553]},"1991":{"scores":[559,559],"kickoff":[0,559],"team_advanced":[0,104],"game_advanced":[0,559],"elo":[559,559],"coe2":[559,559]},"1992":{"scores":[571,571],"kickoff":[0,571],"team_advanced":[0,105],"game_advanced":[0,571],"elo":[571,571],"coe2":[564,571]},"1993":{"scores":[575,575],"kickoff":[0,575],"team_advanced":[0,105],"game_advanced":[0,575],"elo":[575,575],"coe2":[575,575]},"1994":{"scores":[584,584],"kickoff":[0,584],"team_advanced":[0,106],"game_advanced":[0,584],"elo":[584,584],"coe2":[577,584]},"1995":{"scores":[586,586],"kickoff":[0,586],"team_advanced":[0,107],"game_advanced":[0,586],"elo":[586,586],"coe2":[577,586]},"1996":{"scores":[614,614],"kickoff":[0,614],"team_advanced":[0,111],"game_advanced":[0,614],"elo":[614,614],"coe2":[584,614]},"1997":{"scores":[628,628],"kickoff":[0,628],"team_advanced":[0,112],"game_advanced":[0,628],"elo":[628,628],"coe2":[616,628]},"1998":{"scores":[627,627],"kickoff":[0,627],"team_advanced":[0,112],"game_advanced":[0,627],"elo":[627,627],"coe2":[627,627]},"1999":{"scores":[633,633],"kickoff":[0,633],"team_advanced":[0,114],"game_advanced":[0,633],"elo":[633,633],"coe2":[617,633]},"2000":{"scores":[646,646],"kickoff":[0,646],"team_advanced":[0,116],"game_advanced":[0,646],"elo":[646,646],"coe2":[634,646]},"2001":{"scores":[652,652],"kickoff":[652,652],"team_advanced":[114,117],"game_advanced":[402,652],"elo":[652,652],"coe2":[645,652]},"2002":{"scores":[707,707],"kickoff":[707,707],"team_advanced":[55,117],"game_advanced":[31,707],"elo":[707,707],"coe2":[707,707]},"2003":{"scores":[699,699],"kickoff":[699,699],"team_advanced":[117,117],"game_advanced":[462,699],"elo":[699,699],"coe2":[699,699]},"2004":{"scores":[657,657],"kickoff":[657,657],"team_advanced":[117,118],"game_advanced":[438,657],"elo":[657,657],"coe2":[651,657]},"2005":{"scores":[664,664],"kickoff":[664,664],"team_advanced":[119,119],"game_advanced":[563,664],"elo":[664,664],"coe2":[655,664]},"2006":{"scores":[714,714],"kickoff":[714,714],"team_advanced":[119,119],"game_advanced":[625,714],"elo":[714,714],"coe2":[714,714]},"2007":{"scores":[712,712],"kickoff":[712,712],"team_advanced":[119,119],"game_advanced":[642,712],"elo":[712,712],"coe2":[712,712]},"2008":{"scores":[717,717],"kickoff":[717,717],"team_advanced":[120,120],"game_advanced":[693,717],"elo":[717,717],"coe2":[707,717]},"2009":{"scores":[714,714],"kickoff":[714,714],"team_advanced":[120,120],"game_advanced":[699,714],"elo":[714,714],"coe2":[714,714]},"2010":{"scores":[718,718],"kickoff":[718,718],"team_advanced":[120,120],"game_advanced":[701,718],"elo":[718,718],"coe2":[718,718]},"2011":{"scores":[715,715],"kickoff":[715,715],"team_advanced":[120,120],"game_advanced":[707,715],"elo":[715,715],"coe2":[715,715]},"2012":{"scores":[732,732],"kickoff":[732,732],"team_advanced":[124,124],"game_advanced":[722,732],"elo":[732,732],"coe2":[691,732]},"2013":{"scores":[737,737],"kickoff":[737,737],"team_advanced":[125,125],"game_advanced":[737,737],"elo":[737,737],"coe2":[728,737]},"2014":{"scores":[760,760],"kickoff":[760,760],"team_advanced":[128,128],"game_advanced":[744,760],"elo":[760,760],"coe2":[729,760]},"2015":{"scores":[765,765],"kickoff":[765,765],"team_advanced":[128,128],"game_advanced":[758,765],"elo":[765,765],"coe2":[754,765]},"2016":{"scores":[760,760],"kickoff":[760,760],"team_advanced":[128,128],"game_advanced":[747,760],"elo":[760,760],"coe2":[760,760]},"2017":{"scores":[776,776],"kickoff":[776,776],"team_advanced":[130,130],"game_advanced":[772,776],"elo":[776,776],"coe2":[765,776]},"2018":{"scores":[772,772],"kickoff":[772,772],"team_advanced":[130,130],"game_advanced":[770,772],"elo":[772,772],"coe2":[762,772]},"2019":{"scores":[774,774],"kickoff":[774,774],"team_advanced":[130,130],"game_advanced":[773,774],"elo":[774,774],"coe2":[774,774]},"2020":{"scores":[534,534],"kickoff":[534,534],"team_advanced":[127,127],"game_advanced":[534,534],"elo":[534,534],"coe2":[534,534]},"2021":{"scores":[770,770],"kickoff":[770,770],"team_advanced":[130,130],"game_advanced":[770,770],"elo":[770,770],"coe2":[770,770]},"2022":{"scores":[776,776],"kickoff":[776,776],"team_advanced":[131,131],"game_advanced":[776,776],"elo":[776,776],"coe2":[766,776]},"2023":{"scores":[792,792],"kickoff":[792,792],"team_advanced":[133,133],"game_advanced":[792,792],"elo":[792,792],"coe2":[770,792]},"2024":{"scores":[798,798],"kickoff":[798,798],"team_advanced":[134,134],"game_advanced":[794,798],"elo":[798,798],"coe2":[787,798]},"2025":{"scores":[808,808],"kickoff":[808,808],"team_advanced":[136,136],"game_advanced":[808,808],"elo":[808,808],"coe2":[784,808]},"2026":{"scores":[220,220],"kickoff":[220,220],"team_advanced":[138,138],"game_advanced":[220,220],"elo":[220,220],"coe2":[214,220]}},"first":{"scores":1980,"kickoff":2001,"team_advanced":2001,"game_advanced":2001,"elo":1980,"coe2":1985},"source_first":{"team_advanced":2001,"game_advanced":2001}}}
 </script>
-<script src="navigation.js?v=7632e22e6c39"></script>
+<script src="geography.js?v=4017799eb6cf"></script>
+<script src="stats.js?v=78eb426c2075"></script>
+<script src="navigation.js?v=f7e046f018ec"></script>
 <script src="search.js?v=e5bafcad1899"></script>
 <script>
 const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
@@ -1276,7 +1290,7 @@ const ROUTE_CONFIG = { yearsAll: DATA.years_all, playoffYears: DATA.years_playof
   gameSeasons: STATIC_MANIFEST.seasons || [] };
 let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult: null, simYear: null,
   homeGroup: null, homeTop25: false, homePoll: null };
-const SECTION_LABELS = { home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
+const SECTION_LABELS = { stats: 'Stats', home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
 const SUBVIEWS = {
   rankings: [['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['home-field', 'Home-Field Advantage'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
     ['conference-coe2', 'Conference CoE 2.0'], ['elo-weekly', 'Week by Week'],
@@ -2647,6 +2661,9 @@ function renderMatchups() {
     result = '<div class="matchup-board">' + side(a, ra, pct.home) + '<span class="matchup-mid">vs</span>' +
       side(b, rb, pct.away) + '</div><div class="matchup-bar" aria-label="Team A ' + pct.home +
       ' percent, Team B ' + pct.away + ' percent"><span style="width:' + pct.home + '%"></span><span></span></div>';
+    const adjustment = state.venue === 'neutral' ? 0 : state.venue === 'away' ? -Number(cfg.home_field) : Number(cfg.home_field);
+    result += '<div class="story-grid"><div class="story-item"><small>Team A − Team B Elo</small><strong>' + (ra-rb).toFixed(1) + '</strong><p>Current published rating difference</p></div>' +
+      '<div class="story-item"><small>Venue adjustment for Team A</small><strong>' + (adjustment>0?'+':'') + adjustment.toFixed(1) + '</strong><p>Existing flat Elo home-field bonus; neutral venues receive zero</p></div></div>';
   }
   return '<div class="panel"><h2 class="view-title">Hypothetical matchup</h2>' +
     '<p class="section-note">Pick two teams and a venue. Win chances use the current exported Elo ratings and the ' +
@@ -2888,23 +2905,98 @@ function renderPollsPanel() {
 }
 
 function renderHome() {
-  return renderLiveScores();
+  return '<nav id="home-weeks" class="live-controls" aria-label="Browse weeks"></nav>' + renderLiveScores() + '<section class="panel"><h2>Find a Game / Game History</h2><div id="home-filters" class="games-filters">Loading filters…</div><div id="home-results" aria-live="polite"></div></section>';
 }
+
+
+// Home discovery uses the same season exports and feed statuses as the game pages.
+let homeDiscoveryRows = [], homeDiscoveryCount = 30;
+let currentStatusGames = [];
+function archiveStatus(g) {
+  const feed = currentStatusGames.find(x => Number(x.id) === Number(g.game_id));
+  return feed?.status === 'in_progress' ? 'live' : feed?.status === 'completed' || g.completed ? 'completed' : 'upcoming';
+}
+function discoveryMatch(g, filters, conferences) {
+  return (filters.week == null || (filters.week === 'post' ? g.phase > 0 : !g.phase && g.week === filters.week)) &&
+    (!filters.teamId || g.home_id === filters.teamId || g.away_id === filters.teamId) &&
+    (!filters.conf || conferences[String(g.home_id)] === filters.conf || conferences[String(g.away_id)] === filters.conf) &&
+    (filters.status === 'all' || archiveStatus(g) === filters.status);
+}
+function homeResultsHtml() {
+  return '<p class="section-note">' + homeDiscoveryRows.length + ' games · newest first</p><ul class="games-grid">' +
+    homeDiscoveryRows.slice(0,homeDiscoveryCount).map(g => listingGame(g,g.season)).join('') + '</ul>' +
+    (!homeDiscoveryRows.length ? '<p class="empty-note">No games match these filters.</p>' : '') +
+    (homeDiscoveryRows.length > homeDiscoveryCount ? '<button id="home-more" class="action-button">Show more games</button>' : '');
+}
+function hydrateHomeDiscovery(version) {
+  const selectedSeason = state.findSeason || liveSeason();
+  loadSeasonGames(liveSeason()).then(data => {
+    if (version !== renderVersion) return;
+    const weeks = [...new Set(data.games.filter(g => !g.phase && g.week != null).map(g=>g.week))].sort((a,b)=>a-b);
+    if (data.games.some(g=>g.phase)) weeks.push('post');
+    const activeFeed = homeSlate(liveSnapshot?.games || []).games;
+    const first = activeFeed.find(g=>g.status === 'in_progress') || activeFeed.find(g=>g.status === 'scheduled') || activeFeed[0];
+    const defaultWeek = data.byId.get(Number(first?.id))?.week || upcomingGroups()[0]?.games[0]?.week || weeks[weeks.length-1];
+    const week = state.slateWeek ?? defaultWeek;
+    const i = weeks.indexOf(week);
+    const link = (w,label) => w == null ? '<span aria-disabled="true">' + label + '</span>' : '<a href="' + esc(routeHref({slateWeek:w})) + '">' + label + '</a>';
+    document.getElementById('home-weeks').innerHTML = link(weeks[i-1],'← Previous Week') + '<strong>' + (week === 'post' ? 'Postseason' : 'Week ' + week) + '</strong>' + link(weeks[i+1],'Next Week →') + '<a href="' + esc(routeHref({slateWeek:null})) + '">Current week</a>';
+    if (state.slateWeek != null) {
+      const games = data.games.filter(g=>week === 'post' ? g.phase : !g.phase && g.week === week);
+      const asFeed = g => ({id:g.game_id,start_date:g.kickoff_utc,home:{name:TEAM_BY_ID.get(String(g.home_id))?.name},away:{name:TEAM_BY_ID.get(String(g.away_id))?.name}});
+      games.sort((a,b)=>compareHype(asFeed(a),asFeed(b)));
+      document.getElementById('live-games').innerHTML = '<ul class="games-grid" style="grid-column:1/-1">' + games.map(g=>listingGame(g,data.season)).join('') + '</ul>';
+      document.getElementById('live-status').textContent = 'Browsing ' + data.season + ' · ' + (week === 'post' ? 'Postseason' : 'Week ' + week);
+    }
+  }).catch(()=> { if(version===renderVersion) document.getElementById('home-weeks').textContent='Week navigation could not be loaded.'; });
+  loadSeasonGames(selectedSeason).then(data => {
+    if (version !== renderVersion) return;
+    const teams = [...new Set(data.games.flatMap(g=>[g.home_id,g.away_id]))].map(id=>TEAM_BY_ID.get(String(id))).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name));
+    const conferences = [...new Set(Object.values(data.conferences || {}).filter(Boolean))].sort();
+    const weeks = [...new Set(data.games.filter(g=>!g.phase && g.week != null).map(g=>g.week))].sort((a,b)=>a-b);
+    const select = (id,label,options,value) => '<label>' + label + '<select id="' + id + '">' + options.map(([v,l])=>'<option value="' + esc(v) + '"' + (String(v)===String(value??'')?' selected':'') + '>' + esc(l) + '</option>').join('') + '</select></label>';
+    document.getElementById('home-filters').innerHTML =
+      select('home-season','Season',ROUTE_CONFIG.gameSeasons.map(s=>[s.season,s.season]).reverse(),selectedSeason) +
+      select('home-week','Week',[['','All weeks'],...weeks.map(w=>[w,'Week '+w]),['post','Postseason']],state.week) +
+      select('home-team','Team',[['','All teams'],...teams.map(t=>[t.slug,t.name])],state.team) +
+      select('home-conf','Conference',[['','All conferences'],...conferences.map(c=>[c,c])],state.conf) +
+      select('home-status','Status',[['all','All'],['upcoming','Upcoming'],['live','Live'],['completed','Final']],state.status);
+    const school = TEAM_BY_SLUG.get(state.team);
+    homeDiscoveryRows = data.games.filter(g=>discoveryMatch(g,{week:state.week,teamId:school?.id,conf:state.conf,status:state.status},data.conferences||{}))
+      .map(g=>({...g,season:selectedSeason})).sort((a,b)=>String(b.date).localeCompare(String(a.date))||b.game_id-a.game_id);
+    homeDiscoveryCount=30;
+    document.getElementById('home-results').innerHTML=homeResultsHtml();
+  }).catch(()=> { if(version===renderVersion) document.getElementById('home-results').textContent='Games could not be loaded. Try another season.'; });
+}
+document.getElementById('content').addEventListener('change',e=>{
+  if(state.section !== 'home') return;
+  const key = {'home-season':'findSeason','home-week':'week','home-team':'team','home-conf':'conf','home-status':'status'}[e.target.id];
+  if(!key) return;
+  let value=e.target.value || null;
+  if(key==='findSeason' || key==='week' && value && value!=='post') value=Number(value);
+  navigate({[key]:value,...(key==='findSeason'?{week:null,team:null,conf:null}:{} )});
+});
+document.getElementById('content').addEventListener('click',e=>{
+  if(e.target.id==='home-more') {homeDiscoveryCount+=30;document.getElementById('home-results').innerHTML=homeResultsHtml();}
+});
 
 // ---------------- Milestone A1 landing views ----------------
 let renderVersion = 0;
 
 function renderNavigation() {
   document.querySelectorAll('#tabs a').forEach(a => {
-    const selected = a.dataset.section === state.section;
+    const destination = state.section === 'games' || state.section === 'live' ? 'home' : ['matchups', 'playoff'].includes(state.section) ? 'stats' : state.section;
+    const selected = a.dataset.section === destination;
     a.classList.toggle('active', selected);
     if (selected) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
-  const items = state.view === 'team' || state.section === 'teams' ? [] : SUBVIEWS[state.section] || [];
+  const statsNav = [['overview', 'Overview'], ['teams', 'Teams'], ['players', 'Players'], ['matchup', 'Matchup'], ['playoff', 'Playoff']];
+  const inStats = ['stats', 'matchups', 'playoff'].includes(state.section);
+  const items = inStats ? statsNav : state.view === 'team' || state.section === 'teams' ? [] : SUBVIEWS[state.section] || [];
   document.getElementById('subnav').innerHTML = items.map(([view, label]) =>
-    '<a href="' + esc(routeHref({ subview: view })) + '"' +
-    (view === state.subview ? ' aria-current="page"' : '') + '>' + label + '</a>').join('');
+    '<a href="' + esc(inStats ? '#section=stats&view=' + view + '&season=' + state.year : routeHref({ subview: view })) + '"' +
+    (view === (state.section === 'matchups' ? 'matchup' : state.section === 'playoff' ? 'playoff' : state.subview) ? ' aria-current="page"' : '') + '>' + label + '</a>').join('');
 }
 
 function renderTeamDirectory() {
@@ -2961,24 +3053,17 @@ function stadiumGameRow(g) {
   return '<li><a href="' + esc(gameHref(g.id, g.season)) + '">' + esc(g.date) + ': ' +
     esc(away?.name || 'Unknown') + (g.neutral ? ' vs. ' : ' at ') + esc(home?.name || 'Unknown') + score + '</a></li>';
 }
-function stadiumMap(stadiums, hawaii) {
-  const points = stadiums.filter(s => Number.isFinite(Number(s.lat)) && Number.isFinite(Number(s.lon)) &&
-    s.lat != null && s.lon != null && (hawaii ? Number(s.lon) < -150 && Number(s.lat) >= 18 && Number(s.lat) <= 23
-      : Number(s.lon) >= -125 && Number(s.lon) <= -66 && Number(s.lat) >= 24 && Number(s.lat) <= 50));
-  const bounds = hawaii ? [-161, -154, 18, 23] : [-125, -66, 24, 50];
-  const [left, right, bottom, top] = bounds;
-  return '<svg class="stadium-map" viewBox="0 0 640 320" role="img" aria-label="' +
-    (hawaii ? 'Hawaii' : 'Contiguous United States') + ' stadium location plot; use the searchable list for links">' +
-    '<text x="18" y="25" fill="currentColor" font-size="15">' + (hawaii ? 'Hawaii' : 'Contiguous United States') + '</text>' +
-    '<path d="M30 38H610V285H30Z" fill="none" stroke="currentColor" opacity=".3"/>' +
-    points.map(s => {
-      const x = 30 + (Number(s.lon) - left) / (right - left) * 580;
-      const y = 38 + (top - Number(s.lat)) / (top - bottom) * 247;
-      return '<a href="' + esc(stadiumHref(s.id)) + '"><circle cx="' + x.toFixed(1) + '" cy="' +
-        y.toFixed(1) + '" r="4"><title>' + esc(s.name) + (s.state ? ', ' + esc(s.state) : '') + '</title></circle></a>';
-    }).join('') + '<text x="30" y="308" fill="currentColor" font-size="12">' +
-    (hawaii ? '161°W' : '125°W') + '</text><text x="570" y="308" fill="currentColor" font-size="12">' +
-    (hawaii ? '154°W' : '66°W') + '</text></svg>';
+function stadiumMap(stadiums, selected) {
+  const points=stadiums.filter(s=>s.lat!=null&&s.lon!=null&&Number.isFinite(Number(s.lat))&&Number.isFinite(Number(s.lon))&&Number(s.lat)>=15&&Number(s.lat)<=73&&Number(s.lon)>=-180&&Number(s.lon)<=-60);
+  const alaska=points.some(s=>Number(s.lat)>55);
+  const map=CfbGeography.projection(alaska);
+  return '<svg class="stadium-map" viewBox="0 0 '+map.width+' '+map.height+'" role="group" aria-label="United States stadium map including Hawaii in one geographic view">'+
+    '<g aria-label="United States state boundaries">'+CfbGeography.statePaths(alaska).map(s=>'<path class="state-boundary" d="'+s.d+'"><title>'+esc(s.name)+'</title></path>').join('')+'</g>'+
+    points.map(s=>{
+      const [x,y]=map.project(Number(s.lon),Number(s.lat));
+      const label=[s.name,(s.teams||[]).map(t=>t.name).join(', '),[s.city,s.state].filter(Boolean).join(', '),s.capacity==null?'':'Capacity: '+Number(s.capacity).toLocaleString()].filter(Boolean).join(' · ');
+      return '<a tabindex="0" href="'+esc(stadiumHref(s.id))+'" aria-label="'+esc(label)+'" data-stadium-marker="'+s.id+'"><circle cx="'+x.toFixed(2)+'" cy="'+y.toFixed(2)+'" r="'+(s.id===selected?'7':'4')+'"'+(s.id===selected?' class="selected-stadium"':'')+'><title>'+esc(label)+'</title></circle></a>';
+    }).join('')+'<text x="24" y="'+(map.height-12)+'" fill="currentColor" font-size="12">Mercator · real coordinates · Hawaii and mainland in one view</text></svg>';
 }
 function stadiumDetails(s) {
   const location = [s.city, s.state].filter(Boolean).join(', ');
@@ -3005,7 +3090,7 @@ function stadiumExplorerHtml(data, selected) {
   const stadiums = data.stadiums || [];
   if (selected != null) {
     const s = stadiums.find(x => x.id === selected);
-    return s ? stadiumDetails(s) : '<div class="panel"><h2>Stadium not found</h2><a href="#section=teams&view=stadiums">Browse stadiums</a></div>';
+    return s ? stadiumMap(stadiums, selected) + stadiumDetails(s) : '<div class="panel"><h2>Stadium not found</h2><a href="#section=teams&view=stadiums">Browse stadiums</a></div>';
   }
   if (!stadiums.length) return '<div class="panel"><h2 class="view-title">Stadium Explorer</h2>' +
     '<p class="empty-note">Stadium data will appear after the next full data build.</p></div>';
@@ -3014,7 +3099,7 @@ function stadiumExplorerHtml(data, selected) {
     '<p class="section-note">Explore the homes of FBS football. ' + withCoords + ' of ' + stadiums.length +
     ' listed venues have verified coordinates. Dots show location, not home-field strength; ' +
     'the list includes venues without coordinates and is searchable.</p>' +
-    '<div class="stadium-layout"><div>' + stadiumMap(stadiums, false) + stadiumMap(stadiums, true) + '</div>' +
+    '<div class="stadium-layout"><div>' + stadiumMap(stadiums, null) + '</div>' +
     '<div><label for="stadium-search">Find a stadium or team</label><input class="stadium-search" id="stadium-search" type="search" autocomplete="off">' +
     '<p class="section-note" id="stadium-count" role="status">Showing all ' + stadiums.length + ' stadiums</p>' +
     '<ul class="stadium-list" id="stadium-list">' + stadiums.map(s => '<li data-search="' +
@@ -3027,7 +3112,8 @@ function stadiumExplorerHtml(data, selected) {
 function hydrateStadiumExplorer(version) {
   loadStadiumExplorer().then(data => {
     if (version === renderVersion && state.section === 'teams' && state.subview === 'stadiums')
-      document.getElementById('stadium-explorer').innerHTML = teamsSwitch('stadiums') + stadiumExplorerHtml(data, state.stadium);
+      {document.getElementById('stadium-explorer').innerHTML = teamsSwitch('stadiums') + stadiumExplorerHtml(data, state.stadium);
+       if (state.stadium != null) document.querySelector('[data-stadium-marker="' + state.stadium + '"]')?.focus();}
   }).catch(() => {
     if (version === renderVersion && state.section === 'teams' && state.subview === 'stadiums')
       document.getElementById('stadium-explorer').innerHTML = teamsSwitch('stadiums') + '<div class="panel"><h2>Stadium Explorer</h2><p class="empty-note">Stadium data could not be loaded.</p></div>';
@@ -3370,7 +3456,7 @@ function paintLiveGames() {
   if (!target || !liveSnapshot) return;
   const games = visibleLiveGames(liveSnapshot.games, liveFilter, liveOrder);
   if (!window.matchMedia('(max-width: 700px)').matches) {
-    target.innerHTML = games.length ? games.map(renderLiveCard).join('') :
+    target.innerHTML = games.length ? [['in_progress','Live Games'],['scheduled','Upcoming Games'],['completed','Recent Finals']].map(([status,label]) => { const group = games.filter(g => g.status === status); return group.length ? '<section style="grid-column:1/-1"><h3>' + label + '</h3><div class="live-grid">' + group.map(renderLiveCard).join('') + '</div></section>' : ''; }).join('') :
       '<p class="empty-note">' + (liveFilter === 'all' ? 'No games in the current scoreboard window.' :
         'No ' + ({in_progress: 'live', scheduled: 'upcoming', completed: 'final'}[liveFilter] || '') +
         ' games in this slate. Choose All to see every game.') + '</p>';
@@ -3400,6 +3486,8 @@ function hydrateLiveScores(version) {
       const target = document.getElementById('live-games');
       const board = document.getElementById('live-rankings');
       if (!status || !target || !board) return;
+      currentStatusGames = Array.isArray(data.games) ? data.games : [];
+      if (state.section === 'home' && state.slateWeek != null) {hydrateHomeDiscovery(version); return;}
       const slate = state.section === 'home' ? homeSlate(Array.isArray(data.games) ? data.games : []) :
         { games: Array.isArray(data.games) ? data.games : [], label: null };
       liveSnapshot = { ...data, games: slate.games };
@@ -3410,6 +3498,7 @@ function hydrateLiveScores(version) {
         ? 'Scores fetched ' + stamp.toLocaleString() + (age > 15 * 60 * 1000 ? ' · Feed may be delayed' : '')
         : 'Live feed is not active yet.');
       paintLiveGames();
+      if (state.section === 'home') hydrateHomeDiscovery(version);
       board.innerHTML = renderLiveBoard(slate.games);
       if (!liveSeasonData) loadSeasonGames(liveSeason()).then(archive => {
         if (version !== renderVersion || request !== liveRequest) return;
@@ -3575,6 +3664,9 @@ function renderGames() {
 // One game card. Every number is the stored point-in-time value from the season file:
 // pregame Elo and pregame win probability as they were BEFORE kickoff, never today's ratings.
 function listingGame(g, season) {
+  const feed = typeof currentStatusGames !== 'undefined' ? currentStatusGames.find(x => Number(x.id) === Number(g.game_id)) : null;
+  if (feed?.status === 'in_progress') return '<li class="listing-game" data-game-id="' + g.game_id + '">' + renderLiveCard(feed) + '</li>';
+  if (feed?.status === 'completed' && !g.completed) g = {...g,completed:true,home_score:feed.home?.points,away_score:feed.away?.points};
   const scheduled = UPCOMING_BY_ID.get(g.game_id);
   const when = g.completed ? fmtGameDate(g)
     : g.kickoff_utc ? fmtKickoff(g.kickoff_utc, Boolean(g.time_tbd ?? scheduled?.tbd)) : 'Kickoff TBA';
@@ -3756,6 +3848,8 @@ function hydrateGames(version) {
 }
 
 document.getElementById('content').addEventListener('keydown', e => {
+  const marker = e.target.closest('[data-stadium-marker]');
+  if (marker && (e.key === 'Enter' || e.key === ' ')) {e.preventDefault(); marker.dispatchEvent(new MouseEvent('click', {bubbles:true,cancelable:true})); return;}
   const card = e.target.closest('[data-live-id]');
   if (card && e.target === card && (e.key === 'Enter' || e.key === ' ')) {
     e.preventDefault(); location.hash = liveGameHref({id: Number(card.dataset.liveId)});
@@ -5012,6 +5106,8 @@ document.querySelector('.skip-link').addEventListener('click', e => {
 
 // Home controls retain their existing behavior.
 document.getElementById('content').addEventListener('click', e => {
+  const marker=e.target.closest('[data-stadium-marker]');
+  if(marker){e.preventDefault();navigate({section:'teams',subview:'stadiums',stadium:Number(marker.dataset.stadiumMarker),view:'tab'});return;}
   const filterButton = e.target.closest('[data-live-filter]');
   const orderButton = e.target.closest('[data-live-order]');
   if (filterButton || orderButton) {
@@ -5073,7 +5169,9 @@ document.getElementById('content').addEventListener('submit', e => {
 });
 
 function wrapWideTables() {
-  document.querySelectorAll('#content .rank-table').forEach(table => {
+  document.querySelectorAll('#content table').forEach(table => {
+    CfbStats.enhanceTable(table);
+    if (table.parentElement?.classList.contains('table-scroll')) return;
     const wrapper = document.createElement('div');
     wrapper.className = 'table-scroll';
     wrapper.tabIndex = 0;
@@ -5083,6 +5181,114 @@ function wrapWideTables() {
     wrapper.appendChild(table);
   });
 }
+
+// Statistics hub: cached season aggregation; filtering and paging never refetch data.
+const statsCache = new Map();
+let statsData = null;
+const TEAM_STAT_CATEGORIES = {
+  overall: ['games','wins','losses','pointsFor','pointsAgainst','ppg','oppPpg'],
+  offense: ['games','boxGames','pointsFor','ppg','passYards','rushYards','passYpg','rushYpg'],
+  defense: ['games','boxGames','pointsAgainst','oppPpg','tackles','sacks','tfl','interceptions','passesDefended'],
+  'special-teams': ['games','boxGames','fgMade','fgAttempts','fgPct','xpMade','xpAttempts'],
+  ratings: ['games','elo','coefficient','rolling','change']
+};
+function statsHref(changes) {
+  return CfbNavigation.hashFor({...state,section:'stats',view:'tab',subview:'players',page:1,...changes});
+}
+function loadStats(season) {
+  if(!statsCache.has(season)) statsCache.set(season,Promise.all([loadSeasonGames(season),loadPlayerArchive(season)]).then(([games,archive])=>{
+    const players=CfbStats.aggregatePlayers(archive,games.byId,games.conferences||{},TEAM_BY_ID);
+    const ratings={};
+    for(const r of DATA.team_elo_by_year[season]||[]) ratings[r.team]={elo:r.elo,change:r.change};
+    for(const r of DATA.team_ratings_by_year[season]||[]) {ratings[r.team]??={};ratings[r.team].coefficient=r.rating;}
+    for(const r of DATA.team_rolling_by_year[season]||[]) {ratings[r.team]??={};ratings[r.team].rolling=r.coeff_5yr;}
+    return {season,players:players.rows,teams:CfbStats.aggregateTeams(games.games,players,games.conferences||{},TEAM_BY_ID,ratings),completed:games.games.filter(g=>g.completed).length,covered:new Set([...players.covered].map(k=>k.split('|')[0])).size};
+  }).catch(error=>{statsCache.delete(season);throw error;}));
+  return statsCache.get(season);
+}
+function renderStats() {
+  return '<div class="panel"><h2 class="view-title">Stats · ' + esc(state.subview === 'overview' ? 'National leaders' : state.subview === 'teams' ? 'Team statistics' : 'Player statistics') + '</h2>' +
+    '<p class="section-note">Counting stats from recorded completed FBS-vs-FBS games. Missing values remain unavailable. Player games count appearances in recorded category box scores.</p>' +
+    '<div id="stats-body" aria-live="polite">Loading ' + state.year + ' statistics…</div></div>';
+}
+function hydrateStats(version) {
+  loadStats(state.year).then(data=>{
+    if(version!==renderVersion||state.section!=='stats')return;
+    statsData=data;
+    document.getElementById('stats-body').innerHTML=statsViewHtml(data);
+    wrapWideTables();
+  }).catch(()=>{if(version===renderVersion)document.getElementById('stats-body').innerHTML='<p class="empty-note">Statistics could not be loaded. <button id="retry-stats" class="action-button">Retry</button></p>';});
+}
+function statValue(value) {
+  return value==null||!Number.isFinite(Number(value))?'—':Number.isInteger(Number(value))?Number(value).toLocaleString():Number(value).toLocaleString(undefined,{maximumFractionDigits:2});
+}
+function SortableTable(rows,columns,options={}) {
+  const sort=columns.some(c=>c.key===state.sort)?state.sort:options.sort||columns.find(c=>c.type!=='string')?.key;
+  const dir=state.sort?state.dir:options.dir||'desc';
+  const column=columns.find(c=>c.key===sort);
+  const sorted=CfbStats.sortRows(rows,sort,dir,column?.type||'number');
+  const pageSize=50,pages=Math.max(1,Math.ceil(sorted.length/pageSize)),page=Math.min(state.page||1,pages);
+  const view=sorted.slice((page-1)*pageSize,page*pageSize);
+  const heads=columns.map(c=>'<th scope="col" aria-sort="'+(c.key===sort?(dir==='desc'?'descending':'ascending'):'none')+'"><button class="sort-button" data-stat-sort="'+esc(c.key)+'" data-next-dir="'+(c.key===sort&&dir==='desc'?'asc':'desc')+'">'+esc(c.label)+(c.key===sort?(dir==='desc'?' ▼':' ▲'):'')+'</button></th>').join('');
+  const body=view.map(r=>'<tr>'+columns.map(c=>'<td'+(c.type!=='string'?' class="num"':'')+'>'+(c.render?c.render(r):c.type==='string'?esc(r[c.key]??'—'):statValue(r[c.key]))+'</td>').join('')+'</tr>').join('');
+  const pager=(p,label)=>'<a href="'+esc(statsHref({subview:state.subview,page:p}))+'">'+label+'</a>';
+  return '<p class="section-note">'+rows.length+' results · Page '+page+' of '+pages+'</p><div class="table-scroll" role="region" aria-label="Scrollable statistics table" tabindex="0"><table class="rank-table stats-table"><thead><tr>'+heads+'</tr></thead><tbody>'+body+'</tbody></table></div>'+
+    (!view.length?'<p class="empty-note">No statistics match these filters.</p>':'')+'<nav class="table-pagination" aria-label="Table pages">'+(page>1?pager(page-1,'← Previous'):'')+' '+(page<pages?pager(page+1,'Next →'):'')+'</nav>';
+}
+function statsViewHtml(data) {
+  const coverage='<p class="section-note">Player box scores available for '+data.covered+' of '+data.completed+' completed archived games in '+data.season+'. Team scoring uses the full game archive. Box score totals and rates cover recorded games only; “Box score G” shows coverage.</p>';
+  if(state.subview==='overview')return coverage+statsOverviewHtml(data);
+  const isPlayer=state.subview==='players';
+  const supportedPlayers=Object.keys(CfbStats.categories).filter(cat=>data.players.some(r=>r.category===cat));
+  const supportedTeams=Object.keys(TEAM_STAT_CATEGORIES).filter(cat=>cat==='overall'||TEAM_STAT_CATEGORIES[cat].some(k=>!['games','boxGames'].includes(k)&&data.teams.some(r=>r[k]!=null)));
+  const cats=isPlayer?supportedPlayers:supportedTeams;
+  if(!cats.length)return coverage+'<p class="empty-note">No player box scores are available for this season. Try a later season.</p>';
+  const category=cats.includes(state.category)?state.category:cats[0];
+  const schema=isPlayer?CfbStats.categories[category]:null;
+  const rows=isPlayer?data.players.filter(r=>r.category===category):data.teams;
+  const fields=(isPlayer?schema.fields:TEAM_STAT_CATEGORIES[category]).filter(k=>rows.some(r=>r[k]!=null));
+  const label=cat=>isPlayer?CfbStats.categories[cat].label:cat==='special-teams'?'Special Teams':cat[0].toUpperCase()+cat.slice(1);
+  const nav='<nav class="stats-categories" aria-label="Statistic categories">'+cats.map(cat=>'<a href="'+esc(statsHref({subview:state.subview,category:cat,sort:'',minimum:0}))+'"'+(category===cat?' aria-current="page"':'')+'>'+label(cat)+'</a>').join('')+'</nav>';
+  const select=(id,name,choices,value)=>'<label>'+name+'<select id="'+id+'"><option value="">All</option>'+choices.map(c=>'<option'+(c===value?' selected':'')+' value="'+esc(c)+'">'+esc(c)+'</option>').join('')+'</select></label>';
+  const teams=[...new Set(rows.map(r=>r.team))].sort(),confs=[...new Set(rows.map(r=>r.conference).filter(Boolean))].sort();
+  const minimumKey=isPlayer?schema.minimum:'games';
+  const filters='<form class="games-filters" id="stats-filters">'+select('stats-team','Team',teams,state.statTeam)+select('stats-conf','Conference',confs,state.statConf)+
+    '<label>Search '+(isPlayer?'players':'teams')+'<input id="stats-query" type="search" value="'+esc(state.statQuery)+'" placeholder="Name"></label>'+
+    '<label>Minimum '+(CfbStats.labels[minimumKey]||minimumKey)+'<input id="stats-minimum" type="number" min="0" max="10000" value="'+state.minimum+'"></label><button class="action-button" type="submit">Apply filters</button></form>';
+  const filtered=CfbStats.filterRows(rows,{team:state.statTeam,conference:state.statConf,query:state.statQuery,minimum:state.minimum,minimumKey});
+  const columns=[{key:'name',label:isPlayer?'Player':'Team',type:'string',render:r=>isPlayer?'<span class="player-name" data-player-key="'+esc(r.key)+'">'+esc(r.name)+'</span>':teamLink(r.name,'xs',state.year)}];
+  if(isPlayer)columns.push({key:'team',label:'Team',type:'string',render:r=>teamLink(r.team,'xs',state.year)},{key:'games',label:'Recorded G'});
+  columns.push({key:'conference',label:'Conference',type:'string'},...fields.map(key=>({key,label:CfbStats.labels[key]||key})));
+  return coverage+nav+filters+SortableTable(filtered,columns,{sort:isPlayer?schema.sort:category==='ratings'?'elo':category==='defense'?'oppPpg':'ppg',dir:category==='defense'?'asc':'desc'});
+}
+function statsOverviewHtml(data) {
+  const cards=[];
+  const card=(title,rows,key,target,dir='desc',minimum=0)=>{
+    const available=rows.filter(r=>r[key]!=null);if(!available.length)return;
+    const leaders=CfbStats.sortRows(available,key,dir).slice(0,3);
+    const href=statsHref({...target,sort:key,dir,minimum,statTeam:'',statConf:'',statQuery:''});
+    cards.push('<article class="panel"><h3><a href="'+esc(href)+'">'+title+' →</a></h3><ol>'+leaders.map(r=>'<li><span>'+esc(r.name)+'</span> <strong>'+statValue(r[key])+'</strong></li>').join('')+'</ol></article>');
+  };
+  for(const [category,key,title,minimum] of [['passing','yards','Passing yards',0],['passing','td','Passing TDs',0],['passing','completionPct','Completion % · minimum 30 attempts',30],['rushing','yards','Rushing yards',0],['rushing','td','Rushing TDs',0],['receiving','yards','Receiving yards',0],['receiving','receptions','Receptions',0],['receiving','td','Receiving TDs',0],['defense','tackles','Tackles',0],['defense','sacks','Sacks',0],['defense','interceptions','Interceptions',0]]){
+    card(title,data.players.filter(r=>r.category===category&&(!minimum||r.attempts>=minimum)),key,{subview:'players',category},'desc',minimum);
+  }
+  card('Team points per game',data.teams,'ppg',{subview:'teams',category:'overall'});
+  card('Fewest opponent points per game',data.teams,'oppPpg',{subview:'teams',category:'defense'},'asc');
+  card('Elo',data.teams,'elo',{subview:'teams',category:'ratings'});
+  card('Season CoE',data.teams,'coefficient',{subview:'teams',category:'ratings'});
+  card('Most Elo gained · last game',data.teams.filter(r=>r.change>0),'change',{subview:'teams',category:'ratings'});
+  card('Most Elo lost · last game',data.teams.filter(r=>r.change<0),'change',{subview:'teams',category:'ratings'},'asc');
+  return cards.length?'<div class="stats-leaders">'+cards.join('')+'</div>':'<p class="empty-note">No leaders available for this season.</p>';
+}
+document.getElementById('content').addEventListener('click',e=>{
+  const sort=e.target.closest('[data-stat-sort]');
+  if(sort&&state.section==='stats')navigate({sort:sort.dataset.statSort,dir:sort.dataset.nextDir,page:1});
+  if(e.target.id==='retry-stats')hydrateStats(renderVersion);
+});
+document.getElementById('content').addEventListener('submit',e=>{
+  if(e.target.id!=='stats-filters')return;e.preventDefault();
+  navigate({statTeam:document.getElementById('stats-team').value,statConf:document.getElementById('stats-conf').value,statQuery:document.getElementById('stats-query').value,minimum:Number(document.getElementById('stats-minimum').value)||0,page:1});
+});
 
 function render() {
   const version = ++renderVersion;
@@ -5099,7 +5305,8 @@ function render() {
   }
   if (state.view === 'conference') { content.innerHTML = renderConferencePage(state.conferenceParam); hydrateConferencePage(); return; }
   if (state.view === 'game') { content.innerHTML = renderGamePage(); hydrateLiveGamePage(version); return; }
-  if (state.section === 'home') { content.innerHTML = renderHome(); hydrateLiveScores(version); }
+  if (state.section === 'home') { content.innerHTML = renderHome(); hydrateLiveScores(version); hydrateHomeDiscovery(version); }
+  else if (state.section === 'stats') {content.innerHTML = renderStats(); hydrateStats(version);}
   else if (state.section === 'methodology') content.innerHTML = renderMethodology();
   else if (state.section === 'coverage') content.innerHTML = renderCoverage();
   else if (state.section === 'teams') {
@@ -5121,7 +5328,7 @@ function render() {
     if (state.subview === 'elo') hydrateRatingFreshness(version);
   } else if (state.section === 'playoff') {
     const views = { field: renderField, bracket: renderBracket, odds: renderOdds, history: renderHistory };
-    content.innerHTML = playoffIntro() + views[state.subview]();
+    content.innerHTML = '<nav class="subnav" aria-label="Playoff views">' + SUBVIEWS.playoff.map(([view,label]) => '<a href="' + esc(routeHref({subview:view})) + '">' + label + '</a>').join('') + '</nav>' + playoffIntro() + views[state.subview]();
     // A simulation restored after navigating away should already be visible.
     content.querySelectorAll('.bracket-round-col.pending').forEach(el => el.classList.remove('pending'));
   }
@@ -5131,6 +5338,7 @@ function render() {
 function coverageRange(years) { return years?.length ? Math.min(...years) + '–' + Math.max(...years) : 'unavailable'; }
 document.getElementById('coverage-caption').textContent = 'RATINGS: ' + coverageRange(DATA.years_all) +
   ' · PLAYOFF: ' + coverageRange(DATA.years_playoff);
+new MutationObserver(() => wrapWideTables()).observe(document.getElementById('content'), {childList:true,subtree:true});
 applyRoute();
 </script>
 </body>
