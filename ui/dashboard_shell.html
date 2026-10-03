@@ -973,6 +973,7 @@ __STATIC_MANIFEST_JSON__
 <script src="geography.js?v=__GEOGRAPHY_VERSION__"></script>
 <script src="stats.js?v=__STATS_VERSION__"></script>
 <script src="navigation.js?v=__NAVIGATION_VERSION__"></script>
+<script src="live_teams.js?v=__LIVE_TEAMS_VERSION__"></script>
 <script src="search.js?v=__SEARCH_VERSION__"></script>
 <script>
 const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
@@ -3302,23 +3303,9 @@ function liveLabel(g) {
   return date && !Number.isNaN(date.getTime())
     ? date.toLocaleString([], {weekday:'short', hour:'numeric', minute:'2-digit'}) : 'Scheduled';
 }
+const resolveLiveTeam = CfbLiveTeams.createResolver(TEAMS);
 function liveTeamId(t) {
-  // CFBD's team IDs are not the IDs in our historical database. A collision
-  // can point at an entirely different school (Howard 47 vs Louisiana Tech 47).
-  const raw = String(t?.name || '').trim();
-  if (!raw) return null;
-  const exact = TEAM_BY_NAME.get(raw);
-  if (exact) return exact;
-  const normalize = name => String(name).normalize('NFKD').toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ').trim();
-  const full = normalize(raw);
-  const match = team => {
-    const school = normalize(team.name);
-    return full === school || full.startsWith(school + ' ');
-  };
-  const candidates = TEAMS.filter(match);
-  // Choose Texas Tech over Texas for "Texas Tech Red Raiders", for example.
-  return candidates.sort((a, b) => b.name.length - a.name.length)[0] || null;
+  return resolveLiveTeam(t);
 }
 // A static model export can trail the independently refreshed live scoreboard.
 // Never attach the prior game's green/red movement to a team with a newer final.
