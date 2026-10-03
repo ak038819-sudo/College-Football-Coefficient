@@ -87,16 +87,16 @@
     // keep their season/status/week filters and remain valid.
     const finder = section === 'games' && (p.get('mode') === 'find' ||
       (!p.has('season') && !p.has('status') && !p.has('week') && !p.has('conf') && !p.has('game')));
-    const findSeason = finder && (config.gameSeasons || []).some(s => s.season === Number(p.get('findseason')))
+    const findSeason = (finder || section === 'home') && (config.gameSeasons || []).some(s => s.season === Number(p.get('findseason')))
       ? Number(p.get('findseason')) : null;
-    const status = ['upcoming', 'completed', 'all'].includes(p.get('status')) ? p.get('status')
-      : season && season.scheduled > 0 ? 'upcoming' : 'completed';
+    const status = ['upcoming', 'live', 'completed', 'all'].includes(p.get('status')) ? p.get('status')
+      : section === 'home' ? 'all' : season && season.scheduled > 0 ? 'upcoming' : 'completed';
     // Games may point at one game (search results; game pages build on this later). Digits only.
     const gameParam = p.get('game');
     const game = section === 'games' && /^\d{1,12}$/.test(gameParam || '') ? Number(gameParam) : null;
     // Games explorer filters (Milestone B). Format-checked here; the page checks them against the
     // season's actual weeks/teams/conferences and says so when one doesn't apply.
-    const isGames = section === 'games';
+    const isGames = section === 'games' || section === 'home';
     const w = p.get('week') || '';
     const week = !isGames ? null : w === 'post' ? 'post' : /^\d{1,2}$/.test(w) ? Number(w) : null;
     // "school", not "team": #team=<slug> already means "open that team's page".
@@ -116,6 +116,7 @@
     const matchupId = key => /^\d{1,10}$/.test(p.get(key) || '') ? Number(p.get(key)) : null;
     const venue = ['home', 'away', 'neutral'].includes(p.get('venue')) ? p.get('venue') : 'home';
     const route = { section, subview, year, status,
+      slateWeek: /^\d{1,2}$/.test(p.get('slateweek') || '') ? Number(p.get('slateweek')) : p.get('slateweek') === 'post' ? 'post' : null,
       category: (p.get('category') || '').replace(/[^a-z-]/g, '').slice(0, 30),
       statTeam: (p.get('statTeam') || '').slice(0, 100), statConf: (p.get('statConf') || '').slice(0, 100),
       statQuery: (p.get('statQuery') || '').slice(0, 100),
@@ -182,6 +183,14 @@
       else if (route.section === 'matchups') p.set('view', 'matchup');
       else if (route.section === 'playoff') { p.set('view', 'playoff'); p.set('tool', route.subview || 'field'); }
       else if (route.subview) p.set('view', route.subview);
+      if (route.section === 'home') {
+        if (route.slateWeek != null) p.set('slateweek', route.slateWeek);
+        if (route.findSeason != null) p.set('findseason', route.findSeason);
+        if (route.week != null) p.set('week', route.week);
+        if (route.team) p.set('school', route.team);
+        if (route.conf) p.set('conf', route.conf);
+        if (route.status && route.status !== 'all') p.set('status', route.status);
+      }
       if (route.section === 'stats') {
         if (route.year != null) p.set('season', route.year);
         for (const key of ['category', 'statTeam', 'statConf', 'statQuery', 'minimum', 'sort', 'dir', 'page'])
