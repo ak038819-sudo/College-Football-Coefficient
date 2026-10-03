@@ -2901,7 +2901,7 @@ function renderPollsPanel() {
 }
 
 function renderHome() {
-  return '<nav id="home-weeks" class="live-controls" aria-label="Browse weeks"></nav>' + renderLiveScores() + '<section class="panel"><h2>Find a Game / Game History</h2><div id="home-filters" class="games-filters">Loading filters…</div><div id="home-results" aria-live="polite"></div></section>';
+  return renderLiveScores(true) + '<section class="panel"><h2>Find a Game / Game History</h2><div id="home-filters" class="games-filters">Loading filters…</div><div id="home-results" aria-live="polite"></div></section>';
 }
 
 
@@ -3319,7 +3319,7 @@ function renderLiveBoard(games) {
       ? 'Illustrative result-only projection using the current leaders and pregame win chances. Tied games count as ties. The official Elo update also uses postgame performance data, so its values may differ.'
       : 'Published Elo ratings; no live result projection is available yet.') + '</p></div>';
 }
-function renderLiveScores() {
+function renderLiveScores(includeWeeks = false) {
   const mobile = window.matchMedia('(max-width: 700px)').matches;
   return '<div id="live-status" role="status" aria-live="polite">Loading the scoreboard…</div>' +
     '<div class="live-controls"><fieldset aria-label="Game status"><legend>Game status</legend>' +
@@ -3330,6 +3330,7 @@ function renderLiveScores() {
     [['hype', 'Featured'], ['time', 'Kickoff']]
       .map(([value, label]) => '<button type="button" data-live-order="' + value + '" aria-pressed="' +
         (liveOrder === value) + '">' + label + '</button>').join('') + '</fieldset></div>' +
+    (includeWeeks ? '<nav id="home-weeks" class="live-controls" aria-label="Browse weeks"></nav>' : '') +
     '<div class="live-layout"><div id="live-games" class="live-grid"></div>' +
     '<aside class="home-side" aria-label="Rankings">' + (mobile ?
       '<details class="home-side-fold"><summary>Rankings and conference boards</summary>' : '') +
