@@ -1,0 +1,92 @@
+# One-off, resumable backfill of the historical player box-score archive.
+#
+# It lives apart from ci-and-deploy.yml because it is run by hand, it is the
+# only job that walks many seasons of CFBD at once, and it must be able to stop
+# and resume: fetch_cfbd_players.py merges into each season's file and never
+# erases an archived box score, so re-running a range is safe.
+name: Backfill player box scores
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_year:
+        description: "First season to fetch (2004 or later)"
+        required: true
+        default: "2004"
+      end_year:
+        description: "Last season to fetch"
+        required: true
+        default: "2025"
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    # Share the deploy job's lock: both push to main, and the scheduled refresh
+    # rewrites data/raw too.
+    concurrency:
+      group: rebuild-and-deploy-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Fetch and commit one season at a time
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          START: ${{ inputs.start_year }}
+          END: ${{ inputs.end_year }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CFBD_API_KEY:-}" ]; then
+            echo "::error::CFBD_API_KEY is not set for this repository."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # One season per commit, pushed as it lands. A timeout or a CFBD
+          # outage then costs the season in flight, not the whole backfill,
+          # and the next run resumes from what is already committed.
+          for year in $(seq "$START" "$END"); do
+            echo "::group::season $year"
+            # Check the fetch explicitly rather than leaning on set -e. A season
+            # that fails must stop the backfill, not be skipped silently while
+            # later seasons commit on top of the gap -- the archive would then
+            # look complete while missing a year.
+            if ! python3 src/fetch_cfbd_players.py "$year"; then
+              echo "::endgroup::"
+              echo "::error::Season $year failed to fetch. Seasons before it are committed; re-run this workflow from $year to resume."
+              exit 1
+            fi
+            git add data/raw/player_boxscores/
+            if git diff --staged --quiet; then
+              echo "season $year: nothing new to commit"
+            else
+              git commit -m "Archive $year player box scores [skip ci]"
+              # Checked for the same reason as the fetch: a rebase that refuses
+              # (the scheduled refresh landed first) or a rejected push must
+              # stop the run, not leave this season committed only on the
+              # runner while later seasons carry on.
+              if ! git pull --rebase origin main; then
+                echo "::error::Could not rebase season $year onto main. Nothing was published for it; re-run this workflow from $year."
+                exit 1
+              fi
+              if ! git push origin HEAD:main; then
+                echo "::error::Could not push season $year to main. Re-run this workflow from $year."
+                exit 1
+              fi
+            fi
+            echo "::endgroup::"
+          done
+
+      - name: Report coverage
+        run: python3 src/audit_game_coverage.py
