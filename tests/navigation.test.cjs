@@ -173,7 +173,7 @@ test('live CFBD IDs cannot relabel another school', () => {
     { id: 47, name: 'Louisiana Tech' }, { id: 104, name: 'Rutgers' },
     { id: 10, name: 'Texas' }, { id: 11, name: 'Texas Tech' }
   ];
-  const context = { TEAMS: teams, TEAM_BY_NAME: new Map(teams.map(t => [t.name, t])) };
+  const context = { resolveLiveTeam: require('../ui/live_teams.js').createResolver(teams) };
   vm.runInNewContext(source + '\nthis.lookup = liveTeamId;', context);
   assert.equal(context.lookup({ id: 47, name: 'Howard Bison' }), null);
   assert.equal(context.lookup({ id: 164, name: 'Rutgers Scarlet Knights' }).name, 'Rutgers');

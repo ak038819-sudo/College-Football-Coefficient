@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "test": "node --test tests/*.test.cjs",
-    "check": "node --check ui/navigation.js && node --check ui/search.js && node --check ui/stats.js && node --check ui/geography.js"
+    "check": "node --check ui/navigation.js && node --check ui/search.js && node --check ui/stats.js && node --check ui/geography.js && node --check ui/live_teams.js"
   },
   "devDependencies": {"jsdom": "26.1.0"}
 }
