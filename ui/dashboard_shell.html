@@ -1314,11 +1314,13 @@ function fmt(n) { return Number(n).toFixed(3); }
 function renderYearRow() {
   const row = document.getElementById('year-row');
   if (state.view === 'team' || state.view === 'conference' || state.view === 'game' ||
+      state.view === 'player' || state.view === 'coach' ||
       state.section === 'teams' || state.section === 'live' || state.section === 'matchups' || state.section === 'methodology' || state.section === 'coverage' ||
       (state.section === 'games' && state.finder) || (state.section === 'rankings' && state.subview === 'home-field')) {
     row.innerHTML = '';
     document.getElementById('year-caption').textContent = state.view === 'team' ? 'TEAM PAGE'
       : state.view === 'conference' ? 'CONFERENCE PAGE' : state.view === 'game' ? 'GAME'
+      : state.view === 'player' ? 'PLAYER' : state.view === 'coach' ? 'HEAD COACH'
       : state.section === 'live' ? 'CURRENT SLATE' : state.section === 'matchups' ? 'WHAT IF · ' + UPCOMING.season
       : state.section === 'methodology' ? 'METHODOLOGY'
       : state.section === 'coverage' ? 'EVERY SEASON' : state.section === 'teams' && state.subview === 'stadiums' ? 'HOMES OF COLLEGE FOOTBALL' : state.section === 'games' ? 'EVERY SEASON'
@@ -4214,6 +4216,224 @@ function renderMethodology() {
       'each time the site is built, so this page always describes the model and the data that produced the numbers you see.</p></div>';
 }
 
+// ---------------- Player and coach pages (v0.1.1) ----------------
+// Data comes from src/export_people_pages.py via STATIC_MANIFEST.people, loaded
+// only when a person page opens: one of PLAYER_SHARDS detail files for a player,
+// one file for every coach, one file per season for a roster.
+//
+// Links are built on player_id and coach_id, never on a display name. A name is
+// how a person is shown; it is not how they are identified, and a page whose URL
+// was a name would break the moment a source corrected a spelling.
+//
+// No tabs here yet, on purpose. A person page today can state who someone is and
+// where they have been, which is what the roster feed carries. Per-game and
+// per-season statistics are not attributed to people at all (see personStatsNote),
+// so tabs for them would be four addresses pointing at three empty panels.
+const PEOPLE = STATIC_MANIFEST.people || null;
+
+const _personIndex = new Map();
+function loadPersonIndex(key) {
+  if (_personIndex.has(key)) return Promise.resolve(_personIndex.get(key));
+  const src = (PEOPLE && PEOPLE.index || {})[key];
+  if (!src) { _personIndex.set(key, []); return Promise.resolve([]); }
+  return loadDataScript(src).then(() => {
+    const rows = (window.__CFB_PEOPLE_INDEX__ || {})[key] || [];
+    _personIndex.set(key, rows);
+    return rows;
+  });
+}
+
+function loadPlayer(id) {
+  const shard = Number(id) % (PEOPLE ? PEOPLE.player_shards : 1);
+  const src = (PEOPLE && PEOPLE.players || {})[String(shard)];
+  if (!src) return Promise.reject(new Error('no player data'));
+  return loadDataScript(src).then(() => {
+    const bucket = (window.__CFB_PEOPLE_PLAYERS__ || {})[shard];
+    if (!bucket) throw new Error('player file ' + shard + ' was empty');
+    return bucket[String(id)] || null;        // null = no such player, not an error
+  });
+}
+
+function loadCoaches() {
+  if (!PEOPLE || !PEOPLE.coaches) return Promise.reject(new Error('no coach data'));
+  return loadDataScript(PEOPLE.coaches).then(() => {
+    const all = window.__CFB_PEOPLE_COACHES__;
+    if (!all) throw new Error('coach file was empty');
+    return all;
+  });
+}
+
+function loadRoster(season) {
+  const src = (PEOPLE && PEOPLE.rosters || {})[String(season)];
+  if (!src) return Promise.resolve(null);     // null = that season was never synced
+  return loadDataScript(src).then(() => {
+    const raw = (window.__CFB_PEOPLE_ROSTERS__ || {})[Number(season)];
+    if (!raw) return null;
+    return { fields: raw.fields,
+             teams: new Map(Object.entries(raw.teams).map(([id, rows]) => [Number(id),
+               rows.map(r => Object.fromEntries(raw.fields.map((f, i) => [f, r[i]])))])) };
+  });
+}
+
+function playerHref(id) {
+  return CfbNavigation.hashFor({ view: 'player', playerParam: id,
+    returnTo: (state.view === 'player' || state.view === 'coach') ? state.returnTo
+      : CfbNavigation.hashFor(state) });
+}
+function coachHref(id) {
+  return CfbNavigation.hashFor({ view: 'coach', coachParam: id,
+    returnTo: (state.view === 'player' || state.view === 'coach') ? state.returnTo
+      : CfbNavigation.hashFor(state) });
+}
+
+// A height CFBD gives in inches, shown the way a roster shows it.
+function heightLabel(inches) {
+  const n = Number(inches);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.floor(n / 12) + '′ ' + (n % 12) + '″';
+}
+function teamNameById(id) {
+  const t = TEAM_BY_ID.get(String(id));
+  return t ? t.name : null;
+}
+// A team this FBS-only database does not carry is named by neither link nor
+// invention: the row says the school is outside the dataset.
+function teamCellById(id) {
+  const name = teamNameById(id);
+  if (!name) return '<span class="team-link-static">Outside this dataset</span>';
+  return teamAnchor(name, esc(name));
+}
+
+// Said once, on both kinds of page, rather than implied by an empty panel.
+function personStatsNote() {
+  return '<p class="section-note">Per-game and per-season statistics are not shown here yet. ' +
+    'The box-score archive identifies players by name only, with no player id, so attributing a ' +
+    'stat line to this person would be a guess at identity rather than a fact about them. ' +
+    '<a href="' + esc(CfbNavigation.hashFor({ ...state, view: 'tab', section: 'coverage', subview: '' })) +
+    '">Data coverage</a> records what each source carries.</p>';
+}
+
+function renderPlayerPage() {
+  return backLink() + '<div id="person-page" aria-live="polite">' +
+    '<div class="panel"><p class="empty-note">Loading player&hellip;</p></div></div>';
+}
+function renderCoachPage() {
+  return backLink() + '<div id="person-page" aria-live="polite">' +
+    '<div class="panel"><p class="empty-note">Loading coach&hellip;</p></div></div>';
+}
+function personMissing(kind, id) {
+  return '<div class="panel"><h1 class="team-title">' + (kind === 'player' ? 'Player' : 'Coach') +
+    ' not found</h1><p class="empty-note">No ' + kind + ' in this dataset has the id ' +
+    esc(id == null ? '(none)' : id) + '. ' + (kind === 'player'
+      ? 'Rosters are synced from 2026 onward so far; earlier seasons are not loaded yet.'
+      : 'Head-coaching history covers 1980 onward.') + '</p></div>';
+}
+
+function playerPanels(p, id) {
+  const seasons = p.seasons || [];
+  const last = seasons[seasons.length - 1] || {};
+  const position = last.position || p.primary_position;
+  const height = heightLabel(last.height || p.height);
+  const weight = last.weight || p.weight;
+  const bio = [position && esc(position), last.jersey != null ? 'No. ' + esc(last.jersey) : null,
+               height, weight ? esc(weight) + ' lb' : null].filter(Boolean).join(' · ');
+  const home = [p.hometown, p.home_state].filter(Boolean).join(', ');
+  const header = '<div class="panel team-header"><div class="team-header-main">' +
+    '<div class="team-header-text"><h1 class="team-title">' + esc(p.display_name) + '</h1>' +
+    '<div class="team-sub">' + (bio || 'No listed position') +
+    (last.team_id != null ? ' · ' + teamCellById(last.team_id) : '') + '</div>' +
+    (home ? '<div class="team-sub">' + esc(home) + '</div>' : '') +
+    '</div></div></div>';
+  const rows = seasons.slice().reverse().map(s =>
+    '<tr><td>' + esc(s.season_year) + '</td><td>' + teamCellById(s.team_id) + '</td>' +
+    '<td>' + (s.jersey == null ? '&mdash;' : esc(s.jersey)) + '</td>' +
+    '<td>' + esc(s.position || position || '—') + '</td>' +
+    '<td>' + esc(s.class_year || '—') + '</td>' +
+    '<td>' + (heightLabel(s.height) || '—') + '</td>' +
+    '<td>' + (s.weight ? esc(s.weight) : '&mdash;') + '</td></tr>').join('');
+  // One row per season AND team, so a mid-year transfer shows both schools
+  // rather than one of them silently winning.
+  const table = '<div class="panel team-section"><h2 class="section-title">Seasons</h2>' +
+    '<table class="data-table"><thead><tr><th>Season</th><th>Team</th><th>No.</th>' +
+    '<th>Pos</th><th>Class</th><th>Ht</th><th>Wt</th></tr></thead><tbody>' + rows +
+    '</tbody></table>' + personStatsNote() + '</div>';
+  return header + table;
+}
+
+function coachRecord(tenures) {
+  const sum = key => tenures.reduce((n, t) => n + (Number(t[key]) || 0), 0);
+  const w = sum('wins'), l = sum('losses'), ti = sum('ties');
+  const played = w + l + ti;
+  return { wins: w, losses: l, ties: ti, played,
+           label: played ? w + '–' + l + (ti ? '–' + ti : '') : 'N/A',
+           pct: played ? ((w + ti / 2) / played) : null };
+}
+
+function coachPanels(c, id) {
+  const tenures = c.tenures || [];
+  const last = tenures[tenures.length - 1] || {};
+  const years = tenures.map(t => t.season_year);
+  const rec = coachRecord(tenures);
+  const schools = [...new Set(tenures.map(t => t.team_id))];
+  const header = '<div class="panel team-header"><div class="team-header-main">' +
+    '<div class="team-header-text"><h1 class="team-title">' + esc(c.display_name) + '</h1>' +
+    // The latest school is named as the latest school, not placed beside a span of
+    // seasons: Mack Brown's 1985-2024 covers three schools and a six-year gap, and
+    // "North Carolina · 1985-2024" would have read as one continuous tenure there.
+    '<div class="team-sub">Head coach' +
+    (years.length ? ' · ' + tenures.length + (tenures.length === 1 ? ' season' : ' seasons') +
+      ', ' + Math.min(...years) + '–' + Math.max(...years) : '') +
+    (last.team_id != null ? ' · most recently ' + teamCellById(last.team_id) : '') + '</div>' +
+    '</div></div><div class="team-stats">' +
+    teamStat('Record', rec.label, 'vs teams in this dataset') +
+    teamStat('Win rate', rec.pct == null ? 'N/A' : rec.pct.toFixed(3).replace(/^0/, ''),
+             rec.played ? rec.played + ' games' : '&nbsp;') +
+    teamStat('Schools', String(schools.length), 'in this dataset') +
+    '</div></div>';
+  // The identity caveat the database recorded, said on the page rather than
+  // left for someone reading SQL. A name is all CFBD's coaching feed carries.
+  const note = c.identity_note ? '<div class="panel team-section">' +
+    '<h2 class="section-title">About this identity</h2><p class="section-note">' +
+    'This coach is identified by name alone, because CFBD’s coaching feed carries no coach id. ' +
+    'Flagged as <code>' + esc(c.identity_note) + '</code>, which means these seasons are either one ' +
+    'person’s career or two people who share a name — the feed does not say which, and this ' +
+    'site does not guess.</p></div>' : '';
+  const rows = tenures.slice().reverse().map(t => {
+    const w = t.wins == null ? null : t.wins + '–' + t.losses + (t.ties ? '–' + t.ties : '');
+    return '<tr><td>' + esc(t.season_year) + '</td><td>' + teamCellById(t.team_id) + '</td>' +
+      '<td>' + (w || '&mdash;') + '</td>' +
+      '<td>' + (t.preseason_rank == null ? '&mdash;' : '#' + esc(t.preseason_rank)) + '</td>' +
+      '<td>' + (t.postseason_rank == null ? '&mdash;' : '#' + esc(t.postseason_rank)) + '</td>' +
+      '<td>' + esc(t.hire_date || '—') + '</td></tr>';
+  }).join('');
+  const table = '<div class="panel team-section"><h2 class="section-title">Season by season</h2>' +
+    '<table class="data-table"><thead><tr><th>Season</th><th>Team</th><th>Record</th>' +
+    '<th>Preseason</th><th>Final</th><th>Hired</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<p class="section-note">The hire date belongs to the job, not the person: a coach carries a ' +
+    'different one at each school. Records count games against teams in this dataset only.</p></div>';
+  return header + note + table;
+}
+
+function hydratePersonPage(version, kind) {
+  const target = () => document.getElementById('person-page');
+  const id = kind === 'player' ? state.playerParam : state.coachParam;
+  const show = (html, name) => {
+    if (version !== renderVersion || state.view !== kind || !target()) return;
+    target().innerHTML = html;
+    if (name) document.title = name + ' \u00b7 ' + BASE_TITLE;
+  };
+  if (id == null) { show(personMissing(kind, id)); return; }
+  const work = kind === 'player'
+    ? loadPlayer(id).then(p => p ? [playerPanels(p, id), p.display_name] : [personMissing(kind, id), null])
+    : loadCoaches().then(all => {
+        const c = all[String(id)];
+        return c ? [coachPanels(c, id), c.display_name] : [personMissing(kind, id), null];
+      });
+  work.then(([html, name]) => show(html, name))
+    .catch(err => show('<div class="panel"><p class="empty-note">Could not load this ' +
+      kind + ' (' + esc(err.message) + ').</p></div>'));
+}
+
 // ---------------- Game pages (Milestone C) ----------------
 // One reusable view keyed by game id. Every number is a stored, point-in-time value from
 // the exports -- the page never recomputes Elo or CoE; formulas are shown with the stored
@@ -4245,6 +4465,8 @@ function backLink() {
   if (r.startsWith('#team=')) { const t = resolveTeam(CfbNavigation.readRoute(r, ROUTE_CONFIG).teamParam); label = t ? t.name : 'team'; }
   else if (r.startsWith('#conference=')) { const c = resolveConference(CfbNavigation.readRoute(r, ROUTE_CONFIG).conferenceParam); label = c ? c.name : 'conference'; }
   else if (r.startsWith('#game=')) label = 'game';
+  else if (r.startsWith('#player=')) label = 'player';
+  else if (r.startsWith('#coach=')) label = 'coach';
   else label = SECTION_LABELS[CfbNavigation.readRoute(r, ROUTE_CONFIG).section];
   return '<a class="back-link" href="' + esc(r) + '">&larr; Back to ' + esc(label) + '</a>';
 }
@@ -4997,6 +5219,9 @@ function applyRoute() {
     tabLabels[state.tab] ? ' · ' + tabLabels[state.tab] : '';
   document.title = (state.view === 'team' ? t?.name || 'Team not found'
     : state.view === 'conference' ? cf?.name || 'Conference not found'
+    // A person's name is not known until their data file arrives, so the title
+    // starts generic and hydratePersonPage replaces it with the name.
+    : state.view === 'player' ? 'Player' : state.view === 'coach' ? 'Head coach'
     : SECTION_LABELS[state.section]) + tabPart + ' · ' + BASE_TITLE;
   if (hasRendered) {
     const focus = document.getElementById(pendingFocus || (wasSeason ? 'season-select' : 'content'));
@@ -5325,6 +5550,11 @@ function render() {
   }
   if (state.view === 'conference') { content.innerHTML = renderConferencePage(state.conferenceParam); hydrateConferencePage(); return; }
   if (state.view === 'game') { content.innerHTML = renderGamePage(); hydrateLiveGamePage(version); return; }
+  if (state.view === 'player' || state.view === 'coach') {
+    content.innerHTML = state.view === 'player' ? renderPlayerPage() : renderCoachPage();
+    hydratePersonPage(version, state.view);
+    return;
+  }
   if (state.section === 'home') { content.innerHTML = renderHome(); hydrateLiveScores(version); hydrateHomeDiscovery(version); }
   else if (state.section === 'stats') {content.innerHTML = renderStats(); hydrateStats(version);}
   else if (state.section === 'methodology') content.innerHTML = renderMethodology();

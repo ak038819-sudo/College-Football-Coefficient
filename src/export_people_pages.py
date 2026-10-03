@@ -10,8 +10,8 @@ Writes, under ui/data/people/:
                      anything else.
   player_<n>.js      player detail payloads, sharded on player_id % PLAYER_SHARDS.
                      A player page loads exactly one.
-  roster_<season>.js one season's rosters grouped by team, for the team page's
-                     roster module.
+  roster_<season>.js one season's rosters grouped by team, carrying the rows a
+                     roster table displays, for the team page's roster module.
   coaches.js         every coach with their whole tenure history. Head coaches
                      number in the hundreds, not the hundred-thousands, so this
                      stays one file.
@@ -121,13 +121,38 @@ def build_coaches(conn: sqlite3.Connection) -> dict:
     return {cid: c for cid, c in coaches.items() if c["tenures"]}
 
 
+ROSTER_FIELDS = ["player_id", "name", "jersey", "position", "class_year", "height", "weight"]
+
+
 def build_rosters(players: dict) -> dict:
-    """season -> team_id -> [player_id], for the team page's roster module."""
+    """season -> {fields, teams: {team_id: [row, ...]}} for the team page module.
+
+    The rows carry what a roster table displays rather than ids alone. Ids alone
+    would make a 115-name roster depend on all PLAYER_SHARDS detail files --
+    every player in the country, 6 MB of them, to show one team. One season file
+    is a few hundred KB and answers the question on its own.
+
+    A row is a list, not an object, because the key names would otherwise be
+    repeated 15,909 times in the file.
+    """
     rosters: dict[int, dict[int, list]] = defaultdict(lambda: defaultdict(list))
     for pid, player in players.items():
         for season in player["seasons"]:
-            rosters[season["season_year"]][season["team_id"]].append(pid)
-    return {season: {str(team): sorted(ids) for team, ids in teams.items()}
+            rosters[season["season_year"]][season["team_id"]].append([
+                pid, player["display_name"], season.get("jersey"),
+                season.get("position") or player.get("primary_position"),
+                season.get("class_year"),  # already a label; load_rosters folds it
+                season.get("height") or player.get("height"),
+                season.get("weight") or player.get("weight")])
+    # Sorted by jersey where there is one, then by name, which is the order a
+    # roster is published in. A missing jersey sorts last rather than first.
+    def order(row):
+        jersey = str(row[2] or "")
+        digits = int(jersey) if jersey.isdigit() else 10 ** 6
+        return (digits, jersey, normalize_name(row[1]))
+    return {season: {"fields": ROSTER_FIELDS,
+                     "teams": {str(team): sorted(rows, key=order)
+                               for team, rows in teams.items()}}
             for season, teams in rosters.items()}
 
 

@@ -166,7 +166,8 @@ def load_coaches(conn: sqlite3.Connection, path: str | Path) -> dict:
         # A snapshot written before the hire date moved onto the season carries it
         # at record level. Reading both keeps those snapshots loadable.
         record_hire = record.get("hire_date")
-        seasons = [{**s, "hire_date": s.get("hire_date") or record_hire} for s in seasons]
+        seasons = [{**s, "hire_date": identity.date_only(s.get("hire_date") or record_hire)}
+                   for s in seasons]
         key = coach_key(record)
         if not name or not seasons or not key:
             stats["skipped"] += 1

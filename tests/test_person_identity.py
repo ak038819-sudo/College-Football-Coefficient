@@ -691,13 +691,25 @@ def _real_db_copy(db_path):
 def test_the_person_tables_apply_to_the_real_database_without_touching_it(db_path, repo_root):
     """Adding people to an already-built league.db must not disturb what is there."""
     conn = _real_db_copy(db_path)
-    before = {t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-              for t in ("teams", "games", "team_membership_by_season")}
+    def counts():
+        tables = ("teams", "games", "team_membership_by_season")
+        rows = {t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in tables}
+        # Counted, never asserted to be zero: once the pipeline has run, the real
+        # database HAS people in it. The claim being tested is that applying the
+        # schema changes nothing, which is true either way -- and an assertion of
+        # zero turned into a false failure the day the loaders first ran.
+        people = conn.execute("SELECT name FROM sqlite_master WHERE type = 'table' "
+                              "AND name = 'players'").fetchone()
+        rows["players"] = conn.execute("SELECT COUNT(*) FROM players").fetchone()[0] if people else None
+        return rows
+
+    before = counts()
     identity.apply_schema(conn)
     identity.apply_schema(conn)  # a rebuild applies it again
-    after = {t: conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in before}
-    assert after == before
-    assert conn.execute("SELECT COUNT(*) FROM players").fetchone()[0] == 0
+    after = counts()
+    assert after["players"] == (before["players"] or 0)
+    assert {k: v for k, v in after.items() if k != "players"} == \
+           {k: v for k, v in before.items() if k != "players"}
 
 
 def test_real_team_names_and_aliases_resolve_for_roster_ingestion(db_path, tmp_path):
@@ -707,6 +719,9 @@ def test_real_team_names_and_aliases_resolve_for_roster_ingestion(db_path, tmp_p
     conn = _real_db_copy(db_path)
     names = [r[0] for r in conn.execute("SELECT team_name FROM teams ORDER BY team_name LIMIT 5")]
     alias = conn.execute("SELECT alias FROM team_aliases LIMIT 1").fetchone()[0]
+    # Single-digit athlete ids on purpose: real CFBD ids are six and seven digits
+    # (245322 to 5454594 in the 2026 snapshot), so these cannot collide with a
+    # real person and silently link to them instead of creating one.
     rows = [{"season_year": 2026, "athlete_id": str(i), "name": f"Player {i}", "team": team,
              "position": "QB"} for i, team in enumerate(names + [alias], start=1)]
     rows.append({"season_year": 2026, "athlete_id": "999", "name": "Fcs Player",
@@ -714,11 +729,18 @@ def test_real_team_names_and_aliases_resolve_for_roster_ingestion(db_path, tmp_p
     path = tmp_path / "2026.json"
     path.write_text(json.dumps(rows), encoding="utf-8")
 
+    # A delta, not a total: the real database may already hold the synced 2026
+    # roster, and asserting a total made this test fail the day it did.
+    identity.apply_schema(conn)
+    before = conn.execute("SELECT COUNT(*) FROM players").fetchone()[0]
+
     stats = load_roster(conn, path)
     assert stats["loaded"] == len(names) + 1 and stats["unknown_team"] == 1
+    # The snapshot replaces its own season wholesale, so this IS the 2026 total.
     assert conn.execute(
         "SELECT COUNT(*) FROM player_team_seasons s JOIN teams t USING (team_id) "
         "WHERE s.season_year = 2026").fetchone()[0] == len(names) + 1
     # Still idempotent with the real alias table in play.
     assert load_roster(conn, path)["loaded"] == stats["loaded"]
-    assert conn.execute("SELECT COUNT(*) FROM players").fetchone()[0] == len(names) + 1
+    after = conn.execute("SELECT COUNT(*) FROM players").fetchone()[0]
+    assert after - before == len(names) + 1

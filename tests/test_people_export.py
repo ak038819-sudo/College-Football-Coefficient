@@ -109,12 +109,50 @@ def test_a_name_only_identity_note_reaches_the_page(conn):
 
 
 def test_rosters_group_by_season_and_team(conn):
-    a = _player(conn, "Clemson Guy", [(2026, 1)])
+    a = _player(conn, "Clemson Guy", [(2026, 1, "QB", 7, "JR")])
     b = _player(conn, "Oregon Guy", [(2026, 2)])
     c = _player(conn, "Older Guy", [(2025, 1)])
     rosters = build_rosters(build_players(conn))
-    assert rosters[2026] == {"1": [a], "2": [b]}
-    assert rosters[2025] == {"1": [c]}
+    assert list(rosters[2026]["teams"]) == ["1", "2"]
+    assert rosters[2026]["teams"]["1"] == [[a, "Clemson Guy", 7, "QB", "JR", None, None]]
+    assert rosters[2026]["teams"]["2"] == [[b, "Oregon Guy", None, None, None, None, None]]
+    assert [r[0] for r in rosters[2025]["teams"]["1"]] == [c]
+
+
+def test_a_roster_row_carries_what_the_table_displays_not_only_an_id(conn):
+    """Ids alone would make one team's roster depend on every player-detail shard
+    in the country. The fields are positional, so their ORDER is the contract."""
+    pid = _player(conn, "Cade Klubnik", [(2026, 1, "QB", 2, "JR")])
+    roster = build_rosters(build_players(conn))[2026]
+    assert roster["fields"] == ["player_id", "name", "jersey", "position", "class_year",
+                               "height", "weight"]
+    assert dict(zip(roster["fields"], roster["teams"]["1"][0])) == {
+        "player_id": pid, "name": "Cade Klubnik", "jersey": 2, "position": "QB",
+        "class_year": "JR", "height": None, "weight": None}
+
+
+def test_a_roster_prefers_the_season_height_and_weight_over_the_person_record(conn):
+    """A player's listed weight changes from one season to the next, so the row
+    for 2026 must show the 2026 figure. The person-level value is the fallback
+    for a season whose row never carried one."""
+    pid = identity.create_player(conn, "Grown Guy", height=70, weight=180)
+    conn.execute("INSERT INTO player_team_seasons (player_id, season_year, team_id, height, "
+                 "weight, source) VALUES (?, 2025, 1, NULL, NULL, 'cfbd')", (pid,))
+    conn.execute("INSERT INTO player_team_seasons (player_id, season_year, team_id, height, "
+                 "weight, source) VALUES (?, 2026, 1, 73, 215, 'cfbd')", (pid,))
+    rosters = build_rosters(build_players(conn))
+    assert rosters[2026]["teams"]["1"][0][5:] == [73, 215]
+    assert rosters[2025]["teams"]["1"][0][5:] == [70, 180]
+
+
+def test_a_roster_is_ordered_by_jersey_with_the_unnumbered_last(conn):
+    """The order a roster is published in. A player with no number sorts last,
+    not first, which is where an empty string would have put them."""
+    _player(conn, "Zeta Ninety", [(2026, 1, "QB", 90)])
+    _player(conn, "Alpha None", [(2026, 1, "QB", None)])
+    _player(conn, "Beta Nine", [(2026, 1, "QB", 9)])
+    rows = build_rosters(build_players(conn))[2026]["teams"]["1"]
+    assert [r[1] for r in rows] == ["Beta Nine", "Zeta Ninety", "Alpha None"]
 
 
 def test_the_name_index_badges_each_entity_type(conn):

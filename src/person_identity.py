@@ -116,6 +116,24 @@ def split_name(first: Optional[str], last: Optional[str], display: str) -> tuple
     return parts[0], " ".join(parts[1:])
 
 
+def date_only(value) -> Optional[str]:
+    """The date part of a timestamp CFBD sends as one.
+
+    Every hire date in the coaching feed arrives as `2010-12-12T00:00:00.000Z`.
+    The time is not information -- it is midnight UTC on all 566 of them -- and
+    carrying it through meant a coach page printed the whole timestamp where a
+    date belongs. Anything that is not a leading ISO date is returned unchanged
+    rather than discarded, so a source that sends a different shape is visible
+    instead of silently emptied.
+    """
+    if value is None:
+        return None
+    text = str(value).strip()
+    if len(text) >= 10 and text[4] == "-" and text[7] == "-" and text[:4].isdigit():
+        return text[:10]
+    return text or None
+
+
 def class_year_label(value) -> Optional[str]:
     """CFBD sends class as 1-4, sometimes 5. A NUMBER outside that range is not a
     class and becomes None.

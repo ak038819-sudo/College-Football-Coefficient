@@ -20,11 +20,21 @@
   const pageTabs = {
     team: ['overview', 'schedule', 'history', 'analytics'],
     conference: ['overview', 'members', 'history', 'external'],
-    game: []
+    game: [],
+    // People pages (v0.1.1) carry no tabs yet, like #game=. What is known about a
+    // person today -- who they are, and which teams and seasons they appear in --
+    // is one page's worth; per-game and per-season statistics are not attributed
+    // to people at all. Tabs for them would be addresses pointing at empty
+    // panels. The `tab` parameter still works for every kind, so adding them with
+    // the stats layer does not change any URL published before it.
+    player: [],
+    coach: []
   };
   // Where each kind of detail page goes when it has no return address of its own.
-  const pageHome = { team: '#section=teams', conference: '#section=teams', game: '#section=games' };
-  const pagePrefix = { team: '#team=', conference: '#conference=', game: '#game=' };
+  const pageHome = { team: '#section=teams', conference: '#section=teams', game: '#section=games',
+    player: '#section=stats&view=players', coach: '#section=teams' };
+  const pagePrefix = { team: '#team=', conference: '#conference=', game: '#game=',
+    player: '#player=', coach: '#coach=' };
   const legacy = {
     home: ['home', ''], teams: ['rankings', 'team-coe'],
     elo: ['rankings', 'elo'], conferences: ['rankings', 'conference-coe'],
@@ -50,10 +60,10 @@
       const back = new URLSearchParams(from.slice(1));
       return back.has('team') ? fallback : hashFor(readRoute(from, config));
     }
-    for (const other of ['team', 'conference', 'game']) {
+    for (const other of ['team', 'conference', 'game', 'player', 'coach']) {
       if (other === kind || !from.startsWith(pagePrefix[other])) continue;
       const r = readRoute(from, config);
-      const id = other === 'game' ? r.gameParam : other === 'team' ? r.teamParam : r.conferenceParam;
+      const id = other === 'game' ? r.gameParam : r[other + 'Param'];
       return (r.view === other && id != null && id !== '')
         ? hashFor({ ...r, tab: '', returnTo: pageHome[other] }) : fallback;
     }
@@ -129,7 +139,7 @@
       matchupHome: section === 'matchups' ? matchupId('home') : null,
       matchupAway: section === 'matchups' ? matchupId('away') : null,
       venue: section === 'matchups' ? venue : 'home', view: 'tab', teamParam: null, conferenceParam: null,
-      gameParam: null, tab: '', returnTo: '' };
+      gameParam: null, playerParam: null, coachParam: null, tab: '', returnTo: '' };
     const openPage = (kind, param) => {
       route.view = kind;
       route.subview = '';
@@ -154,6 +164,18 @@
       route.section = 'teams';
       openPage('conference', p.get('conference'));
       route.year = latest(config.yearsAll || []);
+    } else if (p.has('player') && !p.has('section')) {
+      // A player page belongs to the Stats section, whose players view is where
+      // the leaderboards live. Ids are immutable integers, never names.
+      const id = p.get('player') || '';
+      route.section = 'stats';
+      openPage('player', /^\d{1,12}$/.test(id) ? Number(id) : null);
+      route.year = latest(config.yearsAll || []);
+    } else if (p.has('coach') && !p.has('section')) {
+      const id = p.get('coach') || '';
+      route.section = 'teams';
+      openPage('coach', /^\d{1,12}$/.test(id) ? Number(id) : null);
+      route.year = latest(config.yearsAll || []);
     } else if (p.has('game') && !p.has('section')) {
       // A game page (Milestone C) belongs to the Games section. #section=games&...&game=
       // stays what it was: a season list with that game highlighted.
@@ -171,6 +193,13 @@
     const kind = route.view;
     if (kind === 'team' || kind === 'conference') {
       p.set(kind, (kind === 'team' ? route.teamParam : route.conferenceParam) || '');
+      if (route.tab && route.tab !== pageTabs[kind][0]) p.set('tab', route.tab);
+      if (route.returnTo && route.returnTo !== pageHome[kind]) p.set('from', route.returnTo);
+    } else if (kind === 'player' || kind === 'coach') {
+      // An id of 0 is not a valid person, but it is falsy -- so this checks for
+      // null rather than truthiness, the way the game branch does.
+      const id = kind === 'player' ? route.playerParam : route.coachParam;
+      p.set(kind, id == null ? '' : id);
       if (route.tab && route.tab !== pageTabs[kind][0]) p.set('tab', route.tab);
       if (route.returnTo && route.returnTo !== pageHome[kind]) p.set('from', route.returnTo);
     } else if (kind === 'game') {

@@ -4,7 +4,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
-const { readRoute, hashFor, normalizeSearch } = require('../ui/navigation.js');
+const CfbNav = require('../ui/navigation.js');
+const { readRoute, hashFor, normalizeSearch } = CfbNav;
 const config = {
   yearsAll: [1980, 2024, 2025, 2026], playoffYears: [2024, 2025, 2026],
   gameSeasons: [{ season: 1980, scheduled: 0 }, { season: 2025, scheduled: 0 }, { season: 2026, scheduled: 604 }]
@@ -694,4 +695,77 @@ test('home scoreboard leads with ranked, competitive games instead of kickoff or
   assert.ok(context.compare(early, marquee) > 0);
   const other = { ...marquee, id: 12, start_date: '2026-10-04T00:00:00Z' };
   assert.ok(context.compare(marquee, other) < 0, 'kickoff breaks equal-hype ties');
+});
+
+// ---- Player and coach pages (v0.1.1) ----------------------------------------
+
+test('a player URL opens a player page and survives a round trip', () => {
+  const r = read('#player=10155');
+  assert.equal(r.view, 'player');
+  assert.equal(r.playerParam, 10155);
+  assert.equal(r.section, 'stats');          // the section a player belongs to
+  assert.deepEqual(read(hashFor(r)), r);
+  assert.match(hashFor(r), /player=10155/);
+});
+
+test('a coach URL opens a coach page and survives a round trip', () => {
+  const r = read('#coach=518');
+  assert.equal(r.view, 'coach');
+  assert.equal(r.coachParam, 518);
+  assert.equal(r.section, 'teams');
+  assert.deepEqual(read(hashFor(r)), r);
+  assert.match(hashFor(r), /coach=518/);
+});
+
+test('a person id is an integer or nothing: no name is ever an identity', () => {
+  // The whole point of the id. A page addressed by name would break the moment
+  // a source corrected a spelling, and two people sharing one would collide.
+  for (const bad of ['Cade Klubnik', 'abc', '12e4', '-5', '1234567890123', '<script>', '']) {
+    assert.equal(read('#player=' + encodeURIComponent(bad)).playerParam, null,
+      'player=' + bad + ' must not resolve to an id');
+    assert.equal(read('#coach=' + encodeURIComponent(bad)).coachParam, null,
+      'coach=' + bad + ' must not resolve to an id');
+  }
+  // Still a player page, so it can say "not found" rather than falling through
+  // to whatever section a bare #player= would otherwise land on.
+  assert.equal(read('#player=abc').view, 'player');
+  assert.equal(read('#coach=abc').view, 'coach');
+});
+
+test('a stray person parameter cannot hijack an explicit section URL', () => {
+  const r = read('#section=rankings&view=elo&player=10155&coach=518');
+  assert.equal(r.view, 'tab');
+  assert.equal(r.section, 'rankings');
+  assert.equal(r.playerParam, null);
+  assert.equal(r.coachParam, null);
+  // A team link beside it still wins, the way it does over a conference or game.
+  assert.equal(read('#team=byu&player=10155').view, 'team');
+});
+
+test('a person page remembers where the reader came from, and will not nest', () => {
+  // A section return address is canonicalized (it gains that section's default
+  // parameters), so what matters is where it points, not its exact spelling.
+  const fromStats = read('#player=10155&from=' + encodeURIComponent('#section=stats&view=players'));
+  const back = read(fromStats.returnTo);
+  assert.equal(back.section, 'stats');
+  assert.equal(back.subview, 'players');
+  const fromTeam = read('#coach=518&from=' + encodeURIComponent('#team=byu'));
+  assert.equal(fromTeam.returnTo, '#team=byu');
+  // A return address that is itself a person page keeps only the page, never its
+  // own return address, so links cannot chain without limit.
+  const nested = read('#player=1&from=' + encodeURIComponent('#coach=518&from=%23team%3Dbyu'));
+  assert.equal(nested.returnTo, '#coach=518');
+  // And a page can never be its own way back.
+  assert.equal(read('#player=1&from=' + encodeURIComponent('#player=2')).returnTo,
+    '#section=stats&view=players');
+  assert.equal(read('#coach=1&from=' + encodeURIComponent('#coach=2')).returnTo, '#section=teams');
+  assert.equal(read('#player=1&from=' + encodeURIComponent('https://example.com')).returnTo,
+    '#section=stats&view=players');
+});
+
+test('person pages carry no tabs yet, and a tab parameter cannot invent one', () => {
+  assert.deepEqual(CfbNav.pageTabs.player, []);
+  assert.deepEqual(CfbNav.pageTabs.coach, []);
+  assert.equal(read('#player=10155&tab=stats').tab, '');
+  assert.equal(hashFor(read('#player=10155&tab=stats')).includes('tab='), false);
 });

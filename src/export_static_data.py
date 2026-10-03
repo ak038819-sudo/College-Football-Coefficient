@@ -47,6 +47,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from coverage import build_coverage  # noqa: E402
 from elo_timeline import build_timeline  # noqa: E402
+from export_people_pages import export as export_people  # noqa: E402
 from predict_upcoming import build_upcoming, elo_config  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
@@ -388,6 +389,13 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
         p = shard_payloads.get(k, {"shard": k, "fields": SERIES_FIELDS, "pairs": {}})
         v = _write_js(out_dir / "series" / f"{k}.js", f"(window.__CFB_SERIES__=window.__CFB_SERIES__||{{}})[{k}]", p)
         series.append(f"data/series/{k}.js?v={v}")
+    # Player and coach page data (v0.1.1). Guarded because a database built
+    # before the person tables existed has none of them, and a dashboard still
+    # has to build from it -- the pages then simply have nothing to open.
+    people = None
+    if conn.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'players'").fetchone():
+        people = export_people(conn, out_dir / "people")
+
     manifest = {"seasons": seasons, "search_index": f"data/search_index.js?v={sv}",
                 "stadiums": f"data/stadiums.js?v={stadium_version}", "game_fields": FIELDS,
                 "details": details, "players": players, "series": series, "series_shards": SERIES_SHARDS,
@@ -397,7 +405,11 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                 "model_params": model_params(),
                 # P1-08: what each season actually has, so an absent metric can say
                 # why it is absent instead of rendering as a zero.
-                "coverage": build_coverage(conn)}
+                "coverage": build_coverage(conn),
+                # v0.1.1: player and coach pages. Absent, not empty, when the
+                # database has no person tables, so the UI can tell "no data
+                # here" from "no such feature".
+                **({"people": people} if people else {})}
     (out_dir / "static_manifest.json").write_text(json.dumps(manifest, separators=(",", ":")), encoding="utf-8")
     return manifest
 
