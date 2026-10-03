@@ -901,6 +901,9 @@
   .table-scroll {overflow-x:auto;max-width:100%;}
   .tabs {flex-wrap:wrap;}
   #home-weeks {align-items:center;gap:20px;flex-wrap:wrap;}
+  /* Keep text links on the theme accent, including visited links. Active
+     filled tabs/buttons retain their contrasting foreground. */
+  :root a:any-link:not(.active):not(.action-button) { color: var(--amber); }
 </style>
 </head>
 <body>
