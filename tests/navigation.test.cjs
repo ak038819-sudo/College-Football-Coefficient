@@ -741,11 +741,21 @@ test('a coach URL opens a coach page and survives a round trip', () => {
 test('a person id is an integer or nothing: no name is ever an identity', () => {
   // The whole point of the id. A page addressed by name would break the moment
   // a source corrected a spelling, and two people sharing one would collide.
-  for (const bad of ['Cade Klubnik', 'abc', '12e4', '-5', '1234567890123', '<script>', '']) {
+  for (const bad of ['Cade Klubnik', 'abc', '12e4', '12345678901234', '5.5', '<script>', '']) {
     assert.equal(read('#player=' + encodeURIComponent(bad)).playerParam, null,
       'player=' + bad + ' must not resolve to an id');
     assert.equal(read('#coach=' + encodeURIComponent(bad)).coachParam, null,
       'coach=' + bad + ' must not resolve to an id');
+  }
+  // An id is the SOURCE's own, so its shape is the source's: 29,162 CFBD
+  // athlete ids in the archive are negative, and an id derived for a person
+  // the feed does not number reaches 13 digits. Rejecting either would make
+  // those people unreachable.
+  for (const good of ['-1044360', '1044360', '1000250200058936'.slice(0, 13)]) {
+    assert.equal(read('#player=' + good).playerParam, Number(good),
+      'player=' + good + ' must resolve to an id');
+    assert.equal(read('#coach=' + good).coachParam, Number(good),
+      'coach=' + good + ' must resolve to an id');
   }
   // Still a player page, so it can say "not found" rather than falling through
   // to whatever section a bare #player= would otherwise land on.
@@ -789,4 +799,23 @@ test('person pages carry no tabs yet, and a tab parameter cannot invent one', ()
   assert.deepEqual(CfbNav.pageTabs.coach, []);
   assert.equal(read('#player=10155&tab=stats').tab, '');
   assert.equal(hashFor(read('#player=10155&tab=stats')).includes('tab='), false);
+});
+
+test('a negative athlete id loads the shard its data is actually in', async () => {
+  // 29,162 of the archive's CFBD athlete ids are negative, and the exporter
+  // puts them in the shard Python's floored modulo picks. JavaScript's
+  // truncated modulo picks -56 for the same id, so the page would ask for a
+  // file that does not exist and every one of those people would 404.
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = shell.match(/function loadPlayer\([^]*?\n\}/)[0];
+  const asked = [];
+  const context = {
+    PEOPLE: {player_shards: 64, players: Object.fromEntries(
+      Array.from({length: 64}, (_, i) => [String(i), 'player_' + i + '.js']))},
+    loadDataScript: src => { asked.push(src); return Promise.resolve(); },
+    window: {__CFB_PEOPLE_PLAYERS__: {56: {'-1044360': {display_name: 'Placeholder Id'}}}},
+  };
+  vm.runInNewContext(source + '\nthis.load = loadPlayer;', context);
+  assert.deepEqual(await context.load(-1044360), {display_name: 'Placeholder Id'});
+  assert.deepEqual(asked, ['player_56.js']);
 });

@@ -4377,7 +4377,10 @@ function loadPersonIndex(key) {
 }
 
 function loadPlayer(id) {
-  const shard = Number(id) % (PEOPLE ? PEOPLE.player_shards : 1);
+  // Floored, not truncated: a negative athlete id (29,162 of them in the
+  // archive) would otherwise ask for shard -5 and never find its own file.
+  const shards = PEOPLE ? PEOPLE.player_shards : 1;
+  const shard = ((Number(id) % shards) + shards) % shards;
   const src = (PEOPLE && PEOPLE.players || {})[String(shard)];
   if (!src) return Promise.reject(new Error('no player data'));
   return loadDataScript(src).then(() => {

@@ -39,6 +39,38 @@ Resolution is tried in a fixed order (`src/person_identity.py`):
 3. **Nothing.** The row goes to `person_unresolved` for review. No person is
    invented from a weak match.
 
+### An id is a function of the source, not of the load order
+
+"Immutable" is a promise about rebuilds, and the first version did not keep it.
+`db/league.db` is not committed, so every deploy builds it from scratch, and an
+autoincrement `player_id` therefore depended on the order the snapshots happened
+to be read in: a database built 2026-first put `#player=16` on one person while
+the pipeline's sorted 2009-first load put a different person there. A link
+shared today would have pointed at someone else after the next deploy.
+
+So the id now IS the source's identity:
+
+- **Players**: the CFBD athlete id, exactly as the feed wrote it. All 350,670
+  roster rows in the 2009-2026 archive carry one, and 29,162 of those ids are
+  negative -- CFBD's own placeholder form, still one id per person -- so the
+  sign is kept rather than folded onto an id that is already somebody's. The
+  routes accept a negative id, and both the exporter and the page pick a shard
+  with a *floored* modulo, because JavaScript's truncated `%` would send a
+  negative id to a file that does not exist.
+- **Coaches**: `person_identity.derived_id` of the `cfbd:<name>` key the loader
+  already builds, because this feed has no coach id at all. The key is the same
+  on every rebuild, so the id is too.
+- **A person the source does not number**: derived from the context that
+  identified them (name, team, season) in a range clear of every athlete id.
+  Nothing in the archive takes this path today.
+
+A database written before this holds people at load-ordered ids, and the loaders
+would never notice -- they find a person by source id and reuse whatever id that
+row already has -- so `migrate_player_ids` and the coach equivalent move them
+before a snapshot is read. Verified against the real archive: the migrated
+database and a from-scratch rebuild give identical id-to-person maps for all
+99,813 players and 827 coaches.
+
 `normalize_name` folds case, punctuation and generational suffixes, so
 `Jerome Gaillard Jr.` and `Jerome Gaillard` share a lookup key, as do
 `D.J. Uiagalelei`, `DJ Uiagalelei` and `D J Uiagalelei` — stripping the periods

@@ -37,6 +37,11 @@ def load_roster(conn: sqlite3.Connection, path: str | Path) -> dict:
     if not isinstance(rows, list):
         raise ValueError(f"{path}: roster snapshot must be a list")
 
+    # A database written before ids were derived from the source holds people at
+    # load-ordered ids, and nothing downstream would ever notice: the resolver
+    # finds them by source id and reuses whatever id they already have.
+    identity.migrate_player_ids(conn, SOURCE)
+
     seasons = {int(r["season_year"]) for r in rows if r.get("season_year") is not None}
     if not seasons:
         raise ValueError(f"{path}: no season_year on any row")

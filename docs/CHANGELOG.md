@@ -26,6 +26,11 @@
 - Rosters backfilled to 2009: 99,813 people and 271,131 player-seasons, of whom
   10,846 played at more than one school. Player detail is sharded 64 ways so one
   page downloads about 750 KB rather than the 3.0 MB that 16 shards had become.
+- A person's id is the source's own identity, so a `#player=` or `#coach=` link
+  survives a rebuild: players carry their CFBD athlete id and coaches an id
+  derived from their name key. The autoincrement ids they replace depended on
+  the order the snapshots were read, and `db/league.db` is rebuilt from scratch
+  on every deploy, so a shared link would have moved to a different person.
 - An athlete id whose roster rows span more than six seasons is flagged for
   review and said so on the page, not corrected: 446 of them do, and some are
   real careers on NCAA injury waivers while others are the feed repeating a

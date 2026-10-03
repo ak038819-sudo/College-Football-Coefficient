@@ -20,6 +20,7 @@ step 2 also requires team, season and position, and refuses a double match.
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import re
 import sqlite3
 from pathlib import Path
@@ -267,16 +268,125 @@ def find_by_context(conn: sqlite3.Connection, display_name: str, season_year: in
     return None, "no match"
 
 
+
+# --- stable ids -------------------------------------------------------------
+# A person's id is published in a URL (#player=<id>, #coach=<id>), so it has to
+# be a FUNCTION of the source data and not of the order a rebuild happened to
+# read it in. db/league.db is not committed: every deploy builds it from
+# scratch. An autoincrement id therefore depended on load order, and did
+# diverge -- a database built 2026-first put player 16 on one person while the
+# pipeline's sorted 2009-first load put a different person there, so a link
+# shared today would have pointed at someone else after the next deploy.
+#
+# So the id IS the source's identity wherever the source has one. CFBD gives an
+# athlete id on all 350,670 roster rows in the 2009-2026 archive, 29,162 of them
+# negative, which is CFBD's own placeholder form and still one id per person, so
+# the sign is kept rather than folded into something that could collide. The
+# coaching feed gives no id at all, so a coach's id is derived from the key the
+# loader already builds from the name -- the same key, so the same id, on every
+# rebuild.
+
+SURROGATE_BASE = 10 ** 12   # clear of every CFBD athlete id (max 5,454,594)
+_HASH_BYTES = 5             # ids stay inside 13 digits, which the routes accept
+
+
+def derived_id(key: str, base: int = 0) -> int:
+    """A deterministic id for a person the source does not number."""
+    digest = hashlib.sha256(key.encode("utf-8")).digest()
+    return base + int.from_bytes(digest[:_HASH_BYTES], "big")
+
+
+def source_player_id(external_id) -> int:
+    """The id a CFBD athlete id gives a person, kept exactly as the source wrote
+    it so the same snapshot always produces the same URL."""
+    text = str(external_id).strip()
+    try:
+        return int(text)
+    except ValueError:
+        # No source this project reads does this; deriving rather than raising
+        # means a future one cannot silently fall back to a load-ordered id.
+        return derived_id("external:" + text, SURROGATE_BASE)
+
+
+def free_id(conn: sqlite3.Connection, table: str, column: str, candidate: int) -> int:
+    """`candidate`, or the next id after it that nothing holds.
+
+    Two different keys hashing together is a one-in-fifty-thousand event across
+    an archive this size, and this is the only path where an id depends on what
+    was loaded before it. Probing beats raising: a rebuild that dies on a hash
+    collision is worse than one person's URL moving.
+    """
+    while conn.execute(f"SELECT 1 FROM {table} WHERE {column} = ?", (candidate,)).fetchone():
+        candidate += 1
+    return candidate
+
+
+def remap_ids(conn: sqlite3.Connection, table: str, column: str,
+              children: list[tuple[str, str]], mapping: dict) -> int:
+    """Move people in `mapping` (old id -> new id) without breaking their rows.
+
+    A database written before ids were derived holds people at load-ordered ids,
+    and the loaders would never notice: they look a person up by source id, find
+    the existing row and reuse its id forever. So the ids are moved rather than
+    left to rot, in two passes through a parking range, because an old id and a
+    new one can want the same number.
+
+    The parent row is inserted at the new id before the children move and the
+    old one is deleted after, so every foreign key holds throughout.
+    """
+    moves = {old: new for old, new in mapping.items() if old != new}
+    if not moves:
+        return 0
+    parking = {old: 10 ** 15 + i for i, old in enumerate(sorted(moves))}
+    for stage in (parking, {parking[old]: new for old, new in moves.items()}):
+        for old, new in sorted(stage.items()):
+            cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})")]
+            others = [c for c in cols if c != column]
+            conn.execute(f"INSERT INTO {table} ({column}, {', '.join(others)}) "
+                         f"SELECT ?, {', '.join(others)} FROM {table} WHERE {column} = ?",
+                         (new, old))
+            for child, child_col in children:
+                conn.execute(f"UPDATE {child} SET {child_col} = ? WHERE {child_col} = ?",
+                             (new, old))
+            conn.execute(f"DELETE FROM {table} WHERE {column} = ?", (old,))
+    return len(moves)
+
+
+def migrate_player_ids(conn: sqlite3.Connection, source: str = "cfbd") -> int:
+    """Move players the old autoincrement scheme put at a load-ordered id.
+
+    Runs before a snapshot is read, so the ids a loader then reuses are already
+    the derived ones.
+    """
+    mapping = {}
+    for player_id, external_id in conn.execute(
+            "SELECT player_id, external_id FROM player_external_ids WHERE source = ?", (source,)):
+        mapping[int(player_id)] = source_player_id(external_id)
+    return remap_ids(conn, "players", "player_id",
+                     [("player_external_ids", "player_id"),
+                      ("player_team_seasons", "player_id"),
+                      ("player_name_aliases", "player_id")], mapping)
+
 def create_player(conn: sqlite3.Connection, display_name: str, first_name: Optional[str] = None,
                   last_name: Optional[str] = None, position: Optional[str] = None,
                   hometown: Optional[str] = None, home_state: Optional[str] = None,
-                  height=None, weight=None) -> int:
+                  height=None, weight=None, player_id: Optional[int] = None) -> int:
     now = _now()
-    cur = conn.execute(
-        "INSERT INTO players (display_name, first_name, last_name, primary_position, hometown, "
-        "home_state, height, weight, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (display_name, first_name, last_name, position, hometown, home_state, height, weight, now, now))
-    player_id = int(cur.lastrowid)
+    if player_id is None:
+        cur = conn.execute(
+            "INSERT INTO players (display_name, first_name, last_name, primary_position, hometown, "
+            "home_state, height, weight, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (display_name, first_name, last_name, position, hometown, home_state, height, weight,
+             now, now))
+        player_id = int(cur.lastrowid)
+    else:
+        player_id = int(player_id)
+        conn.execute(
+            "INSERT INTO players (player_id, display_name, first_name, last_name, primary_position, "
+            "hometown, home_state, height, weight, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (player_id, display_name, first_name, last_name, position, hometown, home_state,
+             height, weight, now, now))
     add_alias(conn, player_id, display_name)
     return player_id
 
@@ -310,7 +420,8 @@ def resolve_player(conn: sqlite3.Connection, source: str, display_name: str,
         first, last = split_name(profile.get("first_name"), profile.get("last_name"), display_name)
         player_id = create_player(conn, display_name, first, last, position,
                                   profile.get("hometown"), profile.get("home_state"),
-                                  profile.get("height"), profile.get("weight"))
+                                  profile.get("height"), profile.get("weight"),
+                                  player_id=source_player_id(external_id))
         link_external_id(conn, player_id, source, str(external_id), "id")
         return player_id, "created"
 
@@ -331,9 +442,14 @@ def resolve_player(conn: sqlite3.Connection, source: str, display_name: str,
     # identity. It is recorded as such so a later ID-bearing feed can be checked
     # against it rather than quietly creating a duplicate.
     first, last = split_name(profile.get("first_name"), profile.get("last_name"), display_name)
+    # Derived from the context that identified them, because there is no source id
+    # to derive from and an autoincrement id would move on the next rebuild.
+    derived = free_id(conn, "players", "player_id",
+                      derived_id("context:%s|%s|%s" % (normalize_name(display_name), team_id,
+                                                       season_year), SURROGATE_BASE))
     player_id = create_player(conn, display_name, first, last, position,
                               profile.get("hometown"), profile.get("home_state"),
-                              profile.get("height"), profile.get("weight"))
+                              profile.get("height"), profile.get("weight"), player_id=derived)
     record_unresolved(conn, "player", source, context, display_name, "created without source id",
                       season_year)
     return player_id, "created without source id"
