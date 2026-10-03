@@ -108,6 +108,27 @@ def _snapshot(tmp_path, year, rows):
     return path
 
 
+def test_a_gzipped_snapshot_and_a_plain_one_both_load(conn, tmp_path):
+    """Snapshots are written gzipped -- a season is 27 MB of JSON and 1.07 MB
+    compressed, so eighteen seasons are 19 MB in a checkout rather than 490 MB.
+    A snapshot archived before that change still has to load, or re-fetching it
+    would be the only way to read a season already in the repository."""
+    import gzip as _gzip
+    rows = [{"season_year": 2025, "athlete_id": "888", "name": "Zipped Guy",
+             "team": "Oregon", "category": "rushing", "stat_type": "YDS", "stat": 1200}]
+    _person(conn, 888, "Zipped Guy")
+
+    plain = tmp_path / "plain.json"
+    plain.write_text(json.dumps(rows), encoding="utf-8")
+    assert load_season_stats(conn, plain)["loaded"] == 1
+
+    packed = tmp_path / "2025.json.gz"
+    with _gzip.GzipFile(packed, "wb", mtime=0) as fh:
+        fh.write(json.dumps(rows).encode("utf-8"))
+    assert load_season_stats(conn, packed)["loaded"] == 1
+    assert conn.execute("SELECT stat FROM player_season_stats").fetchall() == [(1200,)]
+
+
 def test_a_statistic_lands_on_the_person_the_athlete_id_names(conn, tmp_path):
     pid = _person(conn, 4361182, "Bryce Young")
     stats = load_season_stats(conn, _snapshot(tmp_path, 2021, [
@@ -218,3 +239,34 @@ def test_an_unresolved_person_is_recorded_once_not_once_per_statistic(conn, tmp_
          "category": "rushing", "stat_type": stat_type, "stat": 1}
         for stat_type in ("YDS", "TD", "CAR", "LONG", "YPC")]))
     assert conn.execute("SELECT COUNT(*) FROM person_unresolved").fetchone()[0] == 1
+
+
+def test_refetching_an_unchanged_season_writes_an_identical_file(tmp_path, monkeypatch):
+    """gzip stamps the time into its header by default, so an unchanged season
+    would look like a change on every run and the sync workflow would commit a
+    new 1 MB blob each time it was dispatched."""
+    import fetch_cfbd_player_season_stats as fetcher
+    monkeypatch.setattr(fetcher, "fetch_season", lambda year, headers: [
+        {"athlete_id": "1", "name": "Same Guy", "team": "Oregon", "conference": "B1G",
+         "season_year": year, "category": "rushing", "stat_type": "YDS", "stat": 100}])
+    written = fetcher.write_season(2025, {}, tmp_path).read_bytes()
+    assert fetcher.write_season(2025, {}, tmp_path).read_bytes() == written
+    # Compared directly rather than by writing twice and hoping: two writes a
+    # second apart would differ while two in the same second would not, so the
+    # timestamp field itself is the thing to assert. Bytes 4-8 of a gzip header
+    # are its mtime.
+    import struct
+    assert struct.unpack("<I", written[4:8])[0] == 0
+
+
+def test_compressing_a_season_removes_the_uncompressed_one(tmp_path, monkeypatch):
+    """Both would otherwise be loaded, and the pipeline would read the same
+    season twice."""
+    import fetch_cfbd_player_season_stats as fetcher
+    (tmp_path / "2025.json").write_text("[]", encoding="utf-8")
+    monkeypatch.setattr(fetcher, "fetch_season", lambda year, headers: [
+        {"athlete_id": "1", "name": "A", "team": "Oregon", "conference": None,
+         "season_year": year, "category": "rushing", "stat_type": "YDS", "stat": 1}])
+    path = fetcher.write_season(2025, {}, tmp_path)
+    assert path.name == "2025.json.gz"
+    assert not (tmp_path / "2025.json").exists()

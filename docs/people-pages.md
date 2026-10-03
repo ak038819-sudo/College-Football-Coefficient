@@ -253,8 +253,14 @@ only a name and a number, so it cannot identify anybody; this feed can, and the
 season totals.
 
 - `src/fetch_cfbd_player_season_stats.py` archives a season to
-  `data/raw/player_season_stats/<year>.json`, in the feed's own long form (one
-  row per person per category per stat type).
+  `data/raw/player_season_stats/<year>.json.gz`, in the feed's own long form
+  (one row per person per category per stat type). Gzipped, because keeping that
+  shape is only affordable compressed: a season is 27 MB of JSON and 1.07 MB
+  packed, so eighteen seasons are 19 MB in a checkout rather than 490 MB, and
+  this repository already carries a 237 MB box-score archive. The file is
+  written with a zeroed gzip timestamp so re-fetching an unchanged season
+  produces an identical file and no commit. A plain `.json` snapshot is still
+  read.
 - `src/load_player_season_stats.py` loads it into `player_season_stats`,
   replacing the season's rows wholesale so a corrected statistic changes rather
   than accumulating. It runs AFTER the roster loaders, because the rosters are
