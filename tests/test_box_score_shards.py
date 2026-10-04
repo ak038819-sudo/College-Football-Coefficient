@@ -17,7 +17,72 @@ import json
 
 import pytest
 
-from export_static_data import BOX_SCORE_SHARDS, box_score_shard
+from export_static_data import (BOX_SCORE_SHARDS, box_score_shard,
+                                write_box_score_shards)
+
+
+def sharded_manifest(repo_root):
+    """The shipped manifest's box-score entries, or a skip.
+
+    CI checks out the exports main last committed and does not run the
+    exporter, so until the next deploy they are in the pre-sharding layout. The
+    unit tests below cover the rule itself; these check the shipped files
+    whenever they are sharded.
+    """
+    manifest_path = repo_root / "ui" / "data" / "static_manifest.json"
+    if not manifest_path.exists():
+        pytest.skip("static exports have not been built")
+    players = json.loads(manifest_path.read_text(encoding="utf-8")).get("players") or {}
+    if not players:
+        pytest.skip("no box-score exports in this build")
+    if not all(isinstance(entry, dict) for entry in players.values()):
+        pytest.skip("these exports predate the sharding; the next deploy rewrites them")
+    return players
+
+
+def test_a_game_lands_in_the_shard_the_rule_names(tmp_path):
+    entry = write_box_score_shards(tmp_path, 2025, {
+        "401838053": ["five"],      # 401838053 % 32 == 5
+        "401838085": ["five too"],  # also 5
+        "401838054": ["six"],
+    })
+    assert entry["shards"] == BOX_SCORE_SHARDS
+    assert set(entry["files"]) == {"5", "6"}
+    assert entry["files"]["5"].startswith("data/players/2025/5.js?v=")
+    body = (tmp_path / "2025" / "5.js").read_text(encoding="utf-8")
+    assert "401838053" in body and "401838085" in body
+    assert "401838054" not in body
+
+
+def test_a_shard_merges_into_its_season_rather_than_assigning_it(tmp_path):
+    """Two shards of one season must both survive being loaded."""
+    write_box_score_shards(tmp_path, 2025, {"401838053": ["a"], "401838054": ["b"]})
+    for shard in ("5", "6"):
+        body = (tmp_path / "2025" / f"{shard}.js").read_text(encoding="utf-8")
+        assert "Object.assign" in body, body[:80]
+        assert "window.__CFB_PLAYERS__[2025]=window.__CFB_PLAYERS__[2025]||{}" in body
+
+
+def test_an_empty_shard_is_never_written_or_named(tmp_path):
+    entry = write_box_score_shards(tmp_path, 2025, {"401838053": ["five"]})
+    assert list(entry["files"]) == ["5"]
+    assert [p.name for p in (tmp_path / "2025").glob("*.js")] == ["5.js"]
+
+
+def test_a_negative_game_id_lands_where_the_page_will_look(tmp_path):
+    """The exporter and the page must agree, and they agree on a FLOORED
+    modulo: -7 belongs in 25, where a bare JavaScript % would say -7."""
+    entry = write_box_score_shards(tmp_path, 1999, {"-7": ["odd"]})
+    assert list(entry["files"]) == ["25"]
+    assert (tmp_path / "1999" / "25.js").exists()
+
+
+def test_the_version_changes_when_a_shard_changes(tmp_path):
+    first = write_box_score_shards(tmp_path, 2025, {"401838053": ["a"]})
+    again = write_box_score_shards(tmp_path, 2025, {"401838053": ["a"]})
+    changed = write_box_score_shards(tmp_path, 2025, {"401838053": ["b"]})
+    assert first == again, "the same data must produce the same file and version"
+    assert changed["files"]["5"] != first["files"]["5"]
 
 
 def test_the_shard_rule_is_a_floored_modulo():
@@ -35,14 +100,7 @@ def test_the_shard_rule_is_a_floored_modulo():
 
 def test_every_shard_holds_only_the_games_the_rule_assigns_it(repo_root):
     """The shipped files, checked against the rule rather than against a fixture."""
-    manifest_path = repo_root / "ui" / "data" / "static_manifest.json"
-    if not manifest_path.exists():
-        pytest.skip("static exports have not been built")
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    players = manifest.get("players") or {}
-    if not players:
-        pytest.skip("no box-score exports in this build")
-
+    players = sharded_manifest(repo_root)
     checked = 0
     for season, entry in players.items():
         assert isinstance(entry, dict), f"{season} is not sharded"
@@ -65,13 +123,7 @@ def test_every_shard_holds_only_the_games_the_rule_assigns_it(repo_root):
 
 
 def test_the_manifest_names_a_file_for_every_shard_that_has_games(repo_root):
-    manifest_path = repo_root / "ui" / "data" / "static_manifest.json"
-    if not manifest_path.exists():
-        pytest.skip("static exports have not been built")
-    players = json.loads(manifest_path.read_text(encoding="utf-8")).get("players") or {}
-    if not players:
-        pytest.skip("no box-score exports in this build")
-
+    players = sharded_manifest(repo_root)
     for season, entry in players.items():
         on_disk = {p.stem for p in (repo_root / "ui" / "data" / "players" / season).glob("*.js")}
         assert on_disk == set(entry["files"]), season
@@ -81,12 +133,10 @@ def test_the_manifest_names_a_file_for_every_shard_that_has_games(repo_root):
             assert "?v=" in src, src
 
 
-def test_a_sharded_season_is_no_larger_than_the_file_it_replaced(repo_root):
-    """Sharding must not duplicate anything: 32 files should total what one did."""
+def test_the_shipped_exports_leave_no_unsharded_season_behind(repo_root):
+    """An export rewrites the directory, so a leftover season file would be
+    served to nobody and committed forever."""
+    sharded_manifest(repo_root)        # skips while the exports predate this
     players_dir = repo_root / "ui" / "data" / "players"
-    if not players_dir.exists():
-        pytest.skip("static exports have not been built")
-    season_dirs = [d for d in players_dir.iterdir() if d.is_dir()]
-    assert season_dirs, "no sharded seasons"
-    # And nothing from the pre-sharding layout is left behind to be served.
+    assert [d for d in players_dir.iterdir() if d.is_dir()], "no sharded seasons"
     assert not list(players_dir.glob("*.js")), "an unsharded season file survived"

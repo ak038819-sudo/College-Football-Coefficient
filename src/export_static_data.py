@@ -388,6 +388,28 @@ def box_score_shard(game_id) -> int:
     return int(game_id) % BOX_SCORE_SHARDS
 
 
+def write_box_score_shards(players_dir: Path, season: int, selected: dict) -> dict:
+    """Write one season's box scores as shards, and return its manifest entry.
+
+    A shard MERGES into its season rather than assigning it, so loading two of
+    them keeps both. An empty shard is not written at all, and the entry names
+    only the files that exist, because the page reads the entry to decide what
+    to request.
+    """
+    shards: dict = {}
+    for game_id, value in selected.items():
+        shards.setdefault(box_score_shard(game_id), {})[game_id] = value
+    files = {}
+    for shard in sorted(shards):
+        version = _write_js_expr(
+            players_dir / str(season) / f"{shard}.js",
+            "(window.__CFB_PLAYERS__=window.__CFB_PLAYERS__||{{}}),"
+            "Object.assign(window.__CFB_PLAYERS__[%d]=window.__CFB_PLAYERS__[%d]||{{}},"
+            "{payload});" % (season, season), shards[shard])
+        files[str(shard)] = f"data/players/{season}/{shard}.js?v={version}"
+    return {"shards": BOX_SCORE_SHARDS, "files": files}
+
+
 def _write_js(path: Path, global_expr: str, payload) -> str:
     body = json.dumps(payload, separators=(",", ":"))
     path.write_text(f"{global_expr}={body};\n", encoding="utf-8")
@@ -446,20 +468,7 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
         selected = {gid: value for gid, value in archive.items() if gid in known and value}
         if not selected:
             continue
-        shards: dict = {n: {} for n in range(BOX_SCORE_SHARDS)}
-        for gid, value in selected.items():
-            shards[box_score_shard(gid)][gid] = value
-        files = {}
-        for shard, part in shards.items():
-            if not part:
-                continue
-            v = _write_js_expr(
-                players_dir / str(season) / f"{shard}.js",
-                "(window.__CFB_PLAYERS__=window.__CFB_PLAYERS__||{{}}),"
-                "Object.assign(window.__CFB_PLAYERS__[%d]=window.__CFB_PLAYERS__[%d]||{{}},"
-                "{payload});" % (season, season), part)
-            files[str(shard)] = f"data/players/{season}/{shard}.js?v={v}"
-        players[str(season)] = {"shards": BOX_SCORE_SHARDS, "files": files}
+        players[str(season)] = write_box_score_shards(players_dir, season, selected)
     # P1-05/06: one file per season, loaded only when the week-by-week view opens.
     timeline_dir = out_dir / "elo_timeline"
     if timeline_dir.exists():
