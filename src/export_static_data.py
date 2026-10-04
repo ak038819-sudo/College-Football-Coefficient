@@ -279,6 +279,47 @@ def build_conference_search_rows(conn: sqlite3.Connection) -> list:
     return [[slugify(n), n, CONFERENCE_ALIASES.get(n, [])] for n in names]
 
 
+def team_alias_map(conn: sqlite3.Connection) -> dict:
+    """CFBD's name for a team -> the one this database uses.
+
+    The box-score archive carries the feed's own team names, and for six teams
+    those differ from the canonical name every page is keyed on: UL Monroe is
+    ULM here, San José State is San Jose State, App State is Appalachian State,
+    Florida Atlantic is FAU, Florida International is FIU, and plain Miami is
+    Miami (FL) -- while "Miami (OH)" matches already, which is why the feed's
+    bare "Miami" cannot simply be left alone.
+
+    The project already knows all six: they are rows in `team_aliases`. Nothing
+    was consulting them here, so a game page could not find those teams' rosters
+    and not one of their player lines linked to a person, in any season. A
+    canonical name is never overwritten, so an alias that collides with a real
+    team's name cannot rename it.
+    """
+    known = {row[0] for row in conn.execute("SELECT team_name FROM teams")}
+    return {alias: canonical
+            for alias, canonical in conn.execute(
+                "SELECT alias, team_name FROM team_aliases")
+            if alias not in known and canonical in known}
+
+
+def canonical_box_score_teams(archive: dict, aliases: dict) -> dict:
+    """The archive with each team side renamed to this database's name for it."""
+    if not aliases:
+        return archive
+    renamed = {}
+    for game_id, sides in archive.items():
+        if not isinstance(sides, list):
+            renamed[game_id] = sides
+            continue
+        fixed = []
+        for side in sides:
+            name = isinstance(side, dict) and side.get("name")
+            canonical = aliases.get(name) if isinstance(name, str) else None
+            fixed.append({**side, "name": canonical} if canonical else side)
+        renamed[game_id] = fixed
+    return renamed
+
+
 def build_search_index(conn: sqlite3.Connection, payloads: dict) -> dict:
     names = dict(conn.execute("SELECT team_id, team_name FROM teams"))
     aliases = defaultdict(list)
@@ -363,8 +404,10 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
     players_dir.mkdir(parents=True, exist_ok=True)
     players = {}
     raw_players = REPO / "data" / "raw" / "player_boxscores"
+    aliases = team_alias_map(conn)
     for season, payload in sorted(payloads.items()):
-        archive = player_archive.read_season(raw_players, season)
+        archive = canonical_box_score_teams(
+            player_archive.read_season(raw_players, season), aliases)
         if not archive:
             continue
         known = {str(row[0]) for row in payload["games"] if row[4]}
