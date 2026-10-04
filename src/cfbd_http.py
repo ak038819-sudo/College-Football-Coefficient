@@ -56,14 +56,41 @@ def is_transient(error: BaseException) -> bool:
         "ConnectionError", "Timeout", "ConnectTimeout", "ReadTimeout", "ChunkedEncodingError"}
 
 
+def get_json(url: str, *, headers: dict, timeout: float, params: dict | None = None,
+             describe: str | None = None, **retry):
+    """A retried GET that returns parsed JSON, for the call sites that use requests.
+
+    requests is imported here rather than at module import time for the same
+    reason every call site imports it lazily: the loaders reuse those modules to
+    read CSVs, and reading a CSV must not require the HTTP library -- CI's
+    rebuild step failed exactly that way once.
+
+    raise_for_status() runs inside the retried call, so a 429 or a 5xx is
+    retried while a 401 or a 404 is raised at once.
+    """
+    import requests
+
+    def once():
+        response = requests.get(url, headers=headers, params=params, timeout=timeout)
+        response.raise_for_status()
+        return response.json()
+
+    return with_retries(once, describe=describe or f"GET {url} {params or {}}", **retry)
+
+
 def with_retries(call: Callable[[], T], *, describe: str = "CFBD request",
                  attempts: int = ATTEMPTS, base_delay: float = BASE_DELAY,
-                 sleep: Callable[[float], None] = time.sleep) -> T:
+                 sleep: Callable[[float], None] | None = None) -> T:
     """Call `call`, retrying a transport failure with an exponential backoff.
 
     Raises the last error once the attempts are spent, so a genuine outage still
     fails the run and names the season to resume from rather than publishing a
     half-fetched archive.
+
+    `sleep` defaults to time.sleep resolved HERE rather than bound as a default
+    argument. A default binds at def time, so `sleep = time.sleep` captured the
+    real function and a test patching cfbd_http.time.sleep changed nothing --
+    it waited the full backoff and still passed, which is how it went unnoticed.
     """
     if attempts < 1:
         raise ValueError("attempts must be at least 1")
@@ -76,5 +103,5 @@ def with_retries(call: Callable[[], T], *, describe: str = "CFBD request",
             delay = base_delay * 2 ** (attempt - 1)
             print(f"{describe} failed ({type(error).__name__}: {error}); "
                   f"retrying in {delay:.0f}s (attempt {attempt} of {attempts})", flush=True)
-            sleep(delay)
+            (sleep or time.sleep)(delay)
     raise AssertionError("unreachable")  # pragma: no cover

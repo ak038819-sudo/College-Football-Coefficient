@@ -8,8 +8,9 @@ Usage:
 
 import os
 import sys
-import requests
 import sqlite3
+
+import cfbd_http
 
 DB_PATH = "db/league.db"
 CFBD_API = "https://api.collegefootballdata.com/teams"
@@ -22,10 +23,10 @@ HEADERS = {"Authorization": f"Bearer {API_KEY}"}
 
 
 def fetch_year(year: int):
-    params = {"year": year}
-    r = requests.get(CFBD_API, headers=HEADERS, params=params, timeout=60)
-    r.raise_for_status()
-    return r.json()
+    # Nothing here degrades to a warning: a reset on any season ends the run
+    # with a traceback and the memberships half written.
+    return cfbd_http.get_json(CFBD_API, params={"year": year}, headers=HEADERS,
+                              timeout=60, describe=f"GET /teams {year}")
 
 
 def main(start_year: int, end_year: int):

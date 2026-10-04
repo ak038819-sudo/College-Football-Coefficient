@@ -14,7 +14,7 @@ scores and quietly change the ratings.
 
 - Same requests as the game fetch: /games per season, regular + postseason, FBS.
 - A failed request keeps any existing file and only warns.
-- `requests` is imported only when downloading (loading needs no HTTP library).
+- The HTTP library is imported only when downloading (loading needs none).
 
 Usage:
     python src/fetch_kickoffs.py 1980 2026    # one-time backfill
@@ -28,6 +28,8 @@ import os
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional
+
+import cfbd_http
 
 BASE = "https://api.collegefootballdata.com"
 OUT_DIR = Path("data/raw")
@@ -56,14 +58,14 @@ def kickoff_rows(payload, year: int) -> List[dict]:
 
 def fetch_kickoffs(year: int, headers: Dict[str, str]) -> Optional[List[dict]]:
     """All of a season's kickoffs, or None if any request failed (so nothing is overwritten)."""
-    import requests
     rows = []
     try:
         for season_type in ("regular", "postseason"):
-            r = requests.get(f"{BASE}/games", params={"year": year, "seasonType": season_type, "division": "fbs"},
-                             headers=headers, timeout=60)
-            r.raise_for_status()
-            rows += kickoff_rows(r.json(), year)
+            rows += kickoff_rows(cfbd_http.get_json(
+                f"{BASE}/games",
+                params={"year": year, "seasonType": season_type, "division": "fbs"},
+                headers=headers, timeout=60,
+                describe=f"GET /games {year} {season_type} kickoffs"), year)
     except Exception as e:  # display-only data: never let it break anything else
         print(f"WARNING: could not fetch {year} kickoff times ({e}); keeping any existing file.")
         return None

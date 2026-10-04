@@ -28,6 +28,8 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import cfbd_http
+
 from person_identity import normalize_name
 
 BASE = "https://api.collegefootballdata.com"
@@ -143,13 +145,12 @@ def fetch_coaches(start: int, end: int, headers: Dict[str, str]) -> Optional[Lis
     merely delay them, and overwriting the snapshot with it would silently erase
     careers from the archive.
     """
-    import requests
     records: List[dict] = []
     for year in range(start, end + 1):
         try:
-            r = requests.get(f"{BASE}/coaches", params={"year": year}, headers=headers, timeout=120)
-            r.raise_for_status()
-            records += coach_records(r.json())
+            records += coach_records(cfbd_http.get_json(
+                f"{BASE}/coaches", params={"year": year}, headers=headers, timeout=120,
+                describe=f"GET /coaches {year}"))
         except Exception as e:
             print(f"WARNING: could not fetch {year} coaches ({e}); keeping the existing snapshot.")
             return None

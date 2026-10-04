@@ -14,8 +14,15 @@ from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+import cfbd_http
+
 URL = 'https://api.collegefootballdata.com/scoreboard?classification=fbs'
 DEFAULT_OUT = Path('ui/data/live_scores.json')
+# Three attempts, not the usual five: this runs every five minutes in season,
+# so the backoff has to finish well inside that. 2s + 4s is a reset ridden out
+# without the scoreboard going stale; a longer outage is the next run's
+# problem, and the last good snapshot stays published meanwhile.
+ATTEMPTS = 3
 
 
 def clean_game(item):
@@ -116,8 +123,10 @@ def fetch_player_boxscores(key, games, now):
         request = Request('https://api.collegefootballdata.com' + path + '?' + urlencode(params),
                           headers={'Authorization': 'Bearer ' + key, 'Accept': 'application/json',
                                    'User-Agent': 'cfb-coefficient-live-scores/1.0'})
-        with urlopen(request, timeout=25) as response:
-            return json.load(response)
+        def once():
+            with urlopen(request, timeout=25) as response:
+                return json.load(response)
+        return cfbd_http.with_retries(once, describe='GET ' + path, attempts=ATTEMPTS)
     calendar = get('/calendar', {'year': year})
     if not isinstance(calendar, list):
         raise ValueError('invalid calendar response')
@@ -180,8 +189,15 @@ def main():
         parser.error('CFBD_API_KEY is required (live scoreboard requires a subscribed key)')
     request = Request(URL, headers={'Authorization': 'Bearer ' + key,
                                    'Accept': 'application/json', 'User-Agent': 'cfb-coefficient-live-scores/1.0'})
-    with urlopen(request, timeout=25) as response:
-        snapshot = make_snapshot(json.load(response), dt.datetime.now(dt.timezone.utc))
+    def scoreboard():
+        with urlopen(request, timeout=25) as response:
+            return json.load(response)
+    # The scoreboard is the whole point of the run: without it there is no
+    # snapshot to write, and a CFBD reset meant a five-minute hole in the live
+    # scores for no better reason than the absence of an answer.
+    snapshot = make_snapshot(cfbd_http.with_retries(
+        scoreboard, describe='GET /scoreboard', attempts=ATTEMPTS),
+        dt.datetime.now(dt.timezone.utc))
     try:
         previous = json.loads(args.out.read_text(encoding='utf-8'))
     except (OSError, ValueError):

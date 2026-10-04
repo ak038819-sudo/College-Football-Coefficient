@@ -34,6 +34,8 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import cfbd_http
+
 BASE = "https://api.collegefootballdata.com"
 OUT_DIR = Path("data/raw")
 FIRST_SEASON = 2001
@@ -91,16 +93,12 @@ def fetch_game_advanced(year: int, headers: Dict[str, str]) -> Optional[List[dic
     if year < FIRST_SEASON:
         print(f"{year}: CFBD advanced stats begin in {FIRST_SEASON}; skipped.")
         return None
-    # Imported here, not at the top, for the same reason as the season fetcher:
-    # load_game_advanced.py reuses FIELDS, and loading a CSV must never require
-    # the HTTP library.
-    import requests
     try:
-        r = requests.get(f"{BASE}/stats/game/advanced",
-                         params={"year": year, "excludeGarbageTime": "true", "classification": "fbs"},
-                         headers=headers, timeout=120)
-        r.raise_for_status()
-        return game_advanced_rows(r.json(), year)
+        payload = cfbd_http.get_json(
+            f"{BASE}/stats/game/advanced",
+            params={"year": year, "excludeGarbageTime": "true", "classification": "fbs"},
+            headers=headers, timeout=120, describe=f"GET /stats/game/advanced {year}")
+        return game_advanced_rows(payload, year)
     except Exception as e:
         print(f"WARNING: could not fetch {year} game advanced stats ({e}); keeping any existing file.")
         return None

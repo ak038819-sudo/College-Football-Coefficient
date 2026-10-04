@@ -161,10 +161,10 @@ def fetch_final_cfp_top4(year: int, headers: Dict[str, str]) -> Optional[Set[str
     for week in range(16, 9, -1):
         params = {"year": year, "seasonType": "regular", "week": week}
         try:
-            r = requests.get(f"{BASE}/rankings", params=params, headers=headers, timeout=60)
-            # If key missing, CFBD may 401; raise to surface clearly.
-            r.raise_for_status()
-            payload = r.json()
+            # A 401 still surfaces at once: get_json retries only a request
+            # the API never answered, or a 429/5xx.
+            payload = cfbd_http.get_json(f"{BASE}/rankings", params=params, headers=headers,
+                                         timeout=60, describe=f"GET /rankings week {week}")
             top4 = extract_top4_from_rankings_payload(payload)
             if top4 and len(top4) == 4:
                 return top4
@@ -225,10 +225,10 @@ def fetch_rankings(year: int, headers: Dict[str, str]) -> Optional[List[dict]]:
     rows = []
     try:
         for season_type in ("regular", "postseason"):
-            r = requests.get(f"{BASE}/rankings", params={"year": year, "seasonType": season_type},
-                             headers=headers, timeout=60)
-            r.raise_for_status()
-            rows.extend(rankings_rows(r.json(), year))
+            rows.extend(rankings_rows(cfbd_http.get_json(
+                f"{BASE}/rankings", params={"year": year, "seasonType": season_type},
+                headers=headers, timeout=60,
+                describe=f"GET /rankings {year} {season_type}"), year))
     except Exception as e:   # rankings are display-only; never let them break the games fetch
         print(f"WARNING: could not fetch {year} rankings ({e}); keeping any existing rankings file.")
         return None
@@ -375,17 +375,17 @@ def main(year: int) -> int:
 
         # The games fetch is the one request in this file that must succeed, and
         # a reset on it failed the deploy twice on 2026-10-03 -- nothing
-        # published either time. Rankings and venues below already degrade to a
-        # warning, so they are left alone.
+        # published either time. Rankings and venues degrade to a warning
+        # instead, but a warning still costs a season of fresh data, so they
+        # are retried now too.
         all_games.extend(cfbd_http.with_retries(
             fetch_games, describe=f'GET /games {year} {season_type}'))
 
     # Display-only venue catalog. A failed optional request keeps the last
     # verified snapshot, while game ingestion and ratings can still proceed.
     try:
-        venues_response = requests.get(f"{BASE}/venues", headers=headers, timeout=60)
-        venues_response.raise_for_status()
-        venues = venues_response.json()
+        venues = cfbd_http.get_json(f"{BASE}/venues", headers=headers, timeout=60,
+                                    describe="GET /venues")
         if not isinstance(venues, list) or not venues:
             raise ValueError("empty or malformed venue catalog")
         (OUT_DIR / "venues.json").write_text(json.dumps(venues, ensure_ascii=False) + "\n", encoding="utf-8")

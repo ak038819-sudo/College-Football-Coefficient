@@ -26,6 +26,8 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import cfbd_http
+
 BASE = "https://api.collegefootballdata.com"
 OUT_DIR = Path("data/raw/rosters")
 FIRST_SEASON = 2009  # CFBD's published /roster coverage boundary.
@@ -81,14 +83,13 @@ def roster_rows(payload, year: int) -> List[dict]:
 
 def fetch_season(year: int, headers: Dict[str, str]) -> Optional[List[dict]]:
     """A season's roster rows, or None if the request failed (nothing is overwritten)."""
-    import requests
     if year < FIRST_SEASON:
         print(f"WARNING: CFBD rosters begin in {FIRST_SEASON}; skipping {year}.")
         return None
     try:
-        r = requests.get(f"{BASE}/roster", params={"year": year}, headers=headers, timeout=180)
-        r.raise_for_status()
-        rows = roster_rows(r.json(), year)
+        rows = roster_rows(cfbd_http.get_json(
+            f"{BASE}/roster", params={"year": year}, headers=headers, timeout=180,
+            describe=f"GET /roster {year}"), year)
     except Exception as e:  # a failed fetch keeps the committed snapshot
         print(f"WARNING: could not fetch the {year} roster ({e}); keeping any existing snapshot.")
         return None
