@@ -19,6 +19,7 @@ step 2 also requires team, season and position, and refuses a double match.
 """
 from __future__ import annotations
 
+import csv
 import datetime as dt
 import hashlib
 import re
@@ -228,6 +229,64 @@ def implausible_careers(conn: sqlite3.Connection, source: str = "cfbd") -> dict:
     return {int(player_id): (name, "source id spanning %d seasons at %d school%s"
                              % (seasons, teams, "" if teams == 1 else "s"), first)
             for player_id, name, seasons, teams, first in rows}
+
+
+SPLIT_CAREERS = Path(__file__).resolve().parent.parent / "data" / "identity" / "split_careers.csv"
+
+# The verdicts in that file that are strong enough to link two pages together.
+# "needs a human" and "TWO PEOPLE" are deliberately absent: the first is an
+# unresolved contradiction and the second is two people who share a name, which
+# is the one error this whole module exists to prevent.
+LINKED_VERDICTS = frozenset({"one person", "likely one person"})
+
+
+def load_split_careers(path: Optional[Path] = None) -> list[dict]:
+    """The hand-reviewed file of people CFBD recorded under two athlete ids.
+
+    Reviewed by hand and kept in the repository on purpose. These 74 judgements
+    are about 74 named people -- whether a hometown of "Ewa Beach, HI" on one
+    record and "Cincinnati, OH" on the other is one person with a bad field or
+    two players who share a name -- and no rule derived from the feed can settle
+    them. A file a reader can open, with the verdict written next to the name,
+    is the only honest form for that. See docs/identity-problems.md 1.
+    """
+    # Resolved at call time, not bound as a default, so a test can point this at
+    # a fixture file -- and so the path stays one name to change.
+    path = Path(path) if path is not None else SPLIT_CAREERS
+    if not path.exists():
+        return []
+    with path.open(encoding="utf-8", newline="") as handle:
+        return [{"season": int(row["season"]), "name": row["name"],
+                 "ids": (int(row["id_a"]), int(row["id_b"])),
+                 "verdict": row["verdict"]}
+                for row in csv.DictReader(handle)]
+
+
+def linked_careers(conn: sqlite3.Connection, path: Optional[Path] = None) -> dict:
+    """{player_id: {"id": counterpart, "name": ..., "season": ...}} for the links.
+
+    The relation is SYMMETRIC and nothing is rewritten: each id keeps its own
+    page and its own statistics, and each page names the other. Choosing a
+    primary would mean choosing which half of a career is the real one, and a
+    published id that moved would break every URL already in the wild -- ids are
+    a function of the source (docs/identity-problems.md 8).
+
+    A pair is dropped unless both ids are people in THIS database. A link to a
+    page that does not exist would send a reader to "player not found", which is
+    the same defect the box-score exporter was fixed for.
+    """
+    present = {int(row[0]): row[1] for row in conn.execute(
+        "SELECT player_id, display_name FROM players")}
+    links: dict[int, dict] = {}
+    for case in load_split_careers(path):
+        if case["verdict"] not in LINKED_VERDICTS:
+            continue
+        first, second = case["ids"]
+        if first not in present or second not in present or first == second:
+            continue
+        for me, other in ((first, second), (second, first)):
+            links[me] = {"id": other, "name": present[other], "season": case["season"]}
+    return links
 
 
 def add_alias(conn: sqlite3.Connection, player_id: int, raw_name: str) -> None:
