@@ -88,8 +88,18 @@ def test_the_shipped_file_holds_all_74_cases_and_their_verdicts():
 
 
 def test_every_linked_pair_resolves_in_the_live_database(db_path):
-    """The file names people; this asserts the pages exist to link together."""
+    """The file names people; this asserts the pages exist to link together.
+
+    Skipped where the person tables are absent, which is the CI test job: that
+    database is built by run_pipeline.py, and people arrive separately from
+    sync-people.yml. The verdict file itself is checked above without a
+    database, so a wrong row still fails there rather than only on a machine
+    that happens to have the rosters loaded.
+    """
     db = sqlite3.connect(str(db_path))
+    if not db.execute("SELECT name FROM sqlite_master WHERE type = 'table' "
+                      "AND name = 'players'").fetchone():
+        pytest.skip('this database has no person tables -- run sync_people first')
     links = identity.linked_careers(db)
     assert len(links) == 2 * 64, 'the 62 one-person and 2 likely pairs, both ways'
     held = {int(row[0]) for row in db.execute('SELECT player_id FROM players')}
