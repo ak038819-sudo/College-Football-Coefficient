@@ -186,6 +186,33 @@ def build_coaches(conn: sqlite3.Connection) -> dict:
         tenure.pop("coach_id", None)
         coach["tenures"].append(tenure)
 
+    # What each season was worth against the Elo expectation
+    # (src/build_coach_metrics.py). Attached to the tenure it measures, and the
+    # unmeasured seasons carry their reason instead of a number, so the page can
+    # say a season is not attributable rather than leaving a blank cell.
+    if conn.execute("SELECT name FROM sqlite_master WHERE type = 'table' "
+                    "AND name = 'coach_season_metrics'").fetchone():
+        measured: dict = {}
+        for row in conn.execute(
+                "SELECT coach_id, team_id, season_year, attributed, reason, "
+                "expected_wins, wins_above_expected, elo_change, season_coe2 "
+                "FROM coach_season_metrics"):
+            measured[(int(row["coach_id"]), int(row["team_id"]),
+                      int(row["season_year"]))] = row
+        for coach_id, coach in coaches.items():
+            for tenure in coach["tenures"]:
+                row = measured.get((coach_id, tenure.get("team_id"),
+                                    tenure.get("season_year")))
+                if row is None:
+                    continue
+                if not row["attributed"]:
+                    tenure["unmeasured"] = row["reason"]
+                    continue
+                for key in ("expected_wins", "wins_above_expected", "elo_change",
+                            "season_coe2"):
+                    if row[key] is not None:
+                        tenure[key] = round(row[key], 3)
+
     # The identity this feed could not vouch for, carried through to the page so
     # the weakness is visible to a reader rather than only to the database.
     for row in conn.execute(

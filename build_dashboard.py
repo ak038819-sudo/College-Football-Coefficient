@@ -105,6 +105,12 @@ def main() -> None:
     # Logos as static files + a small manifest (data foundation step) instead of
     # ~7 MB of base64 embedded in the page.
     subprocess.run([sys.executable, "src/export_logo_files.py"], check=True)
+    # Head-coach metrics against the Elo expectation (v0.1.1 phase 5). Here, not
+    # in run_pipeline.py, because it reads elo_game_history: the pipeline runs
+    # before build_elo.py, and a coach page exported ahead of the ratings would
+    # show every season as unmeasured. Before export_static_data.py, which is
+    # what exports the people pages that read these rows.
+    subprocess.run([sys.executable, "src/build_coach_metrics.py", "--db", args.db], check=True)
     # Per-season game files + search index, loaded on demand (data foundation step).
     subprocess.run([sys.executable, "src/export_static_data.py", "--db", args.db], check=True)
     render_from_exports()
