@@ -51,9 +51,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -117,7 +117,7 @@ jobs:
       - name: Run tests
         run: pytest -v
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
 
@@ -139,7 +139,7 @@ jobs:
       group: rebuild-and-deploy-main
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # actions/checkout pins the commit that TRIGGERED the run, and the
       # concurrency lock above means a queued run can sit for several minutes
@@ -160,7 +160,7 @@ jobs:
           fi
           echo "Building from $(git log -1 --oneline)"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 

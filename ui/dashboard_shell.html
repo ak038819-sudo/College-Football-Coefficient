@@ -4825,10 +4825,37 @@ function loadGameDetails(season) {
     return data;
   });
 }
-function loadPlayerArchive(season) {
-  const src = (STATIC_MANIFEST.players || {})[String(season)];
-  if (!src) return Promise.resolve({});
-  return loadDataScript(src).then(() => (window.__CFB_PLAYERS__ || {})[season] || {});
+// The box scores of one season, sharded on the game id. Exported whole, a
+// season was 17 MB -- 1.6 MB gzipped -- fetched to show ONE game's box score,
+// and it grew with every season played. A game page now asks for the single
+// shard that holds it; the Stats view, which aggregates the whole season, asks
+// for all of them and pays what it actually uses.
+function boxScoreShard(gameId, shards) {
+  // FLOORED, to match the exporter: JavaScript's % keeps the sign of the
+  // dividend and Python's does not, so a negative id would otherwise ask for a
+  // file that was never written.
+  const n = Number(gameId);
+  return ((n % shards) + shards) % shards;
+}
+function playerArchiveEntry(season) {
+  const entry = (STATIC_MANIFEST.players || {})[String(season)];
+  // A manifest written before the sharding names one file per season.
+  if (typeof entry === 'string') return {legacy: entry};
+  return entry && entry.files ? entry : null;
+}
+function loadPlayerArchive(season, gameId) {
+  const entry = playerArchiveEntry(season);
+  if (!entry) return Promise.resolve({});
+  const season_ = (window.__CFB_PLAYERS__ || {});
+  if (entry.legacy) {
+    return loadDataScript(entry.legacy).then(() => season_[season] || {});
+  }
+  const wanted = gameId == null
+    ? Object.values(entry.files)
+    : [entry.files[String(boxScoreShard(gameId, entry.shards))]].filter(Boolean);
+  if (!wanted.length) return Promise.resolve((window.__CFB_PLAYERS__ || {})[season] || {});
+  return Promise.all(wanted.map(loadDataScript))
+    .then(() => (window.__CFB_PLAYERS__ || {})[season] || {});
 }
 // The story uses recorded game values; a missing stat never becomes a zero or a claimed edge.
 function gameStory(g, d, season, an, hn) {
@@ -5037,7 +5064,7 @@ function hydrateGamePage(version) {
         '<div class="grid-2">' + eloPanel + coePanel + '</div>' + srPanel +
         (g.completed ? '<div id="gp-players" class="panel"><h2 class="section-title">Player box score</h2><p class="empty-note">Loading player stats…</p></div>' : '') +
         '<div class="panel" id="gp-series"><h2 class="section-title">Series history</h2><p class="empty-note">Loading meetings…</p></div>' + more;
-      if (g.completed) Promise.all([loadPlayerArchive(season), loadRoster(season).catch(() => null)])
+      if (g.completed) Promise.all([loadPlayerArchive(season, id), loadRoster(season).catch(() => null)])
         .then(([archive, rosterData]) => {
         if (version !== renderVersion) return;
         const teams = archive[String(id)] || liveSnapshot?.player_boxscores?.[String(id)] || [];
