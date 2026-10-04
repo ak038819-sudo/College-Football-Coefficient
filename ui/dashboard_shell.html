@@ -4666,11 +4666,31 @@ function coachRecord(tenures) {
            pct: played ? ((w + ti / 2) / played) : null };
 }
 
+// What a coach's seasons were worth against the Elo expectation
+// (src/build_coach_metrics.py). Summed over the MEASURED seasons only: a season
+// shared with another head coach carries no number, because CFBD's feed never
+// says which games each of them coached, and crediting an interim with a
+// predecessor's wins would be the kind of guess this project does not make.
+function coachExpectation(tenures) {
+  const measured = (tenures || []).filter(t => t && t.wins_above_expected != null);
+  if (!measured.length) return null;
+  const total = measured.reduce((n, t) => n + t.wins_above_expected, 0);
+  const expected = measured.reduce((n, t) => n + (t.expected_wins || 0), 0);
+  return {
+    seasons: measured.length,
+    unmeasured: (tenures || []).filter(t => t && t.unmeasured).length,
+    total: total,
+    perSeason: total / measured.length,
+    expected: expected,
+  };
+}
+
 function coachPanels(c, id) {
   const tenures = c.tenures || [];
   const last = tenures[tenures.length - 1] || {};
   const years = tenures.map(t => t.season_year);
   const rec = coachRecord(tenures);
+  const exp = coachExpectation(tenures);
   const schools = [...new Set(tenures.map(t => t.team_id))];
   const header = '<div class="panel team-header"><div class="team-header-main">' +
     '<div class="team-header-text"><h1 class="team-title">' + esc(c.display_name) + '</h1>' +
@@ -4686,6 +4706,9 @@ function coachPanels(c, id) {
     teamStat('Win rate', rec.pct == null ? 'N/A' : rec.pct.toFixed(3).replace(/^0/, ''),
              rec.played ? rec.played + ' games' : '&nbsp;') +
     teamStat('Schools', String(schools.length), 'in this dataset') +
+    (exp ? teamStat('Wins vs expectation', signed(exp.total, 1),
+                    signed(exp.perSeason, 2) + ' a season over ' + exp.seasons +
+                    (exp.seasons === 1 ? ' measured season' : ' measured seasons')) : '') +
     '</div></div>';
   // The identity caveat the database recorded, said on the page rather than
   // left for someone reading SQL. A name is all CFBD's coaching feed carries.
@@ -4701,13 +4724,31 @@ function coachPanels(c, id) {
       '<td>' + (w || '&mdash;') + '</td>' +
       '<td>' + (t.preseason_rank == null ? '&mdash;' : '#' + esc(t.preseason_rank)) + '</td>' +
       '<td>' + (t.postseason_rank == null ? '&mdash;' : '#' + esc(t.postseason_rank)) + '</td>' +
+      // A season nobody can attribute says so where the number would have been,
+      // rather than showing an empty cell that reads as a coach who did nothing.
+      (t.unmeasured
+        ? '<td class="num" colspan="2"><abbr title="' + esc(t.unmeasured) +
+          '">not measured</abbr></td>'
+        : '<td class="num">' + (t.expected_wins == null ? '&mdash;'
+            : esc(t.expected_wins.toFixed(1))) + '</td>' +
+          '<td class="num">' + (t.wins_above_expected == null ? '&mdash;'
+            : signed(t.wins_above_expected, 1)) + '</td>') +
       '<td>' + esc(t.hire_date || '—') + '</td></tr>';
   }).join('');
   const table = '<div class="panel team-section"><h2 class="section-title">Season by season</h2>' +
     '<table class="data-table"><thead><tr><th>Season</th><th>Team</th><th>Record</th>' +
-    '<th>Preseason</th><th>Final</th><th>Hired</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<th>Preseason</th><th>Final</th><th scope="col">Expected</th><th scope="col">vs exp</th>' +
+    '<th>Hired</th></tr></thead><tbody>' + rows + '</tbody></table>' +
     '<p class="section-note">The hire date belongs to the job, not the person: a coach carries a ' +
-    'different one at each school. Records count games against teams in this dataset only.</p></div>';
+    'different one at each school. Records count games against teams in this dataset only. ' +
+    '\u201cExpected\u201d adds up the pregame Elo win probability of each of that season\u2019s ' +
+    'games, so it is the season a typical coach of that team, against that schedule, would have ' +
+    'had; \u201cvs exp\u201d is the part of the record that was not already predicted' +
+    (exp && exp.unmeasured
+      ? '. ' + exp.unmeasured + (exp.unmeasured === 1 ? ' season is' : ' seasons are') +
+        ' not measured, because the team had two head coaches that year and the feed does not ' +
+        'say which games belonged to each'
+      : '') + '.</p></div>';
   return header + note + table;
 }
 
