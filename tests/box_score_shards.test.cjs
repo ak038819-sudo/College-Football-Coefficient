@@ -13,10 +13,25 @@ function load(manifest) {
   const source = names.map(name =>
     shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))[0]).join('\n');
   const asked = [];
+  // The global starts ABSENT, because that is how a real page starts: a data
+  // file creates it. A legacy file ASSIGNS it and a shard MERGES into it, and
+  // the loader has to survive both -- pre-seeding it here once hid a bug where
+  // the legacy branch read a detached object the script had already replaced.
   const context = {
     STATIC_MANIFEST: manifest,
-    window: {__CFB_PLAYERS__: {2025: {'401838053': ['a box score']}}},
-    loadDataScript: src => { asked.push(src); return Promise.resolve(); },
+    window: {},
+    loadDataScript: src => {
+      asked.push(src);
+      return Promise.resolve().then(() => {
+        if (src.startsWith('data/players/2025.js')) {
+          context.window.__CFB_PLAYERS__ = {2025: {'401838053': ['a box score']}};
+        } else {
+          const players = context.window.__CFB_PLAYERS__ ||= {};
+          const season = players[2025] ||= {};
+          if (/\/5\.js/.test(src)) season['401838053'] = ['a box score'];
+        }
+      });
+    },
   };
   vm.runInNewContext(source + '\nthis.__fns = {' + names.join(',') + '};', context);
   return {fns: context.__fns, asked};

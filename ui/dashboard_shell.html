@@ -4846,9 +4846,12 @@ function playerArchiveEntry(season) {
 function loadPlayerArchive(season, gameId) {
   const entry = playerArchiveEntry(season);
   if (!entry) return Promise.resolve({});
-  const season_ = (window.__CFB_PLAYERS__ || {});
+  // Read the global AFTER the script resolves, never before: a legacy file
+  // ASSIGNS window.__CFB_PLAYERS__, so a reference captured first is a
+  // detached object the script replaces, and the box score comes back empty.
   if (entry.legacy) {
-    return loadDataScript(entry.legacy).then(() => season_[season] || {});
+    return loadDataScript(entry.legacy)
+      .then(() => (window.__CFB_PLAYERS__ || {})[season] || {});
   }
   const wanted = gameId == null
     ? Object.values(entry.files)
