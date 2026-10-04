@@ -4518,7 +4518,7 @@ function statCell(value, statType) {
   return esc(number.toLocaleString(undefined, { maximumFractionDigits: 2 }));
 }
 
-function playerStatsPanel(stats) {
+function playerStatsPanel(stats, samePerson) {
   const seasons = Object.keys(stats || {}).map(Number).sort((a, b) => b - a);
   if (!seasons.length) return personStatsNote();
   const blocks = [];
@@ -4562,7 +4562,13 @@ function playerStatsPanel(stats) {
       'above cover one id, so they are part of ' +
       (partial.length === 1 ? 'that season' : 'those seasons') + ' rather than all of ' +
       (partial.length === 1 ? 'it' : 'them') + '. The ids are not merged here: the feed ' +
-      'gives no way to tell one person recorded twice from two players who share a name.</p>'
+      'gives no way to tell one person recorded twice from two players who share a name.' +
+      // Where the pair has been read by a human and judged one person, the note
+      // stops at "part of the season" and says which page holds the other part.
+      (samePerson && samePerson.id != null
+        ? ' The other id is <a href="' + esc(playerHref(samePerson.id)) + '">this same ' +
+          'person\u2019s other page</a>, which holds the rest.'
+        : '') + '</p>'
     : '';
   return '<div class="panel team-section"><h2 class="section-title">Statistics</h2>' +
     blocks.join('') + partialNote +
@@ -4586,6 +4592,27 @@ function personMissing(kind, id) {
     esc(id == null ? '(none)' : id) + '. ' + (kind === 'player'
       ? 'Rosters cover 2009 onward; a player from an earlier season is not in this dataset.'
       : 'Head-coaching history covers 1980 onward.') + '</p></div>';
+}
+
+// A person CFBD recorded under two athlete ids, where both records were read by
+// hand and judged one person (data/identity/split_careers.csv). Neither page is
+// the real one and neither id is rewritten: each keeps the statistics the source
+// attached to it, and each names the other, so a career that reads short says
+// where the rest of it is. The 'needs a human' and 'two people who share a name'
+// cases are not linked at all -- a wrong link here would put one player's work
+// under another player's name.
+function samePersonNote(p) {
+  const link = p && p.same_person;
+  if (!link || link.id == null) return '';
+  return '<div class="panel team-section">' +
+    '<h2 class="section-title">Recorded twice by the source</h2><p class="section-note">' +
+    'CFBD holds two athlete ids for this person, each carrying part of ' +
+    esc(link.season) + '. The rest is on <a href="' + esc(playerHref(link.id)) + '">' +
+    esc(link.name || 'the other page') + '</a>, under id ' + esc(link.id) + '. ' +
+    'The two records were compared by hand \u2014 same school, same season, same ' +
+    'statistic categories, agreeing hometown \u2014 and judged one person. The ids are ' +
+    'not merged, because each totals what the source attached to it and a published ' +
+    'id never moves.</p></div>';
 }
 
 function playerPanels(p, id) {
@@ -4627,7 +4654,7 @@ function playerPanels(p, id) {
     '<table class="data-table"><thead><tr><th>Season</th><th>Team</th><th>No.</th>' +
     '<th>Pos</th><th>Class</th><th>Ht</th><th>Wt</th></tr></thead><tbody>' + rows +
     '</tbody></table></div>';
-  return header + note + table + playerStatsPanel(p.stats);
+  return header + samePersonNote(p) + note + table + playerStatsPanel(p.stats, p.same_person);
 }
 
 function coachRecord(tenures) {

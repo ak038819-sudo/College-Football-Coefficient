@@ -38,9 +38,33 @@ twice from two players who share a name on one roster — and both exist. Mergin
 would be a guess that silently fuses two people, which is worse than a flagged
 fraction.
 
-**Open decision.** Whether to hand-merge the 74. That is a judgement about 74
-specific people, not a rule, so it is the project owner's call rather than the
-code's.
+**What was decided about the 74.** All 74 pairs were read by hand on 2026-10-04
+and the verdicts are in [`data/identity/split_careers.csv`](../data/identity/split_careers.csv),
+one row per pair: 62 one person, 9 needing a human, 2 likely one person, 1
+genuinely two people. The case file with the evidence for each is
+`identity/split-careers-2026-10-04.md` in the project's shared files.
+
+The field that discriminates is **hometown**. Position label, jersey number and
+height all disagree across a pair for the same person: Delvon Randall is "S #2"
+on one record and "DB #26" on the other, same city, same team, overlapping
+seasons, and the two records of a pair are routinely an inch apart on height.
+
+The 64 pairs whose verdict says one person are **linked, not merged**. The link
+is symmetric: each id keeps its own page, its own statistics and its own URL,
+and each page names the other, so a career that reads short says where the rest
+of it is. Nothing is rewritten, because a published id is a function of the
+source (section 8) and summing the two would invent numbers — YPC and PCT do not
+add. `person_identity.linked_careers` drops any pair whose counterpart has no
+page here, and the exporter drops it again after the displayable filter.
+
+The 9 contradictions and the one real pair of namesakes are **not** linked.
+Brett Johnson, California 2023, is the case the no-merge rule exists for: id
+`174194` is a DB, #25, 6'1", with roster rows for 2009–2019 *and* 2023 — a
+reused legacy id — while `4570135` is a DL, #90, 6'5", 295 lb, holding the real
+defensive statistics. The 9 agree on position, number and height and contradict
+on city, so one side carries a wrong hometown and the feed does not say which;
+"Ewa Beach, HI" and "Andrews, TX" each appear on two unrelated players' records,
+which is the tell.
 
 ## 2. A coach has no identifier at all
 

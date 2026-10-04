@@ -146,7 +146,24 @@ def build_players(conn: sqlite3.Connection) -> dict:
 
     # A person with no season row is not displayable: the roster that justified
     # them is gone, so the page would have nothing true to show.
-    return {pid: p for pid, p in players.items() if p["seasons"]}
+    displayable = {pid: p for pid, p in players.items() if p["seasons"]}
+
+    # The counterpart page, for a person the source recorded under two athlete
+    # ids where a human has read both records and judged them one person. The
+    # statistics are NOT fused: each id keeps the totals the source attached to
+    # it, and each page says where the rest of the career is. Summing them would
+    # invent numbers -- YPC and PCT do not add -- and merging the ids would
+    # break both pages' URLs.
+    #
+    # Attached after the displayable filter, and only where the counterpart
+    # survived it. A link to a page that was dropped would land a reader on
+    # "player not found" -- the same defect the box-score exporter was fixed for.
+    for player_id, link in identity.linked_careers(conn).items():
+        player = displayable.get(player_id)
+        if player is not None and link["id"] in displayable:
+            player["same_person"] = link
+
+    return displayable
 
 
 def build_coaches(conn: sqlite3.Connection) -> dict:
