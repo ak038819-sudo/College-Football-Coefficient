@@ -53,6 +53,10 @@
     },
     "401856709": {
       "away_id": 132,
+      "candidate_brier": 0.16133317,
+      "candidate_log_loss": 0.51360114,
+      "flat_brier": 0.16198452,
+      "flat_log_loss": 0.51495581,
       "home_bonus": 52.173,
       "home_id": 128,
       "kickoff_utc": "2026-10-03T20:15:00.000Z",
@@ -60,6 +64,8 @@
       "p_candidate": 0.401663,
       "p_flat": 0.402473,
       "recorded_at": "2026-10-03T07:19:42.650733Z",
+      "result": 0.0,
+      "scored_at": "2026-10-04T00:34:43.915124Z",
       "season": 2026
     },
     "401856710": {
@@ -544,6 +550,10 @@
     },
     "401858475": {
       "away_id": 90,
+      "candidate_brier": 0.04066918,
+      "candidate_log_loss": 0.22522822,
+      "flat_brier": 0.03886221,
+      "flat_log_loss": 0.2195687,
       "home_bonus": 48.386,
       "home_id": 31,
       "kickoff_utc": "2026-10-03T20:00:00.000Z",
@@ -551,6 +561,8 @@
       "p_candidate": 0.798334,
       "p_flat": 0.802865,
       "recorded_at": "2026-10-03T07:19:42.650733Z",
+      "result": 1.0,
+      "scored_at": "2026-10-04T00:34:43.915124Z",
       "season": 2026
     },
     "401858477": {
@@ -656,6 +668,17 @@
       "p_candidate": 0.422946,
       "p_flat": 0.41207,
       "recorded_at": "2026-10-03T23:49:43.488057Z",
+      "season": 2026
+    },
+    "401858486": {
+      "away_id": 77,
+      "home_bonus": 38.318,
+      "home_id": 73,
+      "kickoff_utc": "2026-10-11T00:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.353068,
+      "p_flat": 0.362437,
+      "recorded_at": "2026-10-04T00:34:43.915124Z",
       "season": 2026
     },
     "401858487": {
@@ -1303,11 +1326,11 @@
     "version": "centered_hfa_v1"
   },
   "summary": {
-    "candidate_brier": 0.177899,
-    "candidate_log_loss": 0.532969,
-    "flat_brier": 0.179312,
-    "flat_log_loss": 0.536609,
-    "games": 30
+    "candidate_brier": 0.173092,
+    "candidate_log_loss": 0.522747,
+    "flat_brier": 0.174382,
+    "flat_log_loss": 0.526025,
+    "games": 32
   },
   "version": "centered_hfa_v1"
 }
