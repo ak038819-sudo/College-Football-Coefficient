@@ -355,6 +355,15 @@ database at all: rosters start in 2009, so a 2004 line can carry a perfectly
 good id for somebody with no page, and linking it would send a reader to "player
 not found".
 
+A box-score side is renamed to this database's canonical team name on export,
+through the `team_aliases` rows the project already holds. Six FBS teams are
+affected -- UL Monroe/ULM, San José State/San Jose State, App State/Appalachian
+State, Florida Atlantic/FAU, Florida International/FIU and plain Miami/Miami
+(FL) -- and until 2026-10-04 nothing consulted those aliases here, so a game
+page could not find those teams' rosters and not one of their player lines
+linked to a person in any season. Georgia-UL Monroe 2015 went from 80 of 159
+rows linked to 159.
+
 A numbered line whose id this dataset lacks shows as plain text; it does NOT
 fall back to the name. The only name it could match is a *different* athlete id
 on the same roster, which is precisely the case where CFBD holds two ids under
