@@ -22,6 +22,8 @@ from typing import Dict, List, Optional, Set, Tuple
 
 import requests
 
+import cfbd_http
+
 BASE = "https://api.collegefootballdata.com"
 OUT_DIR = Path("data/raw")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -365,9 +367,18 @@ def main(year: int) -> int:
     all_games: List[dict] = []
     for season_type in ("regular", "postseason"):
         params = {"year": year, "seasonType": season_type, "division": "fbs"}
-        r = requests.get(f"{BASE}/games", params=params, headers=headers, timeout=60)
-        r.raise_for_status()
-        all_games.extend(r.json())
+
+        def fetch_games(params=params):
+            r = requests.get(f"{BASE}/games", params=params, headers=headers, timeout=60)
+            r.raise_for_status()
+            return r.json()
+
+        # The games fetch is the one request in this file that must succeed, and
+        # a reset on it failed the deploy twice on 2026-10-03 -- nothing
+        # published either time. Rankings and venues below already degrade to a
+        # warning, so they are left alone.
+        all_games.extend(cfbd_http.with_retries(
+            fetch_games, describe=f'GET /games {year} {season_type}'))
 
     # Display-only venue catalog. A failed optional request keeps the last
     # verified snapshot, while game ingestion and ratings can still proceed.
