@@ -86,19 +86,10 @@ jobs:
               echo "::error::Roster $year failed to fetch. Earlier seasons are committed; re-run this workflow from $year to resume."
               exit 1
             fi
-            git add data/raw/rosters/
-            if git diff --staged --quiet; then
-              echo "roster $year: unchanged"
-            else
-              git commit -m "Snapshot $year roster [skip ci]"
-              if ! git pull --rebase origin main; then
-                echo "::error::Could not rebase roster $year onto main. Nothing was published for it; re-run this workflow from $year."
-                exit 1
-              fi
-              if ! git push origin HEAD:main; then
-                echo "::error::Could not push roster $year to main. Re-run this workflow from $year."
-                exit 1
-              fi
+            if ! scripts/publish_to_main.sh "Snapshot $year roster [skip ci]" data/raw/rosters/; then
+              echo "::endgroup::"
+              echo "::error::Could not publish roster $year. Nothing was published for it; re-run this workflow from $year."
+              exit 1
             fi
             echo "::endgroup::"
           done
@@ -124,19 +115,10 @@ jobs:
               echo "::error::Season stats $year failed to fetch. Earlier seasons are committed; re-run this workflow from $year to resume."
               exit 1
             fi
-            git add data/raw/player_season_stats/
-            if git diff --staged --quiet; then
-              echo "season stats $year: unchanged"
-            else
-              git commit -m "Snapshot $year season player statistics [skip ci]"
-              if ! git pull --rebase origin main; then
-                echo "::error::Could not rebase season stats $year onto main. Nothing was published for it; re-run this workflow from $year."
-                exit 1
-              fi
-              if ! git push origin HEAD:main; then
-                echo "::error::Could not push season stats $year to main. Re-run this workflow from $year."
-                exit 1
-              fi
+            if ! scripts/publish_to_main.sh "Snapshot $year season player statistics [skip ci]" data/raw/player_season_stats/; then
+              echo "::endgroup::"
+              echo "::error::Could not publish season stats $year. Nothing was published for it; re-run this workflow from $year."
+              exit 1
             fi
             echo "::endgroup::"
           done
@@ -155,19 +137,9 @@ jobs:
             echo "::error::Could not fetch the coaching history. The committed snapshot is unchanged."
             exit 1
           fi
-          git add data/raw/coaches/
-          if git diff --staged --quiet; then
-            echo "coaching history: unchanged"
-          else
-            git commit -m "Snapshot head-coaching history [skip ci]"
-            if ! git pull --rebase origin main; then
-              echo "::error::Could not rebase the coaching history onto main. Nothing was published; re-run this workflow."
-              exit 1
-            fi
-            if ! git push origin HEAD:main; then
-              echo "::error::Could not push the coaching history to main. Re-run this workflow."
-              exit 1
-            fi
+          if ! scripts/publish_to_main.sh "Snapshot head-coaching history [skip ci]" data/raw/coaches/; then
+            echo "::error::Could not publish the coaching history. Nothing was published; re-run this workflow."
+            exit 1
           fi
 
       - name: Summarise the snapshots
