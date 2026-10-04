@@ -370,9 +370,61 @@ def build_stadium_payload(conn: sqlite3.Connection, payloads: dict) -> dict:
     return {"stadiums": stadiums}
 
 
+# A game page needs ONE game's box score. Exported whole, a season was 17 MB --
+# 1.6 MB gzipped -- downloaded to show one game, and it grew with every season
+# played. Sharded on the game id, a game page fetches about a thirtieth of that
+# and the stored bytes are unchanged. The Stats view, which genuinely aggregates
+# a whole season, asks for every shard instead.
+BOX_SCORE_SHARDS = 32
+
+
+def box_score_shard(game_id) -> int:
+    """Which shard holds a game, by a FLOORED modulo.
+
+    Floored, because JavaScript's % keeps the sign of the dividend and Python's
+    does not: for a negative id the two disagree and the page would ask for a
+    file the exporter never wrote. The same trap the player pages hit.
+    """
+    return int(game_id) % BOX_SCORE_SHARDS
+
+
+def write_box_score_shards(players_dir: Path, season: int, selected: dict) -> dict:
+    """Write one season's box scores as shards, and return its manifest entry.
+
+    A shard MERGES into its season rather than assigning it, so loading two of
+    them keeps both. An empty shard is not written at all, and the entry names
+    only the files that exist, because the page reads the entry to decide what
+    to request.
+    """
+    shards: dict = {}
+    for game_id, value in selected.items():
+        shards.setdefault(box_score_shard(game_id), {})[game_id] = value
+    files = {}
+    for shard in sorted(shards):
+        version = _write_js_expr(
+            players_dir / str(season) / f"{shard}.js",
+            "(window.__CFB_PLAYERS__=window.__CFB_PLAYERS__||{{}}),"
+            "Object.assign(window.__CFB_PLAYERS__[%d]=window.__CFB_PLAYERS__[%d]||{{}},"
+            "{payload});" % (season, season), shards[shard])
+        files[str(shard)] = f"data/players/{season}/{shard}.js?v={version}"
+    return {"shards": BOX_SCORE_SHARDS, "files": files}
+
+
 def _write_js(path: Path, global_expr: str, payload) -> str:
     body = json.dumps(payload, separators=(",", ":"))
     path.write_text(f"{global_expr}={body};\n", encoding="utf-8")
+    return hashlib.sha256(path.read_bytes()).hexdigest()[:10]
+
+
+def _write_js_expr(path: Path, template: str, payload) -> str:
+    """Like _write_js, but the payload goes where {payload} sits in `template`.
+
+    A shard has to MERGE into its season rather than assign it, so the payload
+    is an argument in the middle of an expression instead of a right-hand side.
+    """
+    body = json.dumps(payload, separators=(",", ":"))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(template.format(payload=body) + "\n", encoding="utf-8")
     return hashlib.sha256(path.read_bytes()).hexdigest()[:10]
 
 
@@ -401,7 +453,9 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
     # Player lines have independent coverage. Only export known game IDs and
     # never imply that the absence of a box score means a player recorded zero.
     players_dir = out_dir / "players"
-    players_dir.mkdir(parents=True, exist_ok=True)
+    if players_dir.exists():
+        shutil.rmtree(players_dir)                                   # no orphan shards
+    players_dir.mkdir(parents=True)
     players = {}
     raw_players = REPO / "data" / "raw" / "player_boxscores"
     aliases = team_alias_map(conn)
@@ -412,10 +466,9 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
             continue
         known = {str(row[0]) for row in payload["games"] if row[4]}
         selected = {gid: value for gid, value in archive.items() if gid in known and value}
-        if selected:
-            v = _write_js(players_dir / f"{season}.js",
-                          f"(window.__CFB_PLAYERS__=window.__CFB_PLAYERS__||{{}})[{season}]", selected)
-            players[str(season)] = f"data/players/{season}.js?v={v}"
+        if not selected:
+            continue
+        players[str(season)] = write_box_score_shards(players_dir, season, selected)
     # P1-05/06: one file per season, loaded only when the week-by-week view opens.
     timeline_dir = out_dir / "elo_timeline"
     if timeline_dir.exists():
