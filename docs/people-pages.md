@@ -335,6 +335,10 @@ the Stats page and a game page cannot give different answers about whose name it
 is. On the 2025 Players table, 47 of the first 50 rows link; the three that do
 not are names that match more than one person or none.
 
+Every known limit of CFBD's identity data, what it costs a reader and what
+the code does about it, is collected in
+[identity-problems.md](identity-problems.md).
+
 ## Known gap: per-game statistics are not attributed to people
 
 The player box-score archive identifies a player by **name only** — it carries no
