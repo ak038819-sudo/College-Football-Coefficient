@@ -41,6 +41,8 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import cfbd_http
+
 BASE = "https://api.collegefootballdata.com"
 OUT_DIR = Path("data/raw/player_season_stats")
 # CFBD's season player stats begin with its play-by-play coverage. An earlier
@@ -114,15 +116,13 @@ def stat_rows(payload, year: int) -> List[dict]:
 
 def fetch_season(year: int, headers: Dict[str, str]) -> Optional[List[dict]]:
     """A season's stat rows, or None if the request failed (nothing is overwritten)."""
-    import requests
     if year < FIRST_SEASON:
         print(f"WARNING: CFBD season player stats begin in {FIRST_SEASON}; skipping {year}.")
         return None
     try:
-        r = requests.get(f"{BASE}/stats/player/season", params={"year": year},
-                         headers=headers, timeout=300)
-        r.raise_for_status()
-        payload = r.json()
+        payload = cfbd_http.get_json(
+            f"{BASE}/stats/player/season", params={"year": year},
+            headers=headers, timeout=300, describe=f"GET /stats/player/season {year}")
     except Exception as e:  # a failed fetch keeps the committed snapshot
         print(f"WARNING: could not fetch {year} season player stats ({e}); "
               "keeping any existing snapshot.")

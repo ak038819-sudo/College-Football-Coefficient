@@ -42,6 +42,23 @@ BACKUP_DB_PATH = REPO_ROOT / "db" / "league_backup_before_playoff_migration.db"
 PLAYOFF_YEARS = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
 
 
+@pytest.fixture(autouse=True)
+def instant_backoff(monkeypatch):
+    """No test waits out a retry in real time.
+
+    Wiring the retries into every fetcher made the suite 90 seconds slower at a
+    stroke: three tests that drive a FAILED request -- the kickoff file that
+    must survive one, the roster and coach fetches that keep their snapshot --
+    now spend the real 2+4+8+16s backoff proving it. The waiting tested
+    nothing; the retry is asserted by counting calls.
+
+    A test about the backoff itself passes its own `sleep`, or patches this
+    again, so it still sees the delays it asserts on.
+    """
+    import cfbd_http
+    monkeypatch.setattr(cfbd_http.time, "sleep", lambda _seconds: None)
+
+
 @pytest.fixture(scope="session")
 def repo_root() -> Path:
     return REPO_ROOT
