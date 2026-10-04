@@ -67,23 +67,14 @@ jobs:
               echo "::error::Season $year failed to fetch. Seasons before it are committed; re-run this workflow from $year to resume."
               exit 1
             fi
-            git add data/raw/player_boxscores/
-            if git diff --staged --quiet; then
-              echo "season $year: nothing new to commit"
-            else
-              git commit -m "Archive $year player box scores [skip ci]"
-              # Checked for the same reason as the fetch: a rebase that refuses
-              # (the scheduled refresh landed first) or a rejected push must
-              # stop the run, not leave this season committed only on the
-              # runner while later seasons carry on.
-              if ! git pull --rebase origin main; then
-                echo "::error::Could not rebase season $year onto main. Nothing was published for it; re-run this workflow from $year."
-                exit 1
-              fi
-              if ! git push origin HEAD:main; then
-                echo "::error::Could not push season $year to main. Re-run this workflow from $year."
-                exit 1
-              fi
+            # Checked for the same reason as the fetch: a publish that refuses
+            # (the scheduled refresh landed first) must stop the run, not leave
+            # this season committed only on the runner while later seasons
+            # carry on.
+            if ! scripts/publish_to_main.sh "Archive $year player box scores [skip ci]" data/raw/player_boxscores/; then
+              echo "::endgroup::"
+              echo "::error::Could not publish season $year. Nothing was published for it; re-run this workflow from $year."
+              exit 1
             fi
             echo "::endgroup::"
           done

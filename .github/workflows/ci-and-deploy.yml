@@ -141,6 +141,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # actions/checkout pins the commit that TRIGGERED the run, and the
+      # concurrency lock above means a queued run can sit for several minutes
+      # behind one that publishes. It then rebuilt a site from a base main had
+      # already left, and every generated file it produced disagreed with the
+      # published one -- which is what turned run 37172187197 into twenty
+      # conflicts. Build from the tip instead; the tests that gated this run
+      # already ran against the triggering commit.
+      - name: Build from the current tip of main
+        run: |
+          if ! git fetch origin main; then
+            echo "::error::Could not fetch origin/main."
+            exit 1
+          fi
+          if ! git reset --hard FETCH_HEAD; then
+            echo "::error::Could not move the working tree to the tip of main."
+            exit 1
+          fi
+          echo "Building from $(git log -1 --oneline)"
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -276,20 +295,16 @@ jobs:
           EVENT: ${{ github.event_name }}
           FRESH: ${{ steps.freshness.outputs.needed }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/raw/ ui/dashboard.html ui/dashboard_data.json ui/data/ ui/assets/ ui/logo_manifest.json data/processed/
-          if git diff --staged --quiet; then
-            echo "Nothing changed; no commit."
-            exit 0
-          fi
           if [ "$EVENT" = "push" ] && [ "$FRESH" = "true" ]; then
-            git commit -m "Refresh model from newer live finals [skip ci]"
+            MESSAGE="Refresh model from newer live finals [skip ci]"
           elif [ "$EVENT" = "push" ]; then
-            git commit -m "Auto-rebuild dashboard [skip ci]"
+            MESSAGE="Auto-rebuild dashboard [skip ci]"
           else
-            git commit -m "Scheduled data refresh: season $(python3 src/current_season.py) [skip ci]"
+            MESSAGE="Scheduled data refresh: season $(python3 src/current_season.py) [skip ci]"
           fi
-          # If you pushed while this ran, replay this commit on top of yours rather than failing.
-          git pull --rebase origin main
-          git push origin HEAD:main
+          # Merges rather than rebases a push that landed while this built, and
+          # keeps this run's freshly generated files where both sides wrote one.
+          # See the header of the script for why a rebase cannot work here.
+          scripts/publish_to_main.sh "$MESSAGE" \
+            data/raw/ ui/dashboard.html ui/dashboard_data.json ui/data/ \
+            ui/assets/ ui/logo_manifest.json data/processed/

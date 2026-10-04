@@ -65,10 +65,11 @@ jobs:
           if git diff --quiet -- ui/data/live_scores.json; then exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add ui/data/live_scores.json
-          git commit -m 'Refresh live scoreboard [skip ci]'
-          git pull --rebase origin main
-          git push origin HEAD:main
+          # This runs every hour during the season, so it races the deploy more
+          # often than anything else here. The script merges a main that moved
+          # instead of rebasing onto it, and reports a failure instead of
+          # leaving a conflicted tree behind an unchecked push.
+          scripts/publish_to_main.sh 'Refresh live scoreboard [skip ci]' ui/data/live_scores.json
       - name: Measure delivery to GitHub Pages
         if: success()
         continue-on-error: true
