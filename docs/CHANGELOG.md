@@ -2,6 +2,14 @@
 
 ## v0.1.1 — Players and Coaches (in progress, local branch)
 
+- `docs/identity-problems.md`: every known limit of CFBD's identity data, what
+  each one costs a reader, what the code does about it and what is still an open
+  decision, measured against the live database rather than estimated.
+- Box-score lines for six teams now link. The archive carries CFBD's team names
+  and a page keys on this database's, so UL Monroe, San José State, App State,
+  Florida Atlantic, Florida International and plain Miami never matched and not
+  one of their player lines linked to anybody, in any season. The six were
+  already `team_aliases` rows; the export now reads them.
 - A CFBD request that never got an answer is retried with an exponential
   backoff instead of ending the run. A reset killed the deploy's own fetch
   twice on 2026-10-03, so nothing published either time, and killed a
