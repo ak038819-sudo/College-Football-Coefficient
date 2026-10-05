@@ -62,6 +62,7 @@ NEW_ALIASES = {
     "Florida Atlantic": "FAU",
     "Florida International": "FIU",
     "UL Monroe": "ULM",
+    "UMass": "Massachusetts",
 }
 
 

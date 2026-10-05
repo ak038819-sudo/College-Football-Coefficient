@@ -521,15 +521,9 @@ def resolve_team_id(conn: sqlite3.Connection, raw_name: str) -> Optional[int]:
     schools this FBS-only database does not carry, and an opponent outside the
     league is not a data error.
     """
-    name = (raw_name or "").strip()
-    if not name:
-        return None
+    from team_identity import resolve_database_name
+    name = resolve_database_name(conn.cursor(), raw_name)
     row = conn.execute("SELECT team_id FROM teams WHERE team_name = ?", (name,)).fetchone()
-    if row:
-        return int(row[0])
-    row = conn.execute(
-        "SELECT t.team_id FROM team_aliases a JOIN teams t ON t.team_name = a.team_name "
-        "WHERE TRIM(a.alias) = TRIM(?) LIMIT 1", (name,)).fetchone()
     return int(row[0]) if row else None
 
 

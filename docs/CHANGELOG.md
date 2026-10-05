@@ -1,6 +1,23 @@
 # Site release history
 
-## v0.1.1 — Players and Coaches (in progress, local branch)
+## v0.1.1 — People, teams and statistics (2026-10-05)
+
+- Release of the implemented People search, team Stats/Leaders tabs, sortable
+  season rosters, chart date ranges and configurable national team tables.
+- Collegiate typography, table gridlines, unified team cards, larger stadium
+  maps, simplified Standings/Playoff menus, and game-panel spacing.
+- Home discovery applies all filters together inside a funnel disclosure.
+- All 139 supported team identities audited; exact provider mappings prevent
+  similarly named schools from inheriting another team's ratings or links.
+- Coach Elo changes and expectation formulas; no Hired column.
+- Completed backfills and roster syncs automatically queue a site rebuild.
+- People search/role survive shared URLs and return navigation; stale team-stat
+  requests cannot overwrite a newer season selection.
+
+This releases the current implementation as v0.1.1. Remaining requirements in
+`release-v0.1.9.md` retain their v0.1.9 deadline; portraits remain gated by image
+licensing. No production Elo formula changes are included in this release.
+
 
 - `docs/identity-problems.md`: every known limit of CFBD's identity data, what
   each one costs a reader, what the code does about it and what is still an open

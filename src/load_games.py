@@ -2,6 +2,7 @@ import csv
 import sqlite3
 from pathlib import Path
 from datetime import datetime
+from team_identity import resolve_database_name
 
 DB_PATH = Path("db/league.db")
 
@@ -16,16 +17,9 @@ def resolve_team_name(cur, raw_name: str) -> str:
     """
     raw_name = norm(raw_name)
 
-    # Direct hit
-    cur.execute("SELECT team_name FROM teams WHERE team_name = ?", (raw_name,))
-    if cur.fetchone():
-        return raw_name
-
-    # Alias hit
-    cur.execute("SELECT team_name FROM team_aliases WHERE alias = ?", (raw_name,))
-    row = cur.fetchone()
-    if row:
-        return row[0]
+    canonical = resolve_database_name(cur, raw_name)
+    if canonical:
+        return canonical
 
     raise ValueError(
         f"Unknown team name: '{raw_name}'. "

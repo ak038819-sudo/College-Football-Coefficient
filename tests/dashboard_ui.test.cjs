@@ -21,7 +21,7 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
  try {
   await t.test('Home has current games, previous weeks and combined historical filters',async()=>{
    await until(w,()=>d.querySelector('#home-team'));
-   assert.deepEqual([...d.querySelectorAll('#tabs a')].map(a=>a.textContent),['Home','Stats','Standings','Teams']);
+   assert.deepEqual([...d.querySelectorAll('#tabs a')].map(a=>a.textContent),['Home','Stats','Standings','Teams','People']);
    assert.ok(d.querySelector('#global-search'));assert.ok(d.querySelector('#live-games').textContent.trim());
    assert.ok(d.querySelector('#home-weeks').textContent.includes('Previous Week'));
    d.querySelector('#home-weeks a').click();await until(w,()=>w.location.hash.includes('slateweek=')&&d.querySelector('#home-weeks strong')&&d.querySelector('#live-games .live-card')&&d.querySelector('#live-status')?.textContent==='');
@@ -42,7 +42,7 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    await route('#section=home&findseason=2024&school=byu&status=completed',()=>d.querySelector('#home-season')?.value==='2024');
    assert.ok(d.querySelectorAll('#home-results .listing-game').length>0);
    assert.ok([...d.querySelectorAll('#home-results .listing-game')].every(row=>row.textContent.includes('BYU')&&row.textContent.includes('Final')));
-   change('home-conf','Big 12');await until(w,()=>w.location.hash.includes('conf=Big')&&d.querySelector('#home-conf')?.value==='Big 12');
+   const before=w.location.hash; change('home-conf','Big 12'); change('home-status','completed'); assert.equal(w.location.hash,before,'filters wait until Apply'); d.querySelector('#home-filter-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await until(w,()=>w.location.hash.includes('conf=Big')&&d.querySelector('#home-conf')?.value==='Big 12');
    assert.equal(d.querySelector('#home-team').value,'byu');assert.equal(d.querySelector('#home-status').value,'completed');
   });
   await t.test('player category, conference, minimum and numeric sort work together',async()=>{
@@ -98,6 +98,35 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    const team=d.querySelector('.stadium-facts a');assert.ok(team.getAttribute('href').startsWith('#team='));team.click();
    await until(w,()=>d.querySelector('#team-stadiums a'));
    d.querySelector('#team-stadiums a').click();await until(w,()=>d.querySelector('.selected-stadium'));
+  });
+  await t.test('People directory filters roles and links to profiles',async()=>{
+   await route('#section=people&q=Klubnik',()=>d.querySelector('#people-results a'));
+   assert.ok(d.querySelector('#people-results a').getAttribute('href').startsWith('#player='));
+   d.querySelector('#people-query').value='Saban';d.querySelector('#people-kind').value='coach';
+   d.querySelector('#people-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
+   await until(w,()=>d.querySelector('#people-results a')?.getAttribute('href').startsWith('#coach='));
+   assert.ok(w.location.hash.includes('q=Saban')&&w.location.hash.includes('kind=coach'));
+   const profile=d.querySelector('#people-results a');assert.ok(decodeURIComponent(profile.href).includes('q=Saban'));
+   assert.equal(d.querySelector('#people-kind').value,'coach');
+  });
+  await t.test('Team statistics, leaders, roster sorting and chart ranges work',async()=>{
+   await route('#team=byu&tab=stats',()=>d.querySelector('#tp-statistics tbody tr'));
+   assert.ok(d.querySelector('#tp-statistics').textContent.includes('Games'));
+   await route('#team=byu&tab=leaders',()=>d.querySelector('#tp-statistics a[href^="#player="]'));
+   await route('#team=byu&tab=roster',()=>d.querySelector('[data-roster-column="1"]'));
+   const button=d.querySelector('[data-roster-column="1"]');button.click();
+   const names=[...d.querySelectorAll('.roster-table tbody tr')].map(r=>r.cells[1].textContent);
+   assert.deepEqual(names,[...names].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'})));
+   await route('#team=byu',()=>d.querySelector('#tp-chart-from'));
+   change('tp-chart-from',2020);change('tp-chart-to',2023);
+   assert.equal(d.querySelector('#tp-chart-from').value,'2020');assert.equal(d.querySelector('#tp-chart-to').value,'2023');
+   assert.ok(d.querySelector('#tp-elo-chart svg'));
+  });
+  await t.test('Team tables let readers choose columns',async()=>{
+   await route('#section=stats&view=teams&season=2026',()=>d.querySelector('[data-team-field]'));
+   const checkbox=d.querySelector('[data-team-field][value="ppg"]');assert.ok(checkbox.checked);
+   checkbox.checked=false;checkbox.dispatchEvent(new w.Event('change',{bubbles:true}));
+   assert.equal(d.querySelector('[data-stat-sort="ppg"]'),null);
   });
   assert.deepEqual(errors,[],'dashboard script execution should not throw');
  }finally{w.close();}

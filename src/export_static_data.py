@@ -329,6 +329,10 @@ def build_search_index(conn: sqlite3.Connection, payloads: dict) -> dict:
             aliases[tid].append(alias)
     from export_dashboard_data import slugify
     teams = [[tid, name, slugify(name), aliases.get(tid, [])] for tid, name in sorted(names.items(), key=lambda x: x[1])]
+    from team_identity import registry
+    reviewed = {row['canonical_name']: row['aliases'] for row in registry()[0]}
+    for team in teams:
+        team[3] = sorted(set(team[3]) | set(reviewed.get(team[1], [])))
     games = [[r[0], season, r[8], r[9], r[2], r[10], r[11], r[4]]
              for season in sorted(payloads) for r in payloads[season]["games"]]
     return {"teams": teams, "seasons": sorted(payloads), "game_fields": SEARCH_GAME_FIELDS, "games": games,

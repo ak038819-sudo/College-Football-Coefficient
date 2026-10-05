@@ -100,3 +100,7 @@ Settings -> Secrets and variables -> Actions -> **Variables** tab ->
 - After each season's title game, add the champion to
   `data/reference/national_champions.csv` (see `data/reference/README.md`);
   that part is deliberately never automated.
+
+### Source workflow completions
+
+`Backfill player box scores` and `Sync rosters and coaches` now queue the deployment workflow through `workflow_run` on main. Their `[skip ci]`/GITHUB_TOKEN commits no longer require a manually dispatched deploy. Completion, including a failed run that committed earlier seasons, rebuilds committed data without fetching CFBD again. The source repository and branch are checked; the build acquires the existing deploy lock, then resets to current main. A source update that arrives during a build queues a later build from the new tip. Confirm both completion and overlapping-update behavior in Actions after merging this workflow change.

@@ -31,16 +31,17 @@
       const game=validGames.get(Number(gameId));if(!game||!game.completed)continue;
       for(const team of teams||[]) {
         const teamId=team.home_away==='home'?game.home_id:team.home_away==='away'?game.away_id:null;
-        const known=teamById.get(String(teamId));if(!known)continue;
+        const known=teamById.get(String(teamId));if(!known||team.name!==known.name)continue;
         covered.add(gameId+'|'+teamId);
         for(const cat of team.categories||[]) {
           const category=cat.name==='defensive'||cat.name==='interceptions'?'defense':cat.name;
           if(!categories[category])continue;
           for(const line of cat.lines||[]) {
             if(!line.name||/^team$/i.test(line.name))continue;
-            // Provider archive has no player ID: retain a scoped key for future ID resolution.
-            const id=teamId+'|'+line.name+'|'+category;
-            if(!records.has(id))records.set(id,{key:id,name:line.name,team:known.name,teamId,conference:conferences[String(teamId)]||null,category,_games:new Set()});
+            // Source athlete IDs keep namesakes separate; unnumbered lines stay scoped.
+            const athleteId=line.id==null||String(line.id).trim()===''?null:String(line.id).trim();
+            const id=teamId+'|'+(athleteId==null?'name:'+line.name:'id:'+athleteId)+'|'+category;
+            if(!records.has(id))records.set(id,{key:id,id:athleteId,name:line.name,team:known.name,teamId,conference:conferences[String(teamId)]||null,category,_games:new Set()});
             const row=records.get(id);row._games.add(gameId);
             const add=(key,n)=>{if(n!=null)row[key]=(row[key]??0)+n;};
             if(cat.type==='C/ATT'||cat.type==='FG'||cat.type==='XP') {

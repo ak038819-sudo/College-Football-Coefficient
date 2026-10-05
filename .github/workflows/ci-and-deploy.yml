@@ -43,12 +43,22 @@ on:
     # bowls and the playoff, which are the games most worth updating promptly.
     - cron: "35 * * 1,8-12 5,6,0,1"
   workflow_dispatch: {}
+  # Source jobs use GITHUB_TOKEN and [skip ci]; their commits cannot trigger push CI.
+  # Completion queues a rebuild even if some seasons committed before a failure.
+  workflow_run:
+    workflows: [Backfill player box scores, Sync rosters and coaches]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
   test:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.head_repository.full_name == github.repository &&
+       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -131,7 +141,7 @@ jobs:
     needs: test
     if: >-
       github.ref == 'refs/heads/main' &&
-      (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+      (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_run')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Never let two runs (e.g. a push and a scheduled refresh) build and push at once.
@@ -202,7 +212,7 @@ jobs:
           fi
 
       - name: Fetch fresh data from CFBD (scheduled, manual, or stale push)
-        if: steps.sunday_time.outputs.skip != 'true' && (github.event_name != 'push' && github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
+        if: github.event_name != 'workflow_run' && steps.sunday_time.outputs.skip != 'true' && (github.event_name != 'push' && github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
           CFBD_FETCH_ADVANCED: ${{ vars.FETCH_ADVANCED_STATS || '1' }}
@@ -286,7 +296,7 @@ jobs:
 
       # A stale push can fetch new data too, so retest whenever the feed ran.
       - name: Test the freshly fetched data before publishing
-        if: steps.sunday_time.outputs.skip != 'true' && (github.event_name != 'push' && github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
+        if: github.event_name != 'workflow_run' && steps.sunday_time.outputs.skip != 'true' && (github.event_name != 'push' && github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
         run: pytest -q
 
       - name: Commit and push if anything actually changed
