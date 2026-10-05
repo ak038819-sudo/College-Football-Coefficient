@@ -4,7 +4,11 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const {JSDOM,ResourceLoader,VirtualConsole}=require('jsdom');
+const {execFileSync}=require('node:child_process');
 const root=path.resolve(__dirname,'..');
+// Test the current shell, not the last dashboard committed by a deployment.
+// Reuse authoritative exports; this only renders HTML and never rebuilds ratings.
+execFileSync('python3',['build_dashboard.py','--reuse-exports'],{cwd:root});
 class LocalAssets extends ResourceLoader {
   fetch(url){const filename=path.resolve(root,'.'+new URL(url).pathname);if(!filename.startsWith(root+path.sep)||!filename.endsWith('.js'))return null;return Promise.resolve(fs.readFileSync(filename));}
 }
