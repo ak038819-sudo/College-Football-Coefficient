@@ -6,9 +6,8 @@ Standalone Elo rating engine -- CoE 2.0, Phase 1 (see project design doc,
 DELIBERATELY ISOLATED from the existing CoE pipeline: reads only from the
 games table, writes only to elo_game_history (sql/elo_tables.sql). Does
 not touch build_coefficients.py, its tables, or any of its outputs.
-Nothing about the live dashboard or playoff selection changes by running
-this -- it's a parallel, standalone model until a later, explicit
-integration step (build_hybrid_coefficients.py).
+The dashboard and hybrid pipeline consume this table. Running main() rebuilds
+production Elo; use run_elo() with separate research outputs for experiments.
 
 Formulas:
   Pregame effective rating: R* = R + H
@@ -23,7 +22,8 @@ Formulas:
     only asks who won.
   Performance multiplier M: chosen by config/model_config.json's "performance"
     section and computed by src/srdiff.py, so the engine never knows which
-    variant it is running. The default is the margin-of-victory multiplier:
+    variant it is running. The configured default is strength-adjusted Success
+    Rate (xsrdiff); the fallback margin-of-victory multiplier is:
     M = ln(|point_diff| + 1) * (mov_c / (mov_c + mov_d * winner_advantage))
     where winner_advantage = the WINNING team's effective rating minus
     the LOSING team's effective rating, before the game -- signed, so
@@ -36,9 +36,8 @@ Formulas:
     R_new = initial_rating + offseason_retention * (R_old - initial_rating)
 
 All numeric constants live in config/model_config.json's "elo" section,
-not hardcoded here -- see that file's _comment for calibration status
-(none of these values are backtested yet; that's calibrate_elo.py, a
-deliberately separate, later step).
+not hardcoded here. See that file's comments and the committed backtest results
+for training windows, calibration history and limitations.
 
 Usage:
     python src/build_elo.py [--db db/league.db] [--config config/model_config.json]
