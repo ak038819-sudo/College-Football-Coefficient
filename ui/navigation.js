@@ -6,7 +6,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
   const views = {
-    stats: ['overview', 'teams', 'players'], home: [], live: [], games: [], matchups: [], teams: ['', 'stadiums'], methodology: [], coverage: [],
+    people: [], stats: ['overview', 'teams', 'players'], home: [], live: [], games: [], matchups: [], teams: ['', 'stadiums'], methodology: [], coverage: [],
     // 'conference-coe' is CoE v1's five-year rolling value, which INCLUDES the
     // current season and feeds the live playoff model. 'conference-coe2' is CoE
     // 2.0's frozen value ENTERING the season. Separate views with separate names,
@@ -18,7 +18,7 @@
   // Detail-page tabs (Milestone E). The first entry is the default and is left out
   // of the URL, so every existing #team= link keeps opening the same page.
   const pageTabs = {
-    team: ['overview', 'schedule', 'roster', 'history', 'analytics'],
+    team: ['overview', 'schedule', 'roster', 'stats', 'leaders', 'history', 'analytics'],
     conference: ['overview', 'members', 'history', 'external'],
     game: [],
     // People pages (v0.1.1) carry no tabs yet, like #game=. What is known about a
@@ -133,7 +133,7 @@
       minimum: Math.max(0, Math.min(10000, Number(p.get('minimum')) || 0)),
       sort: (p.get('sort') || '').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 40),
       dir: p.get('dir') === 'asc' ? 'asc' : 'desc', page: Math.max(1, Math.min(10000, Number(p.get('page')) || 1)),
-      query: section === 'teams' && subview !== 'stadiums' ? (p.get('q') || '').trim().slice(0, 150) : '',
+      query: (section === 'people' || section === 'teams' && subview !== 'stadiums') ? (p.get('q') || '').trim().slice(0, 150) : '',
       game, week, team: teamFilter, opponent, finder, findSeason, conf, stage,
       stadium: section === 'teams' && subview === 'stadiums' && /^\d{1,10}$/.test(p.get('stadium') || '') ? Number(p.get('stadium')) : null,
       matchupHome: section === 'matchups' ? matchupId('home') : null,
@@ -248,7 +248,7 @@
         if (route.matchupHome != null) p.set('home', route.matchupHome);
         if (route.venue !== 'home') p.set('venue', route.venue);
       }
-      if (route.section === 'teams' && route.subview !== 'stadiums' && route.query) p.set('q', route.query);
+      if ((route.section === 'people' || route.section === 'teams' && route.subview !== 'stadiums') && route.query) p.set('q', route.query);
       if (route.section === 'teams' && route.subview === 'stadiums' && route.stadium != null) p.set('stadium', route.stadium);
     }
     return '#' + p.toString();

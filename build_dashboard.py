@@ -39,6 +39,8 @@ LIVE_TEAMS_PATH = Path("ui/live_teams.js")
 
 def render_from_exports() -> None:
     """Render the template from existing exports, without touching model data."""
+    from src.export_team_identities import export
+    export()
     required = [SHELL_PATH, DATA_PATH, TEAM_PAGES_PATH, CONFERENCE_PAGES_PATH, LOGO_MANIFEST_PATH,
                 TEAM_BRAND_COLORS_PATH,
                 STATIC_MANIFEST_PATH, NAVIGATION_PATH, SEARCH_PATH, STATS_PATH, GEOGRAPHY_PATH, LIVE_TEAMS_PATH]

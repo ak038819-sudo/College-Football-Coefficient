@@ -1,0 +1,2492 @@
+{
+  "schema_version": 1,
+  "verified_at": "2026-10-03",
+  "sources": {
+    "espn": "https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams?limit=1000&groups=80",
+    "cfbd_scoreboard": "ui/data/live_scores.json",
+    "cfbd_snapshot_updated_at": "2026-10-03T17:43:58.817542Z"
+  },
+  "teams": [
+    {
+      "team_id": 25,
+      "canonical_name": "Air Force",
+      "slug": "air-force",
+      "aliases": [
+        "Air Force Falcons"
+      ],
+      "espn_display_name": "Air Force Falcons",
+      "espn_color": "003594",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2005/air-force-falcons",
+      "provider_ids": {
+        "espn": 2005,
+        "cfbd_scoreboard": 2005
+      },
+      "cfbd_scoreboard_names": [
+        "Air Force Falcons"
+      ]
+    },
+    {
+      "team_id": 113,
+      "canonical_name": "Akron",
+      "slug": "akron",
+      "aliases": [
+        "Akron Zips"
+      ],
+      "espn_display_name": "Akron Zips",
+      "espn_color": "041e42",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2006/akron-zips",
+      "provider_ids": {
+        "espn": 2006,
+        "cfbd_scoreboard": 2006
+      },
+      "cfbd_scoreboard_names": [
+        "Akron Zips"
+      ]
+    },
+    {
+      "team_id": 121,
+      "canonical_name": "Alabama",
+      "slug": "alabama",
+      "aliases": [
+        "Alabama Crimson Tide"
+      ],
+      "espn_display_name": "Alabama Crimson Tide",
+      "espn_color": "9e1b32",
+      "source_url": "https://www.espn.com/college-football/team/_/id/333/alabama-crimson-tide",
+      "provider_ids": {
+        "espn": 333,
+        "cfbd_scoreboard": 333
+      },
+      "cfbd_scoreboard_names": [
+        "Alabama Crimson Tide"
+      ]
+    },
+    {
+      "team_id": 102,
+      "canonical_name": "Appalachian State",
+      "slug": "appalachian-state",
+      "aliases": [
+        "App State",
+        "App State Mountaineers",
+        "Appalachian State Mountaineers"
+      ],
+      "espn_display_name": "App State Mountaineers",
+      "espn_color": "000000",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2026/app-state-mountaineers",
+      "provider_ids": {
+        "espn": 2026
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 15,
+      "canonical_name": "Arizona",
+      "slug": "arizona",
+      "aliases": [
+        "Arizona Wildcats"
+      ],
+      "espn_display_name": "Arizona Wildcats",
+      "espn_color": "cc0033",
+      "source_url": "https://www.espn.com/college-football/team/_/id/12/arizona-wildcats",
+      "provider_ids": {
+        "espn": 12,
+        "cfbd_scoreboard": 12
+      },
+      "cfbd_scoreboard_names": [
+        "Arizona Wildcats"
+      ]
+    },
+    {
+      "team_id": 16,
+      "canonical_name": "Arizona State",
+      "slug": "arizona-state",
+      "aliases": [
+        "Arizona St",
+        "Arizona State Sun Devils"
+      ],
+      "espn_display_name": "Arizona State Sun Devils",
+      "espn_color": "ffc627",
+      "source_url": "https://www.espn.com/college-football/team/_/id/9/arizona-state-sun-devils",
+      "provider_ids": {
+        "espn": 9,
+        "cfbd_scoreboard": 9
+      },
+      "cfbd_scoreboard_names": [
+        "Arizona State Sun Devils"
+      ]
+    },
+    {
+      "team_id": 53,
+      "canonical_name": "Arkansas",
+      "slug": "arkansas",
+      "aliases": [
+        "Arkansas Razorbacks"
+      ],
+      "espn_display_name": "Arkansas Razorbacks",
+      "espn_color": "a32136",
+      "source_url": "https://www.espn.com/college-football/team/_/id/8/arkansas-razorbacks",
+      "provider_ids": {
+        "espn": 8,
+        "cfbd_scoreboard": 8
+      },
+      "cfbd_scoreboard_names": [
+        "Arkansas Razorbacks"
+      ]
+    },
+    {
+      "team_id": 57,
+      "canonical_name": "Arkansas State",
+      "slug": "arkansas-state",
+      "aliases": [
+        "Arkansas St",
+        "Arkansas State Red Wolves"
+      ],
+      "espn_display_name": "Arkansas State Red Wolves",
+      "espn_color": "cc092f",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2032/arkansas-state-red-wolves",
+      "provider_ids": {
+        "espn": 2032,
+        "cfbd_scoreboard": 2032
+      },
+      "cfbd_scoreboard_names": [
+        "Arkansas State Red Wolves"
+      ]
+    },
+    {
+      "team_id": 109,
+      "canonical_name": "Army",
+      "slug": "army",
+      "aliases": [
+        "Army Black Knights"
+      ],
+      "espn_display_name": "Army Black Knights",
+      "espn_color": "000000",
+      "source_url": "https://www.espn.com/college-football/team/_/id/349/army-black-knights",
+      "provider_ids": {
+        "espn": 349,
+        "cfbd_scoreboard": 349
+      },
+      "cfbd_scoreboard_names": [
+        "Army Black Knights"
+      ]
+    },
+    {
+      "team_id": 122,
+      "canonical_name": "Auburn",
+      "slug": "auburn",
+      "aliases": [
+        "Auburn Tigers"
+      ],
+      "espn_display_name": "Auburn Tigers",
+      "espn_color": "002b5c",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2/auburn-tigers",
+      "provider_ids": {
+        "espn": 2,
+        "cfbd_scoreboard": 2
+      },
+      "cfbd_scoreboard_names": [
+        "Auburn Tigers"
+      ]
+    },
+    {
+      "team_id": 18,
+      "canonical_name": "BYU",
+      "slug": "byu",
+      "aliases": [
+        "BYU Cougars"
+      ],
+      "espn_display_name": "BYU Cougars",
+      "espn_color": "0047ba",
+      "source_url": "https://www.espn.com/college-football/team/_/id/252/byu-cougars",
+      "provider_ids": {
+        "espn": 252,
+        "cfbd_scoreboard": 252
+      },
+      "cfbd_scoreboard_names": [
+        "BYU Cougars"
+      ]
+    },
+    {
+      "team_id": 81,
+      "canonical_name": "Ball State",
+      "slug": "ball-state",
+      "aliases": [
+        "Ball State Cardinals"
+      ],
+      "espn_display_name": "Ball State Cardinals",
+      "espn_color": "ba0c2f",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2050/ball-state-cardinals",
+      "provider_ids": {
+        "espn": 2050,
+        "cfbd_scoreboard": 2050
+      },
+      "cfbd_scoreboard_names": [
+        "Ball State Cardinals"
+      ]
+    },
+    {
+      "team_id": 37,
+      "canonical_name": "Baylor",
+      "slug": "baylor",
+      "aliases": [
+        "Baylor Bears"
+      ],
+      "espn_display_name": "Baylor Bears",
+      "espn_color": "154734",
+      "source_url": "https://www.espn.com/college-football/team/_/id/239/baylor-bears",
+      "provider_ids": {
+        "espn": 239,
+        "cfbd_scoreboard": 239
+      },
+      "cfbd_scoreboard_names": [
+        "Baylor Bears"
+      ]
+    },
+    {
+      "team_id": 21,
+      "canonical_name": "Boise State",
+      "slug": "boise-state",
+      "aliases": [
+        "Boise St",
+        "Boise State Broncos"
+      ],
+      "espn_display_name": "Boise State Broncos",
+      "espn_color": "0033a0",
+      "source_url": "https://www.espn.com/college-football/team/_/id/68/boise-state-broncos",
+      "provider_ids": {
+        "espn": 68,
+        "cfbd_scoreboard": 68
+      },
+      "cfbd_scoreboard_names": [
+        "Boise State Broncos"
+      ]
+    },
+    {
+      "team_id": 106,
+      "canonical_name": "Boston College",
+      "slug": "boston-college",
+      "aliases": [
+        "Boston College Eagles"
+      ],
+      "espn_display_name": "Boston College Eagles",
+      "espn_color": "8c2232",
+      "source_url": "https://www.espn.com/college-football/team/_/id/103/boston-college-eagles",
+      "provider_ids": {
+        "espn": 103,
+        "cfbd_scoreboard": 103
+      },
+      "cfbd_scoreboard_names": [
+        "Boston College Eagles"
+      ]
+    },
+    {
+      "team_id": 83,
+      "canonical_name": "Bowling Green",
+      "slug": "bowling-green",
+      "aliases": [
+        "Bowling Green Falcons"
+      ],
+      "espn_display_name": "Bowling Green Falcons",
+      "espn_color": "fd5000",
+      "source_url": "https://www.espn.com/college-football/team/_/id/189/bowling-green-falcons",
+      "provider_ids": {
+        "espn": 189,
+        "cfbd_scoreboard": 189
+      },
+      "cfbd_scoreboard_names": [
+        "Bowling Green Falcons"
+      ]
+    },
+    {
+      "team_id": 112,
+      "canonical_name": "Buffalo",
+      "slug": "buffalo",
+      "aliases": [
+        "Buffalo Bulls"
+      ],
+      "espn_display_name": "Buffalo Bulls",
+      "espn_color": "005bbb",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2084/buffalo-bulls",
+      "provider_ids": {
+        "espn": 2084,
+        "cfbd_scoreboard": 2084
+      },
+      "cfbd_scoreboard_names": [
+        "Buffalo Bulls"
+      ]
+    },
+    {
+      "team_id": 5,
+      "canonical_name": "California",
+      "slug": "california",
+      "aliases": [
+        "California Golden Bears"
+      ],
+      "espn_display_name": "California Golden Bears",
+      "espn_color": "041e42",
+      "source_url": "https://www.espn.com/college-football/team/_/id/25/california-golden-bears",
+      "provider_ids": {
+        "espn": 25,
+        "cfbd_scoreboard": 25
+      },
+      "cfbd_scoreboard_names": [
+        "California Golden Bears"
+      ]
+    },
+    {
+      "team_id": 84,
+      "canonical_name": "Central Michigan",
+      "slug": "central-michigan",
+      "aliases": [
+        "C Michigan",
+        "Central Michigan Chippewas"
+      ],
+      "espn_display_name": "Central Michigan Chippewas",
+      "espn_color": "4c0027",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2117/central-michigan-chippewas",
+      "provider_ids": {
+        "espn": 2117,
+        "cfbd_scoreboard": 2117
+      },
+      "cfbd_scoreboard_names": [
+        "Central Michigan Chippewas"
+      ]
+    },
+    {
+      "team_id": 103,
+      "canonical_name": "Charlotte",
+      "slug": "charlotte",
+      "aliases": [
+        "Charlotte 49ers"
+      ],
+      "espn_display_name": "Charlotte 49ers",
+      "espn_color": "005035",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2429/charlotte-49ers",
+      "provider_ids": {
+        "espn": 2429,
+        "cfbd_scoreboard": 2429
+      },
+      "cfbd_scoreboard_names": [
+        "Charlotte 49ers"
+      ]
+    },
+    {
+      "team_id": 55,
+      "canonical_name": "Cincinnati",
+      "slug": "cincinnati",
+      "aliases": [
+        "Cincinnati Bearcats"
+      ],
+      "espn_display_name": "Cincinnati Bearcats",
+      "espn_color": "000000",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2132/cincinnati-bearcats",
+      "provider_ids": {
+        "espn": 2132,
+        "cfbd_scoreboard": 2132
+      },
+      "cfbd_scoreboard_names": [
+        "Cincinnati Bearcats"
+      ]
+    },
+    {
+      "team_id": 129,
+      "canonical_name": "Clemson",
+      "slug": "clemson",
+      "aliases": [
+        "Clemson Tigers"
+      ],
+      "espn_display_name": "Clemson Tigers",
+      "espn_color": "f56600",
+      "source_url": "https://www.espn.com/college-football/team/_/id/228/clemson-tigers",
+      "provider_ids": {
+        "espn": 228,
+        "cfbd_scoreboard": 228
+      },
+      "cfbd_scoreboard_names": [
+        "Clemson Tigers"
+      ]
+    },
+    {
+      "team_id": 101,
+      "canonical_name": "Coastal Carolina",
+      "slug": "coastal-carolina",
+      "aliases": [
+        "Coastal",
+        "Coastal Carolina Chanticleers"
+      ],
+      "espn_display_name": "Coastal Carolina Chanticleers",
+      "espn_color": "006f71",
+      "source_url": "https://www.espn.com/college-football/team/_/id/324/coastal-carolina-chanticleers",
+      "provider_ids": {
+        "espn": 324,
+        "cfbd_scoreboard": 324
+      },
+      "cfbd_scoreboard_names": [
+        "Coastal Carolina Chanticleers"
+      ]
+    },
+    {
+      "team_id": 22,
+      "canonical_name": "Colorado",
+      "slug": "colorado",
+      "aliases": [
+        "Colorado Buffaloes"
+      ],
+      "espn_display_name": "Colorado Buffaloes",
+      "espn_color": "cfb87c",
+      "source_url": "https://www.espn.com/college-football/team/_/id/38/colorado-buffaloes",
+      "provider_ids": {
+        "espn": 38,
+        "cfbd_scoreboard": 38
+      },
+      "cfbd_scoreboard_names": [
+        "Colorado Buffaloes"
+      ]
+    },
+    {
+      "team_id": 23,
+      "canonical_name": "Colorado State",
+      "slug": "colorado-state",
+      "aliases": [
+        "Colorado St",
+        "Colorado State Rams"
+      ],
+      "espn_display_name": "Colorado State Rams",
+      "espn_color": "004c23",
+      "source_url": "https://www.espn.com/college-football/team/_/id/36/colorado-state-rams",
+      "provider_ids": {
+        "espn": 36,
+        "cfbd_scoreboard": 36
+      },
+      "cfbd_scoreboard_names": [
+        "Colorado State Rams"
+      ]
+    },
+    {
+      "team_id": 117,
+      "canonical_name": "Delaware",
+      "slug": "delaware",
+      "aliases": [
+        "Delaware Blue Hens"
+      ],
+      "espn_display_name": "Delaware Blue Hens",
+      "espn_color": "00539f",
+      "source_url": "https://www.espn.com/college-football/team/_/id/48/delaware-blue-hens",
+      "provider_ids": {
+        "espn": 48,
+        "cfbd_scoreboard": 48
+      },
+      "cfbd_scoreboard_names": [
+        "Delaware Blue Hens"
+      ]
+    },
+    {
+      "team_id": 95,
+      "canonical_name": "Duke",
+      "slug": "duke",
+      "aliases": [
+        "Duke Blue Devils"
+      ],
+      "espn_display_name": "Duke Blue Devils",
+      "espn_color": "00539b",
+      "source_url": "https://www.espn.com/college-football/team/_/id/150/duke-blue-devils",
+      "provider_ids": {
+        "espn": 150
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 100,
+      "canonical_name": "East Carolina",
+      "slug": "east-carolina",
+      "aliases": [
+        "East Carolina Pirates"
+      ],
+      "espn_display_name": "East Carolina Pirates",
+      "espn_color": "582c83",
+      "source_url": "https://www.espn.com/college-football/team/_/id/151/east-carolina-pirates",
+      "provider_ids": {
+        "espn": 151
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 85,
+      "canonical_name": "Eastern Michigan",
+      "slug": "eastern-michigan",
+      "aliases": [
+        "E Michigan",
+        "Eastern Michigan Eagles"
+      ],
+      "espn_display_name": "Eastern Michigan Eagles",
+      "espn_color": "006938",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2199/eastern-michigan-eagles",
+      "provider_ids": {
+        "espn": 2199,
+        "cfbd_scoreboard": 2199
+      },
+      "cfbd_scoreboard_names": [
+        "Eastern Michigan Eagles"
+      ]
+    },
+    {
+      "team_id": 60,
+      "canonical_name": "FAU",
+      "slug": "fau",
+      "aliases": [
+        "FAU Owls",
+        "Florida Atlantic",
+        "Florida Atlantic Owls"
+      ],
+      "espn_display_name": "Florida Atlantic Owls",
+      "espn_color": "003366",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2226/florida-atlantic-owls",
+      "provider_ids": {
+        "espn": 2226,
+        "cfbd_scoreboard": 2226
+      },
+      "cfbd_scoreboard_names": [
+        "Florida Atlantic Owls"
+      ]
+    },
+    {
+      "team_id": 51,
+      "canonical_name": "FIU",
+      "slug": "fiu",
+      "aliases": [
+        "FIU Panthers",
+        "Florida International",
+        "Florida International Panthers"
+      ],
+      "espn_display_name": "Florida International Panthers",
+      "espn_color": "091f3f",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2229/florida-international-panthers",
+      "provider_ids": {
+        "espn": 2229
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 125,
+      "canonical_name": "Florida",
+      "slug": "florida",
+      "aliases": [
+        "Florida Gators"
+      ],
+      "espn_display_name": "Florida Gators",
+      "espn_color": "0021a5",
+      "source_url": "https://www.espn.com/college-football/team/_/id/57/florida-gators",
+      "provider_ids": {
+        "espn": 57,
+        "cfbd_scoreboard": 57
+      },
+      "cfbd_scoreboard_names": [
+        "Florida Gators"
+      ]
+    },
+    {
+      "team_id": 126,
+      "canonical_name": "Florida State",
+      "slug": "florida-state",
+      "aliases": [
+        "Florida St",
+        "Florida State Seminoles"
+      ],
+      "espn_display_name": "Florida State Seminoles",
+      "espn_color": "782f40",
+      "source_url": "https://www.espn.com/college-football/team/_/id/52/florida-state-seminoles",
+      "provider_ids": {
+        "espn": 52,
+        "cfbd_scoreboard": 52
+      },
+      "cfbd_scoreboard_names": [
+        "Florida State Seminoles"
+      ]
+    },
+    {
+      "team_id": 10,
+      "canonical_name": "Fresno State",
+      "slug": "fresno-state",
+      "aliases": [
+        "Fresno St",
+        "Fresno State Bulldogs"
+      ],
+      "espn_display_name": "Fresno State Bulldogs",
+      "espn_color": "b1102b",
+      "source_url": "https://www.espn.com/college-football/team/_/id/278/fresno-state-bulldogs",
+      "provider_ids": {
+        "espn": 278,
+        "cfbd_scoreboard": 278
+      },
+      "cfbd_scoreboard_names": [
+        "Fresno State Bulldogs"
+      ]
+    },
+    {
+      "team_id": 123,
+      "canonical_name": "Georgia",
+      "slug": "georgia",
+      "aliases": [
+        "Georgia Bulldogs"
+      ],
+      "espn_display_name": "Georgia Bulldogs",
+      "espn_color": "ba0c2f",
+      "source_url": "https://www.espn.com/college-football/team/_/id/61/georgia-bulldogs",
+      "provider_ids": {
+        "espn": 61,
+        "cfbd_scoreboard": 61
+      },
+      "cfbd_scoreboard_names": [
+        "Georgia Bulldogs"
+      ]
+    },
+    {
+      "team_id": 61,
+      "canonical_name": "Georgia Southern",
+      "slug": "georgia-southern",
+      "aliases": [
+        "GA Southern",
+        "Georgia Southern Eagles"
+      ],
+      "espn_display_name": "Georgia Southern Eagles",
+      "espn_color": "041e42",
+      "source_url": "https://www.espn.com/college-football/team/_/id/290/georgia-southern-eagles",
+      "provider_ids": {
+        "espn": 290,
+        "cfbd_scoreboard": 290
+      },
+      "cfbd_scoreboard_names": [
+        "Georgia Southern Eagles"
+      ]
+    },
+    {
+      "team_id": 62,
+      "canonical_name": "Georgia State",
+      "slug": "georgia-state",
+      "aliases": [
+        "Georgia St",
+        "Georgia State Panthers"
+      ],
+      "espn_display_name": "Georgia State Panthers",
+      "espn_color": "0039a6",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2247/georgia-state-panthers",
+      "provider_ids": {
+        "espn": 2247,
+        "cfbd_scoreboard": 2247
+      },
+      "cfbd_scoreboard_names": [
+        "Georgia State Panthers"
+      ]
+    },
+    {
+      "team_id": 124,
+      "canonical_name": "Georgia Tech",
+      "slug": "georgia-tech",
+      "aliases": [
+        "Georgia Tech Yellow Jackets"
+      ],
+      "espn_display_name": "Georgia Tech Yellow Jackets",
+      "espn_color": "b3a369",
+      "source_url": "https://www.espn.com/college-football/team/_/id/59/georgia-tech-yellow-jackets",
+      "provider_ids": {
+        "espn": 59
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 12,
+      "canonical_name": "Hawai'i",
+      "slug": "hawaii",
+      "aliases": [
+        "Hawai'i Rainbow Warriors",
+        "Hawaii",
+        "Hawaii Rainbow Warriors"
+      ],
+      "espn_display_name": "Hawai'i Rainbow Warriors",
+      "espn_color": "005737",
+      "source_url": "https://www.espn.com/college-football/team/_/id/62/hawaii-rainbow-warriors",
+      "provider_ids": {
+        "espn": 62,
+        "cfbd_scoreboard": 62
+      },
+      "cfbd_scoreboard_names": [
+        "Hawai'i Rainbow Warriors"
+      ]
+    },
+    {
+      "team_id": 40,
+      "canonical_name": "Houston",
+      "slug": "houston",
+      "aliases": [
+        "Houston Cougars"
+      ],
+      "espn_display_name": "Houston Cougars",
+      "espn_color": "c8102e",
+      "source_url": "https://www.espn.com/college-football/team/_/id/248/houston-cougars",
+      "provider_ids": {
+        "espn": 248,
+        "cfbd_scoreboard": 248
+      },
+      "cfbd_scoreboard_names": [
+        "Houston Cougars"
+      ]
+    },
+    {
+      "team_id": 139,
+      "canonical_name": "Idaho",
+      "slug": "idaho",
+      "aliases": [
+        "Idaho Vandals"
+      ],
+      "espn_display_name": "Idaho Vandals",
+      "espn_color": "000000",
+      "source_url": "https://www.espn.com/college-football/team/_/id/70/idaho-vandals",
+      "provider_ids": {
+        "espn": 70
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 74,
+      "canonical_name": "Illinois",
+      "slug": "illinois",
+      "aliases": [
+        "Illinois Fighting Illini"
+      ],
+      "espn_display_name": "Illinois Fighting Illini",
+      "espn_color": "ff5f05",
+      "source_url": "https://www.espn.com/college-football/team/_/id/356/illinois-fighting-illini",
+      "provider_ids": {
+        "espn": 356,
+        "cfbd_scoreboard": 356
+      },
+      "cfbd_scoreboard_names": [
+        "Illinois Fighting Illini"
+      ]
+    },
+    {
+      "team_id": 72,
+      "canonical_name": "Indiana",
+      "slug": "indiana",
+      "aliases": [
+        "Indiana Hoosiers"
+      ],
+      "espn_display_name": "Indiana Hoosiers",
+      "espn_color": "970310",
+      "source_url": "https://www.espn.com/college-football/team/_/id/84/indiana-hoosiers",
+      "provider_ids": {
+        "espn": 84,
+        "cfbd_scoreboard": 84
+      },
+      "cfbd_scoreboard_names": [
+        "Indiana Hoosiers"
+      ]
+    },
+    {
+      "team_id": 78,
+      "canonical_name": "Iowa",
+      "slug": "iowa",
+      "aliases": [
+        "Iowa Hawkeyes"
+      ],
+      "espn_display_name": "Iowa Hawkeyes",
+      "espn_color": "231f20",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2294/iowa-hawkeyes",
+      "provider_ids": {
+        "espn": 2294,
+        "cfbd_scoreboard": 2294
+      },
+      "cfbd_scoreboard_names": [
+        "Iowa Hawkeyes"
+      ]
+    },
+    {
+      "team_id": 32,
+      "canonical_name": "Iowa State",
+      "slug": "iowa-state",
+      "aliases": [
+        "Iowa State Cyclones"
+      ],
+      "espn_display_name": "Iowa State Cyclones",
+      "espn_color": "ae192d",
+      "source_url": "https://www.espn.com/college-football/team/_/id/66/iowa-state-cyclones",
+      "provider_ids": {
+        "espn": 66,
+        "cfbd_scoreboard": 66
+      },
+      "cfbd_scoreboard_names": [
+        "Iowa State Cyclones"
+      ]
+    },
+    {
+      "team_id": 63,
+      "canonical_name": "Jacksonville State",
+      "slug": "jacksonville-state",
+      "aliases": [
+        "Jacksonville State Gamecocks",
+        "Jax State"
+      ],
+      "espn_display_name": "Jacksonville State Gamecocks",
+      "espn_color": "cc0000",
+      "source_url": "https://www.espn.com/college-football/team/_/id/55/jacksonville-state-gamecocks",
+      "provider_ids": {
+        "espn": 55
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 97,
+      "canonical_name": "James Madison",
+      "slug": "james-madison",
+      "aliases": [
+        "James Madison Dukes"
+      ],
+      "espn_display_name": "James Madison Dukes",
+      "espn_color": "450084",
+      "source_url": "https://www.espn.com/college-football/team/_/id/256/james-madison-dukes",
+      "provider_ids": {
+        "espn": 256,
+        "cfbd_scoreboard": 256
+      },
+      "cfbd_scoreboard_names": [
+        "James Madison Dukes"
+      ]
+    },
+    {
+      "team_id": 29,
+      "canonical_name": "Kansas",
+      "slug": "kansas",
+      "aliases": [
+        "Kansas Jayhawks"
+      ],
+      "espn_display_name": "Kansas Jayhawks",
+      "espn_color": "0051ba",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2305/kansas-jayhawks",
+      "provider_ids": {
+        "espn": 2305,
+        "cfbd_scoreboard": 2305
+      },
+      "cfbd_scoreboard_names": [
+        "Kansas Jayhawks"
+      ]
+    },
+    {
+      "team_id": 30,
+      "canonical_name": "Kansas State",
+      "slug": "kansas-state",
+      "aliases": [
+        "Kansas St",
+        "Kansas State Wildcats"
+      ],
+      "espn_display_name": "Kansas State Wildcats",
+      "espn_color": "330a57",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2306/kansas-state-wildcats",
+      "provider_ids": {
+        "espn": 2306
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 64,
+      "canonical_name": "Kennesaw State",
+      "slug": "kennesaw-state",
+      "aliases": [
+        "Kennesaw St",
+        "Kennesaw State Owls"
+      ],
+      "espn_display_name": "Kennesaw State Owls",
+      "espn_color": "fdbb30",
+      "source_url": "https://www.espn.com/college-football/team/_/id/338/kennesaw-state-owls",
+      "provider_ids": {
+        "espn": 338
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 114,
+      "canonical_name": "Kent State",
+      "slug": "kent-state",
+      "aliases": [
+        "Kent State Golden Flashes"
+      ],
+      "espn_display_name": "Kent State Golden Flashes",
+      "espn_color": "002664",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2309/kent-state-golden-flashes",
+      "provider_ids": {
+        "espn": 2309,
+        "cfbd_scoreboard": 2309
+      },
+      "cfbd_scoreboard_names": [
+        "Kent State Golden Flashes"
+      ]
+    },
+    {
+      "team_id": 132,
+      "canonical_name": "Kentucky",
+      "slug": "kentucky",
+      "aliases": [
+        "Kentucky Wildcats"
+      ],
+      "espn_display_name": "Kentucky Wildcats",
+      "espn_color": "0033a0",
+      "source_url": "https://www.espn.com/college-football/team/_/id/96/kentucky-wildcats",
+      "provider_ids": {
+        "espn": 96,
+        "cfbd_scoreboard": 96
+      },
+      "cfbd_scoreboard_names": [
+        "Kentucky Wildcats"
+      ]
+    },
+    {
+      "team_id": 133,
+      "canonical_name": "LSU",
+      "slug": "lsu",
+      "aliases": [
+        "LSU Tigers"
+      ],
+      "espn_display_name": "LSU Tigers",
+      "espn_color": "461d76",
+      "source_url": "https://www.espn.com/college-football/team/_/id/99/lsu-tigers",
+      "provider_ids": {
+        "espn": 99,
+        "cfbd_scoreboard": 99
+      },
+      "cfbd_scoreboard_names": [
+        "LSU Tigers"
+      ]
+    },
+    {
+      "team_id": 118,
+      "canonical_name": "Liberty",
+      "slug": "liberty",
+      "aliases": [
+        "Liberty Flames"
+      ],
+      "espn_display_name": "Liberty Flames",
+      "espn_color": "0a254e",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2335/liberty-flames",
+      "provider_ids": {
+        "espn": 2335,
+        "cfbd_scoreboard": 2335
+      },
+      "cfbd_scoreboard_names": [
+        "Liberty Flames"
+      ]
+    },
+    {
+      "team_id": 49,
+      "canonical_name": "Louisiana",
+      "slug": "louisiana",
+      "aliases": [
+        "Louisiana Ragin Cajuns",
+        "Louisiana Ragin' Cajuns"
+      ],
+      "espn_display_name": "Louisiana Ragin' Cajuns",
+      "espn_color": "ce181e",
+      "source_url": "https://www.espn.com/college-football/team/_/id/309/louisiana-ragin-cajuns",
+      "provider_ids": {
+        "espn": 309,
+        "cfbd_scoreboard": 309
+      },
+      "cfbd_scoreboard_names": [
+        "Louisiana Ragin' Cajuns"
+      ]
+    },
+    {
+      "team_id": 47,
+      "canonical_name": "Louisiana Tech",
+      "slug": "louisiana-tech",
+      "aliases": [
+        "Louisiana Tech Bulldogs"
+      ],
+      "espn_display_name": "Louisiana Tech Bulldogs",
+      "espn_color": "003087",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2348/louisiana-tech-bulldogs",
+      "provider_ids": {
+        "espn": 2348,
+        "cfbd_scoreboard": 2348
+      },
+      "cfbd_scoreboard_names": [
+        "Louisiana Tech Bulldogs"
+      ]
+    },
+    {
+      "team_id": 56,
+      "canonical_name": "Louisville",
+      "slug": "louisville",
+      "aliases": [
+        "Louisville Cardinals"
+      ],
+      "espn_display_name": "Louisville Cardinals",
+      "espn_color": "c9001f",
+      "source_url": "https://www.espn.com/college-football/team/_/id/97/louisville-cardinals",
+      "provider_ids": {
+        "espn": 97,
+        "cfbd_scoreboard": 97
+      },
+      "cfbd_scoreboard_names": [
+        "Louisville Cardinals"
+      ]
+    },
+    {
+      "team_id": 99,
+      "canonical_name": "Marshall",
+      "slug": "marshall",
+      "aliases": [
+        "Marshall Thundering Herd"
+      ],
+      "espn_display_name": "Marshall Thundering Herd",
+      "espn_color": "00b140",
+      "source_url": "https://www.espn.com/college-football/team/_/id/276/marshall-thundering-herd",
+      "provider_ids": {
+        "espn": 276,
+        "cfbd_scoreboard": 276
+      },
+      "cfbd_scoreboard_names": [
+        "Marshall Thundering Herd"
+      ]
+    },
+    {
+      "team_id": 90,
+      "canonical_name": "Maryland",
+      "slug": "maryland",
+      "aliases": [
+        "Maryland Terrapins"
+      ],
+      "espn_display_name": "Maryland Terrapins",
+      "espn_color": "ce1126",
+      "source_url": "https://www.espn.com/college-football/team/_/id/120/maryland-terrapins",
+      "provider_ids": {
+        "espn": 120,
+        "cfbd_scoreboard": 120
+      },
+      "cfbd_scoreboard_names": [
+        "Maryland Terrapins"
+      ]
+    },
+    {
+      "team_id": 140,
+      "canonical_name": "Massachusetts",
+      "slug": "massachusetts",
+      "aliases": [
+        "Massachusetts Minutemen",
+        "UMass",
+        "UMass Minutemen"
+      ],
+      "espn_display_name": "Massachusetts Minutemen",
+      "espn_color": "881c1c",
+      "source_url": "https://www.espn.com/college-football/team/_/id/113/massachusetts-minutemen",
+      "provider_ids": {
+        "espn": 113,
+        "cfbd_scoreboard": 113
+      },
+      "cfbd_scoreboard_names": [
+        "Massachusetts Minutemen"
+      ]
+    },
+    {
+      "team_id": 50,
+      "canonical_name": "Memphis",
+      "slug": "memphis",
+      "aliases": [
+        "Memphis Tigers"
+      ],
+      "espn_display_name": "Memphis Tigers",
+      "espn_color": "004991",
+      "source_url": "https://www.espn.com/college-football/team/_/id/235/memphis-tigers",
+      "provider_ids": {
+        "espn": 235,
+        "cfbd_scoreboard": 235
+      },
+      "cfbd_scoreboard_names": [
+        "Memphis Tigers"
+      ]
+    },
+    {
+      "team_id": 127,
+      "canonical_name": "Miami (FL)",
+      "slug": "miami-fl",
+      "aliases": [
+        "Miami",
+        "Miami (FL) Hurricanes",
+        "Miami Hurricanes"
+      ],
+      "espn_display_name": "Miami Hurricanes",
+      "espn_color": "f47423",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2390/miami-hurricanes",
+      "provider_ids": {
+        "espn": 2390,
+        "cfbd_scoreboard": 2390
+      },
+      "cfbd_scoreboard_names": [
+        "Miami Hurricanes"
+      ]
+    },
+    {
+      "team_id": 116,
+      "canonical_name": "Miami (OH)",
+      "slug": "miami-oh",
+      "aliases": [
+        "Miami (OH) RedHawks",
+        "Miami (Ohio) RedHawks",
+        "Miami OH"
+      ],
+      "espn_display_name": "Miami (OH) RedHawks",
+      "espn_color": "c41230",
+      "source_url": "https://www.espn.com/college-football/team/_/id/193/miami-oh-redhawks",
+      "provider_ids": {
+        "espn": 193,
+        "cfbd_scoreboard": 193
+      },
+      "cfbd_scoreboard_names": [
+        "Miami (OH) RedHawks"
+      ]
+    },
+    {
+      "team_id": 69,
+      "canonical_name": "Michigan",
+      "slug": "michigan",
+      "aliases": [
+        "Michigan Wolverines"
+      ],
+      "espn_display_name": "Michigan Wolverines",
+      "espn_color": "00274c",
+      "source_url": "https://www.espn.com/college-football/team/_/id/130/michigan-wolverines",
+      "provider_ids": {
+        "espn": 130,
+        "cfbd_scoreboard": 130
+      },
+      "cfbd_scoreboard_names": [
+        "Michigan Wolverines"
+      ]
+    },
+    {
+      "team_id": 70,
+      "canonical_name": "Michigan State",
+      "slug": "michigan-state",
+      "aliases": [
+        "Michigan St",
+        "Michigan State Spartans"
+      ],
+      "espn_display_name": "Michigan State Spartans",
+      "espn_color": "173f35",
+      "source_url": "https://www.espn.com/college-football/team/_/id/127/michigan-state-spartans",
+      "provider_ids": {
+        "espn": 127,
+        "cfbd_scoreboard": 127
+      },
+      "cfbd_scoreboard_names": [
+        "Michigan State Spartans"
+      ]
+    },
+    {
+      "team_id": 65,
+      "canonical_name": "Middle Tennessee",
+      "slug": "middle-tennessee",
+      "aliases": [
+        "MTSU",
+        "Middle Tennessee Blue Raiders"
+      ],
+      "espn_display_name": "Middle Tennessee Blue Raiders",
+      "espn_color": "036eb7",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2393/middle-tennessee-blue-raiders",
+      "provider_ids": {
+        "espn": 2393,
+        "cfbd_scoreboard": 2393
+      },
+      "cfbd_scoreboard_names": [
+        "Middle Tennessee Blue Raiders"
+      ]
+    },
+    {
+      "team_id": 77,
+      "canonical_name": "Minnesota",
+      "slug": "minnesota",
+      "aliases": [
+        "Minnesota Golden Gophers"
+      ],
+      "espn_display_name": "Minnesota Golden Gophers",
+      "espn_color": "5e0a2f",
+      "source_url": "https://www.espn.com/college-football/team/_/id/135/minnesota-golden-gophers",
+      "provider_ids": {
+        "espn": 135,
+        "cfbd_scoreboard": 135
+      },
+      "cfbd_scoreboard_names": [
+        "Minnesota Golden Gophers"
+      ]
+    },
+    {
+      "team_id": 134,
+      "canonical_name": "Mississippi State",
+      "slug": "mississippi-state",
+      "aliases": [
+        "Mississippi St",
+        "Mississippi State Bulldogs"
+      ],
+      "espn_display_name": "Mississippi State Bulldogs",
+      "espn_color": "5d1725",
+      "source_url": "https://www.espn.com/college-football/team/_/id/344/mississippi-state-bulldogs",
+      "provider_ids": {
+        "espn": 344,
+        "cfbd_scoreboard": 344
+      },
+      "cfbd_scoreboard_names": [
+        "Mississippi State Bulldogs"
+      ]
+    },
+    {
+      "team_id": 54,
+      "canonical_name": "Missouri",
+      "slug": "missouri",
+      "aliases": [
+        "Missouri Tigers"
+      ],
+      "espn_display_name": "Missouri Tigers",
+      "espn_color": "f1b82d",
+      "source_url": "https://www.espn.com/college-football/team/_/id/142/missouri-tigers",
+      "provider_ids": {
+        "espn": 142,
+        "cfbd_scoreboard": 142
+      },
+      "cfbd_scoreboard_names": [
+        "Missouri Tigers"
+      ]
+    },
+    {
+      "team_id": 66,
+      "canonical_name": "Missouri State",
+      "slug": "missouri-state",
+      "aliases": [
+        "Missouri St",
+        "Missouri State Bears"
+      ],
+      "espn_display_name": "Missouri State Bears",
+      "espn_color": "5e0009",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2623/missouri-state-bears",
+      "provider_ids": {
+        "espn": 2623
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 93,
+      "canonical_name": "NC State",
+      "slug": "nc-state",
+      "aliases": [
+        "NC State Wolfpack"
+      ],
+      "espn_display_name": "NC State Wolfpack",
+      "espn_color": "cc0000",
+      "source_url": "https://www.espn.com/college-football/team/_/id/152/nc-state-wolfpack",
+      "provider_ids": {
+        "espn": 152,
+        "cfbd_scoreboard": 152
+      },
+      "cfbd_scoreboard_names": [
+        "NC State Wolfpack"
+      ]
+    },
+    {
+      "team_id": 110,
+      "canonical_name": "Navy",
+      "slug": "navy",
+      "aliases": [
+        "Navy Midshipmen"
+      ],
+      "espn_display_name": "Navy Midshipmen",
+      "espn_color": "00225b",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2426/navy-midshipmen",
+      "provider_ids": {
+        "espn": 2426,
+        "cfbd_scoreboard": 2426
+      },
+      "cfbd_scoreboard_names": [
+        "Navy Midshipmen"
+      ]
+    },
+    {
+      "team_id": 31,
+      "canonical_name": "Nebraska",
+      "slug": "nebraska",
+      "aliases": [
+        "Nebraska Cornhuskers"
+      ],
+      "espn_display_name": "Nebraska Cornhuskers",
+      "espn_color": "e31937",
+      "source_url": "https://www.espn.com/college-football/team/_/id/158/nebraska-cornhuskers",
+      "provider_ids": {
+        "espn": 158,
+        "cfbd_scoreboard": 158
+      },
+      "cfbd_scoreboard_names": [
+        "Nebraska Cornhuskers"
+      ]
+    },
+    {
+      "team_id": 13,
+      "canonical_name": "Nevada",
+      "slug": "nevada",
+      "aliases": [
+        "Nevada Wolf Pack"
+      ],
+      "espn_display_name": "Nevada Wolf Pack",
+      "espn_color": "041e42",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2440/nevada-wolf-pack",
+      "provider_ids": {
+        "espn": 2440
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 26,
+      "canonical_name": "New Mexico",
+      "slug": "new-mexico",
+      "aliases": [
+        "New Mexico Lobos"
+      ],
+      "espn_display_name": "New Mexico Lobos",
+      "espn_color": "ba0c2f",
+      "source_url": "https://www.espn.com/college-football/team/_/id/167/new-mexico-lobos",
+      "provider_ids": {
+        "espn": 167,
+        "cfbd_scoreboard": 167
+      },
+      "cfbd_scoreboard_names": [
+        "New Mexico Lobos"
+      ]
+    },
+    {
+      "team_id": 27,
+      "canonical_name": "New Mexico State",
+      "slug": "new-mexico-state",
+      "aliases": [
+        "New Mexico St",
+        "New Mexico State Aggies"
+      ],
+      "espn_display_name": "New Mexico State Aggies",
+      "espn_color": "7e141b",
+      "source_url": "https://www.espn.com/college-football/team/_/id/166/new-mexico-state-aggies",
+      "provider_ids": {
+        "espn": 166,
+        "cfbd_scoreboard": 166
+      },
+      "cfbd_scoreboard_names": [
+        "New Mexico State Aggies"
+      ]
+    },
+    {
+      "team_id": 96,
+      "canonical_name": "North Carolina",
+      "slug": "north-carolina",
+      "aliases": [
+        "North Carolina Tar Heels"
+      ],
+      "espn_display_name": "North Carolina Tar Heels",
+      "espn_color": "7bafd4",
+      "source_url": "https://www.espn.com/college-football/team/_/id/153/north-carolina-tar-heels",
+      "provider_ids": {
+        "espn": 153,
+        "cfbd_scoreboard": 153
+      },
+      "cfbd_scoreboard_names": [
+        "North Carolina Tar Heels"
+      ]
+    },
+    {
+      "team_id": 59,
+      "canonical_name": "North Dakota State",
+      "slug": "north-dakota-state",
+      "aliases": [
+        "N Dakota St",
+        "North Dakota State Bison"
+      ],
+      "espn_display_name": "North Dakota State Bison",
+      "espn_color": "01402A",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2449/north-dakota-state-bison",
+      "provider_ids": {
+        "espn": 2449,
+        "cfbd_scoreboard": 2449
+      },
+      "cfbd_scoreboard_names": [
+        "North Dakota State Bison"
+      ]
+    },
+    {
+      "team_id": 43,
+      "canonical_name": "North Texas",
+      "slug": "north-texas",
+      "aliases": [
+        "North Texas Mean Green"
+      ],
+      "espn_display_name": "North Texas Mean Green",
+      "espn_color": "068f33",
+      "source_url": "https://www.espn.com/college-football/team/_/id/249/north-texas-mean-green",
+      "provider_ids": {
+        "espn": 249,
+        "cfbd_scoreboard": 249
+      },
+      "cfbd_scoreboard_names": [
+        "North Texas Mean Green"
+      ]
+    },
+    {
+      "team_id": 86,
+      "canonical_name": "Northern Illinois",
+      "slug": "northern-illinois",
+      "aliases": [
+        "N Illinois",
+        "Northern Illinois Huskies"
+      ],
+      "espn_display_name": "Northern Illinois Huskies",
+      "espn_color": "c8102e",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2459/northern-illinois-huskies",
+      "provider_ids": {
+        "espn": 2459
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 75,
+      "canonical_name": "Northwestern",
+      "slug": "northwestern",
+      "aliases": [
+        "Northwestern Wildcats"
+      ],
+      "espn_display_name": "Northwestern Wildcats",
+      "espn_color": "492f92",
+      "source_url": "https://www.espn.com/college-football/team/_/id/77/northwestern-wildcats",
+      "provider_ids": {
+        "espn": 77,
+        "cfbd_scoreboard": 77
+      },
+      "cfbd_scoreboard_names": [
+        "Northwestern Wildcats"
+      ]
+    },
+    {
+      "team_id": 79,
+      "canonical_name": "Notre Dame",
+      "slug": "notre-dame",
+      "aliases": [
+        "Notre Dame Fighting Irish"
+      ],
+      "espn_display_name": "Notre Dame Fighting Irish",
+      "espn_color": "062340",
+      "source_url": "https://www.espn.com/college-football/team/_/id/87/notre-dame-fighting-irish",
+      "provider_ids": {
+        "espn": 87,
+        "cfbd_scoreboard": 87
+      },
+      "cfbd_scoreboard_names": [
+        "Notre Dame Fighting Irish"
+      ]
+    },
+    {
+      "team_id": 115,
+      "canonical_name": "Ohio",
+      "slug": "ohio",
+      "aliases": [
+        "Ohio Bobcats"
+      ],
+      "espn_display_name": "Ohio Bobcats",
+      "espn_color": "154734",
+      "source_url": "https://www.espn.com/college-football/team/_/id/195/ohio-bobcats",
+      "provider_ids": {
+        "espn": 195,
+        "cfbd_scoreboard": 195
+      },
+      "cfbd_scoreboard_names": [
+        "Ohio Bobcats"
+      ]
+    },
+    {
+      "team_id": 71,
+      "canonical_name": "Ohio State",
+      "slug": "ohio-state",
+      "aliases": [
+        "Ohio State Buckeyes"
+      ],
+      "espn_display_name": "Ohio State Buckeyes",
+      "espn_color": "ba0c2f",
+      "source_url": "https://www.espn.com/college-football/team/_/id/194/ohio-state-buckeyes",
+      "provider_ids": {
+        "espn": 194,
+        "cfbd_scoreboard": 194
+      },
+      "cfbd_scoreboard_names": [
+        "Ohio State Buckeyes"
+      ]
+    },
+    {
+      "team_id": 52,
+      "canonical_name": "Oklahoma",
+      "slug": "oklahoma",
+      "aliases": [
+        "Oklahoma Sooners"
+      ],
+      "espn_display_name": "Oklahoma Sooners",
+      "espn_color": "990000",
+      "source_url": "https://www.espn.com/college-football/team/_/id/201/oklahoma-sooners",
+      "provider_ids": {
+        "espn": 201
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 33,
+      "canonical_name": "Oklahoma State",
+      "slug": "oklahoma-state",
+      "aliases": [
+        "Oklahoma St",
+        "Oklahoma State Cowboys"
+      ],
+      "espn_display_name": "Oklahoma State Cowboys",
+      "espn_color": "fe5c00",
+      "source_url": "https://www.espn.com/college-football/team/_/id/197/oklahoma-state-cowboys",
+      "provider_ids": {
+        "espn": 197
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 98,
+      "canonical_name": "Old Dominion",
+      "slug": "old-dominion",
+      "aliases": [
+        "Old Dominion Monarchs"
+      ],
+      "espn_display_name": "Old Dominion Monarchs",
+      "espn_color": "003768",
+      "source_url": "https://www.espn.com/college-football/team/_/id/295/old-dominion-monarchs",
+      "provider_ids": {
+        "espn": 295,
+        "cfbd_scoreboard": 295
+      },
+      "cfbd_scoreboard_names": [
+        "Old Dominion Monarchs"
+      ]
+    },
+    {
+      "team_id": 135,
+      "canonical_name": "Ole Miss",
+      "slug": "ole-miss",
+      "aliases": [
+        "Ole Miss Rebels"
+      ],
+      "espn_display_name": "Ole Miss Rebels",
+      "espn_color": "13294b",
+      "source_url": "https://www.espn.com/college-football/team/_/id/145/ole-miss-rebels",
+      "provider_ids": {
+        "espn": 145
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 3,
+      "canonical_name": "Oregon",
+      "slug": "oregon",
+      "aliases": [
+        "Oregon Ducks"
+      ],
+      "espn_display_name": "Oregon Ducks",
+      "espn_color": "00934b",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2483/oregon-ducks",
+      "provider_ids": {
+        "espn": 2483
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 4,
+      "canonical_name": "Oregon State",
+      "slug": "oregon-state",
+      "aliases": [
+        "Oregon St",
+        "Oregon State Beavers"
+      ],
+      "espn_display_name": "Oregon State Beavers",
+      "espn_color": "dc4405",
+      "source_url": "https://www.espn.com/college-football/team/_/id/204/oregon-state-beavers",
+      "provider_ids": {
+        "espn": 204,
+        "cfbd_scoreboard": 204
+      },
+      "cfbd_scoreboard_names": [
+        "Oregon State Beavers"
+      ]
+    },
+    {
+      "team_id": 87,
+      "canonical_name": "Penn State",
+      "slug": "penn-state",
+      "aliases": [
+        "Penn State Nittany Lions"
+      ],
+      "espn_display_name": "Penn State Nittany Lions",
+      "espn_color": "061440",
+      "source_url": "https://www.espn.com/college-football/team/_/id/213/penn-state-nittany-lions",
+      "provider_ids": {
+        "espn": 213,
+        "cfbd_scoreboard": 213
+      },
+      "cfbd_scoreboard_names": [
+        "Penn State Nittany Lions"
+      ]
+    },
+    {
+      "team_id": 88,
+      "canonical_name": "Pittsburgh",
+      "slug": "pittsburgh",
+      "aliases": [
+        "Pitt",
+        "Pittsburgh Panthers"
+      ],
+      "espn_display_name": "Pittsburgh Panthers",
+      "espn_color": "003594",
+      "source_url": "https://www.espn.com/college-football/team/_/id/221/pittsburgh-panthers",
+      "provider_ids": {
+        "espn": 221,
+        "cfbd_scoreboard": 221
+      },
+      "cfbd_scoreboard_names": [
+        "Pittsburgh Panthers"
+      ]
+    },
+    {
+      "team_id": 73,
+      "canonical_name": "Purdue",
+      "slug": "purdue",
+      "aliases": [
+        "Purdue Boilermakers"
+      ],
+      "espn_display_name": "Purdue Boilermakers",
+      "espn_color": "ceb888",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2509/purdue-boilermakers",
+      "provider_ids": {
+        "espn": 2509,
+        "cfbd_scoreboard": 2509
+      },
+      "cfbd_scoreboard_names": [
+        "Purdue Boilermakers"
+      ]
+    },
+    {
+      "team_id": 41,
+      "canonical_name": "Rice",
+      "slug": "rice",
+      "aliases": [
+        "Rice Owls"
+      ],
+      "espn_display_name": "Rice Owls",
+      "espn_color": "00205b",
+      "source_url": "https://www.espn.com/college-football/team/_/id/242/rice-owls",
+      "provider_ids": {
+        "espn": 242,
+        "cfbd_scoreboard": 242
+      },
+      "cfbd_scoreboard_names": [
+        "Rice Owls"
+      ]
+    },
+    {
+      "team_id": 104,
+      "canonical_name": "Rutgers",
+      "slug": "rutgers",
+      "aliases": [
+        "Rutgers Scarlet Knights"
+      ],
+      "espn_display_name": "Rutgers Scarlet Knights",
+      "espn_color": "ce0e2d",
+      "source_url": "https://www.espn.com/college-football/team/_/id/164/rutgers-scarlet-knights",
+      "provider_ids": {
+        "espn": 164,
+        "cfbd_scoreboard": 164
+      },
+      "cfbd_scoreboard_names": [
+        "Rutgers Scarlet Knights"
+      ]
+    },
+    {
+      "team_id": 42,
+      "canonical_name": "SMU",
+      "slug": "smu",
+      "aliases": [
+        "SMU Mustangs"
+      ],
+      "espn_display_name": "SMU Mustangs",
+      "espn_color": "a80000",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2567/smu-mustangs",
+      "provider_ids": {
+        "espn": 2567,
+        "cfbd_scoreboard": 2567
+      },
+      "cfbd_scoreboard_names": [
+        "SMU Mustangs"
+      ]
+    },
+    {
+      "team_id": 17,
+      "canonical_name": "Sacramento State",
+      "slug": "sacramento-state",
+      "aliases": [
+        "Sacramento St",
+        "Sacramento State Hornets"
+      ],
+      "espn_display_name": "Sacramento State Hornets",
+      "espn_color": "00573C",
+      "source_url": "https://www.espn.com/college-football/team/_/id/16/sacramento-state-hornets",
+      "provider_ids": {
+        "espn": 16
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 46,
+      "canonical_name": "Sam Houston",
+      "slug": "sam-houston",
+      "aliases": [
+        "Sam Houston Bearkats"
+      ],
+      "espn_display_name": "Sam Houston Bearkats",
+      "espn_color": "f56423",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2534/sam-houston-bearkats",
+      "provider_ids": {
+        "espn": 2534
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 11,
+      "canonical_name": "San Diego State",
+      "slug": "san-diego-state",
+      "aliases": [
+        "San Diego St",
+        "San Diego State Aztecs"
+      ],
+      "espn_display_name": "San Diego State Aztecs",
+      "espn_color": "a6192e",
+      "source_url": "https://www.espn.com/college-football/team/_/id/21/san-diego-state-aztecs",
+      "provider_ids": {
+        "espn": 21,
+        "cfbd_scoreboard": 21
+      },
+      "cfbd_scoreboard_names": [
+        "San Diego State Aztecs"
+      ]
+    },
+    {
+      "team_id": 9,
+      "canonical_name": "San Jose State",
+      "slug": "san-jose-state",
+      "aliases": [
+        "San Jose State Spartans",
+        "San Jos\u00e9 St",
+        "San Jos\u00e9 State",
+        "San Jos\u00e9 State Spartans"
+      ],
+      "espn_display_name": "San Jos\u00e9 State Spartans",
+      "espn_color": "0038a8",
+      "source_url": "https://www.espn.com/college-football/team/_/id/23/san-jose-state-spartans",
+      "provider_ids": {
+        "espn": 23,
+        "cfbd_scoreboard": 23
+      },
+      "cfbd_scoreboard_names": [
+        "San Jos\u00e9 State Spartans"
+      ]
+    },
+    {
+      "team_id": 67,
+      "canonical_name": "South Alabama",
+      "slug": "south-alabama",
+      "aliases": [
+        "South Alabama Jaguars"
+      ],
+      "espn_display_name": "South Alabama Jaguars",
+      "espn_color": "00205b",
+      "source_url": "https://www.espn.com/college-football/team/_/id/6/south-alabama-jaguars",
+      "provider_ids": {
+        "espn": 6,
+        "cfbd_scoreboard": 6
+      },
+      "cfbd_scoreboard_names": [
+        "South Alabama Jaguars"
+      ]
+    },
+    {
+      "team_id": 128,
+      "canonical_name": "South Carolina",
+      "slug": "south-carolina",
+      "aliases": [
+        "South Carolina Gamecocks"
+      ],
+      "espn_display_name": "South Carolina Gamecocks",
+      "espn_color": "73000a",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2579/south-carolina-gamecocks",
+      "provider_ids": {
+        "espn": 2579,
+        "cfbd_scoreboard": 2579
+      },
+      "cfbd_scoreboard_names": [
+        "South Carolina Gamecocks"
+      ]
+    },
+    {
+      "team_id": 137,
+      "canonical_name": "South Florida",
+      "slug": "south-florida",
+      "aliases": [
+        "South Florida Bulls"
+      ],
+      "espn_display_name": "South Florida Bulls",
+      "espn_color": "006747",
+      "source_url": "https://www.espn.com/college-football/team/_/id/58/south-florida-bulls",
+      "provider_ids": {
+        "espn": 58,
+        "cfbd_scoreboard": 58
+      },
+      "cfbd_scoreboard_names": [
+        "South Florida Bulls"
+      ]
+    },
+    {
+      "team_id": 68,
+      "canonical_name": "Southern Miss",
+      "slug": "southern-miss",
+      "aliases": [
+        "Southern Miss Golden Eagles"
+      ],
+      "espn_display_name": "Southern Miss Golden Eagles",
+      "espn_color": "ffc72c",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2572/southern-miss-golden-eagles",
+      "provider_ids": {
+        "espn": 2572
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 6,
+      "canonical_name": "Stanford",
+      "slug": "stanford",
+      "aliases": [
+        "Stanford Cardinal"
+      ],
+      "espn_display_name": "Stanford Cardinal",
+      "espn_color": "8c1515",
+      "source_url": "https://www.espn.com/college-football/team/_/id/24/stanford-cardinal",
+      "provider_ids": {
+        "espn": 24,
+        "cfbd_scoreboard": 24
+      },
+      "cfbd_scoreboard_names": [
+        "Stanford Cardinal"
+      ]
+    },
+    {
+      "team_id": 105,
+      "canonical_name": "Syracuse",
+      "slug": "syracuse",
+      "aliases": [
+        "Syracuse Orange"
+      ],
+      "espn_display_name": "Syracuse Orange",
+      "espn_color": "000e54",
+      "source_url": "https://www.espn.com/college-football/team/_/id/183/syracuse-orange",
+      "provider_ids": {
+        "espn": 183,
+        "cfbd_scoreboard": 183
+      },
+      "cfbd_scoreboard_names": [
+        "Syracuse Orange"
+      ]
+    },
+    {
+      "team_id": 38,
+      "canonical_name": "TCU",
+      "slug": "tcu",
+      "aliases": [
+        "TCU Horned Frogs"
+      ],
+      "espn_display_name": "TCU Horned Frogs",
+      "espn_color": "4d1979",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2628/tcu-horned-frogs",
+      "provider_ids": {
+        "espn": 2628,
+        "cfbd_scoreboard": 2628
+      },
+      "cfbd_scoreboard_names": [
+        "TCU Horned Frogs"
+      ]
+    },
+    {
+      "team_id": 108,
+      "canonical_name": "Temple",
+      "slug": "temple",
+      "aliases": [
+        "Temple Owls"
+      ],
+      "espn_display_name": "Temple Owls",
+      "espn_color": "a41e35",
+      "source_url": "https://www.espn.com/college-football/team/_/id/218/temple-owls",
+      "provider_ids": {
+        "espn": 218,
+        "cfbd_scoreboard": 218
+      },
+      "cfbd_scoreboard_names": [
+        "Temple Owls"
+      ]
+    },
+    {
+      "team_id": 130,
+      "canonical_name": "Tennessee",
+      "slug": "tennessee",
+      "aliases": [
+        "Tennessee Volunteers"
+      ],
+      "espn_display_name": "Tennessee Volunteers",
+      "espn_color": "ff8200",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2633/tennessee-volunteers",
+      "provider_ids": {
+        "espn": 2633,
+        "cfbd_scoreboard": 2633
+      },
+      "cfbd_scoreboard_names": [
+        "Tennessee Volunteers"
+      ]
+    },
+    {
+      "team_id": 35,
+      "canonical_name": "Texas",
+      "slug": "texas",
+      "aliases": [
+        "Texas Longhorns"
+      ],
+      "espn_display_name": "Texas Longhorns",
+      "espn_color": "af5c37",
+      "source_url": "https://www.espn.com/college-football/team/_/id/251/texas-longhorns",
+      "provider_ids": {
+        "espn": 251
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 36,
+      "canonical_name": "Texas A&M",
+      "slug": "texas-am",
+      "aliases": [
+        "Texas A&M Aggies"
+      ],
+      "espn_display_name": "Texas A&M Aggies",
+      "espn_color": "500000",
+      "source_url": "https://www.espn.com/college-football/team/_/id/245/texas-am-aggies",
+      "provider_ids": {
+        "espn": 245,
+        "cfbd_scoreboard": 245
+      },
+      "cfbd_scoreboard_names": [
+        "Texas A&M Aggies"
+      ]
+    },
+    {
+      "team_id": 45,
+      "canonical_name": "Texas State",
+      "slug": "texas-state",
+      "aliases": [
+        "Texas St",
+        "Texas State Bobcats"
+      ],
+      "espn_display_name": "Texas State Bobcats",
+      "espn_color": "501214",
+      "source_url": "https://www.espn.com/college-football/team/_/id/326/texas-state-bobcats",
+      "provider_ids": {
+        "espn": 326,
+        "cfbd_scoreboard": 326
+      },
+      "cfbd_scoreboard_names": [
+        "Texas State Bobcats"
+      ]
+    },
+    {
+      "team_id": 39,
+      "canonical_name": "Texas Tech",
+      "slug": "texas-tech",
+      "aliases": [
+        "Texas Tech Red Raiders"
+      ],
+      "espn_display_name": "Texas Tech Red Raiders",
+      "espn_color": "da291c",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2641/texas-tech-red-raiders",
+      "provider_ids": {
+        "espn": 2641,
+        "cfbd_scoreboard": 2641
+      },
+      "cfbd_scoreboard_names": [
+        "Texas Tech Red Raiders"
+      ]
+    },
+    {
+      "team_id": 80,
+      "canonical_name": "Toledo",
+      "slug": "toledo",
+      "aliases": [
+        "Toledo Rockets"
+      ],
+      "espn_display_name": "Toledo Rockets",
+      "espn_color": "0b2240",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2649/toledo-rockets",
+      "provider_ids": {
+        "espn": 2649,
+        "cfbd_scoreboard": 2649
+      },
+      "cfbd_scoreboard_names": [
+        "Toledo Rockets"
+      ]
+    },
+    {
+      "team_id": 120,
+      "canonical_name": "Troy",
+      "slug": "troy",
+      "aliases": [
+        "Troy Trojans"
+      ],
+      "espn_display_name": "Troy Trojans",
+      "espn_color": "862633",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2653/troy-trojans",
+      "provider_ids": {
+        "espn": 2653
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 48,
+      "canonical_name": "Tulane",
+      "slug": "tulane",
+      "aliases": [
+        "Tulane Green Wave"
+      ],
+      "espn_display_name": "Tulane Green Wave",
+      "espn_color": "006747",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2655/tulane-green-wave",
+      "provider_ids": {
+        "espn": 2655
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 34,
+      "canonical_name": "Tulsa",
+      "slug": "tulsa",
+      "aliases": [
+        "Tulsa Golden Hurricane"
+      ],
+      "espn_display_name": "Tulsa Golden Hurricane",
+      "espn_color": "003595",
+      "source_url": "https://www.espn.com/college-football/team/_/id/202/tulsa-golden-hurricane",
+      "provider_ids": {
+        "espn": 202,
+        "cfbd_scoreboard": 202
+      },
+      "cfbd_scoreboard_names": [
+        "Tulsa Golden Hurricane"
+      ]
+    },
+    {
+      "team_id": 138,
+      "canonical_name": "UAB",
+      "slug": "uab",
+      "aliases": [
+        "UAB Blazers"
+      ],
+      "espn_display_name": "UAB Blazers",
+      "espn_color": "1a5632",
+      "source_url": "https://www.espn.com/college-football/team/_/id/5/uab-blazers",
+      "provider_ids": {
+        "espn": 5,
+        "cfbd_scoreboard": 5
+      },
+      "cfbd_scoreboard_names": [
+        "UAB Blazers"
+      ]
+    },
+    {
+      "team_id": 136,
+      "canonical_name": "UCF",
+      "slug": "ucf",
+      "aliases": [
+        "UCF Knights"
+      ],
+      "espn_display_name": "UCF Knights",
+      "espn_color": "000000",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2116/ucf-knights",
+      "provider_ids": {
+        "espn": 2116,
+        "cfbd_scoreboard": 2116
+      },
+      "cfbd_scoreboard_names": [
+        "UCF Knights"
+      ]
+    },
+    {
+      "team_id": 8,
+      "canonical_name": "UCLA",
+      "slug": "ucla",
+      "aliases": [
+        "UCLA Bruins"
+      ],
+      "espn_display_name": "UCLA Bruins",
+      "espn_color": "2774ae",
+      "source_url": "https://www.espn.com/college-football/team/_/id/26/ucla-bruins",
+      "provider_ids": {
+        "espn": 26
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 107,
+      "canonical_name": "UConn",
+      "slug": "uconn",
+      "aliases": [
+        "Connecticut",
+        "UConn Huskies"
+      ],
+      "espn_display_name": "UConn Huskies",
+      "espn_color": "0c2340",
+      "source_url": "https://www.espn.com/college-football/team/_/id/41/uconn-huskies",
+      "provider_ids": {
+        "espn": 41,
+        "cfbd_scoreboard": 41
+      },
+      "cfbd_scoreboard_names": [
+        "UConn Huskies"
+      ]
+    },
+    {
+      "team_id": 58,
+      "canonical_name": "ULM",
+      "slug": "ulm",
+      "aliases": [
+        "UL Monroe",
+        "UL Monroe Warhawks",
+        "ULM Warhawks"
+      ],
+      "espn_display_name": "UL Monroe Warhawks",
+      "espn_color": "840029",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2433/ul-monroe-warhawks",
+      "provider_ids": {
+        "espn": 2433,
+        "cfbd_scoreboard": 2433
+      },
+      "cfbd_scoreboard_names": [
+        "UL Monroe Warhawks"
+      ]
+    },
+    {
+      "team_id": 14,
+      "canonical_name": "UNLV",
+      "slug": "unlv",
+      "aliases": [
+        "UNLV Rebels"
+      ],
+      "espn_display_name": "UNLV Rebels",
+      "espn_color": "cf0a2c",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2439/unlv-rebels",
+      "provider_ids": {
+        "espn": 2439,
+        "cfbd_scoreboard": 2439
+      },
+      "cfbd_scoreboard_names": [
+        "UNLV Rebels"
+      ]
+    },
+    {
+      "team_id": 7,
+      "canonical_name": "USC",
+      "slug": "usc",
+      "aliases": [
+        "USC Trojans"
+      ],
+      "espn_display_name": "USC Trojans",
+      "espn_color": "9d2235",
+      "source_url": "https://www.espn.com/college-football/team/_/id/30/usc-trojans",
+      "provider_ids": {
+        "espn": 30,
+        "cfbd_scoreboard": 30
+      },
+      "cfbd_scoreboard_names": [
+        "USC Trojans"
+      ]
+    },
+    {
+      "team_id": 28,
+      "canonical_name": "UTEP",
+      "slug": "utep",
+      "aliases": [
+        "UTEP Miners"
+      ],
+      "espn_display_name": "UTEP Miners",
+      "espn_color": "ff8200",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2638/utep-miners",
+      "provider_ids": {
+        "espn": 2638,
+        "cfbd_scoreboard": 2638
+      },
+      "cfbd_scoreboard_names": [
+        "UTEP Miners"
+      ]
+    },
+    {
+      "team_id": 44,
+      "canonical_name": "UTSA",
+      "slug": "utsa",
+      "aliases": [
+        "UTSA Roadrunners"
+      ],
+      "espn_display_name": "UTSA Roadrunners",
+      "espn_color": "0c2340",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2636/utsa-roadrunners",
+      "provider_ids": {
+        "espn": 2636,
+        "cfbd_scoreboard": 2636
+      },
+      "cfbd_scoreboard_names": [
+        "UTSA Roadrunners"
+      ]
+    },
+    {
+      "team_id": 19,
+      "canonical_name": "Utah",
+      "slug": "utah",
+      "aliases": [
+        "Utah Utes"
+      ],
+      "espn_display_name": "Utah Utes",
+      "espn_color": "be0000",
+      "source_url": "https://www.espn.com/college-football/team/_/id/254/utah-utes",
+      "provider_ids": {
+        "espn": 254
+      },
+      "cfbd_scoreboard_names": []
+    },
+    {
+      "team_id": 20,
+      "canonical_name": "Utah State",
+      "slug": "utah-state",
+      "aliases": [
+        "Utah State Aggies"
+      ],
+      "espn_display_name": "Utah State Aggies",
+      "espn_color": "0f2439",
+      "source_url": "https://www.espn.com/college-football/team/_/id/328/utah-state-aggies",
+      "provider_ids": {
+        "espn": 328,
+        "cfbd_scoreboard": 328
+      },
+      "cfbd_scoreboard_names": [
+        "Utah State Aggies"
+      ]
+    },
+    {
+      "team_id": 131,
+      "canonical_name": "Vanderbilt",
+      "slug": "vanderbilt",
+      "aliases": [
+        "Vanderbilt Commodores"
+      ],
+      "espn_display_name": "Vanderbilt Commodores",
+      "espn_color": "000000",
+      "source_url": "https://www.espn.com/college-football/team/_/id/238/vanderbilt-commodores",
+      "provider_ids": {
+        "espn": 238,
+        "cfbd_scoreboard": 238
+      },
+      "cfbd_scoreboard_names": [
+        "Vanderbilt Commodores"
+      ]
+    },
+    {
+      "team_id": 91,
+      "canonical_name": "Virginia",
+      "slug": "virginia",
+      "aliases": [
+        "Virginia Cavaliers"
+      ],
+      "espn_display_name": "Virginia Cavaliers",
+      "espn_color": "232d4b",
+      "source_url": "https://www.espn.com/college-football/team/_/id/258/virginia-cavaliers",
+      "provider_ids": {
+        "espn": 258,
+        "cfbd_scoreboard": 258
+      },
+      "cfbd_scoreboard_names": [
+        "Virginia Cavaliers"
+      ]
+    },
+    {
+      "team_id": 92,
+      "canonical_name": "Virginia Tech",
+      "slug": "virginia-tech",
+      "aliases": [
+        "Virginia Tech Hokies"
+      ],
+      "espn_display_name": "Virginia Tech Hokies",
+      "espn_color": "6a2c3e",
+      "source_url": "https://www.espn.com/college-football/team/_/id/259/virginia-tech-hokies",
+      "provider_ids": {
+        "espn": 259,
+        "cfbd_scoreboard": 259
+      },
+      "cfbd_scoreboard_names": [
+        "Virginia Tech Hokies"
+      ]
+    },
+    {
+      "team_id": 94,
+      "canonical_name": "Wake Forest",
+      "slug": "wake-forest",
+      "aliases": [
+        "Wake Forest Demon Deacons"
+      ],
+      "espn_display_name": "Wake Forest Demon Deacons",
+      "espn_color": "ceb888",
+      "source_url": "https://www.espn.com/college-football/team/_/id/154/wake-forest-demon-deacons",
+      "provider_ids": {
+        "espn": 154,
+        "cfbd_scoreboard": 154
+      },
+      "cfbd_scoreboard_names": [
+        "Wake Forest Demon Deacons"
+      ]
+    },
+    {
+      "team_id": 1,
+      "canonical_name": "Washington",
+      "slug": "washington",
+      "aliases": [
+        "Washington Huskies"
+      ],
+      "espn_display_name": "Washington Huskies",
+      "espn_color": "33006f",
+      "source_url": "https://www.espn.com/college-football/team/_/id/264/washington-huskies",
+      "provider_ids": {
+        "espn": 264,
+        "cfbd_scoreboard": 264
+      },
+      "cfbd_scoreboard_names": [
+        "Washington Huskies"
+      ]
+    },
+    {
+      "team_id": 2,
+      "canonical_name": "Washington State",
+      "slug": "washington-state",
+      "aliases": [
+        "Washington St",
+        "Washington State Cougars"
+      ],
+      "espn_display_name": "Washington State Cougars",
+      "espn_color": "a60f2d",
+      "source_url": "https://www.espn.com/college-football/team/_/id/265/washington-state-cougars",
+      "provider_ids": {
+        "espn": 265,
+        "cfbd_scoreboard": 265
+      },
+      "cfbd_scoreboard_names": [
+        "Washington State Cougars"
+      ]
+    },
+    {
+      "team_id": 89,
+      "canonical_name": "West Virginia",
+      "slug": "west-virginia",
+      "aliases": [
+        "West Virginia Mountaineers"
+      ],
+      "espn_display_name": "West Virginia Mountaineers",
+      "espn_color": "eaaa00",
+      "source_url": "https://www.espn.com/college-football/team/_/id/277/west-virginia-mountaineers",
+      "provider_ids": {
+        "espn": 277,
+        "cfbd_scoreboard": 277
+      },
+      "cfbd_scoreboard_names": [
+        "West Virginia Mountaineers"
+      ]
+    },
+    {
+      "team_id": 119,
+      "canonical_name": "Western Kentucky",
+      "slug": "western-kentucky",
+      "aliases": [
+        "Western KY",
+        "Western Kentucky Hilltoppers"
+      ],
+      "espn_display_name": "Western Kentucky Hilltoppers",
+      "espn_color": "e13a3e",
+      "source_url": "https://www.espn.com/college-football/team/_/id/98/western-kentucky-hilltoppers",
+      "provider_ids": {
+        "espn": 98,
+        "cfbd_scoreboard": 98
+      },
+      "cfbd_scoreboard_names": [
+        "Western Kentucky Hilltoppers"
+      ]
+    },
+    {
+      "team_id": 82,
+      "canonical_name": "Western Michigan",
+      "slug": "western-michigan",
+      "aliases": [
+        "W Michigan",
+        "Western Michigan Broncos"
+      ],
+      "espn_display_name": "Western Michigan Broncos",
+      "espn_color": "532e1f",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2711/western-michigan-broncos",
+      "provider_ids": {
+        "espn": 2711,
+        "cfbd_scoreboard": 2711
+      },
+      "cfbd_scoreboard_names": [
+        "Western Michigan Broncos"
+      ]
+    },
+    {
+      "team_id": 76,
+      "canonical_name": "Wisconsin",
+      "slug": "wisconsin",
+      "aliases": [
+        "Wisconsin Badgers"
+      ],
+      "espn_display_name": "Wisconsin Badgers",
+      "espn_color": "a00000",
+      "source_url": "https://www.espn.com/college-football/team/_/id/275/wisconsin-badgers",
+      "provider_ids": {
+        "espn": 275,
+        "cfbd_scoreboard": 275
+      },
+      "cfbd_scoreboard_names": [
+        "Wisconsin Badgers"
+      ]
+    },
+    {
+      "team_id": 24,
+      "canonical_name": "Wyoming",
+      "slug": "wyoming",
+      "aliases": [
+        "Wyoming Cowboys"
+      ],
+      "espn_display_name": "Wyoming Cowboys",
+      "espn_color": "492f24",
+      "source_url": "https://www.espn.com/college-football/team/_/id/2751/wyoming-cowboys",
+      "provider_ids": {
+        "espn": 2751,
+        "cfbd_scoreboard": 2751
+      },
+      "cfbd_scoreboard_names": [
+        "Wyoming Cowboys"
+      ]
+    }
+  ]
+}

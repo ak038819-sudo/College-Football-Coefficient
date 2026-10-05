@@ -106,3 +106,17 @@ def test_no_fetch_script_prints_the_key_or_auth_headers():
         text = (REPO / path).read_text(encoding="utf-8")
         for call in re.findall(r"print\((.*)\)", text):
             assert not re.search(r"api_key|headers|Authorization", call), (path, call)
+
+
+def test_source_completions_queue_latest_main_rebuild_without_refetching():
+    workflow, triggers = _workflow()
+    source = triggers['workflow_run']
+    assert source['workflows'] == ['Backfill player box scores', 'Sync rosters and coaches']
+    assert source['branches'] == ['main'] and source['types'] == ['completed']
+    assert 'head_repository.full_name == github.repository' in workflow['jobs']['test']['if']
+    job = workflow['jobs']['rebuild-and-deploy']
+    assert "github.event_name == 'workflow_run'" in job['if']
+    steps = job['steps']
+    assert 'git reset --hard FETCH_HEAD' in next(s['run'] for s in steps if s.get('name') == 'Build from the current tip of main')
+    fetch = next(s for s in steps if s.get('name', '').startswith('Fetch fresh data'))
+    assert "github.event_name != 'workflow_run'" in fetch['if']

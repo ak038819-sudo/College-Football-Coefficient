@@ -177,7 +177,8 @@ test('live CFBD IDs cannot relabel another school', () => {
   vm.runInNewContext(source + '\nthis.lookup = liveTeamId;', context);
   assert.equal(context.lookup({ id: 47, name: 'Howard Bison' }), null);
   assert.equal(context.lookup({ id: 164, name: 'Rutgers Scarlet Knights' }).name, 'Rutgers');
-  assert.equal(context.lookup({ id: 10, name: 'Texas Tech Red Raiders' }).name, 'Texas Tech');
+  assert.equal(context.lookup({ id: 10, name: 'Texas Tech Red Raiders' }), null);
+  assert.equal(context.lookup({ id: 2641, name: 'Texas Tech Red Raiders' }).name, 'Texas Tech');
 });
 
 test('an open live game refreshes status and score even with a cached snapshot', async () => {

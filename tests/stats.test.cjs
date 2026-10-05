@@ -24,7 +24,7 @@ test('filter and sort compose across conference, team, search and minimum',()=>{
 const teams=new Map([['1',{name:'BYU'}],['2',{name:'Utah'}]]);
 const games=[{game_id:1,completed:true,home_id:1,away_id:2,home_score:30,away_score:20},{game_id:2,completed:true,home_id:2,away_id:1,home_score:24,away_score:10},{game_id:3,completed:false,home_id:1,away_id:2}];
 const cats=(cmp,yds)=>[{name:'passing',type:'C/ATT',lines:[{name:'QB',stat:cmp}]},{name:'passing',type:'YDS',lines:[{name:'QB',stat:yds}]},{name:'passing',type:'AVG',lines:[{name:'QB',stat:'999'}]}];
-const archive={1:[{home_away:'home',categories:cats('10/20','100')}],2:[{home_away:'away',categories:cats('20/25','300')}],3:[{home_away:'home',categories:cats('100/100','10000')}],999:[{home_away:'home',categories:cats('100/100','10000')}]};
+const archive={1:[{name:'BYU',home_away:'home',categories:cats('10/20','100')}],2:[{name:'BYU',home_away:'away',categories:cats('20/25','300')}],3:[{name:'BYU',home_away:'home',categories:cats('100/100','10000')}],999:[{name:'BYU',home_away:'home',categories:cats('100/100','10000')}]};
 test('season aggregation sums counting fields and recomputes rates from denominators',()=>{
  const p=stats.aggregatePlayers(archive,new Map(games.map(g=>[g.game_id,g])),{'1':'Big 12'},teams);
  assert.equal(p.rows.length,1);assert.equal(p.rows[0].yards,400);assert.equal(p.rows[0].attempts,45);assert.equal(p.rows[0].games,2);
@@ -67,4 +67,13 @@ test('Home combined discovery filters retain finals and use feed status for live
  assert.equal(context.matches(g,{week:null,teamId:1,conf:'Big 12',status:'completed'},{'1':'Big 12'}),true);
  assert.equal(context.matches(g,{week:4,teamId:1,status:'completed'},{}),false);
  assert.equal(context.matches({...g,game_id:2,completed:false},{week:5,teamId:1,status:'live'},{}),true);
+});
+
+test('source athlete IDs keep namesakes separate and reject a mislabeled team side',()=>{
+ const rows=[{id:'10',name:'Same Name',stat:'100'},{id:'20',name:'Same Name',stat:'200'}];
+ const box={1:[{name:'BYU',home_away:'home',categories:[{name:'passing',type:'YDS',lines:rows}]}]};
+ const result=stats.aggregatePlayers(box,new Map(games.map(g=>[g.game_id,g])),{},teams);
+ assert.equal(result.rows.length,2);assert.deepEqual(result.rows.map(r=>r.id).sort(),['10','20']);
+ box[1][0].name='Texas Southern';
+ assert.equal(stats.aggregatePlayers(box,new Map(games.map(g=>[g.game_id,g])),{},teams).rows.length,0);
 });

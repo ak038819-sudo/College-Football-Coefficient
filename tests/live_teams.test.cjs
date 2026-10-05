@@ -8,6 +8,25 @@ const resolve = createResolver(teams);
 const shell = fs.readFileSync('ui/dashboard_shell.html', 'utf8');
 const fn = name => shell.match(new RegExp('function ' + name + '\\([^)]*\\) \\{[\\s\\S]*?\\n\\}'))[0];
 
+test('every supported provider identity and alias resolves; all other provider full names stay unmatched', () => {
+  const registry = JSON.parse(fs.readFileSync('data/reference/team_identities.json', 'utf8')).teams;
+  const directory = JSON.parse(fs.readFileSync('data/reference/espn_team_directory.json', 'utf8')).teams;
+  const providerResolve = createResolver(teams, 'espn');
+  const supported = new Map(registry.map(r => [String(r.provider_ids.espn), r]));
+  for (const row of registry) {
+    for (const name of [row.canonical_name, ...row.aliases]) {
+      assert.equal(resolve({name}).name, row.canonical_name, name);
+    }
+    assert.equal(providerResolve({id: row.provider_ids.espn, name: row.espn_display_name}).name, row.canonical_name);
+  }
+  for (const row of directory) {
+    const match = providerResolve({id: row.id, name: row.displayName});
+    assert.equal(match?.name || null, supported.get(String(row.id))?.canonical_name || null, row.displayName);
+  }
+  assert.equal(providerResolve({id: 57, name: 'Texas Longhorns'}), null);
+  assert.equal(providerResolve({id: 251, name: 'Florida Gators'}), null);
+});
+
 test('Texas Southern at Florida Atlantic never becomes Texas at Florida', () => {
   assert.equal(resolve({id: 2640, name: 'Texas Southern Tigers', classification: 'fcs'}), null);
   assert.equal(resolve({id: 2226, name: 'Florida Atlantic Owls'}).name, 'FAU');

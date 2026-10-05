@@ -6,7 +6,7 @@
 <title>CoE Playoff Model</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Graduate&family=Roboto+Slab:wght@600;700;800&family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #0e1512;
@@ -19,7 +19,8 @@
     --amber-dim: #7a5a26;
     --red: #c4453c;
     --green-hl: #6fae5a;
-    --font-display: 'Oswald', sans-serif;
+    --font-display: 'Roboto Slab', Georgia, serif;
+    --font-collegiate: 'Graduate', Georgia, serif;
     --font-body: 'IBM Plex Sans', sans-serif;
     --font-mono: 'IBM Plex Mono', monospace;
   }
@@ -911,6 +912,64 @@
   #home-weeks {align-items:center;gap:20px;flex-wrap:wrap;}
   /* Keep text links on the theme accent, including visited links. */
   :root a:any-link:not(.active):not(.action-button) { color: var(--amber); }
+
+  /* v0.1.9 readability and spacing */
+  .wrap { max-width:1440px; }
+  h1.team-title, .view-title, header.top h1 { font-family:var(--font-collegiate); letter-spacing:.02em; }
+  .panel { min-width:0; }
+  #content > .panel + .panel, #person-page > .panel + .panel { margin-top:24px; }
+  .home-discovery { margin-top:32px; }
+  .filter-drawer { margin:16px 0; border:1px solid var(--line); border-radius:10px; padding:12px 16px; }
+  .filter-drawer summary { display:flex; align-items:center; gap:10px; cursor:pointer; color:var(--amber); font-weight:600; }
+  .filter-drawer[open] summary { margin-bottom:18px; }
+  .filter-actions { display:flex; gap:18px; align-items:center; margin-top:16px; }
+  .games-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; align-items:end; }
+  .games-filters label { min-width:0; display:flex; flex-direction:column; gap:6px; }
+  .games-filters input,.games-filters select { width:100%; min-width:0; }
+  .view-select { display:flex; gap:12px; align-items:center; margin:12px 0 20px; color:var(--ink-dim); }
+  .view-select select { max-width:100%; padding:10px 14px; background:var(--panel-2); color:var(--ink); border:1px solid var(--line); border-radius:8px; }
+  .live-card,.live-team { position:relative; overflow:hidden; isolation:isolate; }
+  .live-team > :not(.live-watermark) { position:relative; z-index:1; }
+  .live-watermark { pointer-events:none; z-index:0; }
+  .team-header-main,.team-header-text,.team-stats,.team-stat { min-width:0; }
+  .team-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:16px; width:100%; }
+  .team-stat .sub,.team-sub { overflow-wrap:anywhere; white-space:normal; }
+  table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; }
+  table th,table td { border:1px solid var(--line); padding:10px 12px; }
+  table thead { background:var(--panel-2); }
+  table tbody tr:nth-child(even) { background:color-mix(in srgb,var(--panel-2) 50%,transparent); }
+  table tbody tr:hover { background:color-mix(in srgb,var(--amber) 9%,var(--panel)); }
+  .stats-table th,.stats-table td { text-align:center; }
+  .stats-table .name-cell { justify-content:center; }
+  .stats-leaders { grid-template-columns:1fr; gap:18px; }
+  .stats-leaders article { display:grid; grid-template-columns:minmax(170px,1fr) 3fr; align-items:center; gap:24px; }
+  .stats-leaders article ol { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; margin:0; }
+  .stats-leaders li { display:flex; justify-content:space-between; align-items:center; gap:16px; border-bottom:1px solid var(--line); }
+  .directory-grid > li { overflow:hidden; border:1px solid var(--line); border-radius:14px; background:linear-gradient(135deg,var(--panel-2),var(--panel)); }
+  .directory-grid > li:hover { border-color:var(--amber); }
+  .directory-card { border:0; border-radius:0; padding:20px; background:transparent; }
+  .directory-stadiums { border:0; border-radius:0; margin:0; padding:0 20px 18px; background:transparent; }
+  .directory-card .logo-chip { border:0; box-shadow:none; background:transparent!important; }
+  .stadium-layout { grid-template-columns:minmax(0,3fr) minmax(230px,1fr); }
+  .stadium-map { width:100%; max-height:none; min-height:420px; }
+  .stadium-map a circle { r:5; }
+  .stadium-map .selected-stadium { r:8; }
+  .live-player-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; align-items:start; }
+  .live-player-team { min-width:0; display:grid; gap:12px; }
+  @media(max-width:760px) {
+    .wrap { padding-inline:14px; }
+    .stats-leaders article { display:block; }
+    .stats-leaders article ol { grid-template-columns:1fr; gap:8px; padding:0; }
+    .stadium-layout,.live-player-grid { grid-template-columns:1fr; }
+    .stadium-map { min-height:260px; }
+    .view-select { flex-direction:column; align-items:stretch; }
+    table th,table td { padding:9px; }
+  }
+#game-page > * + * { margin-top: 24px; }
+.live-player-team { min-width: 0; }
+.column-options { display:flex; flex-wrap:wrap; gap:12px 20px; padding:16px 0; }
+.column-options label { display:flex; align-items:center; gap:6px; }
+.column-options input { width:auto; }
 </style>
 </head>
 <body>
@@ -932,6 +991,7 @@
         <a data-section="stats" href="#section=stats">Stats</a>
         <a data-section="rankings" href="#section=rankings">Standings</a>
         <a data-section="teams" href="#section=teams">Teams</a>
+        <a data-section="people" href="#section=people">People</a>
       </nav>
       <div class="global-search" role="search">
         <label class="visually-hidden" for="global-search">Search teams, games and seasons</label>
@@ -1298,7 +1358,7 @@ const ROUTE_CONFIG = { yearsAll: DATA.years_all, playoffYears: DATA.years_playof
   gameSeasons: STATIC_MANIFEST.seasons || [] };
 let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult: null, simYear: null,
   homeGroup: null, homeTop25: false, homePoll: null };
-const SECTION_LABELS = { stats: 'Stats', home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
+const SECTION_LABELS = { people: 'People', stats: 'Stats', home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
 const SUBVIEWS = {
   rankings: [['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['home-field', 'Home-Field Advantage'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
     ['conference-coe2', 'Conference CoE 2.0'], ['elo-weekly', 'Week by Week'],
@@ -1988,6 +2048,17 @@ function teamEloChange(season, name) {
 }
 function rankSub(hit) { return hit ? '#' + hit.rank + ' of ' + hit.of : 'N/A'; }
 
+function teamExtremes(team) {
+  const specs=[['Elo','team_elo_by_year','elo'],['Season CoE','team_ratings_by_year','rating']];
+  const rows=specs.map(([label,source,key])=>{
+    const points=DATA.years_all.map(y=>({year:y,...rankLookup(source,key,y,team.name)})).filter(p=>Number.isFinite(p.value));
+    if(!points.length)return '';
+    const ordered=points.slice().sort((a,b)=>a.value-b.value),best=points.slice().sort((a,b)=>a.rank-b.rank),value=p=>statValue(p.value)+' ('+p.year+')';
+    return '<tr><th scope="row">'+label+'</th><td>'+value(ordered.at(-1))+'</td><td>'+value(ordered[0])+'</td><td>#'+best[0].rank+' ('+best[0].year+')</td><td>#'+best.at(-1).rank+' ('+best.at(-1).year+')</td></tr>';
+  }).join('');
+  return '<section class="panel team-section"><h2>Program highs and lows</h2><p class="section-note">Season snapshots across the available archive; the current season is in progress. Equal records show one matching season.</p><table><thead><tr><th>Rating</th><th>Highest</th><th>Lowest</th><th>Best rank</th><th>Lowest rank</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
+}
+
 function renderTeamPage(param) {
   const back = backLink();
   const team = resolveTeam(param);
@@ -2030,12 +2101,14 @@ function renderTeamPage(param) {
     body = loading('tp-schedule', 'Schedule');
   } else if (tab === 'roster') {
     body = loading('tp-roster', 'Roster');
+  } else if (tab === 'stats' || tab === 'leaders') {
+    body = loading('tp-statistics', tab === 'stats' ? 'Team statistics' : 'Team leaders');
   } else if (tab === 'history') {
     body = loading('tp-seasons', 'Season by Season') + loading('tp-history', 'Program History');
   } else if (tab === 'analytics') {
     body = loading('tp-analytics', 'Advanced Analytics') + loading('tp-ledger', 'Rating Ledger');
   } else {
-    body = loading('tp-elo', 'Historical Elo') + renderUpcomingCard(team) +
+    body = teamExtremes(team) + loading('tp-elo', 'Historical Elo') + renderUpcomingCard(team) +
       '<div class="grid-2 team-section">' + loading('tp-gains', 'Biggest Elo Gains') +
       loading('tp-losses', 'Biggest Elo Losses') + '</div>';
   }
@@ -2046,7 +2119,7 @@ function renderTeamPage(param) {
 // The tab lives in the URL (see ui/navigation.js), so every tab is a shareable
 // address and Back moves between tabs like any other navigation.
 const TEAM_TAB_LABELS = { overview: 'Overview', schedule: 'Schedule', roster: 'Roster',
-  history: 'History', analytics: 'Analytics' };
+  stats: 'Stats', leaders: 'Leaders', history: 'History', analytics: 'Analytics' };
 const CONF_TAB_LABELS = { overview: 'Overview', members: 'Members', history: 'History', external: 'External' };
 
 function activeTab(kind) {
@@ -2175,7 +2248,7 @@ function fillEloPanel(tp, team) {
   const seasons = teamSeasonsList(tp, team);
   const allTime = teamPageState.chartSeason === 'all';
   el.innerHTML = panelHead('Historical Elo', seasons.length ? seasonSelect('tp-elo-season', seasons, teamPageState.chartSeason, true) : '') +
-    '<div class="elo-chart" id="tp-elo-chart"></div>' +
+    '<div class="games-filters"><label>From season<input type="number" id="tp-chart-from" min="1980" max="'+LATEST_SEASON+'" value="'+(teamPageState.chartFrom||'')+'" placeholder="First season"></label><label>Through season<input type="number" id="tp-chart-to" min="1980" max="'+LATEST_SEASON+'" value="'+(teamPageState.chartTo||'')+'" placeholder="Latest season"></label></div><div class="elo-chart" id="tp-elo-chart"></div>' +
     '<div class="chart-legend">' +
       '<span>Line = postgame Elo</span>' +
       (allTime
@@ -2184,7 +2257,10 @@ function fillEloPanel(tp, team) {
       '<span>Dashed = 1500 baseline</span>' +
     '</div>';
   const sel = document.getElementById('tp-elo-season');
-  if (sel) sel.addEventListener('change', () => { teamPageState.chartSeason = sel.value; fillEloPanel(tp, team); });
+  if (sel) sel.addEventListener('change', () => { teamPageState.chartSeason = sel.value; teamPageState.chartFrom=null; teamPageState.chartTo=null; fillEloPanel(tp, team); });
+  for(const [id,key] of [['tp-chart-from','chartFrom'],['tp-chart-to','chartTo']]) document.getElementById(id).addEventListener('change',e=>{
+    teamPageState[key]=Number(e.target.value)||null; teamPageState.chartSeason='all'; fillEloPanel(tp,team);
+  });
   drawEloChart(tp, team);
 }
 
@@ -2193,7 +2269,7 @@ function drawEloChart(tp, team) {
   if (!box) return;
   const mode = teamPageState.chartSeason;
   const all = tp.eloByTeam.get(team.id) || [];
-  const rows = mode === 'all' ? all : all.filter(r => String(tp.gamesById.get(r.gid).season) === String(mode));
+  const rows = (mode === 'all' ? all : all.filter(r => String(tp.gamesById.get(r.gid).season) === String(mode))).filter(r=>{const y=tp.gamesById.get(r.gid).season;return (!teamPageState.chartFrom||y>=teamPageState.chartFrom)&&(!teamPageState.chartTo||y<=teamPageState.chartTo);});
   if (!rows.length) { box.innerHTML = '<div class="empty-note">No completed games in the dataset yet.</div>'; return; }
 
   const pts = [];
@@ -2492,8 +2568,7 @@ function rosterSeasonSelect(season, seasons) {
 }
 function rosterTable(rows) {
   const cell = v => (v == null || v === '') ? '&mdash;' : esc(v);
-  return '<table class="data-table"><thead><tr><th>No.</th><th>Player</th><th>Pos</th>' +
-    '<th>Class</th><th>Ht</th><th>Wt</th></tr></thead><tbody>' +
+  return '<table class="data-table roster-table" data-sortable="true"><thead><tr>'+['No.','Player','Pos','Class','Ht','Wt'].map((label,i)=>'<th aria-sort="none"><button class="sort-button" data-roster-column="'+i+'">'+label+'</button></th>').join('')+'</tr></thead><tbody>' +
     rows.map(r => '<tr><td>' + cell(r.jersey) + '</td>' +
       '<td><a href="' + esc(playerHref(r.player_id)) + '">' + esc(r.name) + '</a></td>' +
       '<td>' + cell(r.position) + '</td><td>' + cell(r.class_year) + '</td>' +
@@ -2525,8 +2600,9 @@ function fillRosterPanel(team) {
           '. The source lists rosters by school, and this one is not among them for that season.</p>'
         : rosterTable(rows) + '<p class="section-note">' + rows.length + ' players listed, from the ' +
           season + ' CFBD roster. Numbers, class and listed size are the source\u2019s own for that ' +
-          'season. Statistics are not attributed to players yet.</p>';
+          'season.</p>';
     target.innerHTML = head + body;
+    wrapWideTables();
     const sel = document.getElementById('tp-roster-season');
     if (sel) sel.addEventListener('change', () => {
       teamPageState.rosterSeason = Number(sel.value);
@@ -2725,9 +2801,7 @@ function renderMatchups() {
     result = '<div class="matchup-board">' + side(a, ra, pct.home) + '<span class="matchup-mid">vs</span>' +
       side(b, rb, pct.away) + '</div><div class="matchup-bar" aria-label="Team A ' + pct.home +
       ' percent, Team B ' + pct.away + ' percent"><span style="width:' + pct.home + '%"></span><span></span></div>';
-    const adjustment = state.venue === 'neutral' ? 0 : state.venue === 'away' ? -Number(cfg.home_field) : Number(cfg.home_field);
-    result += '<div class="story-grid"><div class="story-item"><small>Team A − Team B Elo</small><strong>' + (ra-rb).toFixed(1) + '</strong><p>Current published rating difference</p></div>' +
-      '<div class="story-item"><small>Venue adjustment for Team A</small><strong>' + (adjustment>0?'+':'') + adjustment.toFixed(1) + '</strong><p>Existing flat Elo home-field bonus; neutral venues receive zero</p></div></div>';
+
   }
   return '<div class="panel"><h2 class="view-title">Hypothetical matchup</h2>' +
     '<p class="section-note">Pick two teams and a venue. Win chances use the current exported Elo ratings and the ' +
@@ -2811,6 +2885,7 @@ function hydrateTeamPage() {
   // it fills on its own: a missing roster must not blank the Elo panel, and a
   // missing team history must not blank the roster.
   fillRosterPanel(team);
+  fillTeamStatistics(team);
   loadTeamPages().then(tp => {
     const cur = resolveTeam(state.teamParam);
     if (state.view !== 'team' || !cur || cur.id !== team.id) return;   // user navigated away meanwhile
@@ -2974,7 +3049,7 @@ function renderPollsPanel() {
 }
 
 function renderHome() {
-  return renderLiveScores(true) + '<section class="panel"><h2>Find a Game / Game History</h2><div id="home-filters" class="games-filters">Loading filters…</div><div id="home-results" aria-live="polite"></div></section>';
+  return renderLiveScores(true) + '<section class="panel home-discovery"><div class="panel-head"><h2>Game history</h2><a href="#section=home&view=games">Open game explorer →</a></div><details class="filter-drawer" id="home-filter-drawer"><summary><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 4h18l-7 8v7l-4 2v-9Z"/></svg> Filter games</summary><form id="home-filter-form"><div id="home-filters" class="games-filters">Loading filters…</div><div class="filter-actions"><button class="action-button" type="submit">Apply filters</button><a href="#section=home">Clear filters</a></div></form></details><div id="home-results" aria-live="polite"></div></section>';
 }
 
 
@@ -3048,13 +3123,13 @@ function hydrateHomeDiscovery(version) {
     document.getElementById('home-results').innerHTML=homeResultsHtml();
   }).catch(()=> { if(version===renderVersion) document.getElementById('home-results').textContent='Games could not be loaded. Try another season.'; });
 }
-document.getElementById('content').addEventListener('change',e=>{
-  if(state.section !== 'home') return;
-  const key = {'home-season':'findSeason','home-week':'week','home-team':'team','home-conf':'conf','home-status':'status'}[e.target.id];
-  if(!key) return;
-  let value=e.target.value || null;
-  if(key==='findSeason' || key==='week' && value && value!=='post') value=Number(value);
-  navigate({[key]:value,...(key==='findSeason'?{week:null,team:null,conf:null}:{} )});
+document.getElementById('content').addEventListener('submit',e=>{
+  if(e.target.id !== 'home-filter-form') return;
+  e.preventDefault();
+  const value=id=>document.getElementById(id).value;
+  const week=value('home-week');
+  navigate({findSeason:Number(value('home-season')),week:week==='post'?'post':week?Number(week):null,
+    team:value('home-team')||null,conf:value('home-conf')||null,status:value('home-status')});
 });
 document.getElementById('content').addEventListener('click',e=>{
   if(e.target.id==='home-more') {homeDiscoveryCount+=30;document.getElementById('home-results').innerHTML=homeResultsHtml();}
@@ -3062,6 +3137,15 @@ document.getElementById('content').addEventListener('click',e=>{
 
 // ---------------- Milestone A1 landing views ----------------
 let renderVersion = 0;
+
+function routeSelect(label, items, selected) {
+  return '<label class="view-select">'+esc(label)+'<select data-route-select aria-label="'+esc(label)+'">'+
+    items.map(([value,text])=>'<option value="'+esc(routeHref({subview:value}))+'"'+
+      (value===selected?' selected':'')+'>'+esc(text)+'</option>').join('')+'</select></label>';
+}
+document.addEventListener('change',e=>{
+  if(e.target.matches('[data-route-select]')) window.location.hash=e.target.value;
+});
 
 function renderNavigation() {
   document.querySelectorAll('#tabs a').forEach(a => {
@@ -3074,9 +3158,63 @@ function renderNavigation() {
   const statsNav = [['overview', 'Overview'], ['teams', 'Teams'], ['players', 'Players'], ['matchup', 'Matchup'], ['playoff', 'Playoff']];
   const inStats = ['stats', 'matchups', 'playoff'].includes(state.section);
   const items = inStats ? statsNav : state.view === 'team' || state.section === 'teams' ? [] : SUBVIEWS[state.section] || [];
+  if(state.section === 'rankings') {
+    document.getElementById('subnav').innerHTML = routeSelect('Standings view',items,state.subview);
+    return;
+  }
   document.getElementById('subnav').innerHTML = items.map(([view, label]) =>
     '<a href="' + esc(inStats ? '#section=stats&view=' + view + '&season=' + state.year : routeHref({ subview: view })) + '"' +
     (view === (state.section === 'matchups' ? 'matchup' : state.section === 'playoff' ? 'playoff' : state.subview) ? ' aria-current="page"' : '') + '>' + label + '</a>').join('');
+}
+
+
+function renderPeople() {
+  return '<section class="panel"><h1 class="view-title">People</h1><p>Find a player or head coach and explore their seasons, teams and statistics.</p>' +
+    '<form id="people-form" class="games-filters"><label>Name<input type="search" id="people-query" maxlength="150" value="'+esc(state.query)+'" placeholder="Search players and coaches"></label><label>Role<select id="people-kind"><option value="">Players and coaches</option><option value="player">Players</option><option value="coach">Head coaches</option></select></label><button class="action-button" type="submit">Search</button></form><div id="people-results" aria-live="polite"></div></section>';
+}
+let peopleDirectorySeq = 0;
+function hydratePeople(version, kind='') {
+  const query = document.getElementById('people-query')?.value.trim() || state.query;
+  const key = CfbSearch.peopleShardKey(query), seq = ++peopleDirectorySeq;
+  const target = document.getElementById('people-results');
+  if(!key) { target.innerHTML='<p class="section-note">Enter a name to search the player and head coach directory.</p>'; return; }
+  target.textContent='Searching…';
+  loadPersonIndex(key).then(rows=>{
+    if(version!==renderVersion||seq!==peopleDirectorySeq)return;
+    const result=CfbSearch.matchPeople(kind?rows.filter(r=>r[0]===(kind==='coach'?'c':'p')):rows,query,60);
+    target.innerHTML=peopleResultsHtml(result,query)||'<p>No matching people. Try another spelling.</p>';
+  }).catch(()=>{if(version===renderVersion&&seq===peopleDirectorySeq)target.textContent='Could not load the directory. Please search again.';});
+}
+document.addEventListener('submit',e=>{
+  if(e.target.id!=='people-form')return;
+  e.preventDefault(); hydratePeople(renderVersion,document.getElementById('people-kind').value);
+});
+function fillTeamStatistics(team) {
+  const target=document.getElementById('tp-statistics'); if(!target)return;
+  const season=teamPageState.statSeason||latestSeasonFor(team.name),version=renderVersion;
+  const leaders=activeTab('team')==='leaders';
+  const head=panelHead(leaders?'Team leaders':'Team statistics',seasonSelect('tp-stats-season',DATA.years_all,season));
+  target.innerHTML=head+'<p>Loading statistics…</p>';
+  loadStats(season).then(data=>{
+    if(version!==renderVersion)return;
+    const teamRow=data.teams.find(r=>String(r.teamId)===String(team.id)||r.team===team.name);
+    let body='';
+    if(leaders) {
+      const lookup=rosterNameLookup(data.roster,team.id),ids=rosterIdSet(data.roster,team.id);
+      for(const [category,schema] of Object.entries(CfbStats.categories)) {
+        const rows=CfbStats.sortRows(data.players.filter(r=>String(r.teamId)===String(team.id)&&r.category===category),schema.sort,'desc');
+        if(!rows.length)continue;
+        const fields=['games',...schema.fields.filter(k=>rows.some(r=>r[k]!=null))];
+        body+='<h3>'+esc(schema.label)+'</h3><table><thead><tr><th>Player</th>'+fields.map(k=>'<th>'+esc(k==='games'?'Games':CfbStats.labels[k]||k)+'</th>').join('')+'</tr></thead><tbody>'+rows.slice(0,10).map(r=>'<tr><td>'+boxScoreLineCell(r,lookup,ids).html+'</td>'+fields.map(k=>'<td>'+statValue(r[k])+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
+      }
+    } else if(teamRow) {
+      const fields=[...new Set(Object.values(TEAM_STAT_CATEGORIES).flat())].filter(k=>teamRow[k]!=null);
+      body='<table><thead><tr><th>Statistic</th><th>'+season+'</th></tr></thead><tbody>'+fields.map(k=>'<tr><th scope="row">'+esc(CfbStats.labels[k]||k)+'</th><td>'+statValue(teamRow[k])+'</td></tr>').join('')+'</tbody></table>';
+    }
+    target.innerHTML=head+(body||'<p>No recorded statistics for this team and season.</p>')+'<p class="section-note">Completed FBS games. Player totals cover recorded category box scores.</p>';
+    document.getElementById('tp-stats-season').addEventListener('change',e=>{teamPageState.statSeason=Number(e.target.value);fillTeamStatistics(team);});
+    wrapWideTables();
+  }).catch(()=>{if(version===renderVersion)target.innerHTML=head+'<p>Statistics could not be loaded.</p>';});
 }
 
 function renderTeamDirectory() {
@@ -3696,11 +3834,11 @@ function playerBoxscorePanel(teams, updated, checked, rosterData) {
     (timestamp(checked) ? ' Last checked ' + esc(timestamp(checked)) + '.' : '') + '</p></div>';
   let linked = 0;
   let attributed = 0;
-  const groups = teams.flatMap(team => {
+  const groups = teams.map(team => {
     const lookup = boxScoreNameLookup(rosterData, team.name);
     const teamRow = TEAM_BY_NAME.get(team.name);
     const idSet = teamRow ? rosterIdSet(rosterData, teamRow.id) : null;
-    return (team.categories || []).map(c => {
+    return '<section class="live-player-team"><h3>' + esc(team.name) + '</h3>' + (team.categories || []).map(c => {
     const lines = (c.lines || []).map(a => {
       const cell = boxScoreLineCell(a, lookup, idSet);
       if (cell.attributed) attributed += 1;
@@ -3708,9 +3846,9 @@ function playerBoxscorePanel(teams, updated, checked, rosterData) {
       return '<div class="live-player-row"><span>' + cell.html +
         '</span><strong>' + esc(a.stat) + '</strong></div>';
     }).join('');
-    return '<div class="live-player-group"><h3>' + esc(team.name) + ' · ' + esc(c.name) +
+    return '<div class="live-player-group"><h3>' + esc(c.name) +
       (c.type && c.type !== c.name ? ' · ' + esc(c.type) : '') + '</h3>' + lines + '</div>';
-    });
+    }).join('') + '</section>';
   });
   return '<div class="panel"><h2 class="section-title">Player box score</h2>' +
     '<p class="section-note">From CFBD.' +
@@ -4687,6 +4825,8 @@ function coachExpectation(tenures) {
 
 function coachPanels(c, id) {
   const tenures = c.tenures || [];
+  const measuredElo = tenures.filter(t=>Number.isFinite(t.elo_change));
+  const totalElo = measuredElo.reduce((sum,t)=>sum+t.elo_change,0);
   const last = tenures[tenures.length - 1] || {};
   const years = tenures.map(t => t.season_year);
   const rec = coachRecord(tenures);
@@ -4702,10 +4842,11 @@ function coachPanels(c, id) {
       ', ' + Math.min(...years) + '–' + Math.max(...years) : '') +
     (last.team_id != null ? ' · most recently ' + teamCellById(last.team_id) : '') + '</div>' +
     '</div></div><div class="team-stats">' +
-    teamStat('Record', rec.label, 'vs teams in this dataset') +
+    teamStat('Record', rec.label, 'vs FBS Opponents') +
     teamStat('Win rate', rec.pct == null ? 'N/A' : rec.pct.toFixed(3).replace(/^0/, ''),
              rec.played ? rec.played + ' games' : '&nbsp;') +
-    teamStat('Schools', String(schools.length), 'in this dataset') +
+    teamStat('Schools', String(schools.length), 'FBS programs coached') +
+    (measuredElo.length ? teamStat('Elo gained / lost', signed(totalElo,1), measuredElo.length+' measured seasons') : '') +
     (exp ? teamStat('Wins vs expectation', signed(exp.total, 1),
                     signed(exp.perSeason, 2) + ' a season over ' + exp.seasons +
                     (exp.seasons === 1 ? ' measured season' : ' measured seasons')) : '') +
@@ -4727,20 +4868,19 @@ function coachPanels(c, id) {
       // A season nobody can attribute says so where the number would have been,
       // rather than showing an empty cell that reads as a coach who did nothing.
       (t.unmeasured
-        ? '<td class="num" colspan="2"><abbr title="' + esc(t.unmeasured) +
+        ? '<td class="num" colspan="3"><abbr title="' + esc(t.unmeasured) +
           '">not measured</abbr></td>'
         : '<td class="num">' + (t.expected_wins == null ? '&mdash;'
             : esc(t.expected_wins.toFixed(1))) + '</td>' +
           '<td class="num">' + (t.wins_above_expected == null ? '&mdash;'
-            : signed(t.wins_above_expected, 1)) + '</td>') +
-      '<td>' + esc(t.hire_date || '—') + '</td></tr>';
+            : signed(t.wins_above_expected, 1)) + '</td><td class="num">'+(t.elo_change==null?'—':signed(t.elo_change,1))+'</td>') +
+      '</tr>';
   }).join('');
   const table = '<div class="panel team-section"><h2 class="section-title">Season by season</h2>' +
     '<table class="data-table"><thead><tr><th>Season</th><th>Team</th><th>Record</th>' +
-    '<th>Preseason</th><th>Final</th><th scope="col">Expected</th><th scope="col">vs exp</th>' +
-    '<th>Hired</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-    '<p class="section-note">The hire date belongs to the job, not the person: a coach carries a ' +
-    'different one at each school. Records count games against teams in this dataset only. ' +
+    '<th>Preseason</th><th>Final</th><th scope="col">Expected</th><th scope="col">vs exp</th><th scope="col">Elo ±</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<p class="section-note">Records count games vs FBS opponents. ' +
     '\u201cExpected\u201d adds up the pregame Elo win probability of each of that season\u2019s ' +
     'games, so it is the season a typical coach of that team, against that schedule, would have ' +
     'had; \u201cvs exp\u201d is the part of the record that was not already predicted' +
@@ -4749,7 +4889,7 @@ function coachPanels(c, id) {
         ' not measured, because the team had two head coaches that year and the feed does not ' +
         'say which games belonged to each'
       : '') + '.</p></div>';
-  return header + note + table;
+  return header + note + table + '<section class="panel team-section"><h2>How coach performance is measured</h2><p>Elo gained / lost = final postgame Elo − first pregame Elo for each measured season. Career change sums those season changes, excluding offseason regression.</p><p>Wins above expectation = wins + ½ × ties − sum of pregame Elo win probabilities. Positive means more wins than the team’s ratings and schedule predicted. This measures team outcomes during the tenure; it does not isolate coaching causation.</p></section>';
 }
 
 function hydratePersonPage(version, kind) {
@@ -4902,7 +5042,7 @@ function gameStory(g, d, season, an, hn) {
     (g.completed ? '<a href="#gp-players">Player box score →</a>' : '') +
     '<a href="#gp-series">Series history →</a></nav></section>';
 }
-function storyPlayerLeaders(teams, season) {
+function storyPlayerLeaders(teams, season, rosterData) {
   const specs = [['Passing', /pass/i], ['Rushing', /rush/i], ['Receiving', /receiv/i]];
   const leaders = specs.map(([label, category]) => {
     const candidates = (teams || []).flatMap(team => (team.categories || [])
@@ -4917,7 +5057,7 @@ function storyPlayerLeaders(teams, season) {
     (season != null && season < 2004 ? 'CFBD player box scores begin in 2004.' :
       'Player lines are not available for this game yet.') + '</p>';
   return '<h3>Player leaders</h3><div class="story-grid">' + leaders.map(line =>
-    '<div class="story-item"><small>' + line.label + '</small><strong>' + esc(line.name) +
+    '<div class="story-item"><small>' + line.label + '</small><strong>' + (rosterData ? boxScoreLineCell(line, boxScoreNameLookup(rosterData,line.team), rosterIdSet(rosterData,TEAM_BY_NAME.get(line.team)?.id)).html : esc(line.name)) +
     '</strong><p>' + esc(line.team) + ' · ' + line.yards + ' yards</p></div>').join('') + '</div>' +
     '<p class="section-note">Leaders shown from available CFBD player box scores.</p>';
 }
@@ -5063,8 +5203,8 @@ function hydrateGamePage(version) {
         esc(coverageReason('game_advanced', season) || 'Available for this season.') + '</div>' +
         (g.completed ? '<div class="gp-fact"><b>Highlights</b><a href="https://www.youtube.com/results?search_query=' + q + '" target="_blank" rel="noopener noreferrer">Search YouTube &rarr;</a></div>' : '') +
         '<div class="gp-fact"><b>Teams</b>' + (away ? teamLink(an, 'xs', season) : esc(an)) + ' ' + (home ? teamLink(hn, 'xs', season) : esc(hn)) + '</div></div></div>';
-      target().innerHTML = hero + gameStory(g, d, season, an, hn) + gameVenuePanel(g, hn) +
-        '<div class="grid-2">' + eloPanel + coePanel + '</div>' + srPanel +
+      target().innerHTML = hero + srPanel + '<div class="grid-2">' + eloPanel + coePanel + '</div>' +
+        gameStory(g, d, season, an, hn) + gameVenuePanel(g, hn) +
         (g.completed ? '<div id="gp-players" class="panel"><h2 class="section-title">Player box score</h2><p class="empty-note">Loading player stats…</p></div>' : '') +
         '<div class="panel" id="gp-series"><h2 class="section-title">Series history</h2><p class="empty-note">Loading meetings…</p></div>' + more;
       if (g.completed) Promise.all([loadPlayerArchive(season, id), loadRoster(season).catch(() => null)])
@@ -5072,7 +5212,7 @@ function hydrateGamePage(version) {
         if (version !== renderVersion) return;
         const teams = archive[String(id)] || liveSnapshot?.player_boxscores?.[String(id)] || [];
         const leaders = document.getElementById('story-leaders');
-        if (leaders) leaders.innerHTML = storyPlayerLeaders(teams, season);
+        if (leaders) leaders.innerHTML = storyPlayerLeaders(teams, season, rosterData);
         const panel = document.getElementById('gp-players');
         if (panel) panel.outerHTML = !teams.length && season < 2004
           ? '<div class="panel"><h2 class="section-title">Player box score</h2><p class="empty-note">CFBD game player box scores begin in 2004; player lines are unavailable for this season.</p></div>'
@@ -5845,10 +5985,10 @@ function wrapWideTables() {
 const statsCache = new Map();
 let statsData = null;
 const TEAM_STAT_CATEGORIES = {
-  overall: ['games','wins','losses','pointsFor','pointsAgainst','ppg','oppPpg'],
-  offense: ['games','boxGames','pointsFor','ppg','passYards','rushYards','passYpg','rushYpg'],
-  defense: ['games','boxGames','pointsAgainst','oppPpg','tackles','sacks','tfl','interceptions','passesDefended'],
-  'special-teams': ['games','boxGames','fgMade','fgAttempts','fgPct','xpMade','xpAttempts'],
+  overall: ['games','wins','losses','pointsFor','pointsAgainst','ppg','oppPpg','passYards','rushYards','passYpg','rushYpg','elo','coefficient'],
+  offense: ['games','pointsFor','ppg','passYards','rushYards','passYpg','rushYpg'],
+  defense: ['games','pointsAgainst','oppPpg','tackles','sacks','tfl','interceptions','passesDefended'],
+  'special-teams': ['games','fgMade','fgAttempts','fgPct','xpMade','xpAttempts'],
   ratings: ['games','elo','coefficient','rolling','change']
 };
 function statsHref(changes) {
@@ -5868,6 +6008,26 @@ function loadStats(season) {
   }).catch(error=>{statsCache.delete(season);throw error;}));
   return statsCache.get(season);
 }
+
+document.addEventListener('click', e=>{
+  const button=e.target.closest('[data-roster-column]');if(!button)return;
+  const table=button.closest('table'),index=Number(button.dataset.rosterColumn),head=button.closest('th');
+  const asc=head.getAttribute('aria-sort')!=='ascending';
+  const cell=row=>row.cells[index].textContent.trim();
+  const rows=[...table.tBodies[0].rows].sort((a,b)=>{
+    const x=cell(a),y=cell(b);if(x==='—'||y==='—')return x==='—'?(y==='—'?0:1):-1;
+    return (asc?1:-1)*x.localeCompare(y,undefined,{numeric:true,sensitivity:'base'});
+  });
+  table.querySelectorAll('th').forEach(th=>th.setAttribute('aria-sort','none'));
+  head.setAttribute('aria-sort',asc?'ascending':'descending');rows.forEach(row=>table.tBodies[0].append(row));
+});
+let customTeamFields = null;
+document.addEventListener('change',e=>{
+  if(!e.target.matches('[data-team-field]'))return;
+  customTeamFields=[...document.querySelectorAll('[data-team-field]:checked')].map(x=>x.value);
+  document.getElementById('stats-body').innerHTML=statsViewHtml(statsData);wrapWideTables();
+});
+
 function renderStats() {
   return '<div class="panel"><h2 class="view-title">Stats · ' + esc(state.subview === 'overview' ? 'National leaders' : state.subview === 'teams' ? 'Team statistics' : 'Player statistics') + '</h2>' +
     '<p class="section-note">Counting stats from recorded completed FBS-vs-FBS games. Missing values remain unavailable. Player games count appearances in recorded category box scores.</p>' +
@@ -5898,7 +6058,7 @@ function SortableTable(rows,columns,options={}) {
     (!view.length?'<p class="empty-note">No statistics match these filters.</p>':'')+'<nav class="table-pagination" aria-label="Table pages">'+(page>1?pager(page-1,'← Previous'):'')+' '+(page<pages?pager(page+1,'Next →'):'')+'</nav>';
 }
 function statsViewHtml(data) {
-  const coverage='<p class="section-note">Player box scores available for '+data.covered+' of '+data.completed+' completed archived games in '+data.season+'. Team scoring uses the full game archive. Box score totals and rates cover recorded games only; “Box score G” shows coverage.</p>';
+  const coverage='';
   if(state.subview==='overview')return coverage+statsOverviewHtml(data);
   const isPlayer=state.subview==='players';
   const supportedPlayers=Object.keys(CfbStats.categories).filter(cat=>data.players.some(r=>r.category===cat));
@@ -5908,7 +6068,9 @@ function statsViewHtml(data) {
   const category=cats.includes(state.category)?state.category:cats[0];
   const schema=isPlayer?CfbStats.categories[category]:null;
   const rows=isPlayer?data.players.filter(r=>r.category===category):data.teams;
-  const fields=(isPlayer?schema.fields:TEAM_STAT_CATEGORIES[category]).filter(k=>rows.some(r=>r[k]!=null));
+  const availableFields=(isPlayer?schema.fields:[...new Set(Object.values(TEAM_STAT_CATEGORIES).flat())]).filter(k=>rows.some(r=>r[k]!=null));
+  const fields=(isPlayer?schema.fields:customTeamFields||TEAM_STAT_CATEGORIES[category]).filter(k=>availableFields.includes(k));
+  const picker=isPlayer?'':'<details class="column-picker" open><summary>Choose table columns</summary><div class="column-options">'+availableFields.map(k=>'<label><input type="checkbox" data-team-field value="'+esc(k)+'"'+(fields.includes(k)?' checked':'')+'> '+esc(CfbStats.labels[k]||k)+'</label>').join('')+'</div></details>';
   const label=cat=>isPlayer?CfbStats.categories[cat].label:cat==='special-teams'?'Special Teams':cat[0].toUpperCase()+cat.slice(1);
   const nav='<nav class="stats-categories" aria-label="Statistic categories">'+cats.map(cat=>'<a href="'+esc(statsHref({subview:state.subview,category:cat,sort:'',minimum:0}))+'"'+(category===cat?' aria-current="page"':'')+'>'+label(cat)+'</a>').join('')+'</nav>';
   const select=(id,name,choices,value)=>'<label>'+name+'<select id="'+id+'"><option value="">All</option>'+choices.map(c=>'<option'+(c===value?' selected':'')+' value="'+esc(c)+'">'+esc(c)+'</option>').join('')+'</select></label>';
@@ -5921,12 +6083,12 @@ function statsViewHtml(data) {
   const lookups=new Map();
   const statsPlayerCell=r=>{
     if(!lookups.has(r.teamId))lookups.set(r.teamId,rosterNameLookup(data.roster,r.teamId));
-    return boxScorePlayerCell(r.name,lookups.get(r.teamId));
+    return boxScoreLineCell(r,lookups.get(r.teamId),rosterIdSet(data.roster,r.teamId)).html;
   };
   const columns=[{key:'name',label:isPlayer?'Player':'Team',type:'string',render:r=>isPlayer?'<span class="player-name" data-player-key="'+esc(r.key)+'">'+statsPlayerCell(r)+'</span>':teamLink(r.name,'xs',state.year)}];
-  if(isPlayer)columns.push({key:'team',label:'Team',type:'string',render:r=>teamLink(r.team,'xs',state.year)},{key:'games',label:'Recorded G'});
+  if(isPlayer)columns.push({key:'team',label:'Team',type:'string',render:r=>teamLink(r.team,'xs',state.year)},{key:'games',label:'Games'});
   columns.push({key:'conference',label:'Conference',type:'string'},...fields.map(key=>({key,label:CfbStats.labels[key]||key})));
-  return coverage+nav+filters+SortableTable(filtered,columns,{sort:isPlayer?schema.sort:category==='ratings'?'elo':category==='defense'?'oppPpg':'ppg',dir:category==='defense'?'asc':'desc'});
+  return coverage+nav+filters+picker+SortableTable(filtered,columns,{sort:isPlayer?schema.sort:category==='ratings'?'elo':category==='defense'?'oppPpg':'ppg',dir:category==='defense'?'asc':'desc'});
 }
 function statsOverviewHtml(data) {
   const cards=[];
@@ -5938,7 +6100,7 @@ function statsOverviewHtml(data) {
   const nameCell=r=>{
     if(r.teamId==null)return esc(r.name);
     if(!lookups.has(r.teamId))lookups.set(r.teamId,rosterNameLookup(data.roster,r.teamId));
-    return boxScorePlayerCell(r.name,lookups.get(r.teamId));
+    return boxScoreLineCell(r,lookups.get(r.teamId),rosterIdSet(data.roster,r.teamId)).html;
   };
   const card=(title,rows,key,target,dir='desc',minimum=0)=>{
     const available=rows.filter(r=>r[key]!=null);if(!available.length)return;
@@ -5989,6 +6151,7 @@ function render() {
   }
   if (state.section === 'home') { content.innerHTML = renderHome(); hydrateLiveScores(version); hydrateHomeDiscovery(version); }
   else if (state.section === 'stats') {content.innerHTML = renderStats(); hydrateStats(version);}
+  else if (state.section === 'people') { content.innerHTML = renderPeople(); hydratePeople(version); }
   else if (state.section === 'methodology') content.innerHTML = renderMethodology();
   else if (state.section === 'coverage') content.innerHTML = renderCoverage();
   else if (state.section === 'teams') {
@@ -6010,7 +6173,7 @@ function render() {
     if (state.subview === 'elo') hydrateRatingFreshness(version);
   } else if (state.section === 'playoff') {
     const views = { field: renderField, bracket: renderBracket, odds: renderOdds, history: renderHistory };
-    content.innerHTML = '<nav class="subnav" aria-label="Playoff views">' + SUBVIEWS.playoff.map(([view,label]) => '<a href="' + esc(routeHref({subview:view})) + '">' + label + '</a>').join('') + '</nav>' + playoffIntro() + views[state.subview]();
+    content.innerHTML = routeSelect('Playoff view', SUBVIEWS.playoff, state.subview) + playoffIntro() + views[state.subview]();
     // A simulation restored after navigating away should already be visible.
     content.querySelectorAll('.bracket-round-col.pending').forEach(el => el.classList.remove('pending'));
   }

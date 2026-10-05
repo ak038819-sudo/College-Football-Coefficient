@@ -23,8 +23,8 @@
 # What a merge does NOT do is rebuild. If the commit we merge in carries new
 # INPUT (a roster snapshot from sync-people.yml, say), our generated files were
 # built before it arrived and will not show it until the next deploy runs. That
-# is the same as today: those jobs commit with [skip ci], so a deploy has to be
-# dispatched after them either way.
+# is automatic: completion of either source workflow queues ci-and-deploy
+# through workflow_run, which rebuilds from the latest main after this run.
 #
 # Every git command is checked on its own line. A `&&` chain would run the push
 # even after a failed merge and publish a conflicted tree.
