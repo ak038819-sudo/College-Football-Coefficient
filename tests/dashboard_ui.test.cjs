@@ -45,6 +45,15 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    const before=w.location.hash; change('home-conf','Big 12'); change('home-status','completed'); assert.equal(w.location.hash,before,'filters wait until Apply'); d.querySelector('#home-filter-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await until(w,()=>w.location.hash.includes('conf=Big')&&d.querySelector('#home-conf')?.value==='Big 12');
    assert.equal(d.querySelector('#home-team').value,'byu');assert.equal(d.querySelector('#home-status').value,'completed');
   });
+  await t.test('Saturday final retained in the live feed shows archived efficiency',async()=>{
+   const snapshot=JSON.parse(fs.readFileSync(path.join(root,'ui/data/live_scores.json'),'utf8'));
+   const final=snapshot.games.find(g=>g.id===401858476);
+   assert.equal(final?.status,'completed','fixture must exercise a final still in the live feed');
+   await route('#game=401858476&season=2026',()=>d.querySelector('#gp-efficiency'));
+   assert.match(d.querySelector('#gp-efficiency').textContent,/Success Rate.*SRDiff.*xSRDiff.*SR\+/s);
+   assert.match(d.querySelector('.story-panel').textContent,/Efficiency edge/);
+   assert.doesNotMatch(d.querySelector('#gp-efficiency').textContent,/N\/A/);
+  });
   await t.test('player category, conference, minimum and numeric sort work together',async()=>{
    await route('#section=stats&view=players&season=2026&category=rushing',()=>d.querySelector('.stats-table')&&d.querySelector('[aria-current="page"]')?.textContent==='Stats');
    assert.ok(d.querySelectorAll('.stats-table tbody tr').length<=50);
