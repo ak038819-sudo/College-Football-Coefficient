@@ -3940,6 +3940,15 @@ function hydrateLiveGamePage(version) {
     const g = (data?.games || []).find(g => g.id === id);
     if (!g) return false;
     liveSnapshot = data;
+    // The live feed retains finals after the model has archived them. Use the
+    // full page once the archived result agrees, so stored efficiency, CoE and
+    // official Elo are visible instead of remaining in the live-only view.
+    const archived = liveSeasonData?.byId?.get(id);
+    if (g.status === 'completed' && archived?.completed &&
+        archived.home_score === g.home?.points && archived.away_score === g.away?.points) {
+      hydrateGamePage(version);
+      return true;
+    }
     const target = document.getElementById('game-page');
     if (target) target.innerHTML = liveDetail(g);
     return true;
