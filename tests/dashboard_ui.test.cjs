@@ -105,6 +105,9 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    d.querySelector('#people-query').value='Saban';d.querySelector('#people-kind').value='coach';
    d.querySelector('#people-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
    await until(w,()=>d.querySelector('#people-results a')?.getAttribute('href').startsWith('#coach='));
+   assert.ok(w.location.hash.includes('q=Saban')&&w.location.hash.includes('kind=coach'));
+   const profile=d.querySelector('#people-results a');assert.ok(decodeURIComponent(profile.href).includes('q=Saban'));
+   assert.equal(d.querySelector('#people-kind').value,'coach');
   });
   await t.test('Team statistics, leaders, roster sorting and chart ranges work',async()=>{
    await route('#team=byu&tab=stats',()=>d.querySelector('#tp-statistics tbody tr'));

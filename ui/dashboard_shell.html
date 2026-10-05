@@ -3170,10 +3170,10 @@ function renderNavigation() {
 
 function renderPeople() {
   return '<section class="panel"><h1 class="view-title">People</h1><p>Find a player or head coach and explore their seasons, teams and statistics.</p>' +
-    '<form id="people-form" class="games-filters"><label>Name<input type="search" id="people-query" maxlength="150" value="'+esc(state.query)+'" placeholder="Search players and coaches"></label><label>Role<select id="people-kind"><option value="">Players and coaches</option><option value="player">Players</option><option value="coach">Head coaches</option></select></label><button class="action-button" type="submit">Search</button></form><div id="people-results" aria-live="polite"></div></section>';
+    '<form id="people-form" class="games-filters"><label>Name<input type="search" id="people-query" maxlength="150" value="'+esc(state.query)+'" placeholder="Search players and coaches"></label><label>Role<select id="people-kind"><option value="">Players and coaches</option><option value="player"'+(state.peopleKind==='player'?' selected':'')+'>Players</option><option value="coach"'+(state.peopleKind==='coach'?' selected':'')+'>Head coaches</option></select></label><button class="action-button" type="submit">Search</button></form><div id="people-results" aria-live="polite"></div></section>';
 }
 let peopleDirectorySeq = 0;
-function hydratePeople(version, kind='') {
+function hydratePeople(version, kind=state.peopleKind) {
   const query = document.getElementById('people-query')?.value.trim() || state.query;
   const key = CfbSearch.peopleShardKey(query), seq = ++peopleDirectorySeq;
   const target = document.getElementById('people-results');
@@ -3187,16 +3187,17 @@ function hydratePeople(version, kind='') {
 }
 document.addEventListener('submit',e=>{
   if(e.target.id!=='people-form')return;
-  e.preventDefault(); hydratePeople(renderVersion,document.getElementById('people-kind').value);
+  e.preventDefault(); navigate({query:document.getElementById('people-query').value.trim(),peopleKind:document.getElementById('people-kind').value});
 });
+let teamStatisticsSeq = 0;
 function fillTeamStatistics(team) {
   const target=document.getElementById('tp-statistics'); if(!target)return;
-  const season=teamPageState.statSeason||latestSeasonFor(team.name),version=renderVersion;
+  const season=teamPageState.statSeason||latestSeasonFor(team.name),version=renderVersion,seq=++teamStatisticsSeq;
   const leaders=activeTab('team')==='leaders';
   const head=panelHead(leaders?'Team leaders':'Team statistics',seasonSelect('tp-stats-season',DATA.years_all,season));
   target.innerHTML=head+'<p>Loading statistics…</p>';
   loadStats(season).then(data=>{
-    if(version!==renderVersion)return;
+    if(version!==renderVersion||seq!==teamStatisticsSeq)return;
     const teamRow=data.teams.find(r=>String(r.teamId)===String(team.id)||r.team===team.name);
     let body='';
     if(leaders) {
@@ -3214,7 +3215,7 @@ function fillTeamStatistics(team) {
     target.innerHTML=head+(body||'<p>No recorded statistics for this team and season.</p>')+'<p class="section-note">Completed FBS games. Player totals cover recorded category box scores.</p>';
     document.getElementById('tp-stats-season').addEventListener('change',e=>{teamPageState.statSeason=Number(e.target.value);fillTeamStatistics(team);});
     wrapWideTables();
-  }).catch(()=>{if(version===renderVersion)target.innerHTML=head+'<p>Statistics could not be loaded.</p>';});
+  }).catch(()=>{if(version===renderVersion&&seq===teamStatisticsSeq)target.innerHTML=head+'<p>Statistics could not be loaded.</p>';});
 }
 
 function renderTeamDirectory() {

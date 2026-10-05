@@ -133,6 +133,7 @@
       minimum: Math.max(0, Math.min(10000, Number(p.get('minimum')) || 0)),
       sort: (p.get('sort') || '').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 40),
       dir: p.get('dir') === 'asc' ? 'asc' : 'desc', page: Math.max(1, Math.min(10000, Number(p.get('page')) || 1)),
+      peopleKind: section === 'people' && ['player','coach'].includes(p.get('kind')) ? p.get('kind') : '',
       query: (section === 'people' || section === 'teams' && subview !== 'stadiums') ? (p.get('q') || '').trim().slice(0, 150) : '',
       game, week, team: teamFilter, opponent, finder, findSeason, conf, stage,
       stadium: section === 'teams' && subview === 'stadiums' && /^\d{1,10}$/.test(p.get('stadium') || '') ? Number(p.get('stadium')) : null,
@@ -248,6 +249,7 @@
         if (route.matchupHome != null) p.set('home', route.matchupHome);
         if (route.venue !== 'home') p.set('venue', route.venue);
       }
+      if (route.section === 'people' && route.peopleKind) p.set('kind',route.peopleKind);
       if ((route.section === 'people' || route.section === 'teams' && route.subview !== 'stadiums') && route.query) p.set('q', route.query);
       if (route.section === 'teams' && route.subview === 'stadiums' && route.stadium != null) p.set('stadium', route.stadium);
     }
