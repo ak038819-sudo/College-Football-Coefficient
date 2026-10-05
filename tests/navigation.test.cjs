@@ -209,6 +209,46 @@ test('an open live game refreshes status and score even with a cached snapshot',
   assert.equal(target.innerHTML, 'completed:34');
 });
 
+test('a live final opens the full archive after season data loads', async () => {
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  const source = shell.match(/function hydrateLiveGamePage\(version\) \{[\s\S]*?\n\}/)[0];
+  const game = {id: 42, status: 'completed', home: {points: 34}, away: {points: 21}};
+  const archived = {completed: true, home_score: 34, away_score: 21};
+  let archiveViews = 0;
+  const target = {innerHTML: ''};
+  const context = {
+    state: {view: 'game', gameParam: 42}, renderVersion: 1, liveGameRequest: 0,
+    liveSnapshot: {games: [game]}, liveSeasonData: null,
+    document: {getElementById: () => target}, liveDetail: () => 'live-only',
+    fetch: () => Promise.resolve({ok: true, json: () => Promise.resolve({games: [game]})}),
+    liveSeason: () => 2026,
+    loadSeasonGames: () => Promise.resolve({byId: new Map([[42, archived]])}),
+    hydrateGamePage: () => {archiveViews++; target.innerHTML = 'efficiency and official Elo';}
+  };
+  vm.runInNewContext(source + '\nthis.refresh = hydrateLiveGamePage;', context);
+  context.refresh(1);
+  assert.equal(target.innerHTML, 'live-only');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(archiveViews, 1);
+  assert.equal(target.innerHTML, 'efficiency and official Elo');
+  context.refresh(1);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(target.innerHTML, 'efficiency and official Elo', 'polling must retain the full page');
+
+  archived.home_score = 33;
+  archiveViews = 0;
+  context.refresh(1);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(archiveViews, 0, 'a stale archived score must not replace the live final');
+  assert.equal(target.innerHTML, 'live-only');
+
+  archived.home_score = 34;
+  game.status = 'in_progress';
+  context.refresh(1);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(archiveViews, 0, 'in-progress games stay live');
+});
+
 test('all eight legacy tabs retain their original destination', () => {
   for (const [tab, section, view] of [
     ['home', 'home', ''], ['teams', 'rankings', 'team-coe'], ['elo', 'rankings', 'elo'],
