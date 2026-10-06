@@ -132,15 +132,17 @@
   },
   {
     "season": 2026,
-    "rated_games": 271.0,
-    "max_pair_residual": 0.0,
-    "early_cross_games": 174.0,
-    "cross_brier_sum": 26.02725389,
-    "cross_predictions": 174.0,
-    "early_internal_games": 97.0,
-    "internal_brier_sum": 20.513262430000008,
-    "internal_predictions": 97.0,
-    "internal_brier": 0.21147693226804132,
-    "cross_brier": 0.14958191890804598
+    "status": "excluded",
+    "reason": "missing_conference_membership",
+    "missing_team_ids": [
+      9,
+      17,
+      51,
+      58,
+      59,
+      60,
+      102,
+      127
+    ]
   }
 ]

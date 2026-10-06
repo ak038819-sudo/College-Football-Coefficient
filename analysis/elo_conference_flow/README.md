@@ -15,10 +15,18 @@ The default performance layer is strength-adjusted Success Rate (`xsrdiff`):
 `M = clamp(1 + 12 × winner_SR_plus, 0.25, 5)`. Missing supported SR inputs use
 MOV; the MOV multiplier has its own behavior and is not subject to those SR bounds.
 
-Every one of the 6,295 rated games in the published 2018–2026 exports has a
-zero sum of its two independently exported Elo changes. 2026 is incomplete.
-An intraconference game can redistribute ratings, but cannot add to that
-conference's total. A team's ranking can improve while the conference mean is
+Every one of the 6,024 rated games in the included 2018–2025 exports has a
+zero sum of its two independently exported Elo changes. The incomplete 2026
+season is excluded because eight rated teams lack conference memberships
+(IDs 9, 17, 51, 58, 59, 60, 102, 127). Any season with a missing, null, or blank
+membership for a participant in a completed, paired-rated game is excluded in
+full, with the reason and missing IDs in `season_summary.json`; no transfers or
+internal/cross Brier splits are published for it. Explicit independents remain
+separate pools. Rerunning the audit includes a season once its mappings are complete.
+
+Within a season after offseason regression, an intraconference game can
+redistribute ratings, but cannot add to that conference's total.
+A team's ranking can improve while the conference mean is
 unchanged. There is no mathematical guarantee the strongest team absorbs all
 of the points: losses transfer points away again.
 
@@ -43,7 +51,7 @@ transfer from internal games is zero. The Big 12 therefore has the exact
 closed-pool stretch raised by the owner; other conferences have varying late
 connections. The postseason can materially revise conference totals.
 
-The CSV includes every pool and season. Summary Brier scores are descriptive
+The CSV includes every pool in each included season. Summary Brier scores are descriptive
 checks of published forecasts, not a new out-of-sample comparison. Different
 internal/cross-conference matchup difficulty prevents interpreting their raw
 Brier difference as evidence for changing the model. Exported numbers are rounded.
@@ -51,8 +59,17 @@ These totals exclude FCS games because the current ratings archive excludes them
 
 ## Separate concerns before changing the formula
 
-1. **Conference strength evidence.** Zero-sum updates preserve relative strength
-   unless games connect pools. Removing conservation alone does not supply the
+1. **Conference strength evidence.** In-season zero-sum game updates preserve
+   each fixed-membership conference pool's total (and mean) unless games connect
+   pools. This is not preservation across seasons: `run_elo()` regresses all
+   existing ratings once at the season boundary toward 1500 with retention 0.8.
+   For an unchanged pool of N teams with mean m and total T, the new mean is
+   `1500 + 0.8 × (m − 1500)` and the new total is
+   `1500 × N + 0.8 × (T − 1500 × N)`. Thus two unchanged conference means'
+   gap contracts by 20% without a connecting game. Membership changes can also
+   alter conference totals and means. These CSVs measure game deltas only;
+   they do not account for boundary adjustments or establish year-to-year
+   pool conservation. Removing conservation alone does not supply the
    missing evidence. Adding winner bonuses can instead reward schedule volume
    or inflate everybody's scale.
 2. **How much winning matters.** At a 20% pregame win probability, K=40 yields a

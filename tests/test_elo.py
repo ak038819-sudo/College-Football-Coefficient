@@ -162,3 +162,24 @@ def test_mov_multiplier_rewards_upsets_more_than_expected_blowouts():
 
 def test_mov_multiplier_zero_for_tie():
     assert mov_multiplier(point_diff=0, winner_advantage=0, mov_c=2.2, mov_d=0.001) == 0.0
+
+
+def test_closed_conference_pools_contract_at_offseason_boundary():
+    """Internal games conserve pools; regression changes even an idle pool."""
+    cfg = {**DEFAULT_CFG, "offseason_retention": 0.8}
+    # Cross-pool results establish different means for pools (1, 2) and (3, 4).
+    setup = [_game(1, 2025, 1, 3, 35, 7), _game(2, 2025, 2, 4, 28, 0)]
+    _, before, _ = run_elo(setup, cfg)
+    internal = _game(3, 2025, 1, 2, 21, 14)
+    _, same_season, _ = run_elo(setup + [internal], cfg)
+    next_season = {**internal, 'season_year': 2026}
+    _, after, _ = run_elo(setup + [next_season], cfg)
+    pools = [(1, 2), (3, 4)]
+    for pool in pools:
+        total = sum(before[t] for t in pool)
+        assert math.isclose(sum(same_season[t] for t in pool), total)
+        assert math.isclose(sum(after[t] for t in pool), 3000 + 0.8 * (total - 3000))
+    gap_before = (before[1] + before[2] - before[3] - before[4]) / 2
+    gap_after = (after[1] + after[2] - after[3] - after[4]) / 2
+    assert gap_before > 0
+    assert math.isclose(gap_after, 0.8 * gap_before)

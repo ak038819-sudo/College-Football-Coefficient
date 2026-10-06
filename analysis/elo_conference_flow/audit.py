@@ -18,8 +18,10 @@ def read_export(path):
 
 
 def group(conf, team):
+    if not isinstance(conf, str) or not conf.strip():
+        raise ValueError(f'Missing conference for team {team}')
     # Independents do not form a shared conference pool.
-    return f'{conf or "Unknown"} / {team}' if not conf or 'independent' in conf.lower() else conf
+    return f'{conf} / {team}' if 'independent' in conf.lower() else conf
 
 
 def audit(seasons=range(2018, 2027)):
@@ -30,6 +32,8 @@ def audit(seasons=range(2018, 2027)):
         payload = read_export(ROOT / f'ui/data/games/{season}.js')
         buckets = defaultdict(lambda: defaultdict(float))
         totals = defaultdict(float)
+        rated_games = []
+        missing = set()
         for values in payload['games']:
             g = dict(zip(payload['fields'], values))
             if not g['completed']:
@@ -38,6 +42,20 @@ def audit(seasons=range(2018, 2027)):
             if (g['game_id'], home) not in deltas or (g['game_id'], away) not in deltas:
                 totals['unrated_completed'] += 1
                 continue
+            rated_games.append(g)
+            for team in (home, away):
+                conf = payload['conferences'].get(str(team))
+                if not isinstance(conf, str) or not conf.strip():
+                    missing.add(team)
+        # Exclude the whole season before publishing any classifications or
+        # Brier splits; dropping only affected games would bias the remainder.
+        if missing:
+            summaries.append({'season': season, 'status': 'excluded',
+                              'reason': 'missing_conference_membership',
+                              'missing_team_ids': sorted(missing)})
+            continue
+        for g in rated_games:
+            home, away = g['home_id'], g['away_id']
             h = group(payload['conferences'].get(str(home)), home)
             a = group(payload['conferences'].get(str(away)), away)
             dh, da = deltas[g['game_id'], home], deltas[g['game_id'], away]
