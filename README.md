@@ -1,50 +1,99 @@
 # Fixing College Football
 
-A structural college football simulation engine that replaces the current postseason model with a coefficient-driven, standings-qualified 24-team playoff.
+**Predictive rating models, playoff selection, and Monte Carlo simulation for 46 seasons of FBS college football.**
 
-## Site releases
+🔗 **Live dashboard:** https://ak038819-sudo.github.io/College-Football-Coefficient/
 
-The published site is **v0.0 · Alpha**. The current local update is **v0.1 · People and Places of the Game**; it includes the game finder, stadium pages, home-field standings, a pregame dynamic-HFA replay, and archived player box scores where available. Live Elo still uses flat home field while the in-season replay is validated. The v0.1 update has not been published. The in-progress **v0.1.1 · Players and Coaches** update adds player and head-coach identity and CFBD roster/coaching ingestion; see [player and coach pages](docs/people-pages.md) for its coverage limits. See [release history](docs/CHANGELOG.md).
+This project rebuilds college football's postseason around objective ratings instead of polls. It ingests game data from the College Football Data (CFBD) API, rates every team with Elo and an opponent-strength model, selects and seeds a 24-team playoff and a 16-team NIT, simulates the bracket, and publishes everything as an interactive static dashboard. A test suite gates every deploy.
 
-## Core Rules
+## Highlights
 
-1. Every FBS team must belong to a conference (no independents in the new format)
-2. 11-game regular season: 8 conference games, 3 non-conference
-3. All non-conference games played within FBS
-4. No Top 25 poll — no subjective rankings
-5. A Coefficient (CoE) system replaces the poll for playoff selection and seeding
-6. 24-team playoff; all conference champions qualify
-7. Top-8 (by conference strength) get byes to the Round of 16; the rest play in the Round of 24
-8. Team CoE decides home-field advantage
-9. Conference bid counts are set by conference-level coefficient ranking
+- **Calibrated Elo engine.** K-factor (35), home-field advantage (50), and season-to-season retention (0.8) are tuned with a dedicated calibration script rather than set by hand.
+- **Opponent-strength rating (CoE).** An iterative Bradley-Terry-style model weights wins by opponent strength and game phase (regular season, bowl, CFP), with a recency-decayed 5-year rolling window.
+- **Hybrid model.** Z-score standardized Elo and CoE are blended, and the blend weight (0.85 Elo) is calibrated. The adopted blend outperforms pure Elo.
+- **Small-sample correction.** Early-season ratings are shrunk toward a regressed prior-season rating, with confidence growing with games played. Full seasons are verified byte-identical to the unshrunk output, while partial seasons (2020, the in-progress year) are correctly damped.
+- **Leakage-aware validation.** Team-specific home-field estimates are replayed using only each team's *entering-season* data and scored against the flat model with Brier score and log loss.
+- **Simulation.** Rating gaps become win probabilities through a logistic model. A Python Monte Carlo engine and an in-browser JavaScript simulator produce matching bracket odds.
+- **Engineering.** SQLite schema built for conference realignment, a one-command pipeline, a pytest suite that has caught multiple real logic bugs, and GitHub Actions CI/CD that deploys to GitHub Pages only when tests pass.
 
-Full original rules and the coefficient system's early design draft are in `docs/`.
+**Stack:** Python, SQLite, pandas, NumPy, JavaScript/HTML/CSS, pytest, GitHub Actions, GitHub Pages, CFBD API
 
-The current [dashboard roadmap](docs/roadmap.md) covers the scorebug redesign, a live game day experience, and an installable app later on.
+## Contents
 
-## The Rating Model (source of truth)
+- [The Rating Models](#the-rating-models)
+- [Validation](#validation)
+- [The Reform Ruleset](#the-reform-ruleset)
+- [Playoff and NIT Format](#playoff-and-nit-format)
+- [Data Coverage](#data-coverage)
+- [Running It](#running-it)
+- [Testing](#testing)
+- [Dashboard](#dashboard)
+- [Live Features](#live-features)
+- [Continuous Integration / Auto-Deploy](#continuous-integration--auto-deploy)
+- [Keeping the Current Season Reproducible](#keeping-the-current-season-reproducible)
+- [Project Status](#project-status)
+- [Site Releases](#site-releases)
+- [Database Design Notes](#database-design-notes)
+- [Legacy / Archived](#legacy--archived)
 
-**As of this rebuild, the project uses an iterative, opponent-strength rating model — not the discrete win/OT-loss/loss point system originally drafted in `docs/coe_spec.md`.** The old system (and everything built on it: bounty multiplier, conference/team point totals, qualifier and bracket scripts) is archived under `archive/discrete_coe_system_2026-09/` for reference, not deleted.
+## The Rating Models
 
-The live model, in `src/build_coefficients.py`:
-- Every team starts a season at rating 1.0
-- 15 iterations: a winner's rating increases by `opponent_rating × phase_weight` (phase weights: regular=1.0, bowl=2.0, CFP=3.0); the loser still gains a small `opponent_rating × phase_weight × 0.15` "loss penalty"
-- Each iteration renormalizes to keep the scale stable
-- **Team CoE** = that season's rating
-- **Conference CoE** = sum of its member teams' ratings that season (conference membership comes from `team_membership_by_season`)
-- **5-year rolling CoE** (both team and conference) = a decay-weighted sum over the trailing 5 seasons (`0.92^age`, more recent seasons weighted higher)
+### CoE v1: opponent-strength rating (source of truth for playoff selection)
 
-Team-level seeding and home-field use the 5-year rolling team CoE. Conference bid-count ranking uses the 5-year rolling conference CoE.
+`src/build_coefficients.py`:
 
-## Data Coverage
+- Every team starts a season at rating 1.0.
+- Over 15 iterations, a winner's rating increases by `opponent_rating × phase_weight` (regular = 1.0, bowl = 2.0, CFP = 3.0). The loser still gains a small `opponent_rating × phase_weight × 0.15`.
+- Each iteration renormalizes to keep the scale stable.
+- **Early-season damping** is applied at every iteration: `rating = confidence × computed + (1 − confidence) × prior`, where `confidence = games_played / 8` and the prior is the previous season's rating regressed toward the mean (`--confidence-games`, `--prior-regression`). Applying it once at the start or as a one-time post-hoc blend was tried and did not work.
+- **Team CoE** is that season's rating. **Conference CoE** is the sum of member teams' ratings, using `team_membership_by_season`.
+- **5-year rolling CoE** (team and conference) is a decay-weighted sum over the trailing five seasons (`0.92^age`).
 
-- **Games**: 2010–2025 (16 seasons, ~12,000 games), loaded from `data/raw/games_YYYY.csv`
-- **Conference membership**: 2014–2025 only. There is no membership data for 2010–2013, so those 4 seasons can produce team/conference *ratings* but **cannot** be used for playoff qualification (which needs conference standings to know who takes each conference's bids). Team ratings for 2010–2013 still feed correctly into the 5-year rolling windows for 2014+.
-- **Conference standings**: derived locally from the loaded games (win-loss record per team, per conference), using the same tiebreak heuristic as CFBD's own records endpoint (conference win% → conference wins → conference losses → overall win% → overall wins → team name). This is a stable proxy ordering, not each conference's actual official tiebreaker rules (head-to-head procedures, divisions, etc.) — see `src/coefficients/derive_conference_standings_local.py`.
+Team seeding and home field use the 5-year rolling team CoE. Conference bid counts use the 5-year rolling conference CoE.
 
-## Playoff Format (current implementation)
+### Elo
 
-**Bid allocation**, by conference's 5yr rolling CoE rank:
+`src/build_elo.py` writes the `elo_game_history` table. Parameters are calibrated by `src/calibrate_elo.py` and stored in `config/model_config.json`. Ties use a margin multiplier of 1.0. Production Elo uses a single flat home-field value; team-specific home-field advantage is under evaluation (see [Validation](#validation)).
+
+### CoE 2.0: hybrid Elo + CoE
+
+An additive layer built alongside v1, which is left unmodified (tagged `coe-v1`).
+
+- `src/build_hybrid_coefficients.py` combines Z-score standardized Elo with a frozen entering-season 5-year CoE, and computes a per-game **Game CoE 2.0** (win floor 2, ceiling below 4, OT loss = 1, loss = 0).
+- `src/calibrate_hybrid_weight.py` selected `elo_weight = 0.85`, which outperforms pure Elo.
+- `src/compare_models.py` compares v1 against v2, excluding team-seasons with fewer than 8 games.
+- `src/build_conference_coe2.py` rolls up conference ratings from external games only. It is inspection-only and not yet wired into bid allocation.
+- `src/compare_alpha.py` provides qualitative views of the blend, defaulting to the latest *complete* season to avoid early-season noise.
+
+### Win probabilities and simulation
+
+Bracket simulation converts the CoE gap into a win probability with a logistic function (temperature 6.0) and plays out Round of 24 → Round of 16 → quarterfinals → semifinals → final. The dashboard's "Simulate the Bracket!" button runs the same logic client-side, and its odds match the Python Monte Carlo engine closely.
+
+## Validation
+
+- **Calibration scripts** for Elo parameters and the hybrid blend weight, rather than hand-picked values.
+- **Model comparison** of v1 against v2 on full team-seasons.
+- **Dynamic home-field replay.** `src/compare_dynamic_hfa.py` replays Elo using each team's entering-season HFA estimate (built only from earlier games), then reports Brier score and log loss against the flat replay by season. It refuses a stale or non-flat reference history and writes nothing. A favorable result alone is not treated as a release gate, because the HFA half-life and shrinkage are not yet tuned.
+- **Stability tests** confirm that completed seasons are unaffected by the early-season damping settings.
+- **Simulation cross-check** between the Python Monte Carlo engine and the browser simulator.
+
+## The Reform Ruleset
+
+1. Every FBS team must belong to a conference.
+2. 11-game regular season: 8 conference games, 3 non-conference.
+3. All non-conference games are played within FBS.
+4. No Top 25 poll and no subjective rankings.
+5. A Coefficient (CoE) system replaces the poll for playoff selection and seeding.
+6. 24-team playoff, and all conference champions qualify.
+7. The top 8 (by conference strength) get byes to the Round of 16; the rest play in the Round of 24.
+8. Team CoE decides home-field advantage.
+9. Conference bid counts are set by conference-level coefficient ranking.
+
+The full original rules and the coefficient system's early design draft are in `docs/`. The [dashboard roadmap](docs/roadmap.md) covers the scorebug redesign, a live game-day experience, and an installable app.
+
+## Playoff and NIT Format
+
+### Bid allocation (by 5-year rolling conference CoE rank)
 
 | Conference rank | Bids |
 |---|---|
@@ -52,9 +101,11 @@ Team-level seeding and home-field use the 5-year rolling team CoE. Conference bi
 | 5 | 3 |
 | 6–10 | 1 (champion only) |
 
-This is a project decision, differing slightly from the original spec's Year 1 draft (which gave rank 6 two bids) — Year 1 and Year 2+ are now identical, which also resolved a contradiction in the original spec between the Year 2+ seeding rule for rank 6 and the fixed "top-8 get byes" requirement.
+This differs slightly from the original spec's Year 1 draft, which gave rank 6 two bids. Year 1 and Year 2+ are now identical, which also resolved a contradiction between the Year 2+ seeding rule for rank 6 and the fixed "top 8 get byes" requirement.
 
-**Seeding** (8 byes total, always):
+Conference rankings only include conferences with real teams in that exact season, so dissolved or renamed conferences (Big East, WAC, Pac-10) cannot occupy a rank slot. If a conference has too few teams for its allocation (for example, the Pac-12 with 2 teams in 2024), each specific missing pot slot cascades to the next-ranked conference.
+
+### Seeding (8 byes total, always)
 
 | Conference rank | Byes | Pot 1 | Pot 2 |
 |---|---|---|---|
@@ -63,25 +114,32 @@ This is a project decision, differing slightly from the original spec's Year 1 d
 | 5 | Champion | Runner-up, 3rd place* | — |
 | 6–10 | Champion (rank 6 only) | — | Champion (ranks 7–10) |
 
-*Rank 5's 3rd-place team was moved from Pot 2 to Pot 1 (project decision) to balance Pot 1 and Pot 2 at 8 teams each — the original spec's table put it in Pot 2, which made the pots unequal (7 vs 9) and broke a clean 1-to-1 draw pairing.
+*Rank 5's 3rd-place team was moved from Pot 2 to Pot 1 to balance the pots at 8 teams each. The original spec's table made them 7 and 9, which broke a clean 1-to-1 draw pairing.
 
-**"FBS Independents" are excluded from bid eligibility** — the new ruleset requires every team belong to a conference, so real-world independents (Massachusetts pre-2025, etc.) don't compete for bids in this model. This leaves exactly 10 bid-eligible conferences, matching the spec's 1–10 framework.
+### Independents
 
-**Round of 24 draw**: Pot 1 vs Pot 2, randomized with a `--draw-seed` for reproducibility, backtracking to guarantee no same-conference matchup. Home field goes to whichever team has the higher 5-year rolling team CoE (ties broken by team name).
+An independent qualifies only if its own CoE exceeds the field's weakest at-large qualifier. It can never displace a conference champion. Independents are checked strongest-first, and the threshold is re-checked after each one is added.
 
-## Dashboard
+### Round of 24 draw
 
-A self-contained, publishable HTML dashboard — year selector, team/conference ratings, playoff field by conference, and the Round-of-24 bracket, all with embedded data (no server, no API calls needed to view it):
+Pot 1 vs. Pot 2, randomized with `--draw-seed` for reproducibility, with backtracking to guarantee no same-conference matchup. Home field goes to the team with the higher 5-year rolling team CoE (ties broken by team name).
 
-```bash
-python build_dashboard.py --draw-seed 1
-```
+### NIT (16 teams)
 
-Writes `ui/dashboard.html`. Open it directly in a browser, or upload it anywhere that serves static files. To change the page's own design or layout, edit `ui/dashboard_shell.html` (the template) and rerun the build — the `__DATA_JSON__` placeholder gets replaced with a fresh export from `src/export_dashboard_data.py`.
+`src/coefficients/select_nit_field.py`. Conference ranks 1–6 send their next two teams past the main-field cutoff, and ranks 7–10 send their runner-up. Eligibility is checked against actual main-field membership, so a team displaced by an independent becomes NIT-eligible instead of falling through the cracks. Seeding uses the same no-same-conference backtracking as the main draw.
+
+## Data Coverage
+
+- **Games:** 1980–2026, fetched from CFBD with `home_conference`/`away_conference` captured, loaded from `data/raw/games_YYYY.csv`.
+- **Conference membership:** 1980–2026. Pre-2014 membership is derived from each team's most common conference in its games that season (`src/derive_membership_from_games.py`, which flags ties). The current season comes from a committed snapshot (see [Keeping the Current Season Reproducible](#keeping-the-current-season-reproducible)).
+- **Frozen 5-year CoE** starts in 1985 (1980 + 5).
+- **Playoff field, bracket, and simulation** are currently generated for 2014–2026. Extending them back to 1980 is not yet done.
+- **Conference standings** are derived locally from the loaded games, using the same tiebreak order as CFBD's records endpoint: conference win% → conference wins → conference losses → overall win% → overall wins → team name. This is a stable proxy ordering, not each conference's official tiebreaker rules (head-to-head procedures, divisions, etc.). See `src/coefficients/derive_conference_standings_local.py`.
 
 ## Running It
 
 **One command, full pipeline:**
+
 ```bash
 python run_pipeline.py                    # builds everything, shows the 2025 playoff field + bracket
 python run_pipeline.py --year 2014        # same, for 2014 instead
@@ -89,11 +147,20 @@ python run_pipeline.py --force            # wipe db/league.db and rebuild from s
 python run_pipeline.py --draw-seed 7      # use a specific bracket draw seed
 ```
 
-That's the recommended way to run this — it replaces about 30 manual commands with one. See `run_pipeline.py`'s docstring for exactly what it does, in order.
+This replaces about 30 manual commands. See `run_pipeline.py`'s docstring for exactly what it does, in order.
 
-**Individual pieces**, if you want to run or inspect one step at a time:
+**Elo and hybrid models** (run after `run_pipeline.py`, in this order, as CI does):
+
 ```bash
-# Bootstrap the database (teams, aliases, 2014-2025 membership) from the backup DB
+python src/build_elo.py
+python src/build_hybrid_coefficients.py
+python src/build_conference_coe2.py
+```
+
+**Individual pieces**, to run or inspect one step at a time:
+
+```bash
+# Bootstrap the database (teams, aliases, membership) from the backup DB
 python src/bootstrap_league_db.py --backup db/league_backup_before_playoff_migration.db --out db/league.db
 
 # Load one season of games
@@ -114,13 +181,14 @@ python src/coefficients/select_playoff_field_v2.py --year 2025
 python src/coefficients/draw_playoff_bracket_v2.py --year 2025 --draw-seed 1
 ```
 
-## Outputs
+### Outputs
 
 `data/processed/`:
-- `team_ratings_by_season.csv` — every team's rating, every season
-- `team_coeff_5yr.csv` — 5-year rolling team CoE
-- `conference_ratings_by_season.csv` — every conference's rating (sum of member teams), every season
-- `conference_coeff_5yr.csv` — 5-year rolling conference CoE
+
+- `team_ratings_by_season.csv`: every team's rating, every season
+- `team_coeff_5yr.csv`: 5-year rolling team CoE
+- `conference_ratings_by_season.csv`: every conference's rating (sum of member teams), every season
+- `conference_coeff_5yr.csv`: 5-year rolling conference CoE
 
 ## Testing
 
@@ -129,84 +197,122 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-Most tests run against your real `db/league.db` (skip cleanly if it doesn't exist yet — build it with `run_pipeline.py` first) since the things worth checking here are properties of the actual data and algorithms, not synthetic toy cases. What's covered:
+Most tests run against your real `db/league.db` and skip cleanly if it doesn't exist yet (build it with `run_pipeline.py` first). The things worth checking here are properties of the actual data and algorithms, not synthetic toy cases. Coverage includes:
 
-- The full SQL schema chain builds with no conflicts (would have caught the `team_aliases`-missing-from-schema bug and the duplicate-table-definition conflicts found earlier in this project)
-- A fresh bootstrap never resurrects the three known-dead duplicate teams, and does include the real late additions (Idaho, Massachusetts)
-- A completed season's ratings are stable regardless of the confidence-blending settings (`--confidence-games`, `--prior-regression`) — guards against an early-season fix accidentally changing historical years
-- Every season's playoff field has exactly 8 byes, equal-sized Pot 1/Pot 2, and 24 total qualifiers (this test suite actually caught a real bug on its first run: the Pac-12 collapsing to 2 teams by 2024 while still ranking high enough for 3 bids — see `select_qualifiers()`'s carried-destiny fix)
-- The independent-CoE-threshold rule never displaces a conference champion, even when directly provoked with a synthetic case designed to try
-- The Round-of-24 draw never produces a same-conference matchup, checked across 20 different seeds per season (240 checks total)
-- The draw is reproducible (same seed → identical pairing) and home field always goes to the higher-CoE team
+- **Schema** (`test_schema.py`): the full SQL schema chain builds with no conflicts.
+- **Bootstrap** (`test_bootstrap.py`): a fresh bootstrap never resurrects known duplicate team entries and includes real late additions. The dead-team list is imported from `bootstrap_league_db.py` rather than duplicated, so the two cannot drift apart.
+- **Rating stability** (`test_ratings_stability.py`): a completed season's ratings do not change with the confidence-blending settings (`--confidence-games`, `--prior-regression`).
+- **Playoff field** (`test_playoff_field.py`): every season has exactly 8 byes, equal-sized pots, and 24 qualifiers. On its first run, this caught the Pac-12 collapsing to 2 teams by 2024 while still ranking high enough for 3 bids. The independent threshold never displaces a conference champion, even in a synthetic case built to provoke it.
+- **Bracket draw** (`test_bracket_draw.py`): no same-conference matchups across 20 seeds per season, the same seed always gives the same pairing, and home field always goes to the higher-CoE team.
+- **NIT** (`test_nit.py`): exactly 16 teams per season with no same-conference first-round matchups. This caught a regression where dissolved conferences in the rolling window produced a 17-team field after membership was extended to 1980.
+- **Data fetch** (`test_fetch_went_ot.py`): overtime detection from CFBD line-score data.
+
+## Dashboard
+
+A self-contained, publishable HTML dashboard with embedded data (no server and no API calls needed to view it): year selector, team and conference ratings, Elo ratings, team pages with historical Elo charts, playoff field by conference, the bracket, and bracket simulation.
+
+```bash
+python build_dashboard.py --draw-seed 1
+```
+
+This writes `ui/dashboard.html`. Open it directly in a browser, or upload it anywhere that serves static files. To change the page's design or layout, edit `ui/dashboard_shell.html` (the template) and rerun the build. The `__DATA_JSON__` placeholder gets replaced with a fresh export from `src/export_dashboard_data.py`.
+
+Team and conference logos are date-accurate (a team's logo matches the season shown), built by `src/build_dated_logo_assets.py`.
+
+## Live Features
+
+### Live scores (beta)
+
+The **Live Scores** tab reads `ui/data/live_scores.json`, a display-only snapshot. It refreshes in an open browser tab every minute and marks a feed older than 15 minutes as delayed. It never modifies historical scores, Elo, CoE, or predictions.
+
+The live view combines the scoreboard with team logos, pregame Elo and win probabilities where a matching upcoming game exists, and an Elo sidebar. Cards open a live game detail view using the CFBD game ID, and team logos and names still link to team pages. The game detail view also refreshes while open. Games outside the historical export (such as FCS opponents) still have a live detail view.
+
+The Home tab shows the live scoreboard with the Elo, conference, and poll rankings beside it; `#section=live` remains available for older links. Team Elo and win chances appear directly on game cards. If a stored pregame prediction is unavailable, both are estimated from the latest published Elo and the configured home-field value. Completed games show the official Elo change once the archive has processed them; until then, a triangle marked `≈` is a result-only estimate, not the full postgame model.
+
+During live or recently completed games, **If scores hold · Elo** is an illustrative result-only scenario. For each game with a matching pregame prediction, it applies `K × (current result − pregame expectation)` to both teams, then reorders the rating board. Tied scores count as ties. It does **not** use score margin or the postgame success-rate performance multiplier, so it is not an official Elo calculation. Games without a matching prediction do not affect it. Published rankings and historical Elo update only through the normal data build.
+
+Home and Live Scores list featured matchups first, using Elo ranks, both teams' rating strength, and how close the pregame win probability is. Ties fall back to kickoff time, then game ID. This ordering is an editorial heuristic, not a claim that the game will be close or consequential, and results do not change it. Stadium names come from CFBD's schedule and live scoreboard when available. Older committed schedule CSVs have no venue column, so those names fill in on the next CFBD data refresh.
+
+The Home scoreboard moves to the next scheduled week when the live feed still contains an older slate. It uses published upcoming-game predictions in that gap and switches back to live cards as soon as the feed reaches that week. Ongoing games remain visible.
+
+The server-side refresh also requests CFBD's weekly `/games/players` box scores for games underway or final in the current scoreboard. Player lines are published in the same snapshot and appear on game details when available. The API key stays in the Actions secret, and a player-data failure leaves the score update working. Box-score availability and timing vary by game.
+
+### Home-field advantage (analysis only)
+
+**Standings → Home-Field Advantage** lists current team-specific HFA estimates, including each team's neutral-field expected-win ratio, an illustrative Elo-point equivalent, and its home-game sample. These are **analysis only**: production Elo and win probabilities still use the single flat `elo.home_field` setting. The automated build refreshes only the current estimates after Elo; `python src/build_hfa.py` remains available for the full historical research tables. An export made without the HFA table shows an explicit unavailable state rather than invented values.
+
+To validate team-specific HFA in Elo without changing the live model, run these on a populated local database:
+
+```bash
+python src/build_elo.py
+python src/build_hfa.py                          # full historical estimates, not --current-only
+python src/compare_dynamic_hfa.py --from-year 2018
+```
+
+Neutral-site games get no bonus, and a bounded HFA-to-Elo conversion falls back to the flat value. See [Validation](#validation) for how results are judged.
+
+### Refresh schedule
+
+The full dashboard refresh runs every Sunday at **6:00 p.m. America/Chicago** (CDT or CST as applicable). It fetches fresh game data, rebuilds Elo and upcoming predictions, tests the new data, and publishes the result. The existing Thursday-night refresh remains in place. GitHub Actions schedules can start late, and the Home fallback can use already published next-week games while the rebuild runs.
+
+`.github/workflows/live-scores.yml` fetches CFBD's `/scoreboard` on a game-window schedule (UTC Friday evening, Saturday, and early Sunday, August–December) and can also be run manually from Actions. CFBD's live scoreboard requires a subscribed API key: set `CFBD_API_KEY` in the repository's Actions secrets. The key is used only by the workflow and is never sent to visitors. Until it is activated, the page says the feed is inactive. To expand the schedule for weekday or January games, edit the workflow's cron entries. Scheduled jobs may be delayed, so treat the timestamp as authoritative. A failed fetch keeps the last good snapshot, and the site labels stale data.
+
+## Continuous Integration / Auto-Deploy
+
+`.github/workflows/ci-and-deploy.yml` runs the full test suite on every push and pull request. On a push to `main`, a rebuild-and-deploy job runs only after tests pass. It runs the pipeline, builds Elo and the hybrid models, rebuilds the dashboard from committed source, and pushes the result, which GitHub Pages then deploys within a minute or two.
+
+Because deploy is gated on tests, a failing test blocks every later change from reaching the live site, even though the code still lands in the repo. If the site looks stale, check the Actions tab first.
+
+The deploy job does not need the CFBD API (only committed source is used), which is why the membership snapshot step below matters. The rebuild is deterministic given the same input data, so an unrelated change (such as a docs edit) produces byte-identical output, git has nothing new to commit, and no extra push or loop occurs.
 
 ## Keeping the Current Season Reproducible
 
-Historical seasons (2014–2025) have their conference membership baked into the old backup database, so they're reproducible from git alone. The **current season is different**: its membership only exists because you fetched it live from the CFBD API with your own key, and that fetch was never captured in any committed file — so a fresh `--force` rebuild (or CI, which has no API key) would have that season's games but zero membership for it, and the playoff field for that year just wouldn't build.
+Historical membership is reproducible from git alone. The **current season is different**: its membership comes from a live CFBD fetch with your own key. Without a committed copy, a fresh `--force` rebuild (or CI) would have that season's games but no membership, and its playoff field wouldn't build.
 
-The fix: after fetching fresh membership for the current season, export a snapshot and commit it alongside your games CSV:
+After fetching fresh membership for the current season, export a snapshot and commit it with your games CSV:
 
 ```bash
 python src/fetch_cfbd_team_memberships.py 2026 2026   # your existing manual step
-python src/export_membership_snapshot.py --year 2026   # NEW: snapshot it
+python src/export_membership_snapshot.py --year 2026   # snapshot it
 git add data/raw/membership_2026.csv data/raw/games_2026.csv
 git commit -m "Update 2026 season data"
 git push
 ```
 
-`run_pipeline.py` automatically finds and loads any `data/raw/membership_*.csv` it finds (via `load_membership_snapshot.py`), so both a local `--force` rebuild and the CI workflow below will pick this up with no further steps.
-
-## Continuous Integration / Auto-Deploy
-
-`.github/workflows/ci-and-deploy.yml` runs the full test suite on every push and pull request. On a push to `main` specifically, it also rebuilds the dashboard from whatever's currently committed and pushes the result back — which GitHub Pages then deploys automatically within a minute or two.
-
-This never touches the CFBD API itself (no key is configured in CI) — it only rebuilds from committed source, which is exactly why the membership-snapshot step above matters: without it, CI can only ever show the current season's ratings, not its playoff field.
-
-The rebuild is fully deterministic given the same input data, so an unrelated change (e.g. a docs edit) reruns the pipeline but produces byte-identical output — `git` has nothing new to commit, so no extra push happens and there's no risk of an infinite loop.
+`run_pipeline.py` automatically loads any `data/raw/membership_*.csv` it finds (via `load_membership_snapshot.py`), so both a local `--force` rebuild and CI pick it up with no further steps.
 
 ## Project Status
 
-✅ Real historical data loaded and verified (2010–2025, ~12,000 games)
-✅ Iterative rating model implemented (team + conference level)
-✅ Conference-membership gaps researched and patched with sourced history
-✅ Conference standings derived locally (no external API dependency)
-✅ Bid allocation by conference CoE rank
-✅ 24-team qualifier selection with balanced 8/8 pot seeding
-✅ Round-of-24 bracket draw (no-same-conference, CoE-based home field, reproducible via seed)
-✅ One-command full-pipeline runner
+✅ Historical game and membership data, 1980–2026
+✅ CoE v1 opponent-strength rating with early-season damping
+✅ Calibrated Elo engine and CoE 2.0 hybrid rating
+✅ 24-team qualifier selection with balanced 8/8 pot seeding and independent threshold
+✅ Round-of-24 draw (no same-conference matchups, CoE-based home field, reproducible via seed)
+✅ Full bracket simulation through the final (Python Monte Carlo + in-browser simulator)
+✅ 16-team NIT selection and seeding
+✅ Team pages with historical Elo charts, scheduled-game predictions, and a home dashboard
+✅ Live scores, weekly automated refresh, and test-gated CI/CD
 
 ### Not yet built
-- Full bracket advancement past the Round of 24 (Round of 16 → quarters → semis → final) — needs a way to project/simulate game outcomes, a different kind of problem than everything above
-- The NIT (a second, parallel bracket for teams that missed the main field)
-- Official conference standings via a live CFBD API pull (current standings are a locally-computed, methodologically-identical substitute — see Data Coverage above)
+
+- Playoff, bracket, and simulation generation for 1980–2013 (ratings already cover these years)
+- Lower-division (FCS) opponent ratings and new-program initialization for Elo
+- Wiring CoE 2.0 conference ratings into bid allocation
+- Team-specific home-field advantage in production Elo (currently analysis only)
+- Real-vs-model historical champion comparison view
+- NIT winner's bonus bid the following year
+- Official conference standings via a live CFBD pull (current standings are a locally computed substitute; see [Data Coverage](#data-coverage))
+
+## Site Releases
+
+The published site is **v0.0 · Alpha**. The current local update is **v0.1 · People and Places of the Game**, which adds the game finder, stadium pages, home-field standings, a pregame dynamic-HFA replay, and archived player box scores where available. Live Elo still uses a flat home-field value while the in-season replay is validated. v0.1 has not been published. The in-progress **v0.1.1 · Players and Coaches** update adds player and head-coach identity and CFBD roster and coaching ingestion; see [player and coach pages](docs/people-pages.md) for its coverage limits. See the [release history](docs/CHANGELOG.md).
 
 ## Database Design Notes
 
-`team_membership_by_season` is keyed by `(team_id, season_year)`, which supports realignment (a team's conference can change year to year) and is what conference standings, bid allocation, and the conference-level rating rollup all depend on.
+`team_membership_by_season` is keyed by `(team_id, season_year)`, which supports realignment (a team's conference can change from year to year). Conference standings, bid allocation, and the conference-level rating rollup all depend on it.
 
-The pipeline is deterministic given a fixed `--draw-seed` and unchanged database state — rerunning produces identical output, which is what `run_pipeline.py`'s tests confirmed (same seed → identical bracket, different seed → different but still valid bracket).
+The pipeline is deterministic given a fixed `--draw-seed` and unchanged database state. The same seed produces an identical bracket, and a different seed produces a different but still valid one.
 
 ## Legacy / Archived
 
-`archive/discrete_coe_system_2026-09/` holds the original discrete win/OT-loss/loss point system (with bounty multiplier, conference champion derivation, and Year 1/Year 2 qualifier and draw scripts). It's fully superseded by the iterative model above but kept for reference. If reviving any piece of it, note that its SQL tables (`team_coefficient_by_year`, `conference_coefficient_by_year`, `playoff_field_by_year`, etc. — still defined in `sql/`) are no longer written to by anything in `src/`.
-
-## Beta live scores
-
-The **Live Scores** tab reads `ui/data/live_scores.json`, a display-only snapshot. It refreshes in an open browser tab every minute and marks a feed older than 15 minutes as delayed. It never modifies historical scores, Elo, CoE, or predictions.
-
-The live view combines the scoreboard with team logos, pregame Elo/probabilities where a matching upcoming game exists, and an Elo sidebar. Cards open a live game detail view using the CFBD game ID; the team logos/names still link to team pages. The game detail view also refreshes while open. Games outside the historical export (such as FCS opponents) still have a live detail view.
-
-The Home tab now shows the live scoreboard and the Elo, conference and poll rankings beside it; `#section=live` remains available for older links. Team Elo and win chances appear directly on game cards. If a stored pregame prediction is unavailable, both are estimated from the latest published Elo and configured home-field value. Completed games show the official Elo change when the archive has processed them; otherwise a triangle marked `≈` is a result-only estimate, not the full postgame model.
-
-The Standings → Home-Field Advantage view lists current team-specific HFA estimates, including their neutral-field expected-win ratio, illustrative Elo-point equivalent, and home-game sample. These are **analysis only**: production Elo and win probabilities still use the single flat `elo.home_field` setting. The automated build refreshes only the current estimates after Elo; `python src/build_hfa.py` remains available for the full historical research tables. An export made without the HFA table displays an explicit unavailable state rather than invented values.
-
-To begin validating team-specific HFA in Elo without changing the live model, run `python src/build_elo.py`, then `python src/build_hfa.py` (full historical estimates, not `--current-only`), then `python src/compare_dynamic_hfa.py --from-year 2018` on a populated local database. The comparison replays Elo with each team's **entering-season** estimate (built only from earlier games), compares its Brier score and log loss against the flat replay by season, and refuses a stale or non-flat reference history. Neutral games get no bonus; a bounded HFA-to-Elo conversion falls back to the flat value. The current HFA half-life and shrinkage are not tuned for deployment, and the existing flat model has historical calibration choices, so a favorable diagnostic alone is not a release gate. The script writes nothing and the automated build continues to run flat Elo.
-
-The server-side refresh also requests CFBD's weekly `/games/players` box scores for games underway or final in the current scoreboard. Player lines are published in the same snapshot and appear on game details when available. The API key stays in the Actions secret; a player-data failure leaves the score update working. Player box-score availability and timing vary by game.
-
-During live or recently completed games, **If scores hold · Elo** is an illustrative result-only scenario: for each game with a matching pregame prediction, it applies `K × (current result − pregame expectation)` to both teams, then reorders the entire rating board. Tied scores count as ties. It does **not** use score margin or the postgame success-rate performance multiplier, so it is not an official Elo calculation. Games without a matching prediction do not affect this scenario. The published rankings and historical Elo continue to update only through the normal data build.
-
-Home and Live Scores place featured matchups first using the project's Elo ranks, both teams' rating strength, and pregame win-probability closeness. Equal scores fall back to kickoff time, then game ID. The ordering is an editorial heuristic, not a claim that the game will be close or consequential; results do not change the order. Stadium names come from CFBD's game schedule and live scoreboard when available, and appear on cards and game details. Older committed schedule CSVs have no venue column, so those names fill in on the next CFBD data refresh.
-
-The Home scoreboard moves to the next scheduled week when the live feed still contains an older slate. It uses the published upcoming-game predictions in that gap and switches back to actual live cards as soon as the feed reaches that week. Ongoing games remain visible. The full dashboard refresh runs every Sunday at **6:00 p.m. America/Chicago** (CDT or CST as applicable), fetches fresh game data, rebuilds Elo and upcoming predictions, tests the new data, and publishes the result. GitHub Actions schedules can start late; the Home fallback can use already published next-week games while the rebuild runs. The existing Thursday-night refresh remains in place.
-
-The `.github/workflows/live-scores.yml` workflow fetches CFBD's `/scoreboard` on a game-window schedule (UTC Friday evening, Saturday, and early Sunday, August–December) and can also be run manually from Actions. CFBD's live scoreboard requires a subscribed API key. Set `CFBD_API_KEY` in repository Actions secrets with scoreboard access; the key is only used by the workflow and is never sent to visitors. Until activated, the page says the feed is inactive. To expand the schedule for weekday or January games, edit the workflow's cron entries. GitHub scheduled jobs may be delayed, so treat the timestamp as authoritative. A failed fetch keeps the last good snapshot; the site labels stale data. The existing full data refresh remains separate.
+The project originally used a discrete win/OT-loss/loss point system, drafted in `docs/coe_spec.md`. That system and everything built on it (bounty multiplier, conference champion derivation, Year 1/Year 2 qualifier and draw scripts) is archived under `archive/discrete_coe_system_2026-09/` for reference. It is fully superseded by the models above. Its SQL tables (`team_coefficient_by_year`, `conference_coefficient_by_year`, `playoff_field_by_year`, etc., still defined in `sql/`) are no longer written to by anything in `src/`.ull data refresh remains separate.
