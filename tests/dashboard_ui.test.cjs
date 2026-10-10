@@ -15,9 +15,12 @@ class LocalAssets extends ResourceLoader {
 async function until(w,predicate){for(let i=0;i<250;i++){if(predicate())return;await new Promise(r=>setTimeout(r,10));}throw new Error('Dashboard did not reach expected state: '+w.document.querySelector('#content')?.textContent.slice(0,250));}
 test('dashboard navigation, discovery, leaders, tools and stadium interactions',async t=>{
  const errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
+ let liveOverride=null;
  const dom=new JSDOM(fs.readFileSync(path.join(root,'ui/dashboard.html'),'utf8'),{url:'http://dashboard.test/ui/dashboard.html',runScripts:'dangerously',resources:new LocalAssets(),pretendToBeVisual:true,virtualConsole:vc,beforeParse(w){
    w.matchMedia=()=>({matches:false,addListener(){},removeListener(){}});w.scrollTo=()=>{};w.HTMLElement.prototype.scrollIntoView=()=>{};
-   w.fetch=async url=>({ok:true,json:async()=>JSON.parse(fs.readFileSync(path.join(root,'ui',String(url).split('?')[0]),'utf8'))});
+   w.fetch=async url=>({ok:true,json:async()=>String(url).split('?')[0]==='data/live_scores.json'&&liveOverride
+     ? JSON.parse(JSON.stringify(liveOverride))
+     : JSON.parse(fs.readFileSync(path.join(root,'ui',String(url).split('?')[0]),'utf8'))});
  }});
  const w=dom.window,d=w.document;
  const route=async(hash,predicate)=>{const old=d.querySelector('#content').firstElementChild;w.location.hash=hash;await until(w,()=>d.querySelector('#content').firstElementChild!==old&&predicate());};
@@ -50,13 +53,18 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    assert.equal(d.querySelector('#home-team').value,'byu');assert.equal(d.querySelector('#home-status').value,'completed');
   });
   await t.test('Saturday final retained in the live feed shows archived efficiency',async()=>{
-   const snapshot=JSON.parse(fs.readFileSync(path.join(root,'ui/data/live_scores.json'),'utf8'));
-   const final=snapshot.games.find(g=>g.id===401858476);
-   assert.equal(final?.status,'completed','fixture must exercise a final still in the live feed');
+   // Keep this archived final in the mocked feed even after the live slate rolls.
+   liveOverride={source:'test',updated_at:'2026-10-04T12:00:00Z',games:[{
+     id:401858476,start_date:'2026-10-03T16:00:00Z',status:'completed',neutral_site:false,
+     home:{id:77,name:'Northwestern Wildcats',points:34,classification:'fbs'},
+     away:{id:213,name:'Penn State Nittany Lions',points:13,classification:'fbs'}
+   }]};
+   try {
    await route('#game=401858476&season=2026',()=>d.querySelector('#gp-efficiency'));
    assert.match(d.querySelector('#gp-efficiency').textContent,/Success Rate.*SRDiff.*xSRDiff.*SR\+/s);
    assert.match(d.querySelector('.story-panel').textContent,/Efficiency edge/);
    assert.doesNotMatch(d.querySelector('#gp-efficiency').textContent,/N\/A/);
+   } finally { liveOverride=null; }
   });
   await t.test('player category, conference, minimum and numeric sort work together',async()=>{
    await route('#section=stats&view=players&season=2026&category=rushing',()=>d.querySelector('.stats-table')&&d.querySelector('[aria-current="page"]')?.textContent==='Stats');
