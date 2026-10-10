@@ -61,25 +61,74 @@ def norm_team(name: Optional[str]) -> str:
     s = re.sub(r"[^\w\s&-]", "", s)
     return s
 
-def is_fbs_game(g: dict) -> bool:
+# How a game divides. `division=fbs` does not mean "both teams are FBS": CFBD
+# returns every game an FBS team played, which includes the FBS-vs-FCS games on
+# almost every schedule, plus the occasional stray all-non-FBS postseason game.
+# Those three cases go to three different places, so they are named once here
+# rather than decided twice.
+BOTH_FBS = "both_fbs"          # a rated game: goes to games_<year>.csv
+FBS_VS_OTHER = "fbs_vs_other"  # real, shown, never rated: goes to fcs_games_<year>.csv
+NEITHER_FBS = "neither_fbs"    # not this project's subject at all: dropped
+
+
+def classification_of(g: dict, side: str) -> str:
+    """CFBD's own division string for one side, lowercased; '' when absent."""
+    camel = "homeClassification" if side == "home" else "awayClassification"
+    snake = "home_classification" if side == "home" else "away_classification"
+    return (pick(g, camel, snake, default="") or "").strip().lower()
+
+
+def game_division(g: dict) -> str:
     """
-    CFBD sometimes leaks non-FBS postseason games even when division=fbs is requested.
-    We filter them out defensively.
+    One of BOTH_FBS / FBS_VS_OTHER / NEITHER_FBS.
+
+    CFBD's classification fields are authoritative where they exist. Where they
+    do not -- which is most of the pre-2000 archive -- there is nothing in the
+    payload that says what division a team was in, so the notes text is all
+    there is, and it only ever names the exception. A game with no evidence
+    either way is treated as FBS-vs-FBS, which is what this project did before
+    non-FBS games were kept at all; it is the assumption that leaves historical
+    ratings where they are rather than silently moving them.
     """
-    # Best-case: explicit classification fields exist
-    hc = (pick(g, "homeClassification", "home_classification", default="") or "").strip().lower()
-    ac = (pick(g, "awayClassification", "away_classification", default="") or "").strip().lower()
+    hc, ac = classification_of(g, "home"), classification_of(g, "away")
+    if hc and ac:
+        fbs = sum(1 for c in (hc, ac) if c == "fbs")
+        return BOTH_FBS if fbs == 2 else FBS_VS_OTHER if fbs == 1 else NEITHER_FBS
     if hc or ac:
-        return hc == "fbs" and ac == "fbs"
+        # Exactly one side labelled. This used to be dropped outright, so it
+        # must not start counting toward a rating now -- a half-labelled game
+        # entering games_<year>.csv would move published Elo and CoE without
+        # anyone asking for it. It is shown and not rated, which is also the
+        # likelier truth: the query was division=fbs, so the unlabelled side is
+        # almost always the FBS team and the labelled one the exception.
+        return FBS_VS_OTHER if "fbs" in (hc, ac) or hc or ac else NEITHER_FBS
 
-    # Fallback: filter by notes text (works when classification isn't present)
     notes = (pick(g, "notes", default="") or "").lower()
-    if "fcs" in notes or "championship subdivision" in notes:
-        return False
-    if "division ii" in notes or "division iii" in notes:
-        return False
+    if ("fcs" in notes or "championship subdivision" in notes
+            or "division ii" in notes or "division iii" in notes):
+        return FBS_VS_OTHER
+    return BOTH_FBS
 
-    return True
+
+def is_fbs_game(g: dict) -> bool:
+    """Kept as the name the rest of the pipeline knows; now one of three cases."""
+    return game_division(g) == BOTH_FBS
+
+
+# A game against a non-FBS opponent is kept in its own file, never in
+# games_<year>.csv. Every rating in this project reads the games table, so the
+# only way to guarantee these are "not counted in Elo or CoE" is for them never
+# to reach it. The opponent is a NAME here, not a team: this project does not
+# hold FCS programs as entities and inventing rows for them would put them in
+# the team directory, the search index and the rankings.
+FCS_GAME_FIELDS = [
+    "game_id", "season_year", "week", "date", "season_type",
+    "home_team", "away_team",
+    "home_conference", "away_conference",
+    "home_classification", "away_classification",
+    "home_score", "away_score",
+    "went_ot", "game_phase", "neutral_site", "notes",
+]
 
 
 def parse_date_yyyy_mm_dd(start_date) -> str:
@@ -393,6 +442,7 @@ def main(year: int) -> int:
         print(f"WARNING: venue catalog unavailable ({exc}); keeping the previous snapshot")
 
     scheduled: List[dict] = []
+    non_fbs: List[dict] = []
     out_path = OUT_DIR / f"games_{year}.csv"
     with out_path.open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(
@@ -417,7 +467,8 @@ def main(year: int) -> int:
         w.writeheader()
 
         for g in all_games:
-            if not is_fbs_game(g):
+            division = game_division(g)
+            if division == NEITHER_FBS:
                 continue
 
             game_id = pick(g, "id", "game_id", "gameId")
@@ -431,7 +482,15 @@ def main(year: int) -> int:
             # Not final yet (no scores, or CFBD says in progress): goes to the
             # schedule file instead, never the games file.
             if not is_completed(g):
-                scheduled.append(schedule_row(g, year, cfp_top4))
+                # An upcoming game against a non-FBS opponent is left out of
+                # the schedule file on purpose. That file feeds the upcoming-
+                # game cards and predict_upcoming.py, and there is no rating
+                # for an opponent this project does not hold, so a row here
+                # would ask the model to predict a game it cannot see. Only
+                # completed non-FBS games are recorded, which is what a
+                # schedule and a record need.
+                if division == BOTH_FBS:
+                    scheduled.append(schedule_row(g, year, cfp_top4))
                 continue
 
             start_date = pick(g, "start_date", "startDate")
@@ -470,6 +529,28 @@ def main(year: int) -> int:
 
             neutral_site = to_bool01(pick(g, "neutral_site", "neutralSite", default=False))
 
+            if division == FBS_VS_OTHER:
+                non_fbs.append({
+                    "game_id": game_id,
+                    "season_year": year,
+                    "week": week_val,
+                    "date": date_str,
+                    "season_type": season_type_val,
+                    "home_team": home,
+                    "away_team": away,
+                    "home_conference": home_conf or "",
+                    "away_conference": away_conf or "",
+                    "home_classification": classification_of(g, "home"),
+                    "away_classification": classification_of(g, "away"),
+                    "home_score": int(home_pts),
+                    "away_score": int(away_pts),
+                    "went_ot": went_ot,
+                    "game_phase": phase,
+                    "neutral_site": neutral_site,
+                    "notes": notes,
+                })
+                continue
+
             w.writerow({
                 "game_id": game_id,
                 "season_year": year,
@@ -493,6 +574,15 @@ def main(year: int) -> int:
 
 
     print(f"Wrote {out_path} ({out_path.stat().st_size} bytes)")
+
+    # Always written, even when empty, so a reclassified season clears rather
+    # than keeping rows the source no longer agrees with.
+    fcs_path = OUT_DIR / f"fcs_games_{year}.csv"
+    with fcs_path.open("w", newline="", encoding="utf-8") as f:
+        fw = csv.DictWriter(f, fieldnames=FCS_GAME_FIELDS)
+        fw.writeheader()
+        fw.writerows(non_fbs)
+    print(f"Wrote {fcs_path} ({len(non_fbs)} completed games vs non-FBS opponents)")
 
     # Always written (even when empty) so a finished season's stale schedule gets cleared.
     sched_path = OUT_DIR / f"schedule_{year}.csv"

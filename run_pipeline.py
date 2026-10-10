@@ -110,6 +110,15 @@ def main() -> None:
             if csv_path.exists():
                 run([python, "src/load_games.py", str(csv_path)], f"Load games: {year}")
 
+        # Games against opponents this project does not hold go to their own
+        # non_fbs_games table, which no rating engine reads -- that is the
+        # whole point of the separate table. Loaded after games so the
+        # one-known-one-unknown check sees the full teams list.
+        for fcs_path in sorted(Path("data/raw").glob("fcs_games_*.csv")):
+            year = fcs_path.stem.replace("fcs_games_", "")
+            run([python, "src/load_fcs_games.py", year, "--db", str(DB_PATH),
+                 "--csv", str(fcs_path)], f"Load non-FBS games: {year}")
+
         # Not-yet-final games (Milestone 3) go to their own scheduled_games
         # table, which no rating engine reads. Loaded after games so any
         # game that has since been played is skipped.
