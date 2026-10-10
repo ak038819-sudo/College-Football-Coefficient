@@ -175,3 +175,103 @@ def test_real_swings_have_correct_signs(real):
     for tid, sw in data["swings"].items():
         assert all(chg[(g, int(tid))] > 0 for g in sw["gains"])
         assert all(chg[(g, int(tid))] < 0 for g in sw["losses"])
+
+
+# ---- games against unrated opponents (FCS and the like) ----
+#
+# The point of these is that the games are EXPORTED and SEPARATE: visible on a
+# schedule and countable in a record, and absent from every rated number.
+
+NON_FBS_SCHEMA = """CREATE TABLE non_fbs_games (
+    game_id INTEGER PRIMARY KEY, season_year INTEGER, week INTEGER, game_date TEXT,
+    team_id INTEGER, opponent_name TEXT, opponent_conference TEXT,
+    opponent_classification TEXT, team_score INTEGER, opponent_score INTEGER,
+    is_home INTEGER, neutral_site INTEGER, went_ot INTEGER, game_phase TEXT)"""
+
+# The same rated fixture the tests above use, handed over as a connection so a
+# test can add unrated games to it and compare before and after.
+RATED_GAMES = [
+    (1, 2013, "2013-09-01", 1, 1, 2, 30, 20, 0, "regular", 0),
+    (3, 2015, "2015-09-05", 1, 2, 1, 17, 17, 0, "regular", 0),
+]
+RATED_ELO = [
+    (1, 1, 1500.0, 1450.0, 0.64, 12.0, 1512.0), (1, 2, 1450.0, 1500.0, 0.36, -12.0, 1438.0),
+    (3, 2, 1460.0, 1520.0, 0.50, 1.0, 1461.0), (3, 1, 1520.0, 1460.0, 0.50, -1.0, 1519.0),
+]
+
+
+@pytest.fixture
+def rated_conn(tmp_path):
+    conn = _db(tmp_path, RATED_GAMES, RATED_ELO)
+    yield conn
+    conn.close()
+
+
+def _unrated(conn, rows):
+    conn.execute(NON_FBS_SCHEMA)
+    conn.executemany("INSERT INTO non_fbs_games VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
+    conn.commit()
+    return conn
+
+
+def _row(game_id=900, season=2015, week=3, date="2015-09-14", team_id=1, opp="Mercer",
+         conf="SoCon", cls="fcs", mine=52, theirs=7, home=1, neutral=0, ot=0, phase="regular"):
+    return (game_id, season, week, date, team_id, opp, conf, cls, mine, theirs,
+            home, neutral, ot, phase)
+
+
+def test_an_unrated_game_is_exported_with_its_own_fields(rated_conn):
+    data = build_team_pages(_unrated(rated_conn, [_row()]))
+    assert len(data["non_fbs"]) == 1
+    assert data["non_fbs"][0] == [900, 2015, "2015-09-14", 3, 1, "Mercer", 52, 7, 1, 0, 0, 0, "fcs"]
+
+
+def test_an_unrated_game_moves_no_rated_number(rated_conn):
+    before = build_team_pages(rated_conn)
+    after = build_team_pages(_unrated(rated_conn, [_row()]))
+    # Team 1 has a real 2015 season here, so this comparison is not vacuous.
+    assert any(r[TID] == 1 and r[SEASON] == 2015 for r in before["team_seasons"])
+    assert after["team_seasons"] == before["team_seasons"]
+    assert after["games"] == before["games"]
+    assert after["elo"] == before["elo"]
+    assert 900 not in [g[0] for g in after["games"]]
+
+
+def test_unrated_records_count_wins_losses_and_ties_separately(rated_conn):
+    data = build_team_pages(_unrated(rated_conn, [
+        _row(game_id=900, mine=52, theirs=7),
+        _row(game_id=901, date="2015-09-21", mine=10, theirs=24),
+        _row(game_id=902, date="2015-09-28", mine=17, theirs=17),
+        # A different season for the same team stays its own record.
+        _row(game_id=903, season=2013, date="2013-09-02", mine=3, theirs=9, home=0),
+    ]))
+    assert data["non_fbs_records"]["1|2015"] == [1, 1, 1]
+    assert data["non_fbs_records"]["1|2013"] == [0, 1, 0]
+
+
+def test_unrated_records_are_kept_per_team(rated_conn):
+    data = build_team_pages(_unrated(rated_conn, [
+        _row(team_id=1, mine=52, theirs=7),
+        _row(game_id=901, team_id=2, mine=7, theirs=52)]))
+    assert data["non_fbs_records"]["1|2015"] == [1, 0, 0]
+    assert data["non_fbs_records"]["2|2015"] == [0, 1, 0]
+
+
+def test_a_postseason_phase_is_carried_as_its_code(rated_conn):
+    data = build_team_pages(_unrated(rated_conn, [
+        _row(phase="bowl"), _row(game_id=901, phase="cfp"), _row(game_id=902, phase="regular")]))
+    assert {r[0]: r[10] for r in data["non_fbs"]} == {900: 1, 901: 2, 902: 0}
+
+
+def test_a_missing_classification_is_exported_as_null_not_empty_string(rated_conn):
+    # CFBD gives no division for some older opponents. The page distinguishes
+    # "the source said FCS" from "the source said nothing", so '' must not
+    # survive as a value the page would print as a division.
+    data = build_team_pages(_unrated(rated_conn, [_row(cls="")]))
+    assert data["non_fbs"][0][12] is None
+
+
+def test_a_database_with_no_such_table_exports_an_empty_set(rated_conn):
+    data = build_team_pages(rated_conn)
+    assert data["non_fbs"] == []
+    assert data["non_fbs_records"] == {}

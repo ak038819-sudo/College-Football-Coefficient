@@ -65,13 +65,16 @@ function panelHtml({ team = PITT, upcoming = [upcomingGame()], liveGames = [] } 
     wrapWideTables: () => {},
     // The team's already-played games are not what these tests are about; an
     // empty history keeps the assertions on the live rows unambiguous.
-    tp: { eloByTeam: new Map(), gamesById: new Map(), seasonsByTeam: new Map(), teamsPerSeason: new Map() },
+    tp: { eloByTeam: new Map(), gamesById: new Map(), seasonsByTeam: new Map(), teamsPerSeason: new Map(),
+      nonFbsByTeam: new Map(), nonFbsRecords: {} },
   };
   vm.createContext(ctx);
   vm.runInContext(
     'let liveResults = new Map();\nlet liveResultsSignature = "";\n' +
     sourceOf('setLiveResults') + '\n' +
     sourceOf('teamScheduleSeasons') + '\n' +
+    sourceOf('nonFbsRecord') + '\n' +
+    sourceOf('recWithUnrated') + '\n' +
     sourceOf('fillSchedulePanel') + '\n' +
     'this.setLiveResults = setLiveResults; this.fill = fillSchedulePanel;', ctx);
   ctx.setLiveResults(liveGames);

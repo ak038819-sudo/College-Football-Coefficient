@@ -19,6 +19,9 @@ never recalculates Elo:
 Shared, normalized layout (no game duplicated per team):
   games:        [[game_id, season, date, week, home_id, away_id, home_score,
                   away_score, neutral, phase(0=regular,1=bowl,2=cfp), went_ot], ...]
+  non_fbs:      [[game_id, season, date, week, team_id, opponent_name,
+                  team_score, opponent_score, is_home, neutral, phase, went_ot,
+                  opponent_classification], ...]   NOT rated; see load_non_fbs_games
   elo:          [[game_id, team_id, pregame, opp_pregame, expectation,
                   change, postgame], ...]   grouped by team, chronological
   team_seasons: [[team_id, season, games, w, l, t, start_elo, end_elo,
@@ -179,6 +182,37 @@ def load_completed_games(conn: sqlite3.Connection) -> list[tuple]:
         FROM games
         WHERE home_score IS NOT NULL AND away_score IS NOT NULL
         ORDER BY season_year, game_date, game_id
+        """
+    ).fetchall()
+
+
+def load_non_fbs_games(conn: sqlite3.Connection) -> list[tuple]:
+    """
+    Completed games against an opponent this project does not hold a rating for.
+
+    These live in their own table precisely so no rating can read them (see
+    sql/non_fbs_game_tables.sql), and they stay out of `games`, `elo` and every
+    team-season number in this file. They are exported only so a schedule can
+    show the games that were actually played and a record can count them.
+
+    Mostly FCS opponents, but not only: a handful of 1980s rows are programs
+    CFBD still labels `fbs` which this project does not carry (Cal State
+    Fullerton, Wichita State). "Unrated opponent" is therefore the honest
+    description, and the source's own classification string rides along so the
+    page can say which it was rather than guess.
+    """
+    have = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='non_fbs_games'"
+    ).fetchone()
+    if not have:
+        return []
+    return conn.execute(
+        """
+        SELECT game_id, season_year, game_date, week, team_id, opponent_name,
+               team_score, opponent_score, is_home, neutral_site, game_phase,
+               went_ot, opponent_classification
+        FROM non_fbs_games
+        ORDER BY team_id, season_year, game_date, game_id
         """
     ).fetchall()
 
@@ -349,6 +383,13 @@ def build_team_pages(conn: sqlite3.Connection, champions: list[dict] | None = No
             "title_count": titles.get(tid, {}).get("title_count", 0),
         }
 
+    # ---- games against unrated opponents (shown, never rated) ----
+    non_fbs = load_non_fbs_games(conn)
+    non_fbs_rec: dict = defaultdict(lambda: [0, 0, 0])
+    for _gid, season, _date, _wk, tid, _opp, mine, theirs, *_rest in non_fbs:
+        non_fbs_rec[(tid, season)]["WLT".index(
+            "W" if mine > theirs else "L" if mine < theirs else "T")] += 1
+
     from export_static_data import kickoff_map
     kickoffs = kickoff_map(conn)
     return {
@@ -365,6 +406,14 @@ def build_team_pages(conn: sqlite3.Connection, champions: list[dict] | None = No
         # Expectation kept to 4 decimals so a ledger row's K x (S - E) x M reproduces the stored change.
         "elo": [[r[0], r[1], round(r[2], 1), round(r[3], 1), round(r[4], 4), round(r[5], 2), round(r[6], 1),
                  None if r[9] is None else round(r[9], 4)] for r in elo_rows if r[0] in game_by_id],
+        # Games against opponents with no rating here. Deliberately a SEPARATE
+        # array from "games": nothing downstream that computes a rating reads
+        # this key, which is the same separation the table itself makes.
+        "non_fbs": [[r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9],
+                     PHASE_CODE.get(r[10], 0), r[11], r[12] or None] for r in non_fbs],
+        # W-L-T of those games only, so the page can add them to a rated record
+        # without re-deriving a record in the browser.
+        "non_fbs_records": {f"{t}|{s_}": v for (t, s_), v in sorted(non_fbs_rec.items())},
         "team_seasons": team_seasons,
         "swings": swings,
         "history": history,
@@ -386,7 +435,8 @@ def main() -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("window.__TEAM_PAGES__=" + json.dumps(data, separators=(",", ":")) + ";\n", encoding="utf-8")
     print(f"Wrote {out} ({out.stat().st_size:,} bytes): {len(data['games'])} games, "
-          f"{len(data['elo'])} Elo rows, {len(data['team_seasons'])} team-seasons")
+          f"{len(data['elo'])} Elo rows, {len(data['team_seasons'])} team-seasons, "
+          f"{len(data['non_fbs'])} games against unrated opponents")
 
 
 if __name__ == "__main__":

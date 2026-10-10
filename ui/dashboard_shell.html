@@ -521,6 +521,12 @@
   /* A result's tint is set per row from its Elo change, so a close win and a
      statement win do not read the same. The hover rule below still wins. */
   .ledger tr.elo-shade td { background: var(--elo-shade); }
+  /* A schedule row for a game the model never rated. No win/loss tint, because
+     the tint encodes Elo movement and there is none; the tag says why. */
+  .ledger tr.sched-unrated td { background: color-mix(in srgb, var(--ink) 3%, transparent); }
+  .tag-unrated { font-size: .74rem; letter-spacing: .04em; text-transform: uppercase;
+    padding: .05rem .3rem; border-radius: 3px; border: 1px solid var(--line);
+    color: var(--ink-dim); white-space: nowrap; cursor: help; }
   .ledger tr.sched-post td { border-top: 1px solid var(--line); }
   /* Contribution breakdown: each member's share of the conference's season CoE. */
   .share-list { list-style: none; margin: 0; padding: 0; }
@@ -2174,6 +2180,18 @@ function indexTeamPages(raw) {
     if (!eloByTeam.has(r[1])) eloByTeam.set(r[1], []);
     eloByTeam.get(r[1]).push({ gid: r[0], tid: r[1], pre: r[2], oppPre: r[3], exp: r[4], chg: r[5], post: r[6], mov: r[7] ?? null });
   });
+  // Games against opponents this project holds no rating for -- mostly FCS, and
+  // a few 1980s programs CFBD still calls FBS that this project never carried.
+  // Kept in their own index, out of eloByTeam and seasonsByTeam, because every
+  // rating on the page reads those two. There is no game page for one of these:
+  // the game pages are built from the rated set.
+  const nonFbsByTeam = new Map();
+  (raw.non_fbs || []).forEach(r => {
+    if (!nonFbsByTeam.has(r[4])) nonFbsByTeam.set(r[4], []);
+    nonFbsByTeam.get(r[4]).push({ id: r[0], season: r[1], date: r[2], week: r[3], tid: r[4],
+      opp: r[5], mine: r[6], theirs: r[7], home: r[8] === 1, neutral: r[9] === 1,
+      phase: r[10], ot: r[11] === 1, cls: r[12] ?? null });
+  });
   const seasonsByTeam = new Map(), teamsPerSeason = new Map(), coe2PerSeason = new Map();
   raw.team_seasons.forEach(s => {
     const o = { tid: s[0], season: s[1], games: s[2], w: s[3], l: s[4], t: s[5], startElo: s[6], endElo: s[7],
@@ -2185,6 +2203,7 @@ function indexTeamPages(raw) {
     if (o.coe2 != null) coe2PerSeason.set(o.season, (coe2PerSeason.get(o.season) || 0) + 1);
   });
   return { gamesById, eloByTeam, seasonsByTeam, teamsPerSeason, coe2PerSeason,
+    nonFbsByTeam, nonFbsRecords: raw.non_fbs_records || {},
     swings: raw.swings, history: raw.history, cfpFirst: raw.cfp_first_season, titlesSince: raw.titles_since,
     advanced: raw.advanced || null,
     // ENG-13: {"<team>|<season>": {games, bonus, total, items}} -- the season total
@@ -2450,7 +2469,14 @@ function fillAnalyticsPanel(tp, team) {
   el.innerHTML = panelHead('Advanced Analytics', seasonSelect('tp-an-season', seasons, s.season, false)) +
     coverageRow(['scores', 'elo', 'coe2'], s.season) +
     '<div class="an-grid">' +
-      teamStat('Record', recStr(s.w, s.l, s.t), 'vs FBS opponents') +
+      // The headline record is the real one, including games against unrated
+      // opponents; the sub-label says which part of it the ratings used, since
+      // every other number on this card comes from that part alone.
+      teamStat('Record', (() => { const u = nonFbsRecord(tp, team.id, s.season);
+          return u ? recStr(s.w + u[0], s.l + u[1], s.t + u[2]) : recStr(s.w, s.l, s.t); })(),
+        (() => { const u = nonFbsRecord(tp, team.id, s.season);
+          return u ? recStr(s.w, s.l, s.t) + ' against rated opponents'
+                   : 'all opponents rated'; })()) +
       teamStat('Season Elo', s.endElo.toFixed(1), 'opened ' + s.startElo.toFixed(1) + ' &middot; ' + signed(s.eloChange, 1)) +
       teamStat('End-of-season Elo rank', eloR ? '#' + eloR.rank : 'N/A', eloR ? 'of ' + eloR.of + ' teams' : '') +
       teamStat('Strength of schedule', s.sos.toFixed(1), '#' + s.sosRank + ' of ' + tp.teamsPerSeason.get(s.season) + ' (1 = toughest)') +
@@ -2472,7 +2498,10 @@ function fillAnalyticsPanel(tp, team) {
       '<li><b>Strength of schedule</b>: average of opponents\' <i>pregame</i> Elo (their rating entering each game). Higher = tougher.</li>' +
       '<li><b>Expected wins</b>: sum of the team\'s pregame Elo win probabilities, home field included exactly as the Elo model applies it. Never uses ratings from after a game.</li>' +
       '<li><b>Wins vs. expectation</b>: actual wins minus expected wins. A positive number can mean real improvement the ratings hadn\'t caught up to yet, close-game results, or luck; it doesn\'t by itself say which.</li>' +
-      '<li>All records and stats cover games against FBS opponents only; the database doesn\'t store FCS games.</li>' +
+      '<li><b>Record</b> counts every completed game, including any against an opponent this project holds ' +
+        'no rating for. Every other number on this card — Elo, strength of schedule, expected wins, wins vs. ' +
+        'expectation, CoE — is computed from rated games only, which is what the sub-label under Record names. ' +
+        'The Schedule tab shows the unrated games and tags them.</li>' +
       '<li><b>CoE v1</b> drives the playoff model. <b>Game CoE 2.0</b> is the experimental hybrid layer (it drives nothing), shown only for seasons where it has been computed.</li>' +
     '</ul></details>';
   const sel = document.getElementById('tp-an-season');
@@ -2569,7 +2598,23 @@ function fillHistoryPanel(tp, team) {
 function teamScheduleSeasons(tp, team) {
   const played = teamSeasonsList(tp, team);
   const ahead = UPCOMING_GAMES.filter(g => g.home === team.id || g.away === team.id).map(g => g.season);
-  return [...new Set([...ahead, ...played])].sort((a, b) => b - a);
+  // A season in which the only game we hold was against an unrated opponent
+  // still has a schedule to show, so it belongs in the picker.
+  const unrated = (tp.nonFbsByTeam.get(team.id) || []).map(u => u.season);
+  return [...new Set([...ahead, ...played, ...unrated])].sort((a, b) => b - a);
+}
+
+// The W-L-T of a team's unrated games in one season, as the export counted them.
+function nonFbsRecord(tp, teamId, season) {
+  return tp.nonFbsRecords[teamId + '|' + season] || null;
+}
+// "9-4 overall, 8-4 rated" where the two differ; just the record where they
+// don't, because a team with no unrated games has nothing to distinguish.
+function recWithUnrated(tp, teamId, season, w, l, t) {
+  const u = nonFbsRecord(tp, teamId, season);
+  const rated = recStr(w, l, t);
+  if (!u) return rated;
+  return recStr(w + u[0], l + u[1], t + u[2]) + ' overall, ' + rated + ' rated';
 }
 
 // The Roster tab (v0.1.1). One season file per visit, from the people exports.
@@ -2666,9 +2711,12 @@ function fillSchedulePanel(tp, team) {
   const ahead = UPCOMING_GAMES.filter(g => g.season === season && (g.home === team.id || g.away === team.id));
   const wk = g => (g.phase > 0 ? 'Post' : g.week != null ? 'Wk ' + g.week : '—');
 
-  const rows = played.map(r => {
+  // Played rows and unrated rows are built separately and then interleaved by
+  // date, so the schedule reads as the season it actually was rather than as
+  // two lists. Each entry carries its sort keys alongside its html.
+  const playedRows = played.map(r => {
     const g = tp.gamesById.get(r.gid), v = gameFor(team, g), ph = phaseLabel(tp, g);
-    return '<tr' + eloShade(r.chg) + '>' +
+    return [g.date, g.id, '<tr' + eloShade(r.chg) + '>' +
       '<td><a href="' + esc(gameHref(g.id, g.season)) + '">' + esc(fmtGameDate(g)) + '</a></td>' +
       '<td class="opp"><span class="swing-where">' + v.where + '</span> ' +
         (v.opp ? oppLink(v.opp.name, g.season) : 'Unknown') + (v.neutral ? ' <span class="swing-where">(N)</span>' : '') + '</td>' +
@@ -2678,8 +2726,35 @@ function fillSchedulePanel(tp, team) {
       '<td>' + r.pre.toFixed(0) + '</td><td>' + r.oppPre.toFixed(0) + '</td>' +
       '<td>' + Math.round(r.exp * 100) + '%</td>' +
       '<td class="' + (r.chg >= 0 ? 'pos' : 'neg') + '">' + signed(r.chg, 1) + '</td>' +
-      '<td>' + r.post.toFixed(0) + '</td></tr>';
+      '<td>' + r.post.toFixed(0) + '</td></tr>'];
   });
+  // An unrated game has a real date, opponent and score, and nothing else: no
+  // pregame Elo for either side, no expectation, no change and no post-game
+  // rating, because the model never saw it. Those five columns are em-dashes
+  // rather than zeroes, and the row takes no Elo tint for the same reason. The
+  // opponent is plain text, not a link: this project holds no page for it, and
+  // there is no game page either, since those are built from the rated set.
+  const unratedRows = (tp.nonFbsByTeam.get(team.id) || [])
+    .filter(u => u.season === season)
+    .map(u => {
+      const res = u.mine > u.theirs ? 'W' : u.mine < u.theirs ? 'L' : 'T';
+      const where = u.neutral || u.home ? 'vs' : 'at';
+      return [u.date, u.id, '<tr class="sched-unrated">' +
+        '<td>' + esc(fmtGameDate(u)) + '</td>' +
+        '<td class="opp"><span class="swing-where">' + where + '</span> ' + esc(u.opp) +
+          (u.neutral ? ' <span class="swing-where">(N)</span>' : '') +
+          ' <span class="tag-unrated" title="This project holds no rating for ' + esc(u.opp) +
+          ', so the game counts in the record and in nothing else.">' +
+          (u.cls === 'fcs' ? 'FCS' : 'unrated') + '</span></td>' +
+        '<td>' + (u.phase > 0 ? 'Post' : u.week != null ? 'Wk ' + u.week : '—') + '</td>' +
+        '<td class="' + (res === 'W' ? 'win' : res === 'L' ? 'loss' : '') + '">' +
+          res + ' ' + u.mine + '–' + u.theirs + (u.ot ? ' OT' : '') + '</td>' +
+        '<td class="dim">—</td><td class="dim">—</td><td class="dim">—</td>' +
+        '<td class="dim">—</td><td class="dim">—</td></tr>'];
+    });
+  const rows = playedRows.concat(unratedRows)
+    .sort((x, y) => String(x[0]).localeCompare(String(y[0])) || x[1] - y[1])
+    .map(entry => entry[2]);
   // The scoreboard refreshes on its own cadence; the model export rebuilds on
   // another. Anything the scoreboard already has a score for is shown here with
   // that score, above the games still waiting to kick off, so a finished game
@@ -2730,14 +2805,25 @@ function fillSchedulePanel(tp, team) {
   }
 
   const sRow = (tp.seasonsByTeam.get(team.id) || new Map()).get(season);
+  const uRec = nonFbsRecord(tp, team.id, season);
+  // Actual wins, opening Elo, SOS, average expectation and net Elo change are
+  // all rated-set numbers and stay rated-set numbers; only the record counts
+  // the unrated games, which is the one column that is a record.
   const foot = sRow
-    ? '<tfoot><tr><td colspan="3">' + season + ' · ' + recStr(sRow.w, sRow.l, sRow.t) + '</td>' +
+    ? '<tfoot><tr><td colspan="3">' + season + ' · ' +
+        recWithUnrated(tp, team.id, season, sRow.w, sRow.l, sRow.t) + '</td>' +
       '<td>' + fmtWins(sRow.actWins) + ' W</td>' +
       '<td>' + sRow.startElo.toFixed(0) + '</td><td>' + sRow.sos.toFixed(0) + '</td>' +
       '<td>' + Math.round(100 * sRow.expWins / sRow.games) + '%</td>' +
       '<td class="' + (sRow.eloChange >= 0 ? 'pos' : 'neg') + '">' + signed(sRow.eloChange, 1) + '</td>' +
       '<td>' + sRow.endElo.toFixed(0) + '</td></tr></tfoot>'
-    : '';
+    // A season whose only games were against unrated opponents has no rated
+    // row at all, and so no Elo of any kind -- just the record.
+    : uRec
+      ? '<tfoot><tr><td colspan="3">' + season + ' · ' +
+          recStr(uRec[0], uRec[1], uRec[2]) + ' overall</td>' +
+        '<td colspan="6" class="dim">No rated games this season</td></tr></tfoot>'
+      : '';
   el.innerHTML = panelHead('Schedule', seasonSelect('tp-sched-season', seasons, season, false)) +
     (rows.length
       ? '<div class="table-scroll" tabindex="0" role="region" aria-label="' + season + ' schedule">' +
@@ -2758,7 +2844,12 @@ function fillSchedulePanel(tp, team) {
       '<li>A row under <b>Live scoreboard</b> has a score from the live feed. Its Elo, win probability and ' +
         'record are still the pregame values: the rating columns fill in, and the row joins the results above, ' +
         'once the model rebuilds.</li>' +
-      '<li>FBS opponents only — the database doesn’t store FCS games.</li>' +
+      '<li>A row tagged <b>FCS</b> or <b>unrated</b> is a game against an opponent this project holds no ' +
+        'rating for. It is in the schedule and in the record, and in nothing else: no Elo, no CoE, no strength ' +
+        'of schedule, no expected wins. Its rating columns are em-dashes because the model never saw the game, ' +
+        'not because the numbers are missing. Most are FCS; a few 1980s opponents were then-Division I-A ' +
+        'programs this project does not carry.</li>' +
+      '<li>The footer’s record counts those games; every other footer number is the rated set only.</li>' +
     '</ul></details>';
   const sel = document.getElementById('tp-sched-season');
   if (sel) sel.addEventListener('change', () => {
@@ -5543,7 +5634,8 @@ function renderConferenceStandings() {
   return '<div class="panel"><h2 class="section-title">Conference Standings · ' + state.year + '</h2>' +
     '<p class="section-note">Conference and overall records use the selected season’s membership. ' +
     'The order is derived from conference win percentage, then wins, losses and overall record; ' +
-    'it does not reproduce each league’s official tie-break rules. FCS games are not included.' +
+    'it does not reproduce each league’s official tie-break rules. Games against unrated opponents are '
+    + 'not included: they are on each team’s own schedule instead.' +
     (state.year === UPCOMING.season && UPCOMING.ratings_as_of ? ' Model data through ' + esc(UPCOMING.ratings_as_of) + '.' : '') +
     '</p><div id="conference-standings-results" aria-live="polite"><p class="empty-note">Loading standings…</p></div></div>';
 }
@@ -5625,8 +5717,10 @@ const CONF_RECORD_NOTE =
     '<li>A <b>conference game</b> is one where both teams belonged to this conference that season; ' +
       'an <b>external game</b> is one against a team in a different conference. Membership is that season’s ' +
       '(<code>team_membership_by_season</code>), never today’s, so a realignment never rewrites an old record.</li>' +
-    '<li>Records count completed games against FBS opponents only — the database doesn’t store FCS games — ' +
-      'and win percentage counts a tie as half a win.</li>' +
+    '<li>Records count completed games between rated teams only. Games against opponents this project holds ' +
+      'no rating for are stored and shown on a team’s own schedule, but they have no conference here to ' +
+      'credit a result to, so they are left out of every record on this page. Win percentage counts a tie as ' +
+      'half a win.</li>' +
     '<li><b>Bowl</b> and <b>CFP</b> are real results. Pre-2014 title bowls count as bowls, not CFP, because the ' +
       'College Football Playoff began with the 2014 season.</li>' +
     '<li><b>Conference CoE 2.0</b> is copied from <code>conference_coe2_by_season</code> and counts a slightly ' +
