@@ -142,9 +142,8 @@
   .ledger-head select { padding: 6px 8px; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 3px; font: inherit; }
   .ledger-note { background: var(--panel-2); border-radius: 3px; padding: 10px 12px; font-size: 13.5px; margin: 8px 0 12px; line-height: 1.6; }
   .ledger-note code, .method code { font-family: var(--font-mono); font-size: 12.5px; }
-  .ledger { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-  .ledger th, .ledger td { padding: 7px 6px; border-bottom: 1px dotted var(--line); text-align: right; white-space: nowrap; }
-  .ledger th:nth-child(-n+3), .ledger td:nth-child(-n+3) { text-align: left; }
+  .ledger { width: auto; max-width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .ledger th, .ledger td { padding: 7px 10px; border-bottom: 1px dotted var(--line); text-align: left; white-space: nowrap; }
   .ledger thead th { font: 10.5px var(--font-mono); color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.3px; }
   .ledger td { font-family: var(--font-mono); }
   .ledger td.opp { font-family: inherit; }
@@ -171,8 +170,8 @@
   .gp-side.won .gp-score { color: var(--amber); }
   .gp-side.lost { opacity: 0.6; }
   .gp-mid { font: 13px var(--font-mono); color: var(--ink-dim); text-align: center; }
-  .gp-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  .gp-table th, .gp-table td { padding: 8px 6px; border-bottom: 1px dotted var(--line); text-align: right; }
+  .gp-table { width: auto; max-width: 100%; border-collapse: collapse; font-size: 14px; }
+  .gp-table th, .gp-table td { padding: 8px 10px; border-bottom: 1px dotted var(--line); text-align: left; }
   .gp-table th:first-child, .gp-table td:first-child { text-align: left; color: var(--ink-dim); font-weight: 400; }
   .gp-table td { font-family: var(--font-mono); }
   .gp-table thead th { font: 11px var(--font-mono); color: var(--ink-dim); text-transform: uppercase; }
@@ -324,7 +323,7 @@
     border-bottom: 1px solid var(--line);
   }
 
-  table.rank-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.rank-table { width: auto; max-width: 100%; border-collapse: collapse; font-size: 14px; }
   table.rank-table th {
     text-align: left;
     font-family: var(--font-mono);
@@ -334,7 +333,7 @@
     padding: 4px 8px;
     border-bottom: 1px solid var(--line);
   }
-  table.rank-table th.num, table.rank-table td.num { text-align: right; }
+  table.rank-table th.num, table.rank-table td.num { text-align: left; white-space: nowrap; }
   table.rank-table td { padding: 6px 8px; border-bottom: 1px solid var(--panel-2); }
   table.rank-table tr:hover td { background: var(--panel-2); }
   .rk { font-family: var(--font-mono); color: var(--ink-dim); width: 2.4em; display: inline-block; }
@@ -491,9 +490,8 @@
   .cov.none { opacity: 0.75; }
   .cov.none::before { background: transparent; box-shadow: inset 0 0 0 1px var(--ink-dim); }
   .cov b { font-weight: 600; color: var(--ink); }
-  .cov-table { width: 100%; border-collapse: collapse; font: 12px var(--font-mono); }
-  .cov-table th, .cov-table td { padding: 5px 8px; border-bottom: 1px solid var(--panel-2); text-align: right; }
-  .cov-table th:first-child, .cov-table td:first-child { text-align: left; }
+  .cov-table { width: auto; max-width: 100%; border-collapse: collapse; font: 12px var(--font-mono); }
+  .cov-table th, .cov-table td { padding: 5px 10px; border-bottom: 1px solid var(--panel-2); text-align: left; }
   .cov-table thead th { color: var(--ink-dim); font-size: 10.5px; text-transform: uppercase; }
   .cov-table td.full { color: var(--green-hl); }
   .cov-table td.partial { color: var(--amber); }
@@ -508,15 +506,15 @@
   .page-tabs a:hover { color: var(--ink); }
   .page-tabs a[aria-current="page"] { color: var(--amber); border-color: var(--amber); }
   @media (max-width: 520px) { .page-tabs a { padding: 9px 7px; font-size: 11px; } }
-  /* .ledger left-aligns its first three columns; these override that per cell. */
-  .ledger th.tl, .ledger td.tl { text-align: left; }
-  .ledger th.tr, .ledger td.tr { text-align: right; }
   .ledger tbody tr:hover td { background: var(--panel-2); }
   .ledger td.win { color: var(--green-hl); } .ledger td.loss { color: var(--red); }
   .ledger td.live-now { color: var(--amber); }
   .dim, .ledger td.dim { color: var(--ink-dim); }
   .ledger caption { caption-side: bottom; font: 11px var(--font-mono); color: var(--ink-dim); text-align: left; padding-top: 8px; }
   .sched-group { font: 10.5px var(--font-mono); color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.4px; }
+  /* A result's tint is set per row from its Elo change, so a close win and a
+     statement win do not read the same. The hover rule below still wins. */
+  .ledger tr.elo-shade td { background: var(--elo-shade); }
   .ledger tr.sched-post td { border-top: 1px solid var(--line); }
   /* Contribution breakdown: each member's share of the conference's season CoE. */
   .share-list { list-style: none; margin: 0; padding: 0; }
@@ -921,7 +919,7 @@
   .stats-categories [aria-current] {color:var(--amber);text-decoration:underline;}
   .sort-button {background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:10px 4px;white-space:nowrap;}
   .sort-button:focus-visible {outline:2px solid var(--amber);}
-  .stats-table {min-width:740px;}
+  .stats-table {min-width:0;}
   .stats-table th:first-child,.stats-table td:first-child {position:sticky;left:0;background:var(--panel);z-index:1;min-width:150px;}
   .stats-table th:first-child {z-index:2;}
   .table-scroll {overflow-x:auto;max-width:100%;}
@@ -951,13 +949,13 @@
   .team-header-main,.team-header-text,.team-stats,.team-stat { min-width:0; }
   .team-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:16px; width:100%; }
   .team-stat .sub,.team-sub { overflow-wrap:anywhere; white-space:normal; }
-  table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; }
+  table { border-collapse:collapse; width:auto; max-width:100%; font-variant-numeric:tabular-nums; }
   table th,table td { border:1px solid var(--line); padding:10px 12px; }
   table thead { background:var(--panel-2); }
   table tbody tr:nth-child(even) { background:color-mix(in srgb,var(--panel-2) 50%,transparent); }
   table tbody tr:hover { background:color-mix(in srgb,var(--amber) 9%,var(--panel)); }
-  .stats-table th,.stats-table td { text-align:center; }
-  .stats-table .name-cell { justify-content:center; }
+  .stats-table th,.stats-table td { text-align:left; white-space:nowrap; }
+  .stats-table .name-cell { justify-content:flex-start; }
   .stats-leaders { grid-template-columns:1fr; gap:18px; }
   .stats-leaders article { display:grid; grid-template-columns:minmax(170px,1fr) 3fr; align-items:center; gap:24px; }
   .stats-leaders article ol { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; margin:0; }
@@ -2629,6 +2627,24 @@ function fillRosterPanel(team) {
   });
 }
 
+// Wins shade green and losses red on a team's schedule, with the depth of the
+// shade set by how much Elo the result moved -- a 2-point win over a bad team
+// and an upset of a top-ten team are both W, and should not look alike. The
+// scale saturates at SHADE_FULL points of movement, which is about the largest
+// swing the production k produces; anything beyond it is already as dark as the
+// table goes. A row with no rated change (a live score the model has not seen)
+// gets no tint rather than a neutral one.
+const SHADE_FULL = 25;
+const SHADE_MIN_PCT = 4, SHADE_MAX_PCT = 20;
+function eloShade(chg) {
+  if (!Number.isFinite(chg) || chg === 0) return '';
+  const weight = Math.min(1, Math.abs(chg) / SHADE_FULL);
+  const pct = (SHADE_MIN_PCT + weight * (SHADE_MAX_PCT - SHADE_MIN_PCT)).toFixed(1);
+  const hue = chg > 0 ? 'var(--green-hl)' : 'var(--red)';
+  return ' class="elo-shade" style="--elo-shade: color-mix(in srgb, ' + hue + ' ' +
+    pct + '%, transparent)"';
+}
+
 let paintedLiveSignature = null;
 function fillSchedulePanel(tp, team) {
   const el = document.getElementById('tp-schedule');
@@ -2647,7 +2663,7 @@ function fillSchedulePanel(tp, team) {
 
   const rows = played.map(r => {
     const g = tp.gamesById.get(r.gid), v = gameFor(team, g), ph = phaseLabel(tp, g);
-    return '<tr>' +
+    return '<tr' + eloShade(r.chg) + '>' +
       '<td><a href="' + esc(gameHref(g.id, g.season)) + '">' + esc(fmtGameDate(g)) + '</a></td>' +
       '<td class="opp"><span class="swing-where">' + v.where + '</span> ' +
         (v.opp ? oppLink(v.opp.name, g.season) : 'Unknown') + (v.neutral ? ' <span class="swing-where">(N)</span>' : '') + '</td>' +
@@ -3437,7 +3453,7 @@ function renderConferenceDirectory() {
   const card = c => '<li><a class="directory-card" href="' + esc(conferenceHref(c.name)) + '">' +
     '<span class="name-cell">' + logoMarkup(c.name, 'conf', 'sm', c.last) + '<span>' + esc(c.name) + '</span></span>' +
     '<small>' + c.first + '\u2013' + c.last + ' \u00b7 ' + c.seasons + ' season' + (c.seasons === 1 ? '' : 's') +
-    (c.last === LATEST_SEASON ? '' : ' \u00b7 not in ' + LATEST_SEASON) + '</small></a></li>';
+    (c.last === LATEST_SEASON ? '' : ' \u00b7 Defunct') + '</small></a></li>';
   const group = (label, list) => list.length
     ? '<h3 class="an-title">' + label + '</h3><ul class="directory-grid">' + list.map(card).join('') + '</ul>' : '';
   return '<div class="panel"><h2 class="section-title">Conferences</h2>' +
@@ -3955,7 +3971,7 @@ function playerBoxscorePanel(teams, updated, checked, rosterData) {
     const lookup = boxScoreNameLookup(rosterData, team.name);
     const teamRow = TEAM_BY_NAME.get(team.name);
     const idSet = teamRow ? rosterIdSet(rosterData, teamRow.id) : null;
-    return '<section class="live-player-team"><h3>' + esc(team.name) + '</h3>' + (team.categories || []).map(c => {
+    return '<section class="live-player-team"><h3>' + esc(team.name) + '</h3>' + orderStatGroups(team.categories).map(c => {
     const lines = (c.lines || []).map(a => {
       const cell = boxScoreLineCell(a, lookup, idSet);
       if (cell.attributed) attributed += 1;
@@ -4799,6 +4815,44 @@ const STAT_CATEGORY_LABELS = {
 const STAT_CATEGORY_ORDER = ['passing', 'rushing', 'receiving', 'defensive', 'interceptions',
   'fumbles', 'kicking', 'punting', 'kickReturns', 'puntReturns'];
 
+// A game's box score arrives in whatever order CFBD assembled it, and that
+// order genuinely differs from game to game -- across a sample of the archive,
+// interceptions land anywhere from fourth to seventh and one game opens on
+// rushing. A reader comparing two games should not have to re-find the passing
+// block each time, so the panel imposes this order instead of the feed's.
+//
+// Within a category the stat types get a fixed order too: the counting stat
+// first, then yards, then the rates and the extremes, which is how a box score
+// is read aloud. A type the feed sends that is not listed here keeps its feed
+// position after the listed ones rather than being dropped or guessed at.
+const STAT_TYPE_ORDER = {
+  passing: ['C/ATT', 'YDS', 'AVG', 'TD', 'INT', 'QBR'],
+  rushing: ['CAR', 'YDS', 'AVG', 'TD', 'LONG'],
+  receiving: ['REC', 'YDS', 'AVG', 'TD', 'LONG'],
+  defensive: ['TOT', 'SOLO', 'SACKS', 'TFL', 'PD', 'QB HUR', 'TD'],
+  interceptions: ['INT', 'YDS', 'TD'],
+  fumbles: ['FUM', 'LOST', 'REC'],
+  kicking: ['FG', 'PCT', 'LONG', 'XP', 'PTS'],
+  punting: ['NO', 'YDS', 'AVG', 'TB', 'In 20', 'LONG'],
+  kickReturns: ['NO', 'YDS', 'AVG', 'LONG', 'TD'],
+  puntReturns: ['NO', 'YDS', 'AVG', 'LONG', 'TD']
+};
+function statGroupRank(group) {
+  const cat = STAT_CATEGORY_ORDER.indexOf(group && group.name);
+  const types = STAT_TYPE_ORDER[group && group.name] || [];
+  const type = types.indexOf(group && group.type);
+  return [cat === -1 ? STAT_CATEGORY_ORDER.length : cat,
+          type === -1 ? types.length : type];
+}
+// Sorted by rank, ties broken by the feed's own position, so the order is the
+// same every game and two unlisted types never swap places between renders.
+function orderStatGroups(groups) {
+  return (groups || []).map((g, i) => [g, i]).sort((a, b) => {
+    const ra = statGroupRank(a[0]), rb = statGroupRank(b[0]);
+    return ra[0] - rb[0] || ra[1] - rb[1] || a[1] - b[1];
+  }).map(pair => pair[0]);
+}
+
 // The feed sends PCT as a fraction: a 68.6% passer arrives as 0.686, and every
 // PCT value in the archive is between 0 and 1. Printed as given under a header
 // reading PCT, that says 0.69 percent -- wrong by a hundredfold in the reader's
@@ -5592,7 +5646,7 @@ function renderConferencePage(param) {
         '<div><h1 class="conf-title">' + esc(c.name) + '</h1>' +
         '<div class="team-sub">' + c.first + '–' + c.last + ' &middot; ' + c.seasons +
           ' season' + (c.seasons === 1 ? '' : 's') + ' in dataset &middot; ' +
-          '<span class="conf-tag">' + (active ? 'Active' : 'Not in the latest season') + '</span></div></div>' +
+          '<span class="conf-tag">' + (active ? 'Active' : 'Defunct') + '</span></div></div>' +
       '</div>' +
     '</div>';
   const tab = activeTab('conference');
