@@ -64,7 +64,49 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    assert.match(d.querySelector('#gp-efficiency').textContent,/Success Rate.*SRDiff.*xSRDiff.*SR\+/s);
    assert.match(d.querySelector('.story-panel').textContent,/Efficiency edge/);
    assert.doesNotMatch(d.querySelector('#gp-efficiency').textContent,/N\/A/);
+
+   // Elo, Game CoE and Efficiency are ONE table, a row per team, not three
+   // transposed ones. The shape is the point: a reader compares across, and
+   // the table is wide enough to fill the panel it sits in.
+   const matchup=d.querySelector('table.gp-matchup');
+   assert.ok(matchup,'the matchup table is missing');
+   assert.equal(d.querySelectorAll('table.gp-matchup').length,1,'the three panels must not come back');
+   const groups=[...matchup.querySelectorAll('thead tr:first-child th.gp-group')].map(h=>h.textContent.trim());
+   assert.deepEqual(groups,['Elo','Game CoE \u00b7 CoE 2.0','Efficiency']);
+   const metrics=[...matchup.querySelectorAll('thead tr:last-child th')].map(h=>h.textContent.trim());
+   assert.deepEqual(metrics,['Team','Before','Win chance','After','\u0394 Elo','Result','Hybrid','P',
+     'Game CoE','Success Rate','SRDiff','xSRDiff','SR+']);
+   // Each group header spans exactly the metric columns beneath it, or the
+   // body cells land under the wrong headings.
+   const spans=[...matchup.querySelectorAll('thead tr:first-child th.gp-group')].map(h=>Number(h.getAttribute('colspan')));
+   assert.deepEqual(spans,[4,4,4]);
+   assert.equal(spans.reduce((a,b)=>a+b,0)+1,metrics.length);
+   const bodyRows=[...matchup.querySelectorAll('tbody tr')];
+   assert.equal(bodyRows.length,2,'one row per team');
+   // Away first, matching the away-then-home column order the old tables used.
+   // Thirteen columns is enough content to earn the panel's full width.
+   assert.ok(matchup.classList.contains('is-wide'),'a full matchup table should fill the panel');
+   assert.equal(bodyRows[0].querySelector('th').textContent.trim(),'Penn State');
+   assert.equal(bodyRows[1].querySelector('th').textContent.trim(),'Northwestern');
+   for(const row of bodyRows) assert.equal(row.querySelectorAll('td').length,metrics.length-1);
+   // The numbers are still the stored ones: Northwestern won, so its Elo moved up.
+   const nw=[...bodyRows[1].querySelectorAll('td')].map(c=>c.textContent.trim());
+   assert.match(nw[3],/^\+/, 'the winner\u2019s Elo change should be positive');
+   assert.equal(nw[4],'Win');
    } finally { liveOverride=null; }
+  });
+  await t.test('a game with only Elo shows only Elo, and does not stretch to fill',async()=>{
+   // 1984: CoE 2.0 begins in 1985 and Success Rate in 2001, so this game has
+   // one group. The table must say so by being short, not by carrying two
+   // groups of dashes, and must not stretch five columns across the panel.
+   await route('#game=52663&season=1984',()=>d.querySelector('table.gp-matchup'));
+   const t2=d.querySelector('table.gp-matchup');
+   assert.deepEqual([...t2.querySelectorAll('thead tr:first-child th.gp-group')].map(h=>h.textContent.trim()),['Elo']);
+   assert.deepEqual([...t2.querySelectorAll('thead tr:last-child th')].map(h=>h.textContent.trim()),
+     ['Team','Before','Win chance','After','\u0394 Elo']);
+   assert.ok(!t2.classList.contains('is-wide'),'five columns must not be stretched across the panel');
+   assert.match(d.querySelector('#gp-efficiency').textContent,/CoE 2\.0 begins in 1985/);
+   assert.doesNotMatch(d.querySelector('#gp-efficiency').textContent,/SRDiff/);
   });
   await t.test('player category, conference, minimum and numeric sort work together',async()=>{
    await route('#section=stats&view=players&season=2026&category=rushing',()=>d.querySelector('.stats-table')&&d.querySelector('[aria-current="page"]')?.textContent==='Stats');
@@ -84,7 +126,7 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    assert.equal(d.getElementById('stats-conf').value,'Big 12');
   });
   await t.test('team stats, linked leader cards, and restored detail return addresses',async()=>{
-   await route('#section=stats&view=teams&season=2026&category=ratings&statConf=Big+12&sort=elo&dir=desc',()=>d.querySelector('.stats-table th')?.textContent.startsWith('Team'));
+   await route('#section=stats&view=teams&season=2026&category=ratings&statConf=Big+12&sort=elo&dir=desc',()=>d.querySelector('.stats-table th:nth-child(2)')?.textContent.startsWith('Team'));
    assert.ok(d.querySelectorAll('.stats-table tbody tr').length>0);
    const teamLink=d.querySelector('.stats-table tbody a');const href=teamLink.getAttribute('href');assert.ok(href.includes('from='));
    teamLink.click();await until(w,()=>w.location.hash.startsWith('#team='));

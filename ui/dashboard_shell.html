@@ -181,6 +181,20 @@
   .gp-table th:first-child, .gp-table td:first-child { text-align: left; color: var(--ink-dim); font-weight: 400; }
   .gp-table td { font-family: var(--font-mono); }
   .gp-table thead th { font: 11px var(--font-mono); color: var(--ink-dim); text-transform: uppercase; }
+  /* The matchup table is a row per team and a column group per model, so it
+     earns the panel's width where three transposed tables could not. */
+  .gp-matchup { width: auto; max-width: 100%; }
+  /* Fill the panel once the table has the columns to justify it. Below that a
+     game simply has less to show -- a 1984 game carries only the Elo group --
+     and five columns stretched across the panel is the sparseness this table
+     exists to remove, not a fix for it. */
+  .gp-matchup.is-wide { width: 100%; }
+  .gp-matchup th.gp-group { text-align: center; color: var(--amber); letter-spacing: .06em;
+    border-bottom: 1px solid var(--line); }
+  .gp-matchup th.gp-group + th.gp-group { border-left: 1px solid var(--line); }
+  .gp-matchup tbody th[scope="row"] { font-family: var(--font-body); font-weight: 600;
+    color: var(--ink); white-space: nowrap; }
+  .gp-matchup th[title] { cursor: help; }
   .gp-formula { font: 12.5px var(--font-mono); line-height: 1.7; background: var(--panel-2); padding: 10px 12px; border-radius: 3px; overflow-x: auto; }
   .gp-list { list-style: none; padding: 0; margin: 0; }
   .gp-list a, .gp-fact a, .swing-meta a, .up-meta a { color: var(--amber); }
@@ -932,8 +946,12 @@
   .sort-button {background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:10px 4px;white-space:nowrap;}
   .sort-button:focus-visible {outline:2px solid var(--amber);}
   .stats-table {min-width:0;}
-  .stats-table th:first-child,.stats-table td:first-child {position:sticky;left:0;background:var(--panel);z-index:1;min-width:150px;}
-  .stats-table th:first-child {z-index:2;}
+  /* The rank and the name both stay put while the stats scroll: a rank with no
+     name beside it says nothing. The name's offset is the rank column's width,
+     which is fixed here so the two cannot drift apart. */
+  .stats-table th.rank-col,.stats-table td.rank-col {position:sticky;left:0;background:var(--panel);z-index:1;width:46px;min-width:46px;color:var(--ink-dim);}
+  .stats-table th:nth-child(2),.stats-table td:nth-child(2) {position:sticky;left:46px;background:var(--panel);z-index:1;min-width:150px;}
+  .stats-table th.rank-col,.stats-table th:nth-child(2) {z-index:2;}
   .table-scroll {overflow-x:auto;max-width:100%;}
   .tabs {flex-wrap:wrap;}
   #home-weeks {align-items:center;gap:20px;flex-wrap:wrap;}
@@ -5439,69 +5457,106 @@ function hydrateGamePage(version) {
 
       const n1 = v => v == null ? '—' : Number(v).toFixed(1);
       const signed = v => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1);
-      const eloRows = [
-        ['Elo entering the game', n1(g.away_pre_elo) + (g.away_provisional ? '*' : ''), n1(g.home_pre_elo) + (g.home_provisional ? '*' : '')],
-        ['Pregame win chance', pct ? pct.away + '%' : '—', pct ? pct.home + '%' : '—']];
-      if (g.completed) eloRows.push(['Elo after the game', n1(g.away_post_elo), n1(g.home_post_elo)],
-        ['Elo change', signed(g.home_elo_change == null ? null : -g.home_elo_change), signed(g.home_elo_change)]);
-      const eloPanel = '<div class="panel"><h2 class="section-title">Elo</h2><table class="gp-table"><thead><tr><th scope="col"></th><th scope="col">' +
-        esc(an) + '</th><th scope="col">' + esc(hn) + '</th></tr></thead><tbody>' +
-        eloRows.map(r => '<tr><th scope="row">' + r[0] + '</th><td>' + r[1] + '</td><td>' + r[2] + '</td></tr>').join('') + '</tbody></table>' +
-        '<p class="section-note">' + (g.completed ? 'Recorded before kickoff and never recomputed. ' : 'Current ratings; they will change as games are played. ') +
-        'Win chance includes home field exactly as the Elo model applies it.' +
-        (g.away_provisional || g.home_provisional ? ' * No games yet this season: starting rating.' : '') + '</p></div>';
-
+      // ---- One matchup table instead of three ----
+      //
+      // Elo, Game CoE and Efficiency all answered the same question -- how did
+      // these two teams compare -- in three separate three-column tables, each
+      // a few hundred pixels wide inside a full-width panel. Transposed, they
+      // are one table: a row per team, a column group per model. It reads as
+      // the comparison it always was, and it fills the panel it sits in.
+      //
+      // Every number is still exactly what the old panels showed. A group whose
+      // data this game does not have is left out entirely rather than filled
+      // with dashes, so the table never widens to say nothing.
       const d = details && details.byId.get(id);
-      let coePanel;
-      if (!g.completed) coePanel = '<div class="panel"><h2 class="section-title">Game CoE</h2><p class="empty-note">Game CoE is awarded when the game is played.</p></div>';
-      else if (!d) coePanel = '<div class="panel"><h2 class="section-title">Game CoE</h2><p class="empty-note">Not available: CoE 2.0 begins in 1985, once five prior seasons exist.</p></div>';
-      else {
-        const P = details.params, pc = v => v == null ? '—' : Math.round(v * 1000) / 10 + '%';
-        const rows = [['Result', RESULT_LABEL[d.away_result] || d.away_result, RESULT_LABEL[d.home_result] || d.home_result],
-          ['Hybrid rating', n1(d.away_hybrid_rating), n1(d.home_hybrid_rating)],
-          ['Hybrid win expectation (P)', pc(d.away_hybrid_p), pc(d.home_hybrid_p)],
-          ['Game CoE', g.away_game_coe == null ? '—' : g.away_game_coe.toFixed(3), g.home_game_coe == null ? '—' : g.home_game_coe.toFixed(3)]];
-        coePanel = '<div class="panel"><h2 class="section-title">Game CoE <small class="section-note">CoE 2.0</small></h2><table class="gp-table"><thead><tr><th scope="col"></th><th scope="col">' +
-          esc(an) + '</th><th scope="col">' + esc(hn) + '</th></tr></thead><tbody>' +
-          rows.map(r => '<tr><th scope="row">' + r[0] + '</th><td>' + r[1] + '</td><td>' + r[2] + '</td></tr>').join('') + '</tbody></table>' +
-          '<details class="help"><summary>How Game CoE was calculated</summary>' +
-          '<p class="section-note">Each team\'s <b>hybrid rating</b> blends its pregame Elo (z = ' + n1(d.away_elo_z) + ' / ' + n1(d.home_elo_z) +
+      const P = details && details.params;
+      const pc = v => v == null ? '—' : Math.round(v * 1000) / 10 + '%';
+      const pct1 = v => v == null ? 'N/A' : (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v * 100).toFixed(1) + '%';
+      const hasCoe = !!(g.completed && d);
+      const hasSr = !!(d && (d.home_sr_diff != null || d.away_sr_diff != null));
+
+      // side = 'away' | 'home'. Each entry is [label, value-for-this-side].
+      const eloCells = side => {
+        const pre = side === 'away' ? g.away_pre_elo : g.home_pre_elo;
+        const prov = side === 'away' ? g.away_provisional : g.home_provisional;
+        const post = side === 'away' ? g.away_post_elo : g.home_post_elo;
+        const chg = g.home_elo_change == null ? null : (side === 'away' ? -g.home_elo_change : g.home_elo_change);
+        const out = [n1(pre) + (prov ? '*' : ''), pct ? (side === 'away' ? pct.away : pct.home) + '%' : '—'];
+        if (g.completed) out.push(n1(post), signed(chg));
+        return out;
+      };
+      const coeCells = side => {
+        const r = d[side + '_result'], coe = side === 'away' ? g.away_game_coe : g.home_game_coe;
+        return [RESULT_LABEL[r] || r, n1(d[side + '_hybrid_rating']), pc(d[side + '_hybrid_p']),
+          coe == null ? '—' : coe.toFixed(3)];
+      };
+      const srCells = side => [
+        d[side + '_success_rate'] == null ? 'N/A' : (d[side + '_success_rate'] * 100).toFixed(1) + '%',
+        pct1(d[side + '_sr_diff']), pct1(d[side + '_xsr_diff']), pct1(d[side + '_sr_plus'])];
+
+      const groups = [['Elo', g.completed
+        ? [['Before', 'Each team’s rating entering the game.'],
+           ['Win chance', 'The pregame expectation, home field included.'],
+           ['After', 'The rating this game produced.'],
+           ['Δ Elo', 'How far the result moved the rating.']]
+        : [['Before', 'Each team’s rating entering the game.'],
+           ['Win chance', 'The current expectation, home field included.']], eloCells]];
+      if (hasCoe) groups.push(['Game CoE · CoE 2.0',
+        [['Result', 'Win, loss or tie, as CoE 2.0 scores it.'],
+         ['Hybrid', 'Pregame Elo blended with the frozen five-season CoE.'],
+         ['P', 'The win expectation those hybrid ratings imply.'],
+         ['Game CoE', 'What the result earned. A tougher win earns more.']], coeCells]);
+      if (hasSr) groups.push(['Efficiency',
+        [['Success Rate', 'Share of this team’s plays that gained enough for the down and distance.'],
+         ['SRDiff', 'How much better this team performed by Success Rate than its opponent.'],
+         ['xSRDiff', 'What the matchup implied before kickoff, from pregame Elo and venue.'],
+         ['SR+', 'SRDiff minus xSRDiff: how far the team beat the expectation.']], srCells]);
+
+      const groupHead = '<tr><th scope="col"></th>' + groups.map(
+        ([name, cols]) => '<th scope="colgroup" colspan="' + cols.length + '" class="gp-group">' + esc(name) + '</th>').join('') + '</tr>';
+      const metricHead = '<tr><th scope="col">Team</th>' + groups.flatMap(
+        ([, cols]) => cols.map(([label, tip]) => '<th scope="col" title="' + esc(tip) + '">' + label + '</th>')).join('') + '</tr>';
+      const sideRow = (side, name) => '<tr><th scope="row">' + esc(name) + '</th>' +
+        groups.flatMap(([, , cells]) => cells(side)).map(v => '<td>' + v + '</td>').join('') + '</tr>';
+
+      const coeHelp = hasCoe
+        ? '<details class="help"><summary>How Game CoE was calculated</summary>' +
+          '<p class="section-note">Each team’s <b>hybrid rating</b> blends its pregame Elo (z = ' + n1(d.away_elo_z) + ' / ' + n1(d.home_elo_z) +
           ') with its frozen five-season CoE (z = ' + n1(d.away_coe_z) + ' / ' + n1(d.home_coe_z) + ')' +
-          (P.elo_weight != null ? ', weighted ' + Math.round(P.elo_weight * 100) + '% Elo' : '') +
+          (P && P.elo_weight != null ? ', weighted ' + Math.round(P.elo_weight * 100) + '% Elo' : '') +
           '. <b>P</b> is the win expectation those ratings imply, home field included. A tougher win (lower P) earns more.</p>' +
           '<div class="gp-formula">' + esc(an) + ': ' + coeFormula(d.away_result, d.away_hybrid_p, P, g.away_game_coe) + '<br>' +
           esc(hn) + ': ' + coeFormula(d.home_result, d.home_hybrid_p, P, g.home_game_coe) + '</div>' +
-          '<p class="section-note">All inputs are the stored pregame values; later games never change this game\'s CoE. CoE 2.0 is the experimental layer; playoff selection still uses CoE v1.</p></details></div>';
-      }
-      // ---- Efficiency: SRDiff / xSRDiff / SR+ (EXP-03, guide section 7) ----
-      // Every number is copied from what src/build_elo.py stored for this game;
-      // nothing here recomputes the model. Absent Success Rate renders N/A.
-      const pct1 = v => (v > 0 ? '+' : v < 0 ? '\u2212' : '\u00b1') + Math.abs(v * 100).toFixed(1) + '%';
-      const srPanel = (d && (d.home_sr_diff != null || d.away_sr_diff != null))
-        ? '<div class="panel" id="gp-efficiency"><h2 class="section-title">Efficiency vs. expectation</h2>' +
-          '<div class="table-scroll" tabindex="0" role="region" aria-label="Success Rate against expectation">' +
-          '<table class="gp-table"><thead><tr><th scope="col"></th>' +
-          '<th scope="col">' + esc(an) + '</th><th scope="col">' + esc(hn) + '</th></tr></thead><tbody>' +
-          [['Success Rate', 'success_rate', v => v == null ? 'N/A' : (v * 100).toFixed(1) + '%',
-            'Share of this team\u2019s plays that gained enough for the down and distance, in this game.'],
-           ['SRDiff', 'sr_diff', v => v == null ? 'N/A' : pct1(v),
-            'How much better this team performed by Success Rate than its opponent.'],
-           ['xSRDiff', 'xsr_diff', v => v == null ? 'N/A' : pct1(v),
-            'Expected Success Rate Differential based on the teams\u2019 pregame Elo strength and venue.'],
-           ['SR+', 'sr_plus', v => v == null ? 'N/A' : pct1(v),
-            'Actual SRDiff minus xSRDiff; positive means the team performed better than expected.']]
-            .map(([label, key, fmt, tip]) =>
-              '<tr><th scope="row" title="' + esc(tip) + '">' + label + '</th>' +
-              '<td>' + fmt(d['away_' + key]) + '</td><td>' + fmt(d['home_' + key]) + '</td></tr>').join('') +
-          '</tbody></table></div>' +
-          '<p class="section-note"><b>xSRDiff</b> is what the matchup implied before kickoff; <b>SR+</b> is how far ' +
+          '<p class="section-note">All inputs are the stored pregame values; later games never change this game’s CoE. CoE 2.0 is the experimental layer; playoff selection still uses CoE v1.</p></details>'
+        : '';
+      // The two reasons a completed game has no Game CoE are different facts and
+      // are still told apart, now as a line under the table rather than a panel
+      // of their own.
+      const coeMissing = g.completed && !d
+        ? '<p class="section-note">No Game CoE: CoE 2.0 begins in 1985, once five prior seasons exist.</p>'
+        : !g.completed ? '<p class="section-note">Game CoE is awarded when the game is played.</p>' : '';
+      const srHelp = hasSr
+        ? '<p class="section-note"><b>xSRDiff</b> is what the matchup implied before kickoff; <b>SR+</b> is how far ' +
           'the team beat it. The two sides are mirror images by construction. ' +
           (d.performance_model === 'xsrdiff'
-            ? 'The winner\u2019s SR+ set the Elo multiplier for this game.'
-            : 'This game\u2019s Elo used the <code>' + esc(d.performance_model || 'mov') + '</code> multiplier instead, so ' +
+            ? 'The winner’s SR+ set the Elo multiplier for this game.'
+            : 'This game’s Elo used the <code>' + esc(d.performance_model || 'mov') + '</code> multiplier instead, so ' +
               'these numbers are shown for context and did not move the rating.') +
-          ' Success Rate coverage begins in 2001; earlier games have none.</p></div>'
+          ' Success Rate coverage begins in 2001; earlier games have none.</p>'
         : '';
+
+      // Team column plus every metric column across the groups this game has.
+      const matchupCols = 1 + groups.reduce((n, [, cols]) => n + cols.length, 0);
+      const MATCHUP_FILL_COLS = 9;
+      const matchupPanel = '<div class="panel" id="gp-efficiency"><h2 class="section-title">Matchup</h2>' +
+        '<div class="table-scroll" tabindex="0" role="region" aria-label="The two teams across every model">' +
+        '<table class="gp-table gp-matchup' + (matchupCols >= MATCHUP_FILL_COLS ? ' is-wide' : '') +
+        '"><thead>' + groupHead + metricHead + '</thead><tbody>' +
+        sideRow('away', an) + sideRow('home', hn) + '</tbody></table></div>' +
+        '<p class="section-note">' + (g.completed ? 'Recorded before kickoff and never recomputed. ' : 'Current ratings; they will change as games are played. ') +
+        'Win chance includes home field exactly as the Elo model applies it.' +
+        (g.away_provisional || g.home_provisional ? ' * No games yet this season: starting rating.' : '') + '</p>' +
+        coeMissing + srHelp + coeHelp + '</div>';
 
       const q = encodeURIComponent(an + ' vs ' + hn + ' ' + season + ' highlights');
       const more = '<div class="panel"><h2 class="section-title">More</h2>' +
@@ -5511,7 +5566,7 @@ function hydrateGamePage(version) {
         esc(coverageReason('game_advanced', season) || 'Available for this season.') + '</div>' +
         (g.completed ? '<div class="gp-fact"><b>Highlights</b><a href="https://www.youtube.com/results?search_query=' + q + '" target="_blank" rel="noopener noreferrer">Search YouTube &rarr;</a></div>' : '') +
         '<div class="gp-fact"><b>Teams</b>' + (away ? teamLink(an, 'xs', season) : esc(an)) + ' ' + (home ? teamLink(hn, 'xs', season) : esc(hn)) + '</div></div></div>';
-      target().innerHTML = hero + srPanel + '<div class="grid-2">' + eloPanel + coePanel + '</div>' +
+      target().innerHTML = hero + matchupPanel +
         gameStory(g, d, season, an, hn) + gameVenuePanel(g, hn) +
         (g.completed ? '<div id="gp-players" class="panel"><h2 class="section-title">Player box score</h2><p class="empty-note">Loading player stats…</p></div>' : '') +
         '<div class="panel" id="gp-series"><h2 class="section-title">Series history</h2><p class="empty-note">Loading meetings…</p></div>' + more;
@@ -6300,7 +6355,10 @@ const TEAM_STAT_CATEGORIES = {
   offense: ['games','pointsFor','ppg','passYards','rushYards','passYpg','rushYpg'],
   defense: ['games','pointsAgainst','oppPpg','tackles','sacks','tfl','interceptions','passesDefended'],
   'special-teams': ['games','fgMade','fgAttempts','fgPct','xpMade','xpAttempts'],
-  ratings: ['games','elo','coefficient','rolling','change']
+  // Every one of these is already aggregated for the other categories, so the
+  // ratings table carries its own context rather than sending a reader back to
+  // Overall to find out whether a 1700 Elo belonged to a 12-1 team.
+  ratings: ['games','wins','losses','ppg','oppPpg','elo','coefficient','rolling','change']
 };
 function statsHref(changes) {
   return CfbNavigation.hashFor({...state,section:'stats',view:'tab',subview:'players',page:1,...changes});
@@ -6362,8 +6420,18 @@ function SortableTable(rows,columns,options={}) {
   const sorted=CfbStats.sortRows(rows,sort,dir,column?.type||'number');
   const pageSize=50,pages=Math.max(1,Math.ceil(sorted.length/pageSize)),page=Math.min(state.page||1,pages);
   const view=sorted.slice((page-1)*pageSize,page*pageSize);
-  const heads=columns.map(c=>'<th scope="col" aria-sort="'+(c.key===sort?(dir==='desc'?'descending':'ascending'):'none')+'"><button class="sort-button" data-stat-sort="'+esc(c.key)+'" data-next-dir="'+(c.key===sort&&dir==='desc'?'asc':'desc')+'">'+esc(c.label)+(c.key===sort?(dir==='desc'?' ▼':' ▲'):'')+'</button></th>').join('');
-  const body=view.map(r=>'<tr>'+columns.map(c=>'<td'+(c.type!=='string'?' class="num"':'')+'>'+(c.render?c.render(r):c.type==='string'?esc(r[c.key]??'—'):statValue(r[c.key]))+'</td>').join('')+'</tr>').join('');
+  // Rank in the CURRENT ordering, so it answers "where does this row stand on
+  // the column I sorted by". Ties share a rank and skip the next one (1,2,2,4)
+  // where that column is numeric; on a name sort it is just the position.
+  const ranks=new Map();
+  if(column&&column.type!=='string'){
+    let previous=null,previousRank=0;
+    sorted.forEach((r,i)=>{const v=CfbStats.num(r[sort]);
+      const rank=v!=null&&v===previous?previousRank:i+1;
+      ranks.set(r,rank);previous=v;previousRank=rank;});
+  } else sorted.forEach((r,i)=>ranks.set(r,i+1));
+  const heads='<th scope="col" class="rank-col">#</th>'+columns.map(c=>'<th scope="col" aria-sort="'+(c.key===sort?(dir==='desc'?'descending':'ascending'):'none')+'"><button class="sort-button" data-stat-sort="'+esc(c.key)+'" data-next-dir="'+(c.key===sort&&dir==='desc'?'asc':'desc')+'">'+esc(c.label)+(c.key===sort?(dir==='desc'?' ▼':' ▲'):'')+'</button></th>').join('');
+  const body=view.map(r=>'<tr><td class="num rank-col">'+ranks.get(r)+'</td>'+columns.map(c=>'<td'+(c.type!=='string'?' class="num"':'')+'>'+(c.render?c.render(r):c.type==='string'?esc(r[c.key]??'—'):statValue(r[c.key]))+'</td>').join('')+'</tr>').join('');
   const pager=(p,label)=>'<a href="'+esc(statsHref({subview:state.subview,page:p}))+'">'+label+'</a>';
   return '<p class="section-note">'+rows.length+' results · Page '+page+' of '+pages+'</p><div class="table-scroll" role="region" aria-label="Scrollable statistics table" tabindex="0"><table class="rank-table stats-table"><thead><tr>'+heads+'</tr></thead><tbody>'+body+'</tbody></table></div>'+
     (!view.length?'<p class="empty-note">No statistics match these filters.</p>':'')+'<nav class="table-pagination" aria-label="Table pages">'+(page>1?pager(page-1,'← Previous'):'')+' '+(page<pages?pager(page+1,'Next →'):'')+'</nav>';
@@ -6396,8 +6464,14 @@ function statsViewHtml(data) {
     if(!lookups.has(r.teamId))lookups.set(r.teamId,rosterNameLookup(data.roster,r.teamId));
     return boxScoreLineCell(r,lookups.get(r.teamId),rosterIdSet(data.roster,r.teamId)).html;
   };
+  // A player's own team record, from the team aggregation this page already
+  // loaded. Null where the team played no completed game in the season.
+  const teamRecord=new Map(data.teams.map(t=>[t.teamId,t]));
+  const recordOf=r=>{const t=teamRecord.get(r.teamId);return t&&t.games?t.wins+'\u2013'+t.losses:null;};
   const columns=[{key:'name',label:isPlayer?'Player':'Team',type:'string',render:r=>isPlayer?'<span class="player-name" data-player-key="'+esc(r.key)+'">'+statsPlayerCell(r)+'</span>':teamLink(r.name,'xs',state.year)}];
-  if(isPlayer)columns.push({key:'team',label:'Team',type:'string',render:r=>teamLink(r.team,'xs',state.year)},{key:'games',label:'Games'});
+  if(isPlayer)columns.push({key:'team',label:'Team',type:'string',render:r=>teamLink(r.team,'xs',state.year)},
+    {key:'record',label:CfbStats.labels.record,type:'string',render:r=>recordOf(r)??'\u2014'},
+    {key:'games',label:'Games'});
   columns.push({key:'conference',label:'Conference',type:'string'},...fields.map(key=>({key,label:CfbStats.labels[key]||key})));
   return coverage+nav+filters+picker+SortableTable(filtered,columns,{sort:isPlayer?schema.sort:category==='ratings'?'elo':category==='defense'?'oppPpg':'ppg',dir:category==='defense'?'asc':'desc'});
 }

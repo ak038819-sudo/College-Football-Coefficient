@@ -77,3 +77,89 @@ test('source athlete IDs keep namesakes separate and reject a mislabeled team si
  box[1][0].name='Texas Southern';
  assert.equal(stats.aggregatePlayers(box,new Map(games.map(g=>[g.game_id,g])),{},teams).rows.length,0);
 });
+
+// ---- derived rates added so the stats tables carry their own context ----
+//
+// Each of these is computed from sums the aggregation already had. The tests
+// pin the DENOMINATOR, because the bug these invite is dividing by the wrong
+// one (per recorded game vs per season game, carries vs completions).
+
+const defLines=(tot,solo,sacks)=>[
+  {name:'defensive',type:'TOT',lines:[{name:'LB',stat:String(tot)}]},
+  {name:'defensive',type:'SOLO',lines:[{name:'LB',stat:String(solo)}]},
+  {name:'defensive',type:'SACKS',lines:[{name:'LB',stat:String(sacks)}]}];
+
+function aggregate(archiveRows){
+  const g=[{game_id:1,completed:true,home_id:1,away_id:2,home_score:30,away_score:20},
+           {game_id:2,completed:true,home_id:2,away_id:1,home_score:24,away_score:10}];
+  return stats.aggregatePlayers(archiveRows,new Map(g.map(x=>[x.game_id,x])),{'1':'Big 12'},teams).rows;
+}
+
+test('assisted tackles are total minus solo, and absent when either side is',()=>{
+ const [row]=aggregate({1:[{name:'BYU',home_away:'home',categories:defLines(9,6,1)}],
+                        2:[{name:'BYU',home_away:'away',categories:defLines(5,3,0)}]});
+ assert.equal(row.tackles,14);assert.equal(row.solo,9);assert.equal(row.assisted,5);
+ // A feed that reported totals and no solo column must not read as "no assists".
+ const [onlyTotal]=aggregate({1:[{name:'BYU',home_away:'home',
+   categories:[{name:'defensive',type:'TOT',lines:[{name:'LB',stat:'9'}]}]}]});
+ assert.equal(onlyTotal.tackles,9);assert.equal(onlyTotal.assisted,null);
+});
+
+test('tackles per game divides by games the player appeared in, not games played',()=>{
+ // Two appearances, fourteen tackles.
+ const [row]=aggregate({1:[{name:'BYU',home_away:'home',categories:defLines(9,6,1)}],
+                        2:[{name:'BYU',home_away:'away',categories:defLines(5,3,0)}]});
+ assert.equal(row.games,2);assert.equal(row.tacklesPg,7);
+ // One appearance only: the rate is over one game, not over the season.
+ const [once]=aggregate({1:[{name:'BYU',home_away:'home',categories:defLines(9,6,1)}]});
+ assert.equal(once.games,1);assert.equal(once.tacklesPg,9);
+});
+
+test('extra-point percentage is made over attempted, and null on no attempts',()=>{
+ const kick=(fg,xp)=>[{name:'kicking',type:'FG',lines:[{name:'K',stat:fg}]},
+                      {name:'kicking',type:'XP',lines:[{name:'K',stat:xp}]}];
+ const [row]=aggregate({1:[{name:'BYU',home_away:'home',categories:kick('2/3','4/5')}],
+                        2:[{name:'BYU',home_away:'away',categories:kick('1/1','1/3')}]});
+ assert.equal(row.xpMade,5);assert.equal(row.xpAttempts,8);assert.equal(row.xpPct,62.5);
+ const [none]=aggregate({1:[{name:'BYU',home_away:'home',categories:kick('2/3','0/0')}]});
+ assert.equal(none.xpPct,null);
+});
+
+test('yards per completion divides by completions, not attempts',()=>{
+ const [row]=aggregate({1:[{name:'BYU',home_away:'home',categories:cats('10/20','300')}]});
+ assert.equal(row.completions,10);assert.equal(row.attempts,20);
+ assert.equal(row.ypc,30);     // 300 / 10 completions
+ assert.equal(row.ypa,15);     // 300 / 20 attempts
+});
+
+test('carries per touchdown divides by touchdowns, and is null with none',()=>{
+ const rush=(car,td)=>[{name:'rushing',type:'CAR',lines:[{name:'RB',stat:car}]},
+                       {name:'rushing',type:'TD',lines:[{name:'RB',stat:td}]}];
+ const [row]=aggregate({1:[{name:'BYU',home_away:'home',categories:rush('20','2')}],
+                        2:[{name:'BYU',home_away:'away',categories:rush('10','1')}]});
+ assert.equal(row.attempts,30);assert.equal(row.td,3);assert.equal(row.tdRate,10);
+ const [noTd]=aggregate({1:[{name:'BYU',home_away:'home',categories:rush('20','0')}]});
+ assert.equal(noTd.tdRate,null);
+});
+
+test('receptions per game divides by appearances',()=>{
+ const rec=n=>[{name:'receiving',type:'REC',lines:[{name:'WR',stat:n}]}];
+ const [row]=aggregate({1:[{name:'BYU',home_away:'home',categories:rec('7')}],
+                        2:[{name:'BYU',home_away:'away',categories:rec('3')}]});
+ assert.equal(row.receptions,10);assert.equal(row.recPg,5);
+});
+
+test('every declared category field has a label and is produced by the aggregation',()=>{
+ // A field in a category's list with no label renders its raw key as a header;
+ // one the aggregation never computes renders a column of dashes. Both have
+ // shipped before, so both are pinned here.
+ const produced=new Set(['yards','td','completions','attempts','completionPct','interceptions',
+   'ypa','ypc','ypg','tdRate','receptions','ypr','recPg','tackles','solo','assisted','tacklesPg',
+   'sacks','tfl','passesDefended','fgMade','fgAttempts','fgPct','xpMade','xpAttempts','xpPct','points']);
+ for(const [name,schema] of Object.entries(stats.categories)){
+  for(const field of schema.fields){
+   assert.ok(stats.labels[field],`${name}.${field} has no label`);
+   assert.ok(produced.has(field),`${name}.${field} is not produced by aggregatePlayers`);
+  }
+ }
+});

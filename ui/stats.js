@@ -2,13 +2,17 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.CfbStats=api;})(globalThis,function(){
   'use strict';
   const categories = {
-    passing: {label:'Passing',fields:['yards','td','completions','attempts','completionPct','interceptions','ypg'],sort:'yards',minimum:'attempts'},
-    rushing: {label:'Rushing',fields:['yards','td','attempts','ypa','ypg'],sort:'yards',minimum:'attempts'},
-    receiving: {label:'Receiving',fields:['yards','td','receptions','ypr','ypg'],sort:'yards',minimum:'receptions'},
-    defense: {label:'Defense',fields:['tackles','solo','sacks','tfl','interceptions','passesDefended'],sort:'tackles',minimum:'games'},
-    kicking: {label:'Kicking',fields:['fgMade','fgAttempts','fgPct','xpMade','xpAttempts','points'],sort:'points',minimum:'fgAttempts'}
+    passing: {label:'Passing',fields:['yards','td','completions','attempts','completionPct','interceptions','ypa','ypc','ypg'],sort:'yards',minimum:'attempts'},
+    rushing: {label:'Rushing',fields:['yards','td','attempts','ypa','ypg','tdRate'],sort:'yards',minimum:'attempts'},
+    receiving: {label:'Receiving',fields:['yards','td','receptions','ypr','ypg','recPg'],sort:'yards',minimum:'receptions'},
+    defense: {label:'Defense',fields:['tackles','solo','assisted','tacklesPg','sacks','tfl','interceptions','passesDefended'],sort:'tackles',minimum:'games'},
+    kicking: {label:'Kicking',fields:['fgMade','fgAttempts','fgPct','xpMade','xpAttempts','xpPct','points'],sort:'points',minimum:'fgAttempts'}
   };
-  const labels={yards:'YDS',td:'TD',completions:'CMP',attempts:'ATT',completionPct:'CMP %',interceptions:'INT',ypg:'YDS/G',ypa:'YDS/ATT',receptions:'REC',ypr:'YDS/REC',tackles:'TKL',solo:'SOLO',sacks:'SACK',tfl:'TFL',passesDefended:'PD',fgMade:'FGM',fgAttempts:'FGA',fgPct:'FG %',xpMade:'XPM',xpAttempts:'XPA',points:'PTS',games:'Games',wins:'Wins',losses:'Losses',pointsFor:'Points',pointsAgainst:'Opp points',ppg:'PTS/G',oppPpg:'Opp PTS/G',passYards:'Pass YDS',rushYards:'Rush YDS',passYpg:'Pass YDS/recorded G',rushYpg:'Rush YDS/recorded G',boxGames:'Box score G',elo:'Elo',coefficient:'Season CoE',rolling:'5-year CoE',change:'Last-game Δ Elo'};
+  const labels={yards:'YDS',td:'TD',completions:'CMP',attempts:'ATT',completionPct:'CMP %',interceptions:'INT',ypg:'YDS/G',ypa:'YDS/ATT',receptions:'REC',ypr:'YDS/REC',tackles:'TKL',solo:'SOLO',sacks:'SACK',tfl:'TFL',passesDefended:'PD',fgMade:'FGM',fgAttempts:'FGA',fgPct:'FG %',xpMade:'XPM',xpAttempts:'XPA',points:'PTS',games:'Games',
+    // Derived from the sums above, never from a second source: YDS/CMP, carries
+    // per TD, catches and tackles per game, extra-point rate, assisted tackles
+    // (TKL - SOLO, the standard decomposition), and a team's own W-L for context.
+    ypc:'YDS/CMP',tdRate:'CAR/TD',recPg:'REC/G',tacklesPg:'TKL/G',xpPct:'XP %',assisted:'AST',record:'Team W-L',wins:'Wins',losses:'Losses',pointsFor:'Points',pointsAgainst:'Opp points',ppg:'PTS/G',oppPpg:'Opp PTS/G',passYards:'Pass YDS',rushYards:'Rush YDS',passYpg:'Pass YDS/recorded G',rushYpg:'Rush YDS/recorded G',boxGames:'Box score G',elo:'Elo',coefficient:'Season CoE',rolling:'5-year CoE',change:'Last-game Δ Elo'};
   const num=value=>{if(value==null||String(value).trim()==='')return null;const n=Number(String(value).replaceAll(',','').replace(/%$/,''));return Number.isFinite(n)?n:null;};
   function sortRows(rows,key,dir='desc',type='number') {
     return rows.map((r,i)=>({r,i})).sort((a,b)=>{
@@ -55,7 +59,16 @@
       }
     }
     const divide=(r,a,b,k,scale=1)=>{r[k]=r[a]!=null&&r[b]>0?r[a]/r[b]*scale:null;};
-    const rows=[...records.values()].map(r=>{r.games=r._games.size;delete r._games;divide(r,'completions','attempts','completionPct',100);divide(r,'fgMade','fgAttempts','fgPct',100);divide(r,'yards','attempts','ypa');divide(r,'yards','receptions','ypr');divide(r,'yards','games','ypg');return r;});
+    const rows=[...records.values()].map(r=>{r.games=r._games.size;delete r._games;
+      divide(r,'completions','attempts','completionPct',100);divide(r,'fgMade','fgAttempts','fgPct',100);
+      divide(r,'xpMade','xpAttempts','xpPct',100);
+      divide(r,'yards','attempts','ypa');divide(r,'yards','receptions','ypr');divide(r,'yards','games','ypg');
+      divide(r,'yards','completions','ypc');divide(r,'attempts','td','tdRate');
+      divide(r,'receptions','games','recPg');divide(r,'tackles','games','tacklesPg');
+      // TKL - SOLO. Only where both are present: a feed that reported one and
+      // not the other would otherwise read as "no assisted tackles".
+      r.assisted=r.tackles!=null&&r.solo!=null?r.tackles-r.solo:null;
+      return r;});
     return {rows,covered};
   }
   function aggregateTeams(games,players,conferences,teamById,ratings={}) {
