@@ -200,3 +200,30 @@ test('the live store keys finals and in-progress games and ignores the rest', ()
 
   assert.deepEqual([...ctx.set(undefined).keys()], []);
 });
+
+test('the feed age is stated in minutes and hours, and only when it matters', () => {
+  const ctx = {};
+  vm.createContext(ctx);
+  vm.runInContext(sourceOf('feedAgeNote') + '\nthis.note = feedAgeNote;', ctx);
+  const m = n => n * 60 * 1000;
+
+  // Under ten minutes the cadence is working, so the page says nothing.
+  assert.equal(ctx.note(0), '');
+  assert.equal(ctx.note(m(9)), '');
+  assert.equal(ctx.note(m(10)), ' · 10 min old');
+  assert.equal(ctx.note(m(45)), ' · 45 min old');
+  assert.equal(ctx.note(m(89)), ' · 89 min old');
+  // Minutes run to two hours so the boundary is exact rather than rounded:
+  // "2 hours old" beside a 90-minute timestamp reads as a bug.
+  assert.equal(ctx.note(m(90)), ' · 90 min old');
+  assert.equal(ctx.note(m(119)), ' · 119 min old');
+  // Past two hours, hours read better and the warning is explicit: the
+  // snapshot is routinely this old while games are being played.
+  assert.equal(ctx.note(m(120)), ' · 2 hours old, newer scores may exist');
+  assert.equal(ctx.note(m(130)), ' · 2 hours old, newer scores may exist');
+  assert.equal(ctx.note(m(300)), ' · 5 hours old, newer scores may exist');
+  // A missing or unparseable timestamp must not print "NaN min old".
+  assert.equal(ctx.note(Infinity), '');
+  assert.equal(ctx.note(NaN), '');
+  assert.equal(ctx.note(undefined), '');
+});

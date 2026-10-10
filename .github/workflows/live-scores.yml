@@ -26,8 +26,16 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     timeout-minutes: 3
+    # Its OWN group, not the deploy's. Sharing `rebuild-and-deploy-main` meant
+    # every scoreboard refresh that fired during the six minutes a deploy takes
+    # had to queue behind it -- and GitHub keeps only one pending run per group,
+    # so the next refresh five minutes later cancelled the one still waiting.
+    # The refresh was made safe to race in PR #47: publish_to_main.sh merges a
+    # main that moved keeping this run's own file, and retries a rejected push,
+    # so the lock was protecting nothing and costing freshness. A refresh still
+    # never overlaps another refresh.
     concurrency:
-      group: rebuild-and-deploy-main
+      group: refresh-live-scores-main
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v5
