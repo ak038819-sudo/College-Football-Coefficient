@@ -609,6 +609,7 @@
   }
   .bye-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
   .bye-chip {
+    display: flex; align-items: center; gap: 7px;
     font-family: var(--font-mono);
     font-size: 13px;
     background: var(--panel-2);
@@ -617,13 +618,13 @@
   }
   .game-card {
     display: grid;
-    grid-template-columns: 32px 1fr;
+    grid-template-columns: 42px 1fr;
     gap: 10px;
     align-items: center;
     background: var(--panel-2);
     border-radius: 3px;
-    padding: 10px 14px;
-    margin-bottom: 8px;
+    padding: 8px 14px;
+    margin-bottom: 6px;
   }
   .game-num {
     font-family: var(--font-mono);
@@ -651,8 +652,25 @@
      so a plain vertical bar spanning an item's own full cell height
      is GUARANTEED to reach exactly to both feeders -- no odd/even
      special-casing needed at all. */
-  .bracket-tree { display: flex; overflow-x: auto; padding: 10px 0 20px; }
-  .bracket-round-col { padding: 0 22px; min-width: 168px; }
+  /* ONE row height for the whole bracket, and the tallest thing in it -- the
+     two-team first-round card -- is sized from the same variable. They used to
+     be independent: a hardcoded 40px row against a card that rendered 153px
+     tall, because the bracket inherited the site's 63px team logo. Every slot
+     spilled far out of its grid cell, the round titles were overdrawn, the
+     last row was cut off, and the tree grew its own scrollbar inside the
+     panel. Tie the two together and that cannot come back by degrees. */
+  .bracket-tree {
+    --bracket-logo: 22px;
+    --bracket-team-row: 24px;
+    /* The first-round card: two team rows, the "@" between them, the gaps and
+       its own padding. Every other slot is shorter and centres inside it. */
+    --bracket-row: calc(2 * var(--bracket-team-row) + 12px + 6px + 10px);
+    display: flex; overflow-x: auto; padding: 10px 0 20px;
+  }
+  /* Grow to fill the panel rather than huddling on the left. The 22px side
+     padding is what the connector offsets below are measured against, so it
+     stays fixed and a wider column widens the slot, never the gap. */
+  .bracket-round-col { flex: 1 1 0; padding: 0 22px; min-width: 184px; max-width: 320px; }
   .bracket-round-title {
     font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
     color: var(--ink-dim); text-align: center; margin-bottom: 10px;
@@ -661,13 +679,29 @@
      four first-round winners). The 12-team bracket's every later round is a
      2-to-1 merge of these, which is what the grid-row spans in
      renderBracketTree compute against. */
-  .bracket-list { display: grid; grid-template-rows: repeat(8, 40px); }
+  .bracket-list { display: grid; grid-template-rows: repeat(8, var(--bracket-row)); }
   .bracket-item { position: relative; display: flex; align-items: center; box-sizing: border-box; }
   .bracket-item .bslot {
     display: flex; align-items: center; gap: 6px; width: 100%;
+    box-sizing: border-box; max-height: 100%;
     background: var(--panel-2); border-radius: 3px; padding: 6px 9px;
     font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  /* A bracket cell is not a team card: the site's own 63px chip does not
+     belong in one, and sizing it here keeps the rest of the page's logos
+     alone. */
+  .bracket-tree .logo-chip, .bracket-tree .monogram,
+  .bye-chip .logo-chip, .bye-chip .monogram {
+    width: var(--bracket-logo, 22px); height: var(--bracket-logo, 22px); padding: 2px; flex: 0 0 auto;
+  }
+  /* The first-round cards carry a conference line under the name, so they get
+     a little more room than a bracket cell -- but nothing like the 63px chip
+     they were inheriting, which made four games taller than the bracket. */
+  .game-card .logo-chip, .game-card .monogram {
+    width: 34px; height: 34px; padding: 3px; flex: 0 0 auto;
+  }
+  .bracket-tree .team-link { min-width: 0; }
+  .bracket-tree .team-link-name { overflow: hidden; text-overflow: ellipsis; }
   .bracket-item .bslot.tbd { color: var(--ink-dim); font-style: italic; }
   .bracket-item .seed { font-family: var(--font-mono); font-size: 10px; color: var(--ink-dim); width: 1.4em; flex: 0 0 auto; }
 
@@ -727,10 +761,12 @@
      line, so it cannot imply a first-round game feeds that seed. */
   .fr-item.fr-blank-row:after { display: none !important; }
   .bslot.fr-matchup {
-    flex-direction: column; align-items: stretch; gap: 3px; padding: 5px 8px;
+    flex-direction: column; justify-content: center; align-items: stretch;
+    gap: 3px; padding: 5px 8px; height: 100%;
   }
   .bslot.fr-blank { background: transparent; padding: 0; min-height: 1px; }
-  .fr-team { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+  .fr-team { display: flex; align-items: center; gap: 5px; font-size: 11px;
+             height: var(--bracket-team-row); min-width: 0; }
   .fr-team.fr-home { color: var(--amber); font-weight: 600; }
   .fr-at { font-family: var(--font-mono); font-size: 9px; color: var(--ink-dim); text-align: center; }
   /* A seed, shown where a seed is the whole point: the field table and the

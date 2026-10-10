@@ -127,6 +127,33 @@ Both files replaced guards that asserted on the *text* of the page's call
 sites. Those passed while the code was broken, and one of them broke on
 this change by going looking for a Round of 24 that no longer exists.
 
+## Fitting the panel
+
+The bracket is a CSS grid of eight rows — the eight quarterfinal slots, four
+bye seeds alternating with four first-round winners — and every later round is
+drawn by spanning those rows, which is what makes the connectors land without
+per-round special cases.
+
+That only holds while a slot actually fits the row it is placed in. It did not:
+the row height was a 40px literal while the tallest slot, the two-team
+first-round card, rendered 153px, because a bracket cell was inheriting the
+site-wide 63px team chip. Every slot spilled 113px out of its cell, the round
+titles were overdrawn, the last row was clipped, and the tree grew a scrollbar
+inside the panel.
+
+The fix is a dependency rather than a number. `--bracket-team-row` sizes a team
+line, `--bracket-row` is computed from it plus the card's own gaps and padding,
+and the chip is sized by a bracket-scoped rule so the rest of the page's logos
+keep theirs. Columns are `flex: 1 1 0` between a 184px and a 320px width, so
+the bracket fills the panel instead of huddling on the left, and the tree
+scrolls sideways on a narrow screen and never down.
+
+`tests/test_bracket_layout.py` pins those dependencies, not the pixel values:
+a bare px row height, an unscoped chip, a chip taller than a team row, a plain
+`overflow`, or a column that cannot grow each fail it. Measured in Chromium at
+768–1600px before it was written — the tree's `scrollHeight` equals its
+`clientHeight` and no slot spills its cell.
+
 ## Going back, or going further
 
 Reverting means pointing `export_dashboard_data.py` at
