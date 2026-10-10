@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -35,6 +36,28 @@ SEARCH_PATH = Path("ui/search.js")
 STATS_PATH = Path("ui/stats.js")
 GEOGRAPHY_PATH = Path("ui/geography.js")
 LIVE_TEAMS_PATH = Path("ui/live_teams.js")
+
+
+def live_feed_url() -> str:
+    """The scoreboard URL to bake into the page, from LIVE_FEED_URL.
+
+    Empty by default, which leaves the page reading its committed snapshot.
+    A deployment that publishes the scoreboard somewhere with a real
+    scheduler sets this instead; docs/live-score-delivery.md has the
+    contract the endpoint must meet.
+    """
+    url = os.environ.get("LIVE_FEED_URL", "").strip()
+    if not url:
+        return ""
+    if not url.startswith("https://"):
+        # http:// would be blocked as mixed content on the published site, and
+        # a relative value would silently resolve against ui/ and look fine in
+        # one place while breaking in another. Fail the build instead.
+        raise SystemExit(f"LIVE_FEED_URL must be an absolute https:// URL, got {url!r}")
+    if "'" in url or "\\" in url:
+        # It is substituted into a single-quoted JavaScript string literal.
+        raise SystemExit("LIVE_FEED_URL must not contain a quote or a backslash")
+    return url
 
 
 def render_from_exports() -> None:
@@ -59,7 +82,10 @@ def render_from_exports() -> None:
              .replace("__LIVE_TEAMS_VERSION__", hashlib.sha256(LIVE_TEAMS_PATH.read_bytes()).hexdigest()[:12])
              .replace("__GEOGRAPHY_VERSION__", hashlib.sha256(GEOGRAPHY_PATH.read_bytes()).hexdigest()[:12])
              .replace("__STATS_VERSION__", hashlib.sha256(STATS_PATH.read_bytes()).hexdigest()[:12])
-             .replace("__SEARCH_VERSION__", hashlib.sha256(SEARCH_PATH.read_bytes()).hexdigest()[:12]))
+             .replace("__SEARCH_VERSION__", hashlib.sha256(SEARCH_PATH.read_bytes()).hexdigest()[:12])
+             # Empty unless a deployment sets it, which keeps the page on the
+             # committed snapshot. See docs/live-score-delivery.md.
+             .replace("__LIVE_FEED_URL__", live_feed_url()))
     OUT_PATH.write_text(final, encoding="utf-8")
     print(f"\nBuilt {OUT_PATH} ({OUT_PATH.stat().st_size:,} bytes)")
 

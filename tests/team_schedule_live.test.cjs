@@ -227,3 +227,34 @@ test('the feed age is stated in minutes and hours, and only when it matters', ()
   assert.equal(ctx.note(NaN), '');
   assert.equal(ctx.note(undefined), '');
 });
+
+test('the scoreboard source is the committed snapshot unless a URL is baked in', () => {
+  // The placeholder is what build_dashboard.py substitutes. Reading the shell
+  // rather than the built page keeps this independent of the last build.
+  assert.match(shell, /const LIVE_FEED_URL = '__LIVE_FEED_URL__';/);
+  // Every live fetch must go through the accessor, or one of them keeps
+  // reading the static file after a deployment points the others elsewhere.
+  assert.equal(shell.includes("data/live_scores.json?t="), false,
+    'a live fetch still hardcodes the snapshot path');
+  assert.equal((shell.match(/fetch\(liveFeedUrl\(\)/g) || []).length, 3);
+
+  const run = baked => {
+    const ctx = {};
+    vm.createContext(ctx);
+    vm.runInContext(shell.match(/const LIVE_FEED_URL = '[^']*';/)[0]
+      .replace('__LIVE_FEED_URL__', baked) + '\n' +
+      sourceOf('liveFeedUrl') + '\nthis.url = liveFeedUrl;', ctx);
+    return ctx.url();
+  };
+
+  // Default: the build substitutes an empty string, and the page reads the
+  // committed snapshot exactly as it did before this was configurable.
+  assert.match(run(''), /^data\/live_scores\.json\?t=\d+$/);
+  // Configured: the endpoint, still cache-busted.
+  assert.match(run('https://scores.example.com/live'),
+    /^https:\/\/scores\.example\.com\/live\?t=\d+$/);
+  // An endpoint that already carries a query keeps it; appending a second "?"
+  // would make the whole thing an unparseable URL.
+  assert.match(run('https://scores.example.com/live?season=2026'),
+    /^https:\/\/scores\.example\.com\/live\?season=2026&t=\d+$/);
+});

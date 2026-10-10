@@ -3477,6 +3477,26 @@ let liveSnapshot = null;
 // The static model export is rebuilt on its own schedule and can trail the
 // scoreboard by hours, so team pages read this to show a result the ratings
 // have not ingested yet instead of leaving the row blank.
+// Where the live scoreboard is read from.
+//
+// The page polls every 60 seconds, but the committed snapshot is rewritten by
+// a GitHub Actions cron that delivered 22 of 699 scheduled firings between
+// 2026-09-27 and 2026-10-10 (3.1%), so polling has never been the limit --
+// publishing has. Setting LIVE_FEED_URL at build time points the page at a
+// publisher with a real scheduler instead, and nothing else about the page
+// changes. Left empty, which is the default, this is the committed snapshot
+// and the behaviour is exactly what it was.
+//
+// Whatever serves it must emit the same object src/fetch_live_scores.py
+// writes, and must allow this origin; docs/live-score-delivery.md has the
+// contract. The CFBD key stays with the publisher and never reaches here.
+const LIVE_FEED_URL = '__LIVE_FEED_URL__';
+function liveFeedUrl() {
+  const base = LIVE_FEED_URL || 'data/live_scores.json';
+  // Cache-bust on the query string the same way for either source; an
+  // endpoint that already sets no-store simply ignores it.
+  return base + (base.includes('?') ? '&' : '?') + 't=' + Date.now();
+}
 let liveResults = new Map();
 // What the schedule table would draw from the current scoreboard. Repainting a
 // panel the viewer is reading closes their open help section and loses their
@@ -3540,7 +3560,7 @@ function newerFinalTeams(games) {
 function hydrateRatingFreshness(version) {
   // No early return on the note: the scoreboard is fetched for the schedule
   // panel too, and a team page with no freshness note still wants its scores.
-  fetch('data/live_scores.json?t=' + Date.now(), {cache: 'no-store'})
+  fetch(liveFeedUrl(), {cache: 'no-store'})
     .then(r => { if (!r.ok) throw new Error('scoreboard unavailable'); return r.json(); })
     .then(data => {
       if (version !== renderVersion) return;
@@ -3797,7 +3817,7 @@ function paintLiveGames() {
 }
 function hydrateLiveScores(version) {
   const request = ++liveRequest;
-  fetch('data/live_scores.json?t=' + Date.now(), {cache: 'no-store'})
+  fetch(liveFeedUrl(), {cache: 'no-store'})
     .then(r => { if (!r.ok) throw new Error('scoreboard unavailable'); return r.json(); })
     .then(data => {
       if (version !== renderVersion || request !== liveRequest || state.section !== 'live' && state.section !== 'home') return;
@@ -4056,7 +4076,7 @@ function hydrateLiveGamePage(version) {
   };
   // Show cached data immediately, then always request the latest snapshot.
   const cached = !!(liveSnapshot && show(liveSnapshot));
-  fetch('data/live_scores.json?t=' + Date.now(), {cache:'no-store'})
+  fetch(liveFeedUrl(), {cache:'no-store'})
     .then(r => r.ok ? r.json() : null)
     .then(data => {
       if (request !== liveGameRequest || version !== renderVersion || state.view !== 'game') return;

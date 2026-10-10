@@ -197,3 +197,37 @@ def test_each_alert_job_runs_the_real_script_with_its_state(job, state):
     assert "scripts/alert_pipeline_state.py" in run
     assert f"--state {state}" in run
     assert SCRIPT.exists()
+
+
+# --- the live feed URL baked into the page --------------------------------
+
+def test_the_live_feed_url_is_empty_unless_the_environment_sets_it(monkeypatch):
+    import build_dashboard
+
+    monkeypatch.delenv("LIVE_FEED_URL", raising=False)
+    assert build_dashboard.live_feed_url() == ""
+    monkeypatch.setenv("LIVE_FEED_URL", "   ")
+    assert build_dashboard.live_feed_url() == ""
+    monkeypatch.setenv("LIVE_FEED_URL", " https://scores.example.com/live ")
+    assert build_dashboard.live_feed_url() == "https://scores.example.com/live"
+
+
+@pytest.mark.parametrize("value,reason", [
+    # Mixed content: the published site is https, so an http endpoint is
+    # blocked by the browser and the scoreboard silently stops updating.
+    ("http://scores.example.com/live", "https"),
+    # A relative value resolves against ui/ and would look right in one place
+    # while breaking in another.
+    ("data/live_scores.json", "https"),
+    ("//scores.example.com/live", "https"),
+    # It lands inside a single-quoted JavaScript string literal.
+    ("https://x/'+fetch('/steal')+'", "quote"),
+    ("https://x/\\", "quote"),
+])
+def test_an_unusable_live_feed_url_fails_the_build(monkeypatch, value, reason):
+    import build_dashboard
+
+    monkeypatch.setenv("LIVE_FEED_URL", value)
+    with pytest.raises(SystemExit) as caught:
+        build_dashboard.live_feed_url()
+    assert reason in str(caught.value)
