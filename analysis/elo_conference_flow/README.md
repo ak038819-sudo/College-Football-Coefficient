@@ -6,6 +6,11 @@ Inputs are the committed game and team-page exports, including season-specific
 conference memberships. Independents are separate pools. No ratings or model
 configuration are changed.
 
+The committed CSV and JSON reports are a dated analysis snapshot, not fixtures
+for the changing dashboard exports. Tests verify report reproducibility with
+fixed synthetic inputs and check invariants against live exports. Rerun the
+audit explicitly when updating this snapshot and its written interpretation.
+
 ## What the current implementation does
 
 `src/build_elo.py` applies `delta = K × (result − expected) × M` to one team and

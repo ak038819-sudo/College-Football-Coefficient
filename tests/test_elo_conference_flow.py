@@ -1,4 +1,5 @@
 """Conference audit must not infer membership from missing export values."""
+import csv
 import importlib.util
 import json
 from pathlib import Path
@@ -64,14 +65,50 @@ def test_unrated_or_uncompleted_games_do_not_require_membership(monkeypatch, com
     assert 'status' not in summary
 
 
-def test_committed_reports_match_audit():
+def test_reports_reproduce_frozen_exports(monkeypatch, tmp_path):
+    """Exercise report writing without coupling CI to mutable dashboard data."""
+    fixture_exports(monkeypatch, {'1': 'ACC', '2': 'ACC',
+                                 '3': 'FBS Independents', '4': 'FBS Independents'})
+    monkeypatch.setattr(audit, '__file__', str(tmp_path / 'audit.py'))
+    audit.main()
+    summaries = json.loads((tmp_path / 'season_summary.json').read_text())
+    assert [s['season'] for s in summaries] == list(range(2018, 2027))
+    for summary in summaries:
+        assert summary['rated_games'] == 2
+        assert summary['max_pair_residual'] == 0
+        assert summary['internal_brier'] == 0.25
+        assert summary['cross_brier'] == 0.0625
+    with (tmp_path / 'conference_transfers.csv').open() as f:
+        rows = list(csv.DictReader(f))
+    assert len(rows) == 27
+    for season in range(2018, 2027):
+        pools = {r['conference']: r for r in rows if r['season'] == str(season)}
+        assert set(pools) == {'ACC', 'FBS Independents / 3', 'FBS Independents / 4'}
+        assert pools['ACC']['internal_net'] == '0.0'
+        assert pools['ACC']['internal_games'] == '1.0'
+        assert pools['FBS Independents / 3']['cross_net'] == '5.0'
+        assert pools['FBS Independents / 4']['cross_net'] == '-5.0'
+    first = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
+    audit.main()
+    assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == first
+
+
+def test_live_exports_preserve_audit_invariants():
+    """Fresh exports may change totals or make a previously excluded season valid."""
     rows, summaries = audit.audit()
-    out = ROOT / 'analysis/elo_conference_flow'
-    assert summaries == json.loads((out / 'season_summary.json').read_text())
-    import csv
-    with (out / 'conference_transfers.csv').open() as f:
-        reader = csv.DictReader(f)
-        expected = [{key: str(row.get(key, '')) for key in reader.fieldnames}
-                    for row in rows]
-        assert list(reader) == expected
+    assert summaries
+    excluded = {s['season'] for s in summaries if s.get('status') == 'excluded'}
+    assert not any(row['season'] in excluded for row in rows)
     assert not any(row['conference'].startswith('Unknown') for row in rows)
+    for summary in summaries:
+        if summary.get('status') == 'excluded':
+            assert summary['reason'] == 'missing_conference_membership'
+            assert summary['missing_team_ids']
+            assert 'internal_brier' not in summary
+            assert 'cross_brier' not in summary
+        else:
+            assert summary['max_pair_residual'] == pytest.approx(0, abs=1e-8)
+            for key in ('internal_brier', 'cross_brier'):
+                assert summary[key] is None or 0 <= summary[key] <= 1
+    assert all(row.get('internal_net', 0) == pytest.approx(0, abs=1e-8)
+               for row in rows)
