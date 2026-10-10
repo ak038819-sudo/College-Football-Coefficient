@@ -1,4 +1,15 @@
 #!/usr/bin/env python3
+"""SUPERSEDED. Not used by any pipeline, test or workflow.
+
+This builds a 12-team field with 5 automatic bids -- the real College
+Football Playoff's format, not this project's. The live selector is
+src/select_playoff_field_v2.py: 24 teams, 8 byes, two pots of 8, with the
+independent-strength threshold, and it is what every export, test and page
+goes through.
+
+Kept only so the earlier format stays readable. Do not extend it, and do not
+read its constants as the model's: see docs/coe_spec.md.
+"""
 from __future__ import annotations
 
 import csv

@@ -14,8 +14,11 @@ audit explicitly when updating this snapshot and its written interpretation.
 ## What the current implementation does
 
 `src/build_elo.py` applies `delta = K × (result − expected) × M` to one team and
-exactly its negative to the opponent. Current settings: K=40, 400-point logistic
+exactly its negative to the opponent. Settings when this audit ran (2026-10-05): K=40, 400-point logistic
 scale, flat home advantage=50, and offseason retention=0.8 around 1500.
+Production K moved to 45 on 2026-10-09; the figures below are the
+dated snapshot that produced them, so re-run the audit before reading
+any number here as current.
 The default performance layer is strength-adjusted Success Rate (`xsrdiff`):
 `M = clamp(1 + 12 × winner_SR_plus, 0.25, 5)`. Missing supported SR inputs use
 MOV; the MOV multiplier has its own behavior and is not subject to those SR bounds.
