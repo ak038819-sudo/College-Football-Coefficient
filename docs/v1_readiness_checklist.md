@@ -103,9 +103,22 @@ Open, and tracked in `release-v0.1.9.md`: standings rank movement, an
 intentional logo treatment, and a documented visual identity reviewed across
 the whole desktop and mobile journey rather than in isolated screenshots.
 
-## Known hazards found during this audit
+## The two playoff formats, and which one is live
 
-- `src/build_playoff_field.py` implements a **12-team, 5-auto-bid** field and
-  is referenced by nothing. The live selector is
-  `src/select_playoff_field_v2.py` (24 teams, 8 byes). The file carries a
-  header saying so; deleting it is the owner's call.
+`src/build_playoff_field.py` implements a **12-team, 5-auto-bid** field --
+the real College Football Playoff's format -- and nothing imports it today.
+The owner decided on 2026-10-10 to keep it: the project is heading toward
+the actual CFP format and away from the invented 24-team bracket, so that
+file is the expected target rather than a leftover.
+
+Everything live still runs on the 24-team model. `select_playoff_field_v2.py`
+is what every export, test and page goes through, and the invariants verified
+in section 1 above -- 24 teams, 8 byes, two pots of 8 -- are its invariants.
+They are correct today and will not survive the move, so they are a record of
+the current model rather than a commitment.
+
+That move is not scoped here. When it happens it reaches the field selector,
+the bracket draw and simulator, the title-odds export, the playoff pages, the
+CoE 2.0 `cfp_appearance`/`cfp_win` bonus categories and `docs/coe_spec.md`,
+and it changes published history for every season from 2014 on, so it wants
+its own plan.

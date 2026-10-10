@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""SUPERSEDED. Not used by any pipeline, test or workflow.
+"""The real College Football Playoff's format: 12 teams, 5 automatic bids.
 
-This builds a 12-team field with 5 automatic bids -- the real College
-Football Playoff's format, not this project's. The live selector is
-src/select_playoff_field_v2.py: 24 teams, 8 byes, two pots of 8, with the
-independent-strength threshold, and it is what every export, test and page
-goes through.
+RETAINED DELIBERATELY (owner's decision, 2026-10-10), and not dead weight
+even though nothing imports it today. The project is heading toward the
+actual CFP format and away from the invented 24-team bracket, so this is
+the shape the model is expected to move to rather than a leftover of one
+it left behind.
 
-Kept only so the earlier format stays readable. Do not extend it, and do not
-read its constants as the model's: see docs/coe_spec.md.
+What is live RIGHT NOW is still src/select_playoff_field_v2.py: 24 teams,
+8 byes, two pots of 8, with the independent-strength threshold. Every
+export, test and page goes through that one, so a number on the site or in
+docs/coe_spec.md today describes the 24-team field, not this file.
+
+So read this as the target, not the current model, and keep the two
+straight when changing either.
 """
 from __future__ import annotations
 
