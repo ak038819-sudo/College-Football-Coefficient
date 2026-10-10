@@ -1,0 +1,103 @@
+# One-off, resumable backfill of completed games against non-FBS opponents.
+#
+# These games were received from CFBD on every refresh this project has ever
+# run and discarded on arrival, so there is nothing new to ask the API for:
+# re-running the ordinary games fetch for a season now also writes
+# data/raw/fcs_games_<year>.csv beside games_<year>.csv.
+#
+# It is run by hand, like the player backfill, because it walks every season at
+# once. fetch_cfbd_games.py REWRITES a season's files rather than merging, so a
+# re-run of a range is safe and idempotent.
+name: Backfill non-FBS games
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_year:
+        description: "First season to fetch"
+        required: true
+        default: "1980"
+      end_year:
+        description: "Last season to fetch"
+        required: true
+        default: "2026"
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    # Share the deploy job's lock: both push to main, and the scheduled refresh
+    # rewrites data/raw too.
+    concurrency:
+      group: rebuild-and-deploy-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Fetch and commit one season at a time
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          START: ${{ inputs.start_year }}
+          END: ${{ inputs.end_year }}
+          # The games fetch also pulls rankings and advanced stats. This job is
+          # only here for the non-FBS file, and the other two are refreshed by
+          # the scheduled build, so they are skipped to keep the run short and
+          # to avoid rewriting data this job was not dispatched to touch.
+          CFBD_FETCH_ADVANCED: "0"
+        run: |
+          set -euo pipefail
+          if [ -z "${CFBD_API_KEY:-}" ]; then
+            echo "::error::CFBD_API_KEY is not set for this repository."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # One season per commit, pushed as it lands, so a timeout or a CFBD
+          # outage costs the season in flight rather than the whole backfill.
+          for year in $(seq "$START" "$END"); do
+            echo "::group::season $year"
+            # Checked explicitly: `set -e` does not stop a shell loop, and a
+            # season that failed must halt the run rather than be skipped while
+            # later seasons commit on top of the gap.
+            if ! python3 src/fetch_cfbd_games.py "$year"; then
+              echo "::endgroup::"
+              echo "::error::Season $year failed to fetch. Earlier seasons are committed; re-run this workflow from $year to resume."
+              exit 1
+            fi
+            # Only the new file is published. games_<year>.csv is rewritten by
+            # the fetch too, and for every season but the current one it should
+            # come out byte-identical -- but this job was dispatched to add the
+            # non-FBS file, not to republish the rated archive, so it commits
+            # exactly what it was asked for.
+            if ! scripts/publish_to_main.sh "Archive $year non-FBS games [skip ci]" "data/raw/fcs_games_$year.csv"; then
+              echo "::endgroup::"
+              echo "::error::Could not publish season $year. Nothing was published for it; re-run this workflow from $year."
+              exit 1
+            fi
+            echo "::endgroup::"
+          done
+
+      # Read off the files this job wrote, not the database, which it never builds.
+      - name: Summarise the backfill
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import csv, pathlib
+          files = sorted(pathlib.Path('data/raw').glob('fcs_games_*.csv'))
+          total = 0
+          for f in files:
+              rows = list(csv.DictReader(f.open(encoding='utf-8')))
+              total += len(rows)
+              print(f'{f.stem.replace("fcs_games_", "")}: {len(rows)} games vs non-FBS opponents')
+          print(f'total: {total} games across {len(files)} seasons')
+          PY
