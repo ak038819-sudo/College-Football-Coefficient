@@ -167,9 +167,12 @@ def test_the_page_takes_its_temperature_from_the_payload_not_a_constant(repo_roo
     shell = (repo_root / "ui" / "dashboard_shell.html").read_text(encoding="utf-8")
     assert "temperature = temperature || 6.0" not in shell
     assert "const temperature = (pf.sim_meta || {}).temperature;" in shell
-    # The venue argument is checked by test_only_the_round_of_24_gets_a_venue_term;
-    # what matters here is that the temperature still comes from the payload.
-    assert "simulateGame(finalField[0], finalField[1], teamCoe, temperature, 0)" in shell
+    # An absence is the one thing a source read states better than a run: there
+    # is no input that proves a fallback is not there. That it is actually USED
+    # -- and that a withheld value degenerates loudly rather than quietly
+    # becoming 6.0 -- is driven through the real page code in
+    # tests/cfp_bracket.test.cjs, because an assertion on a call site's text
+    # passes while the code behind it is broken.
 
 
 def test_no_build_layer_hardcodes_its_own_temperature(repo_root):
@@ -329,20 +332,14 @@ def test_the_round_of_24_boost_goes_to_the_higher_coe_team():
         "large one; the boost is not reaching the host")
 
 
-def test_the_page_keeps_home_field_to_the_round_of_24(repo_root):
-    """
-    The page runs its own copy of the model and cannot be driven from here, so it
-    is read instead: the Round of 24 passes the shipped value and each later
-    round passes an explicit 0, rather than inheriting whatever the last call
-    used.
-    """
-    shell = (repo_root / "ui" / "dashboard_shell.html").read_text(encoding="utf-8")
-    assert "simulateGame(game.home, game.away, teamCoe, temperature, homeField)" in shell
-    for later in ("qfField.push(simulateGame(r16Field[i], r16Field[i + 1], teamCoe, temperature, 0))",
-                  "sfField.push(simulateGame(qfField[i], qfField[i + 1], teamCoe, temperature, 0))",
-                  "finalField.push(simulateGame(sfField[i], sfField[i + 1], teamCoe, temperature, 0))",
-                  "simulateGame(finalField[0], finalField[1], teamCoe, temperature, 0)"):
-        assert later in shell, f"a later round does not state its neutral venue: {later}"
+# The page's own venue handling -- the host edge in the first round and nowhere
+# after it -- used to be asserted here by matching the text of each call site.
+# That is the pattern this project has been burned by: it passes while the code
+# is broken, and it broke on the move to the 12-team bracket by going looking
+# for a Round of 24 that no longer exists. It now lives in
+# tests/cfp_bracket.test.cjs, which runs the page's real runBracketSimulation
+# against twelve equal teams and a decisive venue edge: the host must win every
+# first-round game and the quarterfinals must stay a coin flip.
 
 
 def test_the_page_takes_its_home_field_from_the_payload_not_a_constant(repo_root):

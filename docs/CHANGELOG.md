@@ -1,5 +1,22 @@
 # Site release history
 
+## Unreleased — The real 12-team playoff (2026-10-10)
+
+- The playoff is now the real College Football Playoff format: 12 teams, the
+  5 highest-ranked conference champions on automatic bids, 7 at-large, seeds
+  straight down the ranking, seeds 1-4 sitting out a first round played at
+  the higher seed's home. The invented 24-team bracket, its pot draw and the
+  16-team NIT are retained in the repository but no longer live.
+- 5-year rolling team CoE is the ranking the format needs, in place of a
+  selection committee. The Field page shows the automatic-bid cut with every
+  conference champion's rating beside it.
+- Title odds now describe the bracket on the page. The 24-team bracket's
+  random draw meant they had to be averaged over draws that had not
+  happened.
+- Conference CoE no longer allocates playoff bids. The conference page's
+  "Playoff bid rank" tile is now a conference strength rank, and the
+  methodology page says what the ranking is and what it is not.
+
 ## v0.1.1 — People, teams and statistics (2026-10-05)
 
 - Release of the implemented People search, team Stats/Leaders tabs, sortable

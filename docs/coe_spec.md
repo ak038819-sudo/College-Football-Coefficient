@@ -38,6 +38,17 @@ Independent status is not permitted.
 - All games must be played within FBS
 
 ## 2.3 Playoff Structure
+
+> **This section describes the retained 24-team model, not what the site
+> runs.** Since 2026-10-10 the live playoff is the real 12-team College
+> Football Playoff format, written up in
+> [`cfp-12-team-format.md`](cfp-12-team-format.md). Everything below --
+> the 24-team field, the conference bid table in section 6, the pots and
+> the Pot 1 / Pot 2 seeding in section 7, and the NIT -- is the ruleset of
+> `src/coefficients/select_playoff_field_v2.py`, which is kept and still
+> runs but which nothing live reads. Sections 3 to 5 (the coefficient
+> framework) are unaffected and are still exactly what the site computes.
+
 - 24-team playoff
 - All conference champions qualify
 - Remaining bids allocated by conference CoE
@@ -182,6 +193,10 @@ NIT winner grants an additional bid to their conference.
 ---
 
 # 7. Seeding Structure
+
+> The retained 24-team model's seeding. The live format seeds 1 to 12
+> straight off the ranking and has no pots; see
+> [`cfp-12-team-format.md`](cfp-12-team-format.md).
 
 ## Year 1 Seeding
 

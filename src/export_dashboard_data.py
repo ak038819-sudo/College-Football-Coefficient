@@ -8,10 +8,12 @@ Exports everything the dashboard needs into one JSON file:
   - CoE 2.0 conference five-season (entering) values, in the canonical
     bid-allocation order, plus the bonus magnitudes they were built with
   - current team-specific home-field estimates (analysis only, not live Elo)
-  - playoff field + Round-of-24 bracket draw for every season that has
-    both membership data AND enough of it to actually build a 24-team
-    field (a year can have membership but still fail, e.g. too few
-    teams overall -- see the try/except around build_playoff_data)
+  - the 12-team College Football Playoff field and its bracket for every
+    season with the membership and standings data to build one (a year
+    can have membership and still fail -- see the try/except around
+    build_playoff_data). This is the real CFP format as of the 2025
+    season; the invented 24-team model it replaced is still in the
+    repository at src/coefficients/select_playoff_field_v2.py.
 
 Usage:
     python src/export_dashboard_data.py --draw-seed 1 --out ui/dashboard_data.json
@@ -29,15 +31,18 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "coefficients"))
-from select_playoff_field_v2 import (  # noqa: E402
-    YEAR1_BIDS, YEAR2_BIDS, load_conference_coe_rank, load_team_coe_5yr,
-    select_qualifiers, assign_pots, assign_homefield,
-    get_independent_teams_with_coe, apply_independent_threshold,
+# load_conference_coe_rank is still imported: the home page's conference board
+# is ordered by it. It no longer allocates playoff bids -- the 12-team format
+# has no per-conference bid table -- so it decides nothing about the field.
+from select_playoff_field_v2 import load_conference_coe_rank  # noqa: E402
+from select_cfp_field import (  # noqa: E402
+    AUTO_BIDS, BYE_SEEDS, FIELD_SIZE, QUARTERFINALS,
+    byes, conference_champions, first_round_games, load_team_coe_5yr,
+    select_field,
 )
-from draw_playoff_bracket_v2 import (  # noqa: E402
-    backtrack_pairings, choose_home_away, build_conf_map,
+from simulate_cfp_bracket import (  # noqa: E402
+    DEFAULT_HOME_FIELD, DEFAULT_TEMPERATURE, run_simulation,
 )
-from simulate_bracket import run_simulation, DEFAULT_TEMPERATURE, DEFAULT_HOME_FIELD  # noqa: E402
 sys.path.insert(0, str(Path(__file__).parent))
 from build_coe2_rollups import conference_coe2_rank, load_bonus_config  # noqa: E402
 import random
@@ -411,85 +416,68 @@ def load_csv_by_year(filename: str, year_field: str) -> dict:
 
 def build_playoff_data(db_path: str, year: int, draw_seed: int, sims: int, temperature: float,
                        home_field: float = 0.0) -> dict:
-    bid_table = YEAR1_BIDS if year == 2014 else YEAR2_BIDS
+    """Everything the three playoff pages render, for one season.
+
+    `draw_seed` is accepted and ignored. The 12-team bracket is fully
+    determined by the seeds -- there is no draw to seed -- but the flag is
+    still on the CLI and in the deploy, so silently taking it is kinder than
+    failing a build over an argument that no longer has a job.
+    """
     conn = sqlite3.connect(db_path)
-    conf_ranked = load_conference_coe_rank(conn, year)
     team_coe = load_team_coe_5yr(year)
-    qualifiers = select_qualifiers(conn, year, conf_ranked, bid_table)
-    qualifiers = assign_pots(qualifiers)
-    assign_homefield(qualifiers, team_coe)
-    independents = get_independent_teams_with_coe(conn, year, team_coe)
-    qualifiers, replacements = apply_independent_threshold(qualifiers, independents)
+    champions = conference_champions(conn, year)
+    field = select_field(conn, year, team_coe)
     conn.close()
 
-    byes = [q["team_name"] for q in qualifiers if q["pot"] == "bye"]
-    pot1 = [q["team_name"] for q in qualifiers if q["pot"] == 1]
-    pot2 = [q["team_name"] for q in qualifiers if q["pot"] == 2]
+    auto_teams = {q["team"] for q in field if q["bid_type"] == "auto"}
+    champion_rows = sorted(
+        ({"team": team, "conference": conf, "coe": round(team_coe.get(team, 0.0), 3),
+          "auto_bid": team in auto_teams}
+         for conf, team in champions.items()),
+        key=lambda r: (-r["coe"], r["team"]),
+    )
 
-    conf_of = build_conf_map(qualifiers)
-    rng = random.Random(draw_seed)
-    pot1_drawn, pot2_drawn = pot1[:], pot2[:]
-    rng.shuffle(pot1_drawn)
-    rng.shuffle(pot2_drawn)
-    pairs = backtrack_pairings(pot1_drawn, pot2_drawn, conf_of, pot2_drawn[:]) or []
-
-    games = []
-    for a, b in pairs:
-        home, away = choose_home_away(a, b, team_coe)
-        games.append({
-            "home": home, "away": away,
-            "home_conf": conf_of[home], "away_conf": conf_of[away],
-            "home_coe": round(team_coe.get(home, 0.0), 3),
-            "away_coe": round(team_coe.get(away, 0.0), 3),
-        })
-
-    # The odds redraw the Round of 24 every run, so they average over the draw
-    # rather than describing the one bracket above. The bracket shown on this
-    # page is `draw_seed`'s draw; a team's chances are not a property of it.
-    counts, n_sims, sim_conf_of, sim_team_coe = run_simulation(
-        db_path, year, draw_seed, sims, temperature, home_field=home_field)
-    simulation = [
-        {
-            "team": team,
-            "conference": sim_conf_of.get(team, ""),
-            "coe": round(sim_team_coe.get(team, 0.0), 3),
-            "r16_pct": round(100 * c["r16"] / n_sims, 1),
-            "qf_pct": round(100 * c["qf"] / n_sims, 1),
-            "sf_pct": round(100 * c["sf"] / n_sims, 1),
-            "final_pct": round(100 * c["final"] / n_sims, 1),
-            "champion_pct": round(100 * c["champion"] / n_sims, 1),
-        }
-        for team, c in counts.items()
-    ]
-    simulation.sort(key=lambda r: -r["champion_pct"])
-
-    def sort_key(q):
-        if q["conf_coe_rank"] is None:
-            return (999, -q["team_coe_5yr"])
-        return (q["conf_coe_rank"], q["conf_standing_rank"])
+    counts, n_sims, sim_field, sim_team_coe = run_simulation(
+        db_path, year, sims, temperature, home_field=home_field)
+    seed_of = {q["team"]: q["seed"] for q in sim_field}
+    conf_of = {q["team"]: q["conference"] for q in sim_field}
+    simulation = sorted(
+        ({"team": team, "seed": seed_of[team], "conference": conf_of.get(team, ""),
+          "coe": round(sim_team_coe.get(team, 0.0), 3),
+          "qf_pct": round(100 * c["qf"] / n_sims, 1),
+          "sf_pct": round(100 * c["sf"] / n_sims, 1),
+          "final_pct": round(100 * c["final"] / n_sims, 1),
+          "champion_pct": round(100 * c["champion"] / n_sims, 1)}
+         for team, c in counts.items()),
+        key=lambda r: (-r["champion_pct"], r["seed"]),
+    )
 
     return {
-        "conference_ranking": [
-            {"conference": c, "coeff_5yr": round(v, 3)} for c, v in conf_ranked
+        # The format itself, so the page describes what it is actually
+        # rendering rather than carrying its own copy of these numbers.
+        "format": {"field_size": FIELD_SIZE, "auto_bids": AUTO_BIDS,
+                   "bye_seeds": BYE_SEEDS, "seeding": "straight"},
+        "conference_champions": champion_rows,
+        "field": [
+            {"seed": q["seed"], "team": q["team"], "conference": q["conference"],
+             "bid_type": q["bid_type"], "champion_of": q["champion_of"],
+             "team_coe_5yr": round(q["team_coe_5yr"], 3)}
+            for q in field
         ],
-        "independents": [{"team": n, "coe": round(c, 3)} for n, c in independents],
-        "independent_replacements": replacements,
+        "byes": [{"seed": q["seed"], "team": q["team"]} for q in byes(field)],
+        "first_round": [
+            {**g, "home_coe": round(g["home_coe"], 3), "away_coe": round(g["away_coe"], 3)}
+            for g in first_round_games(field)
+        ],
+        # Which bye seed meets which first-round winner. Shipped rather than
+        # hardcoded in the page, so the bracket graphic and the simulation
+        # cannot disagree about the shape of the bracket.
+        "quarterfinals": [{"bye_seed": s, "pair": list(pair)} for s, pair in QUARTERFINALS],
         "simulation": simulation,
         # home_field ships so the page's own Simulate button uses the same venue
         # term as these odds, rather than keeping a second copy of it.
         "sim_meta": {"n_sims": n_sims, "temperature": temperature,
-                     "home_field": home_field, "redraws": True},
-        "qualifiers": [
-            {
-                "team": q["team_name"], "conference": q["conference"],
-                "conf_coe_rank": q["conf_coe_rank"], "conf_standing_rank": q["conf_standing_rank"],
-                "bid_type": q["bid_type"], "pot": str(q["pot"]),
-                "team_coe_5yr": round(q["team_coe_5yr"], 3),
-            }
-            for q in sorted(qualifiers, key=sort_key)
-        ],
-        "byes": sorted(byes, key=lambda t: -team_coe.get(t, 0.0)),
-        "round_of_24": games,
+                     "home_field": home_field},
     }
 
 
@@ -587,11 +575,12 @@ def main() -> None:
     appearances: dict[str, dict] = {}
     for year in usable_years:
         pf = out["playoff_by_year"][str(year)]
-        for q in pf["qualifiers"]:
+        for q in pf["field"]:
             rec = appearances.setdefault(q["team"], {"team": q["team"], "appearances": 0, "byes": 0, "years": []})
             rec["appearances"] += 1
             rec["years"].append(year)
-            if q["pot"] == "bye":
+            # A bye is now the top four seeds rather than a pot label.
+            if q["seed"] <= pf["format"]["bye_seeds"]:
                 rec["byes"] += 1
 
     out["playoff_appearances"] = sorted(

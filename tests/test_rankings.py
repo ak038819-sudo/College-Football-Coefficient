@@ -89,6 +89,7 @@ def test_latest_release_wins_and_missing_cfp_is_absent_not_empty(tmp_path):
 def test_no_rating_engine_reads_polls():
     engines = ["src/build_elo.py", "src/build_coefficients.py", "src/build_hybrid_coefficients.py",
                "src/build_conference_coe2.py", "src/predict_upcoming.py",
+               "src/coefficients/select_cfp_field.py", "src/coefficients/simulate_cfp_bracket.py",
                "src/coefficients/select_playoff_field_v2.py", "src/coefficients/select_nit_field.py"]
     for path in engines:
         assert "poll_rankings" not in (REPO / path).read_text(encoding="utf-8"), path

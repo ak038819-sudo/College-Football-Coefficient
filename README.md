@@ -4,7 +4,7 @@
 
 🔗 **Live dashboard:** https://ak038819-sudo.github.io/College-Football-Coefficient/
 
-This project rebuilds college football's postseason around objective ratings instead of polls. It ingests game data from the College Football Data (CFBD) API, rates every team with Elo and an opponent-strength model, selects and seeds a 24-team playoff and a 16-team NIT, simulates the bracket, and publishes everything as an interactive static dashboard. A test suite gates every deploy.
+This project rebuilds college football's postseason around objective ratings instead of polls. It ingests game data from the College Football Data (CFBD) API, rates every team with Elo and an opponent-strength model, selects and seeds the real 12-team College Football Playoff field, simulates the bracket, and publishes everything as an interactive static dashboard. A test suite gates every deploy.
 
 ## Highlights
 
@@ -23,7 +23,7 @@ This project rebuilds college football's postseason around objective ratings ins
 - [The Rating Models](#the-rating-models)
 - [Validation](#validation)
 - [The Reform Ruleset](#the-reform-ruleset)
-- [Playoff and NIT Format](#playoff-and-nit-format)
+- [Playoff Format](#playoff-format)
 - [Data Coverage](#data-coverage)
 - [Running It](#running-it)
 - [Testing](#testing)
@@ -67,7 +67,7 @@ An additive layer built alongside v1, which is left unmodified (tagged `coe-v1`)
 
 ### Win probabilities and simulation
 
-Bracket simulation converts the CoE gap into a win probability with a logistic function (temperature 6.0) and plays out Round of 24 → Round of 16 → quarterfinals → semifinals → final. The dashboard's "Simulate the Bracket!" button runs the same logic client-side, and its odds match the Python Monte Carlo engine closely.
+Bracket simulation converts the CoE gap into a win probability with a logistic function, at a temperature fitted against the record (about 4.5), and plays out first round → quarterfinals → semifinals → final. The host's edge, a measured 1.25 CoE points, applies in the first round and nowhere after it. The dashboard's "Simulate the Bracket!" button runs the same logic client-side; `tests/cfp_bracket.test.cjs` drives that copy out of the shipped page so the two cannot drift.
 
 ## Validation
 
@@ -79,54 +79,64 @@ Bracket simulation converts the CoE gap into a win probability with a logistic f
 
 ## The Reform Ruleset
 
-1. Every FBS team must belong to a conference.
-2. 11-game regular season: 8 conference games, 3 non-conference.
-3. All non-conference games are played within FBS.
-4. No Top 25 poll and no subjective rankings.
-5. A Coefficient (CoE) system replaces the poll for playoff selection and seeding.
-6. 24-team playoff, and all conference champions qualify.
-7. The top 8 (by conference strength) get byes to the Round of 16; the rest play in the Round of 24.
-8. Team CoE decides home-field advantage.
-9. Conference bid counts are set by conference-level coefficient ranking.
+The project's founding idea, which still holds: **no Top 25 poll and no
+subjective rankings.** A Coefficient (CoE) system replaces the poll for
+playoff selection, seeding and home field.
+
+The invented 24-team bracket that idea was first built into is no longer
+what the site runs — see the next section. The rest of the original
+ruleset (every FBS team in a conference, an 11-game season of 8 conference
+and 3 non-conference games, all games within FBS) describes a hypothetical
+league's schedule; this project rates games that were actually played.
 
 The full original rules and the coefficient system's early design draft are in `docs/`. The [dashboard roadmap](docs/roadmap.md) covers the scorebug redesign, a live game-day experience, and an installable app.
 
-## Playoff and NIT Format
+## Playoff Format
 
-### Bid allocation (by 5-year rolling conference CoE rank)
+The site runs the **real 12-team College Football Playoff format**, as the
+CFP has run it since the 2025 season. It was the invented 24-team bracket
+until 2026-10-10. [`docs/cfp-12-team-format.md`](docs/cfp-12-team-format.md)
+is the full write-up, including what dropped out and what did not.
 
-| Conference rank | Bids |
-|---|---|
-| 1–4 | 4 (top 4 teams by conference standings) |
-| 5 | 3 |
-| 6–10 | 1 (champion only) |
+- The **five highest-ranked conference champions** take automatic bids;
+  **seven at-large bids** go to the strongest teams left.
+- **Seeds run straight down the ranking**, 1 to 12 — the 2025 rule change.
+- **Seeds 1–4 sit out the first round.**
+- **First round:** 5v12, 6v11, 7v10, 8v9, at the higher seed's home.
+  Everything after that is at a neutral site.
+- **Quarterfinals:** 1 plays the 8/9 winner, 4 the 5/12 winner, 2 the 7/10
+  winner, 3 the 6/11 winner, so the top two seeds can only meet in the
+  final.
 
-This differs slightly from the original spec's Year 1 draft, which gave rank 6 two bids. Year 1 and Year 2+ are now identical, which also resolved a contradiction between the Year 2+ seeding rule for rank 6 and the fixed "top 8 get byes" requirement.
+### What stands in for the selection committee
 
-Conference rankings only include conferences with real teams in that exact season, so dissolved or renamed conferences (Big East, WAC, Pac-10) cannot occupy a rank slot. If a conference has too few teams for its allocation (for example, the Pac-12 with 2 teams in 2024), each specific missing pot slot cascades to the next-ranked conference.
+The format needs a national ranking and this project has no committee, so
+every ordering it needs — the top five champions, the best teams available,
+and the seeds — is the **5-year rolling team CoE**, which this project
+already seeds and assigns home field by. That is a strength rating rather
+than a resume ranking, and five years moves more slowly than a season, so
+a field reads as "the twelve strongest programs with a champion floor"
+rather than a guess at the committee. A **champion** is the top team in the
+derived conference standings, which is not always the title-game winner.
+**Independents** cannot win a conference, so they compete for at-large bids
+like everyone else.
 
-### Seeding (8 byes total, always)
+### Title odds
 
-| Conference rank | Byes | Pot 1 | Pot 2 |
-|---|---|---|---|
-| 1–2 | 1st & 2nd place | 3rd place | 4th place |
-| 3–4 | Champion | Runner-up, 3rd place | 4th place |
-| 5 | Champion | Runner-up, 3rd place* | — |
-| 6–10 | Champion (rank 6 only) | — | Champion (ranks 7–10) |
+Because the bracket is fixed by the seeds, the published odds are the odds
+of the bracket on the page. The 24-team bracket had a random pot draw, so
+its odds had to be averaged over draws that had not happened — in 2026,
+changing only the draw moved Notre Dame's title chance from 12.0% to 27.7%.
 
-*Rank 5's 3rd-place team was moved from Pot 2 to Pot 1 to balance the pots at 8 teams each. The original spec's table made them 7 and 9, which broke a clean 1-to-1 draw pairing.
+### The retained 24-team model
 
-### Independents
-
-An independent qualifies only if its own CoE exceeds the field's weakest at-large qualifier. It can never displace a conference champion. Independents are checked strongest-first, and the threshold is re-checked after each one is added.
-
-### Round of 24 draw
-
-Pot 1 vs. Pot 2, randomized with `--draw-seed` for reproducibility, with backtracking to guarantee no same-conference matchup. Home field goes to the team with the higher 5-year rolling team CoE (ties broken by team name).
-
-### NIT (16 teams)
-
-`src/coefficients/select_nit_field.py`. Conference ranks 1–6 send their next two teams past the main-field cutoff, and ranks 7–10 send their runner-up. Eligibility is checked against actual main-field membership, so a team displaced by an independent becomes NIT-eligible instead of falling through the cracks. Seeding uses the same no-same-conference backtracking as the main draw.
+`src/coefficients/select_playoff_field_v2.py` (field),
+`draw_playoff_bracket_v2.py` (pot draw), `simulate_bracket.py` (24-team
+simulation) and `select_nit_field.py` (the 16-team NIT) are all still in
+the repository and still run, with their tests. Nothing live reads them.
+Their ruleset — the conference bid table, the pots, the independent
+threshold — is in [`docs/coe_spec.md`](docs/coe_spec.md), which now says
+so at the top. The NIT has never been exported or shown on the site.
 
 ## Data Coverage
 
@@ -286,10 +296,9 @@ git push
 ✅ Historical game and membership data, 1980–2026
 ✅ CoE v1 opponent-strength rating with early-season damping
 ✅ Calibrated Elo engine and CoE 2.0 hybrid rating
-✅ 24-team qualifier selection with balanced 8/8 pot seeding and independent threshold
-✅ Round-of-24 draw (no same-conference matchups, CoE-based home field, reproducible via seed)
+✅ The real 12-team CFP field: 5 champion bids, 7 at-large, straight seeding
 ✅ Full bracket simulation through the final (Python Monte Carlo + in-browser simulator)
-✅ 16-team NIT selection and seeding
+➖ Retained but not live: the 24-team field, its pot draw and the 16-team NIT
 ✅ Team pages with historical Elo charts, scheduled-game predictions, and a home dashboard
 ✅ Live scores, weekly automated refresh, and test-gated CI/CD
 

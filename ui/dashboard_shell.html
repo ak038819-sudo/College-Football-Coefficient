@@ -588,34 +588,6 @@
   .mini-board .fpv { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-dim); }
   .mini-board .elo-rk { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); }
 
-  .field-conf-group {
-    margin-bottom: 16px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--panel-2);
-  }
-  .field-conf-group:last-child { border-bottom: none; }
-  .field-conf-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    font-family: var(--font-display);
-    font-size: 15px;
-    margin-bottom: 6px;
-  }
-  .field-conf-head .bids {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--ink-dim);
-  }
-  .qual-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 4px 0;
-    font-size: 14px;
-    border-bottom: 1px dotted var(--panel-2);
-  }
-  .qual-row:last-child { border-bottom: none; }
-  .qual-team { display: flex; align-items: baseline; gap: 8px; }
   .tag {
     font-family: var(--font-mono);
     font-size: 10px;
@@ -625,8 +597,6 @@
     text-transform: uppercase;
   }
   .tag.bye { background: var(--green-hl); color: #fff; }
-  .tag.pot1 { background: var(--amber); color: var(--bg); }
-  .tag.pot2 { background: var(--line); color: var(--ink); }
   .tag.champ { border: 1px solid var(--amber-dim); color: var(--amber); background: transparent; }
 
   .bracket-section-label {
@@ -687,7 +657,11 @@
     font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
     color: var(--ink-dim); text-align: center; margin-bottom: 10px;
   }
-  .bracket-list { display: grid; grid-template-rows: repeat(16, 40px); }
+  /* Eight rows: the eight quarterfinal slots (four bye seeds alternating with
+     four first-round winners). The 12-team bracket's every later round is a
+     2-to-1 merge of these, which is what the grid-row spans in
+     renderBracketTree compute against. */
+  .bracket-list { display: grid; grid-template-rows: repeat(8, 40px); }
   .bracket-item { position: relative; display: flex; align-items: center; box-sizing: border-box; }
   .bracket-item .bslot {
     display: flex; align-items: center; gap: 6px; width: 100%;
@@ -740,27 +714,33 @@
   .simulate-btn:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 4px 18px rgba(232,163,61,0.5); }
   .simulate-btn:active { transform: translateY(0) scale(0.98); }
 
-  /* Round of 24 -> Round of 16 is a plain 1-to-1 feed (same row index
-     in both columns, by construction), not a merge -- just a straight
-     stub, no vertical bar needed on either side. */
-  .r24-col { min-width: 210px; }
-  /* R24 -> R16 is a plain 1-to-1 feed (same grid-row in both columns),
-     not a 2-to-1 merge -- suppress the merge-hook entirely and widen
-     the plain stub to span the full gap, since R16 contributes nothing
-     back for this relationship (unlike a real merge, where both
-     feeder and receiver's columns jointly complete the connector). */
-  .r24-item:before { display: none !important; }
-  .r24-item:after { width: 44px !important; right: -44px !important; border-bottom-width: 3px; }
-  /* Bye positions in R24 have no real game -- suppress the line so it
-     doesn't misleadingly imply a Round-of-24 game feeds that bye slot. */
-  .r24-item.r24-blank-row:after { display: none !important; }
-  .bslot.r24-matchup {
+  /* First round -> Quarterfinals is a plain 1-to-1 feed (the same grid-row in
+     both columns, by construction), not a 2-to-1 merge -- so suppress the
+     merge hook entirely and widen the plain stub to span the full gap, since
+     the quarterfinal column contributes nothing back for this relationship
+     (unlike a real merge, where feeder and receiver jointly complete the
+     connector). */
+  .fr-col { min-width: 210px; }
+  .fr-item:before { display: none !important; }
+  .fr-item:after { width: 44px !important; right: -44px !important; border-bottom-width: 3px; }
+  /* A bye seed's row in the first-round column holds no game -- suppress the
+     line, so it cannot imply a first-round game feeds that seed. */
+  .fr-item.fr-blank-row:after { display: none !important; }
+  .bslot.fr-matchup {
     flex-direction: column; align-items: stretch; gap: 3px; padding: 5px 8px;
   }
-  .bslot.r24-blank { background: transparent; padding: 0; min-height: 1px; }
-  .r24-team { display: flex; align-items: center; gap: 5px; font-size: 11px; }
-  .r24-team.r24-home { color: var(--amber); font-weight: 600; }
-  .r24-at { font-family: var(--font-mono); font-size: 9px; color: var(--ink-dim); text-align: center; }
+  .bslot.fr-blank { background: transparent; padding: 0; min-height: 1px; }
+  .fr-team { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+  .fr-team.fr-home { color: var(--amber); font-weight: 600; }
+  .fr-at { font-family: var(--font-mono); font-size: 9px; color: var(--ink-dim); text-align: center; }
+  /* A seed, shown where a seed is the whole point: the field table and the
+     bye strip. Dimmed for the byes, which carry a Bye tag beside them already. */
+  .seed-pill {
+    display: inline-block; min-width: 1.6em; font-family: var(--font-mono);
+    font-size: 11px; color: var(--ink-dim);
+  }
+  .seed-pill.seed-bye { color: var(--amber); font-weight: 600; }
+  .rank-table tr.row-dim td { color: var(--ink-dim); }
 
   .bslot.filled { background: var(--panel-2); border-left: 3px solid var(--green-hl); }
 
@@ -1013,10 +993,11 @@
   <footer class="foot">
     Team rating = iterative opponent-strength model (winner += opponent_rating × phase_weight; loser retains a
     0.15× loss penalty; renormalized each iteration; 5yr rolling window uses 0.92^age recency decay).
-    Conference rating = sum of member teams' ratings. Bid counts by conference 5yr-rolling rank: ranks 1–4 get 4 bids,
-    rank 5 gets 3, ranks 6–10 get 1 (champion only). "FBS Independents" excluded from bid eligibility.
+    Conference rating = sum of member teams' ratings.
+    Playoff: the real 12-team format — the 5 highest-ranked conference champions take automatic bids, 7 at-large
+    bids fill the field, seeds run straight down the 5yr rolling team CoE, and seeds 1–4 sit out the first round.
     Conference standings derived locally from loaded game results, not an official league record.
-    Round of 24 draw is seeded and reproducible; home field goes to the higher 5yr rolling team CoE.
+    The first round is at the higher seed's home; every later round is at a neutral site.
   </footer>
 
 </div>
@@ -1483,7 +1464,7 @@ function renderConferenceCoe2() {
     ' \u2014 the value <b>entering</b> it, frozen. It never includes ' + state.year + ' itself, so it cannot be ' +
     'moved by a game played this season. The <a href="' + esc(routeHref({ subview: 'conference-coe' })) +
     '">Conference CoE</a> tab is a different number: CoE v1\u2019s rolling five years, which does include the ' +
-    'current season and is what actually sets playoff bids. CoE 2.0 is experimental and sets nothing.</p>';
+    'current season and is what drives the playoff model. CoE 2.0 is experimental and sets nothing.</p>';
   if (!rows.length) {
     return '<div class="panel"><h2 class="section-title">Conference CoE 2.0 entering ' + state.year + '</h2>' +
       intro + '<div class="empty-note">' + esc(coe2EmptyReason(state.year)) + '</div></div>';
@@ -1570,7 +1551,7 @@ function renderConferenceElo() {
   return '<div class="panel"><h2 class="section-title">Conference Elo · ' + state.year + '</h2>' +
     '<p class="section-note">Average end-of-season Elo of rated member teams. Membership is from ' + state.year +
     ', not today. Each count shows rated teams / all members; teams without a completed game are excluded. ' +
-    'Independents are excluded. This is a strength comparison, not Conference CoE or the playoff bid order.' +
+    'Independents are excluded. This is a strength comparison, not Conference CoE.' +
     (state.year === UPCOMING.season && UPCOMING.ratings_as_of ? ' Ratings through ' + esc(UPCOMING.ratings_as_of) + '.' : '') + '</p>' +
     '<table class="rank-table"><thead><tr><th></th><th>Conference</th><th class="num">Avg Elo</th><th class="num">Rated / members</th></tr></thead><tbody>' +
     rows.map((r, i) => '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' +
@@ -1704,57 +1685,61 @@ function renderConferences() {
 function renderField() {
   const pf = DATA.playoff_by_year[state.year];
   if (!pf) return '<div class="empty-note">No playoff field for this season.</div>';
+  const F = pf.format;
 
-  const byConf = {};
-  const independentQuals = [];
-  pf.qualifiers.forEach(q => {
-    if (q.conf_coe_rank === null) { independentQuals.push(q); return; }
-    (byConf[q.conf_coe_rank] = byConf[q.conf_coe_rank] || { conference: q.conference, teams: [] }).teams.push(q);
-  });
-
+  // Who got in, in seed order. One table, because straight seeding means the
+  // seed IS the ranking -- there is nothing to group by any more. The old
+  // 24-team page grouped by conference because the conference's rank decided
+  // how many of its teams came; here only the five champion bids depend on a
+  // conference at all.
   let html = '<div class="panel">';
-
-  if (independentQuals.length) {
-    html += '<div class="field-conf-group">' +
-      '<div class="field-conf-head"><span class="name-cell">' + logoMarkup('FBS Independents', 'conf', 'sm') + 'Independent (via CoE threshold)</span>' +
-      '<span class="bids">' + independentQuals.length + ' bid' + (independentQuals.length > 1 ? 's' : '') + '</span></div>';
-    independentQuals.forEach(t => {
-      const potTag = t.pot === 'bye' ? '<span class="tag bye">Bye</span>' : '<span class="tag pot' + t.pot + '">Pot ' + t.pot + '</span>';
-      html += '<div class="qual-row"><span class="qual-team name-cell">' + teamLink(t.team, 'sm') + '</span>' +
-        '<span>' + potTag + ' <span class="coe-mini">' + fmt(t.team_coe_5yr) + '</span></span></div>';
-    });
-    if (pf.independent_replacements && pf.independent_replacements.length) {
-      pf.independent_replacements.forEach(r => {
-        html += '<div class="qual-row" style="color:var(--ink-dim);font-size:12px;font-style:italic">displaced ' + r.replaced_team + ' (' + r.replaced_conference + ', CoE ' + fmt(r.replaced_coe) + ')</div>';
-      });
-    }
-    html += '</div>';
-  }
-
-  Object.keys(byConf).sort((a, b) => a - b).forEach(rank => {
-    const g = byConf[rank];
-    html += '<div class="field-conf-group">' +
-      '<div class="field-conf-head"><span class="name-cell">' + logoMarkup(g.conference, 'conf', 'sm') + '#' + rank + ' &middot; ' + g.conference + '</span>' +
-      '<span class="bids">' + g.teams.length + ' bid' + (g.teams.length > 1 ? 's' : '') + '</span></div>';
-    g.teams.forEach(t => {
-      const potTag = t.pot === 'bye' ? '<span class="tag bye">Bye</span>' : '<span class="tag pot' + t.pot + '">Pot ' + t.pot + '</span>';
-      const bidTag = t.bid_type === 'champion' ? '<span class="tag champ">Champion</span>' : '';
-      html += '<div class="qual-row"><span class="qual-team name-cell">' + teamLink(t.team, 'sm') + ' ' + bidTag + '</span>' +
-        '<span>' + potTag + ' <span class="coe-mini">' + fmt(t.team_coe_5yr) + '</span></span></div>';
-    });
-    html += '</div>';
+  html += '<h2 class="section-title">The Field</h2>';
+  html += '<p class="section-note">' + F.field_size + ' teams: the ' + F.auto_bids +
+    ' highest-ranked conference champions take automatic bids, and the ' +
+    (F.field_size - F.auto_bids) + ' best teams left fill the rest. Seeds run straight down ' +
+    'the ranking, and seeds 1–' + F.bye_seeds + ' sit out the first round. ' +
+    'The ranking is 5-year rolling team CoE throughout.</p>';
+  html += '<table class="rank-table"><thead><tr><th class="num">Seed</th><th>Team</th>' +
+    '<th>Conference</th><th>Bid</th><th class="num">CoE</th></tr></thead><tbody>';
+  pf.field.forEach(q => {
+    const bye = q.seed <= F.bye_seeds;
+    const bid = q.bid_type === 'auto'
+      ? '<span class="tag champ">' + esc(q.champion_of) + ' champion</span>'
+      : '<span class="tag">At-large</span>';
+    html += '<tr><td class="num"><span class="seed-pill' + (bye ? ' seed-bye' : '') + '">' + q.seed + '</span></td>' +
+      '<td><div class="name-cell">' + teamLink(q.team, 'sm') + (bye ? ' <span class="tag bye">Bye</span>' : '') + '</div></td>' +
+      '<td><div class="name-cell">' + logoMarkup(q.conference, 'conf', 'sm') + esc(q.conference) + '</div></td>' +
+      '<td>' + bid + '</td><td class="num coe-val">' + fmt(q.team_coe_5yr) + '</td></tr>';
   });
-  html += '</div>';
+  html += '</tbody></table></div>';
+
+  // The automatic-bid cut, shown rather than asserted: every champion with its
+  // CoE, so the line between the fifth and the sixth is visible.
+  html += '<div class="panel"><h2 class="section-title">Conference Champions</h2>';
+  html += '<p class="section-note">Every conference champion, strongest first. The top ' +
+    F.auto_bids + ' hold the automatic bids; the rest are out unless they are strong ' +
+    'enough for an at-large bid on their own. A champion is the top team in this ' +
+    'project’s derived conference standings, not the winner of a title game.</p>';
+  html += '<table class="rank-table"><thead><tr><th></th><th>Conference</th><th>Champion</th>' +
+    '<th class="num">CoE</th><th>Bid</th></tr></thead><tbody>';
+  pf.conference_champions.forEach((c, i) => {
+    html += '<tr' + (c.auto_bid ? '' : ' class="row-dim"') + '><td class="rk">' + (i + 1) + '</td>' +
+      '<td><div class="name-cell">' + logoMarkup(c.conference, 'conf', 'sm') + esc(c.conference) + '</div></td>' +
+      '<td><div class="name-cell">' + teamLink(c.team, 'sm') + '</div></td>' +
+      '<td class="num">' + fmt(c.coe) + '</td>' +
+      '<td>' + (c.auto_bid ? '<span class="tag champ">Automatic</span>' : '<span class="tag">—</span>') + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
   return html;
 }
 
-// The same logistic src/coefficients/simulate_bracket.py runs, with the same
+// The same logistic src/coefficients/simulate_cfp_bracket.py runs, with the same
 // fitted temperature: it ships in sim_meta so this button and the published
 // Title Odds cannot drift apart. No fallback constant lives here -- one would
 // silently reinstate the old hand-picked 6.0 if the payload ever changed shape.
 // homeField is team A's venue edge in CoE points, and every caller states it:
-// the Round of 24 is played at the higher-CoE team's home, which is the `home`
-// side of the pair, and every later round is at a neutral site and passes 0.
+// the first round is played at the higher seed's home, which is the `home` side
+// of the pair, and every later round is at a neutral site and passes 0.
 function winProbability(coeA, coeB, temperature, homeField) {
   return 1 / (1 + Math.exp(-((coeA - coeB) + homeField) / temperature));
 }
@@ -1765,148 +1750,130 @@ function simulateGame(a, b, teamCoe, temperature, homeField) {
 
 function runBracketSimulation(pf) {
   const teamCoe = {};
-  pf.qualifiers.forEach(q => { teamCoe[q.team] = q.team_coe_5yr; });
+  pf.field.forEach(q => { teamCoe[q.team] = q.team_coe_5yr; });
   const temperature = (pf.sim_meta || {}).temperature;
   const homeField = (pf.sim_meta || {}).home_field;
+  const bySeed = {};
+  pf.field.forEach(q => { bySeed[q.seed] = q.team; });
 
-  const seeds = buildBracketSeeds(pf);
-  const byRank = {};
-  seeds.forEach(s => { byRank[s.seed] = s; });
-  const r16Order = [];
-  for (let i = 1; i <= 8; i++) { r16Order.push(byRank[i]); r16Order.push(byRank[17 - i]); }
+  // First round, at the higher seed's home. The export ships the pairs, so
+  // this cannot drift from what src/coefficients/simulate_cfp_bracket.py runs.
+  const firstRound = pf.first_round.map(g =>
+    simulateGame(g.home, g.away, teamCoe, temperature, homeField));
+  const winnerOfPair = {};
+  pf.first_round.forEach((g, i) => { winnerOfPair[g.home_seed + '/' + g.away_seed] = firstRound[i]; });
 
-  const r16Field = r16Order.map(slot => {
-    if (slot.isTeam) return slot.team;
-    const game = pf.round_of_24[slot.seed - 9];
-    // game.home hosts, so the edge is team A's here.
-    return simulateGame(game.home, game.away, teamCoe, temperature, homeField);
-  });
-
-  const qfField = [];
-  for (let i = 0; i < 16; i += 2) qfField.push(simulateGame(r16Field[i], r16Field[i + 1], teamCoe, temperature, 0));
-
+  // Quarterfinals onward: neutral sites, so no venue term at all.
+  const qfField = pf.quarterfinals.map(q =>
+    simulateGame(bySeed[q.bye_seed], winnerOfPair[q.pair[0] + '/' + q.pair[1]],
+                 teamCoe, temperature, 0));
   const sfField = [];
-  for (let i = 0; i < 8; i += 2) sfField.push(simulateGame(qfField[i], qfField[i + 1], teamCoe, temperature, 0));
-
-  const finalField = [];
-  for (let i = 0; i < 4; i += 2) finalField.push(simulateGame(sfField[i], sfField[i + 1], teamCoe, temperature, 0));
-
-  const champion = simulateGame(finalField[0], finalField[1], teamCoe, temperature, 0);
-
-  return { r16Field, qfField, sfField, finalField, champion };
-}
-
-function buildBracketSeeds(pf) {
-  // Seeds 1-8: byes, ranked by 5yr rolling team CoE (highest first).
-  // Seeds 9-16: the 8 Round-of-24 games, in draw order, as "Winner of Game N" placeholders.
-  const byesSorted = [...pf.byes].sort((a, b) => (pf._byeCoe[b] || 0) - (pf._byeCoe[a] || 0));
-  const seeds = byesSorted.map((t, i) => ({ seed: i + 1, isTeam: true, team: t }));
-  pf.round_of_24.forEach((g, i) => {
-    seeds.push({ seed: 9 + i, isTeam: false, label: 'Winner of Game ' + (i + 1) });
-  });
-  return seeds;
-}
-
-function slotHtml(seedObj) {
-  if (seedObj.isTeam) {
-    return '<div class="bslot"><span class="seed">' + seedObj.seed + '</span>' + teamLink(seedObj.team, 'sm') + '</div>';
+  for (let i = 0; i < qfField.length; i += 2) {
+    sfField.push(simulateGame(qfField[i], qfField[i + 1], teamCoe, temperature, 0));
   }
-  return '<div class="bslot tbd"><span class="seed">' + seedObj.seed + '</span><span>' + seedObj.label + '</span></div>';
+  const champion = simulateGame(sfField[0], sfField[1], teamCoe, temperature, 0);
+  return { firstRound, qfField, sfField, champion };
+}
+
+// The eight quarterfinal slots, top to bottom, as the bracket draws them: each
+// bye seed followed by the first-round game that feeds it. Both the graphic and
+// the simulation read this, so a slot cannot be in one place in the picture and
+// another in the maths.
+function bracketSlots(pf) {
+  const bySeed = {};
+  pf.field.forEach(q => { bySeed[q.seed] = q.team; });
+  const gameOf = {};
+  pf.first_round.forEach((g, i) => { gameOf[g.home_seed + '/' + g.away_seed] = { game: g, index: i }; });
+  const slots = [];
+  pf.quarterfinals.forEach(q => {
+    slots.push({ isTeam: true, seed: q.bye_seed, team: bySeed[q.bye_seed] });
+    const hit = gameOf[q.pair[0] + '/' + q.pair[1]];
+    slots.push({ isTeam: false, label: 'Winner of ' + q.pair[0] + '/' + q.pair[1],
+                 game: hit.game, index: hit.index });
+  });
+  return slots;
+}
+
+function slotHtml(slot) {
+  if (slot.isTeam) {
+    return '<div class="bslot"><span class="seed">' + slot.seed + '</span>' + teamLink(slot.team, 'sm') + '</div>';
+  }
+  return '<div class="bslot tbd"><span>' + slot.label + '</span></div>';
 }
 
 function filledSlotHtml(teamName) {
   return '<div class="bslot filled">' + teamLink(teamName, 'sm') + '</div>';
 }
 
-function r24MatchupHtml(seedObj, pf) {
-  if (seedObj.isTeam) {
-    return '<div class="bslot r24-blank"></div>';
-  }
-  const g = pf.round_of_24[seedObj.seed - 9];
-  return '<div class="bslot r24-matchup">' +
-    '<div class="r24-team">' + teamLink(g.away, 'sm') + '</div>' +
-    '<div class="r24-at">@</div>' +
-    '<div class="r24-team r24-home">' + teamLink(g.home, 'sm') + '</div>' +
+function firstRoundSlotHtml(slot) {
+  // A bye seed has no first-round game, so its row in this column is blank
+  // rather than a connector implying a game feeds it.
+  if (slot.isTeam) return '<div class="bslot fr-blank"></div>';
+  const g = slot.game;
+  return '<div class="bslot fr-matchup">' +
+    '<div class="fr-team"><span class="seed">' + g.away_seed + '</span>' + teamLink(g.away, 'sm') + '</div>' +
+    '<div class="fr-at">@</div>' +
+    '<div class="fr-team fr-home"><span class="seed">' + g.home_seed + '</span>' + teamLink(g.home, 'sm') + '</div>' +
     '</div>';
 }
 
 function renderBracketTree(pf, sim) {
-  pf._byeCoe = {};
-  pf.qualifiers.forEach(q => { pf._byeCoe[q.team] = q.team_coe_5yr; });
+  const slots = bracketSlots(pf);  // 8 rows: bye, feeder, bye, feeder, ...
 
-  const seeds = buildBracketSeeds(pf); // 16 seeds, ranked 1-16
-  const byRank = {};
-  seeds.forEach(s => { byRank[s.seed] = s; });
-  const r16List = [];
-  for (let i = 1; i <= 8; i++) {
-    r16List.push(byRank[i]);
-    r16List.push(byRank[17 - i]);
-  }
-
-  // Grid-row spans, verified algebraically so every item centers exactly
-  // between its two feeders (see CSS comment above .bracket-list):
-  //   R24/R16 item i:  row [i+1, i+2)          -- 1-to-1, direct
-  //   QF item i:        row [2i+1, 2i+3)        -- centers R16 items 2i,2i+1
-  //   SF item i:        row [4i+1, 4i+5)        -- centers QF items 2i,2i+1
-  //   Final item i:     row [8i+1, 8i+9)        -- centers SF items 2i,2i+1
-  //   Champion:         row [1, 17)             -- centers Final items 0,1
+  // Grid-row spans, so every item centers exactly between its two feeders
+  // (see the CSS comment above .bracket-list):
+  //   First round / QF item i:  row [i+1, i+2)   -- 1-to-1, direct
+  //   SF item i:                row [2i+1, 2i+3) -- centers QF items 2i, 2i+1
+  //   Final item i:             row [4i+1, 4i+5) -- centers SF items 2i, 2i+1
+  //   Champion:                 row [1, 9)
   const gridRow = (start, end) => ' style="grid-row: ' + start + ' / ' + end + '"';
+  const col = (round, title, body, dim) =>
+    '<div class="bracket-round-col' + (dim ? ' pending' : '') + (round === 'champion' ? ' champion-col' : '') +
+    (round === 'first' ? ' fr-col' : '') + '" data-round="' + round + '">' +
+    '<div class="bracket-round-title">' + title + '</div><div class="bracket-list">' + body + '</div></div>';
 
-  let html = '<div class="bracket-tree">';
-
-  html += '<div class="bracket-round-col r24-col" data-round="r24"><div class="bracket-round-title">Round of 24</div><div class="bracket-list">';
-  r16List.forEach((s, i) => {
-    const blankClass = s.isTeam ? ' r24-blank-row' : '';
-    html += '<div class="bracket-item r24-item' + blankClass + '"' + gridRow(i + 1, i + 2) + '>' + r24MatchupHtml(s, pf) + '</div>';
+  let first = '';
+  slots.forEach((slot, i) => {
+    first += '<div class="bracket-item fr-item' + (slot.isTeam ? ' fr-blank-row' : '') + '"' +
+      gridRow(i + 1, i + 2) + '>' + firstRoundSlotHtml(slot) + '</div>';
   });
-  html += '</div></div>';
 
-  html += '<div class="bracket-round-col" data-round="r16"><div class="bracket-round-title">Round of 16</div><div class="bracket-list">';
-  r16List.forEach((s, i) => {
-    const slot = (sim && !s.isTeam) ? filledSlotHtml(sim.r16Field[i]) : slotHtml(s);
-    html += '<div class="bracket-item"' + gridRow(i + 1, i + 2) + '>' + slot + '</div>';
+  let qf = '';
+  slots.forEach((slot, i) => {
+    const cell = (sim && !slot.isTeam) ? filledSlotHtml(sim.firstRound[slot.index]) : slotHtml(slot);
+    qf += '<div class="bracket-item"' + gridRow(i + 1, i + 2) + '>' + cell + '</div>';
   });
-  html += '</div></div>';
 
-  const qfClass = sim ? 'bracket-round-col pending' : 'bracket-round-col';
-  html += '<div class="' + qfClass + '" data-round="qf"><div class="bracket-round-title">Quarterfinals</div><div class="bracket-list">';
-  for (let i = 0; i < 8; i++) {
-    html += '<div class="bracket-item"' + gridRow(2 * i + 1, 2 * i + 3) + '>' +
+  let sf = '';
+  for (let i = 0; i < 4; i++) {
+    sf += '<div class="bracket-item"' + gridRow(2 * i + 1, 2 * i + 3) + '>' +
       (sim ? filledSlotHtml(sim.qfField[i]) : '<div class="bslot tbd">TBD</div>') + '</div>';
   }
-  html += '</div></div>';
 
-  const sfClass = sim ? 'bracket-round-col pending' : 'bracket-round-col';
-  html += '<div class="' + sfClass + '" data-round="sf"><div class="bracket-round-title">Semifinals</div><div class="bracket-list">';
-  for (let i = 0; i < 4; i++) {
-    html += '<div class="bracket-item"' + gridRow(4 * i + 1, 4 * i + 5) + '>' +
+  let fin = '';
+  for (let i = 0; i < 2; i++) {
+    fin += '<div class="bracket-item"' + gridRow(4 * i + 1, 4 * i + 5) + '>' +
       (sim ? filledSlotHtml(sim.sfField[i]) : '<div class="bslot tbd">TBD</div>') + '</div>';
   }
-  html += '</div></div>';
 
-  const finalClass = sim ? 'bracket-round-col pending' : 'bracket-round-col';
-  html += '<div class="' + finalClass + '" data-round="final"><div class="bracket-round-title">Final</div><div class="bracket-list">';
-  for (let i = 0; i < 2; i++) {
-    html += '<div class="bracket-item"' + gridRow(8 * i + 1, 8 * i + 9) + '>' +
-      (sim ? filledSlotHtml(sim.finalField[i]) : '<div class="bslot tbd">TBD</div>') + '</div>';
-  }
-  html += '</div></div>';
+  const champ = '<div class="champion-cell"' + gridRow(1, 9) + '><div class="champion-slot">' +
+    (sim ? teamLink(sim.champion, 'lg', undefined, '&#127942; ') : '&#127942; TBD') +
+    '</div></div>';
 
-  const champClass = sim ? 'bracket-round-col pending champion-col' : 'bracket-round-col champion-col';
-  html += '<div class="' + champClass + '" data-round="champion"><div class="bracket-round-title">Champion</div><div class="bracket-list">';
-  html += '<div class="champion-cell"' + gridRow(1, 17) + '>';
-  html += sim
-    ? '<div class="champion-slot">' + teamLink(sim.champion, 'lg', undefined, '&#127942; ') + '</div>'
-    : '<div class="champion-slot">&#127942; TBD</div>';
-  html += '</div>';
-  html += '</div></div>';
-
-  html += '</div>';
-  return html;
+  return '<div class="bracket-tree">' +
+    col('first', 'First Round', first, false) +
+    col('qf', 'Quarterfinals', qf, false) +
+    col('sf', 'Semifinals', sf, !!sim) +
+    col('final', 'Final', fin, !!sim) +
+    col('champion', 'Champion', champ, !!sim) +
+    '</div>';
 }
 
 function revealBracketSequence() {
-  const order = ['qf', 'sf', 'final', 'champion'];
+  // Exactly the columns renderBracketTree dims. The quarterfinal column is not
+  // one of them: it carries the four bye seeds, which are known without
+  // simulating anything, so hiding it would hide a fact to reveal a guess.
+  const order = ['sf', 'final', 'champion'];
   order.forEach((round, i) => {
     setTimeout(() => {
       const col = document.querySelector('.bracket-round-col[data-round="' + round + '"]');
@@ -1933,28 +1900,34 @@ function runSimulationAndAnimate() {
 function renderBracket() {
   const pf = DATA.playoff_by_year[state.year];
   if (!pf) return '<div class="empty-note">No bracket for this season.</div>';
+  const F = pf.format;
 
   const sim = (state.simYear === state.year) ? state.simResult : null;
 
   let html = '<div class="panel">';
-  html += '<div class="bracket-section-label">Bracket (seeded by 5yr CoE' +
-    (sim ? '; Quarterfinals onward are from your last simulation run' : '; Quarterfinals onward are TBD until you simulate') + ')</div>';
+  html += '<div class="bracket-section-label">Bracket (straight-seeded by 5yr CoE' +
+    (sim ? '; the Semifinals onward are from your last simulation run' : '; the Semifinals onward are TBD until you simulate') + ')</div>';
   html += '<div class="sim-button-row"><button id="simulate-btn" class="simulate-btn">' +
     (sim ? '\u{1F3B2} Simulate Again' : '\u{1F3B2} Simulate the Bracket!') + '</button></div>';
   html += renderBracketTree(pf, sim);
 
-  html += '<div class="bracket-section-label">Byes &rarr; Round of 16 (' + pf.byes.length + ')</div>';
-  html += '<div class="bye-strip">' + pf.byes.map(t => '<div class="bye-chip">' + teamLink(t, 'sm') + '</div>').join('') + '</div>';
+  html += '<div class="bracket-section-label">Byes &rarr; Quarterfinals (' + pf.byes.length + ')</div>';
+  html += '<div class="bye-strip">' + pf.byes.map(b =>
+    '<div class="bye-chip"><span class="seed">' + b.seed + '</span>' + teamLink(b.team, 'sm') + '</div>').join('') + '</div>';
 
-  html += '<div class="bracket-section-label">Round of 24 (' + pf.round_of_24.length + ' games)</div>';
-  pf.round_of_24.forEach((g, i) => {
-    html += '<div class="game-card"><div class="game-num">G' + (i + 1) + '</div><div class="game-matchup">' +
-      teamAnchor(g.away, logoMarkup(g.away, 'team') + '<div><span class="name">' + g.away + '</span><span class="conf">' + g.away_conf + '</span></div>', 'team-chip') +
+  html += '<div class="bracket-section-label">First Round (' + pf.first_round.length +
+    ' games, at the higher seed’s home)</div>';
+  pf.first_round.forEach(g => {
+    html += '<div class="game-card"><div class="game-num">' + g.home_seed + 'v' + g.away_seed + '</div><div class="game-matchup">' +
+      teamAnchor(g.away, logoMarkup(g.away, 'team') + '<div><span class="name">(' + g.away_seed + ') ' + esc(g.away) + '</span><span class="conf">' + esc(g.away_conf) + '</span></div>', 'team-chip') +
       '<div class="at">@</div>' +
-      teamAnchor(g.home, logoMarkup(g.home, 'team') + '<div><span class="name">' + g.home + '</span><span class="conf">' + g.home_conf + '</span></div>', 'team-chip home') +
+      teamAnchor(g.home, logoMarkup(g.home, 'team') + '<div><span class="name">(' + g.home_seed + ') ' + esc(g.home) + '</span><span class="conf">' + esc(g.home_conf) + '</span></div>', 'team-chip home') +
       '<div class="coe-mini">' + fmt(g.away_coe) + ' vs ' + fmt(g.home_coe) + '</div>' +
       '</div></div>';
   });
+  html += '<p class="section-note">Seeds 1–' + F.bye_seeds + ' are already in the ' +
+    'quarterfinals. Everything from the quarterfinals on is at a neutral site, so the ' +
+    'host’s edge applies in these ' + pf.first_round.length + ' games only.</p>';
   html += '</div>';
   return html;
 }
@@ -1987,22 +1960,25 @@ function renderOdds() {
     'against who actually won, over every game since 1980 between two teams of playoff calibre ' +
     '&mdash; rather than chosen to look right.' +
     // Home field is real but small, and only one round has a host, so say both.
-    (meta.home_field ? ' The Round of 24 is played at the higher-CoE team\'s home ground, ' +
+    (meta.home_field ? ' The first round is played at the higher seed’s home ground, ' +
       'and hosting is worth a measured ' + meta.home_field + ' CoE points, so the host gets ' +
-      'that edge in those eight games. Every round after that is at a neutral site and no ' +
+      'that edge in those four games. Every round after that is at a neutral site and no ' +
       'team gets an edge.' : '') +
-    // Why these numbers don't match a hand-count off the bracket page.
-    (meta.redraws ? ' Every run also redraws the Round of 24, so these are a team\'s chances ' +
-      'before the draw is known, not its chances in the particular bracket shown under ' +
-      'Bracket &amp; Simulator. The draw matters: leaving everything else alone and changing ' +
-      'only it can move a contender by more than ten points.' : '') +
-    '</p>';
-  html += '<table class="rank-table"><thead><tr><th></th><th>Team</th><th class="num">CoE</th>' +
-    '<th class="num">R16</th><th class="num">QF</th><th class="num">SF</th><th class="num">Final</th><th class="num">Champion</th></tr></thead><tbody>';
-  pf.simulation.forEach((r, i) => {
-    html += '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + teamLink(r.team, 'sm') + '</div></td>' +
+    // The 12-team bracket is fixed by the seeds, which is why these numbers now
+    // answer the question the page appears to be asking. Worth saying, because
+    // the 24-team model's figures could not.
+    ' The bracket is fully determined by the seeds — seed 5 plays seed 12 and the winner ' +
+    'plays seed 4, every time — so these are the odds of the bracket under Bracket &amp; ' +
+    'Simulator, not an average over brackets that might have been drawn.</p>';
+  // No separate rank column: seeding IS the ranking under this format, so a
+  // "#" beside the seed would be the same number twice in almost every season.
+  html += '<table class="rank-table"><thead><tr><th class="num">Seed</th><th>Team</th><th class="num">CoE</th>' +
+    '<th class="num">QF</th><th class="num">SF</th><th class="num">Final</th><th class="num">Champion</th></tr></thead><tbody>';
+  pf.simulation.forEach(r => {
+    html += '<tr><td class="rk">' + r.seed + '</td>' +
+      '<td><div class="name-cell">' + teamLink(r.team, 'sm') + '</div></td>' +
       '<td class="num">' + fmt(r.coe) + '</td>' +
-      '<td class="num">' + r.r16_pct + '%</td><td class="num">' + r.qf_pct + '%</td><td class="num">' + r.sf_pct + '%</td>' +
+      '<td class="num">' + r.qf_pct + '%</td><td class="num">' + r.sf_pct + '%</td>' +
       '<td class="num">' + r.final_pct + '%</td><td class="num coe-val">' + r.champion_pct + '%</td></tr>';
   });
   html += '</tbody></table></div>';
@@ -2457,7 +2433,7 @@ function fillAnalyticsPanel(tp, team) {
       '<li><b>Expected wins</b>: sum of the team\'s pregame Elo win probabilities, home field included exactly as the Elo model applies it. Never uses ratings from after a game.</li>' +
       '<li><b>Wins vs. expectation</b>: actual wins minus expected wins. A positive number can mean real improvement the ratings hadn\'t caught up to yet, close-game results, or luck; it doesn\'t by itself say which.</li>' +
       '<li>All records and stats cover games against FBS opponents only; the database doesn\'t store FCS games.</li>' +
-      '<li><b>CoE v1</b> drives the playoff model. <b>Game CoE 2.0</b> is the experimental hybrid layer (not used for bids), shown only for seasons where it has been computed.</li>' +
+      '<li><b>CoE v1</b> drives the playoff model. <b>Game CoE 2.0</b> is the experimental hybrid layer (it drives nothing), shown only for seasons where it has been computed.</li>' +
     '</ul></details>';
   const sel = document.getElementById('tp-an-season');
   if (sel) sel.addEventListener('change', () => { teamPageState.season = Number(sel.value); fillAnalyticsPanel(tp, team); });
@@ -2963,7 +2939,7 @@ window.addEventListener('resize', () => {
 // ---------------- Home (Milestone 4) ----------------
 // Everything here reads authoritative exports: DATA.upcoming (games, predictions
 // and the current Elo board, all from src/predict_upcoming.py) and
-// DATA.conference_board (the bid-setting order). Nothing is re-ranked or
+// DATA.conference_board (conference strength order). Nothing is re-ranked or
 // re-predicted in the browser.
 function upcomingGroups() {
   // Postseason weeks restart at 1 in CFBD, so bowls/CFP get their own group.
@@ -3052,7 +3028,7 @@ function renderConferenceBoard() {
         '</span><span class="v">' + fmt(coe) + '</span></li>').join('') + '</ol>'
     : '<div class="empty-note">No conference ratings yet.</div>';
   return '<div class="panel">' + panelHead('Conference CoE', '<a class="side-link" href="#section=rankings&view=conference-coe&season=' + b.season + '">Details &rarr;</a>') + body +
-    '<p class="side-note">5-year rolling CoE' + (b.season ? ', ' + b.season : '') + ': the order that sets playoff bids.</p></div>';
+    '<p class="side-note">5-year rolling CoE' + (b.season ? ', ' + b.season : '') + ': conference strength, strongest first.</p></div>';
 }
 
 // ---- AP / CFP Top 25 (Milestone 5) ----
@@ -4585,9 +4561,10 @@ function renderCoverage() {
 // which the build reads from config/model_config.json and from the code itself -- never typed here.
 function renderMethodology() {
   const M = STATIC_MANIFEST.model_params || {};
-  const E = M.elo || {}, H = M.hybrid || {}, C2 = M.coe2 || {}, V1 = M.coe_v1 || {}, bids = M.playoff_bids || [];
+  const E = M.elo || {}, H = M.hybrid || {}, C2 = M.coe2 || {}, V1 = M.coe_v1 || {};
+  const PF = M.playoff_format || {};
   const pw = V1.PHASE_WEIGHTS || {};
-  const bidText = bids.map(([lo, hi, n]) => (lo === hi ? 'rank ' + lo : 'ranks ' + lo + '–' + hi) + ': ' + n + ' bid' + (n === 1 ? ' (champion only)' : 's')).join('; ');
+  const frText = (PF.FIRST_ROUND_PAIRS || []).map(([hi, lo]) => hi + ' v ' + lo).join(', ');
   const f = (title, html) => '<details class="help"><summary>' + title + '</summary>' + html + '</details>';
   return '<h2 class="view-title">How it works</h2><div class="panel method">' +
     '<p>This site measures college football three different ways, on purpose kept separate: <b>Elo</b> asks how strong a team is right now; ' +
@@ -4610,7 +4587,7 @@ function renderMethodology() {
       '<p>The winner always gains exactly what the loser drops. The margin multiplier shrinks when a heavy favorite wins big, so running up the score on a weak ' +
       'opponent counts for less.</p>') +
 
-    '<h3>CoE v1: the playoff coefficient</h3><p>The coefficient that decides playoff bids, seeding and home field. It\'s solved for a whole season at once: ' +
+    '<h3>CoE v1: the playoff coefficient</h3><p>The coefficient the playoff model runs on: it picks the field, sets the seeds and decides who hosts. It\'s solved for a whole season at once: ' +
     'a win is worth the opponent\'s rating, a loss still earns a little, and the calculation repeats until the ratings settle. Postseason games count more. ' +
     'Early in a season, when few games are played, ratings lean on the previous season so a couple of results can\'t swing everything.</p>' +
     f('The CoE v1 details', '<ul><li>' + V1.ITERATIONS + ' passes; each win adds the opponent\'s rating × the game weight (regular ' + pw.regular + ', bowl ' + pw.bowl +
@@ -4634,9 +4611,21 @@ function renderMethodology() {
       '<p>The five-season CoE is frozen before the season starts, so this season\'s results never change how earlier games were valued. It begins in 1985, ' +
       'once five prior seasons exist.</p>') +
 
-    '<h3>The playoff model</h3><p>Conferences are ranked by five-year conference CoE, and the rank sets how many bids each gets (' + esc(bidText) +
-    '). Every conference champion qualifies; independents qualify only if their own CoE beats the weakest at-large team. Seeding and home field follow team CoE. ' +
-    'Simulated brackets are always labeled as simulations and kept apart from real results.</p>' +
+    '<h3>The playoff model</h3><p>This is the real College Football Playoff format: ' + PF.FIELD_SIZE +
+    ' teams, of which the ' + PF.AUTO_BIDS + ' highest-ranked conference champions hold automatic bids and ' +
+    'the ' + (PF.FIELD_SIZE - PF.AUTO_BIDS) + ' strongest teams left take at-large bids. Seeds run straight ' +
+    'down the ranking, seeds 1\u2013' + PF.BYE_SEEDS + ' sit out the first round, and the first round pairs ' +
+    esc(frText) + ' at the higher seed\u2019s home. Everything after that is at a neutral site.</p>' +
+    '<p>The format needs a national ranking and this project has no selection committee, so every ' +
+    'ordering it needs \u2014 which champions are the top five, which teams are the best available, ' +
+    'and the seeds themselves \u2014 is the five-year rolling team CoE this site already seeds and ' +
+    'assigns home field by. That is a strength rating rather than a resume ranking, and five years ' +
+    'moves more slowly than one season, so read a field here as the strongest programs with a ' +
+    'champion floor, not as a guess at what the committee would do. A champion is the top team in ' +
+    'this project\u2019s derived conference standings, which is not always the team that won the ' +
+    'conference title game. Independents cannot win a conference, so they compete for at-large bids ' +
+    'like everyone else. Simulated brackets are always labeled as simulations and kept apart from ' +
+    'real results.</p>' +
 
     '<h3>Rules the data follows</h3><ul>' +
     '<li>Win probabilities and ratings shown for past games are the values stored <b>before</b> kickoff, never recomputed with today\'s ratings.</li>' +
@@ -5546,7 +5535,7 @@ const CONF_RECORD_NOTE =
       'College Football Playoff began with the 2014 season.</li>' +
     '<li><b>Conference CoE 2.0</b> is copied from <code>conference_coe2_by_season</code> and counts a slightly ' +
       'different game set: every postseason game is external to it, including the rare same-conference bowl. It is ' +
-      'experimental and does not set playoff bids.</li>' +
+      'experimental and drives nothing.</li>' +
     '<li><b>National titles</b> come from the hand-maintained reference list, credited to the conference the team ' +
       'belonged to that season. They are never inferred from game results.</li>' +
   '</ul></details>';
@@ -5617,21 +5606,21 @@ function fillConfSummary(cp, c) {
   const rank = (r, of) => (r ? '#' + r + (of ? ' of ' + of : '') : 'N/A');
   const board = DATA.conference_board || { rows: [] };
   const bidIdx = (board.rows || []).findIndex(r => r[0] === c.name);
-  const bids = ((STATIC_MANIFEST.model_params || {}).playoff_bids || [])
-    .find(([lo, hi]) => bidIdx >= 0 && bidIdx + 1 >= lo && bidIdx + 1 <= hi);
   const ext = T.ext || [0, 0, 0], bowl = T.bowl || [0, 0, 0, 0], cfp = T.cfp || [0, 0, 0];
 
-  // The bid rank is the CURRENT season's bid-setting order, so it is only shown
-  // beside that season -- it would be wrong to print it next to 1994.
+  // There is no bid-rank tile any more. Under the 12-team format a conference's
+  // strength rank allocates nothing: its champion competes with the other nine
+  // champions for five automatic bids, and everything else is won on team
+  // strength. The rank below is a strength standing, and is labeled as one.
   const bidTile = (bidIdx >= 0 && season === (board.season ?? season))
-    ? teamStat('Playoff bid rank', '#' + (bidIdx + 1),
-        (bids ? bids[2] + (bids[2] === 1 ? ' bid' : ' bids') : 'no bids') + ' &middot; ' + board.season)
+    ? teamStat('Conference strength rank', '#' + (bidIdx + 1),
+        'by 5-year rolling CoE &middot; ' + board.season)
     : '';
   const tiles =
     teamStat('CoE (season)', row[F.coe] == null ? 'N/A' : fmt(row[F.coe]),
       rank(row[F.coe_rank], row[F.coe_of]) + ' &middot; ' + season) +
     teamStat('CoE (5-yr)', row[F.coe5] == null ? 'N/A' : fmt(row[F.coe5]),
-      row[F.coe5] == null ? 'no full window yet' : rank(row[F.coe5_rank], row[F.coe5_of]) + ' &middot; sets playoff bids') +
+      row[F.coe5] == null ? 'no full window yet' : rank(row[F.coe5_rank], row[F.coe5_of]) + ' &middot; conference strength') +
     teamStat('Conference CoE 2.0', row[F.coe2] == null ? 'N/A' : row[F.coe2].toFixed(1),
       row[F.coe2] == null ? 'not computed for ' + season
         : row[F.coe2_games] + ' external games &middot; experimental') +

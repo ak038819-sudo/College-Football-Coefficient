@@ -10,7 +10,7 @@ from collections import defaultdict
 from pathlib import Path
 
 import build_coefficients
-import select_playoff_field_v2
+import select_cfp_field
 from export_static_data import model_params
 from export_team_pages import build_team_pages
 
@@ -78,4 +78,12 @@ def test_methodology_reads_the_live_parameters_not_copies():
     assert v1["PHASE_WEIGHTS"] == build_coefficients.PHASE_WEIGHTS
     assert v1["WITHIN_WINDOW_DECAY_BASE"] == build_coefficients.WITHIN_WINDOW_DECAY_BASE
     assert v1["LOSS_PENALTY"] == 0.15 and v1["PRIOR_REGRESSION"] is not None   # read from inside a function / argparse
-    assert m["playoff_bids"] == [[lo, hi, n] for (lo, hi), n in sorted(select_playoff_field_v2.YEAR2_BIDS.items())]
+    # The playoff format's own constants, read out of the live selector. This
+    # replaced a "playoff_bids" conference-rank table, which only the invented
+    # 24-team model ever had and which would now describe nothing on the site.
+    fmt = m["playoff_format"]
+    assert fmt["FIELD_SIZE"] == select_cfp_field.FIELD_SIZE == 12
+    assert fmt["AUTO_BIDS"] == select_cfp_field.AUTO_BIDS == 5
+    assert fmt["BYE_SEEDS"] == select_cfp_field.BYE_SEEDS == 4
+    assert [tuple(p) for p in fmt["FIRST_ROUND_PAIRS"]] == select_cfp_field.FIRST_ROUND_PAIRS
+    assert "playoff_bids" not in m, "the page would show a bid table the model no longer has"

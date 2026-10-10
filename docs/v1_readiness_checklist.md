@@ -26,12 +26,13 @@ carried over from the old file.
 
 | Item | State |
 | --- | --- |
-| 24 teams selected every year | **Verified.** `tests/test_playoff_field.py::test_total_field_is_24` drives the real selector over all twelve seasons 2014–2025. |
-| Exactly 8 byes | **Verified**, same file, same seasons. It is a regression test for a real bug that once produced 7. |
-| Pot structure stable | **Verified.** Pot 1 and Pot 2 are each exactly 8, so a 1-to-1 draw pairing is always possible. This too guards a real bug (7 vs 9). |
-| Conference champions auto-bid | **Verified** through `YEAR1_BIDS`/`YEAR2_BIDS` and `select_qualifiers`. |
-| Independents never displace a champion | **Verified.** Two tests, one on real data for every season and one on a constructed independent made far stronger than the champion it would displace. |
-| No independents in the database | **Superseded, by design.** Independents are a real part of the sport — 2026 has Notre Dame and UConn — and the model admits them through an explicit strength threshold rather than excluding them. The invariant that matters is the one above: a threshold may never cost a champion its bid. |
+| A fixed field size every year | **Verified.** The live format is 12 teams (see the closing section). `tests/test_cfp_field.py` drives the real selector over all thirteen seasons 2014–2026: twelve teams, seeded 1 to 12, no team twice. |
+| A fixed number of byes | **Verified**, same file, same seasons: seeds 1–4 and nobody else, and each of them reaches the quarterfinals in 100% of simulated runs. |
+| Bid structure stable | **Verified.** Exactly 5 automatic and 7 at-large bids every season, and the 5 automatic bids are exactly the 5 strongest conference champions. |
+| Conference champions auto-bid | **Partly, by design.** The real format gives automatic bids to the five highest-ranked champions, not to all of them. Verified: an automatic bid never goes to a non-champion, and no at-large bid passes over a stronger eligible team, so a champion that misses out was genuinely out-ranked. |
+| Independents handled correctly | **Verified.** An independent can be selected but never automatically, which is the real rule: no conference, no championship, no automatic bid. The 24-team model's special strength threshold is gone — independents are ordinary at-large candidates now. |
+| Seeding is the ranking | **Verified.** Seeds run straight down 5-year rolling team CoE, which is the 2025 CFP rule change; under the 2024 rule the top four champions took the top four seeds wherever they ranked. A test asserts the ranking order, so the site cannot silently run the older variant. |
+| The bracket keeps its halves | **Verified** twice, in Python and in the page's own copy: with the top two seeds made unbeatable they must both reach the final, which fails if the halves are wrong. |
 | All teams assigned to conferences | **Verified for 2026** as of today: 136 of 136 FBS programs have a membership row, each conference at its real size. Six were silently missing until the CFBD name-resolution fix of 2026-10-10. Idaho (FCS since 2018) and Sacramento State and North Dakota State (reclassifying upward) correctly have none. Earlier seasons are covered by committed snapshots plus `patch_known_membership_gaps.py`. |
 | No duplicate selections | **Verified** incidentally — a duplicate would break the field-size and pot-size counts above. Not asserted directly. |
 | Deterministic tiebreakers | **Open.** The selector is deterministic for a fixed database, but nothing asserts that two runs of the full pipeline produce an identical field. |
@@ -94,8 +95,8 @@ verified in Chromium against a locally served `ui/` on 2026-10-10:
   Players, Matchup, Playoff), Standings (Elo, conference, home-field), Teams,
   Stadiums, a team page, People, Find a Game.
 - The season selector is built from the data, offering 1980–2026.
-- The 24-team field, byes and pots render for a selected season, and the
-  bracket simulates.
+- The 12-team field, the byes and the first round render for a selected
+  season, and the bracket simulates.
 - No year or ruleset is hardcoded in a page; season and view live in the hash
   URL.
 
@@ -103,22 +104,35 @@ Open, and tracked in `release-v0.1.9.md`: standings rank movement, an
 intentional logo treatment, and a documented visual identity reviewed across
 the whole desktop and mobile journey rather than in isolated screenshots.
 
-## The two playoff formats, and which one is live
+## Which playoff format is live
 
-`src/build_playoff_field.py` implements a **12-team, 5-auto-bid** field --
-the real College Football Playoff's format -- and nothing imports it today.
-The owner decided on 2026-10-10 to keep it: the project is heading toward
-the actual CFP format and away from the invented 24-team bracket, so that
-file is the expected target rather than a leftover.
+The real **12-team** College Football Playoff, since 2026-10-10. Everything
+on the site -- the Field, Bracket & Simulator, Title Odds and History pages,
+the team pages' appearance and bye counts, and the methodology page -- runs
+on `src/coefficients/select_cfp_field.py` and
+`src/coefficients/simulate_cfp_bracket.py`. Every invariant in section 1
+above is that format's. The write-up is
+[`cfp-12-team-format.md`](cfp-12-team-format.md).
 
-Everything live still runs on the 24-team model. `select_playoff_field_v2.py`
-is what every export, test and page goes through, and the invariants verified
-in section 1 above -- 24 teams, 8 byes, two pots of 8 -- are its invariants.
-They are correct today and will not survive the move, so they are a record of
-the current model rather than a commitment.
+The invented 24-team model is **retained and still runs**, with its own
+tests, but nothing live reads it: `select_playoff_field_v2.py` (field),
+`draw_playoff_bracket_v2.py` (the pot draw), `simulate_bracket.py` (the
+24-team simulation) and `select_nit_field.py` (the 16-team NIT, which has
+never been exported or shown). Its ruleset is `coe_spec.md`, which now says
+so at the top. `build_playoff_field.py` -- an older, cruder 12-team sketch
+that wrote to a database table and picked champions by rating rather than
+standings -- is superseded by `select_cfp_field.py` and is not used either.
 
-That move is not scoped here. When it happens it reaches the field selector,
-the bracket draw and simulator, the title-odds export, the playoff pages, the
-CoE 2.0 `cfp_appearance`/`cfp_win` bonus categories and `docs/coe_spec.md`,
-and it changes published history for every season from 2014 on, so it wants
-its own plan.
+Two things the earlier version of this section got wrong, recorded so they
+are not re-derived: the move did **not** reach the CoE 2.0
+`cfp_appearance`/`cfp_win` bonus categories, because those count real CFP
+games (`phase == 'cfp'`) rather than model ones; and it did **not** change
+published history, because the model's playoff field was never a stored
+table -- it is computed per season at export time, so every season from 2014
+on simply recomputes under the new format.
+
+What the move did reach: the field selector, the bracket and simulator, the
+title-odds export, the three playoff pages, the static manifest's model
+parameters (`playoff_bids` became `playoff_format`), the conference page's
+bid-rank tile, the footer, the methodology page, and `coe_spec.md`'s
+framing.
