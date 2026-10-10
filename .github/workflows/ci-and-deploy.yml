@@ -52,6 +52,8 @@ on:
 
 permissions:
   contents: write
+  # The alert jobs below keep one issue as this pipeline's health light.
+  issues: write
 
 jobs:
   test:
@@ -318,3 +320,46 @@ jobs:
           scripts/publish_to_main.sh "$MESSAGE" \
             data/raw/ ui/dashboard.html ui/dashboard_data.json ui/data/ \
             ui/assets/ ui/logo_manifest.json data/processed/
+
+  # A scheduled failure here is invisible: nothing publishes while the test
+  # job is red, and the only place that shows is the Actions tab. Six runs
+  # failed between 2026-10-09 06:31 and 2026-10-10 00:13 UTC and no ratings
+  # refresh reached the site for four days. These two jobs keep ONE issue
+  # open for as long as main cannot publish, and close it when it can.
+  #
+  # Pull requests are deliberately excluded: a failing PR already shows its
+  # own red check to the person who pushed it.
+  alert-failure:
+    needs: [test, rebuild-and-deploy]
+    if: >-
+      always() && github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
+      (needs.test.result == 'failure' || needs.rebuild-and-deploy.result == 'failure')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Flag the pipeline as failing
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 scripts/alert_pipeline_state.py --state failed \
+            --branch "${GITHUB_REF_NAME}" \
+            --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+  alert-recovery:
+    needs: [test, rebuild-and-deploy]
+    if: >-
+      always() && github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
+      needs.test.result == 'success' &&
+      needs.rebuild-and-deploy.result != 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Clear the flag if one is set
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 scripts/alert_pipeline_state.py --state recovered \
+            --branch "${GITHUB_REF_NAME}" \
+            --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
