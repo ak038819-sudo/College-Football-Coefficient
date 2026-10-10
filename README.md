@@ -2,7 +2,7 @@
 
 **Predictive rating models, playoff selection, and Monte Carlo simulation for 46 seasons of FBS college football.**
 
-🔗 **Live dashboard:** https://ak038819-sudo.github.io/College-Football-Coefficient/
+🔗 **Live dashboard:** [Seed Line Sports](https://ak038819-sudo.github.io/College-Football-Coefficient/)
 
 This project rebuilds college football's postseason around objective ratings instead of polls. It ingests game data from the College Football Data (CFBD) API, rates every team with Elo and an opponent-strength model, selects and seeds the real 12-team College Football Playoff field, simulates the bracket, and publishes everything as an interactive static dashboard. A test suite gates every deploy.
 
