@@ -4,40 +4,40 @@ game_id,season_year,week,date,season_type,home_team,away_team,home_conference,aw
 401858202,2026,1,2026-08-29,regular,Virginia,NC State,ACC,ACC,34,8,0,regular,regular,0,,Scott Stadium,3923
 401864577,2026,1,2026-08-29,regular,North Dakota State,Jacksonville State,Mountain West,Conference USA,33,7,0,regular,regular,0,,Fargodome,3714
 401866408,2026,1,2026-08-29,regular,Eastern Michigan,Sacramento State,Mid-American,Mid-American,28,17,0,regular,regular,0,,Rynearson Stadium,3912
-401858201,2026,1,2026-08-29,regular,Stanford,Hawai'i,ACC,Mountain West,37,27,0,regular,regular,0,,Stanford Stadium,3940
 401864570,2026,1,2026-08-29,regular,Florida State,New Mexico State,ACC,Conference USA,34,17,0,regular,regular,0,,Doak Campbell Stadium,3697
+401858201,2026,1,2026-08-29,regular,Stanford,Hawai'i,ACC,Mountain West,37,27,0,regular,regular,0,,Stanford Stadium,3940
 401862693,2026,1,2026-08-30,regular,UNLV,Memphis,Mountain West,American Athletic,21,27,0,regular,regular,0,,Allegiant Stadium,6501
 401858423,2026,1,2026-09-03,regular,Rutgers,Massachusetts,Big Ten,Mid-American,21,37,0,regular,regular,0,,SHI Stadium,6577
 401858204,2026,1,2026-09-03,regular,Wake Forest,Akron,ACC,Mid-American,38,16,0,regular,regular,0,,Allegacy Federal Credit Union Stadium,3630
 401856776,2026,1,2026-09-04,regular,Georgia Tech,Colorado,ACC,Big 12,13,14,0,regular,regular,0,,Bobby Dodd Stadium,721
 401858424,2026,1,2026-09-04,regular,Illinois,UAB,Big Ten,American Athletic,42,23,0,regular,regular,0,,"Memorial Stadium (Champaign, IL)",3832
 401864495,2026,1,2026-09-04,regular,Eastern Michigan,San José State,Mid-American,Mountain West,21,27,0,regular,regular,0,,Rynearson Stadium,3912
-401856664,2026,1,2026-09-05,regular,Oklahoma,UTEP,SEC,Mountain West,51,0,0,regular,regular,0,,"Memorial Stadium (Norman, OK)",3835
 401858429,2026,1,2026-09-05,regular,Michigan State,Toledo,Big Ten,Mid-American,30,20,0,regular,regular,0,,Spartan Stadium,3936
+401856664,2026,1,2026-09-05,regular,Oklahoma,UTEP,SEC,Mountain West,51,0,0,regular,regular,0,,"Memorial Stadium (Norman, OK)",3835
 401858436,2026,1,2026-09-05,regular,USC,Fresno State,Big Ten,Pac-12,39,0,0,regular,regular,0,,Los Angeles Memorial Coliseum,477
 401858206,2026,1,2026-09-05,regular,Stanford,Miami,ACC,ACC,6,45,0,regular,regular,0,,Stanford Stadium,3940
+401856778,2026,1,2026-09-05,regular,Houston,Oregon State,Big 12,Pac-12,33,20,0,regular,regular,0,,TDECU Stadium,4728
 401858430,2026,1,2026-09-05,regular,Nebraska,Ohio,Big Ten,Mid-American,49,21,0,regular,regular,0,,"Memorial Stadium (Lincoln, NE)",3834
-401858425,2026,1,2026-09-05,regular,Indiana,North Texas,Big Ten,American Athletic,52,16,0,regular,regular,0,,"Memorial Stadium (Bloomington, IN)",3830
-401869960,2026,1,2026-09-05,regular,James Madison,Liberty,Sun Belt,Conference USA,20,13,0,regular,regular,0,,Bridgeforth Stadium,3651
 401856634,2026,1,2026-09-05,regular,Alabama,East Carolina,SEC,American Athletic,48,10,0,regular,regular,0,,Bryant-Denny Stadium,3657
 401856780,2026,1,2026-09-05,regular,West Virginia,Coastal Carolina,Big 12,Sun Belt,31,24,0,regular,regular,0,,Milan Puskar Stadium,3842
-401856778,2026,1,2026-09-05,regular,Houston,Oregon State,Big 12,Pac-12,33,20,0,regular,regular,0,,TDECU Stadium,4728
-401858432,2026,1,2026-09-05,regular,Ohio State,Ball State,Big Ten,Mid-American,56,3,0,regular,regular,0,,Ohio Stadium,3861
+401858425,2026,1,2026-09-05,regular,Indiana,North Texas,Big Ten,American Athletic,52,16,0,regular,regular,0,,"Memorial Stadium (Bloomington, IN)",3830
+401869960,2026,1,2026-09-05,regular,James Madison,Liberty,Sun Belt,Conference USA,20,13,0,regular,regular,0,,Bridgeforth Stadium,3651
 401858207,2026,1,2026-09-05,regular,Pittsburgh,Miami (OH),ACC,Mid-American,59,14,0,regular,regular,0,,Acrisure Stadium,3752
+401858432,2026,1,2026-09-05,regular,Ohio State,Ball State,Big Ten,Mid-American,56,3,0,regular,regular,0,,Ohio Stadium,3861
 401856665,2026,1,2026-09-05,regular,South Carolina,Kent State,SEC,Mid-American,57,0,0,regular,regular,0,,Williams-Brice Stadium,3994
-401858209,2026,1,2026-09-05,regular,Duke,Tulane,ACC,American Athletic,17,3,0,regular,regular,0,,Wallace Wade Stadium,3982
-401858434,2026,1,2026-09-05,regular,Penn State,Marshall,Big Ten,Sun Belt,45,0,0,regular,regular,0,,Beaver Stadium,3632
 401856636,2026,1,2026-09-05,regular,Auburn,Baylor,SEC,Big 12,17,16,0,regular,regular,1,Aflac Kickoff,Mercedes-Benz Stadium,5348
 401856667,2026,1,2026-09-05,regular,Texas,Texas State,SEC,Pac-12,59,7,0,regular,regular,0,,DKR-Texas Memorial Stadium,3910
-401858433,2026,1,2026-09-05,regular,Oregon,Boise State,Big Ten,Pac-12,34,27,0,regular,regular,0,,Autzen Stadium,3626
 401856777,2026,1,2026-09-05,regular,Cincinnati,Boston College,Big 12,ACC,34,15,0,regular,regular,0,,Nippert Stadium,3854
+401858433,2026,1,2026-09-05,regular,Oregon,Boise State,Big Ten,Pac-12,34,27,0,regular,regular,0,,Autzen Stadium,3626
+401858434,2026,1,2026-09-05,regular,Penn State,Marshall,Big Ten,Sun Belt,45,0,0,regular,regular,0,,Beaver Stadium,3632
+401858209,2026,1,2026-09-05,regular,Duke,Tulane,ACC,American Athletic,17,3,0,regular,regular,0,,Wallace Wade Stadium,3982
 401856772,2026,1,2026-09-05,regular,Tulsa,Oklahoma State,American Athletic,Big 12,24,10,0,regular,regular,0,,Chapman Stadium,3674
 401858426,2026,1,2026-09-05,regular,Iowa,Northern Illinois,Big Ten,Mountain West,40,0,0,regular,regular,0,,Kinnick Stadium,3793
 401860878,2026,1,2026-09-05,regular,Colorado State,Wyoming,Pac-12,Mountain West,35,13,0,regular,regular,0,,Canvas Stadium,5388
-401862695,2026,1,2026-09-05,regular,Memphis,Arkansas State,American Athletic,Sun Belt,42,24,0,regular,regular,0,,Simmons Bank Liberty Stadium,3805
-401870763,2026,1,2026-09-05,regular,Troy,Sam Houston,Sun Belt,Conference USA,24,21,0,regular,regular,0,,Veterans Memorial Stadium (AL),3975
 401862699,2026,1,2026-09-05,regular,South Florida,Florida International,American Athletic,Conference USA,19,9,0,regular,regular,0,,Raymond James Stadium,3886
+401862695,2026,1,2026-09-05,regular,Memphis,Arkansas State,American Athletic,Sun Belt,42,24,0,regular,regular,0,,Simmons Bank Liberty Stadium,3805
 401856668,2026,1,2026-09-05,regular,Texas A&M,Missouri State,SEC,Conference USA,50,0,0,regular,regular,0,,Kyle Field,3795
+401870763,2026,1,2026-09-05,regular,Troy,Sam Houston,Sun Belt,Conference USA,24,21,0,regular,regular,0,,Veterans Memorial Stadium (AL),3975
 401856660,2026,1,2026-09-05,regular,LSU,Clemson,SEC,ACC,51,10,0,regular,regular,0,,Tiger Stadium (LA),3958
 401858428,2026,1,2026-09-05,regular,Michigan,Western Michigan,Big Ten,Mid-American,13,12,0,regular,regular,0,,Michigan Stadium,3558
 401856662,2026,1,2026-09-05,regular,Mississippi State,UL Monroe,SEC,Sun Belt,62,13,0,regular,regular,0,,Davis Wade Stadium,3693
@@ -52,47 +52,47 @@ game_id,season_year,week,date,season_type,home_team,away_team,home_conference,aw
 401858212,2026,1,2026-09-07,regular,Florida State,SMU,ACC,ACC,24,27,0,regular,regular,0,,Doak Campbell Stadium,3697
 401858214,2026,2,2026-09-11,regular,Boston College,Rutgers,ACC,Big Ten,28,21,0,regular,regular,0,,"Alumni Stadium (Chestnut Hill, MA)",3615
 401856678,2026,2,2026-09-12,regular,Kansas,Missouri,Big 12,SEC,21,38,0,regular,regular,0,,Memorial Stadium,3833
-401864571,2026,2,2026-09-12,regular,East Carolina,App State,American Athletic,Sun Belt,24,27,0,regular,regular,0,,Dowdy-Ficklen Stadium,3699
-401856782,2026,2,2026-09-12,regular,Oklahoma State,Oregon,Big 12,Big Ten,39,31,0,regular,regular,0,,Boone Pickens Stadium,3646
-401856781,2026,2,2026-09-12,regular,Kansas State,Washington State,Big 12,Pac-12,34,7,0,regular,regular,0,,Bill Snyder Family Stadium,3636
-401856683,2026,2,2026-09-12,regular,Texas A&M,Arizona State,SEC,Big 12,48,20,0,regular,regular,0,,Kyle Field,3795
-401862702,2026,2,2026-09-12,regular,Army,South Florida,American Athletic,American Athletic,24,28,0,regular,regular,0,,Michie Stadium,3841
-401858224,2026,2,2026-09-12,regular,Purdue,Wake Forest,Big Ten,ACC,36,38,1,regular,regular,0,,Ross-Ade Stadium,3907
-401856679,2026,2,2026-09-12,regular,Michigan,Oklahoma,Big Ten,SEC,17,10,0,regular,regular,0,,Michigan Stadium,3558
 401858221,2026,2,2026-09-12,regular,Virginia Tech,Old Dominion,ACC,Sun Belt,44,21,0,regular,regular,0,,Lane Stadium,3799
+401864571,2026,2,2026-09-12,regular,East Carolina,App State,American Athletic,Sun Belt,24,27,0,regular,regular,0,,Dowdy-Ficklen Stadium,3699
+401856683,2026,2,2026-09-12,regular,Texas A&M,Arizona State,SEC,Big 12,48,20,0,regular,regular,0,,Kyle Field,3795
 401858442,2026,2,2026-09-12,regular,Temple,Penn State,American Athletic,Big Ten,9,27,0,regular,regular,0,,Lincoln Financial Field,3806
+401856781,2026,2,2026-09-12,regular,Kansas State,Washington State,Big 12,Pac-12,34,7,0,regular,regular,0,,Bill Snyder Family Stadium,3636
+401858224,2026,2,2026-09-12,regular,Purdue,Wake Forest,Big Ten,ACC,36,38,1,regular,regular,0,,Ross-Ade Stadium,3907
+401862702,2026,2,2026-09-12,regular,Army,South Florida,American Athletic,American Athletic,24,28,0,regular,regular,0,,Michie Stadium,3841
+401856782,2026,2,2026-09-12,regular,Oklahoma State,Oregon,Big 12,Big Ten,39,31,0,regular,regular,0,,Boone Pickens Stadium,3646
+401856679,2026,2,2026-09-12,regular,Michigan,Oklahoma,Big Ten,SEC,17,10,0,regular,regular,0,,Michigan Stadium,3558
 401856673,2026,2,2026-09-12,regular,Georgia,Western Kentucky,SEC,Conference USA,70,20,0,regular,regular,0,,Sanford Stadium,3917
+401860884,2026,2,2026-09-12,regular,Texas State,UTSA,Pac-12,American Athletic,26,31,0,regular,regular,0,,Bobcat Stadium (TX),3644
+401862708,2026,2,2026-09-12,regular,UAB,UL Monroe,American Athletic,Sun Belt,26,20,0,regular,regular,0,,Protective Stadium,7221
+401858440,2026,2,2026-09-12,regular,Michigan State,Eastern Michigan,Big Ten,Mid-American,35,7,0,regular,regular,0,,Spartan Stadium,3936
+401858444,2026,2,2026-09-12,regular,UConn,Maryland,FBS Independents,Big Ten,14,38,0,regular,regular,0,,Pratt & Whitney Stadium,3892
+401858446,2026,2,2026-09-12,regular,Washington,Utah State,Big Ten,Pac-12,16,14,0,regular,regular,0,,Husky Stadium,3765
+401856810,2026,2,2026-09-12,regular,BYU,Arizona,Big 12,Big 12,28,17,0,regular,regular,0,,LaVell Edwards Stadium,3801
+401856677,2026,2,2026-09-12,regular,Minnesota,Mississippi State,Big Ten,SEC,13,38,0,regular,regular,0,,Huntington Bank Stadium,3953
+401858217,2026,2,2026-09-12,regular,Illinois,Duke,Big Ten,ACC,27,31,0,regular,regular,0,,"Memorial Stadium (Champaign, IL)",3832
 401856674,2026,2,2026-09-12,regular,Kentucky,Alabama,SEC,SEC,17,45,0,regular,regular,0,,Kroger Field,3683
 401856790,2026,2,2026-09-12,regular,Pittsburgh,UCF,ACC,Big 12,12,7,0,regular,regular,0,,Acrisure Stadium,3752
-401858446,2026,2,2026-09-12,regular,Washington,Utah State,Big Ten,Pac-12,16,14,0,regular,regular,0,,Husky Stadium,3765
-401860884,2026,2,2026-09-12,regular,Texas State,UTSA,Pac-12,American Athletic,26,31,0,regular,regular,0,,Bobcat Stadium (TX),3644
-401856810,2026,2,2026-09-12,regular,BYU,Arizona,Big 12,Big 12,28,17,0,regular,regular,0,,LaVell Edwards Stadium,3801
-401858440,2026,2,2026-09-12,regular,Michigan State,Eastern Michigan,Big Ten,Mid-American,35,7,0,regular,regular,0,,Spartan Stadium,3936
-401858217,2026,2,2026-09-12,regular,Illinois,Duke,Big Ten,ACC,27,31,0,regular,regular,0,,"Memorial Stadium (Champaign, IL)",3832
-401862708,2026,2,2026-09-12,regular,UAB,UL Monroe,American Athletic,Sun Belt,26,20,0,regular,regular,0,,Protective Stadium,7221
-401858216,2026,2,2026-09-12,regular,Syracuse,California,ACC,ACC,18,21,0,regular,regular,0,,JMA Wireless Dome,1964
-401856677,2026,2,2026-09-12,regular,Minnesota,Mississippi State,Big Ten,SEC,13,38,0,regular,regular,0,,Huntington Bank Stadium,3953
 401859184,2026,2,2026-09-12,regular,Notre Dame,Rice,FBS Independents,American Athletic,52,0,0,regular,regular,0,,Notre Dame Stadium,3855
-401858444,2026,2,2026-09-12,regular,UConn,Maryland,FBS Independents,Big Ten,14,38,0,regular,regular,0,,Pratt & Whitney Stadium,3892
+401858216,2026,2,2026-09-12,regular,Syracuse,California,ACC,ACC,18,21,0,regular,regular,0,,JMA Wireless Dome,1964
 401862705,2026,2,2026-09-12,regular,North Texas,UNLV,American Athletic,Mountain West,44,6,0,regular,regular,0,,DATCU Stadium,3825
 401856684,2026,2,2026-09-12,regular,Vanderbilt,Delaware,SEC,Conference USA,35,26,0,regular,regular,0,,FirstBank Stadium,3973
+401866418,2026,2,2026-09-12,regular,Ohio,Jacksonville State,Mid-American,Conference USA,29,27,1,regular,regular,0,,Peden Stadium,3876
 401866414,2026,2,2026-09-12,regular,Florida International,Buffalo,Conference USA,Mid-American,33,20,0,regular,regular,0,,Pitbull Stadium,2031
 401860881,2026,2,2026-09-12,regular,Boise State,Memphis,Pac-12,American Athletic,38,20,0,regular,regular,0,,Albertsons Stadium,3653
-401866418,2026,2,2026-09-12,regular,Ohio,Jacksonville State,Mid-American,Conference USA,29,27,1,regular,regular,0,,Peden Stadium,3876
-401871045,2026,2,2026-09-12,regular,Marshall,Middle Tennessee,Sun Belt,Conference USA,28,26,0,regular,regular,0,,Joan C. Edwards Stadium,3775
 401908326,2026,2,2026-09-12,regular,Oklahoma Panhandle,Schreiner,,,47,29,0,regular,regular,0,,,
-401864575,2026,2,2026-09-12,regular,Tulane,South Alabama,American Athletic,Sun Belt,28,24,0,regular,regular,0,,Yulman Stadium,4729
-401858441,2026,2,2026-09-12,regular,Nebraska,Bowling Green,Big Ten,Mid-American,56,7,0,regular,regular,0,,"Memorial Stadium (Lincoln, NE)",3834
-401869955,2026,2,2026-09-12,regular,Kennesaw State,Georgia State,Conference USA,Sun Belt,17,31,0,regular,regular,0,,Fifth Third Stadium,4899
+401871045,2026,2,2026-09-12,regular,Marshall,Middle Tennessee,Sun Belt,Conference USA,28,26,0,regular,regular,0,,Joan C. Edwards Stadium,3775
 401856681,2026,2,2026-09-12,regular,Georgia Tech,Tennessee,ACC,SEC,24,45,0,regular,regular,0,,Bobby Dodd Stadium,721
 401862707,2026,2,2026-09-12,regular,Sam Houston,Tulsa,Conference USA,American Athletic,17,23,0,regular,regular,0,,Elliott T. Bowers Stadium,3647
+401864575,2026,2,2026-09-12,regular,Tulane,South Alabama,American Athletic,Sun Belt,28,24,0,regular,regular,0,,Yulman Stadium,4729
+401869955,2026,2,2026-09-12,regular,Kennesaw State,Georgia State,Conference USA,Sun Belt,17,31,0,regular,regular,0,,Fifth Third Stadium,4899
+401858441,2026,2,2026-09-12,regular,Nebraska,Bowling Green,Big Ten,Mid-American,56,7,0,regular,regular,0,,"Memorial Stadium (Lincoln, NE)",3834
 401858443,2026,2,2026-09-12,regular,UCLA,San Diego State,Big Ten,Pac-12,28,10,0,regular,regular,0,,Rose Bowl,1056
+401856788,2026,2,2026-09-12,regular,Iowa,Iowa State,Big Ten,Big 12,16,13,0,regular,regular,0,,Kinnick Stadium,3793
 401856682,2026,2,2026-09-12,regular,Texas,Ohio State,SEC,Big Ten,24,23,0,regular,regular,0,,DKR-Texas Memorial Stadium,3910
 401856783,2026,2,2026-09-12,regular,Oregon State,Texas Tech,Pac-12,Big 12,24,35,0,regular,regular,0,,Reser Stadium,3893
-401867796,2026,2,2026-09-12,regular,LSU,Louisiana Tech,SEC,Sun Belt,45,14,0,regular,regular,0,,Tiger Stadium (LA),3958
 401862703,2026,2,2026-09-12,regular,Florida Atlantic,Navy,American Athletic,American Athletic,38,30,0,regular,regular,0,,FAU Stadium,3715
-401856788,2026,2,2026-09-12,regular,Iowa,Iowa State,Big Ten,Big 12,16,13,0,regular,regular,0,,Kinnick Stadium,3793
 401858219,2026,2,2026-09-12,regular,Clemson,Georgia Southern,ACC,Sun Belt,22,7,0,regular,regular,0,,"Memorial Stadium (Clemson, SC)",3836
+401867796,2026,2,2026-09-12,regular,LSU,Louisiana Tech,SEC,Sun Belt,45,14,0,regular,regular,0,,Tiger Stadium (LA),3958
 401856676,2026,2,2026-09-12,regular,Ole Miss,Charlotte,SEC,American Athletic,41,9,0,regular,regular,0,,Vaught-Hemingway Stadium,3974
 401856671,2026,2,2026-09-12,regular,Auburn,Southern Miss,SEC,Sun Belt,43,8,0,regular,regular,0,,Jordan-Hare Stadium,3785
 401864502,2026,2,2026-09-13,regular,Air Force,North Dakota State,Mountain West,Mountain West,32,38,0,regular,regular,0,,Falcon Stadium,3713
@@ -104,107 +104,107 @@ game_id,season_year,week,date,season_type,home_team,away_team,home_conference,aw
 401858226,2026,3,2026-09-18,regular,Wake Forest,Miami,ACC,ACC,20,33,0,regular,regular,0,,Allegacy Federal Credit Union Stadium,3630
 401856811,2026,3,2026-09-19,regular,Texas Tech,Houston,Big 12,Big 12,28,26,0,regular,regular,0,,Jones AT&T Stadium,3784
 401869940,2026,3,2026-09-19,regular,Delaware,Coastal Carolina,Conference USA,Sun Belt,22,14,0,regular,regular,0,,Delaware Stadium,3695
-401856686,2026,3,2026-09-19,regular,Arkansas,Georgia,SEC,SEC,17,45,0,regular,regular,0,,Razorback Stadium,3887
-401858229,2026,3,2026-09-19,regular,Clemson,North Carolina,ACC,ACC,28,20,0,regular,regular,0,,"Memorial Stadium (Clemson, SC)",3836
-401860889,2026,3,2026-09-19,regular,Texas State,North Texas,Pac-12,American Athletic,49,35,0,regular,regular,0,,Bobcat Stadium (TX),3644
 401858451,2026,3,2026-09-19,regular,Minnesota,Akron,Big Ten,Mid-American,41,7,0,regular,regular,0,,Huntington Bank Stadium,3953
+401858454,2026,3,2026-09-19,regular,Ohio State,Kent State,Big Ten,Mid-American,59,3,0,regular,regular,0,,Ohio Stadium,3861
+401858456,2026,3,2026-09-19,regular,Penn State,Buffalo,Big Ten,Mid-American,55,13,0,regular,regular,0,,Beaver Stadium,3632
+401860889,2026,3,2026-09-19,regular,Texas State,North Texas,Pac-12,American Athletic,49,35,0,regular,regular,0,,Bobcat Stadium (TX),3644
+401858229,2026,3,2026-09-19,regular,Clemson,North Carolina,ACC,ACC,28,20,0,regular,regular,0,,"Memorial Stadium (Clemson, SC)",3836
+401856686,2026,3,2026-09-19,regular,Arkansas,Georgia,SEC,SEC,17,45,0,regular,regular,0,,Razorback Stadium,3887
 401856798,2026,3,2026-09-19,regular,Iowa State,Bowling Green,Big 12,Mid-American,55,7,0,regular,regular,0,,Jack Trice Stadium,3772
 401856792,2026,3,2026-09-19,regular,Kansas State,Tulane,Big 12,American Athletic,31,20,0,regular,regular,0,,Bill Snyder Family Stadium,3636
 401856812,2026,3,2026-09-19,regular,Kansas,Arizona State,Big 12,Big 12,17,24,0,regular,regular,1,,Wembley Stadium,2455
-401858456,2026,3,2026-09-19,regular,Penn State,Buffalo,Big Ten,Mid-American,55,13,0,regular,regular,0,,Beaver Stadium,3632
-401858454,2026,3,2026-09-19,regular,Ohio State,Kent State,Big Ten,Mid-American,59,3,0,regular,regular,0,,Ohio Stadium,3861
 401858460,2026,3,2026-09-19,regular,Wisconsin,Eastern Michigan,Big Ten,Mid-American,54,10,0,regular,regular,0,,Camp Randall Stadium,347
 401856695,2026,3,2026-09-19,regular,Vanderbilt,NC State,SEC,ACC,35,31,0,regular,regular,0,,FirstBank Stadium,3973
 401864508,2026,3,2026-09-19,regular,Central Michigan,Wyoming,Mid-American,Mountain West,24,10,0,regular,regular,0,,Kelly/Shorts Stadium,3786
 401862774,2026,3,2026-09-19,regular,Toledo,Temple,Mid-American,American Athletic,49,48,1,regular,regular,0,,Glass Bowl,3739
-401856797,2026,3,2026-09-19,regular,Cincinnati,Miami (OH),Big 12,Mid-American,35,31,0,regular,regular,0,,TQL Stadium,7173
-401856801,2026,3,2026-09-19,regular,Utah,Utah State,Big 12,Pac-12,33,0,0,regular,regular,0,,Rice-Eccles Stadium,587
-401858230,2026,3,2026-09-19,regular,Louisville,SMU,ACC,ACC,41,31,0,regular,regular,0,,L&N Federal Credit Union Stadium,3873
-401856685,2026,3,2026-09-19,regular,Alabama,Florida State,SEC,ACC,50,36,0,regular,regular,0,,Bryant-Denny Stadium,3657
 401858450,2026,3,2026-09-19,regular,Michigan,UTEP,Big Ten,Mountain West,52,17,0,regular,regular,0,,Michigan Stadium,3558
-401858457,2026,3,2026-09-19,regular,Rutgers,USC,Big Ten,Big Ten,35,42,0,regular,regular,0,,SHI Stadium,6577
 401856694,2026,3,2026-09-19,regular,Texas A&M,Kentucky,SEC,SEC,21,31,0,regular,regular,0,,Kyle Field,3795
+401858457,2026,3,2026-09-19,regular,Rutgers,USC,Big Ten,Big Ten,35,42,0,regular,regular,0,,SHI Stadium,6577
+401858230,2026,3,2026-09-19,regular,Louisville,SMU,ACC,ACC,41,31,0,regular,regular,0,,L&N Federal Credit Union Stadium,3873
+401856801,2026,3,2026-09-19,regular,Utah,Utah State,Big 12,Pac-12,33,0,0,regular,regular,0,,Rice-Eccles Stadium,587
+401856685,2026,3,2026-09-19,regular,Alabama,Florida State,SEC,ACC,50,36,0,regular,regular,0,,Bryant-Denny Stadium,3657
+401856797,2026,3,2026-09-19,regular,Cincinnati,Miami (OH),Big 12,Mid-American,35,31,0,regular,regular,0,,TQL Stadium,7173
+401867804,2026,3,2026-09-19,regular,Baylor,Louisiana Tech,Big 12,Sun Belt,36,19,0,regular,regular,0,,McLane Stadium,4727
+401866422,2026,3,2026-09-19,regular,Liberty,Ball State,Conference USA,Mid-American,51,15,0,regular,regular,0,,Williams Stadium (VA),3992
 401858449,2026,3,2026-09-19,regular,Indiana,Western Kentucky,Big Ten,Conference USA,38,0,0,regular,regular,0,,"Memorial Stadium (Bloomington, IN)",3830
 401858231,2026,3,2026-09-19,regular,Duke,Stanford,ACC,ACC,35,7,0,regular,regular,0,,Wallace Wade Stadium,3982
-401866422,2026,3,2026-09-19,regular,Liberty,Ball State,Conference USA,Mid-American,51,15,0,regular,regular,0,,Williams Stadium (VA),3992
-401867804,2026,3,2026-09-19,regular,Baylor,Louisiana Tech,Big 12,Sun Belt,36,19,0,regular,regular,0,,McLane Stadium,4727
 401856691,2026,3,2026-09-19,regular,South Carolina,Mississippi State,SEC,SEC,34,41,0,regular,regular,0,,Williams-Brice Stadium,3994
-401864574,2026,3,2026-09-19,regular,App State,Charlotte,Sun Belt,American Athletic,26,21,0,regular,regular,0,,Kidd Brewer Stadium,3792
-401862771,2026,3,2026-09-19,regular,Florida Atlantic,Florida International,American Athletic,Conference USA,16,10,0,regular,regular,0,,FAU Stadium,3715
 401862710,2026,3,2026-09-19,regular,Old Dominion,East Carolina,Sun Belt,American Athletic,17,20,0,regular,regular,0,,S.B. Ballard Stadium,3918
+401862771,2026,3,2026-09-19,regular,Florida Atlantic,Florida International,American Athletic,Conference USA,16,10,0,regular,regular,0,,FAU Stadium,3715
+401864574,2026,3,2026-09-19,regular,App State,Charlotte,Sun Belt,American Athletic,26,21,0,regular,regular,0,,Kidd Brewer Stadium,3792
 401871047,2026,3,2026-09-19,regular,Missouri State,Marshall,Conference USA,Sun Belt,24,30,0,regular,regular,0,,Plaster Sports Complex,3878
-401864443,2026,3,2026-09-19,regular,Middle Tennessee,Nevada,Conference USA,Mountain West,27,20,0,regular,regular,0,,"Johnny ""Red"" Floyd Stadium",3725
-401869948,2026,3,2026-09-19,regular,Jacksonville State,Georgia Southern,Conference USA,Sun Belt,31,27,0,regular,regular,0,,AmFirst Stadium,3662
-401856687,2026,3,2026-09-19,regular,Auburn,Florida,SEC,SEC,39,44,0,regular,regular,0,,Jordan-Hare Stadium,3785
-401861963,2026,3,2026-09-19,regular,Southern Miss,UConn,Sun Belt,FBS Independents,20,48,0,regular,regular,0,,M. M. Roberts Stadium,3815
-401862773,2026,3,2026-09-19,regular,Rice,Western Michigan,American Athletic,Mid-American,21,28,0,regular,regular,0,,Rice Stadium,3895
 401866423,2026,3,2026-09-19,regular,South Alabama,Ohio,Sun Belt,Mid-American,41,36,0,regular,regular,0,,Hancock Whitney Stadium,6526
+401862773,2026,3,2026-09-19,regular,Rice,Western Michigan,American Athletic,Mid-American,21,28,0,regular,regular,0,,Rice Stadium,3895
 401856800,2026,3,2026-09-19,regular,UCF,Georgia State,Big 12,Sun Belt,44,30,0,regular,regular,0,,FBC Mortgage Stadium,3652
 401856689,2026,3,2026-09-19,regular,Missouri,Troy,SEC,Sun Belt,27,17,0,regular,regular,0,,Memorial Stadium,3838
-401856795,2026,3,2026-09-19,regular,Colorado State,BYU,Pac-12,Big 12,23,41,0,regular,regular,0,,Canvas Stadium,5388
-401856802,2026,3,2026-09-19,regular,Virginia,West Virginia,ACC,Big 12,27,38,0,regular,regular,1,Duke’s Mayo Classic,Bank of America Stadium,3628
-401856690,2026,3,2026-09-19,regular,Oklahoma,New Mexico,SEC,Mountain West,14,6,0,regular,regular,0,,"Memorial Stadium (Norman, OK)",3835
+401869948,2026,3,2026-09-19,regular,Jacksonville State,Georgia Southern,Conference USA,Sun Belt,31,27,0,regular,regular,0,,AmFirst Stadium,3662
+401861963,2026,3,2026-09-19,regular,Southern Miss,UConn,Sun Belt,FBS Independents,20,48,0,regular,regular,0,,M. M. Roberts Stadium,3815
+401856687,2026,3,2026-09-19,regular,Auburn,Florida,SEC,SEC,39,44,0,regular,regular,0,,Jordan-Hare Stadium,3785
+401864443,2026,3,2026-09-19,regular,Middle Tennessee,Nevada,Conference USA,Mountain West,27,20,0,regular,regular,0,,"Johnny ""Red"" Floyd Stadium",3725
 401856796,2026,3,2026-09-19,regular,Northwestern,Colorado,Big Ten,Big 12,41,7,0,regular,regular,0,,Lanny and Sharon Martin Stadium,5960
-401856688,2026,3,2026-09-19,regular,Ole Miss,LSU,SEC,SEC,32,24,0,regular,regular,0,,Vaught-Hemingway Stadium,3974
+401856802,2026,3,2026-09-19,regular,Virginia,West Virginia,ACC,Big 12,27,38,0,regular,regular,1,Duke’s Mayo Classic,Bank of America Stadium,3628
 401858232,2026,3,2026-09-19,regular,Maryland,Virginia Tech,Big Ten,ACC,26,35,0,regular,regular,0,,SECU Stadium,3665
+401856795,2026,3,2026-09-19,regular,Colorado State,BYU,Pac-12,Big 12,23,41,0,regular,regular,0,,Canvas Stadium,5388
 401858453,2026,3,2026-09-19,regular,Notre Dame,Michigan State,FBS Independents,Big Ten,27,10,0,regular,regular,0,,Notre Dame Stadium,3855
+401856688,2026,3,2026-09-19,regular,Ole Miss,LSU,SEC,SEC,32,24,0,regular,regular,0,,Vaught-Hemingway Stadium,3974
+401856690,2026,3,2026-09-19,regular,Oklahoma,New Mexico,SEC,Mountain West,14,6,0,regular,regular,0,,"Memorial Stadium (Norman, OK)",3835
 401856692,2026,3,2026-09-19,regular,Tennessee,Kennesaw State,SEC,Conference USA,42,9,0,regular,regular,0,,Neyland Stadium,3853
-401856693,2026,3,2026-09-20,regular,Texas,UTSA,SEC,American Athletic,30,6,0,regular,regular,0,,DKR-Texas Memorial Stadium,3910
-401856799,2026,3,2026-09-20,regular,TCU,Arkansas State,Big 12,Sun Belt,31,7,0,regular,regular,0,,Amon G. Carter Stadium,3616
 401862776,2026,3,2026-09-20,regular,Louisiana,UAB,Sun Belt,American Athletic,21,14,0,regular,regular,0,,Cajun Field,3666
+401856799,2026,3,2026-09-20,regular,TCU,Arkansas State,Big 12,Sun Belt,31,7,0,regular,regular,0,,Amon G. Carter Stadium,3616
+401856693,2026,3,2026-09-20,regular,Texas,UTSA,SEC,American Athletic,30,6,0,regular,regular,0,,DKR-Texas Memorial Stadium,3910
 401860887,2026,3,2026-09-20,regular,San Diego State,James Madison,Pac-12,Sun Belt,13,26,0,regular,regular,0,,Snapdragon Stadium,7311
 401856793,2026,3,2026-09-20,regular,Arizona,Northern Illinois,Big 12,Mountain West,42,17,0,regular,regular,0,,Arizona Stadium,3619
 401864507,2026,3,2026-09-20,regular,Sacramento State,North Dakota State,Mid-American,Mountain West,10,31,0,regular,regular,0,,Hornet Stadium,3757
-401858458,2026,3,2026-09-20,regular,UCLA,Purdue,Big Ten,Big Ten,52,38,0,regular,regular,0,,Rose Bowl,1056
 401860888,2026,3,2026-09-20,regular,San José State,Fresno State,Mountain West,Pac-12,10,26,0,regular,regular,0,,CEFCU Stadium,3935
+401858458,2026,3,2026-09-20,regular,UCLA,Purdue,Big Ten,Big Ten,52,38,0,regular,regular,0,,Rose Bowl,1056
 401869941,2026,4,2026-09-24,regular,Coastal Carolina,Liberty,Sun Belt,Conference USA,17,34,0,regular,regular,0,,Brooks Stadium (SC),3654
 401862779,2026,4,2026-09-25,regular,Temple,Army,American Athletic,American Athletic,17,21,0,regular,regular,0,,Lincoln Financial Field,3806
 401862778,2026,4,2026-09-25,regular,UAB,Navy,American Athletic,American Athletic,24,20,0,regular,regular,0,,Protective Stadium,7221
 401858461,2026,4,2026-09-26,regular,Indiana,Northwestern,Big Ten,Big Ten,29,23,0,regular,regular,0,,"Memorial Stadium (Bloomington, IN)",3830
 401858234,2026,4,2026-09-26,regular,California,Clemson,ACC,ACC,10,24,0,regular,regular,0,,California Memorial Stadium,3831
-401858243,2026,4,2026-09-26,regular,Louisville,Wake Forest,ACC,ACC,27,30,0,regular,regular,0,,L&N Federal Credit Union Stadium,3873
-401858242,2026,4,2026-09-26,regular,Boston College,Virginia Tech,ACC,ACC,14,21,0,regular,regular,0,,"Alumni Stadium (Chestnut Hill, MA)",3615
-401856805,2026,4,2026-09-26,regular,Texas Tech,Sam Houston,Big 12,Conference USA,49,14,0,regular,regular,0,,Jones AT&T Stadium,3784
-401856704,2026,4,2026-09-26,regular,Tennessee,Texas,SEC,SEC,17,20,0,regular,regular,0,,Neyland Stadium,3853
-401860893,2026,4,2026-09-26,regular,Toledo,San Diego State,Mid-American,Pac-12,41,16,0,regular,regular,0,,Glass Bowl,3739
-401858465,2026,4,2026-09-26,regular,Ohio State,Illinois,Big Ten,Big Ten,42,19,0,regular,regular,0,,Ohio Stadium,3861
-401860896,2026,4,2026-09-26,regular,UTSA,Colorado State,American Athletic,Pac-12,59,45,0,regular,regular,0,,Alamodome,3604
-401864512,2026,4,2026-09-26,regular,Akron,UNLV,Mid-American,Mountain West,10,38,0,regular,regular,0,,InfoCision Stadium,3768
-401856813,2026,4,2026-09-26,regular,Baylor,Colorado,Big 12,Big 12,23,13,0,regular,regular,0,,McLane Stadium,4727
 401866425,2026,4,2026-09-26,regular,Kent State,Ball State,Mid-American,Mid-American,26,13,0,regular,regular,0,,Dix Stadium,3696
+401858243,2026,4,2026-09-26,regular,Louisville,Wake Forest,ACC,ACC,27,30,0,regular,regular,0,,L&N Federal Credit Union Stadium,3873
+401864512,2026,4,2026-09-26,regular,Akron,UNLV,Mid-American,Mountain West,10,38,0,regular,regular,0,,InfoCision Stadium,3768
+401856704,2026,4,2026-09-26,regular,Tennessee,Texas,SEC,SEC,17,20,0,regular,regular,0,,Neyland Stadium,3853
+401858465,2026,4,2026-09-26,regular,Ohio State,Illinois,Big Ten,Big Ten,42,19,0,regular,regular,0,,Ohio Stadium,3861
+401860893,2026,4,2026-09-26,regular,Toledo,San Diego State,Mid-American,Pac-12,41,16,0,regular,regular,0,,Glass Bowl,3739
+401856805,2026,4,2026-09-26,regular,Texas Tech,Sam Houston,Big 12,Conference USA,49,14,0,regular,regular,0,,Jones AT&T Stadium,3784
+401856813,2026,4,2026-09-26,regular,Baylor,Colorado,Big 12,Big 12,23,13,0,regular,regular,0,,McLane Stadium,4727
+401858242,2026,4,2026-09-26,regular,Boston College,Virginia Tech,ACC,ACC,14,21,0,regular,regular,0,,"Alumni Stadium (Chestnut Hill, MA)",3615
+401860896,2026,4,2026-09-26,regular,UTSA,Colorado State,American Athletic,Pac-12,59,45,0,regular,regular,0,,Alamodome,3604
 401864576,2026,4,2026-09-26,regular,Kentucky,South Alabama,SEC,Sun Belt,45,21,0,regular,regular,0,,Kroger Field,3683
 401858462,2026,4,2026-09-26,regular,Maryland,UCLA,Big Ten,Big Ten,3,54,0,regular,regular,0,,SECU Stadium,3665
-401858467,2026,4,2026-09-26,regular,Purdue,Notre Dame,Big Ten,FBS Independents,10,49,0,regular,regular,0,,Ross-Ade Stadium,3907
 401864511,2026,4,2026-09-26,regular,Georgia State,Northern Illinois,Sun Belt,Mountain West,35,14,0,regular,regular,0,,Center Parc Stadium,4246
+401858467,2026,4,2026-09-26,regular,Purdue,Notre Dame,Big Ten,FBS Independents,10,49,0,regular,regular,0,,Ross-Ade Stadium,3907
 401864510,2026,4,2026-09-26,regular,Wyoming,Hawai'i,Mountain West,Mountain West,27,10,0,regular,regular,0,,War Memorial Stadium,3984
-401858463,2026,4,2026-09-26,regular,Michigan,Iowa,Big Ten,Big Ten,19,20,0,regular,regular,0,,Michigan Stadium,3558
 401860897,2026,4,2026-09-26,regular,Western Michigan,Boise State,Mid-American,Pac-12,7,32,0,regular,regular,0,,Waldo Stadium,3980
-401864579,2026,4,2026-09-26,regular,New Mexico State,New Mexico,Conference USA,Mountain West,18,42,0,regular,regular,0,,Aggie Memorial Stadium,3601
 401861970,2026,4,2026-09-26,regular,Miami (OH),UConn,Mid-American,FBS Independents,24,21,0,regular,regular,0,,Yager Stadium,3996
+401858463,2026,4,2026-09-26,regular,Michigan,Iowa,Big Ten,Big Ten,19,20,0,regular,regular,0,,Michigan Stadium,3558
 401856700,2026,4,2026-09-26,regular,Georgia,Oklahoma,SEC,SEC,41,13,0,regular,regular,0,,Sanford Stadium,3917
+401856699,2026,4,2026-09-26,regular,Florida,Ole Miss,SEC,SEC,52,28,0,regular,regular,0,,Ben Hill Griffin Stadium,3634
 401856815,2026,4,2026-09-26,regular,UCF,TCU,Big 12,Big 12,21,13,0,regular,regular,0,,FBC Mortgage Stadium,3652
 401856816,2026,4,2026-09-26,regular,Iowa State,Utah,Big 12,Big 12,17,31,0,regular,regular,0,,Jack Trice Stadium,3772
-401856699,2026,4,2026-09-26,regular,Florida,Ole Miss,SEC,SEC,52,28,0,regular,regular,0,,Ben Hill Griffin Stadium,3634
+401864579,2026,4,2026-09-26,regular,New Mexico State,New Mexico,Conference USA,Mountain West,18,42,0,regular,regular,0,,Aggie Memorial Stadium,3601
 401856806,2026,4,2026-09-26,regular,Georgia Southern,Houston,Sun Belt,Big 12,28,42,0,regular,regular,0,,Allen E. Paulson Stadium,3608
 401856698,2026,4,2026-09-26,regular,Auburn,Vanderbilt,SEC,SEC,21,15,0,regular,regular,0,,Jordan-Hare Stadium,3785
 401862785,2026,4,2026-09-26,regular,Bowling Green,South Florida,Mid-American,American Athletic,6,14,0,regular,regular,0,,Doyt L. Perry Stadium,3700
-401858464,2026,4,2026-09-26,regular,Michigan State,Nebraska,Big Ten,Big Ten,13,31,0,regular,regular,0,,Spartan Stadium,3936
 401858466,2026,4,2026-09-26,regular,Penn State,Wisconsin,Big Ten,Big Ten,20,24,0,regular,regular,0,,Beaver Stadium,3632
+401858464,2026,4,2026-09-26,regular,Michigan State,Nebraska,Big Ten,Big Ten,13,31,0,regular,regular,0,,Spartan Stadium,3936
 401869961,2026,4,2026-09-26,regular,Old Dominion,James Madison,Sun Belt,Sun Belt,20,46,0,regular,regular,0,,S.B. Ballard Stadium,3918
 401858239,2026,4,2026-09-26,regular,Virginia,Delaware,ACC,Conference USA,42,3,0,regular,regular,0,,Scott Stadium,3923
 401862780,2026,4,2026-09-26,regular,Charlotte,Louisiana,American Athletic,Sun Belt,7,34,0,regular,regular,0,,Jerry Richardson Stadium,4418
 401858238,2026,4,2026-09-26,regular,Miami,Central Michigan,ACC,Mid-American,52,3,0,regular,regular,0,,Hard Rock Stadium,3948
-401869931,2026,4,2026-09-26,regular,Arkansas State,Kennesaw State,Sun Belt,Conference USA,17,14,0,regular,regular,0,,Centennial Bank Stadium,3625
-401856814,2026,4,2026-09-26,regular,Cincinnati,Kansas State,Big 12,Big 12,31,26,0,regular,regular,0,,Nippert Stadium,3854
 401856696,2026,4,2026-09-26,regular,Alabama,South Carolina,SEC,SEC,49,18,0,regular,regular,0,,Bryant-Denny Stadium,3657
+401856814,2026,4,2026-09-26,regular,Cincinnati,Kansas State,Big 12,Big 12,31,26,0,regular,regular,0,,Nippert Stadium,3854
 401862784,2026,4,2026-09-26,regular,Tulane,Southern Miss,American Athletic,Sun Belt,24,21,0,regular,regular,0,,Yulman Stadium,4729
 401856881,2026,4,2026-09-26,regular,West Virginia,Oklahoma State,Big 12,Big 12,24,41,0,regular,regular,0,,Milan Puskar Stadium,3842
+401869931,2026,4,2026-09-26,regular,Arkansas State,Kennesaw State,Sun Belt,Conference USA,17,14,0,regular,regular,0,,Centennial Bank Stadium,3625
 401871048,2026,4,2026-09-26,regular,Jacksonville State,Middle Tennessee,Conference USA,Conference USA,23,13,0,regular,regular,0,,AmFirst Stadium,3662
-401858469,2026,4,2026-09-26,regular,USC,Oregon,Big Ten,Big Ten,27,41,0,regular,regular,0,,Los Angeles Memorial Coliseum,477
-401860894,2026,4,2026-09-26,regular,Utah State,Troy,Pac-12,Sun Belt,21,10,0,regular,regular,0,,Maverik Stadium,3905
-401864572,2026,4,2026-09-26,regular,NC State,App State,ACC,Sun Belt,41,31,0,regular,regular,0,,Carter-Finley Stadium,3670
-401856804,2026,4,2026-09-26,regular,Washington State,Arizona,Pac-12,Big 12,24,34,0,regular,regular,0,,Gesa Field,3820
 401856702,2026,4,2026-09-26,regular,LSU,Texas A&M,SEC,SEC,35,6,0,regular,regular,0,,Tiger Stadium (LA),3958
+401856804,2026,4,2026-09-26,regular,Washington State,Arizona,Pac-12,Big 12,24,34,0,regular,regular,0,,Gesa Field,3820
+401864572,2026,4,2026-09-26,regular,NC State,App State,ACC,Sun Belt,41,31,0,regular,regular,0,,Carter-Finley Stadium,3670
+401860894,2026,4,2026-09-26,regular,Utah State,Troy,Pac-12,Sun Belt,21,10,0,regular,regular,0,,Maverik Stadium,3905
+401858469,2026,4,2026-09-26,regular,USC,Oregon,Big Ten,Big Ten,27,41,0,regular,regular,0,,Los Angeles Memorial Coliseum,477
 401856703,2026,4,2026-09-26,regular,Mississippi State,Missouri,SEC,SEC,31,24,0,regular,regular,0,,Davis Wade Stadium,3693
 401856697,2026,4,2026-09-27,regular,Arkansas,Tulsa,SEC,American Athletic,34,6,0,regular,regular,0,,Razorback Stadium,3887
 401862782,2026,4,2026-09-27,regular,UL Monroe,Florida Atlantic,Sun Belt,American Athletic,17,45,0,regular,regular,0,,Malone Stadium,3817
@@ -217,57 +217,64 @@ game_id,season_year,week,date,season_type,home_team,away_team,home_conference,aw
 401858470,2026,4,2026-09-27,regular,Washington,Minnesota,Big Ten,Big Ten,24,27,0,regular,regular,0,,Husky Stadium,3765
 401871049,2026,5,2026-10-02,regular,New Mexico State,Western Kentucky,Conference USA,Conference USA,34,13,0,regular,regular,0,,Aggie Memorial Stadium,3601
 401862786,2026,5,2026-10-02,regular,Tulsa,North Texas,American Athletic,American Athletic,44,45,1,regular,regular,0,,Chapman Stadium,3674
-401871050,2026,5,2026-10-02,regular,Delaware,Liberty,Conference USA,Conference USA,14,30,0,regular,regular,0,,Delaware Stadium,3695
 401858245,2026,5,2026-10-02,regular,Virginia Tech,Pittsburgh,ACC,ACC,33,35,0,regular,regular,0,,Lane Stadium,3799
+401871050,2026,5,2026-10-02,regular,Delaware,Liberty,Conference USA,Conference USA,14,30,0,regular,regular,0,,Delaware Stadium,3695
 401858476,2026,5,2026-10-03,regular,Northwestern,Penn State,Big Ten,Big Ten,34,13,0,regular,regular,0,,Ryan Field,11823
 401862787,2026,5,2026-10-03,regular,Charlotte,Memphis,American Athletic,American Athletic,8,59,0,regular,regular,0,,Jerry Richardson Stadium,4418
-401858246,2026,5,2026-10-03,regular,SMU,Boston College,ACC,ACC,25,16,0,regular,regular,0,,Gerald J. Ford Stadium,3735
 401858251,2026,5,2026-10-03,regular,Wake Forest,Stanford,ACC,ACC,57,3,0,regular,regular,0,,Allegacy Federal Credit Union Stadium,3630
-401858474,2026,5,2026-10-03,regular,Minnesota,Michigan,Big Ten,Big Ten,20,14,0,regular,regular,0,,Huntington Bank Stadium,3953
-401858252,2026,5,2026-10-03,regular,UConn,Syracuse,FBS Independents,ACC,41,42,1,regular,regular,0,,Pratt & Whitney Stadium,3892
-401856819,2026,5,2026-10-03,regular,Houston,UCF,Big 12,Big 12,27,17,0,regular,regular,0,,TDECU Stadium,4728
-401856807,2026,5,2026-10-03,regular,Kansas,Middle Tennessee,Big 12,Conference USA,55,0,0,regular,regular,0,,Memorial Stadium,3833
-401858250,2026,5,2026-10-03,regular,North Carolina,Notre Dame,ACC,FBS Independents,26,37,0,regular,regular,0,,Kenan Stadium,3787
-401856707,2026,5,2026-10-03,regular,Mississippi State,Alabama,SEC,SEC,23,56,0,regular,regular,0,,Davis Wade Stadium,3693
-401862791,2026,5,2026-10-03,regular,Air Force,Navy,Mountain West,American Athletic,14,9,0,regular,regular,0,,Falcon Stadium,3713
 401856822,2026,5,2026-10-03,regular,Iowa State,West Virginia,Big 12,Big 12,45,42,0,regular,regular,0,,Jack Trice Stadium,3772
+401858250,2026,5,2026-10-03,regular,North Carolina,Notre Dame,ACC,FBS Independents,26,37,0,regular,regular,0,,Kenan Stadium,3787
+401858252,2026,5,2026-10-03,regular,UConn,Syracuse,FBS Independents,ACC,41,42,1,regular,regular,0,,Pratt & Whitney Stadium,3892
+401858246,2026,5,2026-10-03,regular,SMU,Boston College,ACC,ACC,25,16,0,regular,regular,0,,Gerald J. Ford Stadium,3735
+401856819,2026,5,2026-10-03,regular,Houston,UCF,Big 12,Big 12,27,17,0,regular,regular,0,,TDECU Stadium,4728
+401858474,2026,5,2026-10-03,regular,Minnesota,Michigan,Big Ten,Big Ten,20,14,0,regular,regular,0,,Huntington Bank Stadium,3953
+401856807,2026,5,2026-10-03,regular,Kansas,Middle Tennessee,Big 12,Conference USA,55,0,0,regular,regular,0,,Memorial Stadium,3833
+401862791,2026,5,2026-10-03,regular,Air Force,Navy,Mountain West,American Athletic,14,9,0,regular,regular,0,,Falcon Stadium,3713
+401856707,2026,5,2026-10-03,regular,Mississippi State,Alabama,SEC,SEC,23,56,0,regular,regular,0,,Davis Wade Stadium,3693
 401858479,2026,5,2026-10-03,regular,Wisconsin,Michigan State,Big Ten,Big Ten,31,3,0,regular,regular,0,,Camp Randall Stadium,347
 401856705,2026,5,2026-10-03,regular,Georgia,Vanderbilt,SEC,SEC,38,14,0,regular,regular,0,,Sanford Stadium,3917
 401866432,2026,5,2026-10-03,regular,Buffalo,Western Michigan,Mid-American,Mid-American,17,20,0,regular,regular,0,,UB Stadium,3965
 401866431,2026,5,2026-10-03,regular,Ball State,Toledo,Mid-American,Mid-American,24,39,0,regular,regular,0,,Scheumann Stadium,3919
 401858247,2026,5,2026-10-03,regular,UNLV,California,Mountain West,ACC,39,31,0,regular,regular,0,,Allegiant Stadium,6501
+401858248,2026,5,2026-10-03,regular,NC State,Louisville,ACC,ACC,31,28,0,regular,regular,0,,Carter-Finley Stadium,3670
+401866434,2026,5,2026-10-03,regular,Kent State,Ohio,Mid-American,Mid-American,10,13,0,regular,regular,0,,Dix Stadium,3696
 401866477,2026,5,2026-10-03,regular,Miami (OH),Bowling Green,Mid-American,Mid-American,20,24,0,regular,regular,0,,Yager Stadium,3996
 401869956,2026,5,2026-10-03,regular,Georgia State,Old Dominion,Sun Belt,Sun Belt,42,10,0,regular,regular,0,,Center Parc Stadium,4246
 401864515,2026,5,2026-10-03,regular,North Dakota State,Wyoming,Mountain West,Mountain West,28,0,0,regular,regular,0,,Fargodome,3714
-401856710,2026,5,2026-10-03,regular,Tennessee,Auburn,SEC,SEC,24,14,0,regular,regular,0,,Neyland Stadium,3853
+401866433,2026,5,2026-10-03,regular,Massachusetts,Eastern Michigan,Mid-American,Mid-American,14,38,0,regular,regular,0,,Warren McGuirk Alumni Stadium,3985
+401866430,2026,5,2026-10-03,regular,Central Michigan,Akron,Mid-American,Mid-American,41,17,0,regular,regular,0,,Kelly/Shorts Stadium,3786
 401858253,2026,5,2026-10-03,regular,Florida State,Virginia,ACC,ACC,38,7,0,regular,regular,0,,Doak Campbell Stadium,3697
 401858473,2026,5,2026-10-03,regular,Iowa,Ohio State,Big Ten,Big Ten,14,31,0,regular,regular,0,,Kinnick Stadium,3793
-401866430,2026,5,2026-10-03,regular,Central Michigan,Akron,Mid-American,Mid-American,41,17,0,regular,regular,0,,Kelly/Shorts Stadium,3786
+401856710,2026,5,2026-10-03,regular,Tennessee,Auburn,SEC,SEC,24,14,0,regular,regular,0,,Neyland Stadium,3853
 401856708,2026,5,2026-10-03,regular,Missouri,Florida,SEC,SEC,45,17,0,regular,regular,0,,Memorial Stadium,3838
-401866434,2026,5,2026-10-03,regular,Kent State,Ohio,Mid-American,Mid-American,10,13,0,regular,regular,0,,Dix Stadium,3696
-401866433,2026,5,2026-10-03,regular,Massachusetts,Eastern Michigan,Mid-American,Mid-American,14,38,0,regular,regular,0,,Warren McGuirk Alumni Stadium,3985
-401858248,2026,5,2026-10-03,regular,NC State,Louisville,ACC,ACC,31,28,0,regular,regular,0,,Carter-Finley Stadium,3670
 401869962,2026,5,2026-10-03,regular,James Madison,Marshall,Sun Belt,Sun Belt,45,17,0,regular,regular,0,,Bridgeforth Stadium,3651
-401858475,2026,5,2026-10-03,regular,Nebraska,Maryland,Big Ten,Big Ten,48,23,0,regular,regular,0,,"Memorial Stadium (Lincoln, NE)",3834
 401864514,2026,5,2026-10-03,regular,New Mexico,UTEP,Mountain West,Mountain West,61,7,0,regular,regular,0,,University Stadium (NM),3971
-401856709,2026,5,2026-10-03,regular,South Carolina,Kentucky,SEC,SEC,34,35,1,regular,regular,0,,Williams-Brice Stadium,3994
+401858475,2026,5,2026-10-03,regular,Nebraska,Maryland,Big Ten,Big Ten,48,23,0,regular,regular,0,,"Memorial Stadium (Lincoln, NE)",3834
 401858472,2026,5,2026-10-03,regular,Illinois,Purdue,Big Ten,Big Ten,17,24,0,regular,regular,0,,"Memorial Stadium (Champaign, IL)",3832
+401856709,2026,5,2026-10-03,regular,South Carolina,Kentucky,SEC,SEC,34,35,1,regular,regular,0,,Williams-Brice Stadium,3994
 401860899,2026,5,2026-10-03,regular,Colorado State,Oregon State,Pac-12,Pac-12,26,56,0,regular,regular,0,,Canvas Stadium,5388
-401871089,2026,5,2026-10-03,regular,South Alabama,UL Monroe,Sun Belt,Sun Belt,52,35,0,regular,regular,0,,Hancock Whitney Stadium,6526
 401856818,2026,5,2026-10-03,regular,TCU,BYU,Big 12,Big 12,10,17,0,regular,regular,0,,Amon G. Carter Stadium,3616
-401856711,2026,5,2026-10-03,regular,Texas A&M,Arkansas,SEC,SEC,34,7,0,regular,regular,0,,Kyle Field,3795
 401862788,2026,5,2026-10-03,regular,Rice,UTSA,American Athletic,American Athletic,14,16,0,regular,regular,0,,Rice Stadium,3895
+401871089,2026,5,2026-10-03,regular,South Alabama,UL Monroe,Sun Belt,Sun Belt,52,35,0,regular,regular,0,,Hancock Whitney Stadium,6526
 401869942,2026,5,2026-10-03,regular,Coastal Carolina,Georgia Southern,Sun Belt,Sun Belt,24,31,0,regular,regular,0,,Brooks Stadium (SC),3654
-401856821,2026,5,2026-10-03,regular,Colorado,Texas Tech,Big 12,Big 12,7,29,0,regular,regular,0,,Folsom Field,3726
-401862792,2026,5,2026-10-03,regular,South Florida,Temple,American Athletic,American Athletic,13,17,0,regular,regular,0,,Raymond James Stadium,3886
-401869842,2026,5,2026-10-03,regular,Louisiana Tech,Army,Sun Belt,American Athletic,31,29,0,regular,regular,0,,Joe Aillet Stadium,3776
-401860898,2026,5,2026-10-03,regular,Boise State,Utah State,Pac-12,Pac-12,37,18,0,regular,regular,0,,Albertsons Stadium,3653
+401856711,2026,5,2026-10-03,regular,Texas A&M,Arkansas,SEC,SEC,34,7,0,regular,regular,0,,Kyle Field,3795
 401858478,2026,5,2026-10-03,regular,USC,Washington,Big Ten,Big Ten,25,21,0,regular,regular,0,,Los Angeles Memorial Coliseum,477
+401862792,2026,5,2026-10-03,regular,South Florida,Temple,American Athletic,American Athletic,13,17,0,regular,regular,0,,Raymond James Stadium,3886
+401860898,2026,5,2026-10-03,regular,Boise State,Utah State,Pac-12,Pac-12,37,18,0,regular,regular,0,,Albertsons Stadium,3653
 401858249,2026,5,2026-10-03,regular,Clemson,Miami,ACC,ACC,13,41,0,regular,regular,0,,"Memorial Stadium (Clemson, SC)",3836
-401869932,2026,5,2026-10-04,regular,Louisiana,Arkansas State,Sun Belt,Sun Belt,23,20,0,regular,regular,0,,Cajun Field,3666
+401856821,2026,5,2026-10-03,regular,Colorado,Texas Tech,Big 12,Big 12,7,29,0,regular,regular,0,,Folsom Field,3726
+401869842,2026,5,2026-10-03,regular,Louisiana Tech,Army,Sun Belt,American Athletic,31,29,0,regular,regular,0,,Joe Aillet Stadium,3776
 401858477,2026,5,2026-10-04,regular,Rutgers,Indiana,Big Ten,Big Ten,15,47,0,regular,regular,0,,SHI Stadium,6577
+401869932,2026,5,2026-10-04,regular,Louisiana,Arkansas State,Sun Belt,Sun Belt,23,20,0,regular,regular,0,,Cajun Field,3666
 401860921,2026,5,2026-10-04,regular,Washington State,Fresno State,Pac-12,Pac-12,6,26,0,regular,regular,0,,Gesa Field,3820
-401860900,2026,5,2026-10-04,regular,San Diego State,Texas State,Pac-12,Pac-12,31,29,0,regular,regular,0,,Snapdragon Stadium,7311
 401856817,2026,5,2026-10-04,regular,Arizona State,Baylor,Big 12,Big 12,19,55,0,regular,regular,0,,Mountain America Stadium,3947
+401860900,2026,5,2026-10-04,regular,San Diego State,Texas State,Pac-12,Pac-12,31,29,0,regular,regular,0,,Snapdragon Stadium,7311
 401856820,2026,5,2026-10-04,regular,Arizona,Cincinnati,Big 12,Big 12,34,7,0,regular,regular,0,,Arizona Stadium,3619
 401864513,2026,5,2026-10-04,regular,Hawai'i,San José State,Mountain West,Mountain West,16,20,0,regular,regular,0,,Clarence T.C. Ching Athletics Complex,7220
+401871090,2026,6,2026-10-07,regular,Troy,Southern Miss,Sun Belt,Sun Belt,55,34,0,regular,regular,0,,Veterans Memorial Stadium (AL),3975
+401871051,2026,6,2026-10-07,regular,Kennesaw State,Jacksonville State,Conference USA,Conference USA,26,27,0,regular,regular,0,,Fifth Third Stadium,4899
+401871066,2026,6,2026-10-07,regular,Florida International,New Mexico State,Conference USA,Conference USA,22,3,0,regular,regular,0,,Pitbull Stadium,2031
+401870766,2026,6,2026-10-08,regular,Liberty,Sam Houston,Conference USA,Conference USA,35,3,0,regular,regular,0,,Williams Stadium (VA),3992
+401871052,2026,6,2026-10-08,regular,Western Kentucky,Missouri State,Conference USA,Conference USA,34,13,0,regular,regular,0,,Houchens Industries-L.T. Smith Stadium,3796
+401869933,2026,6,2026-10-08,regular,Arkansas State,South Alabama,Sun Belt,Sun Belt,49,56,0,regular,regular,0,,Centennial Bank Stadium,3625
+401862794,2026,6,2026-10-08,regular,UTSA,South Florida,American Athletic,American Athletic,31,24,0,regular,regular,0,,Alamodome,3604
