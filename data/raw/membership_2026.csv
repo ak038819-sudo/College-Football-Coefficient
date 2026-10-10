@@ -2,6 +2,7 @@ team_name,conference_real,is_fbs
 Air Force,Mountain West,1
 Akron,Mid-American,1
 Alabama,SEC,1
+Appalachian State,Sun Belt,1
 Arizona,Big 12,1
 Arizona State,Big 12,1
 Arkansas,SEC,1
@@ -27,6 +28,8 @@ Delaware,Conference USA,1
 Duke,ACC,1
 East Carolina,American Athletic,1
 Eastern Michigan,Mid-American,1
+FAU,American Athletic,1
+FIU,Conference USA,1
 Florida,SEC,1
 Florida State,ACC,1
 Fresno State,Pac-12,1
@@ -56,6 +59,7 @@ Marshall,Sun Belt,1
 Maryland,Big Ten,1
 Massachusetts,Mid-American,1
 Memphis,American Athletic,1
+Miami (FL),ACC,1
 Miami (OH),Mid-American,1
 Michigan,Big Ten,1
 Michigan State,Big Ten,1
@@ -91,6 +95,7 @@ Rutgers,Big Ten,1
 SMU,ACC,1
 Sam Houston,Conference USA,1
 San Diego State,Pac-12,1
+San Jose State,Mountain West,1
 South Alabama,Sun Belt,1
 South Carolina,SEC,1
 South Florida,American Athletic,1
@@ -112,6 +117,7 @@ UAB,American Athletic,1
 UCF,Big 12,1
 UCLA,Big Ten,1
 UConn,FBS Independents,1
+ULM,Sun Belt,1
 UNLV,Mountain West,1
 USC,Big Ten,1
 UTEP,Mountain West,1
