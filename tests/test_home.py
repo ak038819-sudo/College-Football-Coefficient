@@ -22,7 +22,22 @@ def test_conference_board_is_the_bid_setting_order(db_path):
         "SELECT DISTINCT conference FROM conference_standings_by_year WHERE season_year = ?", (board["season"],))}
     conn.close()
     assert [r[0] for r in board["rows"]] == [c for c, _ in expected]
-    assert all(r[1] == pytest.approx(v, abs=5e-4) for r, (_, v) in zip(board["rows"], expected))
+
+    # Compared at the precision the board PUBLISHES, not with a tolerance.
+    # This used to be approx(abs=5e-4) against the unrounded source, which is
+    # the maximum error rounding to three decimals can produce -- the check sat
+    # exactly on its own limit, so whether it passed depended on where that
+    # week's numbers happened to fall. It failed the 2026-10-10 deploy with the
+    # ACC 0.000454 away from its source and another conference a hair over, and
+    # nothing was wrong: a failing test here blocks the deploy, so the site
+    # stops publishing until someone reads the log. The board is correct when
+    # it shows the source rounded, which is an exact statement.
+    mismatched = [(c, published, round(v, 3), v)
+                  for (c, published), (_, v) in zip(board["rows"], expected)
+                  if published != round(v, 3)]
+    assert not mismatched, "the board does not show the bid-setting values: " + ", ".join(
+        f"{c} shows {published} for {v!r} (rounds to {want})"
+        for c, published, want, v in mismatched)
     assert "FBS Independents" not in {r[0] for r in board["rows"]}
     assert {r[0] for r in board["rows"]} <= real_confs, "no defunct/empty conference may appear"
 

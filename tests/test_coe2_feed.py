@@ -127,7 +127,14 @@ def test_real_feed_matches_the_rollup_table_row_for_row(db_path):
         assert [r["conference"] for r in rows] == [c for c, _ in expected]
         for r in rows:
             value, start, end, counted, external = table[(int(season), r["conference"])]
-            assert r["coe2_5yr"] == pytest.approx(value, abs=5e-4)
+            # Exact at the precision the feed publishes, for the reason given
+            # in tests/test_home.py: approx(abs=5e-4) against an unrounded
+            # table value is the maximum error rounding to three decimals can
+            # produce, so it passed or failed on where that week's numbers
+            # happened to fall rather than on whether the feed was right. This
+            # one runs over every season and conference, so it had far more
+            # chances to tip over and block a deploy.
+            assert r["coe2_5yr"] == round(value, 3), (season, r["conference"], value)
             assert r["window"] == [start, end] and end == int(season) - 1
             assert (r["seasons_counted"], r["external_games"]) == (counted, external)
     conn.close()
