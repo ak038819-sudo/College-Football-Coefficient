@@ -114,6 +114,7 @@ def test_a_table_from_the_previous_version_is_upgraded(tmp_path):
 def test_no_rating_engine_reads_kickoff_times():
     engines = ["src/build_elo.py", "src/build_coefficients.py", "src/build_hybrid_coefficients.py",
                "src/build_conference_coe2.py", "src/predict_upcoming.py", "src/hfa.py",
+               "src/coefficients/select_cfp_field.py", "src/coefficients/simulate_cfp_bracket.py",
                "src/coefficients/select_playoff_field_v2.py", "src/coefficients/select_nit_field.py"]
     for path in engines:
         assert "game_kickoffs" not in (REPO / path).read_text(encoding="utf-8"), path

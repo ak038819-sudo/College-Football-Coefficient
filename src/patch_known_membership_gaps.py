@@ -10,6 +10,16 @@ Each entry below is sourced and dated to when researched (Sept 2026);
 re-verify if re-running this far in the future, since conference
 membership changes.
 
+These patches stop at 2025 and should stay that way. The gap they cover
+was never about the backup: CFBD names six of these programs differently
+from this project ("Miami", "San Jose State", "Florida Atlantic",
+"Florida International", "UL Monroe", "App State") and
+fetch_cfbd_team_memberships.py used to drop a school it could not name
+without saying so. That is fixed at the source now -- the fetcher
+resolves through the reviewed registry and fails on a school it cannot
+name -- so a season fetched from 2026 on arrives complete and belongs in
+its committed data/raw/membership_<year>.csv snapshot, not here.
+
 Idaho is intentionally NOT given rows for 2018-2025: it dropped from
 FBS (Sun Belt) to FCS (Big Sky) after the 2017 season and has remained
 FCS since -- having no FBS membership row for those years is CORRECT,

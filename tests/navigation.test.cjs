@@ -12,6 +12,16 @@ const config = {
 };
 const read = hash => readRoute(hash, config);
 
+// The scoreboard's location lives in one accessor in the shell. Lifting the
+// real declaration and function, rather than stubbing them, keeps a function
+// extracted into a vm context fetching the same URL the page does.
+const liveFeedUrlSource = shell => {
+  const declaration = shell.match(/const LIVE_FEED_URL = '[^']*';/);
+  const accessor = shell.match(/function liveFeedUrl\(\) \{[\s\S]*?\n\}/);
+  assert.ok(declaration && accessor, 'the shell must declare one live feed accessor');
+  return declaration[0].replace('__LIVE_FEED_URL__', '') + '\n' + accessor[0] + '\n';
+};
+
 test('the local dashboard identifies the in-progress site release', () => {
   const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
   assert.match(shell, /class="release-label">v0\.1 · People and Places of the Game<\/p>/);
@@ -185,10 +195,18 @@ test('an open live game refreshes status and score even with a cached snapshot',
   const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
   const source = shell.match(/function hydrateLiveGamePage\(version\) \{[\s\S]*?\n\}/)?.[0];
   assert.ok(source);
+  // The real accessor, not a stub: the game page must fetch whatever the rest
+  // of the page fetches, so a deployment that points the scoreboard elsewhere
+  // moves this fetch too.
+  const feedUrl = liveFeedUrlSource(shell);
   const target = { innerHTML: '' };
   const game = (status, points) => ({ id: 42, status, home: { points } });
   let requests = 0;
+  let stored = null;
   const context = {
+    // The game page feeds the shared live-result store, so a team page opened
+    // from here already has the score the scoreboard just delivered.
+    setLiveResults: games => { stored = games; },
     state: { view: 'game', gameParam: 42 }, renderVersion: 1, liveGameRequest: 0,
     liveSnapshot: { games: [game('in_progress', 28)] }, liveSeasonData: {},
     document: { getElementById: () => target },
@@ -197,12 +215,13 @@ test('an open live game refreshes status and score even with a cached snapshot',
       json: () => Promise.resolve({ games: [game('completed', 34)] }) }); },
     hydrateGamePage: () => assert.fail('live game should still be present')
   };
-  vm.runInNewContext(source + '\nthis.refresh = hydrateLiveGamePage;', context);
+  vm.runInNewContext(feedUrl + source + '\nthis.refresh = hydrateLiveGamePage;', context);
   context.refresh(1);
   assert.equal(target.innerHTML, 'in_progress:28');
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(requests, 1);
   assert.equal(target.innerHTML, 'completed:34');
+  assert.equal(stored?.[0].status, 'completed');
   context.refresh(1);
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(requests, 2);
@@ -212,6 +231,7 @@ test('an open live game refreshes status and score even with a cached snapshot',
 test('a live final opens the full archive after season data loads', async () => {
   const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
   const source = shell.match(/function hydrateLiveGamePage\(version\) \{[\s\S]*?\n\}/)[0];
+  const feedUrl = liveFeedUrlSource(shell);
   const game = {id: 42, status: 'completed', home: {points: 34}, away: {points: 21}};
   const archived = {completed: true, home_score: 34, away_score: 21};
   let archiveViews = 0;
@@ -219,13 +239,14 @@ test('a live final opens the full archive after season data loads', async () => 
   const context = {
     state: {view: 'game', gameParam: 42}, renderVersion: 1, liveGameRequest: 0,
     liveSnapshot: {games: [game]}, liveSeasonData: null,
+    setLiveResults: () => {},
     document: {getElementById: () => target}, liveDetail: () => 'live-only',
     fetch: () => Promise.resolve({ok: true, json: () => Promise.resolve({games: [game]})}),
     liveSeason: () => 2026,
     loadSeasonGames: () => Promise.resolve({byId: new Map([[42, archived]])}),
     hydrateGamePage: () => {archiveViews++; target.innerHTML = 'efficiency and official Elo';}
   };
-  vm.runInNewContext(source + '\nthis.refresh = hydrateLiveGamePage;', context);
+  vm.runInNewContext(feedUrl + source + '\nthis.refresh = hydrateLiveGamePage;', context);
   context.refresh(1);
   assert.equal(target.innerHTML, 'live-only');
   await new Promise(resolve => setImmediate(resolve));

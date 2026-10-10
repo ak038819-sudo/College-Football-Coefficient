@@ -240,9 +240,13 @@ def model_params() -> dict:
     v1 = _code_constants(v1_path, ["ITERATIONS", "PHASE_WEIGHTS", "ROLLING_YEARS", "USE_WITHIN_WINDOW_DECAY",
                                    "WITHIN_WINDOW_DECAY_BASE", "CONFIDENCE_GAMES", "LOSS_PENALTY"])
     v1["PRIOR_REGRESSION"] = _argparse_default(v1_path, "--prior-regression")
-    bids = _code_constants(REPO / "src" / "coefficients" / "select_playoff_field_v2.py", ["YEAR2_BIDS"]).get("YEAR2_BIDS", {})
+    # The 12-team CFP format's own constants, read from the selector rather
+    # than retyped here. This replaced "playoff_bids", a conference-rank bid
+    # table that only the invented 24-team model ever had.
+    playoff = _code_constants(REPO / "src" / "coefficients" / "select_cfp_field.py",
+                             ["FIELD_SIZE", "AUTO_BIDS", "BYE_SEEDS", "FIRST_ROUND_PAIRS"])
     return {"elo": clean(cfg.get("elo")), "hybrid": clean(cfg.get("hybrid")), "coe2": clean(cfg.get("coe")),
-            "coe_v1": v1, "playoff_bids": [[lo, hi, n] for (lo, hi), n in sorted(bids.items())],
+            "coe_v1": v1, "playoff_format": playoff,
             # EXP-03: which performance multiplier the ratings on this page were built with.
             "performance": clean(cfg.get("performance"))}
 

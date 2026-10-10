@@ -104,3 +104,34 @@ Settings -> Secrets and variables -> Actions -> **Variables** tab ->
 ### Source workflow completions
 
 `Backfill player box scores` and `Sync rosters and coaches` now queue the deployment workflow through `workflow_run` on main. Their `[skip ci]`/GITHUB_TOKEN commits no longer require a manually dispatched deploy. Completion, including a failed run that committed earlier seasons, rebuilds committed data without fetching CFBD again. The source repository and branch are checked; the build acquires the existing deploy lock, then resets to current main. A source update that arrives during a build queues a later build from the new tip. Confirm both completion and overlapping-update behavior in Actions after merging this workflow change.
+
+## When the pipeline goes dark
+
+Nothing publishes while the `test` job is red: `rebuild-and-deploy` runs
+behind it, so the live site keeps serving its last good build and fresh
+ratings never reach it. That state used to be invisible. Every scheduled run
+failed between 2026-10-09 06:31 and 2026-10-10 00:13 UTC -- six runs, four
+days with no ratings refresh -- and the only place it showed was the Actions
+tab.
+
+So the workflow keeps one issue as the pipeline's health light, labelled
+`pipeline-alert`:
+
+- The first failure on `main` opens it, naming the run.
+- Later failures comment on the same issue rather than opening more. The
+  failure that matters here repeats on a schedule, and the useful fact is
+  "still broken, since when", not six copies of the same notification.
+- The next successful run comments and closes it.
+
+So an **open `pipeline-alert` issue means the site cannot publish right
+now**, and no open issue means it can. Pull requests are excluded, because a
+red PR already shows its own check to whoever pushed it.
+
+`scripts/alert_pipeline_state.py` holds the logic and talks to the issues API
+with the run's own `GITHUB_TOKEN`. It can never fail a run: a missing token
+or a GitHub outage prints a warning and exits 0, because losing an alert is
+not a broken build.
+
+This covers `ci-and-deploy.yml` only -- the workflow that publishes. A
+failure in `live-scores.yml`, `sync-people.yml` or `backfill-players.yml` is
+still only visible in Actions.
