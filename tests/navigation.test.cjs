@@ -188,7 +188,11 @@ test('an open live game refreshes status and score even with a cached snapshot',
   const target = { innerHTML: '' };
   const game = (status, points) => ({ id: 42, status, home: { points } });
   let requests = 0;
+  let stored = null;
   const context = {
+    // The game page feeds the shared live-result store, so a team page opened
+    // from here already has the score the scoreboard just delivered.
+    setLiveResults: games => { stored = games; },
     state: { view: 'game', gameParam: 42 }, renderVersion: 1, liveGameRequest: 0,
     liveSnapshot: { games: [game('in_progress', 28)] }, liveSeasonData: {},
     document: { getElementById: () => target },
@@ -203,6 +207,7 @@ test('an open live game refreshes status and score even with a cached snapshot',
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(requests, 1);
   assert.equal(target.innerHTML, 'completed:34');
+  assert.equal(stored?.[0].status, 'completed');
   context.refresh(1);
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(requests, 2);
@@ -219,6 +224,7 @@ test('a live final opens the full archive after season data loads', async () => 
   const context = {
     state: {view: 'game', gameParam: 42}, renderVersion: 1, liveGameRequest: 0,
     liveSnapshot: {games: [game]}, liveSeasonData: null,
+    setLiveResults: () => {},
     document: {getElementById: () => target}, liveDetail: () => 'live-only',
     fetch: () => Promise.resolve({ok: true, json: () => Promise.resolve({games: [game]})}),
     liveSeason: () => 2026,
