@@ -547,22 +547,65 @@ def build_projection(db_path: str, season: int, n_sims: int, temperature: float,
         as_of = conn.execute(
             """SELECT MAX(game_date) FROM games WHERE season_year = ?
                AND home_score IS NOT NULL AND away_score IS NOT NULL""", (season,)).fetchone()[0]
+        names = dict(conn.execute("SELECT team_id, team_name FROM teams"))
     finally:
         conn.close()
 
+    # Games against opponents this project holds no rating for, counted into the
+    # record line and the projected-win total but into nothing else.
+    #
+    # conference_team_records_by_year is built from the rated `games` table
+    # alone, and so is every win project() banks, so this page would have shown
+    # Arkansas at 1-10 while the header of its own team page -- changed in the
+    # same commit -- showed the 2-10 it finished at. The odds in these columns
+    # are untouched: they come from simulating rated games, which is the only
+    # thing the ratings can simulate.
+    #
+    # Only completed games are counted, and every row in the table is one: a
+    # future game against an unrated opponent is not in `scheduled_games`
+    # either, so it is absent from the projection rather than counted as a loss.
+    #
+    # load_non_fbs_records_by_year keys its seasons and teams by STRING, because
+    # what it exists for is a JSON payload the page reads. Both are converted
+    # back here; reading it with an integer returns nothing, silently, and a
+    # record that was never augmented looks exactly like a team with no such
+    # game.
+    unrated = {names[int(tid)]: wlt
+               for tid, wlt in load_non_fbs_records_by_year(db_path).get(str(season), {}).items()
+               if int(tid) in names}
+
+    counts = projection["counts"]
     teams = []
     for row in project_season.rows_for_report(projection):
         banked = record.get(row["team"], {})
+        extra = unrated.get(row["team"], [0, 0, 0])
         teams.append({**row, "conference": banked.get("conference"),
-                      "wins": banked.get("wins", 0), "losses": banked.get("losses", 0),
-                      "ties": banked.get("ties", 0)})
+                      "wins": banked.get("wins", 0) + extra[0],
+                      "losses": banked.get("losses", 0) + extra[1],
+                      "ties": banked.get("ties", 0) + extra[2],
+                      "projected_wins": round(row["projected_wins"] + extra[0], 1)})
     return {
         "season": season, "n_sims": projection["n_sims"], "unplayed": projection["unplayed"],
         "as_of": as_of, "temperature": temperature, "home_field": home_field,
-        # Only teams with something still to play for. A table of 136 rows
-        # where 60 of them read 0.0% everywhere is a longer page saying less.
-        "teams": [t for t in teams if t["playoff_pct"] or t["conference_title_pct"]],
+        "teams": still_playing_for_something(teams, counts),
     }
+
+
+def still_playing_for_something(teams: list[dict], counts: dict) -> list[dict]:
+    """The rows that belong on the page.
+
+    A table of 136 rows where 60 of them read 0.0% everywhere is a longer page
+    saying less, so a team with no path to its conference title or to the field
+    is left out.
+
+    Decided on the TALLIES rather than on the published percentages. A
+    percentage is a rounded number and a rounded number can be zero while the
+    thing it describes is not: a team that reached the field in three of
+    10,000 simulated seasons has something to play for, and dropping it here
+    is how the page's own "<0.1%" case became unreachable.
+    """
+    return [t for t in teams
+            if counts[t["team"]]["playoff"] or counts[t["team"]]["conference_title"]]
 
 
 def main() -> None:

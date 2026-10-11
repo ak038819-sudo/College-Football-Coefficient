@@ -210,3 +210,31 @@ test('no validation report renders a page that says so', () => {
   assert.ok(html.includes('No validation report'));
   assert.ok(!html.includes('72.5%'));
 });
+
+// ------------------------------------------------------------ section labels
+
+// Every route the navigation module registers reaches three places that read
+// SECTION_LABELS by the section's own name: the browser title, the aria-label
+// on every scrollable table, and the "Back to ..." link. A section with a
+// route and no label does not fail -- it renders the word "undefined" in all
+// three. #section=accuracy shipped that way and the review caught it.
+test('every registered section has a label', () => {
+  const nav = require('../ui/navigation.js');
+  const labels = {};
+  vm.runInNewContext(sourceOfConst('SECTION_LABELS') + '\nthis.l = SECTION_LABELS;',
+                     labels);
+  const sections = nav.sections;
+  assert.ok(sections.includes('accuracy'), 'the track-record route should be registered');
+  const missing = sections.filter(s => !labels.l[s]);
+  assert.deepEqual(missing, [], 'these sections would render "undefined" as their title');
+  // And nothing is labelled that cannot be reached, which would be a label for
+  // a page that does not exist.
+  const orphan = Object.keys(labels.l).filter(s => !sections.includes(s));
+  assert.deepEqual(orphan, []);
+});
+
+function sourceOfConst(name) {
+  const match = shell.match(new RegExp(`^const ${name} = .*;$`, 'm'));
+  assert.ok(match, `missing ${name}`);
+  return match[0];
+}

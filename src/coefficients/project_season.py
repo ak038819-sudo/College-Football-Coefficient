@@ -436,19 +436,41 @@ class _Rows(list):
         return list(self)
 
 
+def pct_digits(n_sims: int) -> int:
+    """Decimals enough that ONE occurrence in n_sims runs is not a zero.
+
+    A team that reaches the field in 3 of 10,000 simulated seasons has a
+    0.03% chance. Rounded to the one decimal a page prints, that is 0.0 --
+    which reads as "cannot happen" and, worse, is falsy, so the export's own
+    "something still to play for" filter dropped the team from the payload
+    altogether. The page has a "<0.1%" case for exactly this team, and it was
+    unreachable.
+
+    So the published number keeps whatever precision the simulation can
+    actually distinguish. Rounding for display stays in the page, which is
+    where a reader's decimal belongs.
+    """
+    smallest = 100 / max(1, n_sims)
+    digits = 1
+    while digits < 6 and round(smallest, digits) == 0:
+        digits += 1
+    return digits
+
+
 def rows_for_report(projection: dict) -> list[dict]:
     """One row per team, strongest title chance first."""
     n = projection["n_sims"]
+    d = pct_digits(n)
     rows = []
     for team, c in projection["counts"].items():
         rows.append({
             "team": team,
-            "conference_title_pct": round(100 * c["conference_title"] / n, 1),
-            "playoff_pct": round(100 * c["playoff"] / n, 1),
-            "bye_pct": round(100 * c["bye"] / n, 1),
-            "semifinal_pct": round(100 * c["sf"] / n, 1),
-            "final_pct": round(100 * c["final"] / n, 1),
-            "champion_pct": round(100 * c["champion"] / n, 1),
+            "conference_title_pct": round(100 * c["conference_title"] / n, d),
+            "playoff_pct": round(100 * c["playoff"] / n, d),
+            "bye_pct": round(100 * c["bye"] / n, d),
+            "semifinal_pct": round(100 * c["sf"] / n, d),
+            "final_pct": round(100 * c["final"] / n, d),
+            "champion_pct": round(100 * c["champion"] / n, d),
             "projected_wins": round(projection["wins"].get(team, 0.0) / n, 1),
         })
     rows.sort(key=lambda r: (-r["champion_pct"], -r["playoff_pct"], r["team"]))

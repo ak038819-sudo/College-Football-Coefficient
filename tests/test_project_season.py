@@ -350,3 +350,116 @@ def test_ci_builds_a_database_with_games_left_to_play(repo_root):
     assert "src/load_fcs_games.py" in workflow, (
         "CI never loads data/raw/fcs_games_*.csv, so its database has no "
         "non_fbs_games and the team record tests skip")
+
+
+def test_a_single_occurrence_is_not_published_as_zero():
+    """The precision of a published percentage is the simulation's, not a page's.
+
+    A team that reaches the field in one of 10,000 simulated seasons has a real
+    0.01% chance. Rounded to one decimal that is 0.0, which says the opposite,
+    and because 0.0 is falsy the export's "something still to play for" filter
+    dropped the team from the payload entirely -- so the page's own "<0.1%"
+    case, written for exactly this team, could never be reached.
+    """
+    assert ps.pct_digits(10_000) == 2
+    assert ps.pct_digits(1_000) == 1
+    assert ps.pct_digits(100_000) == 3
+
+    n = 10_000
+    projection = {
+        "n_sims": n,
+        "wins": {"Longshot": 7.0 * n, "Favourite": 11.0 * n},
+        "counts": {
+            "Longshot": {**dict.fromkeys(ps.TALLIES, 0), "playoff": 1, "conference_title": 1},
+            "Favourite": {**dict.fromkeys(ps.TALLIES, 0), "playoff": n, "conference_title": n,
+                          "champion": 3764},
+        },
+    }
+    rows = {r["team"]: r for r in ps.rows_for_report(projection)}
+    assert rows["Longshot"]["playoff_pct"] > 0, "one field in 10,000 runs is a chance, not a zero"
+    assert rows["Longshot"]["playoff_pct"] == pytest.approx(0.01)
+    # A chance the page has words for keeps its usual reading at the usual size.
+    assert rows["Favourite"]["playoff_pct"] == 100.0
+    assert rows["Favourite"]["champion_pct"] == pytest.approx(37.64)
+
+
+@pytest.mark.parametrize("n_sims", [100, 1_000, 10_000, 100_000])
+def test_no_tally_can_round_to_zero_at_any_simulation_count(n_sims):
+    """The rule, not the one default: a count of one survives at every size."""
+    projection = {"n_sims": n_sims, "wins": {},
+                  "counts": {"T": {**dict.fromkeys(ps.TALLIES, 0), "playoff": 1}}}
+    row = ps.rows_for_report(projection)[0]
+    assert row["playoff_pct"] > 0
+
+
+def test_the_projected_record_is_the_record_the_team_page_shows(db_path, live_season):
+    """One team, one record, wherever the site prints it.
+
+    conference_team_records_by_year is built from the rated `games` table, and
+    so is every win project() banks, so this page read Arkansas at 1-10 while
+    the header of Arkansas's own team page -- changed in the same commit --
+    read the 2-10 it finished at. The record line here is now the same sum the
+    header makes: rated games plus completed games against unrated opponents.
+
+    The odds are deliberately not part of that sum, and the rest of this file
+    holds them to the rated games alone.
+    """
+    import sqlite3
+
+    import export_dashboard_data as edd
+
+    # Keyed by string, because that payload is read by a page. See build_projection.
+    unrated_by_id = edd.load_non_fbs_records_by_year(str(db_path)).get(str(live_season), {})
+    if not unrated_by_id:
+        pytest.skip("this database holds no games against unrated opponents that season")
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        names = dict(conn.execute("SELECT team_id, team_name FROM teams"))
+        rated = {
+            name: (w, lo, t)
+            for name, w, lo, t in conn.execute(
+                """SELECT tm.team_name, r.overall_wins, r.overall_losses, r.overall_ties
+                   FROM conference_team_records_by_year r JOIN teams tm ON tm.team_id = r.team_id
+                   WHERE r.season_year = ?""", (live_season,))
+        }
+    finally:
+        conn.close()
+    unrated = {names[int(tid)]: wlt for tid, wlt in unrated_by_id.items()
+               if int(tid) in names}
+
+    payload = edd.build_projection(str(db_path), live_season, 60, 4.5, 1.25)
+    assert payload and payload["teams"], "the live season should project to something"
+
+    checked = 0
+    for row in payload["teams"]:
+        rw, rl, rt = rated.get(row["team"], (0, 0, 0))
+        uw, ul, ut = unrated.get(row["team"], (0, 0, 0))
+        assert (row["wins"], row["losses"], row["ties"]) == (rw + uw, rl + ul, rt + ut), \
+            f"{row['team']}'s projection record is not the record its team page shows"
+        # A projection cannot have a team finishing below what it has banked.
+        assert row["projected_wins"] >= rw + uw
+        if uw:
+            checked += 1
+    assert checked, "no team in the payload had beaten an unrated opponent"
+
+
+def test_a_team_with_a_rounded_away_chance_stays_on_the_page():
+    """The page's row list is decided by the tallies, not by their decimals.
+
+    pct_digits keeps a single occurrence out of 0.0 today, but the filter must
+    not depend on it: if the published precision ever drops, a team with a real
+    chance should still be on the page rather than silently leaving the
+    payload.
+    """
+    import export_dashboard_data as edd
+
+    counts = {
+        "Longshot": {**dict.fromkeys(ps.TALLIES, 0), "playoff": 3},
+        "Conference hope": {**dict.fromkeys(ps.TALLIES, 0), "conference_title": 1},
+        "Eliminated": dict.fromkeys(ps.TALLIES, 0),
+    }
+    # Every percentage rounded to nothing, as a one-decimal export would do.
+    rows = [{"team": t, "playoff_pct": 0.0, "conference_title_pct": 0.0} for t in counts]
+    kept = [t["team"] for t in edd.still_playing_for_something(rows, counts)]
+    assert kept == ["Longshot", "Conference hope"]

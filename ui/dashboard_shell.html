@@ -1446,7 +1446,7 @@ const ROUTE_CONFIG = { yearsAll: DATA.years_all, playoffYears: DATA.years_playof
   gameSeasons: STATIC_MANIFEST.seasons || [] };
 let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult: null, simYear: null,
   homeGroup: null, homeTop25: false, homePoll: null };
-const SECTION_LABELS = { people: 'People', stats: 'Stats', home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', coverage: 'Data coverage', methodology: 'How it works' };
+const SECTION_LABELS = { people: 'People', stats: 'Stats', home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', accuracy: 'Track Record', coverage: 'Data coverage', methodology: 'How it works' };
 const SUBVIEWS = {
   rankings: [['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['home-field', 'Home-Field Advantage'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
     ['conference-coe2', 'Conference CoE 2.0'], ['elo-weekly', 'Week by Week'],
@@ -2129,7 +2129,8 @@ function renderProjection() {
     'season is then rated, its conference champions derived and its twelve-team field selected ' +
     'exactly as a real season would be, so these are the chances of finishing somewhere, not of ' +
     'winning a bracket that is already set. Results through ' + esc(P.as_of || 'the latest game') +
-    '.</p>';
+    '. Records and projected wins count games against unrated opponents, as a team page does; ' +
+    'the odds are simulated from rated games, which are the only ones a rating can play.</p>';
   html += '<p class="section-note">Two things this does not model, worth knowing before you read ' +
     'the numbers. Elo is held at today’s values inside a simulated season, so a team that loses ' +
     'its next five games is still favoured by the same amount in the sixth — real collapses and ' +

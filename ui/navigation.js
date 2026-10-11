@@ -261,5 +261,9 @@
       .toLowerCase().replace(/[^a-z0-9]/g, '');
   }
 
-  return { readRoute, hashFor, seasonsFor, normalizeSearch, pageTabs };
+  // `sections` is the list of routes this module will accept, published so
+  // that the page can be held to labelling all of them -- a section with a
+  // route and no label renders the word "undefined" as its browser title.
+  return { readRoute, hashFor, seasonsFor, normalizeSearch, pageTabs,
+    sections: Object.keys(views), views };
 });
