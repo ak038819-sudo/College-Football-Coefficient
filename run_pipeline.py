@@ -173,6 +173,13 @@ def main() -> None:
             run([python, "src/load_coaches.py", str(coaches_path), "--db", str(DB_PATH)],
                 "Load head-coaching history")
 
+        # Recruiting is loaded after coaches so a class and the coach who signed
+        # it are both present; nothing here depends on that order, but reading
+        # the pipeline in the order the join is made is worth the line.
+        if list(Path("data/raw").glob("recruiting_*_*.csv")):
+            run([python, "src/load_recruiting.py", "--db", str(DB_PATH)],
+                "Load recruiting classes and recruits")
+
         for snapshot_path in sorted(Path("data/raw").glob("membership_*.csv")):
             year_str = snapshot_path.stem.replace("membership_", "")
             if year_str.isdigit():
