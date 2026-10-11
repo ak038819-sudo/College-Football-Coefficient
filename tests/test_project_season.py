@@ -35,6 +35,36 @@ def season_ratings():
     return ps.load_season_ratings()
 
 
+@pytest.fixture(scope="module")
+def live_season(db_path):
+    """The season still being played, or a skip.
+
+    Everything this projection is for needs unplayed games. A database built
+    without data/raw/schedule_*.csv has none, so these tests would otherwise
+    assert that an empty projection is uncertain -- and CI built exactly such a
+    database until the test job started loading the schedule. They skip with a
+    reason instead of failing, and
+    test_ci_builds_a_database_with_games_left_to_play holds CI to building one
+    where they run.
+    """
+    import sqlite3
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        if not conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='scheduled_games'"
+        ).fetchone():
+            pytest.skip("no scheduled_games table -- load data/raw/schedule_*.csv first")
+        season = conn.execute(
+            """SELECT MAX(season_year) FROM scheduled_games
+               WHERE game_id NOT IN (SELECT game_id FROM games)""").fetchone()[0]
+    finally:
+        conn.close()
+    if season is None:
+        pytest.skip("every scheduled game has been played -- nothing to project")
+    return season
+
+
 def _real_inputs(db_conn, year):
     """What build_coefficients.main would hand the rating for one season."""
     bc.ensure_view(db_conn)
@@ -138,15 +168,14 @@ def test_a_finished_season_projects_to_the_field_it_actually_had(db_conn, db_pat
     assert {t for t, c in projection["counts"].items() if c["bye"]} == expected_byes
 
 
-def test_every_projected_season_sends_exactly_twelve_teams(db_path):
+def test_every_projected_season_sends_exactly_twelve_teams(db_path, live_season):
     """Over many simulated 2026 seasons, the field is always a legal field.
 
     select_field raises on a short field, so this would fail loudly rather
     than quietly publishing eleven teams -- but it also pins the counting: the
     playoff tallies have to sum to twelve per run.
     """
-    projection = ps.project(str(db_path), 2026, 40)
-    assert projection["unplayed"] > 0, "2026 has nothing left to project"
+    projection = ps.project(str(db_path), live_season, 40)
     total = sum(c["playoff"] for c in projection["counts"].values())
     assert total == 12 * projection["n_sims"]
     byes = sum(c["bye"] for c in projection["counts"].values())
@@ -155,14 +184,14 @@ def test_every_projected_season_sends_exactly_twelve_teams(db_path):
     assert champions == projection["n_sims"], "every simulated season has one champion"
 
 
-def test_an_unfinished_season_is_genuinely_uncertain(db_path):
+def test_an_unfinished_season_is_genuinely_uncertain(db_path, live_season):
     """More teams than fill the field have a chance at it, and conferences turn over.
 
     The point of the feature. Before it, the site gave twelve teams a 100%
     playoff chance and everyone else 0%; if this projection reproduced that,
     it would be an expensive way to publish the same claim.
     """
-    projection = ps.project(str(db_path), 2026, 200)
+    projection = ps.project(str(db_path), live_season, 200)
     rows = ps.rows_for_report(projection)
     contenders = [r for r in rows if r["playoff_pct"] > 0]
     assert len(contenders) > 12, "no team outside today's field has any chance"
@@ -171,9 +200,9 @@ def test_an_unfinished_season_is_genuinely_uncertain(db_path):
     assert races, "no conference race is undecided"
 
 
-def test_projected_wins_never_exceed_the_games_played(db_path):
+def test_projected_wins_never_exceed_the_games_played(db_path, live_season):
     """A team cannot win more games than its season contains."""
-    projection = ps.project(str(db_path), 2026, 25)
+    projection = ps.project(str(db_path), live_season, 25)
     played = projection["games_played"]
     for team, total in projection["wins"].items():
         mean = total / projection["n_sims"]
@@ -181,15 +210,15 @@ def test_projected_wins_never_exceed_the_games_played(db_path):
         assert mean <= 25, f"{team} projects {mean:.1f} wins, which is not a season"
 
 
-def test_the_simulation_is_reproducible_from_its_seed(db_path):
-    one = ps.project(str(db_path), 2026, 30, sim_seed=7)
-    two = ps.project(str(db_path), 2026, 30, sim_seed=7)
+def test_the_simulation_is_reproducible_from_its_seed(db_path, live_season):
+    one = ps.project(str(db_path), live_season, 30, sim_seed=7)
+    two = ps.project(str(db_path), live_season, 30, sim_seed=7)
     assert one["counts"] == two["counts"]
-    assert ps.project(str(db_path), 2026, 30, sim_seed=8)["counts"] != one["counts"]
+    assert ps.project(str(db_path), live_season, 30, sim_seed=8)["counts"] != one["counts"]
 
 
-def test_the_report_rows_are_percentages_of_the_runs(db_path):
-    projection = ps.project(str(db_path), 2026, 50)
+def test_the_report_rows_are_percentages_of_the_runs(db_path, live_season):
+    projection = ps.project(str(db_path), live_season, 50)
     for row in ps.rows_for_report(projection):
         for key in ("conference_title_pct", "playoff_pct", "bye_pct", "champion_pct"):
             assert 0.0 <= row[key] <= 100.0
@@ -298,3 +327,26 @@ def test_the_prior_only_acts_below_full_confidence():
     partial = {t: 0.25 for t in teams}
     assert ps.iterative_ratings(results, teams, high, partial) != \
         ps.iterative_ratings(results, teams, low, partial)
+
+
+def test_ci_builds_a_database_with_games_left_to_play(repo_root):
+    """The test that cannot skip, carrying the weight for the ones that can.
+
+    Every behavioural test of this projection needs a season with unplayed
+    games, and skips without one. That is right locally and unacceptable in
+    CI, where skipping would let the whole feature go quiet -- which is exactly
+    what happened on this PR's first run: the test job's bootstrap loaded the
+    games but not data/raw/schedule_*.csv, so 2026 had nothing left to project
+    and the tests that matter most failed on an empty projection.
+
+    run_pipeline.py is what the deploy job runs and it loads both, so the
+    assertion is simply that the test job loads them too.
+    """
+    workflow = (repo_root / ".github" / "workflows" / "ci-and-deploy.yml").read_text(
+        encoding="utf-8")
+    assert "src/load_schedule.py" in workflow, (
+        "CI never loads data/raw/schedule_*.csv, so its database has no unplayed "
+        "games and every rest-of-season test skips")
+    assert "src/load_fcs_games.py" in workflow, (
+        "CI never loads data/raw/fcs_games_*.csv, so its database has no "
+        "non_fbs_games and the team record tests skip")

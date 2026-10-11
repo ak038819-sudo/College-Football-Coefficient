@@ -118,6 +118,11 @@ def test_unrated_games_are_not_in_the_rated_records(db_path):
 
     conn = sqlite3.connect(str(db_path))
     try:
+        if not conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='non_fbs_games'"
+        ).fetchone():
+            import pytest
+            pytest.skip("no non_fbs_games table -- load data/raw/fcs_games_*.csv first")
         games = conn.execute(
             "SELECT COUNT(*) FROM games WHERE home_score IS NOT NULL AND away_score IS NOT NULL"
         ).fetchone()[0]
