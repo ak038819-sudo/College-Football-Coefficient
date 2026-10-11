@@ -317,6 +317,10 @@
     },
     "401856808": {
       "away_id": 12,
+      "candidate_brier": 0.03477069,
+      "candidate_log_loss": 0.20637125,
+      "flat_brier": 0.03579172,
+      "flat_log_loss": 0.20971783,
       "home_bonus": 53.7,
       "home_id": 16,
       "kickoff_utc": "2026-10-11T02:30:00.000Z",
@@ -324,6 +328,8 @@
       "p_candidate": 0.813531,
       "p_flat": 0.810813,
       "recorded_at": "2026-10-04T02:51:00.549212Z",
+      "result": 1.0,
+      "scored_at": "2026-10-11T06:50:20.040575Z",
       "season": 2026
     },
     "401856809": {
@@ -2453,11 +2459,11 @@
     "version": "centered_hfa_v1"
   },
   "summary": {
-    "candidate_brier": 0.192819,
-    "candidate_log_loss": 0.565942,
-    "flat_brier": 0.191954,
-    "flat_log_loss": 0.564108,
-    "games": 108
+    "candidate_brier": 0.191369,
+    "candidate_log_loss": 0.562644,
+    "flat_brier": 0.190521,
+    "flat_log_loss": 0.560857,
+    "games": 109
   },
   "version": "centered_hfa_v1"
 }
