@@ -127,12 +127,15 @@ def test_the_output_directory_is_resolved_inside_the_function(tmp_path, monkeypa
     data/raw. That trap has bitten this repository four times."""
     monkeypatch.setattr(rec, 'OUT_DIR', tmp_path)
     monkeypatch.setattr(rec, 'fetch', lambda path, year, headers:
-                        [team()] if path.endswith('teams') else [recruit()])
-    written = rec.write_season(2024, {})
-    assert {p.name for p in written} == {'recruiting_teams_2024.csv',
-                                         'recruiting_players_2024.csv'}
+                        [team(year=2099)] if path.endswith('teams')
+                        else [recruit(year=2099)])
+    written = rec.write_season(2099, {})
+    assert {p.name for p in written} == {'recruiting_teams_2099.csv',
+                                         'recruiting_players_2099.csv'}
     assert all(p.parent == tmp_path for p in written)
-    assert not list(Path('data/raw').glob('recruiting_*_2024.csv'))
+    # A season no backfill covers, so a file here can only have come from this
+    # test writing into the real archive.
+    assert not list(Path('data/raw').glob('recruiting_*_2099.csv'))
 
 
 def test_a_season_with_no_rows_writes_no_file(tmp_path, monkeypatch):
@@ -163,13 +166,17 @@ def test_the_written_csv_round_trips(tmp_path, monkeypatch):
 
 # ---- nothing published reads it yet -----------------------------------------
 
-READERS = {'src/fetch_cfbd_recruiting.py'}
+READERS = {'src/fetch_cfbd_recruiting.py', 'src/load_recruiting.py',
+           'run_pipeline.py'}
 
 
-def test_no_published_number_depends_on_recruiting_yet():
-    """Until a loader lands deliberately, this data must not reach the site.
-    A file that quietly starts being read is how an unvalidated input becomes
-    a published number without anyone deciding to."""
+def test_only_the_named_files_read_the_recruiting_archive():
+    """Three files touch this archive: the fetcher that writes it, the loader
+    that reads it into the database, and the pipeline that calls the loader.
+
+    A fourth appearing is how an unvalidated input becomes a published number
+    without anyone deciding to, so widening the set above is the deliberate
+    act that says someone did."""
     root = Path(__file__).resolve().parents[1]
     offenders = []
     for path in list((root / 'src').rglob('*.py')) + [root / 'build_dashboard.py',
