@@ -11,7 +11,8 @@ import subprocess
 import pytest
 
 import person_identity as identity
-from export_people_pages import (PLAYER_SHARDS, build_coaches, build_name_index,
+from export_people_pages import (PLAYER_SHARDS, RECRUIT_SHARDS, build_coach_recruits,
+                                 build_coaches, build_name_index,
                                  build_players, build_rosters, build_team_coaches, export,
                                  shard_key)
 
@@ -236,7 +237,8 @@ def test_every_emitted_file_parses_and_round_trips_through_a_js_runtime(conn, tm
 
     assert manifest["counts"] == {"players": 2, "coaches": 1, "player_seasons": 3,
                                   "coach_seasons": 2, "seasons": [2025, 2026],
-                                  "stat_seasons": []}
+                                  "stat_seasons": [], "coach_recruit_points": 0,
+                                  "coach_recruits_unlocated": 0}
     # Every manifest path must name a file that was actually written.
     for path in ([manifest["coaches"]] + list(manifest["players"].values())
                  + list(manifest["index"].values()) + list(manifest["rosters"].values())):
@@ -386,3 +388,173 @@ def test_the_export_still_works_without_the_recruiting_tables(conn):
     """A database built before this data existed must still export."""
     cid = _coach(conn, "Someone", [(2020, 1, None)])
     assert build_coaches(conn)[cid]["tenures"][0]["season_year"] == 2020
+
+
+# ---- where the signees came from ---------------------------------------------
+
+def _recruit(conn, recruit_id, team_id, season, lat, lon, city="Mobile", state="AL"):
+    # Deliberately no recruiting_classes row: a class with recruits but no
+    # ranking is a real state of this archive (FIU 2022) and the map must be
+    # right in it, so the fixture does not hand the builder one for free.
+    conn.executescript((__import__('pathlib').Path(__file__).resolve().parents[1]
+                        / 'sql' / 'recruiting_tables.sql').read_text(encoding='utf-8'))
+    conn.execute(
+        "INSERT OR REPLACE INTO recruits (recruit_id, season_year, name, committed_to, "
+        "committed_team_id, city, state_province, hometown_latitude, hometown_longitude) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (recruit_id, season, "A Recruit", TEAMS.get(team_id, str(team_id)), team_id,
+         city, state, lat, lon))
+
+
+def test_a_coachs_map_holds_the_towns_his_signees_came_from(conn):
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    _recruit(conn, 1, 1, 2020, 30.6954, -88.0399)
+    coaches = build_coaches(conn)
+    out = build_coach_recruits(conn, coaches)[cid]
+    assert out == {"points": [[30.7, -88.04, 1, "Mobile, AL"]], "unlocated": 0}
+
+
+def test_signees_from_one_town_are_one_point_carrying_the_count(conn):
+    """Eleven circles drawn on top of each other do not show eleven players."""
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    for n, (lat, lon) in enumerate([(30.7012, -88.0399), (30.6991, -88.0402),
+                                    (30.7034, -88.0398)]):
+        _recruit(conn, n + 1, 1, 2020, lat, lon)
+    assert build_coach_recruits(conn, build_coaches(conn))[cid]["points"] == \
+        [[30.7, -88.04, 3, "Mobile, AL"]]
+
+
+def test_two_towns_a_kilometre_apart_stay_two_points(conn):
+    """Rounding to two places merges a city; it must not merge its neighbour."""
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    _recruit(conn, 1, 1, 2020, 30.69, -88.04, "Mobile", "AL")
+    _recruit(conn, 2, 1, 2020, 30.72, -88.04, "Prichard", "AL")
+    assert len(build_coach_recruits(conn, build_coaches(conn))[cid]["points"]) == 2
+
+
+def test_an_inherited_class_is_not_on_the_map(conn):
+    """The map is a claim about where a coach goes for players. His first
+    class was signed three weeks after he arrived, by someone else."""
+    cid = _coach(conn, "Nick Saban", [(2007, 1, None), (2008, 1, None)])
+    _recruit(conn, 1, 1, 2007, 30.69, -88.04, "Mobile", "AL")
+    _recruit(conn, 2, 1, 2008, 33.52, -86.80, "Birmingham", "AL")
+    assert build_coach_recruits(conn, build_coaches(conn))[cid]["points"] == \
+        [[33.52, -86.8, 1, "Birmingham, AL"]]
+
+
+def test_a_coach_whose_only_class_was_inherited_has_no_map(conn):
+    cid = _coach(conn, "A Caretaker", [(2020, 1, None)])
+    _recruit(conn, 1, 1, 2020, 30.69, -88.04)
+    assert cid not in build_coach_recruits(conn, build_coaches(conn))
+
+
+def test_another_teams_signees_are_not_on_this_coachs_map(conn):
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    _recruit(conn, 1, 2, 2020, 44.05, -123.09, "Eugene", "OR")
+    assert cid not in build_coach_recruits(conn, build_coaches(conn))
+
+
+def test_a_signee_without_coordinates_is_counted_rather_than_placed(conn):
+    """A recruit the feed gave no hometown for cannot be drawn anywhere --
+    putting him at 0,0 would put him in the Gulf of Guinea -- but dropping him
+    would publish a class total smaller than the class. 466 signees across the
+    archive are in this state, 11 of them Lance Leipold's."""
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    _recruit(conn, 1, 1, 2020, None, None)
+    _recruit(conn, 2, 1, 2020, 30.69, -88.04)
+    assert build_coach_recruits(conn, build_coaches(conn))[cid] == \
+        {"points": [[30.69, -88.04, 1, "Mobile, AL"]], "unlocated": 1}
+
+
+def test_a_coach_whose_every_signee_lacks_a_hometown_is_still_counted(conn):
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    _recruit(conn, 1, 1, 2020, None, None)
+    assert build_coach_recruits(conn, build_coaches(conn))[cid] == \
+        {"points": [], "unlocated": 1}
+
+
+def test_an_unplaceable_signee_of_an_inherited_class_is_not_counted_either(conn):
+    cid = _coach(conn, "A Caretaker", [(2020, 1, None)])
+    _recruit(conn, 1, 1, 2020, None, None)
+    assert cid not in build_coach_recruits(conn, build_coaches(conn))
+
+
+def test_a_first_season_is_inherited_even_with_no_ranking_row(conn):
+    """class_inherited is only set where the archive also has a class RANK.
+    FIU's 2022 class has 17 located recruits and no ranking row, so reading
+    that flag put Butch Davis's last class on Mike MacIntyre's map."""
+    _coach(conn, "Butch Davis", [(2020, 1, None), (2021, 1, None)])
+    successor = _coach(conn, "Mike MacIntyre", [(2022, 1, None), (2023, 1, None)])
+    _recruit(conn, 1, 1, 2022, 30.69, -88.04, "Mobile", "AL")
+    _recruit(conn, 2, 1, 2023, 33.52, -86.80, "Birmingham", "AL")
+    tenures = build_coaches(conn)[successor]["tenures"]
+    assert "class_inherited" not in tenures[0], "the flag is absent without a ranked class"
+    assert build_coach_recruits(conn, build_coaches(conn))[successor]["points"] == \
+        [[33.52, -86.8, 1, "Birmingham, AL"]]
+
+
+def test_two_towns_that_round_together_do_not_borrow_each_others_names(conn):
+    """The feed has a "Hampton, SC" at Hampton, Virginia's coordinates. With
+    one label cache for the whole archive, whichever row SQLite returned first
+    named that point for every coach who ever signed anyone there."""
+    first = _coach(conn, "First Coach", [(2019, 1, None), (2020, 1, None)])
+    second = _coach(conn, "Second Coach", [(2019, 2, None), (2020, 2, None)])
+    _recruit(conn, 1, 1, 2020, 37.05, -76.29, "Hampton", "SC")
+    _recruit(conn, 2, 2, 2020, 37.05, -76.29, "Hampton", "VA")
+    out = build_coach_recruits(conn, build_coaches(conn))
+    assert out[first]["points"][0][3] == "Hampton, SC"
+    assert out[second]["points"][0][3] == "Hampton, VA"
+
+
+def test_the_busiest_town_comes_first(conn):
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    _recruit(conn, 1, 1, 2020, 33.52, -86.80, "Birmingham", "AL")
+    for n, _ in enumerate(range(2)):
+        _recruit(conn, n + 2, 1, 2020, 30.69, -88.04, "Mobile", "AL")
+    assert [p[3] for p in build_coach_recruits(conn, build_coaches(conn))[cid]["points"]] == \
+        ["Mobile, AL", "Birmingham, AL"]
+
+
+def test_towns_sending_the_same_number_are_ordered_by_name(conn):
+    """Otherwise the export's byte content depends on SQLite's row order and
+    every rebuild rewrites the file with a new hash."""
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    _recruit(conn, 1, 1, 2020, 44.05, -123.09, "Eugene", "OR")
+    _recruit(conn, 2, 1, 2020, 30.69, -88.04, "Mobile", "AL")
+    assert [p[3] for p in build_coach_recruits(conn, build_coaches(conn))[cid]["points"]] == \
+        ["Eugene, OR", "Mobile, AL"]
+
+
+def test_a_hometown_with_no_name_is_still_a_point(conn):
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    _recruit(conn, 1, 1, 2020, 30.69, -88.04, None, None)
+    assert build_coach_recruits(conn, build_coaches(conn))[cid]["points"] == [[30.69, -88.04, 1, ""]]
+
+
+def test_there_is_no_map_data_without_the_recruiting_tables(conn):
+    """A database built before this data existed must still export."""
+    _coach(conn, "Someone", [(2020, 1, None)])
+    assert build_coach_recruits(conn, build_coaches(conn)) == {}
+
+
+def test_the_export_writes_a_shard_per_coach_id(conn, tmp_path):
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    _recruit(conn, 1, 1, 2020, 30.69, -88.04)
+    manifest = export(conn, tmp_path)
+    assert manifest["recruit_shards"] == RECRUIT_SHARDS
+    assert len(manifest["coach_recruits"]) == RECRUIT_SHARDS
+    assert manifest["counts"]["coach_recruit_points"] == 1
+    assert manifest["counts"]["coach_recruits_unlocated"] == 0
+    shard = tmp_path / f"coach_recruits_{cid % RECRUIT_SHARDS}.js"
+    assert str(cid) in shard.read_text(encoding="utf-8")
+    assert manifest["coach_recruits"][str(cid % RECRUIT_SHARDS)].startswith(
+        f"data/people/coach_recruits_{cid % RECRUIT_SHARDS}.js?v=")
+
+
+def test_every_declared_shard_file_exists_even_when_empty(conn, tmp_path):
+    """The page asks for its own shard before it knows whether that shard has
+    anything in it, and a 404 in the console is a bug report."""
+    _coach(conn, "Someone", [(2020, 1, None)])
+    manifest = export(conn, tmp_path)
+    for shard, src in manifest["coach_recruits"].items():
+        assert (tmp_path / src.split("?")[0].rsplit("/", 1)[1]).exists(), shard

@@ -865,6 +865,12 @@
   .stadium-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(250px, .8fr); gap: 16px; }
   .stadium-map { width: 100%; height: auto; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; }
   .state-boundary {fill:#243548;stroke:#718092;stroke-width:.8;}
+  .recruit-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(170px, .6fr); gap: 16px; align-items: start; }
+  .recruit-map circle { fill: var(--amber); fill-opacity: .72; stroke: var(--bg); stroke-width: 1.1; }
+  .recruit-top-title { margin: 0 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .recruit-top { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+  .recruit-top li { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px solid var(--line); }
+  @media (max-width: 720px) { .recruit-layout { grid-template-columns: 1fr; } }
   .stadium-map .selected-stadium {fill:var(--green-hl);stroke:white;stroke-width:2;}
   .stadium-map circle { fill: var(--amber); stroke: var(--bg); stroke-width: 1.3; }
   .stadium-map a:hover circle, .stadium-map a:focus circle { fill: var(--green-hl); stroke-width: 2.5; }
@@ -4885,6 +4891,19 @@ function loadCoaches() {
   });
 }
 
+function loadCoachRecruits(id) {
+  // Same floored modulo as loadPlayer, for the same reason: a coach id is
+  // derived from a name key and is always positive today, but the shard rule
+  // has to agree with the exporter's, not with today's id range.
+  const shards = PEOPLE ? PEOPLE.recruit_shards : 0;
+  const src = shards ? (PEOPLE.coach_recruits || {})[String(((Number(id) % shards) + shards) % shards)] : null;
+  if (!src) return Promise.resolve(null);     // null = this build has no map data
+  return loadDataScript(src).then(() => {
+    const bucket = (window.__CFB_PEOPLE_COACH_RECRUITS__ || {})[((Number(id) % shards) + shards) % shards];
+    return (bucket || {})[String(id)] || null;
+  });
+}
+
 function loadRoster(season) {
   const src = (PEOPLE && PEOPLE.rosters || {})[String(season)];
   if (!src) return Promise.resolve(null);     // null = that season was never synced
@@ -5181,6 +5200,75 @@ function coachExpectation(tenures) {
 // and 4th. Those inherited classes are counted separately rather than averaged
 // in, because averaging them in credits or blames a coach for a class he had
 // three weeks to touch.
+function recruitMapPoints(recruits) {
+  // Off-continent signees (Australian punters, a German lineman) have real
+  // coordinates this projection cannot draw, and 466 signees across the
+  // archive have no coordinates at all. Both are counted in the note rather
+  // than silently dropped or crushed against the frame, because a total that
+  // leaves out part of a class is a wrong number, not a smaller one.
+  const points = (recruits && recruits.points) || [];
+  const unlocated = Number((recruits && recruits.unlocated) || 0);
+  const inside = [], outside = [];
+  for (const pt of points) {
+    const lat = Number(pt[0]), lon = Number(pt[1]);
+    // A NaN fails every one of these comparisons, so a coordinate that is not
+    // a number lands outside with the ones that are merely far away.
+    (lat >= 15 && lat <= 73 && lon >= -180 && lon <= -60 ? inside : outside).push(pt);
+  }
+  const total = pts => pts.reduce((n, pt) => n + Number(pt[2] || 0), 0);
+  return { inside, outside, unlocated,
+           signees: total(points) + unlocated,
+           offmap: total(outside) + unlocated };
+}
+
+function recruitMap(recruits) {
+  const { inside } = recruitMapPoints(recruits);
+  if (!inside.length) return '';
+  const alaska = inside.some(pt => Number(pt[0]) > 55);
+  const map = CfbGeography.projection(alaska);
+  const most = inside.reduce((n, pt) => Math.max(n, Number(pt[2])), 1);
+  // Area, not radius, carries the count: a town that sent twelve players must
+  // read as twelve players' worth of ink, and scaling the radius linearly would
+  // draw it with 144 times the area of a town that sent one.
+  const radius = n => 3 + 7 * Math.sqrt(Number(n) / most);
+  return '<svg class="stadium-map recruit-map" viewBox="0 0 ' + map.width + ' ' + map.height +
+    '" role="group" aria-label="Map of the hometowns this coach signed players from">' +
+    '<g aria-label="United States state boundaries">' +
+    CfbGeography.statePaths(alaska).map(st => '<path class="state-boundary" d="' + st.d +
+      '"><title>' + esc(st.name) + '</title></path>').join('') + '</g>' +
+    // Biggest first, so a small town inside a metro area stays clickable.
+    inside.slice().sort((a, b) => Number(b[2]) - Number(a[2])).map(pt => {
+      const [x, y] = map.project(Number(pt[1]), Number(pt[0]));
+      const label = (pt[3] || 'Hometown not named') + ' \u00b7 ' + pt[2] +
+        (Number(pt[2]) === 1 ? ' signee' : ' signees');
+      return '<circle cx="' + x.toFixed(2) + '" cy="' + y.toFixed(2) + '" r="' +
+        radius(pt[2]).toFixed(2) + '"><title>' + esc(label) + '</title></circle>';
+    }).join('') + '</svg>';
+}
+
+function coachRecruitPanel(recruits) {
+  const map = recruitMap(recruits);
+  if (!map) return '';
+  const { inside, signees, offmap, unlocated } = recruitMapPoints(recruits);
+  const top = inside.slice(0, 8);
+  return '<div class="panel team-section"><h2 class="section-title">Recruiting pipeline</h2>' +
+    '<div class="recruit-layout"><div>' + map + '</div><div>' +
+    '<h3 class="recruit-top-title">Most-signed towns</h3><ol class="recruit-top">' +
+    top.map(pt => '<li><span>' + esc(pt[3] || 'Hometown not named') + '</span><b>' +
+      esc(pt[2]) + '</b></li>').join('') + '</ol></div></div>' +
+    '<p class="section-note">' + signees + (signees === 1 ? ' signee' : ' signees') +
+    ' from ' + inside.length + (inside.length === 1 ? ' town' : ' towns') +
+    ', in the classes this coach signed only \u2014 a class he inherited is left out, ' +
+    'the same way it is left out of his average rank above. A dot is a hometown and its ' +
+    'area is how many players came from there; hometowns are as the recruiting feed ' +
+    'reported them.' + (offmap ? ' ' + offmap + (offmap === 1 ? ' signee is' : ' signees are') +
+      ' counted here but not drawn' + (unlocated
+        ? ', ' + (offmap === unlocated ? 'having no hometown in the feed'
+            : unlocated + ' of them having no hometown in the feed and the rest being ' +
+              'outside this map') + '.'
+        : ', being from outside this map.') : '') + '</p></div>';
+}
+
 function coachRecruiting(tenures) {
   const ranked = (tenures || []).filter(t => t && t.class_rank != null);
   const own = ranked.filter(t => !t.class_inherited);
@@ -5195,7 +5283,7 @@ function coachRecruiting(tenures) {
   };
 }
 
-function coachPanels(c, id) {
+function coachPanels(c, id, recruitPoints) {
   const tenures = c.tenures || [];
   const measuredElo = tenures.filter(t=>Number.isFinite(t.elo_change));
   const totalElo = measuredElo.reduce((sum,t)=>sum+t.elo_change,0);
@@ -5278,7 +5366,7 @@ function coachPanels(c, id) {
       'average' + (rec2.inherited ? ' (' + rec2.inherited +
         (rec2.inherited === 1 ? ' season' : ' seasons') + ' here)' : '') +
       '. Classes start in 2000.</p>' : '') + '</div>';
-  return header + note + table + '<section class="panel team-section"><h2>How coach performance is measured</h2><p>Elo gained / lost = final postgame Elo − first pregame Elo for each measured season. Career change sums those season changes, excluding offseason regression.</p><p>Wins above expectation = wins + ½ × ties − sum of pregame Elo win probabilities. Positive means more wins than the team’s ratings and schedule predicted. This measures team outcomes during the tenure; it does not isolate coaching causation.</p></section>';
+  return header + note + table + coachRecruitPanel(recruitPoints) + '<section class="panel team-section"><h2>How coach performance is measured</h2><p>Elo gained / lost = final postgame Elo − first pregame Elo for each measured season. Career change sums those season changes, excluding offseason regression.</p><p>Wins above expectation = wins + ½ × ties − sum of pregame Elo win probabilities. Positive means more wins than the team’s ratings and schedule predicted. This measures team outcomes during the tenure; it does not isolate coaching causation.</p></section>';
 }
 
 function hydratePersonPage(version, kind) {
@@ -5292,9 +5380,12 @@ function hydratePersonPage(version, kind) {
   if (id == null) { show(personMissing(kind, id)); return; }
   const work = kind === 'player'
     ? loadPlayer(id).then(p => p ? [playerPanels(p, id), p.display_name] : [personMissing(kind, id), null])
-    : loadCoaches().then(all => {
+    // The map's shard is fetched alongside the coach file rather than after it,
+    // so a coach page is one round trip and not two. A missing or failed shard
+    // resolves to null: the page is the career, the map is an extra.
+    : Promise.all([loadCoaches(), loadCoachRecruits(id).catch(() => null)]).then(([all, points]) => {
         const c = all[String(id)];
-        return c ? [coachPanels(c, id), c.display_name] : [personMissing(kind, id), null];
+        return c ? [coachPanels(c, id, points), c.display_name] : [personMissing(kind, id), null];
       });
   work.then(([html, name]) => show(html, name))
     .catch(err => show('<div class="panel"><p class="empty-note">Could not load this ' +
