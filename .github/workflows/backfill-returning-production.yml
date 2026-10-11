@@ -1,0 +1,132 @@
+# Fetch returning production per team-season from CFBD.
+#
+# CFBD is unreachable from a development container here, so this is the only
+# place the endpoint can be called and the only place its real schema and
+# coverage can be observed. Run it in PROBE mode first: it prints the keys the
+# endpoint returns, the row counts per season and one sample row, and writes
+# nothing. The fetcher's field list was established that way rather than from
+# memory of the API docs.
+#
+# This data is an INPUT ONLY. Nothing reads these files until a fit has been
+# scored out of sample, so a backfill changes no published number and needs no
+# rebuild afterwards.
+#
+# The fetch REWRITES a season's file rather than merging, so re-running a range
+# is safe and idempotent.
+name: Backfill returning production
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_year:
+        description: "First season to fetch (the season production returns INTO)"
+        required: true
+        default: "2014"
+      end_year:
+        description: "Last season to fetch"
+        required: true
+        default: "2026"
+      probe:
+        description: "Report the endpoint's schema and coverage; write nothing"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Shares the deploy's lock because it pushes to main and writes data/raw,
+    # which the scheduled refresh also rewrites.
+    concurrency:
+      group: rebuild-and-deploy-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Report what the endpoint actually returns
+        if: ${{ inputs.probe }}
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          START: ${{ inputs.start_year }}
+          END: ${{ inputs.end_year }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CFBD_API_KEY:-}" ]; then
+            echo "::error::CFBD_API_KEY is not set for this repository."
+            exit 1
+          fi
+          python3 src/fetch_cfbd_returning_production.py --probe "$START" "$END"
+
+      - name: Fetch and commit one season at a time
+        if: ${{ !inputs.probe }}
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          START: ${{ inputs.start_year }}
+          END: ${{ inputs.end_year }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CFBD_API_KEY:-}" ]; then
+            echo "::error::CFBD_API_KEY is not set for this repository."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # One season per commit, pushed as it lands, so a timeout or a CFBD
+          # outage costs the season in flight rather than the whole backfill.
+          for year in $(seq "$START" "$END"); do
+            echo "::group::season $year"
+            # Checked explicitly: `set -e` does NOT stop a shell loop, and a
+            # season that failed must halt the run rather than be skipped while
+            # later seasons commit on top of the gap.
+            if ! python3 src/fetch_cfbd_returning_production.py "$year"; then
+              echo "::endgroup::"
+              echo "::error::Season $year failed. Earlier seasons are committed; re-run this workflow from $year to resume."
+              exit 1
+            fi
+            file="data/raw/returning_production_$year.csv"
+            # A season CFBD covers but has no rows for writes no file at all.
+            # That is not a failure: the endpoint's coverage start is what the
+            # probe is for, and a missing season is a fact about the API.
+            if [ ! -f "$file" ]; then
+              echo "Season $year produced no file; CFBD has no returning production for it."
+              echo "::endgroup::"
+              continue
+            fi
+            if ! scripts/publish_to_main.sh "Archive $year returning production [skip ci]" "$file"; then
+              echo "::endgroup::"
+              echo "::error::Could not publish season $year. Nothing was published for it; re-run this workflow from $year."
+              exit 1
+            fi
+            echo "::endgroup::"
+          done
+
+      # Read off the files this job wrote, not the database, which it never builds.
+      - name: Summarise the backfill
+        if: ${{ always() && !inputs.probe }}
+        run: |
+          python3 - <<'PY'
+          import csv, pathlib, statistics
+          files = sorted(pathlib.Path('data/raw').glob('returning_production_*.csv'))
+          for path in files:
+              rows = list(csv.DictReader(path.open(encoding='utf-8')))
+              season = path.stem.replace('returning_production_', '')
+              pct = [float(r['percent_ppa']) for r in rows if r['percent_ppa'] != '']
+              if pct:
+                  print(f'{season}: {len(rows)} teams, {len(pct)} with percent_ppa, '
+                        f'median {statistics.median(pct):.3f}, '
+                        f'range {min(pct):.3f}-{max(pct):.3f}')
+              else:
+                  print(f'{season}: {len(rows)} teams, none with percent_ppa')
+          print(f'total: {len(files)} seasons')
+          PY
