@@ -894,7 +894,7 @@ test('a player page shows the season statistics attached to their athlete id', (
   // The panel exists because the season feed numbers every row with an athlete
   // id. Before it, a player page could only say who someone was.
   const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
-  const source = statConstants(shell) + ['statCell', 'orderSeasonStatTypes', 'careerStatRow',
+  const source = statConstants(shell) + ['playerStatCell', 'orderSeasonStatTypes', 'careerStatRow',
                   'playerStatsPanel'].map(name =>
     shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))[0]).join('\n');
   const context = {FRACTION_STATS: {PCT: true},
@@ -936,7 +936,7 @@ test('a player page shows the season statistics attached to their athlete id', (
 
 test('a season a player has no statistics for is left out of their stat table', () => {
   const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
-  const source = statConstants(shell) + ['statCell', 'orderSeasonStatTypes', 'careerStatRow',
+  const source = statConstants(shell) + ['playerStatCell', 'orderSeasonStatTypes', 'careerStatRow',
                   'playerStatsPanel'].map(name =>
     shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))[0]).join('\n');
   const context = {esc: String, teamCellById: id => 'TEAM' + id, FRACTION_STATS: {PCT: true},
@@ -987,7 +987,7 @@ test('a season split across two athlete ids is marked on every table and named o
   // reads 17 carries for 41 yards while CFBD's other record for that name
   // holds 23 for 101 and 3 touchdowns.
   const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
-  const source = statConstants(shell) + ['statCell', 'orderSeasonStatTypes', 'careerStatRow',
+  const source = statConstants(shell) + ['playerStatCell', 'orderSeasonStatTypes', 'careerStatRow',
                   'playerStatsPanel'].map(name =>
     shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))[0]).join('\n');
   const context = {FRACTION_STATS: {PCT: true}, esc: String,

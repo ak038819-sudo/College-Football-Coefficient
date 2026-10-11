@@ -23,7 +23,7 @@ function load(names, extra) {
     playerHref: id => '#player=' + id,
     teamCellById: id => 'TEAM' + id,
     personStatsNote: () => '<p>NO STATS</p>',
-    statCell: value => String(value),
+    playerStatCell: value => String(value),
     FRACTION_STATS: {PCT: true},
     STAT_CATEGORY_LABELS: {rushing: 'Rushing'},
     STAT_CATEGORY_ORDER: ['rushing'],

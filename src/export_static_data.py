@@ -440,7 +440,7 @@ GAME_LOG_SHARDS = 64
 # the line without a second fetch; then the line itself. Append-only, like
 # FIELDS -- an older position never moves.
 GAME_LOG_FIELDS = ["game_id", "date", "opponent_id", "home", "points_for",
-                   "points_against", "stats"]
+                   "points_against", "stats", "kickoff_utc", "neutral"]
 
 
 def game_log_shard(player_id) -> int:
@@ -448,7 +448,7 @@ def game_log_shard(player_id) -> int:
 
 
 def build_player_game_logs(payloads: dict, archives: dict, team_ids: dict) -> dict:
-    """season -> player_id -> [[game_id, date, opponent_id, home, pf, pa, stats], ...].
+    """season -> player_id -> [[game_id, date, opponent, home, pf, pa, stats, kickoff, neutral], ...].
 
     Newest game first, which is the order a career is read in. A game the
     database does not hold is skipped rather than exported without an opponent:
@@ -461,7 +461,7 @@ def build_player_game_logs(payloads: dict, archives: dict, team_ids: dict) -> di
         for row in payload["games"]:
             if not row[4]:                       # completed only -- a line needs a game played
                 continue
-            games[str(row[0])] = (row[2], row[8], row[9], row[10], row[11])
+            games[str(row[0])] = (row[2], row[8], row[9], row[10], row[11], row[3], row[6])
 
     logs: dict = defaultdict(lambda: defaultdict(dict))
     for season in sorted(archives):
@@ -469,7 +469,7 @@ def build_player_game_logs(payloads: dict, archives: dict, team_ids: dict) -> di
             game = games.get(str(game_id))
             if game is None or not isinstance(sides, list):
                 continue
-            date, home_id, away_id, home_score, away_score = game
+            date, home_id, away_id, home_score, away_score, kickoff, neutral = game
             for side in sides:
                 if not isinstance(side, dict):
                     continue
@@ -487,11 +487,53 @@ def build_player_game_logs(payloads: dict, archives: dict, team_ids: dict) -> di
                             [int(game_id), date, away_id if at_home else home_id,
                              int(at_home),
                              home_score if at_home else away_score,
-                             away_score if at_home else home_score, {}])
+                             away_score if at_home else home_score, {},
+                             kickoff, int(bool(neutral))])
                         row[6].setdefault(category["name"], {})[category["type"]] = line.get("stat")
     return {season: {player_id: sorted(rows.values(), key=lambda r: (r[1], r[0]), reverse=True)
                      for player_id, rows in players.items()}
             for season, players in logs.items()}
+
+
+def build_game_log_index(logs: dict) -> dict:
+    """player_id -> [season, ...], newest first.
+
+    Which seasons a player has a line in is not derivable from his record: a
+    roster snapshot covers 2009 onward and the season-statistic feed 2009-2025,
+    while the box scores start in 2005, so a season with a line and no roster
+    row is invisible to anything that guesses from the player's own page.
+    Measured against this archive the gap is large -- 2,056 players with a 2008
+    line, 1,497 with a 2025 one -- so the export says outright which seasons to
+    ask for.
+    """
+    seasons: dict = defaultdict(list)
+    for season in sorted(logs, reverse=True):
+        for player_id in logs[season]:
+            seasons[player_id].append(int(season))
+    return seasons
+
+
+def write_game_log_index(out_dir: Path, index: dict) -> dict:
+    """Write the index on the same shard key as the logs and return its entry.
+
+    Same key, so a page's index shard and its log shards are one family; the
+    page fetches the index beside the player's own record rather than after
+    it, which keeps a career page at two round trips.
+    """
+    index_dir = out_dir / "game_logs" / "index"
+    index_dir.mkdir(parents=True, exist_ok=True)
+    shards: dict = defaultdict(dict)
+    for player_id, seasons in index.items():
+        shards[game_log_shard(player_id)][player_id] = seasons
+    files = {}
+    for shard in range(GAME_LOG_SHARDS):
+        version = _write_js_expr(
+            index_dir / f"{shard}.js",
+            "(window.__CFB_GAME_LOG_SEASONS__=window.__CFB_GAME_LOG_SEASONS__||{{}})"
+            "[%d]=" % shard + "{payload};",
+            shards.get(shard, {}))
+        files[str(shard)] = f"data/game_logs/index/{shard}.js?v={version}"
+    return files
 
 
 def write_game_log_shards(out_dir: Path, logs: dict) -> dict:
@@ -525,7 +567,8 @@ def write_game_log_shards(out_dir: Path, logs: dict) -> dict:
                 shards.get(shard, {}))
             files[str(shard)] = f"data/game_logs/{season}/{shard}.js?v={version}"
         seasons[str(season)] = files
-    return {"shards": GAME_LOG_SHARDS, "fields": GAME_LOG_FIELDS, "seasons": seasons}
+    return {"shards": GAME_LOG_SHARDS, "fields": GAME_LOG_FIELDS, "seasons": seasons,
+            "index": write_game_log_index(out_dir, build_game_log_index(logs))}
 
 
 def _write_js(path: Path, global_expr: str, payload) -> str:

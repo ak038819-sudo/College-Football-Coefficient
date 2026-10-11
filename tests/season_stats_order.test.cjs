@@ -37,7 +37,7 @@ function lift(names, extra = {}) {
 }
 
 const { orderSeasonStatTypes, careerStatRow } = lift(['orderSeasonStatTypes', 'careerStatRow']);
-const { playerStatsPanel } = lift(['statCell', 'orderSeasonStatTypes', 'careerStatRow',
+const { playerStatsPanel } = lift(['playerStatCell', 'orderSeasonStatTypes', 'careerStatRow',
                                    'playerStatsPanel']);
 
 // ---- the order ---------------------------------------------------------------

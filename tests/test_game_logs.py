@@ -11,8 +11,9 @@ from __future__ import annotations
 
 import json
 
-from export_static_data import (GAME_LOG_SHARDS, build_player_game_logs,
-                                game_log_shard, write_game_log_shards)
+from export_static_data import (GAME_LOG_SHARDS, build_game_log_index,
+                                build_player_game_logs, game_log_shard,
+                                write_game_log_index, write_game_log_shards)
 
 FIELDS = ["game_id", "week", "date", "kickoff_utc", "completed"]
 TEAMS = {"Clemson": 1, "Oregon": 2}
@@ -104,7 +105,8 @@ def logs_for(archive, games=None, season=2025):
 
 def test_a_line_carries_the_game_its_opponent_and_the_score():
     out = logs_for({"100": [side("Clemson", "home", "passing", "YDS", [line("7", "233")])]})
-    assert out[2025]["7"] == [[100, "2025-09-06", 2, 1, 31, 24, {"passing": {"YDS": "233"}}]]
+    assert out[2025]["7"] == [[100, "2025-09-06", 2, 1, 31, 24,
+                               {"passing": {"YDS": "233"}}, None, 0]]
 
 
 def test_the_opponent_is_the_other_side_of_the_game():
@@ -198,3 +200,109 @@ def test_seasons_are_kept_apart():
     out = build_player_game_logs(payloads, archives, TEAMS)
     assert sorted(out) == [2024, 2025]
     assert out[2024]["7"][0][0] == 200 and out[2025]["7"][0][0] == 100
+
+
+# ---- the kickoff, so the page can date the game the way the site does -------
+
+def test_a_row_carries_the_kickoff_beside_the_stored_date():
+    """The stored date is UTC: a 20:30 Eastern Saturday game is a Sunday in the
+    database, and 3,802 games since 2005 differ. The page dates every other
+    game from kickoff_utc, so the log has to carry it or disagree with the game
+    page each row links to."""
+    row = game(100, "2025-09-07")
+    row[3] = "2025-09-07T00:30:00.000Z"
+    out = build_player_game_logs(
+        payload(2025, [row]),
+        {2025: {"100": [side("Clemson", "home", "passing", "YDS", [line("7", "233")])]}},
+        TEAMS)
+    assert out[2025]["7"][0][1] == "2025-09-07"
+    assert out[2025]["7"][0][7] == "2025-09-07T00:30:00.000Z"
+
+
+def test_a_game_with_no_kickoff_carries_none_rather_than_a_guess():
+    out = build_player_game_logs(
+        payload(2025, [game(100, "2006-09-09")]),
+        {2025: {"100": [side("Clemson", "home", "passing", "YDS", [line("7", "233")])]}},
+        TEAMS)
+    assert out[2025]["7"][0][7] is None
+
+
+# ---- the neutral-site flag ---------------------------------------------------
+
+def test_a_neutral_site_game_is_marked_on_both_sides():
+    """CFBD designates one side home in a bowl game, but the away side was not
+    visiting anyone: 1,128 games since 2005. Without the flag every one of
+    those players reads as playing at the opponent."""
+    row = game(100, "2025-12-31")
+    row[6] = 1
+    out = build_player_game_logs(
+        payload(2025, [row]),
+        {2025: {"100": [side("Clemson", "home", "passing", "YDS", [line("7", "233")]),
+                        side("Oregon", "away", "passing", "YDS", [line("8", "180")])]}},
+        TEAMS)
+    assert out[2025]["7"][0][8] == 1
+    assert out[2025]["8"][0][8] == 1
+
+
+def test_an_ordinary_game_is_not_marked_neutral():
+    out = build_player_game_logs(
+        payload(2025, [game(100, "2025-09-06")]),
+        {2025: {"100": [side("Clemson", "home", "passing", "YDS", [line("7", "233")])]}},
+        TEAMS)
+    assert out[2025]["7"][0][8] == 0
+
+
+# ---- the index of which seasons a player has a line in ----------------------
+
+def test_the_index_names_every_season_a_player_has_a_line_in_newest_first():
+    """A season with a box-score line and no roster row is invisible to
+    anything that guesses from the player's own record -- rosters start in 2009
+    and the archive in 2005, which is 2,056 players in 2008 alone."""
+    index = build_game_log_index({
+        2008: {"7": [[1, "2008-09-06", 2, 1, 7, 3, {}, None, 0]]},
+        2009: {"7": [[2, "2009-09-06", 2, 1, 7, 3, {}, None, 0]]},
+        2010: {"8": [[3, "2010-09-06", 2, 1, 7, 3, {}, None, 0]]},
+    })
+    assert index["7"] == [2009, 2008]
+    assert index["8"] == [2010]
+
+
+def test_a_player_with_no_line_is_absent_from_the_index():
+    index = build_game_log_index({2025: {"7": [[1, "2025-09-06", 2, 1, 7, 3, {}, None, 0]]}})
+    assert "8" not in index
+
+
+def test_the_index_is_sharded_on_the_same_key_as_the_logs(tmp_path):
+    """Same key, so the page computes one shard number and uses it for both."""
+    files = write_game_log_index(tmp_path, {"65": [2025], "66": [2024]})
+    assert game_log_shard("65") != game_log_shard("66")
+    assert len(files) == GAME_LOG_SHARDS
+    src = files[str(game_log_shard("65"))]
+    body = (tmp_path / "game_logs" / "index" /
+            src.split("/")[-1].split("?")[0]).read_text(encoding="utf-8")
+    assert '"65":[2025]' in body
+    assert '"66":' not in body                 # a different shard, not this one
+
+
+def test_every_index_shard_exists_even_when_empty(tmp_path):
+    files = write_game_log_index(tmp_path, {})
+    for src in files.values():
+        assert (tmp_path / "game_logs" / "index" /
+                src.split("/")[-1].split("?")[0]).exists()
+
+
+def test_an_index_shard_is_keyed_by_its_own_shard_number(tmp_path):
+    """Assigned under its own number, so two players in different shards do
+    not overwrite each other's index when both files load."""
+    write_game_log_index(tmp_path, {"65": [2025]})
+    shard = game_log_shard("65")
+    body = (tmp_path / "game_logs" / "index" / f"{shard}.js").read_text(encoding="utf-8")
+    assert body.startswith("(window.__CFB_GAME_LOG_SEASONS__="
+                           "window.__CFB_GAME_LOG_SEASONS__||{})[%d]=" % shard)
+
+
+def test_the_manifest_entry_carries_the_index(tmp_path):
+    entry = write_game_log_shards(tmp_path, {2025: {"65": [[1, "2025-09-06", 2, 1, 7, 3, {}, None, 0]]}})
+    assert len(entry["index"]) == GAME_LOG_SHARDS
+    assert entry["index"][str(game_log_shard("65"))].startswith("data/game_logs/index/")
+    assert "kickoff_utc" in entry["fields"] and "neutral" in entry["fields"]

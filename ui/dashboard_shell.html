@@ -5041,7 +5041,14 @@ const FRACTION_STATS = {PCT: true};
 // decimal; everything else prints as given.
 const DECIMAL_STATS = {AVG: true, YPA: true, YPC: true, YPR: true, YPP: true};
 
-function statCell(value, statType) {
+// Named for the player pages it serves, and not `statCell`, which is a
+// different formatter declared further down for the team statistics tables.
+// Two top-level declarations of one name is not an error in JavaScript: the
+// later one wins, silently, everywhere. That is what happened here -- the
+// team formatter took over every player stat cell and rendered each one as an
+// em dash -- and it is the second time in this file (`signed` was the first),
+// so tests/no_shadowed_helpers.test.cjs now fails on any duplicate.
+function playerStatCell(value, statType) {
   if (value == null) return '&mdash;';
   const number = Number(value);
   if (!Number.isFinite(number) || String(value).trim() === '') return esc(value);
@@ -5137,21 +5144,32 @@ function careerStatRow(category, types, rows) {
 // see what someone did in one game you had to know which game and open it.
 // The export is sharded on the player id within a season, so a page fetches a
 // shard for each season the player appears in rather than the whole archive.
-function playerLogSeasons(p) {
-  // The roster seasons and the statistic seasons are not the same set: a
-  // player can have a box-score line in a season no roster snapshot covers,
-  // and a roster season he never played in. Asking for the union costs one
-  // shard fetch per season and misses neither.
-  return [...new Set([...(p.seasons || []).map(s => Number(s.season_year)),
-                      ...Object.keys(p.stats || {}).map(Number)])]
-    .filter(Number.isFinite).sort((a, b) => b - a);
+function gameLogShard(playerId, shards) {
+  return ((Number(playerId) % shards) + shards) % shards;
+}
+
+// Which seasons to ask for. Guessing from the player's own record -- his
+// roster seasons and the seasons he has statistics in -- misses the seasons
+// the box scores cover and nothing else does: rosters start in 2009 and the
+// statistic feed ends in 2025, while the archive runs 2005 to 2026. That is
+// 2,056 players with a 2008 line and 1,497 with a 2025 one, every one of them
+// a game the career log would simply not have shown. The export says which
+// seasons exist, on the same shard key as the logs, so this is fetched
+// alongside the player's record rather than after it.
+function loadGameLogSeasons(playerId) {
+  const entry = STATIC_MANIFEST.game_logs;
+  if (!entry || !entry.index) return Promise.resolve([]);
+  const shard = gameLogShard(playerId, entry.shards || 1);
+  return loadDataScript(entry.index[String(shard)])
+    .then(() => ((window.__CFB_GAME_LOG_SEASONS__ || {})[shard] || {})[String(playerId)] || [])
+    .catch(() => []);
 }
 
 function loadGameLog(playerId, seasons) {
   const entry = STATIC_MANIFEST.game_logs;
   if (!entry || !entry.seasons) return Promise.resolve({});
   const shards = entry.shards || 1;
-  const shard = ((Number(playerId) % shards) + shards) % shards;
+  const shard = gameLogShard(playerId, shards);
   const wanted = (seasons || []).filter(season => entry.seasons[String(season)]);
   return Promise.all(wanted.map(season =>
     // A season whose shard will not load leaves that season out of the log
@@ -5167,6 +5185,38 @@ function loadGameLog(playerId, seasons) {
     }
     return out;
   });
+}
+
+// A box-score value. The archive's units are not the season feed's: the feed
+// sends a completion percentage as the fraction 0.656 and the box score sends
+// 65.6, so the season formatter's hundredfold turned a kicker who made his
+// only attempt into "PCT 10000.0%". Measured over three seasons, every kicking
+// PCT in the archive is between 0 and 100. Nothing else differs, so everything
+// else is formatted by the season formatter.
+const GAME_PERCENT_STATS = {PCT: true};
+
+function gameStatCell(value, statType) {
+  if (GAME_PERCENT_STATS[statType]) {
+    const number = Number(value);
+    if (Number.isFinite(number) && String(value).trim() !== '') {
+      return esc(number.toFixed(1)) + '%';
+    }
+    return playerStatCell(value, null);
+  }
+  return playerStatCell(value, statType);
+}
+
+// Whether a box-score line records anything. Not every value is a number: a
+// kicker's FG arrives as "0/0" and a quarterback's C/ATT as "18/29", and
+// Number("0/0") is NaN, which is not 0 -- so reading the whole value kept
+// every kicker who attempted nothing on the page. Each side of the slash is
+// read on its own, and anything that is not a number at all counts as
+// activity, because hiding a line is the worse mistake of the two.
+function statLineHasActivity(line, types) {
+  // A blank needs no case of its own: Number('') is 0, so a value the feed
+  // left empty reads as no activity by the same rule a zero does.
+  return types.some(type => String(line[type] == null ? '' : line[type]).trim()
+    .split('/').some(part => Number(part) !== 0));
 }
 
 // The order a box-score line is read aloud in, which is the order the game
@@ -5186,9 +5236,9 @@ function gameLineSummary(stats) {
     // A line of nothing but zeroes is a player the feed listed in a category
     // he did not register in -- every punter appears under TB and In 20 with
     // a 0 in every game. Printing it says he did something; he did not.
-    if (!types.some(t => Number(line[t]) !== 0 && String(line[t]).trim() !== '')) continue;
+    if (!statLineHasActivity(line, types)) continue;
     parts.push('<b>' + esc(STAT_CATEGORY_LABELS[category] || category) + '</b> ' +
-      types.map(t => esc(t) + '\u00a0' + statCell(line[t], t)).join(', '));
+      types.map(t => esc(t) + '\u00a0' + gameStatCell(line[t], t)).join(', '));
   }
   return parts.join(' \u00b7 ');
 }
@@ -5199,7 +5249,8 @@ function gameLogPanel(log) {
   const games = seasons.reduce((n, season) => n + log[season].length, 0);
   const tables = seasons.map(season => {
     const rows = log[season].map(row => {
-      const [gameId, date, opponentId, home, pointsFor, pointsAgainst, stats] = row;
+      const [gameId, date, opponentId, home, pointsFor, pointsAgainst, stats,
+             kickoffUtc, neutral] = row;
       // A tie is neither a win nor a loss, and the archive has them: NCAA
       // football had no overtime rule until 1996 and this log starts in 2005,
       // but a game the feed scored level is still shown as it was played.
@@ -5207,8 +5258,16 @@ function gameLogPanel(log) {
         : (pointsFor > pointsAgainst ? '<b class="win">W</b> ' :
            pointsFor < pointsAgainst ? '<b class="loss">L</b> ' : 'T ') +
           pointsFor + '\u2013' + pointsAgainst;
-      return '<tr><td><a href="' + esc(gameHref(gameId, season)) + '">' + esc(date) + '</a></td>' +
-        '<td>' + (home ? '' : 'at ') + teamCellById(opponentId) + '</td>' +
+      // The same date the game page shows: the stored date is UTC, so a
+      // Saturday night kickoff is a Sunday game in the database, and 3,802
+      // games since 2005 would have disagreed with the page they link to.
+      // And the site's own way of saying where a game was played: a neutral
+      // site is "vs", with the (N) the schedule tables already use.
+      const where = (neutral || home) ? '' : 'at ';
+      return '<tr><td><a href="' + esc(gameHref(gameId, season)) + '">' +
+          esc(fmtGameDate({kickoff_utc: kickoffUtc, date: date})) + '</a></td>' +
+        '<td>' + where + teamCellById(opponentId) +
+          (neutral ? ' <span class="swing-where">(N)</span>' : '') + '</td>' +
         '<td>' + result + '</td>' +
         '<td class="game-line">' + (gameLineSummary(stats) || '&mdash;') + '</td></tr>';
     }).join('');
@@ -5254,7 +5313,7 @@ function playerStatsPanel(stats, samePerson, identityNote) {
           '">\u2020</abbr></td>'
         : '<td>' + esc(season) + '</td>';
       return '<tr>' + cell + '<td>' + teamCellById(row.team_id) + '</td>' +
-        types.map(t => '<td class="num">' + statCell(row[t], t) + '</td>').join('') + '</tr>';
+        types.map(t => '<td class="num">' + playerStatCell(row[t], t) + '</td>').join('') + '</tr>';
     }).join('');
     const career = careerStatRow(category, types,
       rows.map(season => stats[String(season)][category]));
@@ -5269,7 +5328,7 @@ function playerStatsPanel(stats, samePerson, identityNote) {
           'sharing a source id, so this is the total under the id rather than one ' +
           'person\u2019s career">Under this id</abbr>' : 'Career') + '</th><td>' +
         rows.length + ' seasons</td>' + types.map(t => '<td class="num">' +
-          statCell(career[t] == null ? null : career[t], t) + '</td>').join('') + '</tr></tfoot>'
+          playerStatCell(career[t] == null ? null : career[t], t) + '</td>').join('') + '</tr></tfoot>'
       : '';
     blocks.push('<h3>' + esc(STAT_CATEGORY_LABELS[category] || category) + '</h3>' +
       '<table class="data-table"><thead><tr><th scope="col">Season</th>' +
@@ -5603,12 +5662,13 @@ function hydratePersonPage(version, kind) {
   };
   if (id == null) { show(personMissing(kind, id)); return; }
   const work = kind === 'player'
-    // The log's shards are fetched after the player, because which seasons to
-    // ask for is in the player's own record; a log that will not load leaves
-    // the career page standing.
-    ? loadPlayer(id).then(p => !p ? [personMissing(kind, id), null]
-        : loadGameLog(id, playerLogSeasons(p)).catch(() => ({}))
-            .then(log => [playerPanels(p, id, log), p.display_name]))
+    // The index of which seasons have a line is fetched beside the player's
+    // record, not after it, so a career page is two round trips rather than
+    // three. A log that will not load leaves the page standing.
+    ? Promise.all([loadPlayer(id), loadGameLogSeasons(id)])
+        .then(([p, seasons]) => !p ? [personMissing(kind, id), null]
+          : loadGameLog(id, seasons).catch(() => ({}))
+              .then(log => [playerPanels(p, id, log), p.display_name]))
     // The map's shard is fetched alongside the coach file rather than after it,
     // so a coach page is one round trip and not two. A missing or failed shard
     // resolves to null: the page is the career, the map is an extra.
