@@ -129,6 +129,26 @@ test('a season missing a statistic does not poison the total', () => {
   assert.equal(career.YDS, 800);
 });
 
+test('a statistic the feed sent as null is missing, not a zero', () => {
+  // Number(null) is 0. Coercing first turns "nothing was reported" into a
+  // measurement, and a column of nothing into a career total of 0.
+  const career = careerStatRow('rushing', ['CAR', 'YDS'],
+    [{ CAR: null, YDS: 100 }, { CAR: null, YDS: 200 }]);
+  assert.equal(career.CAR, undefined);
+  assert.equal(career.YDS, 300);
+});
+
+test('a null numerator does not become a false zero rate', () => {
+  const career = careerStatRow('passing', ['COMPLETIONS', 'ATT', 'PCT'],
+    [{ COMPLETIONS: null, ATT: 100 }, { COMPLETIONS: null, ATT: 100 }]);
+  assert.equal(career.PCT, null);
+});
+
+test('an empty string is missing too', () => {
+  const career = careerStatRow('rushing', ['CAR'], [{ CAR: '' }, { CAR: '  ' }]);
+  assert.equal(career.CAR, undefined);
+});
+
 test('one season gets no career row, because it is already the career', () => {
   assert.equal(careerStatRow('rushing', ['CAR'], [{ CAR: 100 }]), null);
   assert.equal(careerStatRow('rushing', ['CAR'], []), null);
@@ -185,6 +205,30 @@ test('the columns are in reading order in the rendered table', () => {
   });
   const headers = [...html.matchAll(/<th scope="col">([^<]+)<\/th>/g)].map(m => m[1]);
   assert.deepEqual(headers.slice(2), ['CMP', 'ATT', 'PCT', 'YDS', 'YPA', 'TD', 'INT']);
+});
+
+// ---- an identity the feed could not vouch for ---------------------------------
+
+test('a reused source id gets a total under the id, not a career', () => {
+  // The page says a few lines above that these seasons may be two people
+  // sharing an id. Adding them up and calling it a career would make, in
+  // bold, the identification the page just refused to make.
+  const stats = {
+    2025: { passing: { team_id: 7, YDS: 1000 } },
+    2024: { passing: { team_id: 7, YDS: 500 } },
+  };
+  const flagged = playerStatsPanel(stats, undefined, 'source id spanning 13 seasons');
+  assert.match(flagged, /Under this id/);
+  assert.doesNotMatch(flagged, />Career</);
+  assert.match(flagged, /may be more than one person/);
+  assert.match(flagged, /does not decide that question by adding the rows up/);
+  // The total itself is still there: it is what the source attached to the id.
+  assert.match(flagged, />1,500</);
+
+  const plain = playerStatsPanel(stats, undefined, undefined);
+  assert.match(plain, />Career</);
+  assert.doesNotMatch(plain, /Under this id/);
+  assert.doesNotMatch(plain, /does not decide that question/);
 });
 
 test('the note says how a career rate was arrived at', () => {

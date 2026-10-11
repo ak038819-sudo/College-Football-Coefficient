@@ -5086,8 +5086,12 @@ const SEASON_STAT_MAX = { LONG: true };
 
 function careerStatRow(category, types, rows) {
   if (rows.length < 2) return null;     // one season IS the career line
-  const numbers = type => rows.map(r => Number(r[type]))
-    .filter(n => Number.isFinite(n));
+  // Number(null) is 0, so coercing first would turn "the feed sent nothing"
+  // into a measurement of zero -- and a column of nothing into a career 0
+  // rather than a dash. The raw value is tested before it is converted.
+  const numbers = type => rows
+    .filter(r => r[type] != null && String(r[type]).trim() !== '')
+    .map(r => Number(r[type])).filter(n => Number.isFinite(n));
   const total = {};
   for (const type of types) {
     const values = numbers(type);
@@ -5104,13 +5108,15 @@ function careerStatRow(category, types, rows) {
     // career cell by exactly the rule it renders a season's by. The others are
     // rounded to the one decimal the feed gives its own rates in, so a career
     // 7.1 yards an attempt does not sit under seasons of 7.1 reading 7.05.
-    total[type] = under == null || !under ? null
+    // Either half missing, or nothing to divide by, and there is no rate to
+    // state. A missing numerator over a real denominator is not a zero rate.
+    total[type] = over == null || !under ? null
       : FRACTION_STATS[type] ? over / under : Math.round((over / under) * 10) / 10;
   }
   return total;
 }
 
-function playerStatsPanel(stats, samePerson) {
+function playerStatsPanel(stats, samePerson, identityNote) {
   const seasons = Object.keys(stats || {}).map(Number).sort((a, b) => b - a);
   if (!seasons.length) return personStatsNote();
   const blocks = [];
@@ -5143,9 +5149,17 @@ function playerStatsPanel(stats, samePerson) {
     }).join('');
     const career = careerStatRow(category, types,
       rows.map(season => stats[String(season)][category]));
+    // A player whose id the feed could not vouch for gets the same total under
+    // a different name. The page says a few lines above that these seasons may
+    // be two people sharing an id; adding them up and calling the answer a
+    // CAREER would be this page making, in bold, the identification it just
+    // refused to make. "Under this id" is what the number actually is.
     const foot = career
-      ? '<tfoot><tr class="career-row"><th scope="row">Career</th><td>' + rows.length +
-        ' seasons</td>' + types.map(t => '<td class="num">' +
+      ? '<tfoot><tr class="career-row"><th scope="row">' +
+        (identityNote ? '<abbr title="These seasons may be more than one person ' +
+          'sharing a source id, so this is the total under the id rather than one ' +
+          'person\u2019s career">Under this id</abbr>' : 'Career') + '</th><td>' +
+        rows.length + ' seasons</td>' + types.map(t => '<td class="num">' +
           statCell(career[t] == null ? null : career[t], t) + '</td>').join('') + '</tr></tfoot>'
       : '';
     blocks.push('<h3>' + esc(STAT_CATEGORY_LABELS[category] || category) + '</h3>' +
@@ -5180,6 +5194,9 @@ function playerStatsPanel(stats, samePerson) {
     'A career line adds the counting statistics and recomputes each rate from those ' +
     'totals \u2014 a career completion percentage is every completion over every attempt, ' +
     'not the average of the seasons \u2014 while LONG takes the longest of them. ' +
+    (identityNote ? 'This player\u2019s seasons are headed \u201cUnder this id\u201d rather ' +
+      'than \u201cCareer\u201d, because the source id may cover more than one person ' +
+      '(see above) and this site does not decide that question by adding the rows up. ' : '') +
     'Per-game lines are on each game\u2019s own page.</p></div>';
 }
 
@@ -5259,7 +5276,8 @@ function playerPanels(p, id) {
     '<table class="data-table"><thead><tr><th>Season</th><th>Team</th><th>No.</th>' +
     '<th>Pos</th><th>Class</th><th>Ht</th><th>Wt</th></tr></thead><tbody>' + rows +
     '</tbody></table></div>';
-  return header + samePersonNote(p) + note + table + playerStatsPanel(p.stats, p.same_person);
+  return header + samePersonNote(p) + note + table +
+    playerStatsPanel(p.stats, p.same_person, p.identity_note);
 }
 
 function coachRecord(tenures) {
