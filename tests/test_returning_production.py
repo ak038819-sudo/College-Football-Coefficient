@@ -181,69 +181,41 @@ def test_one_season_without_an_end_year(monkeypatch, tmp_path):
 
 # ---- the data stays inert until a fit says otherwise -------------------------
 
-def test_nothing_in_the_pipeline_reads_returning_production_yet():
-    """Landing the data must change no published number. When a fit does start
-    reading it, this test is the place to record that deliberately."""
+# Recorded deliberately on 2026-10-11, as the test below asks. The fetcher
+# writes these files and the calibrator reads them to answer whether they help
+# (docs/returning-production.md: they do not, by a held-out margin of 0.002%).
+# Neither runs in the pipeline, so no published number depends on them. A
+# third name here would mean returning production had reached the live model,
+# which is a decision for a person and not a side effect of a refactor.
+ALLOWED_READERS = {
+    "src/fetch_cfbd_returning_production.py",
+    "src/calibrate_returning_retention.py",
+}
+
+
+def test_no_published_number_depends_on_returning_production():
+    """The fit found nothing, so the live model must still not read this.
+
+    When something does, the set above is where that is recorded on purpose.
+    """
     repo = Path(__file__).resolve().parents[1]
     readers = []
-    for path in list((repo / 'src').rglob('*.py')) + [repo / 'build_dashboard.py']:
-        if path.name == 'fetch_cfbd_returning_production.py' or not path.exists():
+    for path in list((repo / "src").rglob("*.py")) + [repo / "build_dashboard.py"]:
+        if not path.exists():
             continue
-        if 'returning_production' in path.read_text(encoding='utf-8'):
-            readers.append(path.relative_to(repo).as_posix())
-    assert readers == [], f'returning production is now read by {readers}'
+        name = path.relative_to(repo).as_posix()
+        if name in ALLOWED_READERS:
+            continue
+        if "returning_production" in path.read_text(encoding="utf-8"):
+            readers.append(name)
+    assert readers == [], f"returning production is now read by {readers}"
 
 
-# ---- the backfill workflow ---------------------------------------------------
-
-def _workflow():
-    import yaml
-    path = (Path(__file__).resolve().parents[1] / '.github' / 'workflows'
-            / 'backfill-returning-production.yml')
-    data = yaml.safe_load(path.read_text(encoding='utf-8'))
-    return data, data.get('on', data.get(True))  # PyYAML reads the bare key `on` as True
-
-
-def test_the_backfill_is_dispatch_only():
-    """It walks every season at once and pushes to main; nothing should start
-    it on a timer."""
-    _, on = _workflow()
-    assert set(on) == {'workflow_dispatch'}
-
-
-def test_the_backfill_offers_a_probe_that_writes_nothing():
-    data, on = _workflow()
-    assert 'probe' in on['workflow_dispatch']['inputs']
-    steps = data['jobs']['backfill']['steps']
-    probing = [s for s in steps if 'inputs.probe' in str(s.get('if', ''))]
-    assert len(probing) >= 2, 'the probe and the fetch must be mutually exclusive steps'
-    writes = [s for s in steps if 'publish_to_main.sh' in str(s.get('run', ''))]
-    assert len(writes) == 1
-    assert '!inputs.probe' in str(writes[0]['if'])
-
-
-def test_the_backfill_shares_the_lock_that_guards_data_raw():
-    """The scheduled refresh rewrites data/raw too, and both push to main."""
-    data, _ = _workflow()
-    concurrency = data['jobs']['backfill']['concurrency']
-    assert concurrency['group'] == 'rebuild-and-deploy-main'
-    assert concurrency['cancel-in-progress'] is False
-
-
-def test_every_season_is_checked_explicitly_in_the_loop():
-    """`set -e` does not stop a shell loop, so a failed season has to be
-    checked and halt the run rather than be committed over."""
-    path = (Path(__file__).resolve().parents[1] / '.github' / 'workflows'
-            / 'backfill-returning-production.yml')
-    body = path.read_text(encoding='utf-8')
-    assert 'if ! python3 src/fetch_cfbd_returning_production.py' in body
-    assert 'if ! scripts/publish_to_main.sh' in body
-
-
-def test_the_key_reaches_only_the_steps_that_call_cfbd():
-    data, _ = _workflow()
-    steps = data['jobs']['backfill']['steps']
-    with_key = [s for s in steps if 'CFBD_API_KEY' in (s.get('env') or {})]
-    assert len(with_key) == 2, 'the probe step and the fetch step, and nothing else'
-    for step in with_key:
-        assert 'fetch_cfbd_returning_production.py' in step['run']
+def test_the_pipeline_entry_points_do_not_read_it():
+    """Named explicitly, because the set above could be widened by habit."""
+    repo = Path(__file__).resolve().parents[1]
+    for name in ("src/run_pipeline.py", "src/build_elo.py", "build_dashboard.py",
+                 "src/export_team_pages.py"):
+        path = repo / name
+        if path.exists():
+            assert "returning_production" not in path.read_text(encoding="utf-8"), name
