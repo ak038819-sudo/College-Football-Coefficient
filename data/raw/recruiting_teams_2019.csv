@@ -1,0 +1,224 @@
+season_year,rank,team,points
+2019,1,Alabama,317.5
+2019,2,Georgia,309.12
+2019,3,Texas,287.69
+2019,4,Texas A&M,285.46
+2019,5,LSU,284.06
+2019,6,Oklahoma,279.28
+2019,7,Oregon,277.98
+2019,8,Michigan,277.15
+2019,9,Florida,276.85
+2019,10,Clemson,275.55
+2019,11,Auburn,271.94
+2019,12,Penn State,270.67
+2019,13,Tennessee,269.07
+2019,14,Ohio State,261.18
+2019,15,Washington,259.19
+2019,16,Notre Dame,258.56
+2019,17,South Carolina,247.26
+2019,18,Nebraska,245.1
+2019,19,Florida State,244.31
+2019,20,USC,243.51
+2019,21,Stanford,242.58
+2019,22,Ole Miss,238.11
+2019,23,Arkansas,237.17
+2019,24,Mississippi State,236.6
+2019,25,Purdue,224.72
+2019,26,Virginia Tech,224.01
+2019,27,Miami,222.07
+2019,28,Arizona State,219.76
+2019,29,Wisconsin,219.51
+2019,30,North Carolina,218.57
+2019,31,NC State,217.29
+2019,32,Michigan State,215.21
+2019,33,TCU,210.62
+2019,34,Kentucky,203.49
+2019,35,Baylor,203.39
+2019,36,Indiana,202.63
+2019,37,Missouri,202.13
+2019,38,Oklahoma State,202.09
+2019,39,Virginia,200.89
+2019,40,UCLA,199.61
+2019,41,Iowa,199.36
+2019,42,Utah,196.61
+2019,43,California,196.48
+2019,44,Colorado,194.55
+2019,45,Minnesota,194.48
+2019,46,Iowa State,192.25
+2019,47,Maryland,192.18
+2019,48,West Virginia,191.83
+2019,49,Duke,191.38
+2019,50,Boise State,189.93
+2019,51,Georgia Tech,188.28
+2019,52,Northwestern,188.14
+2019,53,Illinois,184.37
+2019,54,Arizona,182.67
+2019,55,Syracuse,182.67
+2019,56,Vanderbilt,182.42
+2019,57,Wake Forest,182.26
+2019,58,Pittsburgh,181.53
+2019,59,UCF,179.69
+2019,60,Florida Atlantic,178.99
+2019,61,Texas Tech,177.69
+2019,62,Kansas State,177.4
+2019,63,Boston College,177.26
+2019,64,Rutgers,174.33
+2019,65,Washington State,174.14
+2019,66,Oregon State,172.88
+2019,67,Memphis,172.4
+2019,68,SMU,167.28
+2019,69,Louisville,165.93
+2019,70,Kansas,165.84
+2019,71,Marshall,165.42
+2019,72,Houston,165.39
+2019,73,Toledo,162.01
+2019,74,UAB,160.48
+2019,75,North Texas,158.78
+2019,76,Louisiana,158.45
+2019,77,South Florida,158.44
+2019,78,East Carolina,158.4
+2019,79,Cincinnati,158.17
+2019,80,Troy,157.59
+2019,81,BYU,156.76
+2019,82,Southern Miss,156.39
+2019,83,Louisiana Tech,155.46
+2019,84,Colorado State,155.22
+2019,85,Middle Tennessee,154.43
+2019,86,Western Kentucky,153.89
+2019,87,Fresno State,153.5
+2019,88,Florida International,152.57
+2019,89,Miami (OH),151.13
+2019,90,Utah State,149.92
+2019,91,San Diego State,149.19
+2019,92,Western Michigan,148.7
+2019,93,Nevada,145.27
+2019,94,Tulane,144.82
+2019,95,Arkansas State,143.36
+2019,96,UTSA,142.31
+2019,97,Wyoming,140.75
+2019,98,Georgia State,140.37
+2019,99,Army,139.75
+2019,100,UNLV,139.57
+2019,101,App State,139
+2019,102,Kent State,138.12
+2019,103,Ohio,138.11
+2019,104,Central Michigan,137.96
+2019,105,Temple,136.56
+2019,106,Buffalo,134.64
+2019,107,Air Force,134.5
+2019,108,Northern Illinois,134.16
+2019,109,Tulsa,133.88
+2019,110,Portland State,132.85
+2019,111,Rice,132.03
+2019,112,UTEP,131.98
+2019,113,Massachusetts,130.79
+2019,114,Akron,130.23
+2019,115,Hawai'i,129.53
+2019,116,Old Dominion,128.31
+2019,117,UConn,127.68
+2019,118,San José State,127.53
+2019,119,New Mexico,126.28
+2019,120,New Mexico State,125.55
+2019,121,Georgia Southern,125.24
+2019,122,Coastal Carolina,125.06
+2019,123,Eastern Michigan,124.99
+2019,124,Navy,124.39
+2019,125,Ball State,122.89
+2019,126,South Alabama,122.8
+2019,127,Harvard,121.09
+2019,128,UL Monroe,119.38
+2019,129,Bowling Green,115.37
+2019,130,Princeton,115.29
+2019,131,Stephen F. Austin,113.58
+2019,132,Charlotte,112.69
+2019,133,Texas State,111.1
+2019,134,Yale,110.17
+2019,135,Liberty,108.39
+2019,136,Central Arkansas,106.84
+2019,137,Idaho,99.19
+2019,138,Eastern Washington,94.76
+2019,139,Mercer,92.53
+2019,140,Eastern Kentucky,90.32
+2019,141,UC Davis,90.14
+2019,142,North Dakota State,86.93
+2019,144,Northern Arizona,84.4
+2019,145,Jacksonville State,79.23
+2019,146,Idaho State,72.23
+2019,147,James Madison,70.12
+2019,148,Montana,69.85
+2019,149,Illinois State,69.17
+2019,150,Kennesaw State,69.12
+2019,151,Montana State,66.92
+2019,152,Western Carolina,65.38
+2019,153,Northern Iowa,62.42
+2019,155,Southern Utah,58.28
+2019,156,Texas Southern,56.43
+2019,157,UT Martin,55.08
+2019,158,Pennsylvania,54.99
+2019,159,Murray State,54.92
+2019,160,Dartmouth,54.85
+2019,161,Holy Cross,51.84
+2019,162,Southern,51.2
+2019,163,Sam Houston,48.49
+2019,164,Houston Christian,47.53
+2019,165,Austin Peay,46.22
+2019,166,Georgetown,45.58
+2019,168,Howard,43.12
+2019,169,Grand Valley State,41.63
+2019,170,McNeese,39.93
+2019,171,Weber State,39.26
+2019,173,Eastern Illinois,37.39
+2019,175,Lamar,35.77
+2019,176,Delaware,35.61
+2019,177,Richmond,35.42
+2019,178,Chattanooga,34.93
+2019,179,Cal Poly,34.79
+2019,180,Furman,34.69
+2019,181,Nicholls,33.85
+2019,183,Tennessee State,33.09
+2019,184,East Tennessee State,32.91
+2019,185,New Hampshire,32.54
+2019,186,Fordham,32.49
+2019,187,Indiana State,32.33
+2019,188,Morgan State,31.01
+2019,189,Villanova,30.97
+2019,190,Wofford,30.95
+2019,191,Prairie View A&M,30.85
+2019,192,SE Louisiana,30.71
+2019,193,Sacramento State,29.38
+2019,194,Southern Illinois,29.2
+2019,196,North Dakota,27.5
+2019,197,Northern Colorado,27.42
+2019,198,San Diego,27.37
+2019,199,North Carolina Central,24.99
+2019,200,South Dakota,24.59
+2019,201,Southeast Missouri State,24.44
+2019,202,Stony Brook,24.3
+2019,205,Maine,22.07
+2019,206,Alcorn State,21.58
+2019,207,Missouri State,21.02
+2019,210,Rhode Island,20.03
+2019,211,North Carolina A&T,19.69
+2019,212,Northwestern State,19.61
+2019,213,Samford,18.9
+2019,214,South Dakota State,17.82
+2019,216,The Citadel,17.36
+2019,218,Arkansas-Pine Bluff,16.4
+2019,220,Elon,16.08
+2019,221,William & Mary,15.95
+2019,222,Bucknell,14.96
+2019,225,Youngstown State,13.33
+2019,226,Colgate,13.03
+2019,228,Monmouth,11.98
+2019,229,Alabama A&M,11.61
+2019,230,Bethune-Cookman,11.54
+2019,231,Hampton,11
+2019,232,Grambling,10.64
+2019,234,Florida A&M,9.93
+2019,235,Charleston Southern,9.03
+2019,236,UAlbany,8.92
+2019,237,Lafayette,8.42
+2019,238,Alabama State,7.97
+2019,240,Duquesne,7.52
+2019,241,Gardner-Webb,6.3
+2019,247,Tennessee Tech,4.96
