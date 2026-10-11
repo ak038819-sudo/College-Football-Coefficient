@@ -4,6 +4,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
+// The season-stat orders and rate definitions are lifted whole rather than
+// stubbed: what they say IS what these tests are checking.
+function statConstants(shell) {
+  const m = shell.match(/const SEASON_STAT_ORDER = \{[^]*?const SEASON_STAT_MAX = \{[^}]*\};/);
+  const d = shell.match(/^const DECIMAL_STATS = \{[^}]*\};/m);
+  if (!m || !d) throw new Error('the shell must declare the stat-display constants');
+  return m[0] + '\n' + d[0] + '\n';
+}
 const CfbNav = require('../ui/navigation.js');
 const { readRoute, hashFor, normalizeSearch } = CfbNav;
 const config = {
@@ -886,7 +894,8 @@ test('a player page shows the season statistics attached to their athlete id', (
   // The panel exists because the season feed numbers every row with an athlete
   // id. Before it, a player page could only say who someone was.
   const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
-  const source = ['statCell', 'playerStatsPanel'].map(name =>
+  const source = statConstants(shell) + ['statCell', 'orderSeasonStatTypes', 'careerStatRow',
+                  'playerStatsPanel'].map(name =>
     shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))[0]).join('\n');
   const context = {FRACTION_STATS: {PCT: true},
     esc: value => String(value).replaceAll('&', '&amp;'),
@@ -927,7 +936,8 @@ test('a player page shows the season statistics attached to their athlete id', (
 
 test('a season a player has no statistics for is left out of their stat table', () => {
   const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
-  const source = ['statCell', 'playerStatsPanel'].map(name =>
+  const source = statConstants(shell) + ['statCell', 'orderSeasonStatTypes', 'careerStatRow',
+                  'playerStatsPanel'].map(name =>
     shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))[0]).join('\n');
   const context = {esc: String, teamCellById: id => 'TEAM' + id, FRACTION_STATS: {PCT: true},
     personStatsNote: () => '<p>NO STATS</p>',
@@ -977,7 +987,8 @@ test('a season split across two athlete ids is marked on every table and named o
   // reads 17 carries for 41 yards while CFBD's other record for that name
   // holds 23 for 101 and 3 touchdowns.
   const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
-  const source = ['statCell', 'playerStatsPanel'].map(name =>
+  const source = statConstants(shell) + ['statCell', 'orderSeasonStatTypes', 'careerStatRow',
+                  'playerStatsPanel'].map(name =>
     shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))[0]).join('\n');
   const context = {FRACTION_STATS: {PCT: true}, esc: String,
     teamCellById: id => 'TEAM' + id, personStatsNote: () => '<p>NO STATS</p>',
