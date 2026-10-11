@@ -43,6 +43,7 @@ from select_cfp_field import (  # noqa: E402
 from simulate_cfp_bracket import (  # noqa: E402
     DEFAULT_HOME_FIELD, DEFAULT_TEMPERATURE, run_simulation,
 )
+import project_season  # noqa: E402
 sys.path.insert(0, str(Path(__file__).parent))
 from build_coe2_rollups import conference_coe2_rank, load_bonus_config  # noqa: E402
 import random
@@ -244,6 +245,40 @@ def load_team_records_by_year(db_path: str) -> dict:
             rec[y][h][2] += 1
             rec[y][a][2] += 1
     conn.close()
+    return {str(y): {str(t): v for t, v in d.items()} for y, d in rec.items()}
+
+
+def load_non_fbs_records_by_year(db_path: str) -> dict:
+    """
+    {season: {team_id: [wins, losses, ties]}} against opponents this project
+    holds no rating for -- overwhelmingly FCS teams.
+
+    These games live in their own table so that no rating can read them (see
+    sql/non_fbs_game_tables.sql), and nothing here changes that: this is export
+    data for a record line, not model input.
+
+    It exists because the team page contradicted itself. Its Analytics card and
+    its Schedule tab have shown these games since the non-FBS loader landed,
+    while the header beside the team's name read the rated record alone and
+    called it "vs FBS opponents" -- so a team that had beaten an FCS opponent
+    showed one record at the top of the page and a different one further down.
+    The header is rendered synchronously from this payload, before the team's
+    own export has loaded, so the count has to be here rather than there.
+
+    Counted exactly as export_team_pages.py counts it, from the same rows.
+    """
+    conn = sqlite3.connect(db_path)
+    try:
+        if not conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='non_fbs_games'").fetchone():
+            return {}
+        rec: dict = defaultdict(lambda: defaultdict(lambda: [0, 0, 0]))
+        for season, team_id, mine, theirs in conn.execute(
+                """SELECT season_year, team_id, team_score, opponent_score FROM non_fbs_games
+                   WHERE team_score IS NOT NULL AND opponent_score IS NOT NULL"""):
+            rec[season][team_id][0 if mine > theirs else 1 if mine < theirs else 2] += 1
+    finally:
+        conn.close()
     return {str(y): {str(t): v for t, v in d.items()} for y, d in rec.items()}
 
 
@@ -481,6 +516,55 @@ def build_playoff_data(db_path: str, year: int, draw_seed: int, sims: int, tempe
     }
 
 
+def build_projection(db_path: str, season: int, n_sims: int, temperature: float,
+                     home_field: float) -> dict | None:
+    """Rest-of-season odds for a season still being played, or None.
+
+    A finished season has nothing to project: every simulated run would be the
+    same run, and the page would say twelve teams are in with certainty, which
+    is what the Field page already says. So this returns None the moment the
+    schedule is empty, and the UI drops the view rather than publishing a
+    column of 100s and 0s.
+
+    See src/coefficients/project_season.py for what one simulated season is
+    and for the three limits of it.
+    """
+    if season is None:
+        return None
+    projection = project_season.project(db_path, season, n_sims, temperature, home_field)
+    if not projection["unplayed"]:
+        return None
+
+    conn = sqlite3.connect(db_path)
+    try:
+        record = {
+            name: {"conference": conf, "wins": w, "losses": lo, "ties": t}
+            for name, conf, w, lo, t in conn.execute(
+                """SELECT tm.team_name, r.conference, r.overall_wins, r.overall_losses, r.overall_ties
+                   FROM conference_team_records_by_year r JOIN teams tm ON tm.team_id = r.team_id
+                   WHERE r.season_year = ?""", (season,))
+        }
+        as_of = conn.execute(
+            """SELECT MAX(game_date) FROM games WHERE season_year = ?
+               AND home_score IS NOT NULL AND away_score IS NOT NULL""", (season,)).fetchone()[0]
+    finally:
+        conn.close()
+
+    teams = []
+    for row in project_season.rows_for_report(projection):
+        banked = record.get(row["team"], {})
+        teams.append({**row, "conference": banked.get("conference"),
+                      "wins": banked.get("wins", 0), "losses": banked.get("losses", 0),
+                      "ties": banked.get("ties", 0)})
+    return {
+        "season": season, "n_sims": projection["n_sims"], "unplayed": projection["unplayed"],
+        "as_of": as_of, "temperature": temperature, "home_field": home_field,
+        # Only teams with something still to play for. A table of 136 rows
+        # where 60 of them read 0.0% everywhere is a longer page saying less.
+        "teams": [t for t in teams if t["playoff_pct"] or t["conference_title_pct"]],
+    }
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--db", default="db/league.db")
@@ -489,6 +573,10 @@ def main() -> None:
     p.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE)
     p.add_argument("--home-field", type=float, default=DEFAULT_HOME_FIELD)
     p.add_argument("--out", default="ui/dashboard_data.json")
+    p.add_argument("--projection-sims", type=int, default=10000,
+                   help="simulated seasons behind the rest-of-season projection "
+                        "(0 skips it; a projection is only built for a season still "
+                        "being played)")
     args = p.parse_args()
 
     team_ratings = load_csv_by_year("team_ratings_by_season.csv", "season_year")
@@ -541,6 +629,11 @@ def main() -> None:
         # existing name-keyed exports above are left as-is.
         "teams": build_team_index(args.db),
         "team_records_by_year": load_team_records_by_year(args.db),
+        # The same seasons, counted over the games no rating ever saw. Kept as a
+        # separate key rather than folded into the records above, because every
+        # other number keyed by team and season on this site is computed from
+        # the rated set and these two must never be read as one.
+        "non_fbs_records_by_year": load_non_fbs_records_by_year(args.db),
         # Milestone 3: not-yet-final games with Elo predictions from the engine's
         # own functions, plus the current Elo board they're based on.
         "upcoming": _build_upcoming(args.db),
@@ -589,6 +682,18 @@ def main() -> None:
 
     # Milestone 5: latest AP / CFP releases for the current season (display only).
     out["polls"] = build_polls(args.db, out["upcoming"]["season"])
+
+    # The rest of the season, played out. Everything above describes games that
+    # have happened; this is the one export that describes games that have not.
+    season = out["upcoming"]["season"]
+    if args.projection_sims > 0:
+        print(f"Projecting the rest of {season} ({args.projection_sims:,} simulated seasons)...")
+        out["projection"] = build_projection(args.db, season, args.projection_sims,
+                                             args.temperature, args.home_field)
+        if out["projection"] is None:
+            print(f"  {season} has no unplayed games -- no projection to publish.")
+    else:
+        out["projection"] = None
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)

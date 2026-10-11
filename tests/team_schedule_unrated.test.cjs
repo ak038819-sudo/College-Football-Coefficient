@@ -249,3 +249,34 @@ test('a season known only from an unrated game is offered in the picker', () => 
   const tp = { nonFbsByTeam: new Map([[TEAM.id, [unratedGame({ season: 1987 })]]]) };
   assert.deepEqual(Array.from(ctx.seasons(tp, TEAM)), [2024, 1987]);
 });
+
+// ---- the record beside the team's name ----
+// The same two promises, in the one place on the page that was not keeping
+// them: the header counted only rated games and called that the record, while
+// the Analytics card and the Schedule tab a few hundred pixels below counted
+// the FCS game. Arkansas finished 2025 at 2-10 and the top of its page said
+// 1-10.
+test('the header record counts unrated games and names the rated part', () => {
+  const ctx = {};
+  vm.runInNewContext(sourceOf('teamHeaderRecord') + '\nthis.rec = teamHeaderRecord;', ctx);
+
+  const beatAnFcsTeam = ctx.rec([1, 10, 0], [1, 0, 0]);
+  assert.equal(beatAnFcsTeam.value, '2–10');
+  assert.equal(beatAnFcsTeam.note, '1–10 against rated opponents');
+
+  // No unrated games: the record is the record, and the label says so rather
+  // than claiming a distinction the season does not have.
+  const allRated = ctx.rec([11, 2, 0], null);
+  assert.equal(allRated.value, '11–2');
+  assert.equal(allRated.note, 'all opponents rated');
+  assert.deepEqual(ctx.rec([11, 2, 0], [0, 0, 0]), allRated, 'an empty count is not a distinction');
+
+  // Ties survive the addition and are dropped from the string when there are none.
+  const tied = ctx.rec([8, 2, 1], [1, 0, 1]);
+  assert.equal(tied.value, '9–2–2');
+  assert.equal(tied.note, '8–2–1 against rated opponents');
+
+  // A season known only from an unrated game still has a record.
+  assert.equal(ctx.rec(null, [1, 0, 0]).value, '1–0');
+  assert.equal(ctx.rec(null, null).value, 'N/A');
+});

@@ -6,14 +6,14 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
   const views = {
-    people: [], stats: ['overview', 'teams', 'players'], home: [], live: [], games: [], matchups: [], teams: ['', 'stadiums'], methodology: [], coverage: [],
+    people: [], stats: ['overview', 'teams', 'players'], home: [], live: [], games: [], matchups: [], teams: ['', 'stadiums'], methodology: [], coverage: [], accuracy: [],
     // 'conference-coe' is CoE v1's five-year rolling value, which INCLUDES the
     // current season and feeds the live playoff model. 'conference-coe2' is CoE
     // 2.0's frozen value ENTERING the season. Separate views with separate names,
     // for the same reason they are separate tables: they must never be read as
     // one number.
     rankings: ['elo', 'conference-standings', 'home-field', 'conference-elo', 'team-coe', 'conference-coe', 'conference-coe2', 'elo-weekly', 'ap', 'cfp'],
-    playoff: ['field', 'bracket', 'odds', 'history']
+    playoff: ['field', 'projection', 'bracket', 'odds', 'history']
   };
   // Detail-page tabs (Milestone E). The first entry is the default and is left out
   // of the URL, so every existing #team= link keeps opening the same page.
@@ -89,7 +89,7 @@
     const years = seasonsFor(section, config);
     let year = Number(p.get('season'));
     if (!p.has('season') || !years.includes(year)) year = latest(years);
-    if (section === 'home' || section === 'live' || section === 'matchups' || section === 'teams' || section === 'methodology' || section === 'coverage' ||
+    if (section === 'home' || section === 'live' || section === 'matchups' || section === 'teams' || section === 'methodology' || section === 'coverage' || section === 'accuracy' ||
         (section === 'rankings' && subview === 'home-field'))
       year = latest(config.yearsAll || []);
     const season = (config.gameSeasons || []).find(s => s.season === year);

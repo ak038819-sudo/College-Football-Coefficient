@@ -359,6 +359,12 @@
   }
   @media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } }
 
+  /* One conference's title race. A small table with no header row: the three
+     columns are the team, its record and its chance, and a header above every
+     conference would be the same three words a dozen times over. */
+  .conf-race h3.section-title { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
+  .conf-race .rank-table { margin: 0; }
+
   h2.section-title {
     font-family: var(--font-display);
     font-size: 18px;
@@ -1064,6 +1070,7 @@
     <nav class="header-links" aria-label="About the data">
       <a href="#section=coverage">Data Coverage</a>
       <a href="#section=methodology">How It Works</a>
+      <a href="#section=accuracy">Track Record</a>
     </nav>
     <div class="nav-row">
       <nav class="tabs" id="tabs" aria-label="Primary">
@@ -1444,7 +1451,7 @@ const SUBVIEWS = {
   rankings: [['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['home-field', 'Home-Field Advantage'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
     ['conference-coe2', 'Conference CoE 2.0'], ['elo-weekly', 'Week by Week'],
     ['ap', 'AP'], ['cfp', 'CFP']],
-  playoff: [['field', 'Field'], ['bracket', 'Bracket & Simulator'], ['odds', 'Title Odds'], ['history', 'History']]
+  playoff: [['field', 'Field'], ['projection', 'Rest of Season'], ['bracket', 'Bracket & Simulator'], ['odds', 'Title Odds'], ['history', 'History']]
 };
 
 function routeHref(changes) { return CfbNavigation.hashFor({ ...state, game: null, ...changes }); }
@@ -1469,7 +1476,7 @@ function renderYearRow() {
   const row = document.getElementById('year-row');
   if (state.view === 'team' || state.view === 'conference' || state.view === 'game' ||
       state.view === 'player' || state.view === 'coach' ||
-      state.section === 'teams' || state.section === 'live' || state.section === 'matchups' || state.section === 'methodology' || state.section === 'coverage' ||
+      state.section === 'teams' || state.section === 'live' || state.section === 'matchups' || state.section === 'methodology' || state.section === 'coverage' || state.section === 'accuracy' ||
       (state.section === 'games' && state.finder) || (state.section === 'rankings' && state.subview === 'home-field')) {
     row.innerHTML = '';
     return;
@@ -1809,6 +1816,15 @@ function renderField() {
     (F.field_size - F.auto_bids) + ' best teams left fill the rest. Seeds run straight down ' +
     'the ranking, and seeds 1–' + F.bye_seeds + ' sit out the first round. ' +
     'The ranking is 5-year rolling team CoE throughout.</p>';
+  // The honest caveat this page used to lack. A field built from standings to
+  // date, stated in the present tense, reads as settled in week 7; the link is
+  // where the season's remaining games are actually accounted for.
+  if (PROJECTION && PROJECTION.season === state.year) {
+    html += '<p class="section-note">This is the field as the season stands today, with ' +
+      PROJECTION.unplayed.toLocaleString() + ' games still to play. <a href="' +
+      esc(routeHref({ subview: 'projection' })) + '">Rest of Season</a> plays them out and gives ' +
+      'every team its chance of being here when they are done.</p>';
+  }
   html += '<table class="rank-table"><thead><tr><th class="num">Seed</th><th>Team</th>' +
     '<th>Conference</th><th>Bid</th><th class="num">CoE</th></tr></thead><tbody>';
   pf.field.forEach(q => {
@@ -2056,6 +2072,122 @@ function renderHistory() {
   return html;
 }
 
+// ---------------- Rest-of-season projection ----------------
+// DATA.projection comes from src/coefficients/project_season.py via
+// export_dashboard_data.build_projection. Every other playoff surface on this
+// site describes a season that has already happened: the Field page reads the
+// standings as they stand today and states them as final. This is the one view
+// built from games that have NOT been played.
+//
+// It exists only while a season is still being played. A finished season is
+// not projected -- every run would be the same run -- so the export publishes
+// null and this view says so rather than printing a column of 100s and 0s.
+const PROJECTION = DATA.projection || null;
+
+// A probability as a reader reads one. An exact zero is an em dash rather than
+// "0.0%", because a table where most of a long tail reads 0.0% is harder to
+// scan than one where the blanks are blank; a small but real chance is shown
+// as "<0.1%" rather than rounded away to nothing.
+function oddsPct(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return '—';
+  if (n < 0.1) return '<0.1%';
+  return n.toFixed(1) + '%';
+}
+
+function projectionRecord(t) {
+  return t.wins + '–' + t.losses + (t.ties ? '–' + t.ties : '');
+}
+
+function renderProjection() {
+  // There is one projection, for the season being played. Every other season
+  // on the season selector is finished, and showing it the live projection
+  // would label this year's numbers with that year -- which is exactly what
+  // this view did until the season check was added.
+  if (!PROJECTION || PROJECTION.season !== state.year) {
+    let html = '<div class="panel"><h2 class="section-title">Rest of Season</h2>' +
+      '<p class="section-note">The ' + state.year + ' season has no games left to play, so ' +
+      'there is nothing to project. <a href="' + esc(routeHref({ subview: 'field' })) +
+      '">The Field</a> shows who got in and <a href="' + esc(routeHref({ subview: 'odds' })) +
+      '">Title Odds</a> shows the bracket that followed.';
+    if (PROJECTION) {
+      html += ' The ' + PROJECTION.season + ' season is still being played: <a href="' +
+        esc(routeHref({ subview: 'projection', year: PROJECTION.season })) + '">see its ' +
+        'projection</a>.';
+    }
+    return html + '</p></div>';
+  }
+  const P = PROJECTION;
+  const contenders = P.teams.filter(t => t.playoff_pct > 0)
+    .sort((a, b) => b.playoff_pct - a.playoff_pct || b.champion_pct - a.champion_pct ||
+                    a.team.localeCompare(b.team));
+
+  let html = '<div class="panel"><h2 class="section-title">Rest of Season</h2>';
+  html += '<p class="section-note">' + P.unplayed.toLocaleString() + ' games of the ' + P.season +
+    ' season have not been played. Each one is decided by the same Elo win probability this site ' +
+    'already shows on its game card, ' + P.n_sims.toLocaleString() + ' times over. Every simulated ' +
+    'season is then rated, its conference champions derived and its twelve-team field selected ' +
+    'exactly as a real season would be, so these are the chances of finishing somewhere, not of ' +
+    'winning a bracket that is already set. Results through ' + esc(P.as_of || 'the latest game') +
+    '.</p>';
+  html += '<p class="section-note">Two things this does not model, worth knowing before you read ' +
+    'the numbers. Elo is held at today’s values inside a simulated season, so a team that loses ' +
+    'its next five games is still favoured by the same amount in the sixth — real collapses and ' +
+    'real surges are both underrepresented here. And the ranking the field is seeded from is the ' +
+    'five-year rolling coefficient, which four finished seasons already decide, so a strong ' +
+    'program stays in the field through a bad autumn. Most of the movement below is in the ' +
+    'conference races, which is where this model lets a season speak loudest.</p>';
+  html += '<table class="rank-table"><thead><tr><th class="num">#</th><th>Team</th>' +
+    '<th>Conference</th><th class="num">Record</th><th class="num">Proj. wins</th>' +
+    '<th class="num">Conf. title</th><th class="num">Playoff</th><th class="num">Bye</th>' +
+    '<th class="num">Title</th></tr></thead><tbody>';
+  contenders.forEach((t, i) => {
+    html += '<tr><td class="rk">' + (i + 1) + '</td>' +
+      '<td><div class="name-cell">' + teamLink(t.team, 'sm') + '</div></td>' +
+      '<td><div class="name-cell">' + (t.conference ? logoMarkup(t.conference, 'conf', 'sm') +
+        esc(t.conference) : '—') + '</div></td>' +
+      '<td class="num">' + esc(projectionRecord(t)) + '</td>' +
+      '<td class="num">' + t.projected_wins.toFixed(1) + '</td>' +
+      '<td class="num">' + oddsPct(t.conference_title_pct) + '</td>' +
+      '<td class="num">' + oddsPct(t.playoff_pct) + '</td>' +
+      '<td class="num">' + oddsPct(t.bye_pct) + '</td>' +
+      '<td class="num coe-val">' + oddsPct(t.champion_pct) + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  html += renderConferenceRaces(P);
+  return html;
+}
+
+// The conference races, separately, because a team can be 0% to reach the
+// playoff and still have everything to play for in November. The playoff table
+// above would never show it.
+function renderConferenceRaces(P) {
+  const byConference = new Map();
+  P.teams.filter(t => t.conference_title_pct > 0 && t.conference).forEach(t => {
+    if (!byConference.has(t.conference)) byConference.set(t.conference, []);
+    byConference.get(t.conference).push(t);
+  });
+  if (!byConference.size) return '';
+  const names = Array.from(byConference.keys()).sort((a, b) => a.localeCompare(b));
+  let html = '<div class="panel"><h2 class="section-title">Conference Races</h2>' +
+    '<p class="section-note">Each conference’s chance of finishing first in this project’s ' +
+    'derived standings — which is what holds an automatic bid here, not the winner of a title ' +
+    'game. A conference missing from this list has already been decided by the games played.</p>' +
+    '<div class="grid-2">';
+  names.forEach(conf => {
+    const rows = byConference.get(conf)
+      .sort((a, b) => b.conference_title_pct - a.conference_title_pct || a.team.localeCompare(b.team));
+    html += '<div class="conf-race"><h3 class="section-title">' +
+      logoMarkup(conf, 'conf', 'sm') + esc(conf) + '</h3>' +
+      '<table class="rank-table"><tbody>' +
+      rows.map(t => '<tr><td><div class="name-cell">' + teamLink(t.team, 'sm') + '</div></td>' +
+        '<td class="num">' + esc(projectionRecord(t)) + '</td>' +
+        '<td class="num coe-val">' + oddsPct(t.conference_title_pct) + '</td></tr>').join('') +
+      '</tbody></table></div>';
+  });
+  return html + '</div></div>';
+}
+
 function renderOdds() {
   const pf = DATA.playoff_by_year[state.year];
   if (!pf || !pf.simulation) return '<div class="empty-note">No simulation data for this season.</div>';
@@ -2148,6 +2280,30 @@ function teamExtremes(team) {
   return '<section class="panel team-section"><h2>Program highs and lows</h2><p class="section-note">Season snapshots across the available archive; the current season is in progress. Equal records show one matching season.</p><table><thead><tr><th>Rating</th><th>Highest</th><th>Lowest</th><th>Best rank</th><th>Lowest rank</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
 }
 
+// The record beside a team's name, and what the ratings were allowed to see.
+//
+// Games against opponents this project holds no rating for -- almost always
+// FCS -- belong in the record a reader expects, and nowhere near a rating.
+// This header used to show the rated record alone and label it "vs FBS
+// opponents", so a team that had beaten an FCS opponent read one record at the
+// top of its page and a different one on its own Analytics card and Schedule
+// tab further down. Both numbers are real; only one of them is the record.
+//
+// The sub-label states the rated part whenever the two differ, because every
+// other number in this header -- Elo, CoE, every rank -- is computed from that
+// part alone.
+function teamHeaderRecord(rec, unrated) {
+  const wlt = (w, l, ties) => w + '\u2013' + l + (ties ? '\u2013' + ties : '');
+  const some = r => !!r && (r[0] || r[1] || r[2]);
+  if (!rec && !some(unrated)) return { value: 'N/A', note: 'vs FBS opponents' };
+  const r = rec || [0, 0, 0];
+  if (!some(unrated)) return { value: wlt(r[0], r[1], r[2]), note: 'all opponents rated' };
+  return {
+    value: wlt(r[0] + unrated[0], r[1] + unrated[1], r[2] + unrated[2]),
+    note: wlt(r[0], r[1], r[2]) + ' against rated opponents',
+  };
+}
+
 function renderTeamPage(param) {
   const back = backLink();
   const team = resolveTeam(param);
@@ -2161,7 +2317,8 @@ function renderTeamPage(param) {
   const coe = season ? rankLookup('team_ratings_by_year', 'rating', season, team.name) : null;
   const coe5 = season ? rankLookup('team_rolling_by_year', 'coeff_5yr', season, team.name) : null;
   const rec = season ? ((DATA.team_records_by_year || {})[season] || {})[team.id] : null;
-  const recStr = rec ? rec[0] + '\u2013' + rec[1] + (rec[2] ? '\u2013' + rec[2] : '') : 'N/A';
+  const unrated = season ? ((DATA.non_fbs_records_by_year || {})[season] || {})[team.id] : null;
+  const { value: recStr, note: recNote } = teamHeaderRecord(rec, unrated);
 
   const header =
     '<div class="panel team-header">' +
@@ -2177,7 +2334,7 @@ function renderTeamPage(param) {
         teamStat('Elo', elo ? eloValue(elo.value) + eloChangeMarkup(teamEloChange(season, team.name), team.name) : 'N/A', rankSub(elo)) +
         teamStat('CoE (season)', coe ? fmt(coe.value) : 'N/A', rankSub(coe)) +
         teamStat('CoE (5-yr)', coe5 ? fmt(coe5.value) : 'N/A', rankSub(coe5)) +
-        teamStat('Record', recStr, 'vs FBS opponents') +
+        teamStat('Record', recStr, recNote) +
       '</div>' +
     '</div>' + (season === UPCOMING.season ? '<p class="rating-freshness" id="rating-freshness" role="status"></p>' : '');
 
@@ -4723,6 +4880,138 @@ document.getElementById('content').addEventListener('change', e => {
 // The same counted numbers the badges use (src/coverage.py, via
 // STATIC_MANIFEST.coverage), given an address of their own so "why is this
 // blank?" can be linked to rather than scrolled to.
+// ---------------- Track record ----------------
+// STATIC_MANIFEST.accuracy comes from src/accuracy.py, which reads the report
+// src/run_validation.py has been writing on every scheduled refresh since the
+// harness was built. Nothing read it until this page existed: the model's own
+// accuracy was computed on every deploy and published nowhere.
+//
+// A rating people are meant to quote has to be answerable for how often it is
+// right, so this page states that plainly, beside the two baselines that make
+// the number mean anything.
+const ACCURACY = STATIC_MANIFEST.accuracy || null;
+
+// null is checked BEFORE coercing, because Number(null) is 0 and a missing
+// metric would otherwise render as "0.0%" -- which on the calibration column
+// is a claim of a perfect forecast rather than an absent measurement.
+function accuracyPct(value, digits) {
+  if (value == null) return '—';
+  const n = Number(value);
+  return Number.isFinite(n) ? (n * 100).toFixed(digits == null ? 1 : digits) + '%' : '—';
+}
+function accuracyNum(value, digits) {
+  if (value == null) return '—';
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toFixed(digits == null ? 4 : digits) : '—';
+}
+
+function renderAccuracy() {
+  if (!ACCURACY || !ACCURACY.models?.length) {
+    return '<h2 class="view-title">Track record</h2>' +
+      '<div class="empty-note">No validation report has been generated for this build.</div>';
+  }
+  const headline = ACCURACY.models.find(m => m.headline) || ACCURACY.models[0];
+  const homeBaseline = ACCURACY.models.find(m => m.key === 'baseline_home_rate');
+
+  let html = '<h2 class="view-title">Track record</h2>';
+  html += '<div class="panel"><h2 class="section-title">How often the model is right</h2>';
+  html += '<p>Over <b>' + (headline.n || 0).toLocaleString() + '</b> games from ' +
+    headline.first_season + ' to ' + headline.last_season + ', the team this model made the ' +
+    'pregame favourite won <b>' + accuracyPct(headline.accuracy) + '</b> of the time. Picking ' +
+    'the home team in every one of those games would have been right ' +
+    accuracyPct(headline.base_rate) + ' of the time.</p>';
+  // Brier is the number that actually matters and nobody knows what it is, so
+  // it is explained in the sentence that uses it rather than in a footnote.
+  html += '<p>Accuracy only asks whether the favourite won. The sharper test is whether a stated ' +
+    'probability is worth anything, and the standard measure of that is the Brier score, where ' +
+    'lower is better and a perfect forecast is zero. This model scores <b>' +
+    accuracyNum(headline.brier) + '</b>' +
+    (homeBaseline ? ', against ' + accuracyNum(homeBaseline.brier) + ' for always backing the ' +
+      'home team — ' + accuracyPct(headline.brier_skill) + ' of the way from that baseline ' +
+      'toward a perfect forecast' : '') + '.</p>';
+  html += '<p class="section-note">Every prediction scored here was read back out of the ' +
+    'database as it stood <i>before</i> the game it predicted, never recomputed afterwards, so a ' +
+    'rating formed by a result can never be scored against it. The figures are regenerated by ' +
+    '<code>src/run_validation.py</code> on every refresh of the site, so this page moves when ' +
+    'the model does, including when it moves the wrong way.' +
+    (ACCURACY.fingerprint ? ' This run: <code>' + esc(ACCURACY.fingerprint) + '</code>.' : '') +
+    '</p></div>';
+
+  html += '<div class="panel"><h2 class="section-title">Against the alternatives</h2>';
+  html += '<p class="section-note">The two baselines are not padding. A model that cannot beat ' +
+    'the home-win rate has found nothing that home advantage had not already found.</p>';
+  html += '<table class="rank-table"><thead><tr><th>Model</th><th class="num">Games</th>' +
+    '<th class="num">Seasons</th><th class="num">Accuracy</th><th class="num">Brier</th>' +
+    '<th class="num">Skill</th><th class="num">Log loss</th><th class="num">Calibration</th>' +
+    '</tr></thead><tbody>';
+  ACCURACY.models.forEach(m => {
+    html += '<tr' + (m.baseline ? ' class="row-dim"' : '') + '>' +
+      '<td><div class="name-cell">' + esc(m.label) +
+      (m.headline ? ' <span class="tag champ">Published</span>' : '') + '</div>' +
+      '<small class="section-note">' + esc(m.blurb) + '</small></td>' +
+      '<td class="num">' + (m.n || 0).toLocaleString() + '</td>' +
+      '<td class="num">' + (m.first_season && m.last_season
+        ? m.first_season + '–' + m.last_season : '—') + '</td>' +
+      '<td class="num">' + accuracyPct(m.accuracy) + '</td>' +
+      '<td class="num coe-val">' + accuracyNum(m.brier) + '</td>' +
+      '<td class="num">' + accuracyPct(m.brier_skill) + '</td>' +
+      '<td class="num">' + accuracyNum(m.log_loss) + '</td>' +
+      '<td class="num">' + accuracyNum(m.calibration_error, 3) + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+
+  html += renderCalibration();
+  html += renderAccuracyBySeason();
+  return html;
+}
+
+// Calibration is the honest half of a forecast and the half nobody publishes.
+// A model can be accurate and still lie about its confidence; this table is
+// where that shows.
+function renderCalibration() {
+  const bins = ACCURACY.calibration || [];
+  if (!bins.length) return '';
+  let html = '<div class="panel"><h2 class="section-title">When it says 70%, does it happen 70% of the time?</h2>';
+  html += '<p class="section-note">Every game the model has predicted, grouped by the chance it ' +
+    'gave the home team, against how often the home team actually won. A model whose stated ' +
+    'probabilities mean what they say has these two columns tracking each other down the table; ' +
+    'the gap column is how far apart they are.</p>';
+  html += '<table class="rank-table"><thead><tr><th>Model said</th><th class="num">Games</th>' +
+    '<th class="num">Average stated chance</th><th class="num">Actually won</th>' +
+    '<th class="num">Gap</th></tr></thead><tbody>';
+  bins.forEach(b => {
+    const gap = (b.observed != null && b.predicted != null) ? b.observed - b.predicted : null;
+    html += '<tr><td>' + accuracyPct(b.lower, 0) + '–' + accuracyPct(b.upper, 0) + '</td>' +
+      '<td class="num">' + (b.n || 0).toLocaleString() + '</td>' +
+      '<td class="num">' + accuracyPct(b.predicted) + '</td>' +
+      '<td class="num">' + accuracyPct(b.observed) + '</td>' +
+      '<td class="num coe-val">' + (gap == null ? '—' :
+        (gap > 0 ? '+' : gap < 0 ? '−' : '±') + Math.abs(gap * 100).toFixed(1)) + '</td></tr>';
+  });
+  return html + '</tbody></table></div>';
+}
+
+function renderAccuracyBySeason() {
+  const rows = (ACCURACY.by_season || []).slice().reverse();
+  if (!rows.length) return '';
+  let html = '<div class="panel"><h2 class="section-title">Season by season</h2>';
+  html += '<p class="section-note">Newest first. Skill is measured against that season’s own ' +
+    'home-win rate, so a season where home teams won unusually often is not credited to the ' +
+    'model. A season still being played shows only the games completed so far.</p>';
+  html += '<table class="rank-table"><thead><tr><th class="num">Season</th><th class="num">Games</th>' +
+    '<th class="num">Accuracy</th><th class="num">Home-team baseline</th><th class="num">Brier</th>' +
+    '<th class="num">Skill</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    html += '<tr><td class="num">' + r.season + '</td>' +
+      '<td class="num">' + (r.n || 0).toLocaleString() + '</td>' +
+      '<td class="num">' + accuracyPct(r.accuracy) + '</td>' +
+      '<td class="num">' + accuracyPct(r.base_rate) + '</td>' +
+      '<td class="num">' + accuracyNum(r.brier) + '</td>' +
+      '<td class="num coe-val">' + accuracyPct(r.brier_skill) + '</td></tr>';
+  });
+  return html + '</tbody></table></div>';
+}
+
 function renderCoverage() {
   const dims = COVERAGE.dimensions || [];
   const seasons = Object.keys(COVERAGE.seasons || {}).map(Number).sort((a, b) => a - b);
@@ -6987,6 +7276,7 @@ function render() {
   else if (state.section === 'people') { content.innerHTML = renderPeople(); hydratePeople(version); }
   else if (state.section === 'methodology') content.innerHTML = renderMethodology();
   else if (state.section === 'coverage') content.innerHTML = renderCoverage();
+  else if (state.section === 'accuracy') content.innerHTML = renderAccuracy();
   else if (state.section === 'teams') {
     if (state.subview === 'stadiums') {
       content.innerHTML = '<div id="stadium-explorer">' + teamsSwitch('stadiums') + '<div class="panel">Loading stadiums…</div></div>';
@@ -7005,7 +7295,7 @@ function render() {
     if (state.subview === 'elo-weekly') hydrateEloWeekly(version);
     if (state.subview === 'elo') hydrateRatingFreshness(version);
   } else if (state.section === 'playoff') {
-    const views = { field: renderField, bracket: renderBracket, odds: renderOdds, history: renderHistory };
+    const views = { field: renderField, projection: renderProjection, bracket: renderBracket, odds: renderOdds, history: renderHistory };
     content.innerHTML = routeSelect('Playoff view', SUBVIEWS.playoff, state.subview) + playoffIntro() + views[state.subview]();
     // A simulation restored after navigating away should already be visible.
     content.querySelectorAll('.bracket-round-col.pending').forEach(el => el.classList.remove('pending'));
