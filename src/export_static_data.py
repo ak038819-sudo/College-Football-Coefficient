@@ -45,6 +45,7 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from accuracy import build_accuracy  # noqa: E402
 from coverage import build_coverage  # noqa: E402
 from elo_timeline import build_timeline  # noqa: E402
 import player_archive  # noqa: E402
@@ -670,6 +671,11 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                 # P1-08: what each season actually has, so an absent metric can say
                 # why it is absent instead of rendering as a zero.
                 "coverage": build_coverage(conn),
+                # The model's own track record, from the validation harness that
+                # has been scoring it all along (see src/accuracy.py). Absent,
+                # not empty, when no report has been generated, so the page can
+                # be missing rather than blank.
+                **({"accuracy": accuracy} if (accuracy := build_accuracy()) else {}),
                 # v0.1.1: player and coach pages. Absent, not empty, when the
                 # database has no person tables, so the UI can tell "no data
                 # here" from "no such feature".
