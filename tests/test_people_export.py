@@ -300,3 +300,89 @@ def test_a_caveat_for_a_season_with_no_statistics_is_not_invented(conn):
 
     player = build_players(conn)[pid]
     assert "2022" not in player.get("stats", {})
+
+
+# ---- the recruiting class a season carries -----------------------------------
+
+def _class(conn, team_id, season, rank, points=100.0, source=None):
+    conn.executescript((__import__('pathlib').Path(__file__).resolve().parents[1]
+                        / 'sql' / 'recruiting_tables.sql').read_text(encoding='utf-8'))
+    conn.execute("INSERT OR REPLACE INTO recruiting_classes "
+                 "(source_team, season_year, team_id, class_rank, points) "
+                 "VALUES (?, ?, ?, ?, ?)",
+                 (source or TEAMS.get(team_id, str(team_id)), season, team_id, rank, points))
+
+
+def test_a_season_carries_the_class_the_program_signed(conn):
+    cid = _coach(conn, "Dabo Swinney", [(2020, 1, None), (2021, 1, None)])
+    _class(conn, 1, 2020, 3, 290.5)
+    _class(conn, 1, 2021, 7, 270.0)
+    tenures = build_coaches(conn)[cid]["tenures"]
+    assert [(t["season_year"], t["class_rank"]) for t in tenures] == [(2020, 3), (2021, 7)]
+    assert tenures[0]["class_points"] == 290.5
+
+
+def test_a_first_season_at_a_school_is_marked_as_inherited(conn):
+    """A class is signed in February. Saban's first LSU class ranked 21st and
+    his next four ranked 2nd, 21st, 3rd and 4th -- crediting him with the 21st
+    would be crediting him with three weeks of work."""
+    cid = _coach(conn, "Nick Saban", [(2007, 1, None), (2008, 1, None)])
+    _class(conn, 1, 2007, 12)
+    _class(conn, 1, 2008, 3)
+    tenures = build_coaches(conn)[cid]["tenures"]
+    assert tenures[0]["class_inherited"] is True
+    assert "class_inherited" not in tenures[1]
+
+
+def test_a_coach_who_returns_years_later_inherits_again(conn):
+    """Mack Brown left North Carolina in 1997 and came back in 2019. Asking
+    for the minimum season would call only 1988 a first year."""
+    cid = _coach(conn, "Mack Brown", [(1996, 1, None), (1997, 1, None), (2019, 1, None), (2020, 1, None)])
+    _class(conn, 1, 1996, 20)
+    _class(conn, 1, 1997, 22)
+    _class(conn, 1, 2019, 40)
+    _class(conn, 1, 2020, 15)
+    marked = [t["season_year"] for t in build_coaches(conn)[cid]["tenures"]
+              if t.get("class_inherited")]
+    assert marked == [1996, 2019]
+
+
+def test_the_season_after_another_coach_is_inherited(conn):
+    """The predecessor signed it, so the successor's first season is marked
+    even though the program's seasons are continuous."""
+    _coach(conn, "The Predecessor", [(2018, 1, None), (2019, 1, None)])
+    successor = _coach(conn, "The Successor", [(2020, 1, None), (2021, 1, None)])
+    for season, rank in ((2018, 10), (2019, 11), (2020, 12), (2021, 13)):
+        _class(conn, 1, season, rank)
+    tenures = build_coaches(conn)[successor]["tenures"]
+    assert tenures[0].get("class_inherited") is True
+    assert tenures[1].get("class_inherited") is None
+
+
+def test_a_season_with_no_class_carries_no_key_at_all(conn):
+    """Classes start in 2000, and most of this archive predates them. A key
+    with a null in it would render as a cell rather than as nothing."""
+    cid = _coach(conn, "Bear Bryant", [(1975, 1, None)])
+    _class(conn, 1, 2020, 1)
+    tenure = build_coaches(conn)[cid]["tenures"][0]
+    assert "class_rank" not in tenure and "class_points" not in tenure
+
+
+def test_an_unranked_class_still_carries_its_points(conn):
+    """CFBD ranks only part of the field in the early seasons."""
+    cid = _coach(conn, "Someone", [(2003, 1, None)])
+    _class(conn, 1, 2003, None, 41.2)
+    tenure = build_coaches(conn)[cid]["tenures"][0]
+    assert "class_rank" not in tenure and tenure["class_points"] == 41.2
+
+
+def test_a_class_belonging_to_another_team_is_not_attached(conn):
+    cid = _coach(conn, "Someone", [(2020, 1, None)])
+    _class(conn, 2, 2020, 1)
+    assert "class_rank" not in build_coaches(conn)[cid]["tenures"][0]
+
+
+def test_the_export_still_works_without_the_recruiting_tables(conn):
+    """A database built before this data existed must still export."""
+    cid = _coach(conn, "Someone", [(2020, 1, None)])
+    assert build_coaches(conn)[cid]["tenures"][0]["season_year"] == 2020

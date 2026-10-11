@@ -167,16 +167,17 @@ def test_the_written_csv_round_trips(tmp_path, monkeypatch):
 # ---- nothing published reads it yet -----------------------------------------
 
 READERS = {'src/fetch_cfbd_recruiting.py', 'src/load_recruiting.py',
-           'run_pipeline.py'}
+           'run_pipeline.py', 'src/export_people_pages.py'}
 
 
 def test_only_the_named_files_read_the_recruiting_archive():
-    """Three files touch this archive: the fetcher that writes it, the loader
-    that reads it into the database, and the pipeline that calls the loader.
+    """Four files touch this archive: the fetcher that writes it, the loader
+    that reads it into the database, the pipeline that calls the loader, and
+    the people exporter, which publishes each coach's class ranks.
 
-    A fourth appearing is how an unvalidated input becomes a published number
-    without anyone deciding to, so widening the set above is the deliberate
-    act that says someone did."""
+    A fifth appearing is how an input nobody checked becomes a published
+    number, so widening the set above is the deliberate act that says someone
+    looked at the data first."""
     root = Path(__file__).resolve().parents[1]
     offenders = []
     for path in list((root / 'src').rglob('*.py')) + [root / 'build_dashboard.py',

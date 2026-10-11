@@ -68,8 +68,8 @@ test('the shell has exactly one signed(), the one the team pages already use', (
 });
 
 test('the season table shows the expectation, and names a season it cannot measure', () => {
-  const {coachPanels} = load(['coachPanels', 'coachRecord', 'coachExpectation', 'signed',
-                              'teamStat']);
+  const {coachPanels} = load(['coachPanels', 'coachRecord', 'coachExpectation',
+                              'coachRecruiting', 'signed', 'teamStat']);
   const html = coachPanels({display_name: 'The Coach', tenures: [
     {season_year: 2019, team_id: 7, wins: 11, losses: 2, ties: 0,
      expected_wins: 9.24, wins_above_expected: 1.76},

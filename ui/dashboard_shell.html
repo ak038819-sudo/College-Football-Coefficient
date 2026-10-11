@@ -5174,6 +5174,27 @@ function coachExpectation(tenures) {
   };
 }
 
+// The classes a coach SIGNED, which is not the same as the classes that played
+// for him. CFBD attributes a class to whoever held the job that February, so a
+// coach's first season at a school carries his predecessor's recruiting --
+// Saban's first LSU class ranked 21st and his next four ranked 2nd, 21st, 3rd
+// and 4th. Those inherited classes are counted separately rather than averaged
+// in, because averaging them in credits or blames a coach for a class he had
+// three weeks to touch.
+function coachRecruiting(tenures) {
+  const ranked = (tenures || []).filter(t => t && t.class_rank != null);
+  const own = ranked.filter(t => !t.class_inherited);
+  if (!own.length) return null;
+  const best = own.reduce((lo, t) => t.class_rank < lo.class_rank ? t : lo, own[0]);
+  return {
+    classes: own.length,
+    inherited: ranked.length - own.length,
+    average: own.reduce((n, t) => n + t.class_rank, 0) / own.length,
+    best: best.class_rank,
+    bestSeason: best.season_year,
+  };
+}
+
 function coachPanels(c, id) {
   const tenures = c.tenures || [];
   const measuredElo = tenures.filter(t=>Number.isFinite(t.elo_change));
@@ -5182,6 +5203,7 @@ function coachPanels(c, id) {
   const years = tenures.map(t => t.season_year);
   const rec = coachRecord(tenures);
   const exp = coachExpectation(tenures);
+  const rec2 = coachRecruiting(tenures);
   const schools = [...new Set(tenures.map(t => t.team_id))];
   const header = '<div class="panel team-header"><div class="team-header-main">' +
     '<div class="team-header-text"><h1 class="team-title">' + esc(c.display_name) + '</h1>' +
@@ -5198,6 +5220,9 @@ function coachPanels(c, id) {
              rec.played ? rec.played + ' games' : '&nbsp;') +
     teamStat('Schools', String(schools.length), 'FBS programs coached') +
     (measuredElo.length ? teamStat('Elo gained / lost', signed(totalElo,1), measuredElo.length+' measured seasons') : '') +
+    (rec2 ? teamStat('Recruiting', 'avg #' + rec2.average.toFixed(1),
+                    rec2.classes + (rec2.classes === 1 ? ' class' : ' classes') +
+                    ' signed · best #' + rec2.best + ' in ' + rec2.bestSeason) : '') +
     (exp ? teamStat('Wins vs expectation', signed(exp.total, 1),
                     signed(exp.perSeason, 2) + ' a season over ' + exp.seasons +
                     (exp.seasons === 1 ? ' measured season' : ' measured seasons')) : '') +
@@ -5214,6 +5239,13 @@ function coachPanels(c, id) {
     const w = t.wins == null ? null : t.wins + '–' + t.losses + (t.ties ? '–' + t.ties : '');
     return '<tr><td>' + esc(t.season_year) + '</td><td>' + teamCellById(t.team_id) + '</td>' +
       '<td>' + (w || '&mdash;') + '</td>' +
+      // An inherited class is marked where it sits rather than footnoted, so a
+      // reader scanning the column cannot mistake it for this coach's work.
+      '<td class="num">' + (t.class_rank == null ? '&mdash;'
+        : (t.class_inherited
+            ? '<abbr title="Signed before this coach arrived">#' + esc(t.class_rank) +
+              '<span aria-hidden="true">*</span></abbr>'
+            : '#' + esc(t.class_rank))) + '</td>' +
       '<td>' + (t.preseason_rank == null ? '&mdash;' : '#' + esc(t.preseason_rank)) + '</td>' +
       '<td>' + (t.postseason_rank == null ? '&mdash;' : '#' + esc(t.postseason_rank)) + '</td>' +
       // A season nobody can attribute says so where the number would have been,
@@ -5229,7 +5261,7 @@ function coachPanels(c, id) {
   }).join('');
   const table = '<div class="panel team-section"><h2 class="section-title">Season by season</h2>' +
     '<table class="data-table"><thead><tr><th>Season</th><th>Team</th><th>Record</th>' +
-    '<th>Preseason</th><th>Final</th><th scope="col">Expected</th><th scope="col">vs exp</th><th scope="col">Elo ±</th>' +
+    '<th scope="col">Class</th><th>Preseason</th><th>Final</th><th scope="col">Expected</th><th scope="col">vs exp</th><th scope="col">Elo ±</th>' +
     '</tr></thead><tbody>' + rows + '</tbody></table>' +
     '<p class="section-note">Records count games vs FBS opponents. ' +
     '\u201cExpected\u201d adds up the pregame Elo win probability of each of that season\u2019s ' +
@@ -5239,7 +5271,13 @@ function coachPanels(c, id) {
       ? '. ' + exp.unmeasured + (exp.unmeasured === 1 ? ' season is' : ' seasons are') +
         ' not measured, because the team had two head coaches that year and the feed does not ' +
         'say which games belonged to each'
-      : '') + '.</p></div>';
+      : '') + '.</p>' +
+    (rec2 ? '<p class="section-note">\u201cClass\u201d is the program\u2019s ' +
+      'recruiting class rank that season. A class is signed in February, so one ' +
+      'marked * was signed before this coach arrived and is left out of his ' +
+      'average' + (rec2.inherited ? ' (' + rec2.inherited +
+        (rec2.inherited === 1 ? ' season' : ' seasons') + ' here)' : '') +
+      '. Classes start in 2000.</p>' : '') + '</div>';
   return header + note + table + '<section class="panel team-section"><h2>How coach performance is measured</h2><p>Elo gained / lost = final postgame Elo − first pregame Elo for each measured season. Career change sums those season changes, excluding offseason regression.</p><p>Wins above expectation = wins + ½ × ties − sum of pregame Elo win probabilities. Positive means more wins than the team’s ratings and schedule predicted. This measures team outcomes during the tenure; it does not isolate coaching causation.</p></section>';
 }
 

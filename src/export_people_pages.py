@@ -213,6 +213,43 @@ def build_coaches(conn: sqlite3.Connection) -> dict:
                     if row[key] is not None:
                         tenure[key] = round(row[key], 3)
 
+    # The recruiting class the program signed that season
+    # (src/load_recruiting.py). The join CFBD's feed supports is team and
+    # season, which attributes a class to whoever held the job that year
+    # rather than to whoever did the recruiting -- and in a coach's first
+    # season at a school those are usually different people. Saban's 2000 LSU
+    # class, signed three weeks after he was hired, ranked 21st; his next four
+    # ranked 2nd, 21st, 3rd and 4th. So a first season is MARKED rather than
+    # quietly averaged in, and the page says what the mark means.
+    if conn.execute("SELECT name FROM sqlite_master WHERE type = 'table' "
+                    "AND name = 'recruiting_classes'").fetchone():
+        classes = {}
+        for row in conn.execute(
+                "SELECT team_id, season_year, class_rank, points FROM recruiting_classes "
+                "WHERE team_id IS NOT NULL"):
+            classes[(int(row["team_id"]), int(row["season_year"]))] = row
+        # Who held each job each season, so "this coach's first season here"
+        # can be told from "this coach was already here". A coach who returns
+        # years later (Mack Brown at North Carolina) inherits again, which is
+        # why this asks about the season before rather than about a minimum.
+        held = {}
+        for coach_id, coach in coaches.items():
+            for tenure in coach["tenures"]:
+                held[(tenure.get("team_id"), tenure.get("season_year"))] = coach_id
+        for coach_id, coach in coaches.items():
+            for tenure in coach["tenures"]:
+                team_id = tenure.get("team_id")
+                season = tenure.get("season_year")
+                row = classes.get((team_id, season))
+                if row is None:
+                    continue
+                if row["class_rank"] is not None:
+                    tenure["class_rank"] = int(row["class_rank"])
+                if row["points"] is not None:
+                    tenure["class_points"] = round(float(row["points"]), 2)
+                if held.get((team_id, season - 1)) != coach_id:
+                    tenure["class_inherited"] = True
+
     # The identity this feed could not vouch for, carried through to the page so
     # the weakness is visible to a reader rather than only to the database.
     for row in conn.execute(
