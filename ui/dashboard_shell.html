@@ -1449,7 +1449,11 @@ function fmt(n) { return Number(n).toFixed(3); }
 // Every Elo RATING shown on the site reads as a whole number. Display only:
 // the exports still carry a decimal, and Elo changes keep theirs, because a
 // rounded +3.4 would say nothing.
-function eloValue(n) { const v = Number(n); return Number.isFinite(v) ? String(Math.round(v)) : '—'; }
+function eloValue(n) {
+  if (n == null) return '—';          // a game with no rating is not a 0 Elo
+  const v = Number(n);
+  return Number.isFinite(v) ? String(Math.round(v)) : '—';
+}
 
 function renderYearRow() {
   const row = document.getElementById('year-row');
@@ -3432,7 +3436,7 @@ function fillTeamStatistics(team) {
       }
     } else if(teamRow) {
       const fields=[...new Set(Object.values(TEAM_STAT_CATEGORIES).flat())].filter(k=>teamRow[k]!=null);
-      body='<table><thead><tr><th>Statistic</th><th>'+season+'</th></tr></thead><tbody>'+fields.map(k=>'<tr><th scope="row">'+esc(CfbStats.labels[k]||k)+'</th><td>'+statValue(teamRow[k])+'</td></tr>').join('')+'</tbody></table>';
+      body='<table><thead><tr><th>Statistic</th><th>'+season+'</th></tr></thead><tbody>'+fields.map(k=>'<tr><th scope="row">'+esc(CfbStats.labels[k]||k)+'</th><td>'+statCell(k,teamRow[k])+'</td></tr>').join('')+'</tbody></table>';
     }
     target.innerHTML=head+(body||'<p>No recorded statistics for this team and season.</p>')+'<p class="section-note">Completed FBS games. Player totals cover recorded category box scores.</p>';
     document.getElementById('tp-stats-season').addEventListener('change',e=>{teamPageState.statSeason=Number(e.target.value);fillTeamStatistics(team);});
@@ -4589,7 +4593,7 @@ function fillLedgerPanel(tp, team) {
     const n = season - seasonOf(prev);
     opening = 'Ended ' + seasonOf(prev) + ' at <b>' + fe(prev.post) + '</b>. Each offseason pulls ratings ' + Math.round((1 - KEEP) * 100) +
       '% of the way back toward ' + INIT + ': <code>' + INIT + ' + ' + KEEP + (n > 1 ? '<sup>' + n + '</sup>' : '') + ' × (' + fe(prev.post) + ' − ' + INIT +
-      ') = ' + fe(mine[0].pre) + '</code>' + (n > 1 ? ' (' + n + ' offseasons: no FBS games in ' + (seasonOf(prev) + 1) + (n > 2 ? '–' + (season - 1) : '') + ')' : '') + '.';
+      ') ≈ ' + fe(mine[0].pre) + '</code>' + (n > 1 ? ' (' + n + ' offseasons: no FBS games in ' + (seasonOf(prev) + 1) + (n > 2 ? '–' + (season - 1) : '') + ')' : '') + '.';
   }
   const body = mine.map(r => {
     const g = tp.gamesById.get(r.gid);
@@ -6442,10 +6446,7 @@ function loadStats(season) {
   if(!statsCache.has(season)) statsCache.set(season,Promise.all([loadSeasonGames(season),loadPlayerArchive(season),loadRoster(season).catch(()=>null)]).then(([games,archive,roster])=>{
     const players=CfbStats.aggregatePlayers(archive,games.byId,games.conferences||{},TEAM_BY_ID);
     const ratings={};
-    // Rounded here so every Stats surface -- the ratings table, the leaders
-    // card and the team page's own statistics table -- shows the same whole
-    // number the rest of the site shows. The change keeps its decimal.
-    for(const r of DATA.team_elo_by_year[season]||[]) ratings[r.team]={elo:r.elo==null?null:Math.round(r.elo),change:r.change};
+    for(const r of DATA.team_elo_by_year[season]||[]) ratings[r.team]={elo:r.elo,change:r.change};
     for(const r of DATA.team_ratings_by_year[season]||[]) {ratings[r.team]??={};ratings[r.team].coefficient=r.rating;}
     for(const r of DATA.team_rolling_by_year[season]||[]) {ratings[r.team]??={};ratings[r.team].rolling=r.coeff_5yr;}
     return {season,roster,players:players.rows,teams:CfbStats.aggregateTeams(games.games,players,games.conferences||{},TEAM_BY_ID,ratings),completed:games.games.filter(g=>g.completed).length,covered:new Set([...players.covered].map(k=>k.split('|')[0])).size};
@@ -6485,6 +6486,10 @@ function hydrateStats(version) {
     wrapWideTables();
   }).catch(()=>{if(version===renderVersion)document.getElementById('stats-body').innerHTML='<p class="empty-note">Statistics could not be loaded. <button id="retry-stats" class="action-button">Retry</button></p>';});
 }
+// A statistics cell. Elo reads as a whole rating; every other statistic keeps
+// its own precision. The aggregated rows hold the RAW rating, so sorting, ranks
+// and ties are unaffected by how it is shown.
+function statCell(key, value) { return key === 'elo' ? eloValue(value) : statValue(value); }
 function statValue(value) {
   return value==null||!Number.isFinite(Number(value))?'—':Number.isInteger(Number(value))?Number(value).toLocaleString():Number(value).toLocaleString(undefined,{maximumFractionDigits:2});
 }
@@ -6547,7 +6552,8 @@ function statsViewHtml(data) {
   if(isPlayer)columns.push({key:'team',label:'Team',type:'string',render:r=>teamLink(r.team,'xs',state.year)},
     {key:'record',label:CfbStats.labels.record,type:'string',render:r=>recordOf(r)??'\u2014'},
     {key:'games',label:'Games'});
-  columns.push({key:'conference',label:'Conference',type:'string'},...fields.map(key=>({key,label:CfbStats.labels[key]||key})));
+  columns.push({key:'conference',label:'Conference',type:'string'},
+    ...fields.map(key=>key==='elo'?{key,label:CfbStats.labels[key],render:r=>statCell(key,r[key])}:{key,label:CfbStats.labels[key]||key}));
   return coverage+nav+filters+picker+SortableTable(filtered,columns,{sort:isPlayer?schema.sort:category==='ratings'?'elo':category==='defense'?'oppPpg':'ppg',dir:category==='defense'?'asc':'desc'});
 }
 function statsOverviewHtml(data) {
@@ -6566,7 +6572,7 @@ function statsOverviewHtml(data) {
     const available=rows.filter(r=>r[key]!=null);if(!available.length)return;
     const leaders=CfbStats.sortRows(available,key,dir).slice(0,3);
     const href=statsHref({...target,sort:key,dir,minimum,statTeam:'',statConf:'',statQuery:''});
-    cards.push('<article class="panel"><h3><a href="'+esc(href)+'">'+title+' →</a></h3><ol>'+leaders.map(r=>'<li><span>'+nameCell(r)+'</span> <strong>'+statValue(r[key])+'</strong></li>').join('')+'</ol></article>');
+    cards.push('<article class="panel"><h3><a href="'+esc(href)+'">'+title+' →</a></h3><ol>'+leaders.map(r=>'<li><span>'+nameCell(r)+'</span> <strong>'+statCell(key,r[key])+'</strong></li>').join('')+'</ol></article>');
   };
   for(const [category,key,title,minimum] of [['passing','yards','Passing yards',0],['passing','td','Passing TDs',0],['passing','completionPct','Completion % · minimum 30 attempts',30],['rushing','yards','Rushing yards',0],['rushing','td','Rushing TDs',0],['receiving','yards','Receiving yards',0],['receiving','receptions','Receptions',0],['receiving','td','Receiving TDs',0],['defense','tackles','Tackles',0],['defense','sacks','Sacks',0],['defense','interceptions','Interceptions',0]]){
     card(title,data.players.filter(r=>r.category===category&&(!minimum||r.attempts>=minimum)),key,{subview:'players',category},'desc',minimum);

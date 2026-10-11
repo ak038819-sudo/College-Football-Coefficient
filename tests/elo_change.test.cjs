@@ -19,6 +19,18 @@ test('published game Elo movement is green/up or red/down; missing and zero stay
   assert.equal(ctx.delta(0), '');
 });
 
+test('a rating with no value reads as unavailable, not as a zero Elo', () => {
+  // A completed game can have no Elo history on either side, and the export
+  // emits null for it. Number(null) is 0, so the guard is what keeps the game
+  // page from presenting a missing rating as a real 0.
+  const ctx = {};
+  vm.runInNewContext(sourceOf('eloValue') + '\nthis.elo = eloValue;', ctx);
+  assert.equal(ctx.elo(null), '\u2014');
+  assert.equal(ctx.elo(undefined), '\u2014');
+  assert.equal(ctx.elo(1551.4), '1551');
+  assert.equal(ctx.elo(1551.5), '1552');
+});
+
 test('Elo rankings pass each audited change to the table', () => {
   const ctx = {
     DATA: {team_elo_by_year: {2026: [{team: 'Florida', elo: 1551.4, change: -8.2}]}},

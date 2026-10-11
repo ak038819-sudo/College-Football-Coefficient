@@ -1447,6 +1447,15 @@ function navigate(changes) {
 
 function fmt(n) { return Number(n).toFixed(3); }
 
+// Every Elo RATING shown on the site reads as a whole number. Display only:
+// the exports still carry a decimal, and Elo changes keep theirs, because a
+// rounded +3.4 would say nothing.
+function eloValue(n) {
+  if (n == null) return '—';          // a game with no rating is not a 0 Elo
+  const v = Number(n);
+  return Number.isFinite(v) ? String(Math.round(v)) : '—';
+}
+
 function renderYearRow() {
   const row = document.getElementById('year-row');
   if (state.view === 'team' || state.view === 'conference' || state.view === 'game' ||
@@ -1488,12 +1497,14 @@ function renderYearRow() {
   row.appendChild(select);
 }
 
-function rankTable(rows, valueKey, labelKey, valueLabel, kind) {
+// `format` renders the value column; it defaults to the three-decimal CoE form,
+// and the Elo table passes eloValue so its ratings read as whole numbers.
+function rankTable(rows, valueKey, labelKey, valueLabel, kind, format = fmt) {
   if (!rows || !rows.length) return '<div class="empty-note">No data for this season.</div>';
   let html = '<table class="rank-table"><thead><tr><th></th><th>' + labelKey + '</th><th class="num">' + valueLabel + '</th></tr></thead><tbody>';
   rows.forEach((r, i) => {
     html += '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' + (kind === 'team' ? teamLink(r.name, 'sm') : kind === 'conf' ? conferenceLink(r.name, 'sm', state.year)
-      : logoMarkup(r.name, kind, 'sm') + '<span>' + r.name + '</span>') + '</div></td><td class="num coe-val">' + fmt(r.value) + eloChangeMarkup(r.change, r.name) + '</td></tr>';
+      : logoMarkup(r.name, kind, 'sm') + '<span>' + r.name + '</span>') + '</div></td><td class="num coe-val">' + format(r.value) + eloChangeMarkup(r.change, r.name) + '</td></tr>';
   });
   html += '</tbody></table>';
   return html;
@@ -1590,7 +1601,7 @@ function renderElo() {
       ? ' through ' + esc(UPCOMING.ratings_as_of) : ' within the selected season') +
       '. Arrows show each team’s most recent game in that export, not a change in rank.</p>' +
     (state.year === UPCOMING.season ? '<p class="rating-freshness" id="rating-freshness" role="status"></p>' : '') +
-    rankTable(rows, 'value', 'Team', 'Elo', 'team') + '</div>';
+    rankTable(rows, 'value', 'Team', 'Elo', 'team', eloValue) + '</div>';
 }
 
 function renderHomeFieldStandings() {
@@ -1645,7 +1656,7 @@ function renderConferenceElo() {
     (state.year === UPCOMING.season && UPCOMING.ratings_as_of ? ' Ratings through ' + esc(UPCOMING.ratings_as_of) + '.' : '') + '</p>' +
     '<table class="rank-table"><thead><tr><th></th><th>Conference</th><th class="num">Avg Elo</th><th class="num">Rated / members</th></tr></thead><tbody>' +
     rows.map((r, i) => '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' +
-      conferenceLink(r.conference, 'sm', state.year) + '</div></td><td class="num coe-val">' + Number(r.elo).toFixed(1) +
+      conferenceLink(r.conference, 'sm', state.year) + '</div></td><td class="num coe-val">' + eloValue(r.elo) +
       '</td><td class="num">' + r.rated + ' / ' + r.members + '</td></tr>').join('') + '</tbody></table></div>';
 }
 
@@ -1671,7 +1682,7 @@ function stageNote(stage, season, rows) {
     // Said from the numbers rather than by hardcoding which season that is.
     const flat = rows.length > 1 && rows.every(r => r.elo === rows[0].elo);
     if (flat) {
-      return 'Every team enters ' + season + ' at the engine\'s starting rating of ' + rows[0].elo.toFixed(1) +
+      return 'Every team enters ' + season + ' at the engine\'s starting rating of ' + eloValue(rows[0].elo) +
         ' \u2014 there is no earlier season to carry a rating over from, so this table has no ranking to read yet.';
     }
     return 'Ratings carried into ' + season + ' before a game was played. Elo is one continuous number kept ' +
@@ -1739,7 +1750,7 @@ function hydrateEloWeekly(version) {
           : '<td class="num ' + (r.d_elo > 0 ? 'pos' : r.d_elo < 0 ? 'neg' : 'flat') + '">' + signed(r.d_elo, 1) + '</td>';
         return '<tr><td class="rk">' + r.rank + '</td>' + moved +
           '<td><div class="name-cell">' + teamLink(teams[r.team].name, 'sm') + '</div></td>' +
-          '<td class="num coe-val">' + r.elo.toFixed(1) + '</td>' + change +
+          '<td class="num coe-val">' + eloValue(r.elo) + '</td>' + change +
           '<td class="num">' + r.played + '</td></tr>';
       }).join('') + '</tbody></table>';
 
@@ -2116,11 +2127,13 @@ function teamEloChange(season, name) {
 function rankSub(hit) { return hit ? '#' + hit.rank + ' of ' + hit.of : 'N/A'; }
 
 function teamExtremes(team) {
-  const specs=[['Elo','team_elo_by_year','elo'],['Season CoE','team_ratings_by_year','rating']];
-  const rows=specs.map(([label,source,key])=>{
+  // The third entry is the formatter for that row's values: an Elo rating reads
+  // as a whole number, a CoE rating keeps its decimals.
+  const specs=[['Elo','team_elo_by_year','elo',eloValue],['Season CoE','team_ratings_by_year','rating',statValue]];
+  const rows=specs.map(([label,source,key,format])=>{
     const points=DATA.years_all.map(y=>({year:y,...rankLookup(source,key,y,team.name)})).filter(p=>Number.isFinite(p.value));
     if(!points.length)return '';
-    const ordered=points.slice().sort((a,b)=>a.value-b.value),best=points.slice().sort((a,b)=>a.rank-b.rank),value=p=>statValue(p.value)+' ('+p.year+')';
+    const ordered=points.slice().sort((a,b)=>a.value-b.value),best=points.slice().sort((a,b)=>a.rank-b.rank),value=p=>format(p.value)+' ('+p.year+')';
     return '<tr><th scope="row">'+label+'</th><td>'+value(ordered.at(-1))+'</td><td>'+value(ordered[0])+'</td><td>#'+best[0].rank+' ('+best[0].year+')</td><td>#'+best.at(-1).rank+' ('+best.at(-1).year+')</td></tr>';
   }).join('');
   return '<section class="panel team-section"><h2>Program highs and lows</h2><p class="section-note">Season snapshots across the available archive; the current season is in progress. Equal records show one matching season.</p><table><thead><tr><th>Rating</th><th>Highest</th><th>Lowest</th><th>Best rank</th><th>Lowest rank</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
@@ -2152,7 +2165,7 @@ function renderTeamPage(param) {
           '<div class="team-stadiums" id="team-coach"></div></div>' +
       '</div>' +
       '<div class="team-stats">' +
-        teamStat('Elo', elo ? Number(elo.value).toFixed(1) + eloChangeMarkup(teamEloChange(season, team.name), team.name) : 'N/A', rankSub(elo)) +
+        teamStat('Elo', elo ? eloValue(elo.value) + eloChangeMarkup(teamEloChange(season, team.name), team.name) : 'N/A', rankSub(elo)) +
         teamStat('CoE (season)', coe ? fmt(coe.value) : 'N/A', rankSub(coe)) +
         teamStat('CoE (5-yr)', coe5 ? fmt(coe5.value) : 'N/A', rankSub(coe5)) +
         teamStat('Record', recStr, 'vs FBS opponents') +
@@ -2371,8 +2384,8 @@ function drawEloChart(tp, team) {
   const peak = rows.reduce((a, r) => (r.post > a.post ? r : a), rows[0]);
   const first = tp.gamesById.get(rows[0].gid).season, last = tp.gamesById.get(rows[rows.length - 1].gid).season;
   const summary = 'Elo history for ' + team.name + ', ' + (first === last ? first : first + ' to ' + last) +
-    ': ' + rows[0].pre.toFixed(1) + ' to ' + rows[rows.length - 1].post.toFixed(1) +
-    ', peak ' + peak.post.toFixed(1) + ' in ' + tp.gamesById.get(peak.gid).season + '.';
+    ': ' + eloValue(rows[0].pre) + ' to ' + eloValue(rows[rows.length - 1].post) +
+    ', peak ' + eloValue(peak.post) + ' in ' + tp.gamesById.get(peak.gid).season + '.';
 
   let svg = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(summary) + '">';
   for (let v = lo; v <= hi + 1e-9; v += step) {
@@ -2452,14 +2465,14 @@ function drawEloChart(tp, team) {
 function eloTipHtml(tp, team, p) {
   if (p.kind === 'start') {
     return '<div class="tip-date">' + p.g.season + ' season start</div>' +
-      '<div class="tip-main">Opening Elo ' + p.row.pre.toFixed(1) + '</div>' +
+      '<div class="tip-main">Opening Elo ' + eloValue(p.row.pre) + '</div>' +
       '<div>after offseason regression toward 1500</div>';
   }
   const v = gameFor(team, p.g), r = p.row, ph = phaseLabel(tp, p.g);
   return '<div class="tip-date">' + fmtGameDate(p.g) + (ph ? ' &middot; ' + ph : '') + '</div>' +
     '<div class="tip-main">' + v.where + ' ' + (v.opp ? v.opp.name : 'Unknown') + (v.neutral ? ' (N)' : '') + '</div>' +
     '<div>' + v.result + ' ' + v.mine + '&ndash;' + v.theirs + (p.g.ot ? ' (OT)' : '') + '</div>' +
-    '<div>Elo ' + r.pre.toFixed(1) + ' &rarr; ' + r.post.toFixed(1) + ' (' + signed(r.chg, 1) + ')</div>' +
+    '<div>Elo ' + eloValue(r.pre) + ' &rarr; ' + eloValue(r.post) + ' (' + signed(r.chg, 1) + ')</div>' +
     '<div>Pregame win prob ' + Math.round(r.exp * 100) + '% &middot; opp. ' + r.oppPre.toFixed(0) + '</div>';
 }
 
@@ -2521,9 +2534,9 @@ function fillAnalyticsPanel(tp, team) {
         (() => { const u = nonFbsRecord(tp, team.id, s.season);
           return u ? recStr(s.w, s.l, s.t) + ' against rated opponents'
                    : 'all opponents rated'; })()) +
-      teamStat('Season Elo', s.endElo.toFixed(1), 'opened ' + s.startElo.toFixed(1) + ' &middot; ' + signed(s.eloChange, 1)) +
+      teamStat('Season Elo', eloValue(s.endElo), 'opened ' + eloValue(s.startElo) + ' &middot; ' + signed(s.eloChange, 1)) +
       teamStat('End-of-season Elo rank', eloR ? '#' + eloR.rank : 'N/A', eloR ? 'of ' + eloR.of + ' teams' : '') +
-      teamStat('Strength of schedule', s.sos.toFixed(1), '#' + s.sosRank + ' of ' + tp.teamsPerSeason.get(s.season) + ' (1 = toughest)') +
+      teamStat('Strength of schedule', eloValue(s.sos), '#' + s.sosRank + ' of ' + tp.teamsPerSeason.get(s.season) + ' (1 = toughest)') +
       teamStat('Expected wins', s.expWins.toFixed(2), 'sum of pregame win probabilities') +
       teamStat('Actual wins', fmtWins(s.actWins), s.t ? 'ties count as &frac12;' : '&nbsp;') +
       teamStat('Wins vs. expectation', signed(s.aboveExp, 2), s.aboveExp >= 0 ? 'won more than Elo odds implied' : 'won fewer than Elo odds implied') +
@@ -3001,7 +3014,7 @@ function renderMatchups() {
     const ra = CURRENT_ELO.get(aId).elo, rb = CURRENT_ELO.get(bId).elo;
     const pct = probPct(matchupProbability(ra, rb, state.venue, cfg));
     const side = (t, rating, chance) => '<div class="matchup-side">' + teamLink(t.name, 'lg', UPCOMING.season) +
-      '<strong>' + chance + '%</strong><small>Elo ' + rating.toFixed(1) + '</small></div>';
+      '<strong>' + chance + '%</strong><small>Elo ' + eloValue(rating) + '</small></div>';
     result = '<div class="matchup-board">' + side(a, ra, pct.home) + '<span class="matchup-mid">vs</span>' +
       side(b, rb, pct.away) + '</div><div class="matchup-bar" aria-label="Team A ' + pct.home +
       ' percent, Team B ' + pct.away + ' percent"><span style="width:' + pct.home + '%"></span><span></span></div>';
@@ -3206,7 +3219,7 @@ function renderEloTop25() {
         const t = TEAM_BY_ID.get(String(id));
         return '<li><span class="rk">' + rank + '</span><span class="nm">' +
           (t ? teamAnchor(t.name, logoMarkup(t.name, 'team', 'xs') + '<span class="team-link-name">' + t.name + '</span>') : id) +
-          '</span><span class="v">' + elo.toFixed(1) + eloChangeMarkup(t ? teamEloChange(UPCOMING.season, t.name) : null, t?.name) + '</span></li>';
+          '</span><span class="v">' + eloValue(elo) + eloChangeMarkup(t ? teamEloChange(UPCOMING.season, t.name) : null, t?.name) + '</span></li>';
       }).join('') + '</ol>'
     : '<div class="empty-note">No Elo ratings yet.</div>';
   return '<div class="panel">' + panelHead('Elo Top 25', '<a class="side-link" href="#section=rankings&view=elo">All ratings &rarr;</a>') + body +
@@ -3424,7 +3437,7 @@ function fillTeamStatistics(team) {
       }
     } else if(teamRow) {
       const fields=[...new Set(Object.values(TEAM_STAT_CATEGORIES).flat())].filter(k=>teamRow[k]!=null);
-      body='<table><thead><tr><th>Statistic</th><th>'+season+'</th></tr></thead><tbody>'+fields.map(k=>'<tr><th scope="row">'+esc(CfbStats.labels[k]||k)+'</th><td>'+statValue(teamRow[k])+'</td></tr>').join('')+'</tbody></table>';
+      body='<table><thead><tr><th>Statistic</th><th>'+season+'</th></tr></thead><tbody>'+fields.map(k=>'<tr><th scope="row">'+esc(CfbStats.labels[k]||k)+'</th><td>'+statCell(k,teamRow[k])+'</td></tr>').join('')+'</tbody></table>';
     }
     target.innerHTML=head+(body||'<p>No recorded statistics for this team and season.</p>')+'<p class="section-note">Completed FBS games. Player totals cover recorded category box scores.</p>';
     document.getElementById('tp-stats-season').addEventListener('change',e=>{teamPageState.statSeason=Number(e.target.value);fillTeamStatistics(team);});
@@ -3811,7 +3824,7 @@ function renderLiveBoard(games) {
     const movement = old && old.rank !== i + 1 ? ' <small class="fpv">' + (old.rank > i + 1 ? '▲' : '▼') +
       Math.abs(old.rank - i - 1) + '</small>' : '';
     return '<li><span class="rk">' + (i + 1) + '</span><span class="nm">' +
-      (t ? teamLink(t.name, 'xs') : esc(id)) + movement + '</span><span class="v">' + elo.toFixed(1) + '</span></li>';
+      (t ? teamLink(t.name, 'xs') : esc(id)) + movement + '</span><span class="v">' + eloValue(elo) + '</span></li>';
   }).join('') + '</ol>' : '<p class="empty-note">No Elo ratings yet.</p>';
   return '<div class="panel">' + panelHead(projection.active ? 'If scores hold · Elo' : 'Elo Top 25',
     '<a class="side-link" href="#section=rankings&view=elo">Full rankings &rarr;</a>') + body +
@@ -4139,7 +4152,7 @@ function liveEloPanel(g) {
   const p = livePrediction(g), pct = p && probPct(p.pHome);
   const rating = t => {
     const r = t === g.home ? p?.homeElo : p?.awayElo;
-    return Number.isFinite(r) ? r.toFixed(1) : 'Unrated';
+    return Number.isFinite(r) ? eloValue(r) : 'Unrated';
   };
   const row = (label, away, home) => '<tr><th scope="row">' + label + '</th><td>' + away + '</td><td>' + home + '</td></tr>';
   const name = t => esc(liveTeamId(t)?.name || t?.name || 'Unknown team');
@@ -4572,16 +4585,16 @@ function fillLedgerPanel(tp, team) {
   const idx = rows.findIndex(r => seasonOf(r) === season);
   const mine = rows.filter(r => seasonOf(r) === season);
   const prev = idx > 0 ? rows[idx - 1] : null;
-  const f1 = v => Number(v).toFixed(1), f3 = v => Number(v).toFixed(3);
+  const fe = eloValue, f3 = v => Number(v).toFixed(3);
   const sgn = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1);
 
   let opening;
-  if (!prev) opening = 'First season in the dataset: every team starts at <code>' + INIT + '</code>. Entered ' + season + ' at <b>' + f1(mine[0].pre) + '</b>.';
+  if (!prev) opening = 'First season in the dataset: every team starts at <code>' + INIT + '</code>. Entered ' + season + ' at <b>' + fe(mine[0].pre) + '</b>.';
   else {
     const n = season - seasonOf(prev);
-    opening = 'Ended ' + seasonOf(prev) + ' at <b>' + f1(prev.post) + '</b>. Each offseason pulls ratings ' + Math.round((1 - KEEP) * 100) +
-      '% of the way back toward ' + INIT + ': <code>' + INIT + ' + ' + KEEP + (n > 1 ? '<sup>' + n + '</sup>' : '') + ' × (' + f1(prev.post) + ' − ' + INIT +
-      ') = ' + f1(mine[0].pre) + '</code>' + (n > 1 ? ' (' + n + ' offseasons: no FBS games in ' + (seasonOf(prev) + 1) + (n > 2 ? '–' + (season - 1) : '') + ')' : '') + '.';
+    opening = 'Ended ' + seasonOf(prev) + ' at <b>' + fe(prev.post) + '</b>. Each offseason pulls ratings ' + Math.round((1 - KEEP) * 100) +
+      '% of the way back toward ' + INIT + ': <code>' + INIT + ' + ' + KEEP + (n > 1 ? '<sup>' + n + '</sup>' : '') + ' × (' + fe(prev.post) + ' − ' + INIT +
+      ') ≈ ' + fe(mine[0].pre) + '</code>' + (n > 1 ? ' (' + n + ' offseasons: no FBS games in ' + (seasonOf(prev) + 1) + (n > 2 ? '–' + (season - 1) : '') + ')' : '') + '.';
   }
   const body = mine.map(r => {
     const g = tp.gamesById.get(r.gid);
@@ -4593,11 +4606,11 @@ function fillLedgerPanel(tp, team) {
       (oppTeam ? oppLink(oppTeam.name, g.season) : 'Unknown') + '</td><td><a href="' + esc(gameHref(g.id, g.season)) + '">' + res + ' ' + my + '–' + opp + (g.ot ? ' OT' : '') + '</a></td>' +
       '<td>' + f3(r.exp) + '</td><td>' + (M == null ? '—' : f3(M)) + '</td>' +
       '<td class="' + (r.chg >= 0 ? 'pos' : 'neg') + '">' + sgn(r.chg) + (M == null ? '' : '<small>' + K + ' × (' + S + ' − ' + f3(r.exp) + ') × ' + f3(M) + '</small>') + '</td>' +
-      '<td>' + f1(r.post) + '</td></tr>';
+      '<td>' + fe(r.post) + '</td></tr>';
   }).join('');
   const posts = mine.map(r => r.post), net = mine[mine.length - 1].post - mine[0].pre;
   const peak = rows.reduce((a, r) => r.post > a.post ? r : a), low = rows.reduce((a, r) => r.post < a.post ? r : a);
-  const at = r => { const g = tp.gamesById.get(r.gid); return '<a href="' + esc(gameHref(g.id, g.season)) + '">' + f1(r.post) + '</a> (' + g.season + ')'; };
+  const at = r => { const g = tp.gamesById.get(r.gid); return '<a href="' + esc(gameHref(g.id, g.season)) + '">' + fe(r.post) + '</a> (' + g.season + ')'; };
   el.innerHTML = head + '<div class="ledger-head"><label>Season <select id="tp-ledger-season">' +
       seasons.slice().reverse().map(y => '<option' + (y === season ? ' selected' : '') + '>' + y + '</option>').join('') + '</select></label>' +
       '<a class="side-link" href="#section=methodology">How these are calculated &rarr;</a></div>' +
@@ -4605,10 +4618,10 @@ function fillLedgerPanel(tp, team) {
     '<div class="table-scroll" tabindex="0" role="region" aria-label="Elo ledger for ' + season + '"><table class="ledger"><thead><tr>' +
       '<th scope="col">Date</th><th scope="col">Opponent</th><th scope="col">Result</th><th scope="col">Expected (E)</th>' +
       '<th scope="col">Margin mult. (M)</th><th scope="col">Change</th><th scope="col">Elo after</th></tr></thead><tbody>' + body + '</tbody>' +
-      '<tfoot><tr><td colspan="5">' + season + ': ' + f1(mine[0].pre) + ' → ' + f1(mine[mine.length - 1].post) + '</td><td class="' + (net >= 0 ? 'pos' : 'neg') + '">' + sgn(net) +
-      '</td><td>' + f1(mine[mine.length - 1].post) + '</td></tr></tfoot></table></div>' +
+      '<tfoot><tr><td colspan="5">' + season + ': ' + fe(mine[0].pre) + ' → ' + fe(mine[mine.length - 1].post) + '</td><td class="' + (net >= 0 ? 'pos' : 'neg') + '">' + sgn(net) +
+      '</td><td>' + fe(mine[mine.length - 1].post) + '</td></tr></tfoot></table></div>' +
     '<p class="section-note">Change = K × (S − E) × M, with K = ' + K + '; S = 1 for a win, ½ tie, 0 loss; E is the pregame expectation (home field included); ' +
-      'M grows with the margin of victory. Season high ' + f1(Math.max(...posts)) + ', low ' + f1(Math.min(...posts)) +
+      'M grows with the margin of victory. Season high ' + fe(Math.max(...posts)) + ', low ' + fe(Math.min(...posts)) +
       '. All-time since 1980: peak ' + at(peak) + ', low ' + at(low) + '.</p>' +
     '<h3 class="an-title">CoE 2.0</h3><div id="tp-ledger-coe"><div class="empty-note">Loading&hellip;</div></div>';
   fillCoeLedger(tp, team, season);
@@ -5545,8 +5558,8 @@ function hydrateGamePage(version) {
         const prov = side === 'away' ? g.away_provisional : g.home_provisional;
         const post = side === 'away' ? g.away_post_elo : g.home_post_elo;
         const chg = g.home_elo_change == null ? null : (side === 'away' ? -g.home_elo_change : g.home_elo_change);
-        const out = [n1(pre) + (prov ? '*' : ''), pct ? (side === 'away' ? pct.away : pct.home) + '%' : '—'];
-        if (g.completed) out.push(n1(post), signed(chg));
+        const out = [eloValue(pre) + (prov ? '*' : ''), pct ? (side === 'away' ? pct.away : pct.home) + '%' : '—'];
+        if (g.completed) out.push(eloValue(post), signed(chg));
         return out;
       };
       const coeCells = side => {
@@ -6474,6 +6487,10 @@ function hydrateStats(version) {
     wrapWideTables();
   }).catch(()=>{if(version===renderVersion)document.getElementById('stats-body').innerHTML='<p class="empty-note">Statistics could not be loaded. <button id="retry-stats" class="action-button">Retry</button></p>';});
 }
+// A statistics cell. Elo reads as a whole rating; every other statistic keeps
+// its own precision. The aggregated rows hold the RAW rating, so sorting, ranks
+// and ties are unaffected by how it is shown.
+function statCell(key, value) { return key === 'elo' ? eloValue(value) : statValue(value); }
 function statValue(value) {
   return value==null||!Number.isFinite(Number(value))?'—':Number.isInteger(Number(value))?Number(value).toLocaleString():Number(value).toLocaleString(undefined,{maximumFractionDigits:2});
 }
@@ -6536,7 +6553,8 @@ function statsViewHtml(data) {
   if(isPlayer)columns.push({key:'team',label:'Team',type:'string',render:r=>teamLink(r.team,'xs',state.year)},
     {key:'record',label:CfbStats.labels.record,type:'string',render:r=>recordOf(r)??'\u2014'},
     {key:'games',label:'Games'});
-  columns.push({key:'conference',label:'Conference',type:'string'},...fields.map(key=>({key,label:CfbStats.labels[key]||key})));
+  columns.push({key:'conference',label:'Conference',type:'string'},
+    ...fields.map(key=>key==='elo'?{key,label:CfbStats.labels[key],render:r=>statCell(key,r[key])}:{key,label:CfbStats.labels[key]||key}));
   return coverage+nav+filters+picker+SortableTable(filtered,columns,{sort:isPlayer?schema.sort:category==='ratings'?'elo':category==='defense'?'oppPpg':'ppg',dir:category==='defense'?'asc':'desc'});
 }
 function statsOverviewHtml(data) {
@@ -6555,7 +6573,7 @@ function statsOverviewHtml(data) {
     const available=rows.filter(r=>r[key]!=null);if(!available.length)return;
     const leaders=CfbStats.sortRows(available,key,dir).slice(0,3);
     const href=statsHref({...target,sort:key,dir,minimum,statTeam:'',statConf:'',statQuery:''});
-    cards.push('<article class="panel"><h3><a href="'+esc(href)+'">'+title+' →</a></h3><ol>'+leaders.map(r=>'<li><span>'+nameCell(r)+'</span> <strong>'+statValue(r[key])+'</strong></li>').join('')+'</ol></article>');
+    cards.push('<article class="panel"><h3><a href="'+esc(href)+'">'+title+' →</a></h3><ol>'+leaders.map(r=>'<li><span>'+nameCell(r)+'</span> <strong>'+statCell(key,r[key])+'</strong></li>').join('')+'</ol></article>');
   };
   for(const [category,key,title,minimum] of [['passing','yards','Passing yards',0],['passing','td','Passing TDs',0],['passing','completionPct','Completion % · minimum 30 attempts',30],['rushing','yards','Rushing yards',0],['rushing','td','Rushing TDs',0],['receiving','yards','Receiving yards',0],['receiving','receptions','Receptions',0],['receiving','td','Receiving TDs',0],['defense','tackles','Tackles',0],['defense','sacks','Sacks',0],['defense','interceptions','Interceptions',0]]){
     card(title,data.players.filter(r=>r.category===category&&(!minimum||r.attempts>=minimum)),key,{subview:'players',category},'desc',minimum);
