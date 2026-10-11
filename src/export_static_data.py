@@ -418,6 +418,116 @@ def write_box_score_shards(players_dir: Path, season: int, selected: dict) -> di
     return {"shards": BOX_SCORE_SHARDS, "files": files}
 
 
+# A player page wants ONE player's career, game by game. The archive holds
+# 1,045,854 player-game-category rows across 85,583 people -- about 83 MB of
+# them for games this project also holds -- so the log is written per SEASON
+# and, inside a season, sharded on the PLAYER id. Both halves of that matter:
+#
+#   Sharded, because a page that wanted one career would otherwise download
+#   every career. A shard is about 56 KB, and a four-season player fetches
+#   four of them.
+#
+#   Per season, because this is published into main on every deploy. Sharded
+#   on the player alone, one Saturday's games would touch the shard of every
+#   player who played, which is all of them, and each deploy would add 83 MB
+#   of new blobs to the repository's history. Per season, only the season
+#   being played is rewritten and the other twenty-two stay byte-identical.
+#
+# Floored modulo, because 29,162 athlete ids in this archive are negative and
+# JavaScript's % keeps the sign of the dividend where Python's does not.
+GAME_LOG_SHARDS = 64
+# Each row: the game, so the page can link to it; enough of the game to read
+# the line without a second fetch; then the line itself. Append-only, like
+# FIELDS -- an older position never moves.
+GAME_LOG_FIELDS = ["game_id", "date", "opponent_id", "home", "points_for",
+                   "points_against", "stats"]
+
+
+def game_log_shard(player_id) -> int:
+    return int(player_id) % GAME_LOG_SHARDS
+
+
+def build_player_game_logs(payloads: dict, archives: dict, team_ids: dict) -> dict:
+    """season -> player_id -> [[game_id, date, opponent_id, home, pf, pa, stats], ...].
+
+    Newest game first, which is the order a career is read in. A game the
+    database does not hold is skipped rather than exported without an opponent:
+    the box-score archive covers games this project never rated. A team side
+    the alias map cannot resolve is skipped for the same reason -- a line with
+    no opponent is a line nobody can read.
+    """
+    games = {}
+    for season, payload in payloads.items():
+        for row in payload["games"]:
+            if not row[4]:                       # completed only -- a line needs a game played
+                continue
+            games[str(row[0])] = (row[2], row[8], row[9], row[10], row[11])
+
+    logs: dict = defaultdict(lambda: defaultdict(dict))
+    for season in sorted(archives):
+        for game_id, sides in archives[season].items():
+            game = games.get(str(game_id))
+            if game is None or not isinstance(sides, list):
+                continue
+            date, home_id, away_id, home_score, away_score = game
+            for side in sides:
+                if not isinstance(side, dict):
+                    continue
+                team_id = team_ids.get(side.get("name"))
+                if team_id is None or team_id not in (home_id, away_id):
+                    continue
+                at_home = team_id == home_id
+                for category in side.get("categories", []):
+                    for line in category.get("lines", []):
+                        player_id = line.get("id")
+                        if not player_id:
+                            continue
+                        row = logs[season][str(player_id)].setdefault(
+                            str(game_id),
+                            [int(game_id), date, away_id if at_home else home_id,
+                             int(at_home),
+                             home_score if at_home else away_score,
+                             away_score if at_home else home_score, {}])
+                        row[6].setdefault(category["name"], {})[category["type"]] = line.get("stat")
+    return {season: {player_id: sorted(rows.values(), key=lambda r: (r[1], r[0]), reverse=True)
+                     for player_id, rows in players.items()}
+            for season, players in logs.items()}
+
+
+def write_game_log_shards(out_dir: Path, logs: dict) -> dict:
+    """Write the logs as per-season shards and return the manifest entry.
+
+    Every shard of a season that exists is written, empty ones included,
+    because the page asks for its own shard before it can know whether that
+    shard holds anything and a 404 in the console is a bug report. A season
+    with no archive is absent from the manifest entirely, which is how the
+    page knows not to ask for it.
+    """
+    log_dir = out_dir / "game_logs"
+    if log_dir.exists():
+        shutil.rmtree(log_dir)                                       # no orphan shards
+    log_dir.mkdir(parents=True)
+    seasons = {}
+    for season in sorted(logs):
+        shards: dict = defaultdict(dict)
+        for player_id, rows in logs[season].items():
+            shards[game_log_shard(player_id)][player_id] = rows
+        files = {}
+        for shard in range(GAME_LOG_SHARDS):
+            # Merged into the season rather than assigned to it, so a page
+            # that needs two shards of one season keeps both.
+            version = _write_js_expr(
+                log_dir / str(season) / f"{shard}.js",
+                "(window.__CFB_GAME_LOGS__=window.__CFB_GAME_LOGS__||{{}})"
+                "[%d]=window.__CFB_GAME_LOGS__[%d]||{{}},"
+                "window.__CFB_GAME_LOGS__[%d][%d]=" % (season, season, season, shard) +
+                "{payload};",
+                shards.get(shard, {}))
+            files[str(shard)] = f"data/game_logs/{season}/{shard}.js?v={version}"
+        seasons[str(season)] = files
+    return {"shards": GAME_LOG_SHARDS, "fields": GAME_LOG_FIELDS, "seasons": seasons}
+
+
 def _write_js(path: Path, global_expr: str, payload) -> str:
     body = json.dumps(payload, separators=(",", ":"))
     path.write_text(f"{global_expr}={body};\n", encoding="utf-8")
@@ -467,6 +577,7 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
     players = {}
     raw_players = REPO / "data" / "raw" / "player_boxscores"
     aliases = team_alias_map(conn)
+    archives = {}
     for season, payload in sorted(payloads.items()):
         archive = canonical_box_score_teams(
             player_archive.read_season(raw_players, season), aliases)
@@ -476,7 +587,13 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
         selected = {gid: value for gid, value in archive.items() if gid in known and value}
         if not selected:
             continue
+        archives[season] = selected
         players[str(season)] = write_box_score_shards(players_dir, season, selected)
+    # The same lines, turned the other way up: by player rather than by game, so
+    # a player page can show a career game by game without fetching a season of
+    # box scores per season played.
+    team_ids = {name: tid for tid, name in conn.execute("SELECT team_id, team_name FROM teams")}
+    game_logs = write_game_log_shards(out_dir, build_player_game_logs(payloads, archives, team_ids))
     # P1-05/06: one file per season, loaded only when the week-by-week view opens.
     timeline_dir = out_dir / "elo_timeline"
     if timeline_dir.exists():
@@ -502,7 +619,7 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
 
     manifest = {"seasons": seasons, "search_index": f"data/search_index.js?v={sv}",
                 "stadiums": f"data/stadiums.js?v={stadium_version}", "game_fields": FIELDS,
-                "details": details, "players": players, "series": series, "series_shards": SERIES_SHARDS,
+                "details": details, "players": players, "game_logs": game_logs, "series": series, "series_shards": SERIES_SHARDS,
                 # P1-05/06: which seasons have a week-by-week Elo table, so the view
                 # knows whether it exists before fetching anything.
                 "elo_timeline": elo_timeline,

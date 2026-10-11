@@ -862,6 +862,9 @@
   }
   footer.foot a { color: var(--amber); }
   .release-label { margin: 3px 0 0; color: var(--ink-dim); font: 11px var(--font-mono); letter-spacing: .04em; }
+  .game-log .game-line { font-size: 12px; line-height: 1.5; }
+  .game-log .win { color: var(--text-success, var(--green-hl)); }
+  .game-log .loss { color: var(--text-danger, var(--amber)); }
   .career-row th, .career-row td { border-top: 2px solid var(--line); font-weight: 600; }
   .stadium-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(250px, .8fr); gap: 16px; }
   .stadium-map { width: 100%; height: auto; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; }
@@ -5129,6 +5132,99 @@ function careerStatRow(category, types, rows) {
   return total;
 }
 
+// A player's career, game by game. The lines are in the box-score archive and
+// have been since 2005, but a player page only ever showed season totals: to
+// see what someone did in one game you had to know which game and open it.
+// The export is sharded on the player id within a season, so a page fetches a
+// shard for each season the player appears in rather than the whole archive.
+function playerLogSeasons(p) {
+  // The roster seasons and the statistic seasons are not the same set: a
+  // player can have a box-score line in a season no roster snapshot covers,
+  // and a roster season he never played in. Asking for the union costs one
+  // shard fetch per season and misses neither.
+  return [...new Set([...(p.seasons || []).map(s => Number(s.season_year)),
+                      ...Object.keys(p.stats || {}).map(Number)])]
+    .filter(Number.isFinite).sort((a, b) => b - a);
+}
+
+function loadGameLog(playerId, seasons) {
+  const entry = STATIC_MANIFEST.game_logs;
+  if (!entry || !entry.seasons) return Promise.resolve({});
+  const shards = entry.shards || 1;
+  const shard = ((Number(playerId) % shards) + shards) % shards;
+  const wanted = (seasons || []).filter(season => entry.seasons[String(season)]);
+  return Promise.all(wanted.map(season =>
+    // A season whose shard will not load leaves that season out of the log
+    // rather than taking the rest of the career down with it.
+    loadDataScript(entry.seasons[String(season)][String(shard)])
+      .then(() => [season, ((window.__CFB_GAME_LOGS__ || {})[season] || {})[shard]])
+      .catch(() => [season, null])
+  )).then(pairs => {
+    const out = {};
+    for (const [season, bucket] of pairs) {
+      const rows = bucket && bucket[String(playerId)];
+      if (rows && rows.length) out[season] = rows;
+    }
+    return out;
+  });
+}
+
+// The order a box-score line is read aloud in, which is the order the game
+// page already imposes on the same categories (STAT_TYPE_ORDER). A type the
+// feed sends that is not listed keeps its feed position after the listed ones.
+function gameLineSummary(stats) {
+  const parts = [];
+  for (const category of STAT_CATEGORY_ORDER) {
+    const line = stats && stats[category];
+    if (!line) continue;
+    const order = STAT_TYPE_ORDER[category] || [];
+    const types = Object.keys(line).sort((a, b) => {
+      const ia = order.indexOf(a), ib = order.indexOf(b);
+      if (ia === -1 && ib === -1) return 0;
+      return (ia === -1 ? order.length : ia) - (ib === -1 ? order.length : ib);
+    });
+    // A line of nothing but zeroes is a player the feed listed in a category
+    // he did not register in -- every punter appears under TB and In 20 with
+    // a 0 in every game. Printing it says he did something; he did not.
+    if (!types.some(t => Number(line[t]) !== 0 && String(line[t]).trim() !== '')) continue;
+    parts.push('<b>' + esc(STAT_CATEGORY_LABELS[category] || category) + '</b> ' +
+      types.map(t => esc(t) + '\u00a0' + statCell(line[t], t)).join(', '));
+  }
+  return parts.join(' \u00b7 ');
+}
+
+function gameLogPanel(log) {
+  const seasons = Object.keys(log || {}).map(Number).sort((a, b) => b - a);
+  if (!seasons.length) return '';
+  const games = seasons.reduce((n, season) => n + log[season].length, 0);
+  const tables = seasons.map(season => {
+    const rows = log[season].map(row => {
+      const [gameId, date, opponentId, home, pointsFor, pointsAgainst, stats] = row;
+      // A tie is neither a win nor a loss, and the archive has them: NCAA
+      // football had no overtime rule until 1996 and this log starts in 2005,
+      // but a game the feed scored level is still shown as it was played.
+      const result = pointsFor == null || pointsAgainst == null ? '&mdash;'
+        : (pointsFor > pointsAgainst ? '<b class="win">W</b> ' :
+           pointsFor < pointsAgainst ? '<b class="loss">L</b> ' : 'T ') +
+          pointsFor + '\u2013' + pointsAgainst;
+      return '<tr><td><a href="' + esc(gameHref(gameId, season)) + '">' + esc(date) + '</a></td>' +
+        '<td>' + (home ? '' : 'at ') + teamCellById(opponentId) + '</td>' +
+        '<td>' + result + '</td>' +
+        '<td class="game-line">' + (gameLineSummary(stats) || '&mdash;') + '</td></tr>';
+    }).join('');
+    return '<h3>' + esc(season) + '</h3><table class="data-table game-log">' +
+      '<thead><tr><th scope="col">Date</th><th scope="col">Opponent</th>' +
+      '<th scope="col">Result</th><th scope="col">Line</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>';
+  }).join('');
+  return '<div class="panel team-section"><h2 class="section-title">Game by game</h2>' +
+    tables + '<p class="section-note">' + games +
+    (games === 1 ? ' game' : ' games') + ' with a box-score line, newest first. ' +
+    'Lines come from the game box scores, which carry an athlete id from 2005 onward; ' +
+    'a season before that, or a game the source published no box score for, is not here ' +
+    'and does not mean the player recorded nothing. The date links to the game.</p></div>';
+}
+
 function playerStatsPanel(stats, samePerson, identityNote) {
   const seasons = Object.keys(stats || {}).map(Number).sort((a, b) => b - a);
   if (!seasons.length) return personStatsNote();
@@ -5250,7 +5346,7 @@ function samePersonNote(p) {
     'id never moves.</p></div>';
 }
 
-function playerPanels(p, id) {
+function playerPanels(p, id, gameLog) {
   const seasons = p.seasons || [];
   const last = seasons[seasons.length - 1] || {};
   const position = last.position || p.primary_position;
@@ -5290,7 +5386,7 @@ function playerPanels(p, id) {
     '<th>Pos</th><th>Class</th><th>Ht</th><th>Wt</th></tr></thead><tbody>' + rows +
     '</tbody></table></div>';
   return header + samePersonNote(p) + note + table +
-    playerStatsPanel(p.stats, p.same_person, p.identity_note);
+    playerStatsPanel(p.stats, p.same_person, p.identity_note) + gameLogPanel(gameLog);
 }
 
 function coachRecord(tenures) {
@@ -5507,7 +5603,12 @@ function hydratePersonPage(version, kind) {
   };
   if (id == null) { show(personMissing(kind, id)); return; }
   const work = kind === 'player'
-    ? loadPlayer(id).then(p => p ? [playerPanels(p, id), p.display_name] : [personMissing(kind, id), null])
+    // The log's shards are fetched after the player, because which seasons to
+    // ask for is in the player's own record; a log that will not load leaves
+    // the career page standing.
+    ? loadPlayer(id).then(p => !p ? [personMissing(kind, id), null]
+        : loadGameLog(id, playerLogSeasons(p)).catch(() => ({}))
+            .then(log => [playerPanels(p, id, log), p.display_name]))
     // The map's shard is fetched alongside the coach file rather than after it,
     // so a coach page is one round trip and not two. A missing or failed shard
     // resolves to null: the page is the career, the map is an extra.
