@@ -10,7 +10,13 @@ const vm = require('node:vm');
 const shell = fs.readFileSync('ui/dashboard_shell.html', 'utf8');
 
 function load(names, extra) {
-  const source = names.map(name =>
+  // The SEASON_STAT_* constants come out of the shell whole: playerStatsPanel
+  // reads them, and a stub would make this test pass against orders the page
+  // does not have.
+  const constants = shell.match(
+    /const SEASON_STAT_ORDER = \{[^]*?const SEASON_STAT_MAX = \{[^}]*\};/)[0] + '\n' +
+    shell.match(/^const DECIMAL_STATS = \{[^}]*\};/m)[0];
+  const source = constants + '\n' + names.map(name =>
     shell.match(new RegExp('function ' + name + '\\([^]*?\\n\\}'))[0]).join('\n');
   const context = Object.assign({
     esc: value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;'),
@@ -45,7 +51,7 @@ test('a player with no counterpart gets no panel at all', () => {
 });
 
 test('the partial-season dagger points at the other id when there is one', () => {
-  const {playerStatsPanel} = load(['playerStatsPanel']);
+  const {playerStatsPanel} = load(['orderSeasonStatTypes', 'careerStatRow', 'playerStatsPanel']);
   const stats = {2022: {rushing: {team_id: 3, CAR: 17, YDS: 41}, _partial: 'two ids'}};
 
   const linked = playerStatsPanel(stats, {id: 4052841, name: 'Delvon Randall', season: 2016});
