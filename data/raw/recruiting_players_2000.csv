@@ -1,0 +1,120 @@
+season_year,recruit_id,athlete_id,recruit_type,name,school,committed_to,position,height,weight,stars,rating,national_rank,city,state_province,country,hometown_latitude,hometown_longitude,hometown_county_fips
+2000,173252,,HighSchool,D.J. Williams,De La Salle,Miami,ILB,74,235,5,0.9998,1,Concord,CA,USA,37.9768525,-122.0335624,06013
+2000,173253,,HighSchool,Brock Berlin,Evangel Christian Academy,Florida,PRO,74,190,5,0.9998,2,Shreveport,LA,USA,32.5221828,-93.7651944,22017
+2000,173254,,HighSchool,Charles Rogers,Saginaw,Michigan State,WR,76,195,5,0.9988,3,Saginaw,MI,USA,43.4200387,-83.9490365,26145
+2000,173255,,HighSchool,Travis Johnson,Notre Dame,Florida State,SDE,76,265,5,0.9982,4,Sherman Oaks,CA,USA,34.1508718,-118.4489865,06037
+2000,173256,,HighSchool,Marcus Houston,Thomas Jefferson,Colorado,RB,72,208,5,0.998,5,Denver,CO,USA,39.7392364,-104.9848623,08031
+2000,173257,,HighSchool,Kwame Harris,Newark,Stanford,OT,79,320,5,0.9978,6,Newark,DE,USA,39.6852191,-75.7508289,10003
+2000,173258,,HighSchool,B.J. Johnson,South Grand Prairie,Texas,WR,73,190,5,0.9976,7,Grand Prairie,TX,USA,32.657368000000005,-97.02846624175038,48113
+2000,173259,,HighSchool,Bryant McFadden,McArthur,Florida State,CB,73,182,5,0.9968,8,Hollywood,FL,USA,26.0112014,-80.1494901,12011
+2000,173260,,HighSchool,Sam Maldonado,Harrison,Ohio State,RB,74,215,5,0.9964,9,Harrison,NY,USA,40.9689871,-73.71263,36119
+2000,173261,,HighSchool,Mike Munoz,Archbishop Moeller,Tennessee,OT,79,290,5,0.996,10,Cincinnati,OH,USA,39.1014537,-84.5124602,39061
+2000,173262,,HighSchool,Willis McGahee,Miami Central,Miami,RB,73,215,5,0.9948,11,Miami,FL,USA,25.7742658,-80.1936589,12086
+2000,173263,,HighSchool,Antonio Hall,McKinley,Kentucky,OT,77,295,5,0.9946,12,Canton,OH,USA,40.7989522,-81.3784445,39151
+2000,173264,,HighSchool,Darrell Lee,Kirkwood,Florida,WDE,77,230,5,0.994,13,St. Louis,MO,USA,38.6268039,-90.1994097,29510
+2000,173265,,HighSchool,O.J. Owens,North Stanly,Tennessee,S,73,195,5,0.9932,14,New London,NC,USA,35.4431965,-80.2192225,37167
+2000,173266,,HighSchool,Jeff Smoker,Manheim Central,Michigan State,PRO,75,190,5,0.9922,15,Manheim,PA,USA,40.1637359,-76.3952429,42071
+2000,173267,,HighSchool,Marco Cooper,Cass Technical,Ohio State,OLB,74,235,5,0.9918,16,Detroit,MI,USA,42.3315509,-83.0466403,26163
+2000,173268,,HighSchool,Chance Mock,The Woodlands,Texas,PRO,74,190,5,0.9918,16,The Woodlands,TX,USA,30.1734194,-95.504686,48339
+2000,173269,,HighSchool,Roy Williams,Permian,Texas,WR,76,202,5,0.9916,18,Odessa,TX,USA,31.8457149,-102.367687,48135
+2000,173270,,HighSchool,Matt Grootegoed,Mater Dei,USC,OLB,71,205,5,0.9914,19,Santa Ana,CA,USA,33.7494951,-117.8732213,06059
+2000,173271,,HighSchool,Yohance Buchanan,Douglass,Florida State,S,73,210,5,0.9912,20,Atlanta,GA,USA,33.7490987,-84.3901849,13121
+2000,173272,,HighSchool,Mac Tyler,Jess Lanier,Alabama,DT,78,320,5,0.9912,20,Hueytown,AL,USA,33.4512197,-86.9966606,01073
+2000,173273,,HighSchool,Jason Respert,Northside,Tennessee,OC,75,300,5,0.9902,22,Warner Robins,GA,USA,32.6200973,-83.606568,13153
+2000,173274,,HighSchool,Casey Clausen,Bishop Alemany,Tennessee,PRO,76,215,5,0.9896,23,Mission Hills,CA,USA,34.687584,-120.43901754304565,06083
+2000,173275,,HighSchool,Albert Hollis,Christian Brothers,Georgia,RB,72,190,5,0.989,24,Sacramento,CA,USA,38.5815719,-121.4943996,06067
+2000,173276,,HighSchool,Albert Means,Trezevant,Alabama,SDE,78,310,5,0.989,25,Memphis,TN,USA,35.1490215,-90.0516285,47157
+2000,173277,,HighSchool,Eric Moore,Pahokee,Florida State,OLB,76,226,5,0.9884,26,Pahokee,FL,USA,26.8200607,-80.6653351,12099
+2000,173278,,HighSchool,Willie Dixon,Stockton Christian School,Miami,WR,71,182,5,0.9884,27,Stockton,CA,USA,37.9577016,-121.2907796,06077
+2000,173279,,HighSchool,Cory Bailey,American,Florida,S,70,175,5,0.988,28,Hialeah,FL,USA,25.8575963,-80.2781057,12086
+2000,173280,,HighSchool,Sean Young,Northwest Whitfield County,Tennessee,OG,78,293,5,0.9878,29,Tunnel Hill,GA,USA,34.8406339,-85.0427257,13313
+2000,173281,,HighSchool,Johnnie Morant,Parsippany Hills,Syracuse,WR,77,225,5,0.9871,30,Morris Plains,NJ,USA,40.8364845,-74.47818854051508,34027
+2000,173282,,HighSchool,Wes Sims,Weatherford,Oklahoma,OG,77,310,5,0.9869,31,Weatherford,OK,USA,35.5261633,-98.7075744,40039
+2000,173283,,HighSchool,Jason Campbell,Taylorsville,Auburn,PRO,77,190,5,0.9853,32,Taylorsville,MS,USA,31.8296038,-89.4281208,28129
+2000,173284,,HighSchool,Antwan Odom,Alma Bryant,Alabama,SDE,79,260,5,0.9851,33,Irvington,AL,USA,30.5068623,-88.2338925,01097
+2000,173285,,HighSchool,Sloan Thomas,Klein,Texas,WR,74,188,5,0.9847,34,Spring,TX,USA,30.0798826,-95.4172549,48201
+2000,173286,,HighSchool,Raymond Mann,Hampton,Virginia,ILB,73,233,5,0.9847,34,Hampton,VA,USA,37.0520315,-76.2856365,51650
+2000,173287,,HighSchool,Alphonso Townsend,Lima Central Catholic,Ohio State,DT,78,280,5,0.9847,34,Lima,OH,USA,40.7399785,-84.105006,39003
+2000,173288,,HighSchool,Greg Jones,Battery Creek,Florida State,RB,74,245,5,0.9837,37,Beaufort,SC,USA,32.4315813,-80.6698286,45013
+2000,173289,,HighSchool,Paul Mociler,St. John Bosco,UCLA,OG,77,300,5,0.9833,38,Bellflower,CA,USA,33.8825705,-118.1167679,06037
+2000,173290,,HighSchool,Chris Septak,Millard West,Nebraska,TE,75,245,5,0.9833,38,Omaha,NE,USA,41.2587459,-95.9383758,31055
+2000,173291,,HighSchool,Eric Knott,Henry Ford II,Michigan State,TE,76,235,4,0.9831,40,Sterling Heights,MI,USA,42.5803122,-83.0302033,26099
+2000,173292,,HighSchool,Harold James,Osceola,Alabama,S,73,220,4,0.9827,41,Osceola,AR,USA,35.7050778,-89.969532,05093
+2000,173293,,HighSchool,Chris Rix,Santa Margarita Catholic,Florida State,PRO,76,200,4,0.9827,42,Rancho Santa Margarita,CA,USA,33.6408845,-117.6029341,06059
+2000,173294,,HighSchool,Teyo Johnson,Mira Mesa,Stanford,ATH,79,256,4,0.9827,42,San Diego,CA,USA,32.7174209,-117.1627714,06073
+2000,173295,,HighSchool,Chris McKelvy,North Penn,Penn State,OT,77,300,4,0.9821,44,Lansdale,PA,USA,40.2414952,-75.2837862,42091
+2000,173296,,HighSchool,Joe McGuire,Servite,USC,OT,77,225,4,0.9819,45,Anaheim,CA,USA,33.8347516,-117.911732,06059
+2000,173297,,HighSchool,Anthony Bryant,Sunshine Sch,Alabama,SDE,76,310,4,0.9815,46,Newbern,AL,USA,32.5931884,-87.5327815,01065
+2000,173298,,HighSchool,Brock Edwards,Fort Worth Christian,Texas,TE,77,250,4,0.9815,46,North Richland Hills,TX,USA,32.8342952,-97.2289029,48439
+2000,173299,,HighSchool,Carlos Perez,Hoboken,Florida,WR,73,195,4,0.9811,48,Hoboken,NJ,USA,40.7433066,-74.0323752,34017
+2000,173300,,HighSchool,Adam Doiron,Duncan,Texas,SDE,76,260,4,0.9807,49,Duncan,OK,USA,34.5023029,-97.9578129,40137
+2000,173301,,HighSchool,Tre Orr,Columbia,Florida,S,74,190,4,0.9805,50,Lake City,FL,USA,30.1896756,-82.6392899,12023
+2000,173302,,HighSchool,Larry Stevens,Wilson,Michigan,OLB,76,215,4,0.9791,51,Tacoma,WA,USA,47.2495798,-122.4398746,53053
+2000,173303,,HighSchool,Hobie Holiday,Houston County,Georgia Tech,OLB,77,228,4,0.9791,52,Warner Robins,GA,USA,32.6200973,-83.606568,13153
+2000,173304,,HighSchool,Shannon Snell,Hillsborough,Florida,OG,78,305,4,0.9791,52,Tampa,FL,USA,27.9477595,-82.458444,12057
+2000,173305,,HighSchool,Sam Ruhe,Walsh Jesuit,Penn State,SDE,77,245,4,0.9787,54,Stow,OH,USA,41.1596261,-81.4406258,39153
+2000,173306,,HighSchool,Amon Gordon,Mira Mesa,Stanford,OLB,75,270,4,0.9781,55,San Diego,CA,USA,32.7174209,-117.1627714,06073
+2000,173307,,HighSchool,Steve Lee,Evangel Christian Academy,Texas,DT,76,308,4,0.9777,56,Shreveport,LA,USA,32.5221828,-93.7651944,22017
+2000,173308,,HighSchool,Reggie Vickers,Glades Central,Florida,WR,72,175,4,0.9775,57,Belle Glade,FL,USA,26.6845104,-80.6675577,12099
+2000,173309,,HighSchool,Lawrence Richardson,Ball,Arkansas,CB,70,170,4,0.9773,58,Galveston,TX,USA,29.299328,-94.7945882,48167
+2000,173310,,HighSchool,Greg Pauly,South,Notre Dame,DT,78,275,4,0.9771,59,Waukesha,WI,USA,43.0116784,-88.2314813,55133
+2000,173311,,HighSchool,Tim Johnson,Delbarton School,Penn State,ILB,76,230,4,0.9769,60,Morristown,NJ,USA,40.7970384,-74.4809492,34027
+2000,173312,,HighSchool,Terrell Suggs,Hamilton,Arizona State,ATH,76,240,4,0.9765,61,Chandler,AZ,USA,33.3062223,-111.8413317,04013
+2000,173313,,HighSchool,Chris Boggas,Irving,Kansas State,OT,77,310,4,0.9763,62,Irving,TX,USA,32.8295183,-96.9442177,48113
+2000,173314,,HighSchool,Chad Mascoe,Osceola,Florida State,ILB,75,225,4,0.9761,63,Summit,MS,USA,31.2837867,-90.4684315,28113
+2000,173315,,HighSchool,Carlos Joseph,Edison,Miami,OT,78,303,4,0.9759,64,Miami,FL,USA,25.7742658,-80.1936589,12086
+2000,173316,,HighSchool,Adrian Mayes,Forest Brook,LSU,S,74,200,4,0.9759,64,Houston,TX,USA,29.7589382,-95.3676974,48201
+2000,173317,,HighSchool,Tab Perry,Milpitas,UCLA,WR,75,218,4,0.9759,64,Milpitas,CA,USA,37.4282724,-121.9066238,06085
+2000,173318,,HighSchool,Alex Holmes,Harvard Westlake,USC,TE,74,295,4,0.9751,67,Studio City,CA,USA,34.1483989,-118.3961877,06037
+2000,173319,,HighSchool,Dan Dicks,Bellevue,Washington,OG,77,280,4,0.9747,68,Bellevue,WA,USA,47.6144219,-122.1923372,53033
+2000,173320,,HighSchool,Jason Richenberger,Liberty,Nebraska,ILB,73,200,4,0.9747,68,Liberty,MO,USA,39.246479,-94.419079,29047
+2000,173321,,HighSchool,Carl Walker,Andrew Jackson,Miami,S,75,190,4,0.9747,70,Jacksonville,FL,USA,30.3321838,-81.655651,12031
+2000,173322,,HighSchool,Jermelle Lewis,Bloomfield,Iowa,RB,73,215,4,0.9745,71,Bloomfield,CT,USA,41.826488,-72.7300945,09003
+2000,173323,,HighSchool,Vontez Duff,Copperas Cove,Notre Dame,RB,73,175,4,0.9743,72,Copperas Cove,TX,USA,31.124062,-97.9030785,48099
+2000,173324,,HighSchool,Adam Black,Cy Falls,Texas A&M,CB,72,175,4,0.9741,73,Houston,TX,USA,29.7589382,-95.3676974,48201
+2000,173325,,HighSchool,Craig Ochs,Fairview,Colorado,PRO,74,205,4,0.9739,74,Boulder,CO,USA,40.0149856,-105.2705456,08013
+2000,173326,,HighSchool,Carlyle Holiday,Roosevelt,Notre Dame,WR,75,185,4,0.9739,74,San Antonio,TX,USA,29.4246002,-98.4951405,48029
+2000,173327,,HighSchool,Michael Boulware,Spring Valley,Florida State,OLB,75,200,4,0.9737,76,Columbia,SC,USA,34.0007493,-81.0343313,45079
+2000,173328,,HighSchool,Justin Hinds,Piscataway,Boston College,SDE,76,265,4,0.9733,77,Piscataway,NJ,USA,40.5462553,-74.4660408,34023
+2000,173329,,HighSchool,Tyrell Dortch,Hoboken,Michigan State,RB,72,195,4,0.9725,78,Hoboken,NJ,USA,40.7433066,-74.0323752,34017
+2000,173330,,HighSchool,Karlton Neal,Morgan Park,Tennessee,WDE,77,235,4,0.9723,79,Chicago,IL,USA,41.8755616,-87.6244212,17031
+2000,173331,,HighSchool,Sean Poole,Central Commencement Academy,Michigan State,OT,79,285,4,0.9719,80,Flint,MI,USA,43.0161693,-83.6900211,26049
+2000,173332,,HighSchool,Rashad Baker,Eastside,Tennessee,S,72,185,4,0.9717,81,Camden,NJ,USA,39.9448402,-75.1198911,34007
+2000,173333,,HighSchool,Will Smith,Thomas R Proctor,Ohio State,WDE,76,230,4,0.9715,82,Utica,NY,USA,43.1009031,-75.2326641,36065
+2000,173334,,HighSchool,Keith Kelly,Colleton County,Clemson,RB,72,205,4,0.9715,82,Walterboro,SC,USA,32.9021377,-80.6672631,45029
+2000,173335,,HighSchool,Tony Johnson,State College Area,Penn State,RB,73,205,4,0.9709,84,State College,PA,USA,40.7944504,-77.8616386,42027
+2000,173336,,HighSchool,Zac Wasserman,Westlake,Penn State,PRO,76,203,4,0.9707,85,Thousand Oaks,CA,USA,34.17142715,-118.91058772974445,06111
+2000,173337,,HighSchool,Darius Jones,Memorial,Wisconsin,ILB,76,250,4,0.9703,86,Beloit,WI,USA,40.9231141,-80.9937025,39099
+2000,173338,,HighSchool,Brooks Daniels,Hamilton County,Alabama,OLB,75,200,4,0.9699,87,Jasper,FL,USA,30.5182727,-82.94819,12047
+2000,173339,,HighSchool,Erik Noll,Watkins Mill,Penn State,OT,77,292,4,0.9683,88,Gaithersburg,MD,USA,39.1434406,-77.2013705,24031
+2000,173340,,HighSchool,Quinn Sypniewski,Johnston,Colorado,TE,79,255,4,0.9683,88,Johnston,IA,USA,41.6731523,-93.6973395,19153
+2000,173341,,HighSchool,Kelvin Kight,Lithonia,Florida,WR,72,185,4,0.9679,90,Lithonia,GA,USA,33.7123305,-84.1051939,13089
+2000,173342,,HighSchool,Bo Mosley,Osceola,Arkansas,CB,70,160,4,0.9679,90,Osceola,AR,USA,35.7050778,-89.969532,05093
+2000,173343,,HighSchool,Andrew Walter,Grand Junction,Arizona State,PRO,77,205,4,0.9671,92,Grand Junction,CO,USA,39.063956,-108.5507317,08077
+2000,173344,,HighSchool,Brandon Sumner,Mainland,Georgia Tech,PRO,77,220,4,0.9667,93,Daytona Beach,FL,USA,29.2108147,-81.0228331,12127
+2000,173345,,HighSchool,Vince Wilfork,Santaluces Community,Miami,DT,73,310,4,0.9667,93,Lake Worth,FL,USA,26.615891,-80.0691435,12099
+2000,173346,,HighSchool,Mike Goolsby,Joliet Catholic Academy,Notre Dame,ILB,76,225,4,0.9663,95,Joliet,IL,USA,41.5263603,-88.0840212,17197
+2000,173347,,HighSchool,Derron Parquet,Archbishop Rummel,LSU,RB,72,205,4,0.9659,96,Metairie,LA,USA,30.001852,-90.1767149159888,22051
+2000,173348,,HighSchool,Diamond Ferri,Everett,Syracuse,RB,71,200,4,0.9659,96,Everett,MA,USA,42.40843,-71.0536625,25017
+2000,173349,,HighSchool,Alex Barron,Orangeburg-Wilkinson,Florida State,OT,80,297,4,0.9657,98,Orangeburg,SC,USA,33.4918203,-80.8556476,45075
+2000,173350,,HighSchool,Sean McHugh,Chagrin Falls,Penn State,TE,78,245,4,0.9655,99,Chagrin Falls,OH,USA,41.436589,-81.3855058,39035
+2000,173351,,HighSchool,Bennie Mills,Archbishop Rummel,Florida,DT,76,280,4,0.9655,99,Metairie,LA,USA,30.001852,-90.1767149159888,22051
+2000,173352,,HighSchool,Ben Emanuel,Clear Brook,UCLA,S,74,190,4,0.9651,101,Friendswood,TX,USA,29.5293998,-95.2010447,48167
+2000,173353,,HighSchool,Willie Green,Osceola,Florida,RB,69,205,4,0.9647,102,Kissimmee,FL,USA,28.2918995,-81.4075838,12097
+2000,173354,,HighSchool,Chris Kelley,Seneca Valley,Maryland,PRO,74,205,4,0.9647,102,Germantown,MD,USA,39.1731621,-77.2716502,24031
+2000,173355,,HighSchool,Robert Peace,Ruston,Tennessee,ILB,75,215,4,0.9643,104,Ruston,LA,USA,32.5232053,-92.637927,22061
+2000,173356,,HighSchool,Chris Young,South Panola,Vanderbilt,WR,74,184,4,0.9639,105,Batesville,MS,USA,34.3114982,-89.9442567,28107
+2000,173357,,HighSchool,Ronnie Brown,Cartersville,Auburn,RB,73,200,4,0.9631,106,Cartersville,GA,USA,34.1650972,-84.7999383,13015
+2000,173358,,HighSchool,Richard Johnson,Milford Mill Academy,Virginia Tech,WR,72,170,4,0.9629,107,Gwynn Oak,MD,USA,39.3265775,-76.7181764750945,24005
+2000,173359,,HighSchool,Stephen Williams,Bolingbrook,Indiana,SDE,75,275,4,0.9627,108,Bolingbrook,IL,USA,41.7003302,-88.0717708,17197
+2000,173360,,HighSchool,John Rattay,Desert Vista,Tennessee,PRO,76,215,4,0.9622,109,Phoenix,AZ,USA,33.4484367,-112.0741417,04013
+2000,173361,,HighSchool,Tatum Bell,DeSoto,Oklahoma State,RB,71,190,4,0.9618,110,DeSoto,TX,USA,32.6061241,-96.865612653687,48113
+2000,173362,,HighSchool,Maurice Mitchell,Dougherty,Alabama,OT,79,290,4,0.9614,111,Albany,GA,USA,31.5782062,-84.1556809,13095
+2000,173363,,HighSchool,Jason Peters,Queen City,Arkansas,WDE,77,270,4,0.9614,111,Queen City,TX,USA,33.1487411,-94.150187,48067
+2000,173364,,HighSchool,Cameron Wake,DeMatha Catholic,Penn State,WDE,75,258,4,0.961,113,Hyattsville,MD,USA,38.9529442,-76.9408647,24033
+2000,173365,,HighSchool,Doug Buckles,Madison Central,Ole Miss,OG,77,275,4,0.961,113,Madison,MS,USA,32.4618086,-90.1153638,28089
+2000,173366,,HighSchool,Jason Witten,Elizabethton,Tennessee,WDE,79,265,4,0.9606,115,Elizabethton,TN,USA,36.3487196,-82.2106876,47019
+2000,173367,,HighSchool,Lynn McGruder,Cheyenne,Tennessee,DT,75,285,4,0.9606,115,North Las Vegas,NV,USA,36.2005843,-115.1215844,32003
+2000,173368,,HighSchool,Dustin Picciotti,Central Bucks West,Pittsburgh,FB,75,235,4,0.9602,117,Doylestown,PA,USA,40.3100446,-75.1304588,42017
+2000,173369,,HighSchool,Marcus White,Theodore,Auburn,SDE,77,270,4,0.9602,117,Theodore,AL,USA,30.547295,-88.18020367595204,01097
+2000,173370,,HighSchool,Nautyn McKay-Loescher,Toronto,Alabama,WDE,76,240,4,0.9347,119,Toronto,OH,USA,40.4642335,-80.6009058,39081
