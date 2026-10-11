@@ -1,0 +1,135 @@
+# Fetch recruiting classes and recruits per season from CFBD.
+#
+# CFBD is unreachable from a development container here, so this is the only
+# place the endpoints can be called and the only place their real schema and
+# coverage can be observed. Run it in PROBE mode first: it prints the keys both
+# endpoints return, the row counts per season and one sample row, and writes
+# nothing. The fetcher's field lists are meant to be established that way
+# rather than from memory of the API docs.
+#
+# This data is an INPUT ONLY. Nothing reads these files until a loader lands
+# deliberately (a test asserts that), so a backfill changes no published number
+# and needs no rebuild afterwards.
+#
+# The fetch REWRITES a season's files rather than merging, so re-running a
+# range is safe and idempotent.
+name: Backfill recruiting
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_year:
+        description: "First season to fetch (the season the class signs INTO)"
+        required: true
+        default: "2000"
+      end_year:
+        description: "Last season to fetch"
+        required: true
+        default: "2026"
+      probe:
+        description: "Report the endpoints' schema and coverage; write nothing"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    # Shares the deploy's lock because it pushes to main and writes data/raw,
+    # which the scheduled refresh also rewrites.
+    concurrency:
+      group: rebuild-and-deploy-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Report what the endpoints actually return
+        if: ${{ inputs.probe }}
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          START: ${{ inputs.start_year }}
+          END: ${{ inputs.end_year }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CFBD_API_KEY:-}" ]; then
+            echo "::error::CFBD_API_KEY is not set for this repository."
+            exit 1
+          fi
+          python3 src/fetch_cfbd_recruiting.py --probe "$START" "$END"
+
+      - name: Fetch and commit one season at a time
+        if: ${{ !inputs.probe }}
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          START: ${{ inputs.start_year }}
+          END: ${{ inputs.end_year }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CFBD_API_KEY:-}" ]; then
+            echo "::error::CFBD_API_KEY is not set for this repository."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # One season per commit, pushed as it lands, so a timeout or a CFBD
+          # outage costs the season in flight rather than the whole backfill.
+          for year in $(seq "$START" "$END"); do
+            echo "::group::season $year"
+            # Checked explicitly: `set -e` does NOT stop a shell loop, and a
+            # season that failed must halt the run rather than be skipped while
+            # later seasons commit on top of the gap.
+            if ! python3 src/fetch_cfbd_recruiting.py "$year"; then
+              echo "::endgroup::"
+              echo "::error::Season $year failed. Earlier seasons are committed; re-run this workflow from $year to resume."
+              exit 1
+            fi
+            files=""
+            for name in teams players; do
+              path="data/raw/recruiting_${name}_$year.csv"
+              [ -f "$path" ] && files="$files $path"
+            done
+            # A season CFBD covers but has no rows for writes no file at all.
+            # That is not a failure: where coverage really starts is what the
+            # probe is for, and a missing season is a fact about the API.
+            if [ -z "$files" ]; then
+              echo "Season $year produced no files; CFBD has no recruiting data for it."
+              echo "::endgroup::"
+              continue
+            fi
+            if ! scripts/publish_to_main.sh "Archive $year recruiting [skip ci]" $files; then
+              echo "::endgroup::"
+              echo "::error::Could not publish season $year. Nothing was published for it; re-run this workflow from $year."
+              exit 1
+            fi
+            echo "::endgroup::"
+          done
+
+      # Read off the files this job wrote, not the database, which it never builds.
+      - name: Summarise the backfill
+        if: ${{ always() && !inputs.probe }}
+        run: |
+          python3 - <<'PY'
+          import csv, pathlib
+          classes = sorted(pathlib.Path('data/raw').glob('recruiting_teams_*.csv'))
+          people = sorted(pathlib.Path('data/raw').glob('recruiting_players_*.csv'))
+          for path in classes:
+              season = path.stem.replace('recruiting_teams_', '')
+              rows = list(csv.DictReader(path.open(encoding='utf-8')))
+              mate = pathlib.Path(f'data/raw/recruiting_players_{season}.csv')
+              recruits = list(csv.DictReader(mate.open(encoding='utf-8'))) if mate.is_file() else []
+              located = sum(1 for r in recruits if r['hometown_latitude'] != '')
+              print(f'{season}: {len(rows)} classes, {len(recruits)} recruits, '
+                    f'{located} with hometown coordinates')
+          print(f'total: {len(classes)} class seasons, {len(people)} recruit seasons')
+          PY
