@@ -351,49 +351,66 @@ def _write(path: Path, variable: str, payload) -> str:
 
 
 def build_coach_recruits(conn: sqlite3.Connection, coaches: dict) -> dict:
-    """coach_id -> [[lat, lon, count, label], ...]: where his signees came from.
+    """coach_id -> {"points": [[lat, lon, count, label], ...], "unlocated": n}.
 
-    Only the classes he SIGNED. A first season at a school was recruited by
-    his predecessor (build_coaches marks it), and a map is a claim about where
-    a coach goes for players -- putting someone else's class on it would be
-    the wrong claim in the most visible possible place.
+    Only the classes he SIGNED. A first season at a school was recruited by his
+    predecessor, and a map is a claim about where a coach goes for players --
+    putting someone else's class on it would be the wrong claim in the most
+    visible possible place. Ownership is worked out here from who held the job
+    the season before, NOT from the class_inherited flag build_coaches sets:
+    that flag only exists where the archive also has a class RANK, and FIU's
+    2022 class has 17 located recruits and no ranking row, which would have put
+    Butch Davis's last class on Mike MacIntyre's map.
 
     Recruits are grouped by hometown rather than listed one per point, because
     a town that sent a coach eleven players is the thing the map is for, and
-    eleven circles drawn on top of each other does not show it.
+    eleven circles drawn on top of each other does not show it. A signee the
+    feed gave no coordinates for (466 of them, across 195 coaches) is counted
+    in "unlocated" rather than dropped, so the page's total is his whole class.
     """
     if not conn.execute("SELECT name FROM sqlite_master WHERE type = 'table' "
                         "AND name = 'recruits'").fetchone():
         return {}
-    # (team, season) -> the coach who signed that class.
-    signed: dict[tuple, int] = {}
+    held: dict[tuple, int] = {}
     for coach_id, coach in coaches.items():
         for tenure in coach["tenures"]:
-            if tenure.get("class_inherited"):
-                continue
-            signed[(tenure.get("team_id"), tenure.get("season_year"))] = coach_id
+            held[(tenure.get("team_id"), tenure.get("season_year"))] = coach_id
+    # (team, season) -> the coach who signed that class, which is the coach who
+    # already held the job the season before. A coach who returns years later
+    # (Mack Brown at North Carolina) inherits again, which is why this asks
+    # about the season before rather than about a minimum.
+    signed = {(team, season): coach_id for (team, season), coach_id in held.items()
+              if held.get((team, season - 1)) == coach_id}
 
     grouped: dict = defaultdict(lambda: defaultdict(int))
-    labels: dict = {}
+    unlocated: dict = defaultdict(int)
+    # Labels are kept per coach, not per point: two towns can round to one
+    # point (the feed has a "Hampton, SC" at Hampton, Virginia's coordinates),
+    # and a shared cache would then label one coach's town with another
+    # coach's recruit's spelling of somewhere else.
+    labels: dict = defaultdict(dict)
     for row in conn.execute(
             "SELECT committed_team_id, season_year, hometown_latitude, "
             "hometown_longitude, city, state_province FROM recruits "
-            "WHERE committed_team_id IS NOT NULL AND hometown_latitude IS NOT NULL "
-            "AND hometown_longitude IS NOT NULL"):
+            "WHERE committed_team_id IS NOT NULL"):
         coach_id = signed.get((int(row["committed_team_id"]), int(row["season_year"])))
         if coach_id is None:
+            continue
+        if row["hometown_latitude"] is None or row["hometown_longitude"] is None:
+            unlocated[coach_id] += 1
             continue
         # Two decimal places is about a kilometre, which is the same town and
         # not the same street -- enough to merge a city without merging two.
         point = (round(float(row["hometown_latitude"]), 2),
                  round(float(row["hometown_longitude"]), 2))
         grouped[coach_id][point] += 1
-        if point not in labels:
-            labels[point] = ", ".join(p for p in (row["city"], row["state_province"]) if p)
-    return {coach_id: sorted(([lat, lon, count, labels.get((lat, lon), "")]
-                              for (lat, lon), count in points.items()),
-                             key=lambda p: (-p[2], p[3]))
-            for coach_id, points in grouped.items()}
+        labels[coach_id].setdefault(
+            point, ", ".join(p for p in (row["city"], row["state_province"]) if p))
+    return {coach_id: {"points": sorted(([lat, lon, count, labels[coach_id].get((lat, lon), "")]
+                                         for (lat, lon), count in grouped[coach_id].items()),
+                                        key=lambda p: (-p[2], p[3])),
+                       "unlocated": unlocated.get(coach_id, 0)}
+            for coach_id in set(grouped) | set(unlocated)}
 
 
 def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
@@ -449,7 +466,8 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
     manifest["counts"] = {"players": len(players), "coaches": len(coaches),
                           "player_seasons": sum(len(p["seasons"]) for p in players.values()),
                           "coach_seasons": sum(len(c["tenures"]) for c in coaches.values()),
-                          "coach_recruit_points": sum(len(v) for v in recruits.values()),
+                          "coach_recruit_points": sum(len(v["points"]) for v in recruits.values()),
+                          "coach_recruits_unlocated": sum(v["unlocated"] for v in recruits.values()),
                           "seasons": sorted(rosters),
                           "stat_seasons": sorted(
                               {int(y) for p in players.values() for y in p.get("stats", {})},

@@ -5200,24 +5200,29 @@ function coachExpectation(tenures) {
 // and 4th. Those inherited classes are counted separately rather than averaged
 // in, because averaging them in credits or blames a coach for a class he had
 // three weeks to touch.
-function recruitMapPoints(points) {
+function recruitMapPoints(recruits) {
   // Off-continent signees (Australian punters, a German lineman) have real
-  // coordinates this projection cannot draw, so they are counted in the note
-  // rather than silently dropped or crushed against the frame.
+  // coordinates this projection cannot draw, and 466 signees across the
+  // archive have no coordinates at all. Both are counted in the note rather
+  // than silently dropped or crushed against the frame, because a total that
+  // leaves out part of a class is a wrong number, not a smaller one.
+  const points = (recruits && recruits.points) || [];
+  const unlocated = Number((recruits && recruits.unlocated) || 0);
   const inside = [], outside = [];
-  for (const pt of points || []) {
+  for (const pt of points) {
     const lat = Number(pt[0]), lon = Number(pt[1]);
     // A NaN fails every one of these comparisons, so a coordinate that is not
     // a number lands outside with the ones that are merely far away.
     (lat >= 15 && lat <= 73 && lon >= -180 && lon <= -60 ? inside : outside).push(pt);
   }
-  return { inside, outside,
-           signees: (points || []).reduce((n, pt) => n + Number(pt[2] || 0), 0),
-           offmap: outside.reduce((n, pt) => n + Number(pt[2] || 0), 0) };
+  const total = pts => pts.reduce((n, pt) => n + Number(pt[2] || 0), 0);
+  return { inside, outside, unlocated,
+           signees: total(points) + unlocated,
+           offmap: total(outside) + unlocated };
 }
 
-function recruitMap(points) {
-  const { inside } = recruitMapPoints(points);
+function recruitMap(recruits) {
+  const { inside } = recruitMapPoints(recruits);
   if (!inside.length) return '';
   const alaska = inside.some(pt => Number(pt[0]) > 55);
   const map = CfbGeography.projection(alaska);
@@ -5241,10 +5246,10 @@ function recruitMap(points) {
     }).join('') + '</svg>';
 }
 
-function coachRecruitPanel(points) {
-  const map = recruitMap(points);
+function coachRecruitPanel(recruits) {
+  const map = recruitMap(recruits);
   if (!map) return '';
-  const { inside, signees, offmap } = recruitMapPoints(points);
+  const { inside, signees, offmap, unlocated } = recruitMapPoints(recruits);
   const top = inside.slice(0, 8);
   return '<div class="panel team-section"><h2 class="section-title">Recruiting pipeline</h2>' +
     '<div class="recruit-layout"><div>' + map + '</div><div>' +
@@ -5256,9 +5261,12 @@ function coachRecruitPanel(points) {
     ', in the classes this coach signed only \u2014 a class he inherited is left out, ' +
     'the same way it is left out of his average rank above. A dot is a hometown and its ' +
     'area is how many players came from there; hometowns are as the recruiting feed ' +
-    'reported them.' + (offmap ? ' ' + offmap + (offmap === 1 ? ' signee' : ' signees') +
-      ' came from outside this map and ' + (offmap === 1 ? 'is' : 'are') +
-      ' counted but not drawn.' : '') + '</p></div>';
+    'reported them.' + (offmap ? ' ' + offmap + (offmap === 1 ? ' signee is' : ' signees are') +
+      ' counted here but not drawn' + (unlocated
+        ? ', ' + (offmap === unlocated ? 'having no hometown in the feed'
+            : unlocated + ' of them having no hometown in the feed and the rest being ' +
+              'outside this map') + '.'
+        : ', being from outside this map.') : '') + '</p></div>';
 }
 
 function coachRecruiting(tenures) {
