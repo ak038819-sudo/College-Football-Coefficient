@@ -19,14 +19,31 @@ test('published game Elo movement is green/up or red/down; missing and zero stay
   assert.equal(ctx.delta(0), '');
 });
 
+test('a rating with no value reads as unavailable, not as a zero Elo', () => {
+  // A completed game can have no Elo history on either side, and the export
+  // emits null for it. Number(null) is 0, so the guard is what keeps the game
+  // page from presenting a missing rating as a real 0.
+  const ctx = {};
+  vm.runInNewContext(sourceOf('eloValue') + '\nthis.elo = eloValue;', ctx);
+  assert.equal(ctx.elo(null), '\u2014');
+  assert.equal(ctx.elo(undefined), '\u2014');
+  assert.equal(ctx.elo(1551.4), '1551');
+  assert.equal(ctx.elo(1551.5), '1552');
+});
+
 test('Elo rankings pass each audited change to the table', () => {
   const ctx = {
     DATA: {team_elo_by_year: {2026: [{team: 'Florida', elo: 1551.4, change: -8.2}]}},
     state: {year: 2026}, UPCOMING: {season: 2026, ratings_as_of: '2026-09-20'},
-    esc: x => x, rankTable: rows => JSON.stringify(rows),
+    esc: x => x, rankTable: (rows, key, label, valueLabel, kind, format) =>
+      JSON.stringify(rows) + '|' + format(rows[0].value),
   };
-  vm.runInNewContext(sourceOf('renderElo') + '\nthis.render = renderElo;', ctx);
+  // eloValue is the real helper, lifted in: the table's value column is what
+  // renders a rating, so a stub here would stop proving it is a whole number.
+  vm.runInNewContext(sourceOf('eloValue') + '\n' + sourceOf('renderElo') + '\nthis.render = renderElo;', ctx);
   assert.match(ctx.render(), /"change":-8\.2/);
+  // The rating rounds to a whole number; the audited change keeps its decimal.
+  assert.match(ctx.render(), /\|1551</);
 });
 
 test('a newer final marks only its teams as waiting for a model rebuild', () => {
