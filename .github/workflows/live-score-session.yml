@@ -1,0 +1,86 @@
+name: Live score session
+
+# One long-running job per game day, polling the scoreboard in-process.
+#
+# `live-scores.yml` asks GitHub for a run every five minutes during the game
+# windows and gets about one in thirty: 22 of 699 specified firings over two
+# weeks (docs/live-data-options.md). That is GitHub dropping high-frequency
+# scheduled workflows, and no edit to a workflow file changes it.
+#
+# This workflow is started ONCE per game day. The loop inside it is not
+# scheduled by GitHub, so it keeps its own cadence for as long as the job runs.
+# The crons below are the once-a-day kind that GitHub does deliver -- the same
+# frequency as the Sunday rebuild, which has never been dropped.
+#
+# `live-scores.yml` stays as it is. It covers the windows these sessions do not
+# reach and remains the path a manual refresh takes.
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: 'Minutes to keep polling (max 350)'
+        required: false
+        default: '330'
+      interval:
+        description: 'Seconds between polls (Pages allows ~10 publishes/hour)'
+        required: false
+        default: '360'
+  schedule:
+    # Each window gets a chain of sessions rather than one long job: a job is
+    # capped at six hours, and a Saturday slate runs twelve. Start times are
+    # UTC; the Saturday slate opens at noon Eastern and the late games end
+    # after 06:00 UTC on Sunday.
+    - cron: '5 15,21 * 8-12,1 6'
+    - cron: '5 3 * 8-12,1 0'
+    - cron: '5 22 * 8-12,1 4,5'
+
+permissions:
+  contents: write
+
+jobs:
+  session:
+    runs-on: ubuntu-latest
+    # The job's own ceiling is six hours. 350 minutes of polling leaves time
+    # for checkout, the final publish and the delivery measurement.
+    timeout-minutes: 358
+    # NOT the deploy's group, and not `live-scores.yml`'s either. Sharing the
+    # deploy's group would park a six-hour job in front of every publish.
+    # Sharing the five-minute refresh's group would mean each dropped cron
+    # firing that did arrive sat pending behind this session and was cancelled
+    # by the next -- and the two are safe to race: publish_to_main.sh merges a
+    # main that moved and keeps this run's own file.
+    concurrency:
+      group: live-score-session-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Poll and publish the scoreboard
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          DURATION: ${{ inputs.duration || '330' }}
+          INTERVAL: ${{ inputs.interval || '360' }}
+        run: |
+          if [ -z "$CFBD_API_KEY" ]; then
+            echo 'Live scores inactive: set the CFBD_API_KEY secret with scoreboard access.'
+            exit 0
+          fi
+          # Clamped here as well as in the script: a dispatch input is free text,
+          # and a duration past the job timeout would be killed mid-publish.
+          if [ "$DURATION" -gt 350 ]; then DURATION=350; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          python3 -u src/run_live_score_session.py \
+            --duration "$DURATION" --interval "$INTERVAL"
+
+      - name: Measure delivery to GitHub Pages
+        if: always()
+        continue-on-error: true
+        env:
+          PAGES_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/ui/data/live_scores.json
+        run: python3 src/measure_live_delivery.py --url "$PAGES_URL" --timeout 120

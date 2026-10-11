@@ -180,13 +180,15 @@ def merge_player_boxscores(snapshot, previous, fresh, checked_at):
     return snapshot
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--out', type=Path, default=DEFAULT_OUT)
-    args = parser.parse_args()
-    key = os.getenv('CFBD_API_KEY')
-    if not key:
-        parser.error('CFBD_API_KEY is required (live scoreboard requires a subscribed key)')
+def refresh(out, key):
+    """Fetch the scoreboard and write one snapshot to `out`; return the snapshot.
+
+    Split out of main() so a long-running polling session can take the same
+    path a cron run takes. There must be exactly one implementation of "what a
+    published snapshot is": a second one would drift, and the drift would show
+    up as a game attributed differently depending on which job happened to
+    publish it.
+    """
     request = Request(URL, headers={'Authorization': 'Bearer ' + key,
                                    'Accept': 'application/json', 'User-Agent': 'cfb-coefficient-live-scores/1.0'})
     def scoreboard():
@@ -199,7 +201,7 @@ def main():
         scoreboard, describe='GET /scoreboard', attempts=ATTEMPTS),
         dt.datetime.now(dt.timezone.utc))
     try:
-        previous = json.loads(args.out.read_text(encoding='utf-8'))
+        previous = json.loads(out.read_text(encoding='utf-8'))
     except (OSError, ValueError):
         previous = {}
     checked_at = dt.datetime.now(dt.timezone.utc).isoformat().replace('+00:00', 'Z')
@@ -212,11 +214,22 @@ def main():
     print(f"Player box scores: {len(fresh) if fresh is not None else 'fetch failed'} new/updated, "
           f"{len(snapshot['player_boxscores'])} published; "
           f"{sum(g['status'] == 'completed' for g in snapshot['games'])} completed games")
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    temporary = args.out.with_suffix(args.out.suffix + '.tmp')
+    out.parent.mkdir(parents=True, exist_ok=True)
+    temporary = out.with_suffix(out.suffix + '.tmp')
     temporary.write_text(json.dumps(snapshot, separators=(',', ':'), ensure_ascii=False) + '\n', encoding='utf-8')
-    temporary.replace(args.out)
+    temporary.replace(out)
     print(f"Published {len(snapshot['games'])} scoreboard games at {snapshot['updated_at']}")
+    return snapshot
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--out', type=Path, default=DEFAULT_OUT)
+    args = parser.parse_args()
+    key = os.getenv('CFBD_API_KEY')
+    if not key:
+        parser.error('CFBD_API_KEY is required (live scoreboard requires a subscribed key)')
+    refresh(args.out, key)
 
 
 if __name__ == '__main__':

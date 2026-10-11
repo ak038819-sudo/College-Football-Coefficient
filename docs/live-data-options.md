@@ -79,3 +79,55 @@ redistribute, and is not a path here — the warning above this section stands.
 
 The decision between these is the owner's: the middle two both mean paying
 for something always on.
+
+## Shipped 2026-10-11: a long-running session, which the table above missed
+
+The four paths above are not exhaustive. A fifth exists, it costs nothing, and
+it was not considered because the measurement framed the problem as "GitHub
+will not run a job often enough" when the real constraint is narrower:
+**GitHub will not *schedule* a job often enough.** It will happily run one job
+for six hours.
+
+`.github/workflows/live-score-session.yml` is started once per game day and
+polls the scoreboard from inside a single job (`src/run_live_score_session.py`).
+The loop keeps its own cadence, so none of the 3.1% delivery rate applies to
+it. The cron that starts the session fires once or twice a day, the same
+frequency as the Sunday rebuild, which has never been dropped.
+
+What this does and does not buy:
+
+| | Before | After |
+| --- | ---: | ---: |
+| Refreshes delivered per hour, game day | ~0.3 | up to 10 |
+| Typical snapshot age | hours | under 6 minutes |
+| Cost | — | none (public repository) |
+
+**Six minutes is the floor, and it is not this script's fault.** Publishing to
+`main` is how the site updates, and a Pages site built from a branch is
+soft-limited to roughly ten builds an hour. `DEFAULT_INTERVAL` is 360 seconds
+for that reason, and a test pins it: a shorter interval would queue publishes
+Pages will not build. Anything faster than six minutes still means moving off
+Pages or polling the browser against a hosted endpoint — the two paid rows
+above. Those remain open, and this change does not pre-empt them.
+
+Design notes worth keeping:
+
+- Each tick goes through `fetch_live_scores.refresh`, the same function a cron
+  run calls. There is one definition of a published snapshot; a second would
+  drift, and the drift would surface as a game attributed differently
+  depending on which job published it.
+- A publish happens only when a reader would notice: status, period, clock or
+  either score. `updated_at` is excluded deliberately, because `refresh`
+  stamps it every tick and comparing whole files would publish on every poll.
+- The session ends early once every game on the scoreboard is final **and that
+  state is published**. Stopping on a snapshot that failed to push would leave
+  the site showing a running clock on a finished game, which is the defect the
+  session exists to clear.
+- A failed poll is logged and the loop continues; the last good snapshot stays
+  published. The run fails only if every poll failed.
+- `live-scores.yml` is unchanged. It covers windows the sessions do not reach
+  and is still the path a manual refresh takes. The two can race safely:
+  `publish_to_main.sh` merges a `main` that moved and keeps the running job's
+  own file. The one cost of that is a visible step backwards if a cron run
+  publishes a snapshot staler than the session's seconds after it; the next
+  tick corrects it within the interval.
