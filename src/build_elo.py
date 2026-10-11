@@ -155,7 +155,8 @@ def load_game_success_rates(conn: sqlite3.Connection) -> dict:
 
 
 def run_elo(games, cfg: dict, layer=None, success_rates: dict | None = None,
-            home_bonus_for_game: Callable | None = None):
+            home_bonus_for_game: Callable | None = None,
+            retention_for_team: Callable | None = None):
     """
     Pure function (no DB writes): given chronologically-ordered game rows
     and an elo config dict, returns (rows_to_insert, final_ratings,
@@ -170,6 +171,10 @@ def run_elo(games, cfg: dict, layer=None, success_rates: dict | None = None,
     `home_bonus_for_game` is an optional, experimental point-in-time provider.
     It receives the pregame row and returns that home's Elo-point bonus. The
     production path omits it and remains bit-for-bit on the flat config value.
+    `retention_for_team` is the same shape for the offseason: given
+    (team_id, season) it returns the fraction of that team's distance from
+    initial_rating to carry INTO `season`. Omitted, every team regresses by the
+    flat `offseason_retention`, which is what production does.
     """
     initial_rating = cfg["initial_rating"]
     scale = cfg["scale"]
@@ -199,7 +204,13 @@ def run_elo(games, cfg: dict, layer=None, success_rates: dict | None = None,
             # dynamically computed population mean) -- every team ever
             # seen gets regressed once, before this new season's first game.
             for team_id in ratings:
-                ratings[team_id] = initial_rating + retention * (ratings[team_id] - initial_rating)
+                # One rate for everyone unless a provider gives this team its
+                # own. A provider that has no answer returns the flat rate, so
+                # a team with no returning-production row is unaffected rather
+                # than silently regressed differently from its neighbours.
+                rate = (retention if retention_for_team is None
+                        else float(retention_for_team(team_id, season)))
+                ratings[team_id] = initial_rating + rate * (ratings[team_id] - initial_rating)
             current_season = season
 
         ratings.setdefault(home_id, initial_rating)
