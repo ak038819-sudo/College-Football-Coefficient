@@ -23,10 +23,15 @@ test('Elo rankings pass each audited change to the table', () => {
   const ctx = {
     DATA: {team_elo_by_year: {2026: [{team: 'Florida', elo: 1551.4, change: -8.2}]}},
     state: {year: 2026}, UPCOMING: {season: 2026, ratings_as_of: '2026-09-20'},
-    esc: x => x, rankTable: rows => JSON.stringify(rows),
+    esc: x => x, rankTable: (rows, key, label, valueLabel, kind, format) =>
+      JSON.stringify(rows) + '|' + format(rows[0].value),
   };
-  vm.runInNewContext(sourceOf('renderElo') + '\nthis.render = renderElo;', ctx);
+  // eloValue is the real helper, lifted in: the table's value column is what
+  // renders a rating, so a stub here would stop proving it is a whole number.
+  vm.runInNewContext(sourceOf('eloValue') + '\n' + sourceOf('renderElo') + '\nthis.render = renderElo;', ctx);
   assert.match(ctx.render(), /"change":-8\.2/);
+  // The rating rounds to a whole number; the audited change keeps its decimal.
+  assert.match(ctx.render(), /\|1551</);
 });
 
 test('a newer final marks only its teams as waiting for a model rebuild', () => {
