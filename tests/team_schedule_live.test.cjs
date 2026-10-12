@@ -207,7 +207,10 @@ test('the live store keys finals and in-progress games and ignores the rest', ()
 test('the feed age is stated in minutes and hours, and only when it matters', () => {
   const ctx = {};
   vm.createContext(ctx);
-  vm.runInContext(sourceOf('feedAgeNote') + '\nthis.note = feedAgeNote;', ctx);
+  // feedAgeNote delegates to feedAgeLabel, so lift the real helper rather than
+  // stubbing it: a stub would let the two drift apart unnoticed.
+  vm.runInContext(sourceOf('feedAgeLabel') + '\n' + sourceOf('feedAgeNote') +
+    '\nthis.note = feedAgeNote; this.label = feedAgeLabel;', ctx);
   const m = n => n * 60 * 1000;
 
   // Under ten minutes the cadence is working, so the page says nothing.
@@ -229,6 +232,14 @@ test('the feed age is stated in minutes and hours, and only when it matters', ()
   assert.equal(ctx.note(Infinity), '');
   assert.equal(ctx.note(NaN), '');
   assert.equal(ctx.note(undefined), '');
+
+  // The bare label is what the scoreboard status line prints, so it carries
+  // the same judgement without the separator: nothing while the feed is
+  // fresh, the age and the warning once it is not.
+  assert.equal(ctx.label(m(9)), '');
+  assert.equal(ctx.label(m(45)), '45 min old');
+  assert.equal(ctx.label(m(300)), '5 hours old, newer scores may exist');
+  assert.equal(ctx.label(NaN), '');
 });
 
 test('the scoreboard source is the committed snapshot unless a URL is baked in', () => {

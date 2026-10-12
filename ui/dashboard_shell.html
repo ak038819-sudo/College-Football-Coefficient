@@ -4187,9 +4187,14 @@ function hydrateLiveScores(version) {
       liveSnapshot = { ...data, games: slate.games };
       const stamp = data.updated_at ? new Date(data.updated_at) : null;
       const validStamp = stamp && !Number.isNaN(stamp.getTime());
-      // A fresh feed says nothing: the week picker names the slate and the cards
-      // carry their own state. Only a feed that is not there is worth a line.
-      status.textContent = validStamp ? '' : 'Live feed is not active yet.';
+      // A fresh feed says nothing: the week picker names the slate and the
+      // cards carry their own state. A stale one has to say so. A failed or
+      // delayed refresh leaves the last good snapshot published with a
+      // perfectly valid timestamp, so silence here would show hours-old
+      // in-progress scores as if they were current.
+      const stale = validStamp ? feedAgeLabel(Date.now() - stamp.getTime()) : '';
+      status.textContent = !validStamp ? 'Live feed is not active yet.'
+        : stale ? 'Scoreboard is ' + stale : '';
       paintLiveGames();
       if (state.section === 'home') hydrateHomeDiscovery(version);
       board.innerHTML = renderLiveBoard(slate.games);
@@ -4345,14 +4350,20 @@ function liveEloPanel(g) {
 // than left to subtract timestamps. Under ten minutes it says nothing: that is
 // the cadence working.
 function feedAgeNote(ms) {
+  const label = feedAgeLabel(ms);
+  return label ? ' · ' + label : '';
+}
+// The age on its own, for a line that is nothing but the warning. Empty under
+// ten minutes: that is the cadence working, and there is nothing to say.
+function feedAgeLabel(ms) {
   if (!Number.isFinite(ms) || ms < 10 * 60 * 1000) return '';
   const minutes = Math.round(ms / 60000);
   // Minutes all the way to two hours, so the boundary is exact: calling 90
   // minutes "2 hours" reads as wrong to anybody who can see the timestamp
   // beside it, and calling it "1 hour" understates the staleness.
-  if (minutes < 120) return ' · ' + minutes + ' min old';
+  if (minutes < 120) return minutes + ' min old';
   const hours = Math.round(minutes / 60);
-  return ' · ' + hours + (hours === 1 ? ' hour' : ' hours') + ' old, newer scores may exist';
+  return hours + (hours === 1 ? ' hour' : ' hours') + ' old, newer scores may exist';
 }
 function liveDetail(g) {
   const stamp = liveSnapshot?.updated_at ? new Date(liveSnapshot.updated_at) : null;
