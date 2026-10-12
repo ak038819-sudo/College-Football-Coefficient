@@ -65,6 +65,11 @@ def main(csv_path: str):
         cur.execute("ALTER TABLE games ADD COLUMN venue_text TEXT")
     if "source_venue_id" not in {r[1] for r in cur.execute("PRAGMA table_info(games)")}:
         cur.execute("ALTER TABLE games ADD COLUMN source_venue_id INTEGER")
+    # Additive display-only migration for databases created before per-period
+    # scores. A season fetched before this column existed simply has none.
+    for column in ("home_line_scores", "away_line_scores"):
+        if column not in {r[1] for r in cur.execute("PRAGMA table_info(games)")}:
+            cur.execute(f"ALTER TABLE games ADD COLUMN {column} TEXT")
 
     inserted = 0
     skipped_dupes = 0
@@ -159,9 +164,10 @@ def main(csv_path: str):
                         neutral_site,
                         game_phase,
                         game_phase_check,
-                        venue_text, source_venue_id
+                        venue_text, source_venue_id,
+                        home_line_scores, away_line_scores
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         game_id_val,
@@ -180,6 +186,8 @@ def main(csv_path: str):
                         game_phase_check,
                         norm(row.get("venue")) or None,
                         int(row["venue_id"]) if norm(row.get("venue_id")) else None,
+                        norm(row.get("home_line_scores")) or None,
+                        norm(row.get("away_line_scores")) or None,
                     ),
                 )
 
@@ -193,6 +201,12 @@ def main(csv_path: str):
                     if game_id_val is not None and norm(row.get("venue_id")):
                         cur.execute("UPDATE games SET source_venue_id=? WHERE game_id=? AND source_venue_id IS NULL",
                                     (int(row["venue_id"]), game_id_val))
+                    # A re-fetch is how a season already in the database gains
+                    # its line scores, so fill them in on the duplicate too.
+                    for column in ("home_line_scores", "away_line_scores"):
+                        if game_id_val is not None and norm(row.get(column)):
+                            cur.execute(f"UPDATE games SET {column}=? WHERE game_id=? AND {column} IS NULL",
+                                        (norm(row[column]), game_id_val))
 
             except sqlite3.IntegrityError:
                 skipped_dupes += 1

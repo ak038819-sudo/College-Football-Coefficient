@@ -874,6 +874,11 @@
   }
   .seed-pill.seed-bye { color: var(--amber); font-weight: 600; }
   .rank-table tr.row-dim td { color: var(--ink-dim); }
+  .gp-line { margin: 18px auto 0; width: auto; font-family: var(--font-mono); font-size: 13px; }
+  .gp-line th, .gp-line td { padding: 4px 10px; text-align: right; }
+  .gp-line th[scope="row"] { text-align: left; padding-right: 18px; font-family: var(--font-display); }
+  .gp-line thead th { color: var(--ink-dim); font-weight: 400; font-size: 11px; }
+  .gp-line .gp-line-total { color: var(--amber); font-weight: 700; }
   .elo-table .conf-cell { color: var(--ink-dim); font-size: 13px; }
   .elo-table .conf-cell .team-link-name { font-size: 13px; }
   .elo-table td.last5, .elo-table td.sos, .elo-table td.vsexp { font-family: var(--font-mono); font-size: 12.5px; }
@@ -6219,6 +6224,38 @@ function backLink() {
   return '<a class="back-link" href="' + esc(r) + '">&larr; Back to ' + esc(label) + '</a>';
 }
 
+// The scoring by period, as the games fetcher recorded it ("7-10-3-14", with
+// any further entries being overtimes). Drawn only when both sides have the
+// same number of periods and each side's periods add up to its final score: a
+// line that disagrees with the scoreboard is a line this page will not show.
+function lineScoreRows(detail, game) {
+  if (!detail || !game.completed) return null;
+  const parse = text => {
+    if (typeof text !== 'string' || !text) return null;
+    const parts = text.split('-').map(Number);
+    return parts.length && parts.every(n => Number.isInteger(n) && n >= 0) ? parts : null;
+  };
+  const home = parse(detail.home_line_scores), away = parse(detail.away_line_scores);
+  if (!home || !away || home.length !== away.length || home.length < 4) return null;
+  const total = periods => periods.reduce((sum, n) => sum + n, 0);
+  if (total(home) !== game.home_score || total(away) !== game.away_score) return null;
+  const labels = home.map((_, i) => i < 4 ? String(i + 1) : i === 4 ? 'OT' : (i - 3) + 'OT');
+  return { labels, home, away };
+}
+
+function lineScoreTable(detail, game, awayName, homeName) {
+  const rows = lineScoreRows(detail, game);
+  if (!rows) return '';
+  const head = '<tr><th scope="col"></th>' + rows.labels.map(l => '<th scope="col">' + l + '</th>').join('') +
+    '<th scope="col" class="gp-line-total">T</th></tr>';
+  const row = (name, periods, total) => '<tr><th scope="row">' + esc(name) + '</th>' +
+    periods.map(n => '<td>' + n + '</td>').join('') +
+    '<td class="gp-line-total">' + total + '</td></tr>';
+  return '<table class="gp-table gp-line"><thead>' + head + '</thead><tbody>' +
+    row(awayName, rows.away, game.away_score) + row(homeName, rows.home, game.home_score) +
+    '</tbody></table>';
+}
+
 const _gameDetails = new Map();
 function loadGameDetails(season) {
   if (_gameDetails.has(season)) return Promise.resolve(_gameDetails.get(season));
@@ -6378,6 +6415,8 @@ function hydrateGamePage(version) {
       const home = TEAM_BY_ID.get(String(g.home_id)), away = TEAM_BY_ID.get(String(g.away_id));
       const hn = home ? home.name : 'Unknown team', an = away ? away.name : 'Unknown team';
       document.title = an + (g.neutral ? ' vs. ' : ' at ') + hn + ', ' + season + ' · ' + BASE_TITLE;
+      const d = details && details.byId.get(id);
+      const P = details && details.params;
       const pct = g.p_home == null ? null : probPct(g.p_home);
       const tie = g.completed && g.home_score === g.away_score, homeWon = g.completed && g.home_score > g.away_score;
       const winnerP = g.completed && !tie && g.p_home != null ? (homeWon ? g.p_home : 1 - g.p_home) : null;
@@ -6396,7 +6435,8 @@ function hydrateGamePage(version) {
       const hero = '<div class="panel gp-hero"><div class="gl-top">' + badges.join('') + '<span class="gl-when">' + esc(when) + '</span></div>' +
         '<p class="gp-meta">' + season + ' season · ' + stage + (g.stadium ? ' · Venue: ' + esc(g.stadium) : '') + '</p>' +
         '<div class="gp-board">' + side(away, an, g.away_score, false) + '<div class="gp-mid">' + (g.neutral ? 'vs.' : 'at') +
-        (g.completed ? '' : '<br>win chance') + '</div>' + side(home, hn, g.home_score, true) + '</div></div>';
+        (g.completed ? '' : '<br>win chance') + '</div>' + side(home, hn, g.home_score, true) + '</div>' +
+        lineScoreTable(d, g, an, hn) + '</div>';
 
       const n1 = v => v == null ? '—' : Number(v).toFixed(1);
       const signed = v => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1);
@@ -6411,8 +6451,6 @@ function hydrateGamePage(version) {
       // Every number is still exactly what the old panels showed. A group whose
       // data this game does not have is left out entirely rather than filled
       // with dashes, so the table never widens to say nothing.
-      const d = details && details.byId.get(id);
-      const P = details && details.params;
       const pc = v => v == null ? '—' : Math.round(v * 1000) / 10 + '%';
       const pct1 = v => v == null ? 'N/A' : (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v * 100).toFixed(1) + '%';
       const hasCoe = !!(g.completed && d);
