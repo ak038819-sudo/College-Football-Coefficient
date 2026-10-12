@@ -323,7 +323,7 @@ test('conference standings keeps its selected league in a shareable URL', () => 
   assert.equal(read('#section=rankings&view=elo&conf=Big%2012').conf, null);
   assert.equal(read('#section=rankings&view=conference-standings&conf=' +
     encodeURIComponent('SEC"><script>')).conf, null);
-  assert.equal(read('#section=rankings').subview, 'elo');
+  assert.equal(read('#section=rankings').subview, 'top25');
 });
 
 test('conference standings sorts generated ranks and displays both records', () => {
@@ -391,7 +391,7 @@ test('missing and invalid URLs have deterministic defaults', () => {
   assert.equal(read('#section=nope').section, 'home');
   assert.equal(read('#section=__proto__').section, 'home');
   assert.equal(read('#tab=constructor').section, 'home');
-  assert.equal(read('#section=rankings&view=odds').subview, 'elo');
+  assert.equal(read('#section=rankings&view=odds').subview, 'top25');
   assert.equal(read('#section=playoff&season=1980').year, 2026);
   assert.equal(read('#section=games&season=NaN').year, 2026);
   assert.equal(read('#section=games&season=2025').status, 'completed');
@@ -698,7 +698,7 @@ test('data coverage is a section with no season of its own', () => {
 });
 
 test('an unknown view falls back to the section default, not to a blank page', () => {
-  assert.equal(read('#section=rankings&view=conference-coe3').subview, 'elo');
+  assert.equal(read('#section=rankings&view=conference-coe3').subview, 'top25');
   assert.equal(read('#section=coverage&view=anything').subview, '');
 });
 
@@ -738,7 +738,7 @@ test('the week-by-week view keeps every other rankings URL unchanged', () => {
   }
   // It is reachable, and it is not the default.
   assert.equal(read('#section=rankings&view=elo-weekly').subview, 'elo-weekly');
-  assert.equal(read('#section=rankings').subview, 'elo');
+  assert.equal(read('#section=rankings').subview, 'top25');
 });
 
 test('live scoreboard has a stable section URL with no season selector', () => {
