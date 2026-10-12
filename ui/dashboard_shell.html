@@ -660,7 +660,10 @@
   /* Three Top 25 boards in one row. They drop to two columns and then one as
      the viewport narrows, so a board is never squeezed below a readable width. */
   .rank-boards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
-  @media (max-width: 1080px) { .rank-boards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .rank-boards[data-boards="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* One board alone would stretch a 25-row list across the whole page. */
+  .rank-boards[data-boards="1"] { grid-template-columns: minmax(0, 460px); }
+  @media (max-width: 1080px) { .rank-boards, .rank-boards[data-boards="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 700px) { .rank-boards { grid-template-columns: minmax(0, 1fr); } }
   .board-col { min-width: 0; }
   /* These boards are the view, not a sidebar, so they carry the rank at the
@@ -4896,16 +4899,17 @@ function top25EloBoard() {
 
 // A poll board, with this model's own rank beside each team so the three
 // columns can be read across. Polls are display data: no model reads them.
-function top25PollBoard(key) {
+function pollTitle(key) { return key === 'cfp' ? 'CFP Rankings' : 'AP Top 25'; }
+
+function pollRelease(key) {
   const polls = DATA.polls || {};
-  const release = polls[key];
-  const title = key === 'cfp' ? 'CFP Rankings' : 'AP Top 25';
-  if (state.year !== polls.season || !release?.rows?.length) {
-    return '<div class="panel board-col"><h2 class="section-title">' + title + '</h2><div class="empty-note">' +
-      (state.year === polls.season ? 'No ' + title + ' release available for ' + state.year + '.'
-        : 'Historical ' + title + ' releases for ' + state.year + ' are not included in this export.') +
-      '</div></div>';
-  }
+  return state.year === polls.season ? polls[key] : null;
+}
+
+function top25PollBoard(key) {
+  const release = pollRelease(key);
+  const title = pollTitle(key);
+  if (!release?.rows?.length) return '';
   // Elo rank for the season on screen, which is the poll's season here.
   const eloRank = new Map((DATA.team_elo_by_year[state.year] || []).map((r, i) => [r.team, i + 1]));
   const body = '<ol class="mini-board">' + release.rows.map(([rank, id, school, votes]) => {
@@ -4923,8 +4927,21 @@ function top25PollBoard(key) {
     '. Elo # = this model\u2019s rank, for comparison. Polls do not affect model ratings.</p></div>';
 }
 
+// A poll that has not been released holds a third of the row for weeks, so it
+// is left out rather than drawn empty and the remaining boards take the width.
+// The one line below the row says which poll is missing, so its absence reads
+// as a fact about the season rather than as something gone wrong.
 function renderTop25Boards() {
-  return '<div class="rank-boards">' + top25EloBoard() + top25PollBoard('ap') + top25PollBoard('cfp') + '</div>';
+  const polls = ['ap', 'cfp'];
+  const boards = polls.map(key => top25PollBoard(key)).filter(Boolean);
+  const missing = polls.filter(key => !pollRelease(key)?.rows?.length).map(pollTitle);
+  const current = state.year === (DATA.polls || {}).season;
+  const note = !missing.length ? '' :
+    '<p class="section-note">' + missing.join(' and ') +
+    (current ? (missing.length > 1 ? ' have' : ' has') + ' not been released for ' + state.year + '.'
+             : ' for ' + state.year + (missing.length > 1 ? ' are' : ' is') + ' not in this export.') + '</p>';
+  return '<div class="rank-boards" data-boards="' + (boards.length + 1) + '">' +
+    top25EloBoard() + boards.join('') + '</div>' + note;
 }
 
 // The scope disclaimer belongs on the page, but at the foot of it: a reader

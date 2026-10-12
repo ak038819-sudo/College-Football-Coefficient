@@ -150,6 +150,21 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    const button=[...d.querySelectorAll('.rank-table th button')].find(b=>b.textContent==='Elo');assert.ok(button);button.click();
    assert.equal(button.parentElement.getAttribute('aria-sort'),'descending');
   });
+  await t.test('an unreleased poll gives its width back instead of holding an empty column',async()=>{
+   await route('#section=rankings&view=top25&season=2026',()=>d.querySelector('.rank-boards'));
+   const boards=()=>[...d.querySelectorAll('.rank-boards .board-col')];
+   const now=boards().length;
+   assert.equal(d.querySelector('.rank-boards').dataset.boards,String(now),
+     'the row declares how many boards it holds');
+   assert.ok(boards().every(b=>b.querySelector('.mini-board li')),'no board is drawn empty');
+   // Polls are exported for the current season only, so a past season has none.
+   await route('#section=rankings&view=top25&season=1998',()=>d.querySelector('.rank-boards'));
+   assert.equal(boards().length,1,'a season with no poll shows the Elo board alone');
+   assert.equal(d.querySelector('.rank-boards').dataset.boards,'1');
+   const note=d.querySelector('#content .section-note')?.textContent||'';
+   assert.match(note,/AP Top 25 and CFP Rankings/,'the note names the polls that are missing');
+   assert.match(note,/1998/);
+  });
   await t.test('the Elo page explains each rating, and the detail joins the right team-season',async()=>{
    // The previous subtest may already be on this view, and route() waits for the
    // rendered node to change, so step away first.
