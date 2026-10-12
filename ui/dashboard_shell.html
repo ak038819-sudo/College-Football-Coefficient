@@ -632,6 +632,17 @@
   .mini-board .rk { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); text-align: right; }
   .mini-board .v { font-family: var(--font-mono); font-size: 12px; color: var(--amber); }
   .mini-board .nm { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  /* Three Top 25 boards in one row. They drop to two columns and then one as
+     the viewport narrows, so a board is never squeezed below a readable width. */
+  .rank-boards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  @media (max-width: 1080px) { .rank-boards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 700px) { .rank-boards { grid-template-columns: minmax(0, 1fr); } }
+  .board-col { min-width: 0; }
+  /* These boards are the view, not a sidebar, so they carry the rank at the
+     size every other ranked table uses rather than the sidebar's 11px. */
+  .board-col .mini-board li { grid-template-columns: 2.2em minmax(0, 1fr) auto; font-size: 14.5px; padding: 6px 0; }
+  .board-col .mini-board .rk { font-size: 15px; color: var(--ink); }
+  .board-col .mini-board .v { font-size: 14px; }
   .side-link { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); text-decoration: none; }
   .side-link:hover, .side-link:focus-visible { color: var(--amber); }
   .side-note { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-dim); margin: 8px 0 0; line-height: 1.45; }
@@ -1449,9 +1460,8 @@ let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult
   homeGroup: null, homeTop25: false, homePoll: null };
 const SECTION_LABELS = { people: 'People', stats: 'Stats', home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', accuracy: 'Track Record', coverage: 'Data coverage', methodology: 'How it works' };
 const SUBVIEWS = {
-  rankings: [['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['home-field', 'Home-Field Advantage'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
-    ['conference-coe2', 'Conference CoE 2.0'], ['elo-weekly', 'Week by Week'],
-    ['ap', 'AP'], ['cfp', 'CFP']],
+  rankings: [['elo', 'Elo'], ['top25', 'Top 25'], ['conference-standings', 'Conference Standings'], ['home-field', 'Home-Field Advantage'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
+    ['conference-coe2', 'Conference CoE 2.0'], ['elo-weekly', 'Week by Week']],
   playoff: [['field', 'Field'], ['projection', 'Rest of Season'], ['bracket', 'Bracket & Simulator'], ['odds', 'Title Odds'], ['history', 'History']]
 };
 
@@ -4722,23 +4732,55 @@ document.getElementById('content').addEventListener('input', e => {
     : 'Showing ' + visible + ' of ' + rows.length + ' teams';
 });
 
-function renderRankingPoll(key) {
+// ---- Top 25 boards: Elo, AP and CFP side by side ----
+// Each of these was its own full-width table of 25 short rows, which left most
+// of the page empty and made comparing a team's three ranks a matter of
+// navigating between views. One row of three boards answers the question the
+// page is actually asked: where does this team sit in each.
+function top25EloBoard() {
+  const rows = (DATA.team_elo_by_year[state.year] || []).slice(0, 25);
+  const body = rows.length
+    ? '<ol class="mini-board">' + rows.map((r, i) =>
+        '<li><span class="rk">' + (i + 1) + '</span><span class="nm">' +
+        teamLink(r.team, 'xs') + '</span><span class="v">' + eloValue(r.elo) + '</span></li>').join('') + '</ol>'
+    : '<div class="empty-note">No Elo ratings for ' + state.year + '.</div>';
+  return '<div class="panel board-col">' +
+    panelHead('Elo Top 25', '<a class="side-link" href="' + esc(routeHref({ subview: 'elo' })) + '">All ratings &rarr;</a>') +
+    body + '<p class="side-note">This model\u2019s rating' +
+    (state.year === UPCOMING.season && UPCOMING.ratings_as_of ? ' through ' + esc(UPCOMING.ratings_as_of) : '') +
+    '.</p></div>';
+}
+
+// A poll board, with this model's own rank beside each team so the three
+// columns can be read across. Polls are display data: no model reads them.
+function top25PollBoard(key) {
   const polls = DATA.polls || {};
   const release = polls[key];
-  const title = key === 'ap' ? 'AP Top 25' : 'CFP Rankings';
+  const title = key === 'cfp' ? 'CFP Rankings' : 'AP Top 25';
   if (state.year !== polls.season || !release?.rows?.length) {
-    return '<div class="panel"><h2 class="section-title">' + title + '</h2><p class="empty-note">' +
-      (state.year === polls.season ? 'No ' + title + ' release available for ' + state.year + '.' :
-        'Historical ' + title + ' releases for ' + state.year + ' are not included in this export.') + '</p></div>';
+    return '<div class="panel board-col"><h2 class="section-title">' + title + '</h2><div class="empty-note">' +
+      (state.year === polls.season ? 'No ' + title + ' release available for ' + state.year + '.'
+        : 'Historical ' + title + ' releases for ' + state.year + ' are not included in this export.') +
+      '</div></div>';
   }
-  return '<div class="panel"><h2 class="section-title">' + title + '</h2><p class="section-note">' +
-    polls.season + ' · ' + pollLabel(key, release) + ' · Latest available release. Polls do not affect model ratings.</p>' +
-    '<table class="rank-table"><thead><tr><th scope="col">Rank</th><th scope="col">Team</th><th scope="col" class="num">First-place votes</th></tr></thead><tbody>' +
-    release.rows.map(([rank, id, school, votes]) => {
-      const t = id != null ? TEAM_BY_ID.get(String(id)) : null;
-      return '<tr><td class="rk">' + rank + '</td><td>' + (t ? teamLink(t.name, 'sm', polls.season) : esc(school)) +
-        '</td><td class="num">' + (votes == null ? '—' : votes) + '</td></tr>';
-    }).join('') + '</tbody></table></div>';
+  // Elo rank for the season on screen, which is the poll's season here.
+  const eloRank = new Map((DATA.team_elo_by_year[state.year] || []).map((r, i) => [r.team, i + 1]));
+  const body = '<ol class="mini-board">' + release.rows.map(([rank, id, school, votes]) => {
+    const t = id != null ? TEAM_BY_ID.get(String(id)) : null;
+    const mine = t ? eloRank.get(t.name) : null;
+    return '<li><span class="rk">' + rank + '</span><span class="nm">' +
+      (t ? teamLink(t.name, 'xs') : '<span>' + esc(school) + '</span>') +
+      (votes ? '<span class="fpv">(' + votes + ')</span>' : '') + '</span>' +
+      '<span class="elo-rk">' + (mine ? 'Elo #' + mine : '') + '</span></li>';
+  }).join('') + '</ol>';
+  return '<div class="panel board-col"><h2 class="section-title">' + title + '</h2>' + body +
+    '<p class="side-note">' + pollLabel(key, release) +
+    (key === 'ap' ? ' \u00b7 (n) = first-place votes' : '') +
+    '. Elo # = this model\u2019s rank, for comparison. Polls do not affect model ratings.</p></div>';
+}
+
+function renderTop25Boards() {
+  return '<div class="rank-boards">' + top25EloBoard() + top25PollBoard('ap') + top25PollBoard('cfp') + '</div>';
 }
 
 function playoffTitle() {
@@ -7299,7 +7341,7 @@ function render() {
   else if (state.section === 'rankings') {
     const views = { elo: renderElo, 'conference-standings': renderConferenceStandings, 'home-field': renderHomeFieldStandings, 'conference-elo': renderConferenceElo, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferences,
       'conference-coe2': renderConferenceCoe2, 'elo-weekly': renderEloWeekly,
-      ap: () => renderRankingPoll('ap'), cfp: () => renderRankingPoll('cfp') };
+      top25: renderTop25Boards };
     content.innerHTML = '<h2 class="view-title">Standings</h2>' + views[state.subview]();
     if (state.subview === 'conference-standings') hydrateConferenceStandings(version);
     if (state.subview === 'elo-weekly') hydrateEloWeekly(version);
