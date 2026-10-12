@@ -314,6 +314,7 @@
   .matchup-actions button { background: var(--panel-2); color: var(--ink); padding: 8px 12px; border: 1px solid var(--line); border-radius: 3px; cursor: pointer; }
   @media (max-width: 520px) { .matchup-board { gap: 6px; } .matchup-controls { grid-template-columns: 1fr; } .matchup-controls .venue-control { grid-column: 1; } }
   .section-note { color: var(--ink-dim); font-size: 13px; line-height: 1.5; margin: 0 0 16px; }
+  .playoff-disclaimer { margin: 24px 0 0; }
   .stat-partial { color: var(--amber); cursor: help; text-decoration: none;
                   border: 0; font-size: 12px; }
   #content, .panel { min-width: 0; }
@@ -2026,7 +2027,7 @@ function runSimulationAndAnimate() {
   if (!pf) return;
   state.simResult = runBracketSimulation(pf);
   state.simYear = state.year;
-  document.getElementById('content').innerHTML = playoffIntro() + renderBracket();
+  document.getElementById('content').innerHTML = playoffTitle() + renderBracket() + playoffDisclaimer();
   revealBracketSequence();
 }
 
@@ -4740,8 +4741,14 @@ function renderRankingPoll(key) {
     }).join('') + '</tbody></table></div>';
 }
 
-function playoffIntro() {
-  return '<h2 class="view-title">Playoff</h2><p class="section-note">CoE model postseason. Fields, brackets, title odds, and history reflect this project\'s model, not official CFP results.</p>';
+function playoffTitle() {
+  return '<h2 class="view-title">Playoff</h2>';
+}
+// The scope disclaimer belongs on the page, but at the foot of it: a reader
+// scanning a bracket does not need it before the bracket, and a reader who
+// wants to know what they just read does.
+function playoffDisclaimer() {
+  return '<p class="section-note playoff-disclaimer">CoE model postseason. Fields, brackets, title odds, and history reflect this project\'s model, not official CFP results.</p>';
 }
 
 // ---------------- Rating ledger (Milestone D) ----------------
@@ -7299,7 +7306,8 @@ function render() {
     if (state.subview === 'elo') hydrateRatingFreshness(version);
   } else if (state.section === 'playoff') {
     const views = { field: renderField, projection: renderProjection, bracket: renderBracket, odds: renderOdds, history: renderHistory };
-    content.innerHTML = routeSelect('Playoff view', SUBVIEWS.playoff, state.subview) + playoffIntro() + views[state.subview]();
+    content.innerHTML = routeSelect('Playoff view', SUBVIEWS.playoff, state.subview) + playoffTitle() +
+      views[state.subview]() + playoffDisclaimer();
     // A simulation restored after navigating away should already be visible.
     content.querySelectorAll('.bracket-round-col.pending').forEach(el => el.classList.remove('pending'));
   }
