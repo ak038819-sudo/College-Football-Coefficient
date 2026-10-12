@@ -49,9 +49,9 @@ SQUARE = """
 OG = """
 <div class="card">
   <div class="mark">{mark}</div>
-  <h1>Seed Line <span>Sports</span></h1>
-  <p>Elo and opponent-strength ratings, playoff seeding and bracket odds
-     for 46 seasons of college football.</p>
+  <h1>Elo<span>cast</span></h1>
+  <p>Real time sports intelligence. Elo and opponent-strength ratings,
+     playoff seeding and bracket odds for 46 seasons of college football.</p>
 </div>
 """
 
