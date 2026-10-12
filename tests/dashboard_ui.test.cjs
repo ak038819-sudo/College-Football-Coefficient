@@ -150,6 +150,37 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    const button=[...d.querySelectorAll('.rank-table th button')].find(b=>b.textContent==='Elo');assert.ok(button);button.click();
    assert.equal(button.parentElement.getAttribute('aria-sort'),'descending');
   });
+  await t.test('the Elo page explains each rating, and the detail joins the right team-season',async()=>{
+   // The previous subtest may already be on this view, and route() waits for the
+   // rendered node to change, so step away first.
+   await route('#section=rankings&view=top25&season=2026',()=>d.querySelector('.rank-boards'));
+   await route('#section=rankings&view=elo&season=2026',()=>d.querySelector('.elo-table tbody tr'));
+   await until(w,()=>[...d.querySelectorAll('.elo-table .sos')].every(c=>c.textContent.trim()!=='\u2026'));
+   const rows=[...d.querySelectorAll('.elo-table tbody tr')];
+   assert.ok(rows.length>100,'the Elo page lists every rated team');
+   assert.deepEqual([...d.querySelectorAll('.elo-table thead th')].map(th=>th.textContent.trim()),
+     ['#','Team','Conf','Record','Elo','Last 5','SOS','vs Exp']);
+   for (const cls of ['.last5','.sos','.vsexp'])
+     assert.ok(rows.every(r=>r.querySelector(cls).textContent.trim()!=='\u2026'),cls+' fills in');
+   assert.ok(rows.every(r=>{const text=r.querySelector('.conf-cell').textContent.trim();
+     return text && text!=='\u2026';}),'every team shows a conference or an explicit dash');
+   // Each team-season carries its own schedule-strength rank, so the column must
+   // be a permutation: a join that borrowed another team's or another season's
+   // row would repeat one and drop another.
+   const ranks=rows.map(r=>Number(r.querySelector('.sos .fpv').textContent.replace('#','')));
+   assert.deepEqual([...ranks].sort((a,b)=>a-b),ranks.map((_,i)=>i+1),'SOS ranks are 1..N exactly once');
+   // And the number itself must be the one the team page shows for that team.
+   const target=rows[3];
+   const name=target.querySelector('.team-link-name').textContent.trim();
+   const sos=target.querySelector('.sos').textContent.replace(/\s+/g,' ').trim();
+   await route('#team='+encodeURIComponent(name)+'&season=2026&tab=analytics',
+     ()=>/Strength of schedule/i.test(d.querySelector('#content').textContent));
+   const stat=[...d.querySelectorAll('.team-stat')].find(el=>/Strength of schedule/i.test(el.querySelector('.lbl')?.textContent||''));
+   assert.ok(stat,'the team page shows a strength of schedule for '+name);
+   const expected=stat.querySelector('.val').textContent.trim()+' #'+
+     stat.querySelector('.sub').textContent.trim().match(/#(\d+)/)[1];
+   assert.equal(sos,expected,'the Elo page and the team page disagree on '+name+'\u2019s schedule');
+  });
   await t.test('a ranking board carries each team\'s record, and it agrees with the team page',async()=>{
    await route('#section=rankings&view=top25&season=2026',()=>d.querySelector('.rank-boards .mini-board'));
    const rows=[...d.querySelectorAll('.rank-boards .board-col:first-child .mini-board li')];

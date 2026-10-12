@@ -871,6 +871,17 @@
   }
   .seed-pill.seed-bye { color: var(--amber); font-weight: 600; }
   .rank-table tr.row-dim td { color: var(--ink-dim); }
+  .elo-table .conf-cell { color: var(--ink-dim); font-size: 13px; }
+  .elo-table .conf-cell .team-link-name { font-size: 13px; }
+  .elo-table td.last5, .elo-table td.sos, .elo-table td.vsexp { font-family: var(--font-mono); font-size: 12.5px; }
+  /* On a phone the rating is what the page is for, so it has to be on screen
+     without a sideways scroll. Conference is the column a reader can most
+     easily do without; the rest still scrolls. */
+  @media (max-width: 520px) {
+    .elo-table th:nth-child(3), .elo-table td:nth-child(3) { display: none; }
+    .elo-table td, .elo-table th { padding: 6px 5px; font-size: 13px; }
+    .elo-table .logo-chip { width: 20px; height: 20px; }
+  }
 
   .bslot.filled { background: var(--panel-2); border-left: 3px solid var(--green-hl); }
 
@@ -1655,15 +1666,92 @@ function renderConferenceCoe2() {
     '.</p></div>';
 }
 
+// The page the model is named after. The rating alone does not say how a team
+// earned it, so each row also carries who it played (conference, schedule
+// strength) and how the season has gone (record, recent movement, wins against
+// the pregame expectation). The single best and worst result stay on the team
+// page, where the rating ledger already explains each game.
+const ELO_COLUMNS = ['Team', 'Conf', 'Record', 'Elo', 'Last 5', 'SOS', 'vs Exp'];
+
+function eloHead() {
+  return '<thead><tr><th scope="col" class="rank-col">#</th>' +
+    ELO_COLUMNS.map((label, i) => '<th scope="col"' + (i >= 2 ? ' class="num"' : '') + '>' + label + '</th>').join('') +
+    '</tr></thead>';
+}
+
 function renderElo() {
-  const rows = (DATA.team_elo_by_year[state.year] || []).map(r => ({ name: r.team, value: r.elo, change: r.change }));
+  const rows = DATA.team_elo_by_year[state.year] || [];
   if (!rows.length) return '<div class="empty-note">No Elo data for this season.</div>';
+  const body = rows.map((r, i) => {
+    const team = TEAM_BY_NAME.get(r.team);
+    const conf = team && (state.year === LATEST_SEASON ? team.conference : null);
+    const rec = seasonRecord(r.team, state.year);
+    return '<tr data-elo-row="' + esc(team ? String(team.id) : '') + '">' +
+      '<td class="rk">' + (i + 1) + '</td>' +
+      '<td><div class="name-cell">' + teamLink(r.team, 'xs') + '</div></td>' +
+      '<td class="conf-cell" data-sort="">' + (conf ? conferenceLink(conf, null, state.year) : '\u2026') + '</td>' +
+      '<td class="num" data-sort="' + (rec ? rec.split('\u2013')[0] : '') + '">' + (rec || '—') + '</td>' +
+      '<td class="num coe-val" data-sort="' + Number(r.elo) + '">' + eloValue(r.elo) +
+        eloChangeMarkup(r.change, r.name) + '</td>' +
+      '<td class="num last5" data-sort="">…</td>' +
+      '<td class="num sos" data-sort="">…</td>' +
+      '<td class="num vsexp" data-sort="">…</td></tr>';
+  }).join('');
   return '<div class="panel"><h2 class="section-title">Elo Rating · ' + state.year + '</h2>' +
     '<p class="section-note">Published rating' + (state.year === UPCOMING.season && UPCOMING.ratings_as_of
       ? ' through ' + esc(UPCOMING.ratings_as_of) : ' within the selected season') +
-      '. Arrows show each team’s most recent game in that export, not a change in rank.</p>' +
+      '. SOS is the average pregame Elo of the opponents faced; vs Exp is wins above the pregame expectation. ' +
+      'Arrows show each team’s most recent game in that export, not a change in rank.</p>' +
     (state.year === UPCOMING.season ? '<p class="rating-freshness" id="rating-freshness" role="status"></p>' : '') +
-    rankTable(rows, 'value', 'Team', 'Elo', 'team', eloValue) + '</div>';
+    '<div class="table-scroll"><table class="rank-table elo-table">' + eloHead() +
+    '<tbody>' + body + '</tbody></table></div></div>';
+}
+
+// Conference, schedule strength, recent movement and wins-above-expectation all
+// live in team_pages.js, the same export a team page opens. It is fetched once
+// and cached, so the table paints from the inline data first and fills in.
+function hydrateEloDetail(version) {
+  const table = document.querySelector('.elo-table');
+  if (!table) return;
+  const season = state.year;
+  loadTeamPages().then(tp => {
+    if (version !== renderVersion) return;
+    const signedCell = (cell, value, digits) => {
+      cell.dataset.sort = String(value);
+      cell.textContent = signed(value, digits);
+      cell.classList.add(value > 0 ? 'pos' : value < 0 ? 'neg' : 'flat');
+    };
+    for (const row of table.tBodies[0].rows) {
+      const id = Number(row.dataset.eloRow);
+      const season_ = (tp.seasonsByTeam.get(id) || new Map()).get(season);
+      // A rated team with no membership row for the season -- an FCS program the
+      // model carries a rating for -- gets a dash, not an empty cell.
+      const confCell = row.querySelector('.conf-cell');
+      if (confCell.textContent.trim() === '\u2026')
+        confCell.innerHTML = season_?.conf ? conferenceLink(season_.conf, null, season) : '\u2014';
+      confCell.dataset.sort = '';
+      const last5 = row.querySelector('.last5'), sos = row.querySelector('.sos'), vsexp = row.querySelector('.vsexp');
+      const games = (tp.eloByTeam.get(id) || []).filter(g => tp.gamesById.get(g.gid)?.season === season);
+      if (games.length) {
+        const recent = games.slice(-5);
+        signedCell(last5, recent.reduce((sum, g) => sum + g.chg, 0), 1);
+        last5.title = recent.length + (recent.length === 1 ? ' game' : ' games');
+      } else { last5.textContent = '—'; last5.dataset.sort = ''; }
+      if (season_) {
+        sos.dataset.sort = String(season_.sos);
+        sos.innerHTML = eloValue(season_.sos) + ' <small class="fpv">#' + season_.sosRank + '</small>';
+        signedCell(vsexp, season_.aboveExp, 1);
+      } else {
+        sos.textContent = '—'; sos.dataset.sort = '';
+        vsexp.textContent = '—'; vsexp.dataset.sort = '';
+      }
+    }
+  }).catch(() => {
+    if (version !== renderVersion) return;
+    table.querySelectorAll('.last5, .sos, .vsexp').forEach(cell => {
+      cell.textContent = '—'; cell.dataset.sort = '';
+    });
+  });
 }
 
 function renderHomeFieldStandings() {
@@ -7398,7 +7486,7 @@ function render() {
     content.innerHTML = views[state.subview]();
     if (state.subview === 'conference-standings') hydrateConferenceStandings(version);
     if (state.subview === 'elo-weekly') hydrateEloWeekly(version);
-    if (state.subview === 'elo') hydrateRatingFreshness(version);
+    if (state.subview === 'elo') { hydrateRatingFreshness(version); hydrateEloDetail(version); }
   } else if (state.section === 'playoff') {
     const views = { field: renderField, projection: renderProjection, bracket: renderBracket, odds: renderOdds, history: renderHistory };
     content.innerHTML = routeSelect('Playoff view', SUBVIEWS.playoff, state.subview) +
