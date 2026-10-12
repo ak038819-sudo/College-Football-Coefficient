@@ -18,6 +18,18 @@ Goal: friends can open this site as their first stop for college football scores
 
 The paid CFBD Tier 2 subscription supports the current work. Evaluate Tier 3 only with a concrete feature and traffic plan that uses its additional data and limits; do not upgrade solely because the site has moved hosting.
 
+## Standings and rankings
+
+Top 25 is the Standings landing page as of 2026-10-12: Elo, AP and CFP as three
+boards in one row. The full Elo view behind "All ratings" is still only a team,
+a rating and a change arrow for all 138 teams, which is thin for the page the
+model is named after.
+
+- Add detail to the Elo page: record, conference, movement over a window rather
+  than one game, strength of schedule, and the best and worst results that
+  built the rating. Decide what belongs there versus on a team page, since a
+  team page already carries the rating ledger.
+
 ## Distant future: an installable app
 
 After the mobile site and live data experience are dependable, start with a progressive web app for home-screen install and caching. Consider native iOS/Android apps when notifications, widgets, or platform features justify maintaining separate clients. The app should share the same scores, identity system, and backend rather than duplicating game logic.
