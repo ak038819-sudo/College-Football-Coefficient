@@ -314,6 +314,7 @@
   .matchup-actions button { background: var(--panel-2); color: var(--ink); padding: 8px 12px; border: 1px solid var(--line); border-radius: 3px; cursor: pointer; }
   @media (max-width: 520px) { .matchup-board { gap: 6px; } .matchup-controls { grid-template-columns: 1fr; } .matchup-controls .venue-control { grid-column: 1; } }
   .section-note { color: var(--ink-dim); font-size: 13px; line-height: 1.5; margin: 0 0 16px; }
+  .playoff-disclaimer { margin: 24px 0 0; }
   .stat-partial { color: var(--amber); cursor: help; text-decoration: none;
                   border: 0; font-size: 12px; }
   #content, .panel { min-width: 0; }
@@ -2026,7 +2027,7 @@ function runSimulationAndAnimate() {
   if (!pf) return;
   state.simResult = runBracketSimulation(pf);
   state.simYear = state.year;
-  document.getElementById('content').innerHTML = playoffIntro() + renderBracket();
+  document.getElementById('content').innerHTML = playoffTitle() + renderBracket() + playoffDisclaimer();
   revealBracketSequence();
 }
 
@@ -2290,7 +2291,7 @@ function teamExtremes(team) {
     const ordered=points.slice().sort((a,b)=>a.value-b.value),best=points.slice().sort((a,b)=>a.rank-b.rank),value=p=>format(p.value)+' ('+p.year+')';
     return '<tr><th scope="row">'+label+'</th><td>'+value(ordered.at(-1))+'</td><td>'+value(ordered[0])+'</td><td>#'+best[0].rank+' ('+best[0].year+')</td><td>#'+best.at(-1).rank+' ('+best.at(-1).year+')</td></tr>';
   }).join('');
-  return '<section class="panel team-section"><h2>Program highs and lows</h2><p class="section-note">Season snapshots across the available archive; the current season is in progress. Equal records show one matching season.</p><table><thead><tr><th>Rating</th><th>Highest</th><th>Lowest</th><th>Best rank</th><th>Lowest rank</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
+  return '<section class="panel team-section"><h2>Program highs and lows</h2><table><thead><tr><th>Rating</th><th>Highest</th><th>Lowest</th><th>Best rank</th><th>Lowest rank</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
 }
 
 // The record beside a team's name, and what the ratings were allowed to see.
@@ -3200,12 +3201,11 @@ function renderMatchups() {
 
   }
   return '<div class="panel"><h2 class="view-title">Hypothetical matchup</h2>' +
-    '<p class="section-note">Pick two teams and a venue. Win chances use the current exported Elo ratings and the ' +
+    '<p class="section-note">Win chances use the current exported Elo ratings and the ' +
     'same home-field and probability formula as scheduled-game predictions. ' +
     (UPCOMING.ratings_as_of ? 'Ratings through ' + esc(UPCOMING.ratings_as_of) + '. ' : '') +
     'This is a pregame what-if, not a forecast of score or postgame Elo.</p>' + controls + result +
-    '<div class="matchup-actions"><button id="matchup-swap" type="button">Swap teams</button>' +
-    '<span class="section-note">The address updates as you choose, so you can share this matchup.</span></div></div>';
+    '<div class="matchup-actions"><button id="matchup-swap" type="button">Swap teams</button></div></div>';
 }
 
 // One rounding rule everywhere: round the home side, give the away side the exact
@@ -3618,7 +3618,7 @@ function fillTeamStatistics(team) {
       const fields=[...new Set(Object.values(TEAM_STAT_CATEGORIES).flat())].filter(k=>teamRow[k]!=null);
       body='<table><thead><tr><th>Statistic</th><th>'+season+'</th></tr></thead><tbody>'+fields.map(k=>'<tr><th scope="row">'+esc(CfbStats.labels[k]||k)+'</th><td>'+statCell(k,teamRow[k])+'</td></tr>').join('')+'</tbody></table>';
     }
-    target.innerHTML=head+(body||'<p>No recorded statistics for this team and season.</p>')+'<p class="section-note">Completed FBS games. Player totals cover recorded category box scores.</p>';
+    target.innerHTML=head+(body||'<p>No recorded statistics for this team and season.</p>');
     document.getElementById('tp-stats-season').addEventListener('change',e=>{teamPageState.statSeason=Number(e.target.value);fillTeamStatistics(team);});
     wrapWideTables();
   }).catch(()=>{if(version===renderVersion&&seq===teamStatisticsSeq)target.innerHTML=head+'<p>Statistics could not be loaded.</p>';});
@@ -3626,7 +3626,6 @@ function fillTeamStatistics(team) {
 
 function renderTeamDirectory() {
   return teamsSwitch('') + '<div class="panel"><h2 class="view-title">Teams</h2>' +
-    '<p class="section-note">Browse every program in this dataset. Conference labels show each team\'s latest available membership.</p>' +
     '<form class="directory-form" id="directory-form"><label for="team-query">Search by team name or alias</label>' +
     '<input type="search" id="team-query" name="q" maxlength="150" placeholder="BYU, Florida Atlantic, Miami…" value="' + esc(state.query) + '">' +
     '<button class="action-button" type="submit">Search</button>' +
@@ -3740,9 +3739,7 @@ function stadiumDetails(s) {
     '<p class="section-note">Games here are linked by resolved physical venue. The home-field estimates below ' +
     'measure each team’s qualifying home games across venues, not this stadium alone; they are analysis only.</p>' +
     hfa + games('Upcoming here', s.upcoming || [], 'No upcoming FBS games with this verified venue.') +
-    games('Recent games here', s.recent || [], 'No completed FBS games linked to this venue yet.') +
-    '<p class="section-note">' + Number(s.completed_count || 0) + ' completed games linked in the archive. ' +
-    'Older schedules may lack a resolvable venue, so this is not a complete all-time total.</p></div>';
+    games('Recent games here', s.recent || [], 'No completed FBS games linked to this venue yet.') + '</div>';
 }
 function stadiumExplorerHtml(data, selected) {
   const stadiums = data.stadiums || [];
@@ -3752,11 +3749,7 @@ function stadiumExplorerHtml(data, selected) {
   }
   if (!stadiums.length) return '<div class="panel"><h2 class="view-title">Stadium Explorer</h2>' +
     '<p class="empty-note">Stadium data will appear after the next full data build.</p></div>';
-  const withCoords = stadiums.filter(s => s.lat != null && s.lon != null).length;
   return '<div class="panel"><h2 class="view-title">Stadium Explorer</h2>' +
-    '<p class="section-note">Explore the homes of FBS football. ' + withCoords + ' of ' + stadiums.length +
-    ' listed venues have verified coordinates. Dots show location, not home-field strength; ' +
-    'the list includes venues without coordinates and is searchable.</p>' +
     '<div class="stadium-layout"><div>' + stadiumMap(stadiums, null) + '</div>' +
     '<div><label for="stadium-search">Find a stadium or team</label><input class="stadium-search" id="stadium-search" type="search" autocomplete="off">' +
     '<p class="section-note" id="stadium-count" role="status">Showing all ' + stadiums.length + ' stadiums</p>' +
@@ -3790,8 +3783,7 @@ function renderConferenceDirectory() {
     ? '<h3 class="an-title">' + label + '</h3><ul class="directory-grid">' + list.map(card).join('') + '</ul>' : '';
   return '<div class="panel"><h2 class="section-title">Conferences</h2>' +
     '<p class="section-note">' + hits.length + ' conference' + (hits.length === 1 ? '' : 's') +
-    (state.query ? ' matching \u201c' + esc(state.query) + '\u201d' : ' in this dataset') +
-    '. A conference page shows its members, historical CoE and record against the outside world.</p>' +
+    (state.query ? ' matching \u201c' + esc(state.query) + '\u201d' : '') + '</p>' +
     (hits.length
       ? group('In ' + LATEST_SEASON, hits.filter(c => c.last === LATEST_SEASON)) +
         group('Historical', hits.filter(c => c.last !== LATEST_SEASON))
@@ -4196,10 +4188,14 @@ function hydrateLiveScores(version) {
       liveSnapshot = { ...data, games: slate.games };
       const stamp = data.updated_at ? new Date(data.updated_at) : null;
       const validStamp = stamp && !Number.isNaN(stamp.getTime());
-      const age = validStamp ? Date.now() - stamp.getTime() : Infinity;
-      status.textContent = (slate.label ? 'Showing ' + slate.label + ' schedule · ' : '') + (validStamp
-        ? 'Scores fetched ' + stamp.toLocaleString() + feedAgeNote(age)
-        : 'Live feed is not active yet.');
+      // A fresh feed says nothing: the week picker names the slate and the
+      // cards carry their own state. A stale one has to say so. A failed or
+      // delayed refresh leaves the last good snapshot published with a
+      // perfectly valid timestamp, so silence here would show hours-old
+      // in-progress scores as if they were current.
+      const stale = validStamp ? feedAgeLabel(Date.now() - stamp.getTime()) : '';
+      status.textContent = !validStamp ? 'Live feed is not active yet.'
+        : stale ? 'Scoreboard is ' + stale : '';
       paintLiveGames();
       if (state.section === 'home') hydrateHomeDiscovery(version);
       board.innerHTML = renderLiveBoard(slate.games);
@@ -4315,16 +4311,16 @@ function playerBoxscorePanel(teams, updated, checked, rosterData) {
       (c.type && c.type !== c.name ? ' · ' + esc(c.type) : '') + '</h3>' + lines + '</div>';
     }).join('') + '</section>';
   });
-  return '<div class="panel"><h2 class="section-title">Player box score</h2>' +
-    '<p class="section-note">From CFBD.' +
-    (timestamp(updated) ? ' Player stats updated ' + esc(timestamp(updated)) + '.' : '') +
-    ' Availability and timing vary by game.' +
-    (attributed ? ' A line CFBD numbers with an athlete id links to that person because ' +
+  // How a line became a link is a rule a reader needs to judge the links; where
+  // nothing linked there is no rule to state, so the note is left out entirely.
+  const linkRule = (attributed ? 'A line CFBD numbers with an athlete id links to that person because ' +
       'the source says whose line it is.' : '') +
-    (linked ? (attributed ? ' An unnumbered line links' : ' A name links') +
+    (linked ? (attributed ? ' An unnumbered line links' : 'A name links') +
       ' where the name matches exactly one player on that school\u2019s roster for this ' +
       'season, which is this project\u2019s own inference rather than the source\u2019s; a ' +
-      'shared name is left unlinked rather than guessed at.' : '') + '</p>' +
+      'shared name is left unlinked rather than guessed at.' : '');
+  return '<div class="panel"><h2 class="section-title">Player box score</h2>' +
+    (linkRule ? '<p class="section-note">' + linkRule + '</p>' : '') +
     '<div class="live-player-grid">' + groups.join('') + '</div></div>';
 }
 function liveEloPanel(g) {
@@ -4355,14 +4351,20 @@ function liveEloPanel(g) {
 // than left to subtract timestamps. Under ten minutes it says nothing: that is
 // the cadence working.
 function feedAgeNote(ms) {
+  const label = feedAgeLabel(ms);
+  return label ? ' · ' + label : '';
+}
+// The age on its own, for a line that is nothing but the warning. Empty under
+// ten minutes: that is the cadence working, and there is nothing to say.
+function feedAgeLabel(ms) {
   if (!Number.isFinite(ms) || ms < 10 * 60 * 1000) return '';
   const minutes = Math.round(ms / 60000);
   // Minutes all the way to two hours, so the boundary is exact: calling 90
   // minutes "2 hours" reads as wrong to anybody who can see the timestamp
   // beside it, and calling it "1 hour" understates the staleness.
-  if (minutes < 120) return ' · ' + minutes + ' min old';
+  if (minutes < 120) return minutes + ' min old';
   const hours = Math.round(minutes / 60);
-  return ' · ' + hours + (hours === 1 ? ' hour' : ' hours') + ' old, newer scores may exist';
+  return hours + (hours === 1 ? ' hour' : ' hours') + ' old, newer scores may exist';
 }
 function liveDetail(g) {
   const stamp = liveSnapshot?.updated_at ? new Date(liveSnapshot.updated_at) : null;
@@ -4409,8 +4411,7 @@ function liveDetail(g) {
     '<div class="panel"><h2 class="section-title">Game information</h2><p>' +
     esc(liveLabel(g)) + (g.tv ? ' · ' + esc(g.tv) : '') +
     ((g.venue || UPCOMING_BY_ID.get(g.id)?.venue) ? ' · ' + esc(g.venue || UPCOMING_BY_ID.get(g.id).venue) : '') +
-    '</p><p class="section-note">' +
-    'Scores refresh when CFBD updates its feed. Historical results and official ratings update on their own schedule.</p></div></div>' +
+    '</p></div></div>' +
     livePlayerPanel(g);
 }
 function hydrateLiveGamePage(version) {
@@ -4466,7 +4467,6 @@ document.addEventListener('visibilitychange', refreshVisibleLive);
 
 function renderGames() {
   if (state.finder) return '<div class="panel"><h2 class="view-title">Find a Game</h2>' +
-    '<p class="section-note">Choose a team, then add an opponent to find their meetings across every season. The season is optional.</p>' +
     '<div id="games-filters" class="games-filters"><p class="empty-note">Loading teams…</p></div>' +
     '<div id="games-results" aria-live="polite"></div></div>';
   const status = [['upcoming', 'Upcoming'], ['completed', 'Completed'], ['all', 'All games']].map(([value, label]) =>
@@ -4741,8 +4741,14 @@ function renderRankingPoll(key) {
     }).join('') + '</tbody></table></div>';
 }
 
-function playoffIntro() {
-  return '<h2 class="view-title">Playoff</h2><p class="section-note">CoE model postseason. Fields, brackets, title odds, and history reflect this project\'s model, not official CFP results.</p>';
+function playoffTitle() {
+  return '<h2 class="view-title">Playoff</h2>';
+}
+// The scope disclaimer belongs on the page, but at the foot of it: a reader
+// scanning a bracket does not need it before the bracket, and a reader who
+// wants to know what they just read does.
+function playoffDisclaimer() {
+  return '<p class="section-note playoff-disclaimer">CoE model postseason. Fields, brackets, title odds, and history reflect this project\'s model, not official CFP results.</p>';
 }
 
 // ---------------- Rating ledger (Milestone D) ----------------
@@ -4944,9 +4950,7 @@ function renderAccuracy() {
       'toward a perfect forecast' : '') + '.</p>';
   html += '<p class="section-note">Every prediction scored here was read back out of the ' +
     'database as it stood <i>before</i> the game it predicted, never recomputed afterwards, so a ' +
-    'rating formed by a result can never be scored against it. The figures are regenerated by ' +
-    '<code>src/run_validation.py</code> on every refresh of the site, so this page moves when ' +
-    'the model does, including when it moves the wrong way.' +
+    'rating formed by a result can never be scored against it.' +
     (ACCURACY.fingerprint ? ' This run: <code>' + esc(ACCURACY.fingerprint) + '</code>.' : '') +
     '</p></div>';
 
@@ -5058,19 +5062,13 @@ function renderCoverage() {
       '<td class="tl"><span class="dim">' + esc(d.source) + '</span> \u2014 ' + esc(note) + '</td></tr>';
   }).join('');
   return '<h2 class="view-title">Data coverage</h2>' +
-    '<div class="panel"><p class="section-note">Every season carries a different amount of data. This page is ' +
-      'counted from the database each time the site is built, so an absent metric can say <b>why</b> it is absent ' +
-      'instead of being drawn as a zero. Each cell below is how many of that season\u2019s units have the data, ' +
-      'out of how many could.</p>' +
+    '<div class="panel">' +
     '<h3 class="an-title">By source, across ' + seasons[0] + '\u2013' + seasons[seasons.length - 1] + '</h3>' +
     '<div class="table-scroll" tabindex="0" role="region" aria-label="Coverage summary by source">' +
     '<table class="cov-table"><thead><tr><th scope="col">Data</th><th scope="col">Complete</th>' +
     '<th scope="col">Partial</th><th scope="col">None</th><th scope="col">Where it comes from</th>' +
     '</tr></thead><tbody>' + summary + '</tbody></table></div>' +
-    '<h3 class="an-title">By season</h3>' + coverageTableHtml() +
-    '<p class="section-note">Counted by <code>src/coverage.py</code> from the same database that produced every ' +
-      'rating on this site. See <a href="' + esc(routeHref({ section: 'methodology', subview: '' })) +
-      '">How it works</a> for what the numbers themselves mean.</p></div>';
+    '<h3 class="an-title">By season</h3>' + coverageTableHtml() + '</div>';
 }
 
 // ---------------- Methodology (Milestone D) ----------------
@@ -5158,9 +5156,7 @@ function renderMethodology() {
     '<p>Every season carries a different amount of data, and the site says so rather than drawing an absence as a zero. ' +
       'A metric that was never collected for an era reads <i>N/A</i> with the reason; a season that is only partly covered ' +
       'shows how much of it is. <a href="' + esc(CfbNavigation.hashFor({ ...state, section: 'coverage', subview: '' })) +
-      '">Data coverage</a> has the full count, season by season and source by source.</p>' +
-    '<p class="section-note">These parameters and the coverage above are read from the model\'s configuration, code and database ' +
-      'each time the site is built, so this page always describes the model and the data that produced the numbers you see.</p></div>';
+      '">Data coverage</a> has the full count, season by season and source by source.</p></div>';
 }
 
 // ---------------- Player and coach pages (v0.1.1) ----------------
@@ -6008,7 +6004,7 @@ function gameVenuePanel(g, homeName) {
     'not a stadium-specific value, and it is not used in the live win chance. ' +
     '<a href="#section=rankings&view=home-field">See the evidence</a>.</p>' : '';
   return '<div class="panel"><h2 class="section-title">Where it’s played</h2><p>' + venue + '</p>' +
-    '<p class="section-note">' + model + ' Physical venue and designated home team are separate fields.</p>' +
+    '<p class="section-note">' + model + '</p>' +
     experimental + '</div>';
 }
 function backLink() {
@@ -6132,8 +6128,7 @@ function storyPlayerLeaders(teams, season, rosterData) {
       'Player lines are not available for this game yet.') + '</p>';
   return '<h3>Player leaders</h3><div class="story-grid">' + leaders.map(line =>
     '<div class="story-item"><small>' + line.label + '</small><strong>' + (rosterData ? boxScoreLineCell(line, boxScoreNameLookup(rosterData,line.team), rosterIdSet(rosterData,TEAM_BY_NAME.get(line.team)?.id)).html : esc(line.name)) +
-    '</strong><p>' + esc(line.team) + ' · ' + line.yards + ' yards</p></div>').join('') + '</div>' +
-    '<p class="section-note">Leaders shown from available CFBD player box scores.</p>';
+    '</strong><p>' + esc(line.team) + ' · ' + line.yards + ' yards</p></div>').join('') + '</div>';
 }
 function seriesShard(a, b) {                     // must match export_static_data.series_shard()
   const lo = Math.min(a, b), hi = Math.max(a, b);
@@ -7147,7 +7142,6 @@ document.addEventListener('change',e=>{
 
 function renderStats() {
   return '<div class="panel"><h2 class="view-title">Stats · ' + esc(state.subview === 'overview' ? 'National leaders' : state.subview === 'teams' ? 'Team statistics' : 'Player statistics') + '</h2>' +
-    '<p class="section-note">Counting stats from recorded completed FBS-vs-FBS games. Missing values remain unavailable. Player games count appearances in recorded category box scores.</p>' +
     '<div id="stats-body" aria-live="polite">Loading ' + state.year + ' statistics…</div></div>';
 }
 function hydrateStats(version) {
@@ -7312,7 +7306,8 @@ function render() {
     if (state.subview === 'elo') hydrateRatingFreshness(version);
   } else if (state.section === 'playoff') {
     const views = { field: renderField, projection: renderProjection, bracket: renderBracket, odds: renderOdds, history: renderHistory };
-    content.innerHTML = routeSelect('Playoff view', SUBVIEWS.playoff, state.subview) + playoffIntro() + views[state.subview]();
+    content.innerHTML = routeSelect('Playoff view', SUBVIEWS.playoff, state.subview) + playoffTitle() +
+      views[state.subview]() + playoffDisclaimer();
     // A simulation restored after navigating away should already be visible.
     content.querySelectorAll('.bracket-round-col.pending').forEach(el => el.classList.remove('pending'));
   }
