@@ -2,8 +2,14 @@
 
 import copy
 import json
+from pathlib import Path
+import sys
 
 import pytest
+
+# The CI console entry point does not add the repository root like python -m
+# pytest does. Resolve from this file so both invocations import the prototype.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from analysis.cbb_player_impact.collect import audit_lineups, collect
 from analysis.cbb_player_impact.elo import Parameters, replay
