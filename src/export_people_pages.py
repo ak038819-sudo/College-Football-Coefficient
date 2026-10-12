@@ -350,8 +350,34 @@ def _write(path: Path, variable: str, payload) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()[:10]
 
 
-def build_coach_recruits(conn: sqlite3.Connection, coaches: dict) -> dict:
-    """coach_id -> {"points": [[lat, lon, count, label], ...], "unlocated": n}.
+TOP_SIGNEES = 12
+
+
+def _signee_rank(row) -> tuple:
+    """The order a recruiting board puts a class in.
+
+    National rank first, because that is the ranking the industry itself
+    publishes, then rating, then stars. A row without a national rank sorts
+    after every row that has one rather than at the top: the field is NULL on
+    most pre-2010 rows and on the tail of every class since, so treating a
+    missing rank as rank zero would hand a page's "top signees" to the players
+    nobody rated.
+    """
+    rank = row["national_rank"]
+    return (0, int(rank)) if rank is not None else (1, 0)
+
+
+def build_coach_recruits(conn: sqlite3.Connection, coaches: dict,
+                         players: dict | None = None) -> dict:
+    """coach_id -> {"classes": [one entry per class he signed, oldest first]}.
+
+    Each entry is {"year", "team", "points", "unlocated", "top"}: the hometowns
+    that class came from, the signees the feed gave no hometown for, and that
+    class's best-rated signees. The classes are kept APART rather than summed
+    because the page lets a reader ask where a coach went for players in one
+    year, and a career total cannot be taken back apart afterwards. The career
+    view the page draws by default is these classes merged in the browser,
+    which is the one place the sum and the parts cannot disagree.
 
     Only the classes he SIGNED. A first season at a school was recruited by his
     predecessor, and a map is a claim about where a coach goes for players --
@@ -363,10 +389,15 @@ def build_coach_recruits(conn: sqlite3.Connection, coaches: dict) -> dict:
     Butch Davis's last class on Mike MacIntyre's map.
 
     Recruits are grouped by hometown rather than listed one per point, because
-    a town that sent a coach eleven players is the thing the map is for, and
-    eleven circles drawn on top of each other does not show it. A signee the
-    feed gave no coordinates for (466 of them, across 195 coaches) is counted
-    in "unlocated" rather than dropped, so the page's total is his whole class.
+    a town that sent a coach eleven players is the thing the map is for. A
+    signee the feed gave no coordinates for (466 of them, across 195 coaches)
+    is counted in "unlocated" rather than dropped, so the page's total is his
+    whole class.
+
+    `players` is the exporter's player payloads. A signee is linked to his
+    career page only when his CFBD athlete id is a player this export actually
+    writes: a link built from the recruiting feed's id alone would land a
+    reader on "player not found" for every signee who never made a roster here.
     """
     if not conn.execute("SELECT name FROM sqlite_master WHERE type = 'table' "
                         "AND name = 'recruits'").fetchone():
@@ -382,35 +413,68 @@ def build_coach_recruits(conn: sqlite3.Connection, coaches: dict) -> dict:
     signed = {(team, season): coach_id for (team, season), coach_id in held.items()
               if held.get((team, season - 1)) == coach_id}
 
-    grouped: dict = defaultdict(lambda: defaultdict(int))
-    unlocated: dict = defaultdict(int)
-    # Labels are kept per coach, not per point: two towns can round to one
-    # point (the feed has a "Hampton, SC" at Hampton, Virginia's coordinates),
-    # and a shared cache would then label one coach's town with another
-    # coach's recruit's spelling of somewhere else.
-    labels: dict = defaultdict(dict)
+    classes: dict = defaultdict(dict)
+
+    def entry(coach_id: int, year: int, team: int) -> dict:
+        got = classes[coach_id].get(year)
+        if got is None:
+            # Labels are kept per class, not per point: two towns can round to
+            # one point (the feed has a "Hampton, SC" at Hampton, Virginia's
+            # coordinates), and a shared cache would then label one coach's
+            # town with another coach's recruit's spelling of somewhere else.
+            got = classes[coach_id][year] = {"year": year, "team": team,
+                                             "counts": defaultdict(int), "labels": {},
+                                             "unlocated": 0, "top": []}
+        return got
+
     for row in conn.execute(
             "SELECT committed_team_id, season_year, hometown_latitude, "
-            "hometown_longitude, city, state_province FROM recruits "
+            "hometown_longitude, city, state_province, name, position, stars, "
+            "rating, national_rank, athlete_id FROM recruits "
             "WHERE committed_team_id IS NOT NULL"):
-        coach_id = signed.get((int(row["committed_team_id"]), int(row["season_year"])))
+        season = int(row["season_year"])
+        team = int(row["committed_team_id"])
+        coach_id = signed.get((team, season))
         if coach_id is None:
             continue
+        this = entry(coach_id, season, team)
+        hometown = ", ".join(p for p in (row["city"], row["state_province"]) if p)
         if row["hometown_latitude"] is None or row["hometown_longitude"] is None:
-            unlocated[coach_id] += 1
-            continue
-        # Two decimal places is about a kilometre, which is the same town and
-        # not the same street -- enough to merge a city without merging two.
-        point = (round(float(row["hometown_latitude"]), 2),
-                 round(float(row["hometown_longitude"]), 2))
-        grouped[coach_id][point] += 1
-        labels[coach_id].setdefault(
-            point, ", ".join(p for p in (row["city"], row["state_province"]) if p))
-    return {coach_id: {"points": sorted(([lat, lon, count, labels[coach_id].get((lat, lon), "")]
-                                         for (lat, lon), count in grouped[coach_id].items()),
-                                        key=lambda p: (-p[2], p[3])),
-                       "unlocated": unlocated.get(coach_id, 0)}
-            for coach_id in set(grouped) | set(unlocated)}
+            this["unlocated"] += 1
+        else:
+            # Two decimal places is about a kilometre, which is the same town
+            # and not the same street -- enough to merge a city without
+            # merging two.
+            point = (round(float(row["hometown_latitude"]), 2),
+                     round(float(row["hometown_longitude"]), 2))
+            this["counts"][point] += 1
+            this["labels"].setdefault(point, hometown)
+        athlete = row["athlete_id"]
+        player_id = (int(athlete) if athlete is not None and players is not None
+                     and int(athlete) in players else None)
+        this["top"].append((_signee_rank(row), [
+            row["name"], row["position"],
+            None if row["stars"] is None else int(row["stars"]),
+            None if row["rating"] is None else round(float(row["rating"]), 4),
+            None if row["national_rank"] is None else int(row["national_rank"]),
+            hometown, player_id]))
+
+    out: dict = {}
+    for coach_id, years in classes.items():
+        drawn = []
+        for year in sorted(years):
+            this = years[year]
+            this["top"].sort(key=lambda s: (s[0], s[1][0]))
+            drawn.append({
+                "year": year, "team": this["team"],
+                "points": sorted(([lat, lon, count, this["labels"].get((lat, lon), "")]
+                                  for (lat, lon), count in this["counts"].items()),
+                                 key=lambda p: (-p[2], p[3])),
+                "unlocated": this["unlocated"],
+                "top": [signee for _, signee in this["top"][:TOP_SIGNEES]],
+            })
+        out[coach_id] = {"classes": drawn}
+    return out
 
 
 def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
@@ -419,7 +483,7 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
     rosters = build_rosters(players)
     name_index = build_name_index(players, coaches)
 
-    recruits = build_coach_recruits(conn, coaches)
+    recruits = build_coach_recruits(conn, coaches, players)
 
     manifest: dict = {"player_shards": PLAYER_SHARDS, "recruit_shards": RECRUIT_SHARDS,
                       "index": {}, "players": {}, "coach_recruits": {},
@@ -447,8 +511,8 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
         manifest["rosters"][str(season)] = f"data/people/roster_{season}.js?v={version}"
 
     by_shard: dict[int, dict] = defaultdict(dict)
-    for coach_id, points in recruits.items():
-        by_shard[coach_id % RECRUIT_SHARDS][str(coach_id)] = points
+    for coach_id, payload in recruits.items():
+        by_shard[coach_id % RECRUIT_SHARDS][str(coach_id)] = payload
     for shard in range(RECRUIT_SHARDS):
         version = _write(
             out_dir / f"coach_recruits_{shard}.js",
@@ -466,8 +530,11 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
     manifest["counts"] = {"players": len(players), "coaches": len(coaches),
                           "player_seasons": sum(len(p["seasons"]) for p in players.values()),
                           "coach_seasons": sum(len(c["tenures"]) for c in coaches.values()),
-                          "coach_recruit_points": sum(len(v["points"]) for v in recruits.values()),
-                          "coach_recruits_unlocated": sum(v["unlocated"] for v in recruits.values()),
+                          "coach_recruit_points": sum(len(c["points"]) for v in recruits.values()
+                                                      for c in v["classes"]),
+                          "coach_recruits_unlocated": sum(c["unlocated"] for v in recruits.values()
+                                                          for c in v["classes"]),
+                          "coach_recruit_classes": sum(len(v["classes"]) for v in recruits.values()),
                           "seasons": sorted(rosters),
                           "stat_seasons": sorted(
                               {int(y) for p in players.values() for y in p.get("stats", {})},
