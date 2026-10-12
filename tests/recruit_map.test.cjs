@@ -44,13 +44,15 @@ const esc = s => String(s).replace(/[&<>"]/g, c =>
 const { recruitMapPoints, recruitClasses, recruitClassPoints } =
   lift(['recruitMapPoints', 'recruitClasses', 'recruitClassPoints']);
 
-const { recruitHexes, recruitHexPath, recruitHeatLevel, RECRUIT_HEAT_STEPS, RECRUIT_HEX_R } =
-  lift(['recruitHexes', 'recruitHexPath', 'recruitHeatLevel']);
+const { recruitHexes, recruitHexPath, recruitHeatLevel, recruitProjectionTransfer,
+        RECRUIT_HEAT_STEPS, RECRUIT_HEX_R } =
+  lift(['recruitHexes', 'recruitHexPath', 'recruitHeatLevel', 'recruitProjectionTransfer'],
+       { CfbGeography: require('../ui/geography.js') });
 
 const ALL = ['recruitMap', 'coachRecruitPanel', 'recruitMapPoints', 'recruitClasses',
              'recruitClassPoints', 'recruitHexes', 'recruitHexPath', 'recruitHexTitle',
-             'recruitHeatLevel', 'recruitHeatLegend', 'recruitSelector', 'recruitTopSignees',
-             'recruitSigneeRows'];
+             'recruitProjectionTransfer', 'recruitHeatLevel', 'recruitHeatLegend', 'recruitSelector',
+             'recruitTopSignees', 'recruitSigneeRows'];
 const { recruitMap, coachRecruitPanel, recruitSelector, recruitTopSignees, recruitHexTitle } =
   lift(ALL, { CfbGeography: geography, esc, playerHref: id => '#player=' + id });
 
@@ -246,15 +248,56 @@ test('a cell lands where the projection puts it', () => {
   const [x, y] = project(-88.04, 30.69);
   assert.ok(Math.hypot(bin.cx - x, bin.cy - y) <= RECRUIT_HEX_R);
   assert.ok(recruitMap(at([MOBILE])).includes(recruitHexPath(bin.cx, bin.cy, RECRUIT_HEX_R)));
+  assert.equal(recruitProjectionTransfer(geography.projection(false)).scale, 1);
 });
 
 test('an Alaskan hometown widens the projection rather than falling off it', () => {
   const anchorage = [61.22, -149.9, 1, 'Anchorage, AK'];
   const inset = geography.projection(true);
-  const [bin] = recruitHexes([anchorage], inset.project);
+  const transfer = recruitProjectionTransfer(inset);
+  const [bin] = recruitHexes([anchorage], transfer.base.project);
   const svg = recruitMap(at([anchorage]));
   assert.ok(svg.includes('viewBox="0 0 ' + inset.width + ' ' + inset.height + '"'));
-  assert.ok(svg.includes(recruitHexPath(bin.cx, bin.cy, RECRUIT_HEX_R)));
+  assert.ok(svg.includes(recruitHexPath(...transfer.apply(bin.cx, bin.cy),
+                                        RECRUIT_HEX_R * transfer.scale)));
+});
+
+test('one Alaskan signee does not re-bin the rest of the country', () => {
+  // projection(true) widens the coordinate range, shrinking a degree of
+  // longitude from about 7.75 pixels to 6.10. A fixed-PIXEL hex would then
+  // cover more ground on that map, merging towns that are separate cells on
+  // an otherwise identical page -- so a coach's Texas counts would change
+  // because one recruit came from Anchorage, and the absolute ramp the pages
+  // are compared with would stop meaning one thing.
+  const towns = [[32.78, -96.80, 3, 'Dallas, TX'], [32.75, -97.33, 2, 'Fort Worth, TX'],
+                 [29.76, -95.37, 4, 'Houston, TX'], [30.27, -97.74, 1, 'Austin, TX'],
+                 [33.52, -86.80, 2, 'Birmingham, AL'], [30.69, -88.04, 5, 'Mobile, AL']];
+  const shape = points => {
+    const svg = recruitMap(at(points));
+    return [...svg.matchAll(/<path class="(heat-\d)"[^]*?>(\d+ signees?) /g)]
+      .map(m => m[1] + ' ' + m[2]).sort();
+  };
+  const alone = shape(towns);
+  const withAlaska = shape([...towns, [61.22, -149.9, 1, 'Anchorage, AK']]);
+  assert.ok(alone.length > 1, 'the fixture must actually make several cells');
+  assert.deepEqual(Array.from(withAlaska.filter(c => !/^heat-0 1 signee$/.test(c))),
+                   Array.from(alone.filter(c => !/^heat-0 1 signee$/.test(c))),
+                   'the mainland cells must not change because of Anchorage');
+});
+
+test('the transfer to the drawn projection is the projection, read off two points', () => {
+  // Both maps are the same Mercator up to a scale and an offset. If that ever
+  // stopped being true, cells would land away from the towns they are made of.
+  const lower = geography.projection(false), inset = geography.projection(true);
+  assert.equal(recruitProjectionTransfer(lower).scale, 1, 'the lower 48 is the frame itself');
+  const transfer = recruitProjectionTransfer(inset);
+  assert.ok(transfer.scale < 1, 'the wider map draws the same ground smaller');
+  for (const [lon, lat] of [[-88.04, 30.69], [-122.3, 47.6], [-71.1, 42.4], [-149.9, 61.2]]) {
+    const [wantX, wantY] = inset.project(lon, lat);
+    const [gotX, gotY] = transfer.apply(...lower.project(lon, lat));
+    assert.ok(Math.hypot(gotX - wantX, gotY - wantY) < 1e-6,
+              lon + ',' + lat + ' transferred to ' + gotX + ',' + gotY);
+  }
 });
 
 // ---- the panel around it ----------------------------------------------------
@@ -362,6 +405,22 @@ test('picking a class draws that class only', () => {
   // 2019 is Birmingham's three; the career is Mobile twice and Birmingham once.
   assert.ok(coachRecruitPanel(THREE, 2019).includes('3 signees from 1 town'));
   assert.ok(coachRecruitPanel(THREE).includes('27 signees from 2 towns'));
+});
+
+// ---- the shard that arrives late --------------------------------------------
+
+test('a coach shard that arrives after the reader has moved on is not kept', () => {
+  // Reproduced in a browser before this was written: hold Saban's shard back
+  // by 2.5s, navigate to him and straight on to Swinney, and the late arrival
+  // left coachRecruitState naming Saban. show() dropped his HTML, so Swinney
+  // stayed on screen with a picker that answered nothing.
+  const context = { renderVersion: 7, state: { view: 'coach', coachParam: 42 } };
+  const { coachRecruitStateApplies } = lift(['coachRecruitStateApplies'], context);
+  assert.equal(coachRecruitStateApplies(7, 'coach', 42), true);
+  assert.equal(coachRecruitStateApplies(7, 'coach', '42'), true, 'ids cross string and number');
+  assert.equal(coachRecruitStateApplies(6, 'coach', 42), false, 'a render ago');
+  assert.equal(coachRecruitStateApplies(7, 'coach', 99), false, 'another coach');
+  assert.equal(coachRecruitStateApplies(7, 'player', 42), false, 'not even a coach page');
 });
 
 // ---- the top signees --------------------------------------------------------

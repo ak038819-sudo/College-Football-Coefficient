@@ -362,9 +362,18 @@ def _signee_rank(row) -> tuple:
     most pre-2010 rows and on the tail of every class since, so treating a
     missing rank as rank zero would hand a page's "top signees" to the players
     nobody rated.
+
+    Rating and stars are IN this key, not left to the page. The export keeps
+    only TOP_SIGNEES of a class, so whatever this key does not order, the cut
+    decides at random and the browser can never recover: a class with more
+    unranked signees than the export keeps would have had its best-rated
+    players dropped for being late in the alphabet. The remaining tie-break on
+    name is there so the written bytes do not depend on SQLite's row order,
+    and the page's own sort uses these same three keys in this same order.
     """
     rank = row["national_rank"]
-    return (0, int(rank)) if rank is not None else (1, 0)
+    return ((0, int(rank)) if rank is not None else (1, 0),
+            -float(row["rating"] or 0), -int(row["stars"] or 0))
 
 
 def build_coach_recruits(conn: sqlite3.Connection, coaches: dict,

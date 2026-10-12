@@ -605,15 +605,60 @@ def test_a_signee_the_feed_never_ranked_sorts_last_rather_than_first(conn):
                                       cid)["top"]] == ["Ranked 300", "Unranked"]
 
 
-def test_unranked_signees_fall_back_to_rating_and_then_to_name(conn):
+def test_unranked_signees_fall_back_to_rating_and_then_to_stars(conn):
+    """Named so the alphabet CONTRADICTS the right answer. The first version of
+    this test called them Lower/Higher/Unrated, which happen to come out in the
+    right order by name alone, so it passed against a key that never looked at
+    the rating at all."""
     cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
-    _recruit(conn, 1, 1, 2020, 30.69, -88.04, name="Lower", stars=4, rating=0.80)
-    _recruit(conn, 2, 1, 2020, 30.69, -88.04, name="Higher", stars=3, rating=0.88)
-    _recruit(conn, 3, 1, 2020, 30.69, -88.04, name="Unrated", stars=5)
-    # The builder orders by rank, then by the page's own key; the names break a
-    # remaining tie so the written bytes do not depend on SQLite's row order.
+    _recruit(conn, 1, 1, 2020, 30.69, -88.04, name="Aaron Worst", stars=4, rating=0.80)
+    _recruit(conn, 2, 1, 2020, 30.69, -88.04, name="Zeke Best", stars=3, rating=0.88)
+    _recruit(conn, 3, 1, 2020, 30.69, -88.04, name="Adam Unrated", stars=5)
     assert [s[0] for s in _only_class(build_coach_recruits(conn, build_coaches(conn)),
-                                      cid)["top"]][0] == "Higher"
+                                      cid)["top"]] == \
+        ["Zeke Best", "Aaron Worst", "Adam Unrated"]
+
+
+def test_stars_break_a_tie_on_rating(conn):
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    _recruit(conn, 1, 1, 2020, 30.69, -88.04, name="Aaron Three", stars=3, rating=0.85)
+    _recruit(conn, 2, 1, 2020, 30.69, -88.04, name="Zeke Five", stars=5, rating=0.85)
+    assert [s[0] for s in _only_class(build_coach_recruits(conn, build_coaches(conn)),
+                                      cid)["top"]] == ["Zeke Five", "Aaron Three"]
+
+
+def test_the_cut_to_twelve_keeps_the_best_rated_not_the_alphabet(conn):
+    """The export keeps only TOP_SIGNEES of a class, so whatever the key does
+    not order, the cut decides and the browser can never get back: a class with
+    more unranked signees than the export keeps would drop its best-rated
+    players for being late in the alphabet. Twenty classes in the archive have
+    more than twelve unranked signees."""
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    # The best-rated signee is also the last alphabetically, so an alphabetical
+    # cut loses him and a rating-ordered one keeps him first.
+    for n in range(20):
+        _recruit(conn, n + 1, 1, 2020, 30.69, -88.04,
+                 name=f"{chr(ord('a') + n)} Recruit", stars=3, rating=0.50 + n / 100)
+    top = [s[0] for s in _only_class(build_coach_recruits(conn, build_coaches(conn)),
+                                     cid)["top"]]
+    assert len(top) == TOP_SIGNEES
+    assert top[0] == "t Recruit", "the best-rated signee must survive the cut"
+    assert "a Recruit" not in top, "the worst-rated must not survive it for being first"
+
+
+def test_the_export_order_is_the_order_the_page_sorts_by(conn):
+    """The page re-sorts what it is given; if the two keys disagree, the cut
+    above and the list a reader sees disagree about what the top of a class is.
+    This pins the export's key to the three the shell's recruitTopSignees uses,
+    in that order: rank present, rank, then rating, then stars."""
+    shell = (__import__('pathlib').Path(__file__).resolve().parents[1]
+             / 'ui' / 'dashboard_shell.html').read_text(encoding='utf-8')
+    body = shell[shell.index('function recruitTopSignees('):]
+    body = body[:body.index('\n}')]
+    assert "(a.rank == null) - (b.rank == null)" in body
+    assert "a.rank - b.rank" in body
+    assert "(b.rating || 0) - (a.rating || 0)" in body
+    assert "(b.stars || 0) - (a.stars || 0)" in body
 
 
 def test_a_class_names_at_most_the_signees_the_page_can_show(conn):

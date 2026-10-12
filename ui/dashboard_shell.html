@@ -6107,6 +6107,27 @@ function recruitHeatLevel(count) {
 // centre is genuinely nearest it. The cheaper row-and-column rounding assigns
 // a point to a RECTANGLE around each centre, which disagrees with the hexagon
 // actually drawn near its corners.
+// Every cell is binned in ONE frame, the lower-48 projection, whichever map is
+// drawn. An Alaskan signee widens the coordinate range, which both shrinks a
+// degree of longitude (about 7.75 pixels to 6.10) and moves the origin, so
+// binning in the active projection would cover more ground per cell AND shift
+// the lattice: the same coach's Texas towns would merge differently, and the
+// counts the absolute ramp compares across pages would change because one
+// recruit came from Anchorage.
+//
+// Both projections are the same Mercator up to a uniform scale and an offset,
+// so the move from the binning frame to the drawn one is an affine map, read
+// off two points rather than assumed. `scale` is also what the hexagon's
+// radius is multiplied by, so a cell stays the same patch of country.
+function recruitProjectionTransfer(map) {
+  const base = CfbGeography.projection(false);
+  const [bx0, by0] = base.project(-100, 40), [bx1, by1] = base.project(-90, 30);
+  const [mx0, my0] = map.project(-100, 40), [mx1, my1] = map.project(-90, 30);
+  const scale = (mx1 - mx0) / (bx1 - bx0);
+  return { base, scale,
+           apply: (x, y) => [mx0 + (x - bx0) * scale, my0 + (y - by0) * scale] };
+}
+
 function recruitHexes(inside, project, r = RECRUIT_HEX_R) {
   const bins = new Map();
   for (const pt of (inside || [])) {
@@ -6160,7 +6181,9 @@ function recruitMap(recruits) {
   if (!inside.length) return '';
   const alaska = inside.some(pt => Number(pt[0]) > 55);
   const map = CfbGeography.projection(alaska);
-  const hexes = recruitHexes(inside, map.project);
+  const transfer = recruitProjectionTransfer(map);
+  const r = RECRUIT_HEX_R * transfer.scale;
+  const hexes = recruitHexes(inside, transfer.base.project);
   return '<svg class="stadium-map recruit-map" viewBox="0 0 ' + map.width + ' ' + map.height +
     '" role="group" aria-label="Heat map of the hometowns this coach signed players from">' +
     '<g aria-label="United States state boundaries">' +
@@ -6168,7 +6191,7 @@ function recruitMap(recruits) {
       '"><title>' + esc(st.name) + '</title></path>').join('') + '</g>' +
     '<g class="recruit-heat">' + hexes.map(bin =>
       '<path class="heat-' + recruitHeatLevel(bin.count) + '" d="' +
-      recruitHexPath(bin.cx, bin.cy, RECRUIT_HEX_R) + '"><title>' +
+      recruitHexPath(...transfer.apply(bin.cx, bin.cy), r) + '"><title>' +
       esc(recruitHexTitle(bin)) + '</title></path>').join('') + '</g></svg>';
 }
 
@@ -6283,6 +6306,17 @@ function coachRecruiting(tenures) {
 // panel instead of refetching the career. Keyed by coach id: a stale shard
 // from the page the reader just left must not be drawn under a new name.
 let coachRecruitState = { id: null, recruits: null, year: null };
+
+// Whether a coach shard that has just arrived is still the one on screen.
+// A slow request for the coach a reader has already left can resolve AFTER the
+// one for the coach now shown: show() correctly drops the stale HTML, but an
+// unguarded assignment to coachRecruitState would leave it naming the old
+// coach, and the picker on the visible page then rejects every selection and
+// sits inert until the reader navigates again.
+function coachRecruitStateApplies(version, kind, id) {
+  return version === renderVersion && state.view === kind &&
+    String(state.coachParam) === String(id);
+}
 
 function redrawCoachRecruitPanel() {
   const panel = document.getElementById('coach-recruit-panel');
@@ -6401,7 +6435,9 @@ function hydratePersonPage(version, kind) {
         const c = all[String(id)];
         // The shard is held so the class selector can redraw the recruiting
         // panel on its own, rather than refetching a career to change a year.
-        coachRecruitState = { id: String(id), recruits: points, year: null };
+        if (coachRecruitStateApplies(version, kind, id)) {
+          coachRecruitState = { id: String(id), recruits: points, year: null };
+        }
         return c ? [coachPanels(c, id, points, null), c.display_name] : [personMissing(kind, id), null];
       });
   work.then(([html, name]) => show(html, name))
