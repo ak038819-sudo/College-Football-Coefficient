@@ -678,6 +678,7 @@
   .poll-toggle button.on { background: var(--amber); color: var(--bg); }
   .poll-toggle button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
   .mini-board .fpv { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-dim); }
+  .mini-board .rec { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); white-space: nowrap; }
   .mini-board .elo-rk { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); }
 
   .tag {
@@ -2351,6 +2352,23 @@ function teamExtremes(team) {
 // The sub-label states the rated part whenever the two differ, because every
 // other number in this header -- Elo, CoE, every rank -- is computed from that
 // part alone.
+function seasonRecord(teamName, season) {
+  const team = TEAM_BY_NAME.get(teamName);
+  if (!team || !season) return '';
+  const rated = ((DATA.team_records_by_year || {})[season] || {})[team.id];
+  const unrated = ((DATA.non_fbs_records_by_year || {})[season] || {})[team.id];
+  if (!rated && !unrated) return '';
+  const r = rated || [0, 0, 0], u = unrated || [0, 0, 0];
+  const w = r[0] + u[0], l = r[1] + u[1], t = r[2] + u[2];
+  if (!w && !l && !t) return '';
+  return w + '\u2013' + l + (t ? '\u2013' + t : '');
+}
+
+function recordCell(teamName, season) {
+  const rec = seasonRecord(teamName, season);
+  return rec ? '<span class="rec">' + rec + '</span>' : '';
+}
+
 function teamHeaderRecord(rec, unrated) {
   const wlt = (w, l, ties) => w + '\u2013' + l + (ties ? '\u2013' + ties : '');
   const some = r => !!r && (r[0] || r[1] || r[2]);
@@ -4100,6 +4118,7 @@ function liveTeam(t, g, pct) {
   const identity = logoMarkup(name, 'team', 'xs', liveSeason()) +
     '<span class="live-identity"><span class="team-link-name">' + esc(name) + '</span>' +
     '<span class="live-rating">' + (rating?.rank <= 25 ? '<span class="live-rank">#' + rating.rank + '</span>' : '') +
+    (g.status === 'scheduled' && seasonRecord(name, liveSeason()) ? seasonRecord(name, liveSeason()) + '  ' : '') +
     'Elo ' + (Number.isFinite(elo) ? elo.toFixed(0) : 'unrated') + '</span></span>';
   return '<div class="live-team' + (won ? ' is-winning' : lost ? ' is-losing' : '') +
     '" style="--team-brand:' + brand + '">' +
@@ -4777,7 +4796,8 @@ function top25EloBoard() {
   const body = rows.length
     ? '<ol class="mini-board">' + rows.map((r, i) =>
         '<li><span class="rk">' + (i + 1) + '</span><span class="nm">' +
-        teamLink(r.team, 'xs') + '</span><span class="v">' + eloValue(r.elo) + '</span></li>').join('') + '</ol>'
+        teamLink(r.team, 'xs') + recordCell(r.team, state.year) +
+        '</span><span class="v">' + eloValue(r.elo) + '</span></li>').join('') + '</ol>'
     : '<div class="empty-note">No Elo ratings for ' + state.year + '.</div>';
   return '<div class="panel board-col">' +
     panelHead('Elo Top 25', '<a class="side-link" href="' + esc(routeHref({ subview: 'elo' })) + '">All ratings &rarr;</a>') +
@@ -4805,6 +4825,7 @@ function top25PollBoard(key) {
     const mine = t ? eloRank.get(t.name) : null;
     return '<li><span class="rk">' + rank + '</span><span class="nm">' +
       (t ? teamLink(t.name, 'xs') : '<span>' + esc(school) + '</span>') +
+      (t ? recordCell(t.name, state.year) : '') +
       (votes ? '<span class="fpv">(' + votes + ')</span>' : '') + '</span>' +
       '<span class="elo-rk">' + (mine ? 'Elo #' + mine : '') + '</span></li>';
   }).join('') + '</ol>';

@@ -150,6 +150,26 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    const button=[...d.querySelectorAll('.rank-table th button')].find(b=>b.textContent==='Elo');assert.ok(button);button.click();
    assert.equal(button.parentElement.getAttribute('aria-sort'),'descending');
   });
+  await t.test('a ranking board carries each team\'s record, and it agrees with the team page',async()=>{
+   await route('#section=rankings&view=top25&season=2026',()=>d.querySelector('.rank-boards .mini-board'));
+   const rows=[...d.querySelectorAll('.rank-boards .board-col:first-child .mini-board li')];
+   assert.ok(rows.length>=25,'the Elo board lists a full top 25');
+   assert.ok(rows.every(li=>/^\d+\u2013\d+(\u2013\d+)?$/.test(li.querySelector('.rec')?.textContent||'')),
+     'every ranked team shows a win-loss record');
+   const leader=rows[0].querySelector('.team-link-name, a')?.textContent.trim();
+   const board=rows[0].querySelector('.rec').textContent;
+   // The team page is the authority on a record; the board must not disagree.
+   await route('#team='+encodeURIComponent(leader)+'&season=2026',()=>d.querySelector('.team-stats'));
+   const stat=[...d.querySelectorAll('.team-stats .team-stat')]
+     .find(el=>el.querySelector('.lbl')?.textContent.trim()==='Record');
+   assert.ok(stat,'the team page shows a record for '+leader);
+   // Compare the headline value only: the sub-line names the rated part, so a
+   // board that quietly dropped the FCS games would match it by substring.
+   assert.equal(board,stat.querySelector('.val').textContent.trim(),
+     'the board and the team page disagree on '+leader+'\u2019s record');
+   assert.match(stat.querySelector('.sub').textContent,/against rated opponents/,
+     'this check only bites while the leader has a non-FBS game to drop');
+  });
   await t.test('the page chrome names each control once and keeps them on one row',async()=>{
    // The view selector and the season selector are one control group: if they
    // stop sharing a parent they stack, which on a phone pushed the first row of
