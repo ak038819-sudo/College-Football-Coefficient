@@ -386,9 +386,22 @@
     border-bottom: 1px solid var(--line);
   }
   table.rank-table th.num, table.rank-table td.num { text-align: left; white-space: nowrap; }
-  table.rank-table td { padding: 6px 8px; border-bottom: 1px solid var(--panel-2); }
+  table.rank-table td { padding: 6px 8px; border-bottom: 1px solid var(--panel-2); vertical-align: middle; }
   table.rank-table tr:hover td { background: var(--panel-2); }
   .rk { font-family: var(--font-mono); color: var(--ink-dim); width: 2.4em; display: inline-block; }
+  /* `.rk` was written for a <span> inside a list row, where inline-block and a
+     fixed width keep the numbers in a column. On a <td> those same declarations
+     take the cell out of the table's layout, so the rank rendered as a small
+     box pinned to the top of the row instead of sitting with the team beside
+     it. Table cells get their own rule, and every ranked table reads alike. */
+  td.rk, th.rk {
+    display: table-cell;
+    vertical-align: middle;
+    width: auto;
+    min-width: 2.4em;
+    font-size: 15px;
+    color: var(--ink);
+  }
   .coe-val { font-family: var(--font-mono); font-weight: 600; color: var(--amber); }
 
   .logo-chip {
@@ -826,10 +839,11 @@
   .fr-team.fr-home { color: var(--amber); font-weight: 600; }
   .fr-at { font-family: var(--font-mono); font-size: 9px; color: var(--ink-dim); text-align: center; }
   /* A seed, shown where a seed is the whole point: the field table and the
-     bye strip. Dimmed for the byes, which carry a Bye tag beside them already. */
+     bye strip. Sized to match the rank cell in every other ranked table; the
+     byes are picked out in the accent, and carry a Bye tag beside them too. */
   .seed-pill {
-    display: inline-block; min-width: 1.6em; font-family: var(--font-mono);
-    font-size: 11px; color: var(--ink-dim);
+    display: inline-block; min-width: 2.4em; font-family: var(--font-mono);
+    font-size: 15px; color: var(--ink);
   }
   .seed-pill.seed-bye { color: var(--amber); font-weight: 600; }
   .rank-table tr.row-dim td { color: var(--ink-dim); }
@@ -991,7 +1005,8 @@
   /* The rank and the name both stay put while the stats scroll: a rank with no
      name beside it says nothing. The name's offset is the rank column's width,
      which is fixed here so the two cannot drift apart. */
-  .stats-table th.rank-col,.stats-table td.rank-col {position:sticky;left:0;background:var(--panel);z-index:1;width:46px;min-width:46px;color:var(--ink-dim);}
+  .stats-table th.rank-col {position:sticky;left:0;background:var(--panel);z-index:1;width:46px;min-width:46px;color:var(--ink-dim);}
+  .stats-table td.rank-col {position:sticky;left:0;background:var(--panel);z-index:1;width:46px;min-width:46px;font-family:var(--font-mono);font-size:15px;color:var(--ink);vertical-align:middle;}
   .stats-table th:nth-child(2),.stats-table td:nth-child(2) {position:sticky;left:46px;background:var(--panel);z-index:1;min-width:150px;}
   .stats-table th.rank-col,.stats-table th:nth-child(2) {z-index:2;}
   .table-scroll {overflow-x:auto;max-width:100%;}
