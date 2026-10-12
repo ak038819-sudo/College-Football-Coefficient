@@ -1,10 +1,17 @@
 """
 Load data/raw/fcs_games_<year>.csv into non_fbs_games.
 
-One row per completed game an FBS team played against an opponent this project
-does not hold. The FBS side is resolved to a team_id through the same identity
-registry every other loader uses; the other side is kept as the source's own
-spelling and nothing is inferred from it.
+One row per completed game an FBS team played that no rating in this project
+holds. The FBS side is resolved to a team_id through the same identity registry
+every other loader uses; the other side is kept as the source's own spelling and
+nothing is inferred from it.
+
+The other side is usually a school this project does not carry at all, but it
+need not be: a program that has played in both divisions (Idaho, Delaware,
+Jacksonville State) is in `teams` for its FBS seasons and is an unrated
+opponent in the others. Which side was FBS comes from the source's own
+per-game classification, and whether a game is already rated comes from its id
+in `games` -- not from whether a name resolves, which cannot know a season.
 
 Nothing here writes to `games`, so nothing here can reach a rating. See
 sql/non_fbs_game_tables.sql for why that separation is structural.
@@ -36,25 +43,64 @@ def to_bool01(value) -> int:
     return 1 if norm(value).lower() in {"1", "true", "yes", "t", "y"} else 0
 
 
-def sides(cur, row: dict) -> tuple[str, str] | None:
+def fbs_side_by_classification(row: dict) -> str | None:
     """
-    (fbs_side, other_side) as 'home'/'away', or None when this row is not the
-    one-known-one-unknown shape the table is for.
+    'home'/'away' for the side the source labels FBS, or None when its own
+    classification strings do not single one out.
 
-    Both sides resolving means the source reclassified a game this project
-    already rates, and loading it here would show it twice and double-count the
-    record. Neither resolving means no FBS team is involved at all. Both are
-    reported rather than guessed at.
+    CFBD carries a per-game classification for both sides, and that is the only
+    thing in the data that knows which division a team was in *that season*.
+    A team's presence in `teams` cannot answer it: Idaho played FBS football
+    through 2017 and FCS football after, so the table holds it either way.
+    """
+    labels = {side: norm(row.get(f"{side}_classification")).lower()
+              for side in ("home", "away")}
+    fbs = [side for side, label in labels.items() if label == "fbs"]
+    if len(fbs) != 1:
+        return None
+    other = "away" if fbs[0] == "home" else "home"
+    # One side labelled fbs and the other labelled nothing is not evidence of a
+    # division gap, so it is not treated as one.
+    return fbs[0] if labels[other] else None
+
+
+def rated_already(cur, game_id: int) -> bool:
+    """Whether the ratings already hold this game, by id rather than by name."""
+    return cur.execute(
+        "SELECT 1 FROM games WHERE game_id = ?", (game_id,)).fetchone() is not None
+
+
+def sides(cur, row: dict, game_id: int) -> tuple[str, str] | None:
+    """
+    (project_side, other_side) as 'home'/'away', or None when this row is not
+    one this table can hold.
+
+    One side has to be a team this project holds, because that is what the row
+    hangs off. The other side is kept as the source's own spelling.
+
+    Both sides resolving used to be refused outright, on the reading that the
+    source had reclassified a game the ratings already have. That reading was
+    wrong 649 times across 1980-2026: a team can be in `teams` for its FBS
+    seasons and play the same schools from the FCS later, and Utah 66, Idaho 14
+    in 2026 is both names resolving while the game is in no rating at all. So
+    the duplicate test is now the game's id in `games`, which is what "already
+    rated" actually means, and the division gap is read from the source's own
+    per-game classification.
     """
     home = resolve_database_name(cur, norm(row["home_team"]))
     away = resolve_database_name(cur, norm(row["away_team"]))
-    if home and away:
+    if not (home or away):
         return None
-    if home:
-        return "home", "away"
-    if away:
-        return "away", "home"
-    return None
+    if home and away:
+        if rated_already(cur, game_id):
+            return None
+        fbs = fbs_side_by_classification(row)
+        if fbs is None:
+            return None
+        return fbs, ("away" if fbs == "home" else "home")
+    # Exactly one side is a team this project holds, so it is the only side a
+    # row can hang off, whatever the source's classification says about it.
+    return ("home", "away") if home else ("away", "home")
 
 
 def team_id(cur, name: str) -> int:
@@ -71,7 +117,7 @@ def load(conn: sqlite3.Connection, csv_path: Path, year: int) -> dict:
     cur.executescript(SCHEMA.read_text())
 
     rows = list(csv.DictReader(csv_path.open(encoding="utf-8"))) if csv_path.exists() else []
-    loaded, both_known, neither_known = 0, [], []
+    loaded, already_rated, ambiguous, neither_known = 0, [], [], []
 
     # The season is replaced wholesale rather than upserted: a game the source
     # has reclassified out of this set must disappear, and an upsert would
@@ -80,11 +126,16 @@ def load(conn: sqlite3.Connection, csv_path: Path, year: int) -> dict:
 
     for row in rows:
         gid = norm(row["game_id"])
-        which = sides(cur, row)
+        which = sides(cur, row, int(gid))
         if which is None:
-            target = both_known if resolve_database_name(cur, norm(row["home_team"])) \
-                else neither_known
-            target.append(f"{row['away_team']} at {row['home_team']}")
+            label = f"{row['away_team']} at {row['home_team']}"
+            if rated_already(cur, int(gid)):
+                already_rated.append(label)
+            elif resolve_database_name(cur, norm(row["home_team"])) \
+                    or resolve_database_name(cur, norm(row["away_team"])):
+                ambiguous.append(label)
+            else:
+                neither_known.append(label)
             continue
         fbs, other = which
         cur.execute(
@@ -114,7 +165,8 @@ def load(conn: sqlite3.Connection, csv_path: Path, year: int) -> dict:
         loaded += 1
 
     conn.commit()
-    return {"loaded": loaded, "both_known": both_known, "neither_known": neither_known,
+    return {"loaded": loaded, "already_rated": already_rated,
+            "ambiguous": ambiguous, "neither_known": neither_known,
             "read": len(rows)}
 
 
@@ -138,8 +190,11 @@ def main(argv=None) -> int:
     print(f"{args.year}: loaded {result['loaded']} of {result['read']} rows from {csv_path}")
     # A row this project already rates must never also appear here, so it is
     # named rather than counted: it means the source changed its mind about a
-    # game, which is worth a human look.
-    for label, bad in (("both teams known", result["both_known"]),
+    # game, which is worth a human look. So is a game between two teams this
+    # project holds whose classification does not say which side was FBS: the
+    # row could go on either team's schedule and the data does not say which.
+    for label, bad in (("the game already rated", result["already_rated"]),
+                       ("no FBS side named", result["ambiguous"]),
                        ("neither team known", result["neither_known"])):
         if bad:
             print(f"  skipped {len(bad)} with {label}: {', '.join(bad[:5])}"
