@@ -26,27 +26,30 @@ const FIRST_ROUND_PAIRS = [[5, 12], [6, 11], [7, 10], [8, 9]];
 const QUARTERFINALS = [[1, [8, 9]], [4, [5, 12]], [2, [7, 10]], [3, [6, 11]]];
 const seedName = s => 'Seed' + String(s).padStart(2, '0');
 
-// A payload shaped exactly as src/export_dashboard_data.py writes one, with CoE
-// chosen per seed so a structural property can be made decisive.
-function payload(coeBySeed, { temperature = 4.5, homeField = 1.25 } = {}) {
+// A payload shaped exactly as src/export_dashboard_data.py writes one, with a
+// rating chosen per seed so a structural property can be made decisive. The
+// game model is Elo's own: a logistic on the rating gap over `scale`, with the
+// host's rating raised by `home_field`.
+function payload(ratingBySeed, { scale = 400, homeField = 50 } = {}) {
   const field = [];
   for (let seed = 1; seed <= 12; seed++) {
     field.push({ seed, team: seedName(seed), conference: 'Conf' + seed,
-                 bid_type: 'at_large', champion_of: null, team_coe_5yr: coeBySeed(seed) });
+                 bid_type: 'at_large', champion_of: null, rating: ratingBySeed(seed) });
   }
   const bySeed = {};
   field.forEach(q => { bySeed[q.seed] = q; });
   return {
-    format: { field_size: 12, auto_bids: 5, bye_seeds: 4, seeding: 'straight' },
+    format: { field_size: 12, auto_bids: 5, bye_seeds: 4, seeding: 'straight',
+              ranking: 'Elo', ranking_note: 'Elo entering the postseason' },
     field,
     byes: field.filter(q => q.seed <= 4).map(q => ({ seed: q.seed, team: q.team })),
     first_round: FIRST_ROUND_PAIRS.map(([hi, lo]) => ({
       home_seed: hi, away_seed: lo, home: bySeed[hi].team, away: bySeed[lo].team,
       home_conf: bySeed[hi].conference, away_conf: bySeed[lo].conference,
-      home_coe: bySeed[hi].team_coe_5yr, away_coe: bySeed[lo].team_coe_5yr,
+      home_rating: bySeed[hi].rating, away_rating: bySeed[lo].rating,
     })),
     quarterfinals: QUARTERFINALS.map(([bye_seed, pair]) => ({ bye_seed, pair })),
-    sim_meta: { n_sims: 1, temperature, home_field: homeField },
+    sim_meta: { n_sims: 1, model: 'elo', scale, home_field: homeField },
   };
 }
 
@@ -67,7 +70,7 @@ function simulator(seed = 1) {
 }
 
 test('the page simulates the bracket the export describes', () => {
-  const pf = payload(seed => 20 - seed);
+  const pf = payload(seed => 2000 - 80 * seed);
   const sim = simulator().run(pf);
   assert.equal(sim.firstRound.length, 4);
   assert.equal(sim.qfField.length, 4);
@@ -93,7 +96,7 @@ test('the page simulates the bracket the export describes', () => {
 test('the top two seeds can only meet in the final', () => {
   // Unbeatable top two: if the page paired the halves wrong they would meet a
   // round early and only one could reach the final.
-  const pf = payload(seed => (seed <= 2 ? 1000 : 1));
+  const pf = payload(seed => (seed <= 2 ? 9000 : 1000));
   for (let s = 1; s <= 20; s++) {
     const sim = simulator(s).run(pf);
     assert.deepEqual(plain(sim.sfField).sort(), ['Seed01', 'Seed02'],
@@ -104,7 +107,7 @@ test('the top two seeds can only meet in the final', () => {
 test('the page applies the host edge in the first round and nowhere else', () => {
   // Twelve equal teams and a decisive venue edge: the first round is settled
   // entirely by who hosts, and every later round has to be a coin flip.
-  const pf = payload(() => 5, { homeField: 500 });
+  const pf = payload(() => 1500, { homeField: 100000 });
   let hostWins = 0, byeAdvances = 0;
   const runs = 200;
   for (let s = 1; s <= runs; s++) {
@@ -122,54 +125,54 @@ test('the page applies the host edge in the first round and nowhere else', () =>
     'a neutral site means about half, so the venue edge is leaking past the first round');
 });
 
-test('a payload with no temperature does not quietly get a made-up one', () => {
-  // The button once ran its own hardcoded 6.0 and so disagreed with the Title
-  // Odds table beside it. A `|| 6.0` fallback would make that silent again:
-  // the page would publish plausible-looking odds from a number nobody fitted.
-  // With nothing shipped, every game degenerates instead of looking fine --
-  // the away side wins all four first-round games, which no real temperature
-  // produces when the host is this much stronger.
-  // Gaps wide enough that any real temperature makes the host a certainty.
-  // Only the temperature is withheld: a missing host edge poisons the same
+test('a payload with no scale does not quietly get a made-up one', () => {
+  // The button once ran its own hardcoded temperature and so disagreed with
+  // the Title Odds table beside it. A `|| 400` fallback would make that silent
+  // again: the page would publish plausible-looking odds from a number nobody
+  // shipped. With nothing shipped, every game must degenerate instead of
+  // looking fine -- the away side wins all four first-round games, which no
+  // real scale produces when the host is this much stronger.
+  // Only the scale is withheld: a missing host edge poisons the same
   // arithmetic, so leaving both out would not say which one was substituted.
-  const pf = payload(seed => 1000 / seed);
+  const pf = payload(seed => 2000 - 80 * seed);
   const sim = simulator(3).run(Object.assign({}, pf, { sim_meta: { home_field: 0 } }));
   assert.deepEqual(plain(sim.firstRound), ['Seed12', 'Seed11', 'Seed10', 'Seed09'],
-    'a missing temperature produced a plausible bracket, which means the page ' +
+    'a missing scale produced a plausible bracket, which means the page ' +
     'substituted a constant of its own instead of using the shipped value');
 });
 
 test('a payload with no host edge does not quietly get a made-up one', () => {
-  // The same again for the venue term, which was measured at 1.25 CoE points.
-  // A fallback would have the page claim a host advantage the export never
-  // shipped -- and the neutral-site case, 0, is the one that must survive
-  // being passed explicitly.
-  const pf = payload(seed => 1000 / seed);
-  const sim = simulator(3).run(Object.assign({}, pf, { sim_meta: { temperature: 4.5 } }));
+  // The same again for the venue term, which is elo.home_field. A fallback
+  // would have the page claim a host advantage the export never shipped -- and
+  // the neutral-site case, 0, is the one that must survive being passed
+  // explicitly.
+  const pf = payload(seed => 2000 - 80 * seed);
+  const sim = simulator(3).run(Object.assign({}, pf, { sim_meta: { scale: 400 } }));
   assert.deepEqual(plain(sim.firstRound), ['Seed12', 'Seed11', 'Seed10', 'Seed09'],
     'a missing host edge produced a plausible bracket, so the page substituted ' +
     'a constant of its own');
-  // And an explicit zero is honoured rather than treated as absent.
+  // And an explicit zero is honoured rather than treated as absent: with a
+  // scale this sharp the stronger team always wins, at home or not.
   const neutral = simulator(3).run(Object.assign({}, pf,
-    { sim_meta: { temperature: 0.001, home_field: 0 } }));
+    { sim_meta: { scale: 0.001, home_field: 0 } }));
   assert.deepEqual(plain(neutral.firstRound), ['Seed05', 'Seed06', 'Seed07', 'Seed08']);
 });
 
-test('the page reads the temperature and host edge from the payload', () => {
-  // A payload with no sim_meta must not silently fall back to the old
-  // hand-picked 6.0 or to a hardcoded 1.25: it must produce NaN-free nonsense
-  // loudly rather than publishing numbers from a constant nobody fitted.
-  const pf = payload(seed => 20 - seed);
+test('the page reads the scale and host edge from the payload', () => {
+  // A payload with no sim_meta must not silently fall back to a scale or a
+  // host edge of its own: it must produce NaN-free nonsense loudly rather than
+  // publishing numbers from a constant nobody shipped.
+  const pf = payload(seed => 2000 - 80 * seed);
   const low = simulator(5).run(Object.assign({}, pf,
-    { sim_meta: { temperature: 0.001, home_field: 0 } }));
-  // At a temperature near zero the stronger team always wins, so the bracket is
-  // the seeds. That can only be true if the page actually read the payload.
+    { sim_meta: { scale: 0.001, home_field: 0 } }));
+  // At a scale near zero the stronger team always wins, so the bracket is the
+  // seeds. That can only be true if the page actually read the payload.
   assert.deepEqual(plain(low.firstRound), ['Seed05', 'Seed06', 'Seed07', 'Seed08']);
   assert.equal(low.champion, 'Seed01');
 });
 
 test('the bracket graphic and the simulation agree on every slot', () => {
-  const pf = payload(seed => 20 - seed);
+  const pf = payload(seed => 2000 - 80 * seed);
   const ctx = simulator();
   const slots = ctx.slots(pf);
   assert.equal(slots.length, 8, 'the bracket draws eight quarterfinal slots');

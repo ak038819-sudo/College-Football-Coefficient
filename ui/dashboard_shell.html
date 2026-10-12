@@ -1101,7 +1101,7 @@
     0.15× loss penalty; renormalized each iteration; 5yr rolling window uses 0.92^age recency decay).
     Conference rating = sum of member teams' ratings.
     Playoff: the real 12-team format — the 5 highest-ranked conference champions take automatic bids, 7 at-large
-    bids fill the field, seeds run straight down the 5yr rolling team CoE, and seeds 1–4 sit out the first round.
+    bids fill the field, seeds run straight down Elo entering the postseason, and seeds 1–4 sit out the first round.
     Conference standings derived locally from loaded game results, not an official league record.
     The first round is at the higher seed's home; every later round is at a neutral site.
   </footer>
@@ -1815,7 +1815,8 @@ function renderField() {
     ' highest-ranked conference champions take automatic bids, and the ' +
     (F.field_size - F.auto_bids) + ' best teams left fill the rest. Seeds run straight down ' +
     'the ranking, and seeds 1–' + F.bye_seeds + ' sit out the first round. ' +
-    'The ranking is 5-year rolling team CoE throughout.</p>';
+    'The ranking is ' + esc(F.ranking_note || F.ranking) + ' throughout &mdash; the same ' +
+    'number this site rates every team by.</p>';
   // The honest caveat this page used to lack. A field built from standings to
   // date, stated in the present tense, reads as settled in week 7; the link is
   // where the season's remaining games are actually accounted for.
@@ -1826,58 +1827,64 @@ function renderField() {
       'every team its chance of being here when they are done.</p>';
   }
   html += '<table class="rank-table"><thead><tr><th class="num">Seed</th><th>Team</th>' +
-    '<th>Conference</th><th>Bid</th><th class="num">CoE</th></tr></thead><tbody>';
+    '<th>Conference</th><th>Bid</th><th class="num">' + esc(F.ranking) + '</th></tr></thead><tbody>';
   pf.field.forEach(q => {
     const bye = q.seed <= F.bye_seeds;
+    // A conference champion outside the top five does not hold an automatic
+    // bid, but it did win its conference, and the page should not imply
+    // otherwise by labelling it a bare at-large. 2018 UCF is the live case.
     const bid = q.bid_type === 'auto'
       ? '<span class="tag champ">' + esc(q.champion_of) + ' champion</span>'
-      : '<span class="tag">At-large</span>';
+      : '<span class="tag">At-large</span>' + (q.champion_of
+        ? ' <span class="tag">' + esc(q.champion_of) + ' champion</span>' : '');
     html += '<tr><td class="num"><span class="seed-pill' + (bye ? ' seed-bye' : '') + '">' + q.seed + '</span></td>' +
       '<td><div class="name-cell">' + teamLink(q.team, 'sm') + (bye ? ' <span class="tag bye">Bye</span>' : '') + '</div></td>' +
       '<td><div class="name-cell">' + logoMarkup(q.conference, 'conf', 'sm') + esc(q.conference) + '</div></td>' +
-      '<td>' + bid + '</td><td class="num coe-val">' + fmt(q.team_coe_5yr) + '</td></tr>';
+      '<td>' + bid + '</td><td class="num coe-val">' + eloValue(q.rating) + '</td></tr>';
   });
   html += '</tbody></table></div>';
 
   // The automatic-bid cut, shown rather than asserted: every champion with its
-  // CoE, so the line between the fifth and the sixth is visible.
+  // rating, so the line between the fifth and the sixth is visible.
   html += '<div class="panel"><h2 class="section-title">Conference Champions</h2>';
   html += '<p class="section-note">Every conference champion, strongest first. The top ' +
     F.auto_bids + ' hold the automatic bids; the rest are out unless they are strong ' +
     'enough for an at-large bid on their own. A champion is the top team in this ' +
     'project’s derived conference standings, not the winner of a title game.</p>';
   html += '<table class="rank-table"><thead><tr><th></th><th>Conference</th><th>Champion</th>' +
-    '<th class="num">CoE</th><th>Bid</th></tr></thead><tbody>';
+    '<th class="num">' + esc(F.ranking) + '</th><th>Bid</th></tr></thead><tbody>';
   pf.conference_champions.forEach((c, i) => {
     html += '<tr' + (c.auto_bid ? '' : ' class="row-dim"') + '><td class="rk">' + (i + 1) + '</td>' +
       '<td><div class="name-cell">' + logoMarkup(c.conference, 'conf', 'sm') + esc(c.conference) + '</div></td>' +
       '<td><div class="name-cell">' + teamLink(c.team, 'sm') + '</div></td>' +
-      '<td class="num">' + fmt(c.coe) + '</td>' +
+      '<td class="num">' + eloValue(c.rating) + '</td>' +
       '<td>' + (c.auto_bid ? '<span class="tag champ">Automatic</span>' : '<span class="tag">—</span>') + '</td></tr>';
   });
   html += '</tbody></table></div>';
   return html;
 }
 
-// The same logistic src/coefficients/simulate_cfp_bracket.py runs, with the same
-// fitted temperature: it ships in sim_meta so this button and the published
-// Title Odds cannot drift apart. No fallback constant lives here -- one would
-// silently reinstate the old hand-picked 6.0 if the payload ever changed shape.
-// homeField is team A's venue edge in CoE points, and every caller states it:
-// the first round is played at the higher seed's home, which is the `home` side
-// of the pair, and every later round is at a neutral site and passes 0.
-function winProbability(coeA, coeB, temperature, homeField) {
-  return 1 / (1 + Math.exp(-((coeA - coeB) + homeField) / temperature));
+// The same probability src/coefficients/simulate_cfp_bracket.py runs, which is
+// the rating engine's own: a logistic on the Elo gap over `scale`, with the
+// host's rating raised by `home_field` and nothing added at a neutral site.
+// Both terms ship in sim_meta so this button and the published Title Odds
+// cannot drift apart, and no fallback constant lives here -- one would
+// silently keep simulating on an old model if the payload changed shape.
+// `hosted` is false for every round after the first, which is played at the
+// higher seed's home: that is the `home` side of each shipped pair.
+function winProbability(ratingA, ratingB, scale, homeField, hosted) {
+  const effA = ratingA + (hosted ? homeField : 0);
+  return 1 / (1 + Math.pow(10, (ratingB - effA) / scale));
 }
-function simulateGame(a, b, teamCoe, temperature, homeField) {
-  const pA = winProbability(teamCoe[a] || 0, teamCoe[b] || 0, temperature, homeField);
+function simulateGame(a, b, ratings, scale, homeField, hosted) {
+  const pA = winProbability(ratings[a], ratings[b], scale, homeField, hosted);
   return Math.random() < pA ? a : b;
 }
 
 function runBracketSimulation(pf) {
-  const teamCoe = {};
-  pf.field.forEach(q => { teamCoe[q.team] = q.team_coe_5yr; });
-  const temperature = (pf.sim_meta || {}).temperature;
+  const ratings = {};
+  pf.field.forEach(q => { ratings[q.team] = q.rating; });
+  const scale = (pf.sim_meta || {}).scale;
   const homeField = (pf.sim_meta || {}).home_field;
   const bySeed = {};
   pf.field.forEach(q => { bySeed[q.seed] = q.team; });
@@ -1885,19 +1892,19 @@ function runBracketSimulation(pf) {
   // First round, at the higher seed's home. The export ships the pairs, so
   // this cannot drift from what src/coefficients/simulate_cfp_bracket.py runs.
   const firstRound = pf.first_round.map(g =>
-    simulateGame(g.home, g.away, teamCoe, temperature, homeField));
+    simulateGame(g.home, g.away, ratings, scale, homeField, true));
   const winnerOfPair = {};
   pf.first_round.forEach((g, i) => { winnerOfPair[g.home_seed + '/' + g.away_seed] = firstRound[i]; });
 
   // Quarterfinals onward: neutral sites, so no venue term at all.
   const qfField = pf.quarterfinals.map(q =>
     simulateGame(bySeed[q.bye_seed], winnerOfPair[q.pair[0] + '/' + q.pair[1]],
-                 teamCoe, temperature, 0));
+                 ratings, scale, homeField, false));
   const sfField = [];
   for (let i = 0; i < qfField.length; i += 2) {
-    sfField.push(simulateGame(qfField[i], qfField[i + 1], teamCoe, temperature, 0));
+    sfField.push(simulateGame(qfField[i], qfField[i + 1], ratings, scale, homeField, false));
   }
-  const champion = simulateGame(sfField[0], sfField[1], teamCoe, temperature, 0);
+  const champion = simulateGame(sfField[0], sfField[1], ratings, scale, homeField, false);
   return { firstRound, qfField, sfField, champion };
 }
 
@@ -2031,7 +2038,7 @@ function renderBracket() {
   const sim = (state.simYear === state.year) ? state.simResult : null;
 
   let html = '<div class="panel">';
-  html += '<div class="bracket-section-label">Bracket (straight-seeded by 5yr CoE' +
+  html += '<div class="bracket-section-label">Bracket (straight-seeded by ' + esc(F.ranking) +
     (sim ? '; the Semifinals onward are from your last simulation run' : '; the Semifinals onward are TBD until you simulate') + ')</div>';
   html += '<div class="sim-button-row"><button id="simulate-btn" class="simulate-btn">' +
     (sim ? '\u{1F3B2} Simulate Again' : '\u{1F3B2} Simulate the Bracket!') + '</button></div>';
@@ -2048,12 +2055,13 @@ function renderBracket() {
       teamAnchor(g.away, logoMarkup(g.away, 'team') + '<div><span class="name">(' + g.away_seed + ') ' + esc(g.away) + '</span><span class="conf">' + esc(g.away_conf) + '</span></div>', 'team-chip') +
       '<div class="at">@</div>' +
       teamAnchor(g.home, logoMarkup(g.home, 'team') + '<div><span class="name">(' + g.home_seed + ') ' + esc(g.home) + '</span><span class="conf">' + esc(g.home_conf) + '</span></div>', 'team-chip home') +
-      '<div class="coe-mini">' + fmt(g.away_coe) + ' vs ' + fmt(g.home_coe) + '</div>' +
+      '<div class="coe-mini">' + eloValue(g.away_rating) + ' vs ' + eloValue(g.home_rating) + '</div>' +
       '</div></div>';
   });
   html += '<p class="section-note">Seeds 1–' + F.bye_seeds + ' are already in the ' +
     'quarterfinals. Everything from the quarterfinals on is at a neutral site, so the ' +
-    'host’s edge applies in these ' + pf.first_round.length + ' games only.</p>';
+    'host’s edge applies in these ' + pf.first_round.length + ' games only. The two ' +
+    'numbers on each card are the teams’ ' + esc(F.ranking) + ' ratings.</p>';
   html += '</div>';
   return html;
 }
@@ -2125,21 +2133,23 @@ function renderProjection() {
   let html = '<div class="panel"><h2 class="section-title">Rest of Season</h2>';
   html += '<p class="section-note">' + P.unplayed.toLocaleString() + ' games of the ' + P.season +
     ' season have not been played. Each one is decided by the same Elo win probability this site ' +
-    'already shows on its game card, ' + P.n_sims.toLocaleString() + ' times over. Every simulated ' +
-    'season is then rated, its conference champions derived and its twelve-team field selected ' +
-    'exactly as a real season would be, so these are the chances of finishing somewhere, not of ' +
-    'winning a bracket that is already set. Results through ' + esc(P.as_of || 'the latest game') +
+    'already shows on its game card, ' + P.n_sims.toLocaleString() + ' times over. Each simulated ' +
+    'season then has its conference champions derived and its twelve-team field selected and ' +
+    'played exactly as a real season would be, so these are the chances of finishing somewhere, ' +
+    'not of winning a bracket that is already set. Results through ' + esc(P.as_of || 'the latest game') +
     '. Records and projected wins count games against unrated opponents, as a team page does; ' +
     'the odds are simulated from rated games, which are the only ones a rating can play.</p>';
-  html += '<p class="section-note">Two things this does not model, worth knowing before you read ' +
-    'the numbers. Elo is held at today’s values inside a simulated season, so a team that loses ' +
-    'its next five games is still favoured by the same amount in the sixth — real collapses and ' +
-    'real surges are both underrepresented here. And the ranking the field is seeded from is the ' +
-    'five-year rolling coefficient, which four finished seasons already decide, so a strong ' +
-    'program stays in the field through a bad autumn. Most of the movement below is in the ' +
-    'conference races, which is where this model lets a season speak loudest.</p>';
+  html += '<p class="section-note">Each simulated result then moves both teams’ ratings, by the ' +
+    'same update the live engine applies to a real game, so a team that loses its next three ' +
+    'games is a worse team in the fourth and can play its way out of the field. One thing this ' +
+    'does not model: a simulated game has a winner but no score, and the engine scales a real ' +
+    'update by how far the winner outplayed the gap. Each simulated game takes the average of ' +
+    'that instead, so ratings move by a realistic amount while no single simulated game is ' +
+    'allowed to be a blowout — which makes the spread of projected ratings narrower than a real ' +
+    'season’s.</p>';
   html += '<table class="rank-table"><thead><tr><th class="num">#</th><th>Team</th>' +
     '<th>Conference</th><th class="num">Record</th><th class="num">Proj. wins</th>' +
+    '<th class="num">Proj. ' + esc(P.ranking || 'Elo') + '</th>' +
     '<th class="num">Conf. title</th><th class="num">Playoff</th><th class="num">Bye</th>' +
     '<th class="num">Title</th></tr></thead><tbody>';
   contenders.forEach((t, i) => {
@@ -2149,6 +2159,7 @@ function renderProjection() {
         esc(t.conference) : '—') + '</div></td>' +
       '<td class="num">' + esc(projectionRecord(t)) + '</td>' +
       '<td class="num">' + t.projected_wins.toFixed(1) + '</td>' +
+      '<td class="num">' + eloValue(t.projected_elo) + '</td>' +
       '<td class="num">' + oddsPct(t.conference_title_pct) + '</td>' +
       '<td class="num">' + oddsPct(t.playoff_pct) + '</td>' +
       '<td class="num">' + oddsPct(t.bye_pct) + '</td>' +
@@ -2192,21 +2203,21 @@ function renderConferenceRaces(P) {
 function renderOdds() {
   const pf = DATA.playoff_by_year[state.year];
   if (!pf || !pf.simulation) return '<div class="empty-note">No simulation data for this season.</div>';
-  const meta = pf.sim_meta || {};
+  const meta = pf.sim_meta || {}, F = pf.format;
   let html = '<div class="panel"><h2 class="section-title">Title Odds &mdash; Monte Carlo, ' +
-    (meta.n_sims || '?').toLocaleString() + ' simulated brackets (temperature=' + meta.temperature + ')</h2>';
-  // Where the temperature comes from. It used to be a guess, so the page should
-  // say that it no longer is, in the reader's terms rather than the model's.
-  html += '<p class="section-note">Each game is decided by the CoE gap between the two teams, ' +
-    'softened by a temperature so that the better team usually but not always wins. That ' +
-    'temperature is fitted against the record &mdash; the CoE each team carried into a season ' +
-    'against who actually won, over every game since 1980 between two teams of playoff calibre ' +
-    '&mdash; rather than chosen to look right.' +
-    // Home field is real but small, and only one round has a host, so say both.
+    (meta.n_sims || '?').toLocaleString() + ' simulated brackets</h2>';
+  // One metric, named. Seeding by Elo and simulating on something else would
+  // put two rankings on one page disagreeing about who is stronger.
+  html += '<p class="section-note">Each game is decided by the same ' + esc(F.ranking) +
+    ' win probability this site puts on every game card, and that this model is scored ' +
+    'on under <a href="#section=accuracy">Track Record</a>. The field above is seeded by ' +
+    'the same number, so nothing on this page is ranked by one measure and played by ' +
+    'another.' +
+    // Home field is real, and only one round has a host, so say both.
     (meta.home_field ? ' The first round is played at the higher seed’s home ground, ' +
-      'and hosting is worth a measured ' + meta.home_field + ' CoE points, so the host gets ' +
-      'that edge in those four games. Every round after that is at a neutral site and no ' +
-      'team gets an edge.' : '') +
+      'worth ' + meta.home_field + ' rating points to the host, so the host gets that edge ' +
+      'in those four games. Every round after that is at a neutral site and no team gets ' +
+      'an edge.' : '') +
     // The 12-team bracket is fixed by the seeds, which is why these numbers now
     // answer the question the page appears to be asking. Worth saying, because
     // the 24-team model's figures could not.
@@ -2215,12 +2226,13 @@ function renderOdds() {
     'Simulator, not an average over brackets that might have been drawn.</p>';
   // No separate rank column: seeding IS the ranking under this format, so a
   // "#" beside the seed would be the same number twice in almost every season.
-  html += '<table class="rank-table"><thead><tr><th class="num">Seed</th><th>Team</th><th class="num">CoE</th>' +
+  html += '<table class="rank-table"><thead><tr><th class="num">Seed</th><th>Team</th>' +
+    '<th class="num">' + esc(F.ranking) + '</th>' +
     '<th class="num">QF</th><th class="num">SF</th><th class="num">Final</th><th class="num">Champion</th></tr></thead><tbody>';
   pf.simulation.forEach(r => {
     html += '<tr><td class="rk">' + r.seed + '</td>' +
       '<td><div class="name-cell">' + teamLink(r.team, 'sm') + '</div></td>' +
-      '<td class="num">' + fmt(r.coe) + '</td>' +
+      '<td class="num">' + eloValue(r.rating) + '</td>' +
       '<td class="num">' + r.qf_pct + '%</td><td class="num">' + r.sf_pct + '%</td>' +
       '<td class="num">' + r.final_pct + '%</td><td class="num coe-val">' + r.champion_pct + '%</td></tr>';
   });
@@ -5123,10 +5135,13 @@ function renderMethodology() {
     esc(frText) + ' at the higher seed\u2019s home. Everything after that is at a neutral site.</p>' +
     '<p>The format needs a national ranking and this project has no selection committee, so every ' +
     'ordering it needs \u2014 which champions are the top five, which teams are the best available, ' +
-    'and the seeds themselves \u2014 is the five-year rolling team CoE this site already seeds and ' +
-    'assigns home field by. That is a strength rating rather than a resume ranking, and five years ' +
-    'moves more slowly than one season, so read a field here as the strongest programs with a ' +
-    'champion floor, not as a guess at what the committee would do. A champion is the top team in ' +
+    'and the seeds themselves \u2014 is ' + esc(PF.RANKING_NOTE || 'Elo entering the postseason') +
+    ', the same rating this site publishes for every team and scores under Track Record. Each ' +
+    'game of a simulated bracket is decided by that rating\u2019s own win probability too, so ' +
+    'nothing here is ranked by one measure and played by another. It is a strength rating rather ' +
+    'than a resume ranking \u2014 the committee asks who earned it this year, Elo asks who is ' +
+    'good \u2014 so read a field here as the teams the engine rates highest with a champion ' +
+    'floor, not as a guess at what the committee would do. A champion is the top team in ' +
     'this project\u2019s derived conference standings, which is not always the team that won the ' +
     'conference title game. Independents cannot win a conference, so they compete for at-large bids ' +
     'like everyone else. Simulated brackets are always labeled as simulations and kept apart from ' +

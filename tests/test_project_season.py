@@ -1,16 +1,17 @@
 """The rest-of-season projection, held to the code it stands in for.
 
-project_season.py reimplements three things in a faster shape so they can run
-thousands of times: the iterative season rating, the rolling 5-year window,
-and the conference standings tiebreak. Duplicated arithmetic is only safe if
-something holds the copy to the original, so every test here drives the REAL
-code and the projection's version over real seasons and requires them to
-agree. If the model changes on one side only, these fail.
+project_season.py duplicates two things in a faster shape so they can run
+thousands of times: the Elo update and the conference standings tiebreak.
+Duplicated arithmetic is only safe if something holds the copy to the
+original, so the tests here drive the REAL code and the projection's version
+over real seasons and require them to agree.
 
-The last test is the one that matters most: a season with nothing left to play
-must project to exactly the field the site publishes for it, with certainty.
-A projection that cannot reproduce a finished season has no business
-describing an unfinished one.
+The test that matters most is test_a_finished_season_projects_to_the_field_it
+_actually_had: a season with nothing left to play must project to EXACTLY the
+field the site publishes for it, with certainty. Both are selected from the
+same ratings, so that is an equality rather than a resemblance, and a
+projection that cannot reproduce a finished season has no business describing
+an unfinished one.
 """
 from __future__ import annotations
 
@@ -18,21 +19,12 @@ import csv
 
 import pytest
 
-import build_coefficients as bc
 import project_season as ps
 from conftest import PLAYOFF_YEARS
-from select_cfp_field import conference_champions, load_team_coe_5yr, select_field
+from predict_upcoming import elo_config, game_expectation
+from select_cfp_field import conference_champions, load_team_elo, select_field
 
-# Seasons with both a full set of games and the four prior seasons the rolling
-# window needs. Deliberately several, because a single season cannot show that
-# a tiebreak is right -- the 2021 Big 12 tie that this module got wrong first
-# time round appears in exactly one of them.
-RATING_YEARS = [2018, 2021, 2024, 2025]
-
-
-@pytest.fixture(scope="module")
-def season_ratings():
-    return ps.load_season_ratings()
+CFG = elo_config()
 
 
 @pytest.fixture(scope="module")
@@ -74,44 +66,6 @@ def _real_inputs(db_conn, year):
     return games, played, confidence
 
 
-@pytest.mark.parametrize("year", RATING_YEARS)
-def test_the_fast_rating_is_the_builders_rating(db_conn, year, season_ratings):
-    """Identical output, not merely close: the same arithmetic in another shape."""
-    games, played, confidence = _real_inputs(db_conn, year)
-    prior = bc.compute_prior_ratings(season_ratings[year - 1], ps.PRIOR_REGRESSION)
-
-    real = bc.per_season_iterative_ratings(
-        games, iterations=bc.ITERATIONS, prior=prior, confidence=confidence)
-    results, teams, projection_played, _record = ps.completed_results(db_conn, year)
-    fast = ps.iterative_ratings(results, teams, prior, confidence)
-
-    assert set(fast) == set(real), "the two disagree about who played that season"
-    assert projection_played == played, "the two disagree about how many games a team played"
-    assert max(abs(real[t] - fast[t]) for t in real) == 0.0
-
-
-@pytest.mark.parametrize("year", RATING_YEARS)
-def test_the_rolling_window_reproduces_the_published_coefficient(db_conn, year, season_ratings):
-    """rolling_coe over a finished season == data/processed/team_coeff_5yr.csv.
-
-    Not exactly equal: the four prior seasons are read back from a CSV rounded
-    to six decimals, so a sum of five of them lands about 1e-6 away. The
-    ORDER, which is the only thing the field is selected on, has to be
-    identical.
-    """
-    games, _played, confidence = _real_inputs(db_conn, year)
-    prior = bc.compute_prior_ratings(season_ratings[year - 1], ps.PRIOR_REGRESSION)
-    this_season = bc.per_season_iterative_ratings(
-        games, iterations=bc.ITERATIONS, prior=prior, confidence=confidence)
-
-    mine = ps.rolling_coe(season_ratings, year, this_season)
-    published = load_team_coe_5yr(year)
-    assert set(published) <= set(mine)
-    assert max(abs(published[t] - mine[t]) for t in published) < 1e-4
-    rank = lambda coe: sorted(published, key=lambda t: (-coe[t], t))  # noqa: E731
-    assert rank(mine) == rank(published)
-
-
 @pytest.mark.parametrize("year", PLAYOFF_YEARS)
 def test_in_memory_champions_match_the_stored_standings(db_conn, year):
     """Every conference, every season -- the champion the database derived.
@@ -122,7 +76,7 @@ def test_in_memory_champions_match_the_stored_standings(db_conn, year):
     passes eleven of these twelve seasons.
     """
     names = dict(db_conn.execute("SELECT team_id, team_name FROM teams"))
-    _results, _teams, _played, record = ps.completed_results(db_conn, year)
+    _played, record = ps.completed_results(db_conn, year)
     mine = ps.champions_from_records(record, names)
     stored = conference_champions(db_conn, year)
     assert stored, f"{year} has no stored standings to check against"
@@ -132,7 +86,7 @@ def test_in_memory_champions_match_the_stored_standings(db_conn, year):
 @pytest.mark.parametrize("year", PLAYOFF_YEARS)
 def test_banked_records_match_the_stored_records(db_conn, year):
     """bank_game's running totals == conference_team_records_by_year."""
-    _results, _teams, _played, record = ps.completed_results(db_conn, year)
+    _played, record = ps.completed_results(db_conn, year)
     stored = {
         (r["team_id"], r["conference"]): [r["conf_wins"], r["conf_losses"], r["conf_ties"],
                                           r["conf_games"], r["overall_wins"], r["overall_losses"],
@@ -158,12 +112,15 @@ def test_a_finished_season_projects_to_the_field_it_actually_had(db_conn, db_pat
     projection = ps.project(str(db_path), year, 3)
     assert projection["unplayed"] == 0, "2025 still has unplayed games; pick a finished season"
 
-    field = select_field(db_conn, year, load_team_coe_5yr(year))
+    field = select_field(db_conn, year, load_team_elo(db_conn, year))
     expected = {q["team"] for q in field}
     expected_byes = {q["team"] for q in field if q["seed"] <= 4}
 
     made_it = {t for t, c in projection["counts"].items() if c["playoff"]}
-    assert made_it == expected
+    assert made_it == expected, (
+        "a finished season must project to exactly the field the site publishes "
+        "for it -- both are selected from the same ratings"
+    )
     assert all(projection["counts"][t]["playoff"] == 3 for t in expected), "not certain"
     assert {t for t, c in projection["counts"].items() if c["bye"]} == expected_byes
 
@@ -226,23 +183,6 @@ def test_the_report_rows_are_percentages_of_the_runs(db_path, live_season):
         assert row["bye_pct"] <= row["playoff_pct"] + 1e-9, row
 
 
-def test_the_published_season_ratings_cover_the_window(season_ratings):
-    """The four prior seasons a 2026 projection leans on are actually on disk."""
-    for year in range(2022, 2026):
-        assert len(season_ratings.get(year, {})) > 100, f"{year} season ratings missing"
-
-
-def test_rolling_coe_applies_the_builders_decay(season_ratings):
-    """One team, one window, computed by hand against within_window_weight."""
-    team = "Ohio State"
-    this_season = {team: 3.0}
-    got = ps.rolling_coe(season_ratings, 2026, this_season)[team]
-    expected = 3.0 * bc.within_window_weight(2026, 2026) + sum(
-        season_ratings[y].get(team, 0.0) * bc.within_window_weight(2026, y)
-        for y in range(2022, 2026))
-    assert got == pytest.approx(expected)
-
-
 def test_the_tiebreak_keys_are_the_standings_keys(db_conn):
     """A conference where two teams are level on all five numbers.
 
@@ -252,81 +192,11 @@ def test_the_tiebreak_keys_are_the_standings_keys(db_conn):
     the only thing left, and it has to be the alphabet of NAMES.
     """
     names = dict(db_conn.execute("SELECT team_id, team_name FROM teams"))
-    _r, _t, _p, record = ps.completed_results(db_conn, 2021)
+    _played, record = ps.completed_results(db_conn, 2021)
     level = [names[tid] for (tid, conf), r in record.items()
              if conf == "Big 12" and r[:2] == [8, 2] and r[4] == 11]
     assert sorted(level) == ["Baylor", "Oklahoma State"], level
     assert ps.champions_from_records(record, names)["Big 12"] == "Baylor"
-
-
-def test_the_published_coefficient_file_has_the_projected_season(db_conn):
-    """team_coeff_5yr.csv carries 2026, so a projection has a baseline to move."""
-    with open(ps.DATA_DIR / "team_coeff_5yr.csv", newline="") as f:
-        years = {int(r["end_year"]) for r in csv.DictReader(f)}
-    assert 2026 in years
-
-
-@pytest.mark.parametrize("year", RATING_YEARS)
-def test_the_projection_reproduces_the_published_season_rating(db_conn, year, season_ratings):
-    """A finished season, rated by the projection, == team_ratings_by_season.csv.
-
-    End to end through season_rating, which applies the prior itself, so this
-    is the projection's rating path and not a reassembly of it in the test.
-    """
-    _games, _played, confidence = _real_inputs(db_conn, year)
-    results, teams, _p, _r = ps.completed_results(db_conn, year)
-    fast = ps.season_rating(season_ratings, year, results, teams, confidence)
-
-    published = season_ratings[year]
-    assert set(fast) == set(published)
-    # The CSV is rounded to six decimals, and the prior read back from it
-    # carries that rounding into the next season, so this is a rounding-scale
-    # agreement rather than an exact one.
-    assert max(abs(published[t] - fast[t]) for t in published) < 1e-5
-
-
-def test_the_prior_regression_matches_the_builders_default():
-    """PRIOR_REGRESSION is build_coefficients' own --prior-regression default.
-
-    Checked against that function's source because the value lives in an
-    argparse call inside main() and there is nothing importable to compare
-    against. Worth checking anyway: no behavioural test here can pin it. In a
-    season where every team has reached CONFIDENCE_GAMES the prior is
-    multiplied by zero (see the next test), and a projected season is a
-    complete season, so the constant is nearly inert in exactly the case this
-    module cares about -- which is why a test that it reproduces a published
-    season passes at any value, and why this one is explicit instead.
-    """
-    import inspect
-
-    source = inspect.getsource(bc.main)
-    assert '"--prior-regression", type=float, default=0.5' in source, (
-        "build_coefficients' prior-regression default moved; "
-        "project_season.PRIOR_REGRESSION has to move with it")
-    assert ps.PRIOR_REGRESSION == 0.5
-
-
-def test_the_prior_only_acts_below_full_confidence():
-    """Where the prior does and does not reach the rating.
-
-    At confidence 1.0 the blend is all computed value, so two very different
-    priors give the same rating; below 1.0 they do not. This is what makes the
-    constant almost irrelevant to a finished or projected season and decisive
-    for a half-played one -- the reason the live Field page's mid-season
-    numbers are damped at all.
-    """
-    results = [("A", "B", 1.0), ("A", "C", 1.0), ("B", "C", 1.0)]
-    teams = frozenset({"A", "B", "C"})
-    high = {"A": 9.0, "B": 9.0, "C": 9.0}
-    low = {"A": 0.1, "B": 0.1, "C": 0.1}
-
-    full = {t: 1.0 for t in teams}
-    assert ps.iterative_ratings(results, teams, high, full) == \
-        ps.iterative_ratings(results, teams, low, full)
-
-    partial = {t: 0.25 for t in teams}
-    assert ps.iterative_ratings(results, teams, high, partial) != \
-        ps.iterative_ratings(results, teams, low, partial)
 
 
 def test_ci_builds_a_database_with_games_left_to_play(repo_root):
@@ -369,6 +239,7 @@ def test_a_single_occurrence_is_not_published_as_zero():
     projection = {
         "n_sims": n,
         "wins": {"Longshot": 7.0 * n, "Favourite": 11.0 * n},
+        "elo": {"Longshot": 1500.0 * n, "Favourite": 1900.0 * n},
         "counts": {
             "Longshot": {**dict.fromkeys(ps.TALLIES, 0), "playoff": 1, "conference_title": 1},
             "Favourite": {**dict.fromkeys(ps.TALLIES, 0), "playoff": n, "conference_title": n,
@@ -386,7 +257,7 @@ def test_a_single_occurrence_is_not_published_as_zero():
 @pytest.mark.parametrize("n_sims", [100, 1_000, 10_000, 100_000])
 def test_no_tally_can_round_to_zero_at_any_simulation_count(n_sims):
     """The rule, not the one default: a count of one survives at every size."""
-    projection = {"n_sims": n_sims, "wins": {},
+    projection = {"n_sims": n_sims, "wins": {}, "elo": {},
                   "counts": {"T": {**dict.fromkeys(ps.TALLIES, 0), "playoff": 1}}}
     row = ps.rows_for_report(projection)[0]
     assert row["playoff_pct"] > 0
@@ -428,7 +299,7 @@ def test_the_projected_record_is_the_record_the_team_page_shows(db_path, live_se
     unrated = {names[int(tid)]: wlt for tid, wlt in unrated_by_id.items()
                if int(tid) in names}
 
-    payload = edd.build_projection(str(db_path), live_season, 60, 4.5, 1.25)
+    payload = edd.build_projection(str(db_path), live_season, 60)
     assert payload and payload["teams"], "the live season should project to something"
 
     checked = 0
@@ -463,3 +334,114 @@ def test_a_team_with_a_rounded_away_chance_stays_on_the_page():
     rows = [{"team": t, "playoff_pct": 0.0, "conference_title_pct": 0.0} for t in counts]
     kept = [t["team"] for t in edd.still_playing_for_something(rows, counts)]
     assert kept == ["Longshot", "Conference hope"]
+
+
+# ----------------------------------------------------------------- the Elo chain
+
+def test_a_simulated_game_uses_the_probability_the_site_publishes():
+    """Not a second notion of who is favoured.
+
+    play_game decides the game with predict_upcoming.game_expectation -- the
+    number on every game card -- so a coin that always lands just below the
+    threshold must give the home win and one just above it must not.
+    """
+    class Fixed:
+        def __init__(self, value):
+            self.value = value
+
+        def random(self):
+            return self.value
+
+    cfg, home, away = CFG, 1, 2
+    p = game_expectation(1800.0, 1600.0, False, cfg)
+    assert 0.5 < p < 1.0, "the better team at home should be favoured but not certain"
+
+    assert ps.play_game({home: 1800.0, away: 1600.0}, home, away, False, cfg, 0.0,
+                        Fixed(p - 1e-9)) is True
+    assert ps.play_game({home: 1800.0, away: 1600.0}, home, away, False, cfg, 0.0,
+                        Fixed(p + 1e-9)) is False
+    # And the venue is read: the same two teams at a neutral site are closer.
+    assert game_expectation(1800.0, 1600.0, True, cfg) < p
+
+
+def test_a_simulated_result_moves_both_ratings_and_is_zero_sum():
+    """build_elo's own update: the winner gains exactly what the loser loses.
+
+    A chain that is not zero-sum inflates or deflates the whole field over a
+    season, and the ranking it produces would not be comparable with the
+    stored ratings the field is otherwise selected from.
+    """
+    class Always:
+        def random(self):
+            return 0.0  # always below the expectation, so the home team wins
+
+    cfg, k_m = CFG, CFG["k"] * 1.7
+    ratings = {1: 1500.0, 2: 1500.0}
+    before = sum(ratings.values())
+    assert ps.play_game(ratings, 1, 2, False, cfg, k_m, Always()) is True
+    assert sum(ratings.values()) == pytest.approx(before)
+    assert ratings[1] > 1500.0 > ratings[2]
+    # The size is k * M * (actual - expected), with the host's own edge in the
+    # expectation -- so a home win over an equal team moves less than a road one.
+    expected_home = game_expectation(1500.0, 1500.0, False, cfg)
+    assert ratings[1] - 1500.0 == pytest.approx(k_m * (1 - expected_home))
+
+    road = {1: 1500.0, 2: 1500.0}
+    ps.play_game(road, 2, 1, False, cfg, k_m, type("R", (), {"random": lambda s: 1.0})())
+    assert road[1] - 1500.0 > ratings[1] - 1500.0, "an away win should be worth more"
+
+
+def test_losing_simulated_games_makes_a_team_worse():
+    """The whole reason the chain is live.
+
+    Until the committee stand-in became Elo this projection held every rating
+    at today's value, so a team that lost its next five games was still
+    favoured by the same amount in the sixth, and could not play its way out
+    of the field. One simulated season has to be able to move a team.
+    """
+    cfg, k_m = CFG, CFG["k"] * 1.7
+    ratings = {1: 1700.0, 2: 1700.0}
+    loses = type("Loser", (), {"random": lambda s: 1.0})()   # home never wins
+    for _ in range(5):
+        assert ps.play_game(ratings, 1, 2, True, cfg, k_m, loses) is False
+    assert ratings[1] < 1700.0 - 100, "five losses barely moved the rating"
+    assert ratings[2] > 1700.0 + 100
+
+
+def test_a_simulated_game_takes_the_configured_layers_own_mean_multiplier(db_conn):
+    """Not 1.0, and not the other layer's scale.
+
+    A simulated game has a winner and no score, so there is no multiplier to
+    compute; the stand-in is the configured layer's measured average. Taking
+    1.0 instead would move every simulated rating about 40% less than a real
+    result moves it.
+    """
+    m = ps.mean_performance_multiplier(db_conn, 2026)
+    assert 1.2 < m < 2.2, f"the measured mean multiplier is {m}, which is not this layer's"
+    # Measured, not written down: the fallback is only for a database with no
+    # history, and must not be what a real database returns.
+    assert m != ps.MEAN_MULTIPLIER_FALLBACK
+    # The other layer is excluded. MOV's multiplier averages ~2.43, so a mean
+    # computed over both layers' rows lands above this one.
+    both = db_conn.execute(
+        """SELECT AVG(e.mov_multiplier) FROM elo_game_history e
+           JOIN games g ON g.game_id = e.game_id
+           WHERE g.season_year > 2021 AND g.season_year <= 2026""").fetchone()[0]
+    assert m == pytest.approx(both, abs=0.2), "the recent seasons are all one layer"
+    old = ps.mean_performance_multiplier(db_conn, 1995)
+    assert old == ps.MEAN_MULTIPLIER_FALLBACK, (
+        "a window the configured layer never scored should fall back, not average MOV's"
+    )
+
+
+def test_the_projected_elo_is_a_rating_not_a_total(db_path, live_season):
+    """Published as a mean per run, in the range Elo actually occupies."""
+    projection = ps.project(str(db_path), live_season, 20)
+    rows = ps.rows_for_report(projection)
+    assert rows
+    for row in rows:
+        assert 800 < row["projected_elo"] < 2400, row
+    # The field is seeded on this number, so the best playoff chances belong to
+    # the highest projected ratings.
+    ranked = sorted(rows, key=lambda r: -r["projected_elo"])
+    assert ranked[0]["playoff_pct"] >= ranked[-1]["playoff_pct"]

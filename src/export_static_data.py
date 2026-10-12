@@ -245,7 +245,8 @@ def model_params() -> dict:
     # than retyped here. This replaced "playoff_bids", a conference-rank bid
     # table that only the invented 24-team model ever had.
     playoff = _code_constants(REPO / "src" / "coefficients" / "select_cfp_field.py",
-                             ["FIELD_SIZE", "AUTO_BIDS", "BYE_SEEDS", "FIRST_ROUND_PAIRS"])
+                             ["FIELD_SIZE", "AUTO_BIDS", "BYE_SEEDS", "FIRST_ROUND_PAIRS",
+                              "RANKING_LABEL", "RANKING_NOTE"])
     return {"elo": clean(cfg.get("elo")), "hybrid": clean(cfg.get("hybrid")), "coe2": clean(cfg.get("coe")),
             "coe_v1": v1, "playoff_format": playoff,
             # EXP-03: which performance multiplier the ratings on this page were built with.

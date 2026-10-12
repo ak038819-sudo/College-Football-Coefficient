@@ -36,13 +36,12 @@ sys.path.insert(0, str(Path(__file__).parent / "coefficients"))
 # has no per-conference bid table -- so it decides nothing about the field.
 from select_playoff_field_v2 import load_conference_coe_rank  # noqa: E402
 from select_cfp_field import (  # noqa: E402
-    AUTO_BIDS, BYE_SEEDS, FIELD_SIZE, QUARTERFINALS,
-    byes, conference_champions, first_round_games, load_team_coe_5yr,
+    AUTO_BIDS, BYE_SEEDS, FIELD_SIZE, QUARTERFINALS, RANKING_LABEL, RANKING_NOTE,
+    byes, conference_champions, first_round_games, load_team_elo,
     select_field,
 )
-from simulate_cfp_bracket import (  # noqa: E402
-    DEFAULT_HOME_FIELD, DEFAULT_TEMPERATURE, run_simulation,
-)
+from simulate_cfp_bracket import run_simulation  # noqa: E402
+from predict_upcoming import elo_config  # noqa: E402
 import project_season  # noqa: E402
 sys.path.insert(0, str(Path(__file__).parent))
 from build_coe2_rollups import conference_coe2_rank, load_bonus_config  # noqa: E402
@@ -410,7 +409,7 @@ def build_polls(db_path: str, season) -> dict:
 
 
 def _build_upcoming(db_path: str) -> dict:
-    from predict_upcoming import build_upcoming, elo_config
+    from predict_upcoming import build_upcoming
     conn = sqlite3.connect(db_path)
     try:
         return build_upcoming(conn, elo_config())
@@ -449,8 +448,7 @@ def load_csv_by_year(filename: str, year_field: str) -> dict:
     return out
 
 
-def build_playoff_data(db_path: str, year: int, draw_seed: int, sims: int, temperature: float,
-                       home_field: float = 0.0) -> dict:
+def build_playoff_data(db_path: str, year: int, draw_seed: int, sims: int) -> dict:
     """Everything the three playoff pages render, for one season.
 
     `draw_seed` is accepted and ignored. The 12-team bracket is fully
@@ -458,27 +456,27 @@ def build_playoff_data(db_path: str, year: int, draw_seed: int, sims: int, tempe
     still on the CLI and in the deploy, so silently taking it is kinder than
     failing a build over an argument that no longer has a job.
     """
+    cfg = elo_config()
     conn = sqlite3.connect(db_path)
-    team_coe = load_team_coe_5yr(year)
+    ranking = load_team_elo(conn, year)
     champions = conference_champions(conn, year)
-    field = select_field(conn, year, team_coe)
+    field = select_field(conn, year, ranking)
     conn.close()
 
     auto_teams = {q["team"] for q in field if q["bid_type"] == "auto"}
     champion_rows = sorted(
-        ({"team": team, "conference": conf, "coe": round(team_coe.get(team, 0.0), 3),
+        ({"team": team, "conference": conf, "rating": round(ranking.get(team, 0.0), 1),
           "auto_bid": team in auto_teams}
          for conf, team in champions.items()),
-        key=lambda r: (-r["coe"], r["team"]),
+        key=lambda r: (-r["rating"], r["team"]),
     )
 
-    counts, n_sims, sim_field, sim_team_coe = run_simulation(
-        db_path, year, sims, temperature, home_field=home_field)
+    counts, n_sims, sim_field, sim_ranking = run_simulation(db_path, year, sims, cfg=cfg)
     seed_of = {q["team"]: q["seed"] for q in sim_field}
     conf_of = {q["team"]: q["conference"] for q in sim_field}
     simulation = sorted(
         ({"team": team, "seed": seed_of[team], "conference": conf_of.get(team, ""),
-          "coe": round(sim_team_coe.get(team, 0.0), 3),
+          "rating": round(sim_ranking.get(team, 0.0), 1),
           "qf_pct": round(100 * c["qf"] / n_sims, 1),
           "sf_pct": round(100 * c["sf"] / n_sims, 1),
           "final_pct": round(100 * c["final"] / n_sims, 1),
@@ -491,17 +489,21 @@ def build_playoff_data(db_path: str, year: int, draw_seed: int, sims: int, tempe
         # The format itself, so the page describes what it is actually
         # rendering rather than carrying its own copy of these numbers.
         "format": {"field_size": FIELD_SIZE, "auto_bids": AUTO_BIDS,
-                   "bye_seeds": BYE_SEEDS, "seeding": "straight"},
+                   "bye_seeds": BYE_SEEDS, "seeding": "straight",
+                   # What stands in for the committee, named by the module that
+                   # does the ranking so the page cannot describe another metric.
+                   "ranking": RANKING_LABEL, "ranking_note": RANKING_NOTE},
         "conference_champions": champion_rows,
         "field": [
             {"seed": q["seed"], "team": q["team"], "conference": q["conference"],
              "bid_type": q["bid_type"], "champion_of": q["champion_of"],
-             "team_coe_5yr": round(q["team_coe_5yr"], 3)}
+             "rating": round(q["rating"], 1)}
             for q in field
         ],
         "byes": [{"seed": q["seed"], "team": q["team"]} for q in byes(field)],
         "first_round": [
-            {**g, "home_coe": round(g["home_coe"], 3), "away_coe": round(g["away_coe"], 3)}
+            {**g, "home_rating": round(g["home_rating"], 1),
+             "away_rating": round(g["away_rating"], 1)}
             for g in first_round_games(field)
         ],
         # Which bye seed meets which first-round winner. Shipped rather than
@@ -509,15 +511,17 @@ def build_playoff_data(db_path: str, year: int, draw_seed: int, sims: int, tempe
         # cannot disagree about the shape of the bracket.
         "quarterfinals": [{"bye_seed": s, "pair": list(pair)} for s, pair in QUARTERFINALS],
         "simulation": simulation,
-        # home_field ships so the page's own Simulate button uses the same venue
-        # term as these odds, rather than keeping a second copy of it.
-        "sim_meta": {"n_sims": n_sims, "temperature": temperature,
-                     "home_field": home_field},
+        # The game model ships so the page's own Simulate button runs the same
+        # probability as these odds, rather than keeping a second copy of it.
+        # These are Elo's own terms: a logistic on the rating gap over `scale`,
+        # with the host's rating raised by `home_field` and nothing added at a
+        # neutral site.
+        "sim_meta": {"n_sims": n_sims, "model": RANKING_LABEL.lower(),
+                     "scale": cfg["scale"], "home_field": cfg["home_field"]},
     }
 
 
-def build_projection(db_path: str, season: int, n_sims: int, temperature: float,
-                     home_field: float) -> dict | None:
+def build_projection(db_path: str, season: int, n_sims: int) -> dict | None:
     """Rest-of-season odds for a season still being played, or None.
 
     A finished season has nothing to project: every simulated run would be the
@@ -531,7 +535,7 @@ def build_projection(db_path: str, season: int, n_sims: int, temperature: float,
     """
     if season is None:
         return None
-    projection = project_season.project(db_path, season, n_sims, temperature, home_field)
+    projection = project_season.project(db_path, season, n_sims)
     if not projection["unplayed"]:
         return None
 
@@ -586,7 +590,7 @@ def build_projection(db_path: str, season: int, n_sims: int, temperature: float,
                       "projected_wins": round(row["projected_wins"] + extra[0], 1)})
     return {
         "season": season, "n_sims": projection["n_sims"], "unplayed": projection["unplayed"],
-        "as_of": as_of, "temperature": temperature, "home_field": home_field,
+        "as_of": as_of, "ranking": RANKING_LABEL,
         "teams": still_playing_for_something(teams, counts),
     }
 
@@ -613,8 +617,6 @@ def main() -> None:
     p.add_argument("--db", default="db/league.db")
     p.add_argument("--draw-seed", type=int, default=1)
     p.add_argument("--sims", type=int, default=10000)
-    p.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE)
-    p.add_argument("--home-field", type=float, default=DEFAULT_HOME_FIELD)
     p.add_argument("--out", default="ui/dashboard_data.json")
     p.add_argument("--projection-sims", type=int, default=10000,
                    help="simulated seasons behind the rest-of-season projection "
@@ -698,7 +700,7 @@ def main() -> None:
         print(f"Building playoff data for {year}...")
         try:
             out["playoff_by_year"][str(year)] = build_playoff_data(
-                args.db, year, args.draw_seed, args.sims, args.temperature, args.home_field
+                args.db, year, args.draw_seed, args.sims
             )
             usable_years.append(year)
         except Exception as e:
@@ -731,8 +733,7 @@ def main() -> None:
     season = out["upcoming"]["season"]
     if args.projection_sims > 0:
         print(f"Projecting the rest of {season} ({args.projection_sims:,} simulated seasons)...")
-        out["projection"] = build_projection(args.db, season, args.projection_sims,
-                                             args.temperature, args.home_field)
+        out["projection"] = build_projection(args.db, season, args.projection_sims)
         if out["projection"] is None:
             print(f"  {season} has no unplayed games -- no projection to publish.")
     else:

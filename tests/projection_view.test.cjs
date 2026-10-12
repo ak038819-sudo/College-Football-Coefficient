@@ -23,15 +23,19 @@ function sourceOf(name) {
 
 const TEAMS = [
   {team: 'Ohio State', conference: 'Big Ten', wins: 5, losses: 1, ties: 0, projected_wins: 9.4,
+   projected_elo: 1893,
    conference_title_pct: 15.4, playoff_pct: 100.0, bye_pct: 100.0, semifinal_pct: 74.0,
    final_pct: 55.3, champion_pct: 37.6},
   {team: 'Oregon', conference: 'Big Ten', wins: 2, losses: 2, ties: 0, projected_wins: 5.7,
+   projected_elo: 1744,
    conference_title_pct: 0, playoff_pct: 100.0, bye_pct: 60.8, semifinal_pct: 40.0,
    final_pct: 19.7, champion_pct: 8.6},
   {team: 'Liberty', conference: 'Conference USA', wins: 4, losses: 1, ties: 0, projected_wins: 9.1,
+   projected_elo: 1602,
    conference_title_pct: 73.8, playoff_pct: 0, bye_pct: 0, semifinal_pct: 0,
    final_pct: 0, champion_pct: 0},
   {team: 'Houston', conference: 'Big 12', wins: 4, losses: 1, ties: 0, projected_wins: 8.1,
+   projected_elo: 1655,
    conference_title_pct: 0.04, playoff_pct: 0.02, bye_pct: 0, semifinal_pct: 0,
    final_pct: 0, champion_pct: 0},
 ];
@@ -48,6 +52,9 @@ function projectionContext(projection, year) {
   };
   vm.runInNewContext(
     'const PROJECTION = DATA.projection || null;\n' +
+    // eloValue is lifted for real, not stubbed: a stubbed formatter is how
+    // #71 silently replaced #72's and put an em dash in every player stat.
+    sourceOf('eloValue') + '\n' +
     sourceOf('oddsPct') + '\n' + sourceOf('projectionRecord') + '\n' +
     sourceOf('renderConferenceRaces') + '\n' + sourceOf('renderProjection') + '\n' +
     'this.render = renderProjection; this.oddsPct = oddsPct; this.record = projectionRecord;',
@@ -56,7 +63,7 @@ function projectionContext(projection, year) {
 }
 
 const PROJECTION = {season: 2026, n_sims: 10000, unplayed: 432, as_of: '2026-10-11',
-                    teams: TEAMS};
+                    ranking: 'Elo', teams: TEAMS};
 
 test('a zero chance is blank and a tiny one is not rounded away', () => {
   const {oddsPct} = projectionContext(PROJECTION);
@@ -238,3 +245,12 @@ function sourceOfConst(name) {
   assert.ok(match, `missing ${name}`);
   return match[0];
 }
+
+test('the projection table shows the rating the field is seeded on', () => {
+  const html = projectionContext(PROJECTION).render();
+  // Whole integers, like every other Elo on the site, and the header names
+  // the metric from the payload rather than hardcoding it.
+  assert.ok(html.includes('Proj. Elo'));
+  assert.ok(html.includes('1893') && html.includes('1744'));
+  assert.ok(!html.includes('1893.0'), 'an Elo rating is displayed as a whole number');
+});

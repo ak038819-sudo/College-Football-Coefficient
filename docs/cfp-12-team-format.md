@@ -36,20 +36,31 @@ the format is stated once.
 The real format needs a national ranking, and this project has no
 committee. Every ordering it needs — which champions are the top five,
 which teams are the best available at-large, and the seeds themselves — is
-the **5-year rolling team coefficient** in
-`data/processed/team_coeff_5yr.csv`. That is already what this project
-seeds and assigns home field by, so the playoff introduces no second notion
-of team strength. Ties break on team name, so a bracket is reproducible
-from its inputs.
+**Elo as it stood entering that season's postseason**, read off the stored
+chain in `elo_game_history` (a team's last regular-season game carries the
+rating it took into the postseason). Ties break on team name, so a bracket
+is reproducible from its inputs.
 
-Two honest limits follow, and the methodology page states both:
+It was the 5-year rolling team coefficient until 2026-10-12, when the owner
+replaced it: *"I'd rather use Elo as the committee standin as it is the more
+refined metric."* The measurement agrees. For 2024, the one completed season
+this project covers that the real committee seeded as a twelve-team field:
 
-- It is a **strength rating, not a resume ranking**. The committee's
-  question is who earned it this year; this is who is strong.
-- A **five-year window moves more slowly than a season**. A team that
-  collapsed this year carries four prior seasons with it.
+| ranking | teams shared with the real field | notable additions |
+| --- | --- | --- |
+| Elo entering the postseason | **10 of 12** | Michigan, Ohio |
+| 5-year rolling coefficient | 7 of 12 | Alabama, Washington, BYU, Oregon State |
 
-So a field here is "the twelve strongest programs with a champion floor",
+Across 2014–2025 the two metrics differ on a median of four of the twelve
+places. A five-year window cannot do better by construction: four of the
+five seasons it averages have already happened, so a team that collapses
+this autumn carries four prior seasons with it.
+
+One honest limit remains, and the methodology page states it: Elo is a
+**strength rating, not a resume ranking**. The committee's question is who
+earned it this year; Elo's is who is good, and it carries 80% of last
+season's rating into this one by design (`offseason_retention`). So a field
+here is "the twelve teams the engine rates highest, with a champion floor",
 not a guess at what the committee would do.
 
 A **champion** is the top team in this project's derived conference
@@ -83,16 +94,27 @@ strength threshold to enter the field at all.
   anyone could look at. The odds now are the odds of the bracket on the
   page.
 
+## The game model, also Elo
+
+Changed with the committee stand-in, on the same call (the owner, asked
+whether the bracket's games should follow: *"Elo for both"*).
+`simulate_cfp_bracket.py` now decides every game with the rating engine's
+own pregame probability — the same `game_expectation()` that puts a number
+on every game card, and the one the Track Record page scores at 72.5% over
+30,408 games — with the host's rating raised by `elo.home_field` (50
+points) and nothing added at a neutral site.
+
+The alternative was to seed by Elo and keep simulating on the CoE gap at the
+fitted temperature of 4.5. That would have put two metrics on one page
+disagreeing about who is stronger: a 1-seed can be an underdog in its own
+bracket when the thing that seeded it is not the thing that plays it. The
+temperature and its 1.25-point host edge are still fitted values and still
+describe a CoE gap correctly; they are simply not what ranks this field any
+more, and `simulate_bracket.py` still uses them for the retained 24-team
+model.
+
 ## What did not change
 
-- **The win-probability model.** `simulate_cfp_bracket.py` borrows
-  `simulate_bracket.py`'s logistic unchanged. Turning a CoE gap into a win
-  chance has nothing to do with how many teams are in the field.
-- **The fitted temperature (about 4.5) and host edge (1.25 CoE points)**,
-  both in `config/model_config.json` and both measured in
-  `src/calibrate_sim_temperature.py` against every game since 1980 between
-  two playoff-calibre teams. Neither was refitted: they describe how a CoE
-  gap and a home ground behave in a football game.
 - **Home field in exactly one round.** It was the Round of 24; it is now
   the first round. Everything after is at a neutral site and is simulated
   with no venue term at all. Seeds 1–4 never play a hosted game — their

@@ -5,8 +5,8 @@ WHAT WAS MISSING
 
 Every playoff surface on this site described a season that had already
 happened. select_cfp_field.select_field reads conference standings *to date*
-and the 5-year rolling coefficient *as it stands today*, and
-simulate_cfp_bracket then runs the bracket from that already-fixed field. In
+and the ranking *as it stands today*, and simulate_cfp_bracket then runs the
+bracket from that already-fixed field. In
 week 7 that produced a page stating flatly that Indiana was the Big Ten
 champion and giving a title chance to exactly twelve teams and zero to anyone
 else, with 432 games still unplayed. Those odds answered "if the playoff
@@ -23,36 +23,48 @@ HOW ONE SIMULATED SEASON IS BUILT
      number predict_upcoming.py puts on the game's card, via the same
      game_expectation(). Nothing here invents a second notion of who is
      favoured.
-  2. The season's completed results plus those simulated ones go back through
-     the iterative rating -- the SAME arithmetic build_coefficients.py runs --
-     so the season's own coefficient reflects the simulated results, and the
-     5-year rolling coefficient is rebuilt on top of the four fixed prior
-     seasons.
-  3. Conference records are recomputed from the same combined results, and
-     each conference's champion is its leader under the standings tiebreak
-     that derive_conference_standings_local.py already uses.
-  4. That simulated ranking and those simulated champions go into
-     select_field, unchanged, and the resulting bracket is played out by
-     simulate_cfp_bracket.simulate_one_bracket, unchanged.
+  2. That result then MOVES both ratings, by build_elo's own update, so the
+     next simulated game is played by the teams the earlier ones made. A team
+     that loses its first three simulated games is a worse team in its fourth.
+  3. Conference records are recomputed from the completed results plus the
+     simulated ones, and each conference's champion is its leader under the
+     standings tiebreak that derive_conference_standings_local.py already
+     uses.
+  4. The Elo each team carries out of that simulated season, and those
+     simulated champions, go into select_field, unchanged, and the resulting
+     bracket is played out by simulate_cfp_bracket.simulate_one_bracket,
+     unchanged.
 
 So a team's playoff chance moves for the two real reasons it should: it can
 win its conference and take an automatic bid, and it can play its way up or
 down the ranking the field is seeded from.
 
-THE THREE LIMITS, STATED RATHER THAN HIDDEN
+WHY ELO AND NOT THE COEFFICIENT
 
-  * ELO IS HELD AT TODAY'S VALUES. A simulated game does not feed back into
-    the Elo ratings that decide later simulated games, so a team that loses
-    its next five games is still favoured by the same amount in game six. This
-    narrows the spread of outcomes: genuine collapses and genuine surges are
-    both underrepresented. The coefficient side of the model does respond to
-    simulated results; the game-by-game probabilities do not.
+This module first rated each simulated season with the iterative coefficient
+and seeded from the 5-year rolling window, because that was the committee
+stand-in. It barely moved: four of the five seasons in that window had
+already happened, so a 2-2 Oregon was 100% to make the field and the only
+real movement on the page was in the conference races. The owner's call
+(2026-10-12) replaced the stand-in with Elo, and this projection follows it,
+which also makes it a far cheaper thing to run -- a chain of rating updates
+instead of fifteen iterations over ~900 games per simulated season.
+
+THE TWO LIMITS, STATED RATHER THAN HIDDEN
+
+  * A SIMULATED GAME HAS NO SCORE, SO IT HAS NO PERFORMANCE MULTIPLIER. The
+    live engine scales each update by how far the winner outplayed the
+    pregame gap; a coin flip cannot answer that. Each simulated game takes
+    the configured layer's own recent mean instead (see
+    mean_performance_multiplier), so ratings move by a realistic amount on
+    average while no single simulated game is allowed to be a blowout or a
+    narrow escape. The spread of simulated end-of-season ratings is therefore
+    narrower than a real season's.
   * A PROJECTED SEASON HAS NO POSTSEASON. Bowl and playoff matchups are not
-    known, so a projected season carries only the games on the schedule.
-    Completed seasons in the historical record do include them, weighted 2x
-    and 3x, so a projected coefficient is not perfectly comparable with a
-    finished one. Within a single projection every team is treated the same
-    way, which is what the ranking needs.
+    known, so a projected season carries only the games on the schedule. That
+    is also what the ranking wants: the committee ranks teams on the season
+    before the postseason, which is exactly what select_cfp_field reads for a
+    completed season.
   * THE CHAMPION IS A STANDINGS LEADER, NOT A TITLE-GAME WINNER. That is the
     existing project-wide definition (see select_cfp_field), inherited here on
     purpose rather than reinvented.
@@ -74,153 +86,112 @@ SRC = Path(__file__).resolve().parent.parent
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from build_coefficients import (  # noqa: E402
-    CONFIDENCE_GAMES, ITERATIONS, ROLLING_YEARS, compute_prior_ratings,
-    phase_weight, within_window_weight,
-)
-from predict_upcoming import current_ratings, elo_config, game_expectation  # noqa: E402
+from build_elo import load_config  # noqa: E402
+from predict_upcoming import CONFIG_PATH, elo_config, game_expectation  # noqa: E402
 
-from select_cfp_field import INDEPENDENTS, select_field  # noqa: E402
-from simulate_bracket import DEFAULT_HOME_FIELD, DEFAULT_TEMPERATURE  # noqa: E402
+from select_cfp_field import (  # noqa: E402
+    BYE_SEEDS, INDEPENDENTS, load_team_elo, select_field,
+)
 from simulate_cfp_bracket import ROUND_ORDER, ROUND_RANK, simulate_one_bracket  # noqa: E402
 
 DATA_DIR = SRC.parent / "data" / "processed"
 
-# build_coefficients.per_season_iterative_ratings' own loss credit. Named here
-# because the fast path below reproduces that arithmetic and a test holds the
-# two to identical output; see iterative_ratings().
-LOSS_PENALTY = 0.15
 
-# The prior-regression default build_coefficients' CLI uses. A projected season
-# has to be rated the way the published season was rated, so this follows that
-# default rather than choosing its own.
-PRIOR_REGRESSION = 0.5
+# ------------------------------------------------------------------- the Elo
+
+# How much a simulated game may move a rating, relative to a real one.
+#
+# build_elo scales every update by a performance multiplier M, which asks how
+# far the winner outplayed what the pregame gap implied. A simulated game has
+# a winner and no score, so there is no M to compute -- the question the layer
+# answers does not exist here.
+#
+# M = 1 would be the no-information answer, and it would be wrong in a
+# measurable direction: the configured layer's M averages about 1.7 on real
+# games, so every simulated rating would move 40% less than a real result
+# moves it, and a projected season would be too close to where it started.
+# So the layer's own mean is used, measured from the stored chain rather than
+# written down here, and MEAN_MULTIPLIER_FALLBACK only covers a database with
+# no history to measure.
+MEAN_MULTIPLIER_FALLBACK = 1.0
+
+# Seasons to measure that mean over. The multiplier's scale belongs to the
+# configured performance layer (xSRDiff's M averages 1.66 where the older MOV
+# layer's averaged 2.43), so the window is recent rather than all of history.
+MULTIPLIER_SEASONS = 5
 
 
-# ---------------------------------------------------------------- the rating
+def mean_performance_multiplier(conn: sqlite3.Connection, year: int,
+                                seasons: int = MULTIPLIER_SEASONS) -> float:
+    """The average M real games took recently, as the stand-in for a simulated one.
 
-def iterative_ratings(results, teams, prior, confidence, iterations=ITERATIONS):
-    """build_coefficients.per_season_iterative_ratings, over decided results.
-
-    Same arithmetic, different input shape. The real builder reads rows with
-    scores and works out the winner itself; a projection has already decided
-    every game, so results arrive as (winner, loser, phase_weight) and the
-    score comparison has nothing left to do. Taking that shape is what makes
-    this affordable to run thousands of times -- the alternative is rebuilding
-    a list of ~900 row objects per simulation.
-
-    Duplicated arithmetic is a liability, so tests/test_project_season.py
-    drives both functions over a real season's games and requires identical
-    output. If the builder's model changes and this is not changed with it,
-    that test fails.
+    Restricted to rows the CONFIGURED layer actually scored. A row that fell
+    back to margin of victory carries a multiplier on another scale entirely,
+    and averaging the two would describe neither.
     """
-    ratings = {t: 1.0 for t in teams}
-    n_teams = len(teams)
-    if not n_teams:
-        return {}
-    for _ in range(iterations):
-        new_scores = defaultdict(float)
-        for winner, loser, w in results:
-            new_scores[winner] += ratings[loser] * w
-            new_scores[loser] += ratings[winner] * w * LOSS_PENALTY
-        total = sum(new_scores.values())
-        if total <= 0:
-            break
-        scale = n_teams / total
-        for t in teams:
-            raw_new = new_scores[t] * scale
-            c = confidence.get(t, 0.0)
-            p = prior.get(t, raw_new)
-            ratings[t] = c * raw_new + (1 - c) * p
-    return ratings
+    row = conn.execute(
+        """SELECT AVG(e.mov_multiplier)
+           FROM elo_game_history e JOIN games g ON g.game_id = e.game_id
+           WHERE g.season_year > ? AND g.season_year <= ?
+             AND e.performance_model = ? AND e.mov_multiplier IS NOT NULL""",
+        (year - seasons, year, load_config(str(CONFIG_PATH))["performance"]["modifier"]),
+    ).fetchone()
+    return float(row[0]) if row and row[0] else MEAN_MULTIPLIER_FALLBACK
 
 
-def season_rating(by_season: dict[int, dict[str, float]], year: int, results, teams,
-                  confidence) -> dict[str, float]:
-    """One season's rating, priored off the season before it.
+def play_game(ratings: dict, home: int, away: int, neutral: bool, cfg: dict,
+              k_times_m: float, rng: random.Random) -> bool:
+    """Decide one simulated game and move both ratings by it. True if home won.
 
-    The only place PRIOR_REGRESSION is applied, so a test can pin it by
-    reproducing a published season rather than by agreeing with itself: a test
-    that computes the prior with the same constant the code uses passes at any
-    value of it.
+    The probability is predict_upcoming.game_expectation -- the number this
+    site publishes on the game's card -- and the update is build_elo's own
+    `delta = k * (actual - expected) * M`, applied to the home side and
+    subtracted from the away side, which is how run_elo keeps a game zero-sum.
+
+    So a team that loses three simulated games in a row is a worse team in its
+    fourth. That is the point of doing it this way: until the committee
+    stand-in became Elo, this projection held every rating at today's value,
+    and a collapse could not show up in the field at all.
     """
-    prior = compute_prior_ratings(by_season.get(year - 1, {}), PRIOR_REGRESSION)
-    return iterative_ratings(results, teams, prior, confidence)
-
-
-def load_season_ratings(path: Path | None = None) -> dict[int, dict[str, float]]:
-    """season_year -> {team_name: that season's blended rating}.
-
-    data/processed/team_ratings_by_season.csv, which build_coefficients wrote.
-    The four seasons before the one being projected are fixed history and are
-    read from here rather than recomputed.
-    """
-    out: dict[int, dict[str, float]] = defaultdict(dict)
-    with open(path or (DATA_DIR / "team_ratings_by_season.csv"), newline="") as f:
-        for r in csv.DictReader(f):
-            out[int(r["season_year"])][r["team_name"]] = float(r["rating"])
-    return dict(out)
-
-
-def rolling_coe(by_season: dict[int, dict[str, float]], end_year: int,
-                this_season: dict[str, float]) -> dict[str, float]:
-    """The 5-year rolling coefficient for `end_year`, with a simulated final season.
-
-    build_coefficients.write_rolling_5yr's own sum and decay, with `end_year`'s
-    season rating supplied rather than read, because that is the one season a
-    projection changes.
-    """
-    window = range(end_year - (ROLLING_YEARS - 1), end_year + 1)
-    teams: set[str] = set(this_season)
-    for y in window:
-        teams |= set(by_season.get(y, {}))
-    out = {}
-    for team in teams:
-        coeff = 0.0
-        for y in window:
-            season = this_season if y == end_year else by_season.get(y, {})
-            coeff += season.get(team, 0.0) * within_window_weight(end_year, y)
-        out[team] = coeff
-    return out
+    r_home = ratings.get(home, cfg["initial_rating"])
+    r_away = ratings.get(away, cfg["initial_rating"])
+    expected_home = game_expectation(r_home, r_away, neutral, cfg)
+    home_won = rng.random() < expected_home
+    delta = k_times_m * ((1.0 if home_won else 0.0) - expected_home)
+    ratings[home] = r_home + delta
+    ratings[away] = r_away - delta
+    return home_won
 
 
 # ------------------------------------------------------------- the schedule
 
 def completed_results(conn: sqlite3.Connection, year: int):
-    """((winner, loser, weight), ...) for the season's decided games, plus context.
+    """What the season has already banked: (games_played, conf_records).
 
-    Returns (results, teams, games_played, conf_records), where conf_records is
-    the running record every team has already banked. Ties are dropped from
-    `results` exactly as the rating builder drops them, but still count in the
-    record, exactly as compute_conference_team_records counts them.
+    A tie is dropped from nothing here -- it counts in the record exactly as
+    compute_conference_team_records counts it. The ratings a simulated season
+    starts from come from the Elo chain instead, so this reads results only
+    for the record line and the games-played count.
     """
     rows = conn.execute(
         """
-        SELECT g.home_team_id, g.away_team_id, ht.team_name AS home_team,
-               at.team_name AS away_team, g.home_score, g.away_score,
-               g.game_phase, g.home_conference, g.away_conference
+        SELECT g.home_team_id, g.away_team_id, g.home_score, g.away_score,
+               g.home_conference, g.away_conference
         FROM v_games_enriched g
-        JOIN teams ht ON ht.team_id = g.home_team_id
-        JOIN teams at ON at.team_id = g.away_team_id
         WHERE g.season_year = ?
         """,
         (year,),
     ).fetchall()
-    results, teams, played = [], set(), defaultdict(int)
+    played = defaultdict(int)
     record = defaultdict(lambda: [0, 0, 0, 0, 0, 0, 0, 0])  # see RECORD_FIELDS
-    for (hid, aid, home, away, hs, as_, phase, hconf, aconf) in rows:
-        teams.add(home)
-        teams.add(away)
+    for (hid, aid, hs, as_, hconf, aconf) in rows:
         if hs is None or as_ is None:
             continue
-        played[home] += 1
-        played[away] += 1
-        if hs != as_:
-            winner, loser = (home, away) if hs > as_ else (away, home)
-            results.append((winner, loser, phase_weight(phase)))
+        played[hid] += 1
+        played[aid] += 1
         bank_game(record, hid, aid, hconf, aconf,
                   0 if hs == as_ else (1 if hs > as_ else -1))
-    return results, teams, played, record
+    return played, record
 
 
 # A banked record: conference W, L, T, games, then overall W, L, T, games.
@@ -247,34 +218,32 @@ def bank_game(record, home_id, away_id, home_conf, away_conf, outcome: int) -> N
         r[7] += 1
 
 
-def remaining_games(conn: sqlite3.Connection, year: int, cfg: dict):
-    """The season's unplayed games, each with the probability the site publishes.
+def remaining_games(conn: sqlite3.Connection, year: int):
+    """The season's unplayed games, in the order they will be played.
 
     One row per game: (home_id, away_id, home_name, away_name, home_conf,
-    away_conf, p_home, weight). Nothing is simulated here -- this is the
-    schedule and the odds, built once.
+    away_conf, neutral). No probability: a game's odds depend on the ratings
+    the simulated season has reached by the time it is played, so they are
+    computed inside each run rather than once here. The ORDER therefore
+    matters now, which is why it is the kickoff order and not an arbitrary one.
     """
     if not conn.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='scheduled_games'").fetchone():
         return []
-    ratings, _, _ = current_ratings(conn, cfg, year)
     conference = {tid: conf for tid, conf in conn.execute(
         """SELECT team_id, conference_real FROM team_membership_by_season
            WHERE season_year = ? AND conference_real IS NOT NULL""", (year,))}
     names = dict(conn.execute("SELECT team_id, team_name FROM teams"))
     out = []
-    for gid, home, away, neutral, phase in conn.execute(
-            """SELECT game_id, home_team_id, away_team_id, neutral_site, game_phase
+    for _gid, home, away, neutral in conn.execute(
+            """SELECT game_id, home_team_id, away_team_id, neutral_site
                FROM scheduled_games
                WHERE season_year = ? AND game_id NOT IN (SELECT game_id FROM games)
                ORDER BY kickoff_utc IS NULL, kickoff_utc, week, game_id""", (year,)):
         if home not in names or away not in names:
             continue
-        r_home = ratings.get(home, cfg["initial_rating"])
-        r_away = ratings.get(away, cfg["initial_rating"])
         out.append((home, away, names[home], names[away],
-                    conference.get(home), conference.get(away),
-                    game_expectation(r_home, r_away, neutral, cfg), phase_weight(phase)))
+                    conference.get(home), conference.get(away), bool(neutral)))
     return out
 
 
@@ -308,74 +277,72 @@ def champions_from_records(record, names: dict) -> dict[str, str]:
 TALLIES = ("conference_title", "playoff", "bye", *ROUND_ORDER)
 
 
-def project(db_path: str, year: int, n_sims: int, temperature: float = DEFAULT_TEMPERATURE,
-            home_field: float = DEFAULT_HOME_FIELD, sim_seed: int = 0,
-            season_ratings: dict[int, dict[str, float]] | None = None,
-            progress=None) -> dict:
+def project(db_path: str, year: int, n_sims: int, sim_seed: int = 0,
+            cfg: dict | None = None, progress=None) -> dict:
     """Play the rest of `year` out `n_sims` times and count what happened.
 
-    Returns {"n_sims", "counts", "wins", "unplayed", "teams"}: counts[team] is
-    a tally per TALLIES entry, and wins[team] is total projected wins summed
-    over runs, so the caller can report a mean.
+    Returns {"n_sims", "counts", "wins", "elo", "unplayed", "games_played"}:
+    counts[team] is a tally per TALLIES entry, wins[team] is total projected
+    wins summed over runs and elo[team] is total projected end-of-season Elo,
+    so the caller can report a mean of either.
     """
+    cfg = cfg or elo_config()
     conn = sqlite3.connect(db_path)
     try:
-        cfg = elo_config()
-        fixed, teams, played, banked = completed_results(conn, year)
-        schedule = remaining_games(conn, year, cfg)
+        _played, banked = completed_results(conn, year)
+        schedule = remaining_games(conn, year)
         names = dict(conn.execute("SELECT team_id, team_name FROM teams"))
-        by_season = season_ratings if season_ratings is not None else load_season_ratings()
+        # Where every simulated season starts, and the same thing a completed
+        # season is SELECTED by: each team's rating after its latest played
+        # regular-season game of this year. For the season being played that is
+        # simply its current rating.
+        #
+        # A team with no game yet this season is absent and starts at the
+        # engine's prior. That is a guard rather than a path: every FBS team
+        # has played by the second week of a season, and a projection of a
+        # season nobody has started is not a thing this site publishes.
+        start_elo = load_team_elo(conn, year, by_id=True)
+        k_times_m = cfg["k"] * mean_performance_multiplier(conn, year)
     finally:
         conn.close()
-
-    for (_h, _a, home, away, *_rest) in schedule:
-        teams.add(home)
-        teams.add(away)
-    teams = frozenset(teams)
-
-    # A projected season is a FINISHED season, so every scheduled game counts
-    # toward the confidence a team's rating is given -- the damping in
-    # build_coefficients exists for a half-played season, and a projection has
-    # played the other half.
-    total_played = dict(played)
-    for (_h, _a, home, away, *_rest) in schedule:
-        total_played[home] = total_played.get(home, 0) + 1
-        total_played[away] = total_played.get(away, 0) + 1
-    confidence = {t: min(1.0, n / CONFIDENCE_GAMES) if CONFIDENCE_GAMES > 0 else 1.0
-                  for t, n in total_played.items()}
 
     rng = random.Random(sim_seed)
     counts = defaultdict(lambda: dict.fromkeys(TALLIES, 0))
     wins = defaultdict(float)
+    elo_total = defaultdict(float)
     banked_wins = {names[tid]: r[4] for (tid, _conf), r in banked.items() if tid in names}
 
     for i in range(n_sims):
-        results = list(fixed)
         record = {k: list(v) for k, v in banked.items()}
         record = defaultdict(lambda: [0] * RECORD_FIELDS, record)
         season_wins = dict(banked_wins)
-        for home_id, away_id, home, away, hconf, aconf, p_home, weight in schedule:
-            home_won = rng.random() < p_home
-            winner, loser = (home, away) if home_won else (away, home)
-            results.append((winner, loser, weight))
-            season_wins[winner] = season_wins.get(winner, 0) + 1
+        ratings = dict(start_elo)
+
+        for home_id, away_id, home, away, hconf, aconf, neutral in schedule:
+            home_won = play_game(ratings, home_id, away_id, neutral, cfg, k_times_m, rng)
+            season_wins[home if home_won else away] = \
+                season_wins.get(home if home_won else away, 0) + 1
             bank_game(record, home_id, away_id, hconf, aconf, 1 if home_won else -1)
 
-        this_season = season_rating(by_season, year, results, teams, confidence)
-        team_coe = rolling_coe(by_season, year, this_season)
+        conf_of = by_conference(record, names)
+        # The ranking, by name, over the at-large pool this simulated season
+        # has: the Elo each team would carry into the postseason of it.
+        ranking = {name: ratings.get(tid, cfg["initial_rating"])
+                   for tid, name in names.items() if name in conf_of}
         champions = champions_from_records(record, names)
-        field = select_field_from(champions, team_coe, by_conference(record, names))
+        field = select_field_from(champions, ranking, conf_of)
 
         for team, n in season_wins.items():
             wins[team] += n
+        for team, rating in ranking.items():
+            elo_total[team] += rating
         for q in field:
             counts[q["team"]]["playoff"] += 1
-            if q["seed"] <= 4:
+            if q["seed"] <= BYE_SEEDS:
                 counts[q["team"]]["bye"] += 1
         for team in champions.values():
             counts[team]["conference_title"] += 1
-        for team, furthest in simulate_one_bracket(
-                field, team_coe, temperature, rng, home_field).items():
+        for team, furthest in simulate_one_bracket(field, ranking, cfg, rng).items():
             for r in ROUND_ORDER:
                 if ROUND_RANK[r] <= ROUND_RANK[furthest]:
                     counts[team][r] += 1
@@ -383,7 +350,7 @@ def project(db_path: str, year: int, n_sims: int, temperature: float = DEFAULT_T
             print(f"  {i + 1:,}/{n_sims:,} seasons", file=sys.stderr, flush=True)
 
     return {"n_sims": n_sims, "counts": dict(counts), "wins": dict(wins),
-            "unplayed": len(schedule), "teams": teams,
+            "elo": dict(elo_total), "unplayed": len(schedule),
             "games_played": {names[tid]: r[7] for (tid, _c), r in banked.items() if tid in names}}
 
 
@@ -472,6 +439,10 @@ def rows_for_report(projection: dict) -> list[dict]:
             "final_pct": round(100 * c["final"] / n, d),
             "champion_pct": round(100 * c["champion"] / n, d),
             "projected_wins": round(projection["wins"].get(team, 0.0) / n, 1),
+            # The mean rating a team ends the season on, which is what decides
+            # the field. Rounded to a whole number because that is how this
+            # site displays an Elo rating everywhere else.
+            "projected_elo": round(projection["elo"].get(team, 0.0) / n),
         })
     rows.sort(key=lambda r: (-r["champion_pct"], -r["playoff_pct"], r["team"]))
     return rows
@@ -482,22 +453,24 @@ def main() -> None:
     p.add_argument("--db", default="db/league.db")
     p.add_argument("--year", type=int, required=True)
     p.add_argument("--sims", type=int, default=10000)
-    p.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE)
-    p.add_argument("--home-field", type=float, default=DEFAULT_HOME_FIELD)
     p.add_argument("--sim-seed", type=int, default=0)
     p.add_argument("--top", type=int, default=25)
     args = p.parse_args()
 
-    pr = project(args.db, args.year, args.sims, args.temperature, args.home_field,
-                 args.sim_seed, progress=max(1, args.sims // 10))
-    rows = rows_for_report(pr)
-    print(f"=== {args.year} rest-of-season projection ({pr['n_sims']:,} simulated seasons, "
-          f"{pr['unplayed']:,} games unplayed) ===\n")
-    print(f"{'Team':<22} {'Wins':>6} {'Conf':>7} {'Playoff':>8} {'Bye':>7} {'Final':>7} {'Title':>7}")
-    for r in rows[:args.top]:
-        print(f"{r['team']:<22} {r['projected_wins']:>6.1f} {r['conference_title_pct']:>6.1f}% "
-              f"{r['playoff_pct']:>7.1f}% {r['bye_pct']:>6.1f}% {r['final_pct']:>6.1f}% "
-              f"{r['champion_pct']:>6.1f}%")
+    pr = project(args.db, args.year, args.sims, args.sim_seed,
+                 progress=max(1, args.sims // 10))
+    if not pr["unplayed"]:
+        raise SystemExit(f"{args.year} has no unplayed games -- nothing to project")
+
+    print(f"\n=== {args.year} rest of season, {pr['n_sims']:,} simulated seasons "
+          f"({pr['unplayed']:,} games to play) ===\n")
+    print(f"{'Team':<24} {'Rec':>6} {'Wins':>5} {'Elo':>5} {'Conf':>8} {'Playoff':>8} "
+          f"{'Bye':>7} {'Title':>7}")
+    for row in rows_for_report(pr)[:args.top]:
+        print(f"{row['team']:<24} {'':>6} {row['projected_wins']:>5.1f} "
+              f"{row['projected_elo']:>5} {row['conference_title_pct']:>7.1f}% "
+              f"{row['playoff_pct']:>7.1f}% {row['bye_pct']:>6.1f}% "
+              f"{row['champion_pct']:>6.1f}%")
 
 
 if __name__ == "__main__":

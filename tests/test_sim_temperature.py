@@ -157,34 +157,43 @@ def test_the_python_simulator_uses_the_configured_temperature(repo_root):
     assert simulate_bracket.DEFAULT_TEMPERATURE == cfg["simulation"]["temperature"]
 
 
-def test_the_page_takes_its_temperature_from_the_payload_not_a_constant(repo_root):
+def test_the_page_takes_the_game_model_from_the_payload_not_a_constant(repo_root):
     """
     The button on the bracket page ran its own copy of the model with its own
     hardcoded 6.0, so it disagreed with the Title Odds table beside it. It must
-    now read the shipped value, and must not carry a fallback that would
-    quietly restore the old number.
+    read the shipped values, and must not carry a fallback that would quietly
+    restore a number of its own.
+
+    The 12-team bracket now runs Elo's win probability rather than the CoE
+    temperature (owner, 2026-10-12), so what the page must read is the Elo
+    scale and the Elo home field. The rule is the same one: no model constant
+    above the config.
     """
     shell = (repo_root / "ui" / "dashboard_shell.html").read_text(encoding="utf-8")
-    assert "temperature = temperature || 6.0" not in shell
-    assert "const temperature = (pf.sim_meta || {}).temperature;" in shell
+    assert "const scale = (pf.sim_meta || {}).scale;" in shell
+    assert "const homeField = (pf.sim_meta || {}).home_field;" in shell
+    assert "temperature" not in shell.split("function winProbability")[1] \
+        .split("function runBracketSimulation")[0]
     # An absence is the one thing a source read states better than a run: there
-    # is no input that proves a fallback is not there. That it is actually USED
-    # -- and that a withheld value degenerates loudly rather than quietly
-    # becoming 6.0 -- is driven through the real page code in
+    # is no input that proves a fallback is not there. That these are actually
+    # USED -- and that a withheld value degenerates loudly rather than quietly
+    # becoming some default -- is driven through the real page code in
     # tests/cfp_bracket.test.cjs, because an assertion on a call site's text
     # passes while the code behind it is broken.
 
 
-def test_no_build_layer_hardcodes_its_own_temperature(repo_root):
+def test_no_build_layer_hardcodes_its_own_model_constant(repo_root):
     """
     build_dashboard.py used to pass --temperature 6.0 down to the exporter, so
     the fitted value in the config was overridden on the way to the page and
     the site kept publishing odds from the old number. Nothing above the config
-    may carry a default of its own.
+    may carry a model constant of its own -- and now that the 12-team bracket
+    reads config/model_config.json's elo section directly, that layer should
+    not be passing a model parameter at all.
     """
     build = (repo_root / "build_dashboard.py").read_text(encoding="utf-8")
-    assert '"--temperature", type=float, default=None' in build
-    assert "default=6.0" not in build
+    assert "temperature" not in build
+    assert "home_field" not in build and "home-field" not in build
 
 
 def test_a_neutral_site_game_is_exactly_symmetric():
