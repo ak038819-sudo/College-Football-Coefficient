@@ -64,3 +64,81 @@ def test_records_total_matches_completed_games_on_real_db(db_path):
     # every completed game produces exactly two team results
     total_results = sum(sum(v) for season in rec.values() for v in season.values())
     assert total_results == 2 * completed
+
+
+# ---- games against unrated opponents (mostly FCS) ----
+# These live in their own table so that no rating can read them. The export
+# below exists so the record beside a team's name can count them anyway, which
+# means the two things worth testing are that it counts the same games
+# export_team_pages counts, and that nothing it touches reaches `games`.
+
+def test_unrated_records_match_the_team_page_export(db_path):
+    """One definition of an unrated record, used in two exports.
+
+    export_team_pages.py builds the same per-team, per-season tally for the
+    Schedule tab and the Analytics card. If this one ever counted differently,
+    the header and the body of the same page would disagree again -- which is
+    the bug it was added to fix.
+    """
+    from collections import defaultdict
+
+    from export_dashboard_data import load_non_fbs_records_by_year
+    from export_team_pages import load_non_fbs_games
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        rows = load_non_fbs_games(conn)
+    finally:
+        conn.close()
+    if not rows:
+        import pytest
+        pytest.skip("this database holds no games against unrated opponents")
+
+    expected = defaultdict(lambda: [0, 0, 0])
+    for _gid, season, _date, _wk, tid, _opp, mine, theirs, *_rest in rows:
+        expected[(tid, season)][0 if mine > theirs else 1 if mine < theirs else 2] += 1
+
+    got = load_non_fbs_records_by_year(str(db_path))
+    assert {(int(t), int(y)): v for y, d in got.items() for t, v in d.items()} == dict(expected)
+
+
+def test_unrated_games_are_not_in_the_rated_records(db_path):
+    """The two exports count disjoint sets of games.
+
+    Not a tautology: both are keyed by (season, team) and summed the same way,
+    so the only thing stopping a double count is that `games` never held these
+    rows. This asserts that separation from the outside.
+    """
+    from export_dashboard_data import load_non_fbs_records_by_year
+
+    rated_total = sum(sum(v) for d in load_team_records_by_year(str(db_path)).values()
+                      for v in d.values())
+    unrated_total = sum(sum(v) for d in load_non_fbs_records_by_year(str(db_path)).values()
+                        for v in d.values())
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        if not conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='non_fbs_games'"
+        ).fetchone():
+            import pytest
+            pytest.skip("no non_fbs_games table -- load data/raw/fcs_games_*.csv first")
+        games = conn.execute(
+            "SELECT COUNT(*) FROM games WHERE home_score IS NOT NULL AND away_score IS NOT NULL"
+        ).fetchone()[0]
+        non_fbs = conn.execute("SELECT COUNT(*) FROM non_fbs_games").fetchone()[0]
+    finally:
+        conn.close()
+    # Two team-seasons per rated game, one per unrated game: an unrated game has
+    # only one side this project holds.
+    assert rated_total == 2 * games
+    assert unrated_total == non_fbs
+
+
+def test_unrated_records_are_absent_when_the_table_is(tmp_path):
+    """A database without the non-FBS table exports nothing, rather than failing."""
+    from export_dashboard_data import load_non_fbs_records_by_year
+
+    db = tmp_path / "bare.db"
+    sqlite3.connect(str(db)).close()
+    assert load_non_fbs_records_by_year(str(db)) == {}

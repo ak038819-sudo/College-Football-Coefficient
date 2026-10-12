@@ -82,6 +82,22 @@ jobs:
               python3 src/load_games.py "data/raw/games_${year}.csv"
             fi
           done
+          # Games against opponents this project holds no rating for, and
+          # games not yet played. Both live in their own tables that no rating
+          # engine reads, and run_pipeline.py -- which is what the deploy job
+          # runs -- loads both. Without them this job tested a database the
+          # deploy would never produce: no scheduled_games meant the
+          # rest-of-season projection had nothing left to project, and no
+          # non_fbs_games meant the record a team page shows did not exist.
+          for f in data/raw/fcs_games_*.csv; do
+            [ -e "$f" ] || continue
+            year=$(basename "$f" .csv | sed 's/fcs_games_//')
+            python3 src/load_fcs_games.py "$year" --db db/league.db --csv "$f"
+          done
+          for f in data/raw/schedule_*.csv; do
+            [ -e "$f" ] || continue
+            python3 src/load_schedule.py "$f" --db db/league.db
+          done
           python3 src/patch_known_membership_gaps.py --db db/league.db
           for f in data/raw/membership_*.csv; do
             [ -e "$f" ] || continue

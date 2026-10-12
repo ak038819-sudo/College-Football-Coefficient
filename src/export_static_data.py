@@ -45,6 +45,7 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from accuracy import build_accuracy  # noqa: E402
 from coverage import build_coverage  # noqa: E402
 from elo_timeline import build_timeline  # noqa: E402
 import player_archive  # noqa: E402
@@ -244,7 +245,8 @@ def model_params() -> dict:
     # than retyped here. This replaced "playoff_bids", a conference-rank bid
     # table that only the invented 24-team model ever had.
     playoff = _code_constants(REPO / "src" / "coefficients" / "select_cfp_field.py",
-                             ["FIELD_SIZE", "AUTO_BIDS", "BYE_SEEDS", "FIRST_ROUND_PAIRS"])
+                             ["FIELD_SIZE", "AUTO_BIDS", "BYE_SEEDS", "FIRST_ROUND_PAIRS",
+                              "RANKING_LABEL", "RANKING_NOTE"])
     return {"elo": clean(cfg.get("elo")), "hybrid": clean(cfg.get("hybrid")), "coe2": clean(cfg.get("coe")),
             "coe_v1": v1, "playoff_format": playoff,
             # EXP-03: which performance multiplier the ratings on this page were built with.
@@ -670,6 +672,11 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                 # P1-08: what each season actually has, so an absent metric can say
                 # why it is absent instead of rendering as a zero.
                 "coverage": build_coverage(conn),
+                # The model's own track record, from the validation harness that
+                # has been scoring it all along (see src/accuracy.py). Absent,
+                # not empty, when no report has been generated, so the page can
+                # be missing rather than blank.
+                **({"accuracy": accuracy} if (accuracy := build_accuracy()) else {}),
                 # v0.1.1: player and coach pages. Absent, not empty, when the
                 # database has no person tables, so the UI can tell "no data
                 # here" from "no such feature".

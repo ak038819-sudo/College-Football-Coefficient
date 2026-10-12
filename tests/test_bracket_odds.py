@@ -229,11 +229,13 @@ def test_the_live_export_ships_a_twelve_team_bracket_with_no_draw(db_path):
     import export_dashboard_data
 
     payload = export_dashboard_data.build_playoff_data(
-        str(db_path), SEASON, draw_seed=1, sims=50, temperature=4.5, home_field=1.25)
+        str(db_path), SEASON, draw_seed=1, sims=50)
 
     assert "redraws" not in payload["sim_meta"]
     assert payload["format"] == {"field_size": 12, "auto_bids": 5,
-                                 "bye_seeds": 4, "seeding": "straight"}
+                                 "bye_seeds": 4, "seeding": "straight",
+                                 "ranking": "Elo",
+                                 "ranking_note": "Elo entering the postseason"}
     assert len(payload["field"]) == 12
     assert len(payload["byes"]) == 4
     assert len(payload["first_round"]) == 4

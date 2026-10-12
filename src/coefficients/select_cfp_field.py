@@ -21,20 +21,32 @@ The format, as the CFP actually runs it since the 2025 season:
 WHAT STANDS IN FOR THE SELECTION COMMITTEE
 
 The real format needs a national ranking, and this project has no
-committee. It uses the **5-year rolling team coefficient**
-(data/processed/team_coeff_5yr.csv), which is already what this project
-seeds and assigns home field by, so the playoff does not introduce a
-second notion of team strength. Every ordering below -- which champions
-are the top five, which seven teams are the best available at-large, and
-the seeds themselves -- is that one number, with the team name as a
-deterministic tiebreak.
+committee. It uses **Elo as it stood entering the postseason** of the
+season being selected -- the live rating engine's own number, the one on
+every game card and the one the Track Record page scores. Every ordering
+below is that one number, with the team name as a deterministic tiebreak:
+which champions are the top five, which seven teams are the best
+available at-large, and the seeds themselves.
 
-This is a strength rating, not a resume ranking, so it is explicitly NOT
-the committee's question. A 5-year rolling number also moves more slowly
-than a season: a team that collapsed this year carries four prior seasons
-with it. Read a field from this model as "the twelve strongest programs
-with a champion floor", not as a prediction of who the committee would
-pick.
+Elo replaced the 5-year rolling coefficient here on the owner's call
+(2026-10-12: "I'd rather use Elo as the committee standin as it is the
+more refined metric"). It is the better stand-in for a measurable reason
+rather than a stylistic one: for 2024, the only completed season this
+project covers that the real committee seeded as a twelve-team field,
+Elo's twelve contain ten of the committee's twelve where the rolling
+coefficient's contain seven, and the coefficient adds Alabama,
+Washington, Oklahoma and LSU, none of whom were selected. A five-year
+window cannot do better, because four of the five seasons it averages
+have already happened: a team that collapses this autumn carries four
+prior seasons with it, and across 2014-2025 switching metrics moves a
+median of four teams in and out of the field.
+
+It is still a strength rating rather than a resume ranking, so it is
+explicitly not the committee's question -- Elo rates how good a team is,
+not what its season deserves, and it carries 80% of last season's rating
+into this one by design (offseason_retention). Read a field from this
+model as "the twelve teams the engine rates highest, with a champion
+floor".
 
 WHAT CHANGED BY DROPPING THE 24-TEAM MODEL
 
@@ -57,11 +69,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import csv
 import sqlite3
-from pathlib import Path
-
-DATA_DIR = Path("data/processed")
 
 FIELD_SIZE = 12
 AUTO_BIDS = 5        # the five highest-ranked conference champions
@@ -82,23 +90,67 @@ FIRST_ROUND_PAIRS = [(5, 12), (6, 11), (7, 10), (8, 9)]
 QUARTERFINALS = [(1, (8, 9)), (4, (5, 12)), (2, (7, 10)), (3, (6, 11))]
 
 
-def load_team_coe_5yr(season_year: int) -> dict[str, float]:
-    """team_name -> rolling 5yr CoE as of season_year. The ranking, for everything."""
-    out: dict[str, float] = {}
-    with open(DATA_DIR / "team_coeff_5yr.csv", newline="") as f:
-        for r in csv.DictReader(f):
-            if int(r["end_year"]) == season_year:
-                out[r["team_name"]] = float(r["coeff_5yr"])
-    return out
+# What the ranking is, named once. The pages, the docs and the exports read
+# this rather than each carrying the word "Elo" or "CoE" of their own.
+RANKING_LABEL = "Elo"
+RANKING_NOTE = "Elo entering the postseason"
+
+# A team the ranking has no number for sorts last. It cannot be ranked above a
+# team that has played, and the engine's own 1500 prior would do exactly that
+# to a first-year FBS team with no games -- so unranked means last here, not
+# average.
+UNRANKED = float("-inf")
+
+# The last phase of a season before the postseason. The committee ranks teams
+# on the season as played up to this point, so the playoff must not be seeded
+# by ratings that already contain playoff results.
+PRE_POSTSEASON_PHASE = "regular"
+
+ELO_ENTERING_POSTSEASON = f"""
+WITH last_game AS (
+  SELECT e.team_id, e.postgame_elo,
+         ROW_NUMBER() OVER (PARTITION BY e.team_id
+                            ORDER BY g.game_date DESC, g.game_id DESC) AS rn
+  FROM elo_game_history e
+  JOIN games g ON g.game_id = e.game_id
+  WHERE g.season_year = ? AND g.game_phase = '{PRE_POSTSEASON_PHASE}'
+)
+SELECT t.team_id, t.team_name, last_game.postgame_elo
+FROM last_game JOIN teams t ON t.team_id = last_game.team_id
+WHERE last_game.rn = 1
+"""
 
 
-def rank_key(team_coe: dict[str, float]):
+def load_team_elo(conn: sqlite3.Connection, season_year: int,
+                  by_id: bool = False) -> dict:
+    """team -> Elo entering that season's postseason. The ranking.
+
+    Keyed by team name, or by team_id when `by_id` -- the projection plays a
+    schedule of ids and has to start from the same numbers this selects by.
+
+    For the season being played, "entering the postseason" is simply the
+    latest rating there is, so this is also where a live projection starts.
+
+    Read off the stored chain rather than recomputed: each game's postgame_elo
+    is the next game's pregame, so a team's last regular-season game carries
+    the rating it took into the postseason.
+
+    Ordered by game_date, not by week. CFBD numbers some postseason games
+    week 1, and a season ordered by week puts a bowl game first -- the mistake
+    that made 1,353 season Elo changes exactly zero when the coach metrics
+    were first built.
+    """
+    rows = conn.execute(ELO_ENTERING_POSTSEASON, (season_year,)).fetchall()
+    return {(tid if by_id else name): elo for tid, name, elo in rows}
+
+
+def rank_key(ranking: dict[str, float]):
     """Strongest first, with the team name breaking ties deterministically.
 
-    Two teams on identical CoE must not seed differently from one run to the
-    next, or a bracket stops being reproducible from its inputs.
+    Two teams on an identical rating must not seed differently from one run to
+    the next, or a bracket stops being reproducible from its inputs.
     """
-    return lambda team: (-team_coe.get(team, 0.0), team)
+    return lambda team: (-ranking.get(team, UNRANKED), team)
 
 
 def conference_champions(conn: sqlite3.Connection, season_year: int) -> dict[str, str]:
@@ -140,18 +192,23 @@ def fbs_conference_of(conn: sqlite3.Connection, season_year: int) -> dict[str, s
 
 
 def select_field(conn: sqlite3.Connection, season_year: int,
-                 team_coe: dict[str, float]) -> list[dict]:
+                 ranking: dict[str, float]) -> list[dict]:
     """The seeded 12-team field, seed 1 first.
 
     Each entry: team, conference, bid_type ('auto' or 'at_large'), seed,
-    team_coe_5yr, and champion_of (the conference it won, or None).
+    rating, and champion_of (the conference it won, or None).
+
+    `ranking` is the committee stand-in, injected rather than loaded, so this
+    function knows the FORMAT and nothing about which metric ranks it -- which
+    is what let the metric change in one place, and what lets the
+    rest-of-season projection hand in a simulated season's own ratings.
 
     Raises if the season cannot fill a 12-team field, rather than returning a
     short one that every caller downstream would then have to check.
     """
     champions = conference_champions(conn, season_year)
     conf_of = fbs_conference_of(conn, season_year)
-    by_rank = rank_key(team_coe)
+    by_rank = rank_key(ranking)
 
     champion_of = {team: conf for conf, team in champions.items()}
     auto = sorted(champion_of, key=by_rank)[:AUTO_BIDS]
@@ -174,7 +231,7 @@ def select_field(conn: sqlite3.Connection, season_year: int,
             "bid_type": "auto" if team in auto_set else "at_large",
             "champion_of": champion_of.get(team),
             "seed": seed,
-            "team_coe_5yr": team_coe.get(team, 0.0),
+            "rating": ranking.get(team, 0.0),
         }
         for seed, team in enumerate(sorted(field, key=by_rank), start=1)
     ]
@@ -190,7 +247,7 @@ def first_round_games(field: list[dict]) -> list[dict]:
             "home_seed": high, "away_seed": low,
             "home": host["team"], "away": visitor["team"],
             "home_conf": host["conference"], "away_conf": visitor["conference"],
-            "home_coe": host["team_coe_5yr"], "away_coe": visitor["team_coe_5yr"],
+            "home_rating": host["rating"], "away_rating": visitor["rating"],
         })
     return games
 
@@ -207,23 +264,24 @@ def main() -> None:
     args = p.parse_args()
 
     conn = sqlite3.connect(args.db)
-    team_coe = load_team_coe_5yr(args.year)
+    ranking = load_team_elo(conn, args.year)
     champions = conference_champions(conn, args.year)
-    field = select_field(conn, args.year, team_coe)
+    field = select_field(conn, args.year, ranking)
     conn.close()
 
-    print(f"=== {args.year} College Football Playoff field (12 teams, {AUTO_BIDS} automatic) ===\n")
+    print(f"=== {args.year} College Football Playoff field (12 teams, {AUTO_BIDS} automatic) ===")
+    print(f"    ranked by {RANKING_NOTE}\n")
     print(f"Conference champions ({len(champions)}), strongest first:")
-    for team in sorted(champions.values(), key=rank_key(team_coe)):
+    for team in sorted(champions.values(), key=rank_key(ranking)):
         conf = next(c for c, t in champions.items() if t == team)
         got = any(q["team"] == team and q["bid_type"] == "auto" for q in field)
-        print(f"  {team:<22} {conf:<20} {team_coe.get(team, 0.0):>8.3f}  "
+        print(f"  {team:<22} {conf:<20} {ranking.get(team, 0.0):>8.0f}  "
               f"{'automatic bid' if got else '-'}")
 
-    print(f"\n{'Seed':>4}  {'Team':<22} {'Conference':<20} {'Bid':<10} {'CoE 5yr':>8}")
+    print(f"\n{'Seed':>4}  {'Team':<22} {'Conference':<20} {'Bid':<10} {RANKING_LABEL:>8}")
     for q in field:
         print(f"{q['seed']:>4}  {q['team']:<22} {q['conference']:<20} "
-              f"{q['bid_type']:<10} {q['team_coe_5yr']:>8.3f}")
+              f"{q['bid_type']:<10} {q['rating']:>8.0f}")
 
     print(f"\nByes to the quarterfinals: " +
           ", ".join(f"({q['seed']}) {q['team']}" for q in byes(field)))
