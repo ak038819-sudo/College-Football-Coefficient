@@ -38,6 +38,7 @@
     --ink: #eef1ec;
     --ink-dim: #a8b3ac;
     --amber: #e8a33d;
+    --map-land: #243548;
     --amber-dim: #7a5a26;
     --red: #c4453c;
     --green-hl: #6fae5a;
@@ -936,10 +937,36 @@
   .career-row th, .career-row td { border-top: 2px solid var(--line); font-weight: 600; }
   .stadium-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(250px, .8fr); gap: 16px; }
   .stadium-map { width: 100%; height: auto; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; }
-  .state-boundary {fill:#243548;stroke:#718092;stroke-width:.8;}
+  .state-boundary {fill:var(--map-land);stroke:#718092;stroke-width:.8;}
   .recruit-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(170px, .6fr); gap: 16px; align-items: start; }
-  .recruit-map circle { fill: var(--amber); fill-opacity: .72; stroke: var(--bg); stroke-width: 1.1; }
-  .recruit-top-title { margin: 0 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+  /* The heat ramp: one hue, five steps, each one mixed against the map's own
+     landmass rather than drawn over it at an opacity. A translucent cell takes
+     its colour from whatever is behind it, so the SAME count read as two
+     different shades depending on whether the town sat on land or just off the
+     coast -- which is exactly the comparison a heat map exists to make.
+     The faint same-hue stroke keeps a lone cell from looking like a smudge
+     without drawing a grid over a hot region, where neighbours merge. */
+  .recruit-heat path { stroke: var(--amber); stroke-opacity: .3; stroke-width: .6; }
+  .recruit-heat path.heat-0 { fill: color-mix(in srgb, var(--amber) 24%, var(--map-land)); }
+  .recruit-heat path.heat-1 { fill: color-mix(in srgb, var(--amber) 36%, var(--map-land)); }
+  .recruit-heat path.heat-2 { fill: color-mix(in srgb, var(--amber) 56%, var(--map-land)); }
+  .recruit-heat path.heat-3 { fill: color-mix(in srgb, var(--amber) 78%, var(--map-land)); }
+  .recruit-heat path.heat-4 { fill: var(--amber); }
+  .recruit-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .recruit-pick { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-dim); }
+  .recruit-legend { display: flex; align-items: center; gap: 4px; margin: 8px 0 0; font-size: 11px; color: var(--ink-dim); }
+  .recruit-legend i { flex: 0 0 auto; width: 34px; text-align: center; border: 1px solid var(--line); border-radius: 3px; background: var(--amber); font-style: normal; }
+  .recruit-legend i b { font-weight: 600; color: #eef1ec; }
+  .recruit-legend i:nth-of-type(1) { background: color-mix(in srgb, var(--amber) 24%, var(--map-land)); }
+  .recruit-legend i:nth-of-type(2) { background: color-mix(in srgb, var(--amber) 36%, var(--map-land)); }
+  .recruit-legend i:nth-of-type(3) { background: color-mix(in srgb, var(--amber) 56%, var(--map-land)); }
+  .recruit-legend i:nth-of-type(4) { background: color-mix(in srgb, var(--amber) 78%, var(--map-land)); }
+  .recruit-legend i:nth-of-type(5) { background: color-mix(in srgb, var(--amber) 100%, var(--map-land)); }
+  .recruit-signees { margin: 10px 0 0; font-size: 13px; }
+  .recruit-signees td.num, .recruit-signees th.num { text-align: right; white-space: nowrap; }
+  .recruit-signees td.stars { color: var(--amber); white-space: nowrap; letter-spacing: 1px; }
+  .muted-inline { color: var(--ink-dim); font-size: 12px; }
+  .recruit-top-title { margin: 0 0 6px; font-size: 13px; color: var(--ink-dim); font-weight: 600; }
   .recruit-top { list-style: none; margin: 0; padding: 0; font-size: 13px; }
   .recruit-top li { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px solid var(--line); }
   @media (max-width: 720px) { .recruit-layout { grid-template-columns: 1fr; } }
@@ -5997,9 +6024,48 @@ function coachExpectation(tenures) {
 // and 4th. Those inherited classes are counted separately rather than averaged
 // in, because averaging them in credits or blames a coach for a class he had
 // three weeks to touch.
+//
+// The exporter hands over one entry per class rather than a career total, so
+// the panel can answer "where did he go for players in 2017" and not only
+// "ever". The career view is these classes merged here in the browser, which
+// is the one place the sum and its parts cannot drift apart.
+function recruitClasses(recruits) {
+  const classes = (recruits && recruits.classes) || [];
+  // `c.year == null` is checked BEFORE the coercion, because Number(null) is 0
+  // and a class with no year would otherwise be drawn as the year 0.
+  return classes.filter(c => c && c.year != null && Number.isFinite(Number(c.year)))
+    .slice().sort((a, b) => Number(a.year) - Number(b.year));
+}
+
+// One class, or every class merged. Merging adds the counts of a town two
+// classes both drew from, which is the whole point of the career view: a
+// pipeline is a town a coach keeps going back to, not a town he visited once.
+function recruitClassPoints(recruits, year) {
+  const classes = recruitClasses(recruits)
+    .filter(c => year == null || Number(c.year) === Number(year));
+  if (classes.length === 1) return { points: classes[0].points || [], unlocated: classes[0].unlocated || 0 };
+  const counts = new Map();
+  let unlocated = 0;
+  for (const cls of classes) {
+    unlocated += Number(cls.unlocated || 0);
+    for (const pt of (cls.points || [])) {
+      // Keyed by the coordinate pair as the exporter rounded it. The label is
+      // whichever class named it first; two spellings of one rounded point
+      // exist in the feed (a "Hampton, SC" at Hampton, Virginia's
+      // coordinates) and picking one is better than drawing the town twice.
+      const key = pt[0] + ',' + pt[1];
+      const got = counts.get(key);
+      if (got) got[2] += Number(pt[2] || 0);
+      else counts.set(key, [pt[0], pt[1], Number(pt[2] || 0), pt[3]]);
+    }
+  }
+  return { points: [...counts.values()].sort((a, b) => b[2] - a[2] ||
+             String(a[3]).localeCompare(String(b[3]))), unlocated };
+}
+
 function recruitMapPoints(recruits) {
   // Off-continent signees (Australian punters, a German lineman) have real
-  // coordinates this projection cannot draw, and 466 signees across the
+  // coordinates this projection cannot draw, and 440 signees across the
   // archive have no coordinates at all. Both are counted in the note rather
   // than silently dropped or crushed against the frame, because a total that
   // leaves out part of a class is a wrong number, not a smaller one.
@@ -6018,52 +6084,208 @@ function recruitMapPoints(recruits) {
            offmap: total(outside) + unlocated };
 }
 
+// ---- the heat map -----------------------------------------------------------
+// Hexagonal bins, not dots. A dot per town says "this town sent four players";
+// a reader looking at a career wants the region, and 245 overlapping circles
+// do not show one. Binning in PIXEL space rather than in degrees is
+// deliberate: the cells are then equal-area on the drawn map, which is the
+// thing being read, whereas equal-degree cells would shrink northwards and
+// make the same density look cooler in Michigan than in Florida.
+const RECRUIT_HEX_R = 15;
+// Absolute signee counts, not a share of this coach's busiest cell. A relative
+// ramp would paint a coach whose hottest cell sent two players exactly as hot
+// as Saban's Mobile, and the pages would stop being comparable.
+const RECRUIT_HEAT_STEPS = [1, 2, 4, 8, 14];
+
+function recruitHeatLevel(count) {
+  let level = 0;
+  for (let i = 0; i < RECRUIT_HEAT_STEPS.length; i++) if (count >= RECRUIT_HEAT_STEPS[i]) level = i;
+  return level;
+}
+
+// Axial hex binning with cube rounding, so a point lands in the hex whose
+// centre is genuinely nearest it. The cheaper row-and-column rounding assigns
+// a point to a RECTANGLE around each centre, which disagrees with the hexagon
+// actually drawn near its corners.
+// Every cell is binned in ONE frame, the lower-48 projection, whichever map is
+// drawn. An Alaskan signee widens the coordinate range, which both shrinks a
+// degree of longitude (about 7.75 pixels to 6.10) and moves the origin, so
+// binning in the active projection would cover more ground per cell AND shift
+// the lattice: the same coach's Texas towns would merge differently, and the
+// counts the absolute ramp compares across pages would change because one
+// recruit came from Anchorage.
+//
+// Both projections are the same Mercator up to a uniform scale and an offset,
+// so the move from the binning frame to the drawn one is an affine map, read
+// off two points rather than assumed. `scale` is also what the hexagon's
+// radius is multiplied by, so a cell stays the same patch of country.
+function recruitProjectionTransfer(map) {
+  const base = CfbGeography.projection(false);
+  const [bx0, by0] = base.project(-100, 40), [bx1, by1] = base.project(-90, 30);
+  const [mx0, my0] = map.project(-100, 40), [mx1, my1] = map.project(-90, 30);
+  const scale = (mx1 - mx0) / (bx1 - bx0);
+  return { base, scale,
+           apply: (x, y) => [mx0 + (x - bx0) * scale, my0 + (y - by0) * scale] };
+}
+
+function recruitHexes(inside, project, r = RECRUIT_HEX_R) {
+  const bins = new Map();
+  for (const pt of (inside || [])) {
+    const [x, y] = project(Number(pt[1]), Number(pt[0]));
+    const fq = (Math.sqrt(3) / 3 * x - y / 3) / r, fr = (2 / 3 * y) / r;
+    let q = Math.round(fq), rr = Math.round(fr), ss = Math.round(-fq - fr);
+    const dq = Math.abs(q - fq), dr = Math.abs(rr - fr), ds = Math.abs(ss + fq + fr);
+    if (dq > dr && dq > ds) q = -rr - ss; else if (dr > ds) rr = -q - ss;
+    const key = q + ',' + rr;
+    let bin = bins.get(key);
+    if (!bin) bins.set(key, bin = { q, rr, count: 0, towns: [],
+                                    cx: r * Math.sqrt(3) * (q + rr / 2), cy: r * 1.5 * rr });
+    bin.count += Number(pt[2] || 0);
+    bin.towns.push(pt);
+  }
+  // Coolest first, so a hot cell is never painted under a cool neighbour's
+  // edge, and its tooltip stays the one on top.
+  return [...bins.values()].sort((a, b) => a.count - b.count);
+}
+
+function recruitHexPath(cx, cy, r) {
+  let d = '';
+  for (let i = 0; i < 6; i++) {
+    // Pointy-top: the first vertex is straight up, matching the axial frame
+    // the binning above uses.
+    const a = Math.PI / 180 * (60 * i - 90);
+    d += (i ? 'L' : 'M') + (cx + r * Math.cos(a)).toFixed(2) + ' ' + (cy + r * Math.sin(a)).toFixed(2);
+  }
+  return d + 'Z';
+}
+
+function recruitHexTitle(bin) {
+  const named = bin.towns.slice().sort((a, b) => Number(b[2]) - Number(a[2]))
+    .map(pt => (pt[3] || 'Hometown not named') + ' · ' + pt[2]);
+  return bin.count + (bin.count === 1 ? ' signee' : ' signees') + ' — ' +
+    named.slice(0, 4).join('; ') + (named.length > 4 ? '; and ' + (named.length - 4) + ' more' : '');
+}
+
+function recruitHeatLegend() {
+  const label = i => {
+    const low = RECRUIT_HEAT_STEPS[i], next = RECRUIT_HEAT_STEPS[i + 1];
+    return next == null ? low + '+' : (next - low === 1 ? String(low) : low + '–' + (next - 1));
+  };
+  return '<div class="recruit-legend" aria-hidden="true"><span>Fewer</span>' +
+    RECRUIT_HEAT_STEPS.map((_, i) => '<i class="heat-' + i + '"><b>' + label(i) + '</b></i>').join('') +
+    '<span>More</span></div>';
+}
+
 function recruitMap(recruits) {
   const { inside } = recruitMapPoints(recruits);
   if (!inside.length) return '';
   const alaska = inside.some(pt => Number(pt[0]) > 55);
   const map = CfbGeography.projection(alaska);
-  const most = inside.reduce((n, pt) => Math.max(n, Number(pt[2])), 1);
-  // Area, not radius, carries the count: a town that sent twelve players must
-  // read as twelve players' worth of ink, and scaling the radius linearly would
-  // draw it with 144 times the area of a town that sent one.
-  const radius = n => 3 + 7 * Math.sqrt(Number(n) / most);
+  const transfer = recruitProjectionTransfer(map);
+  const r = RECRUIT_HEX_R * transfer.scale;
+  const hexes = recruitHexes(inside, transfer.base.project);
   return '<svg class="stadium-map recruit-map" viewBox="0 0 ' + map.width + ' ' + map.height +
-    '" role="group" aria-label="Map of the hometowns this coach signed players from">' +
+    '" role="group" aria-label="Heat map of the hometowns this coach signed players from">' +
     '<g aria-label="United States state boundaries">' +
     CfbGeography.statePaths(alaska).map(st => '<path class="state-boundary" d="' + st.d +
       '"><title>' + esc(st.name) + '</title></path>').join('') + '</g>' +
-    // Biggest first, so a small town inside a metro area stays clickable.
-    inside.slice().sort((a, b) => Number(b[2]) - Number(a[2])).map(pt => {
-      const [x, y] = map.project(Number(pt[1]), Number(pt[0]));
-      const label = (pt[3] || 'Hometown not named') + ' \u00b7 ' + pt[2] +
-        (Number(pt[2]) === 1 ? ' signee' : ' signees');
-      return '<circle cx="' + x.toFixed(2) + '" cy="' + y.toFixed(2) + '" r="' +
-        radius(pt[2]).toFixed(2) + '"><title>' + esc(label) + '</title></circle>';
-    }).join('') + '</svg>';
+    '<g class="recruit-heat">' + hexes.map(bin =>
+      '<path class="heat-' + recruitHeatLevel(bin.count) + '" d="' +
+      recruitHexPath(...transfer.apply(bin.cx, bin.cy), r) + '"><title>' +
+      esc(recruitHexTitle(bin)) + '</title></path>').join('') + '</g></svg>';
 }
 
-function coachRecruitPanel(recruits) {
-  const map = recruitMap(recruits);
-  if (!map) return '';
-  const { inside, signees, offmap, unlocated } = recruitMapPoints(recruits);
+// ---- the signees themselves --------------------------------------------------
+// "The top recruits he landed" is the second half of what this panel is for,
+// and it is why the exporter keeps the classes apart: a career list is the
+// best of each class, and a single class's list is that class's board.
+function recruitTopSignees(recruits, year) {
+  const classes = recruitClasses(recruits)
+    .filter(c => year == null || Number(c.year) === Number(year));
+  const rows = [];
+  for (const cls of classes) for (const s of (cls.top || [])) rows.push({
+    year: Number(cls.year), name: s[0], position: s[1], stars: s[2],
+    rating: s[3], rank: s[4], hometown: s[5], playerId: s[6],
+  });
+  // Same order as the exporter's: a national rank beats no national rank,
+  // then rating, then stars. Merging per-class lists is exact for a top ten
+  // because a career's tenth-best signee cannot be worse than tenth in his
+  // own class.
+  rows.sort((a, b) => (a.rank == null) - (b.rank == null) ||
+    (a.rank != null && a.rank !== b.rank ? a.rank - b.rank : 0) ||
+    (b.rating || 0) - (a.rating || 0) || (b.stars || 0) - (a.stars || 0) ||
+    String(a.name).localeCompare(String(b.name)));
+  return rows;
+}
+
+function recruitSigneeRows(rows, showYear) {
+  return rows.map(r => {
+    const stars = r.stars ? '★'.repeat(r.stars) : '';
+    const name = r.playerId != null
+      ? '<a href="' + esc(playerHref(r.playerId)) + '">' + esc(r.name) + '</a>' : esc(r.name);
+    return '<tr><td>' + name + (showYear ? ' <span class="muted-inline">' + r.year + '</span>' : '') +
+      '</td><td>' + esc(r.position || '—') + '</td>' +
+      '<td class="stars" title="' + (r.stars == null ? 'unrated' : r.stars + '-star') + '">' +
+      (stars || '—') + '</td><td class="num">' +
+      (r.rating == null ? '—' : Number(r.rating).toFixed(3)) + '</td>' +
+      '<td class="num">' + (r.rank == null ? '—' : r.rank) + '</td>' +
+      '<td>' + esc(r.hometown || '—') + '</td></tr>';
+  }).join('');
+}
+
+const RECRUIT_TOP_SHOWN = 10;
+
+function recruitSelector(recruits, year) {
+  const classes = recruitClasses(recruits);
+  if (classes.length < 2) return '';
+  const option = (value, label) => '<option value="' + esc(value) + '"' +
+    (String(value) === String(year == null ? 'all' : year) ? ' selected' : '') + '>' + esc(label) + '</option>';
+  return '<label class="recruit-pick" for="coach-recruit-class">Class' +
+    '<select id="coach-recruit-class">' + option('all', 'All ' + classes.length + ' classes') +
+    classes.slice().reverse().map(c => option(c.year, c.year)).join('') + '</select></label>';
+}
+
+function coachRecruitPanel(recruits, year) {
+  const classes = recruitClasses(recruits);
+  const chosen = year != null && classes.some(c => Number(c.year) === Number(year)) ? Number(year) : null;
+  const scoped = recruitClassPoints(recruits, chosen);
+  const map = recruitMap(scoped);
+  if (!map && !classes.length) return '';
+  const { inside, signees, offmap, unlocated } = recruitMapPoints(scoped);
   const top = inside.slice(0, 8);
-  return '<div class="panel team-section"><h2 class="section-title">Recruiting pipeline</h2>' +
-    '<div class="recruit-layout"><div>' + map + '</div><div>' +
+  const signed = recruitTopSignees(recruits, chosen).slice(0, RECRUIT_TOP_SHOWN);
+  const period = chosen == null
+    ? (classes.length === 1 ? 'the ' + classes[0].year + ' class'
+       : 'the ' + classes.length + ' classes he signed, ' + classes[0].year +
+         '–' + classes[classes.length - 1].year)
+    : 'the ' + chosen + ' class';
+  return '<div class="panel team-section" id="coach-recruit-panel"><div class="recruit-head">' +
+    '<h2 class="section-title">Recruiting pipeline</h2>' + recruitSelector(recruits, chosen) + '</div>' +
+    '<div class="recruit-layout"><div>' +
+    (map || '<p class="empty-note">No hometown on this map for ' + period + '.</p>') +
+    (map ? recruitHeatLegend() : '') + '</div><div>' +
     '<h3 class="recruit-top-title">Most-signed towns</h3><ol class="recruit-top">' +
     top.map(pt => '<li><span>' + esc(pt[3] || 'Hometown not named') + '</span><b>' +
       esc(pt[2]) + '</b></li>').join('') + '</ol></div></div>' +
     '<p class="section-note">' + signees + (signees === 1 ? ' signee' : ' signees') +
     ' from ' + inside.length + (inside.length === 1 ? ' town' : ' towns') +
-    ', in the classes this coach signed only \u2014 a class he inherited is left out, ' +
-    'the same way it is left out of his average rank above. A dot is a hometown and its ' +
-    'area is how many players came from there; hometowns are as the recruiting feed ' +
+    ', in ' + period + ' — a class he inherited is left out, ' +
+    'the same way it is left out of his average rank above. A cell is shaded by how many ' +
+    'players came from it; hometowns are as the recruiting feed ' +
     'reported them.' + (offmap ? ' ' + offmap + (offmap === 1 ? ' signee is' : ' signees are') +
       ' counted here but not drawn' + (unlocated
         ? ', ' + (offmap === unlocated ? 'having no hometown in the feed'
             : unlocated + ' of them having no hometown in the feed and the rest being ' +
               'outside this map') + '.'
-        : ', being from outside this map.') : '') + '</p></div>';
+        : ', being from outside this map.') : '') + '</p>' +
+    (signed.length ? '<h3 class="recruit-top-title">Top signees · ' + esc(period) + '</h3>' +
+      '<table class="recruit-signees"><thead><tr><th>Player</th><th>Pos</th><th>Stars</th>' +
+      '<th class="num">Rating</th><th class="num">Nat. rank</th><th>Hometown</th></tr></thead>' +
+      '<tbody>' + recruitSigneeRows(signed, chosen == null) + '</tbody></table>' +
+      '<p class="section-note">Ordered by national rank, then rating. A signee with no national ' +
+      'rank sorts after every signee who has one rather than at the top, since the feed leaves ' +
+      'the field empty on most pre-2010 rows and on the tail of every class since. A name links ' +
+      'to a career page only where this site carries that player.</p>' : '') + '</div>';
 }
 
 function coachRecruiting(tenures) {
@@ -6080,7 +6302,30 @@ function coachRecruiting(tenures) {
   };
 }
 
-function coachPanels(c, id, recruitPoints) {
+// The coach page's recruiting shard, kept so that choosing a class redraws one
+// panel instead of refetching the career. Keyed by coach id: a stale shard
+// from the page the reader just left must not be drawn under a new name.
+let coachRecruitState = { id: null, recruits: null, year: null };
+
+// Whether a coach shard that has just arrived is still the one on screen.
+// A slow request for the coach a reader has already left can resolve AFTER the
+// one for the coach now shown: show() correctly drops the stale HTML, but an
+// unguarded assignment to coachRecruitState would leave it naming the old
+// coach, and the picker on the visible page then rejects every selection and
+// sits inert until the reader navigates again.
+function coachRecruitStateApplies(version, kind, id) {
+  return version === renderVersion && state.view === kind &&
+    String(state.coachParam) === String(id);
+}
+
+function redrawCoachRecruitPanel() {
+  const panel = document.getElementById('coach-recruit-panel');
+  if (!panel) return;
+  panel.outerHTML = coachRecruitPanel(coachRecruitState.recruits, coachRecruitState.year);
+  document.getElementById('coach-recruit-class')?.focus();
+}
+
+function coachPanels(c, id, recruitPoints, recruitYear) {
   const tenures = c.tenures || [];
   const measuredElo = tenures.filter(t=>Number.isFinite(t.elo_change));
   const totalElo = measuredElo.reduce((sum,t)=>sum+t.elo_change,0);
@@ -6163,7 +6408,7 @@ function coachPanels(c, id, recruitPoints) {
       'average' + (rec2.inherited ? ' (' + rec2.inherited +
         (rec2.inherited === 1 ? ' season' : ' seasons') + ' here)' : '') +
       '. Classes start in 2000.</p>' : '') + '</div>';
-  return header + note + table + coachRecruitPanel(recruitPoints) + '<section class="panel team-section"><h2>How coach performance is measured</h2><p>Elo gained / lost = final postgame Elo − first pregame Elo for each measured season. Career change sums those season changes, excluding offseason regression.</p><p>Wins above expectation = wins + ½ × ties − sum of pregame Elo win probabilities. Positive means more wins than the team’s ratings and schedule predicted. This measures team outcomes during the tenure; it does not isolate coaching causation.</p></section>';
+  return header + note + table + coachRecruitPanel(recruitPoints, recruitYear) + '<section class="panel team-section"><h2>How coach performance is measured</h2><p>Elo gained / lost = final postgame Elo − first pregame Elo for each measured season. Career change sums those season changes, excluding offseason regression.</p><p>Wins above expectation = wins + ½ × ties − sum of pregame Elo win probabilities. Positive means more wins than the team’s ratings and schedule predicted. This measures team outcomes during the tenure; it does not isolate coaching causation.</p></section>';
 }
 
 function hydratePersonPage(version, kind) {
@@ -6188,7 +6433,12 @@ function hydratePersonPage(version, kind) {
     // resolves to null: the page is the career, the map is an extra.
     : Promise.all([loadCoaches(), loadCoachRecruits(id).catch(() => null)]).then(([all, points]) => {
         const c = all[String(id)];
-        return c ? [coachPanels(c, id, points), c.display_name] : [personMissing(kind, id), null];
+        // The shard is held so the class selector can redraw the recruiting
+        // panel on its own, rather than refetching a career to change a year.
+        if (coachRecruitStateApplies(version, kind, id)) {
+          coachRecruitState = { id: String(id), recruits: points, year: null };
+        }
+        return c ? [coachPanels(c, id, points, null), c.display_name] : [personMissing(kind, id), null];
       });
   work.then(([html, name]) => show(html, name))
     .catch(err => show('<div class="panel"><p class="empty-note">Could not load this ' +
@@ -7298,6 +7548,16 @@ document.getElementById('content').addEventListener('click', e => {
   if (e.target.id === 'retry-games' || e.target.id === 'retry-directory' || e.target.id === 'retry-standings') render();
 });
 document.getElementById('content').addEventListener('change', e => {
+  // The coach page's class picker. It redraws one panel from the shard already
+  // in hand; it deliberately does NOT go through navigate(), because a chosen
+  // class is a way of reading one page and not a page of its own, and putting
+  // it in the URL would add a history entry per year a reader flicks through.
+  if (e.target.id === 'coach-recruit-class' && state.view === 'coach' &&
+      coachRecruitState.id === String(state.coachParam)) {
+    coachRecruitState.year = e.target.value === 'all' ? null : Number(e.target.value);
+    redrawCoachRecruitPanel();
+    return;
+  }
   if (state.view === 'tab' && state.section === 'rankings' && state.subview === 'conference-standings' &&
       e.target.id === 'standings-conference') {
     navigate({ conf: e.target.value });

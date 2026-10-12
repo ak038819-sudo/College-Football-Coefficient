@@ -11,7 +11,7 @@ import subprocess
 import pytest
 
 import person_identity as identity
-from export_people_pages import (PLAYER_SHARDS, RECRUIT_SHARDS, build_coach_recruits,
+from export_people_pages import (PLAYER_SHARDS, RECRUIT_SHARDS, TOP_SIGNEES, build_coach_recruits,
                                  build_coaches, build_name_index,
                                  build_players, build_rosters, build_team_coaches, export,
                                  shard_key)
@@ -238,7 +238,8 @@ def test_every_emitted_file_parses_and_round_trips_through_a_js_runtime(conn, tm
     assert manifest["counts"] == {"players": 2, "coaches": 1, "player_seasons": 3,
                                   "coach_seasons": 2, "seasons": [2025, 2026],
                                   "stat_seasons": [], "coach_recruit_points": 0,
-                                  "coach_recruits_unlocated": 0}
+                                  "coach_recruits_unlocated": 0,
+                                  "coach_recruit_classes": 0}
     # Every manifest path must name a file that was actually written.
     for path in ([manifest["coaches"]] + list(manifest["players"].values())
                  + list(manifest["index"].values()) + list(manifest["rosters"].values())):
@@ -392,7 +393,9 @@ def test_the_export_still_works_without_the_recruiting_tables(conn):
 
 # ---- where the signees came from ---------------------------------------------
 
-def _recruit(conn, recruit_id, team_id, season, lat, lon, city="Mobile", state="AL"):
+def _recruit(conn, recruit_id, team_id, season, lat, lon, city="Mobile", state="AL",
+             name="A Recruit", position=None, stars=None, rating=None, national_rank=None,
+             athlete_id=None):
     # Deliberately no recruiting_classes row: a class with recruits but no
     # ranking is a real state of this archive (FIU 2022) and the map must be
     # right in it, so the fixture does not hand the builder one for free.
@@ -400,18 +403,33 @@ def _recruit(conn, recruit_id, team_id, season, lat, lon, city="Mobile", state="
                         / 'sql' / 'recruiting_tables.sql').read_text(encoding='utf-8'))
     conn.execute(
         "INSERT OR REPLACE INTO recruits (recruit_id, season_year, name, committed_to, "
-        "committed_team_id, city, state_province, hometown_latitude, hometown_longitude) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (recruit_id, season, "A Recruit", TEAMS.get(team_id, str(team_id)), team_id,
-         city, state, lat, lon))
+        "committed_team_id, city, state_province, hometown_latitude, hometown_longitude, "
+        "position, stars, rating, national_rank, athlete_id) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (recruit_id, season, name, TEAMS.get(team_id, str(team_id)), team_id,
+         city, state, lat, lon, position, stars, rating, national_rank, athlete_id))
+
+
+def _only_class(out, cid):
+    """The single class in a coach's export.
+
+    The builder keeps one entry per class he signed, so a test about where a
+    class came from asserts on that class rather than on a career total the
+    page no longer has.
+    """
+    classes = out[cid]["classes"]
+    assert len(classes) == 1, f"expected one class, got {[c['year'] for c in classes]}"
+    return classes[0]
 
 
 def test_a_coachs_map_holds_the_towns_his_signees_came_from(conn):
     cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
     _recruit(conn, 1, 1, 2020, 30.6954, -88.0399)
     coaches = build_coaches(conn)
-    out = build_coach_recruits(conn, coaches)[cid]
-    assert out == {"points": [[30.7, -88.04, 1, "Mobile, AL"]], "unlocated": 0}
+    out = _only_class(build_coach_recruits(conn, coaches), cid)
+    assert out == {"year": 2020, "team": 1, "points": [[30.7, -88.04, 1, "Mobile, AL"]],
+                   "unlocated": 0,
+                   "top": [["A Recruit", None, None, None, None, "Mobile, AL", None]]}
 
 
 def test_signees_from_one_town_are_one_point_carrying_the_count(conn):
@@ -420,7 +438,7 @@ def test_signees_from_one_town_are_one_point_carrying_the_count(conn):
     for n, (lat, lon) in enumerate([(30.7012, -88.0399), (30.6991, -88.0402),
                                     (30.7034, -88.0398)]):
         _recruit(conn, n + 1, 1, 2020, lat, lon)
-    assert build_coach_recruits(conn, build_coaches(conn))[cid]["points"] == \
+    assert _only_class(build_coach_recruits(conn, build_coaches(conn)), cid)["points"] == \
         [[30.7, -88.04, 3, "Mobile, AL"]]
 
 
@@ -429,7 +447,7 @@ def test_two_towns_a_kilometre_apart_stay_two_points(conn):
     cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
     _recruit(conn, 1, 1, 2020, 30.69, -88.04, "Mobile", "AL")
     _recruit(conn, 2, 1, 2020, 30.72, -88.04, "Prichard", "AL")
-    assert len(build_coach_recruits(conn, build_coaches(conn))[cid]["points"]) == 2
+    assert len(_only_class(build_coach_recruits(conn, build_coaches(conn)), cid)["points"]) == 2
 
 
 def test_an_inherited_class_is_not_on_the_map(conn):
@@ -438,8 +456,36 @@ def test_an_inherited_class_is_not_on_the_map(conn):
     cid = _coach(conn, "Nick Saban", [(2007, 1, None), (2008, 1, None)])
     _recruit(conn, 1, 1, 2007, 30.69, -88.04, "Mobile", "AL")
     _recruit(conn, 2, 1, 2008, 33.52, -86.80, "Birmingham", "AL")
-    assert build_coach_recruits(conn, build_coaches(conn))[cid]["points"] == \
-        [[33.52, -86.8, 1, "Birmingham, AL"]]
+    assert _only_class(build_coach_recruits(conn, build_coaches(conn)), cid) \
+        ["points"] == [[33.52, -86.8, 1, "Birmingham, AL"]]
+
+
+def test_each_class_is_kept_apart_rather_than_summed(conn):
+    """The career view is these classes merged in the browser. Summing them
+    here would publish a total the page could not take back apart, and "where
+    did he go for players in 2020" is the question the panel is for."""
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None), (2021, 1, None)])
+    _recruit(conn, 1, 1, 2020, 30.69, -88.04, "Mobile", "AL")
+    _recruit(conn, 2, 1, 2021, 30.69, -88.04, "Mobile", "AL")
+    _recruit(conn, 3, 1, 2021, 33.52, -86.80, "Birmingham", "AL")
+    classes = build_coach_recruits(conn, build_coaches(conn))[cid]["classes"]
+    assert [c["year"] for c in classes] == [2020, 2021], "oldest first"
+    assert classes[0]["points"] == [[30.69, -88.04, 1, "Mobile, AL"]]
+    # Tied counts order by name, so the bytes do not depend on SQLite row order.
+    assert classes[1]["points"] == [[33.52, -86.8, 1, "Birmingham, AL"],
+                                    [30.69, -88.04, 1, "Mobile, AL"]]
+
+
+def test_a_class_carries_the_school_it_was_signed_for(conn):
+    """A career spans schools, and a class drawn without one cannot say which
+    program the pipeline fed."""
+    cid = _coach(conn, "Nick Saban", [(2003, 1, None), (2004, 1, None),
+                                      (2007, 2, None), (2008, 2, None)])
+    _recruit(conn, 1, 1, 2004, 30.69, -88.04)
+    _recruit(conn, 2, 2, 2008, 33.52, -86.80)
+    assert [(c["year"], c["team"]) for c in
+            build_coach_recruits(conn, build_coaches(conn))[cid]["classes"]] == \
+        [(2004, 1), (2008, 2)]
 
 
 def test_a_coach_whose_only_class_was_inherited_has_no_map(conn):
@@ -457,20 +503,22 @@ def test_another_teams_signees_are_not_on_this_coachs_map(conn):
 def test_a_signee_without_coordinates_is_counted_rather_than_placed(conn):
     """A recruit the feed gave no hometown for cannot be drawn anywhere --
     putting him at 0,0 would put him in the Gulf of Guinea -- but dropping him
-    would publish a class total smaller than the class. 466 signees across the
+    would publish a class total smaller than the class. 440 signees across the
     archive are in this state, 11 of them Lance Leipold's."""
     cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
     _recruit(conn, 1, 1, 2020, None, None)
     _recruit(conn, 2, 1, 2020, 30.69, -88.04)
-    assert build_coach_recruits(conn, build_coaches(conn))[cid] == \
-        {"points": [[30.69, -88.04, 1, "Mobile, AL"]], "unlocated": 1}
+    got = _only_class(build_coach_recruits(conn, build_coaches(conn)), cid)
+    assert got["points"] == [[30.69, -88.04, 1, "Mobile, AL"]]
+    assert got["unlocated"] == 1
+    assert len(got["top"]) == 2, "a signee with no hometown is still a signee"
 
 
 def test_a_coach_whose_every_signee_lacks_a_hometown_is_still_counted(conn):
     cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
     _recruit(conn, 1, 1, 2020, None, None)
-    assert build_coach_recruits(conn, build_coaches(conn))[cid] == \
-        {"points": [], "unlocated": 1}
+    got = _only_class(build_coach_recruits(conn, build_coaches(conn)), cid)
+    assert (got["points"], got["unlocated"]) == ([], 1)
 
 
 def test_an_unplaceable_signee_of_an_inherited_class_is_not_counted_either(conn):
@@ -489,8 +537,8 @@ def test_a_first_season_is_inherited_even_with_no_ranking_row(conn):
     _recruit(conn, 2, 1, 2023, 33.52, -86.80, "Birmingham", "AL")
     tenures = build_coaches(conn)[successor]["tenures"]
     assert "class_inherited" not in tenures[0], "the flag is absent without a ranked class"
-    assert build_coach_recruits(conn, build_coaches(conn))[successor]["points"] == \
-        [[33.52, -86.8, 1, "Birmingham, AL"]]
+    assert _only_class(build_coach_recruits(conn, build_coaches(conn)), successor) \
+        ["points"] == [[33.52, -86.8, 1, "Birmingham, AL"]]
 
 
 def test_two_towns_that_round_together_do_not_borrow_each_others_names(conn):
@@ -502,8 +550,8 @@ def test_two_towns_that_round_together_do_not_borrow_each_others_names(conn):
     _recruit(conn, 1, 1, 2020, 37.05, -76.29, "Hampton", "SC")
     _recruit(conn, 2, 2, 2020, 37.05, -76.29, "Hampton", "VA")
     out = build_coach_recruits(conn, build_coaches(conn))
-    assert out[first]["points"][0][3] == "Hampton, SC"
-    assert out[second]["points"][0][3] == "Hampton, VA"
+    assert _only_class(out, first)["points"][0][3] == "Hampton, SC"
+    assert _only_class(out, second)["points"][0][3] == "Hampton, VA"
 
 
 def test_the_busiest_town_comes_first(conn):
@@ -511,8 +559,8 @@ def test_the_busiest_town_comes_first(conn):
     _recruit(conn, 1, 1, 2020, 33.52, -86.80, "Birmingham", "AL")
     for n, _ in enumerate(range(2)):
         _recruit(conn, n + 2, 1, 2020, 30.69, -88.04, "Mobile", "AL")
-    assert [p[3] for p in build_coach_recruits(conn, build_coaches(conn))[cid]["points"]] == \
-        ["Mobile, AL", "Birmingham, AL"]
+    assert [p[3] for p in _only_class(build_coach_recruits(conn, build_coaches(conn)),
+                                      cid)["points"]] == ["Mobile, AL", "Birmingham, AL"]
 
 
 def test_towns_sending_the_same_number_are_ordered_by_name(conn):
@@ -521,14 +569,127 @@ def test_towns_sending_the_same_number_are_ordered_by_name(conn):
     cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
     _recruit(conn, 1, 1, 2020, 44.05, -123.09, "Eugene", "OR")
     _recruit(conn, 2, 1, 2020, 30.69, -88.04, "Mobile", "AL")
-    assert [p[3] for p in build_coach_recruits(conn, build_coaches(conn))[cid]["points"]] == \
-        ["Eugene, OR", "Mobile, AL"]
+    assert [p[3] for p in _only_class(build_coach_recruits(conn, build_coaches(conn)),
+                                      cid)["points"]] == ["Eugene, OR", "Mobile, AL"]
 
 
 def test_a_hometown_with_no_name_is_still_a_point(conn):
     cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
     _recruit(conn, 1, 1, 2020, 30.69, -88.04, None, None)
-    assert build_coach_recruits(conn, build_coaches(conn))[cid]["points"] == [[30.69, -88.04, 1, ""]]
+    assert _only_class(build_coach_recruits(conn, build_coaches(conn)), cid)["points"] == \
+        [[30.69, -88.04, 1, ""]]
+
+
+# ---- the signees a class landed ---------------------------------------------
+
+def test_a_class_names_its_signees_best_first(conn):
+    cid = _coach(conn, "Nick Saban", [(2016, 1, None), (2017, 1, None)])
+    _recruit(conn, 1, 1, 2017, 37.0, -121.8, "Antioch", "CA", "Najee Harris",
+             "RB", 5, 0.9984, 2)
+    _recruit(conn, 2, 1, 2017, 27.5, -82.6, "Bradenton", "FL", "Dylan Moses",
+             "OLB", 5, 0.9921, 13)
+    assert _only_class(build_coach_recruits(conn, build_coaches(conn)), cid)["top"] == [
+        ["Najee Harris", "RB", 5, 0.9984, 2, "Antioch, CA", None],
+        ["Dylan Moses", "OLB", 5, 0.9921, 13, "Bradenton, FL", None]]
+
+
+def test_a_signee_the_feed_never_ranked_sorts_last_rather_than_first(conn):
+    """national_rank is NULL on most pre-2010 rows and on the tail of every
+    class since. Treating a missing rank as rank zero would hand a page's "top
+    signees" to the players nobody rated."""
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    _recruit(conn, 1, 1, 2020, 30.69, -88.04, name="Unranked", stars=3, rating=0.81)
+    _recruit(conn, 2, 1, 2020, 33.52, -86.80, name="Ranked 300", stars=4,
+             rating=0.89, national_rank=300)
+    assert [s[0] for s in _only_class(build_coach_recruits(conn, build_coaches(conn)),
+                                      cid)["top"]] == ["Ranked 300", "Unranked"]
+
+
+def test_unranked_signees_fall_back_to_rating_and_then_to_stars(conn):
+    """Named so the alphabet CONTRADICTS the right answer. The first version of
+    this test called them Lower/Higher/Unrated, which happen to come out in the
+    right order by name alone, so it passed against a key that never looked at
+    the rating at all."""
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    _recruit(conn, 1, 1, 2020, 30.69, -88.04, name="Aaron Worst", stars=4, rating=0.80)
+    _recruit(conn, 2, 1, 2020, 30.69, -88.04, name="Zeke Best", stars=3, rating=0.88)
+    _recruit(conn, 3, 1, 2020, 30.69, -88.04, name="Adam Unrated", stars=5)
+    assert [s[0] for s in _only_class(build_coach_recruits(conn, build_coaches(conn)),
+                                      cid)["top"]] == \
+        ["Zeke Best", "Aaron Worst", "Adam Unrated"]
+
+
+def test_stars_break_a_tie_on_rating(conn):
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    _recruit(conn, 1, 1, 2020, 30.69, -88.04, name="Aaron Three", stars=3, rating=0.85)
+    _recruit(conn, 2, 1, 2020, 30.69, -88.04, name="Zeke Five", stars=5, rating=0.85)
+    assert [s[0] for s in _only_class(build_coach_recruits(conn, build_coaches(conn)),
+                                      cid)["top"]] == ["Zeke Five", "Aaron Three"]
+
+
+def test_the_cut_to_twelve_keeps_the_best_rated_not_the_alphabet(conn):
+    """The export keeps only TOP_SIGNEES of a class, so whatever the key does
+    not order, the cut decides and the browser can never get back: a class with
+    more unranked signees than the export keeps would drop its best-rated
+    players for being late in the alphabet. Twenty classes in the archive have
+    more than twelve unranked signees."""
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    # The best-rated signee is also the last alphabetically, so an alphabetical
+    # cut loses him and a rating-ordered one keeps him first.
+    for n in range(20):
+        _recruit(conn, n + 1, 1, 2020, 30.69, -88.04,
+                 name=f"{chr(ord('a') + n)} Recruit", stars=3, rating=0.50 + n / 100)
+    top = [s[0] for s in _only_class(build_coach_recruits(conn, build_coaches(conn)),
+                                     cid)["top"]]
+    assert len(top) == TOP_SIGNEES
+    assert top[0] == "t Recruit", "the best-rated signee must survive the cut"
+    assert "a Recruit" not in top, "the worst-rated must not survive it for being first"
+
+
+def test_the_export_order_is_the_order_the_page_sorts_by(conn):
+    """The page re-sorts what it is given; if the two keys disagree, the cut
+    above and the list a reader sees disagree about what the top of a class is.
+    This pins the export's key to the three the shell's recruitTopSignees uses,
+    in that order: rank present, rank, then rating, then stars."""
+    shell = (__import__('pathlib').Path(__file__).resolve().parents[1]
+             / 'ui' / 'dashboard_shell.html').read_text(encoding='utf-8')
+    body = shell[shell.index('function recruitTopSignees('):]
+    body = body[:body.index('\n}')]
+    assert "(a.rank == null) - (b.rank == null)" in body
+    assert "a.rank - b.rank" in body
+    assert "(b.rating || 0) - (a.rating || 0)" in body
+    assert "(b.stars || 0) - (a.stars || 0)" in body
+
+
+def test_a_class_names_at_most_the_signees_the_page_can_show(conn):
+    """Twelve a class, so a career top ten merged from them is exact: a
+    career's tenth-best signee cannot be worse than tenth in his own class."""
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    for n in range(40):
+        _recruit(conn, n + 1, 1, 2020, 30.69, -88.04, name=f"Guy {n:02d}",
+                 national_rank=n + 1)
+    top = _only_class(build_coach_recruits(conn, build_coaches(conn)), cid)["top"]
+    assert len(top) == TOP_SIGNEES
+    assert [s[0] for s in top] == [f"Guy {n:02d}" for n in range(TOP_SIGNEES)]
+
+
+def test_a_signee_is_linked_to_a_career_page_only_where_this_site_has_him(conn):
+    """A link built from the recruiting feed's athlete id alone lands a reader
+    on "player not found" for every signee who never made a roster here, and
+    only about half the rows since 2010 carry an id at all."""
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    _recruit(conn, 1, 1, 2020, 30.69, -88.04, name="Made It", athlete_id=4241457)
+    _recruit(conn, 2, 1, 2020, 33.52, -86.80, name="Never Here", athlete_id=999999)
+    _recruit(conn, 3, 1, 2020, 44.05, -123.09, name="No Id At All")
+    out = build_coach_recruits(conn, build_coaches(conn), {4241457: {}})
+    assert {s[0]: s[6] for s in _only_class(out, cid)["top"]} == \
+        {"Made It": 4241457, "Never Here": None, "No Id At All": None}
+
+
+def test_no_player_payloads_means_no_links_rather_than_broken_ones(conn):
+    cid = _coach(conn, "Dabo Swinney", [(2019, 1, None), (2020, 1, None)])
+    _recruit(conn, 1, 1, 2020, 30.69, -88.04, name="Made It", athlete_id=4241457)
+    assert _only_class(build_coach_recruits(conn, build_coaches(conn)), cid)["top"][0][6] is None
 
 
 def test_there_is_no_map_data_without_the_recruiting_tables(conn):
