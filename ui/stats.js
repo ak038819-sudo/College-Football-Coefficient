@@ -89,9 +89,17 @@
     const headers=[...table.tHead.rows[0].cells],body=table.tBodies[0];
     headers.forEach((header,index)=>{
       const label=header.textContent.trim();if(!label)return;
+      // A cell may carry its own sort key in data-sort. Needed where the text
+      // is not the number (a signed value using a minus sign, a rating with its
+      // rank beside it) and where the column is filled in after this runs, so
+      // the key must be read on the click rather than now.
+      const keyed=[...body.rows].some(row=>row.cells[index]?.hasAttribute('data-sort'));
       const values=[...body.rows].map(row=>row.cells[index]?.textContent.trim()||'');
-      const numeric=values.filter(v=>v&&!/^[-—–]$/.test(v)).every(v=>/^[-+]?\d/.test(v));
-      const value=row=>{const text=row.cells[index]?.textContent.trim()||'';if(!text||/^[-—–]$/.test(text))return null;if(!numeric)return text;const match=text.replaceAll(',','').match(/^[-+]?\d+(?:\.\d+)?/);return match?Number(match[0]):null;};
+      const numeric=keyed||values.filter(v=>v&&!/^[-—–]$/.test(v)).every(v=>/^[-+]?\d/.test(v));
+      const value=row=>{const cell=row.cells[index];
+        if(keyed){const raw=cell?.getAttribute('data-sort');if(raw==null||raw==='')return null;
+          const parsed=Number(raw);return Number.isFinite(parsed)?parsed:null;}
+        const text=cell?.textContent.trim()||'';if(!text||/^[-—–]$/.test(text))return null;if(!numeric)return text;const match=text.replaceAll(',','').match(/^[-+]?\d+(?:\.\d+)?/);return match?Number(match[0]):null;};
       const button=table.ownerDocument.createElement('button');button.type='button';button.className='sort-button';button.textContent=label;
       header.replaceChildren(button);header.setAttribute('scope','col');
       let direction='asc';

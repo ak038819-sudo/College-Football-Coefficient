@@ -304,6 +304,20 @@ def compute_went_ot(g: dict) -> int:
     return 1 if (isinstance(line_scores, list) and len(line_scores) > 4) else 0
 
 
+def line_score_text(g: dict, side: str) -> str:
+    """The per-period scores as "7-10-3-14", or "" when the source has none.
+
+    The same field compute_went_ot() already reads. Periods past the fourth are
+    overtimes and are kept in order, so the text says as much as the array did.
+    """
+    scores = pick(g, f"{side}_line_scores", f"{side}LineScores", default=None)
+    if not isinstance(scores, list) or not scores:
+        return ""
+    if any(not isinstance(v, int) for v in scores):
+        return ""
+    return "-".join(str(v) for v in scores)
+
+
 def is_completed(g: dict) -> bool:
     """
     A game is final only if both scores exist AND CFBD doesn't mark it as
@@ -461,6 +475,9 @@ def main(year: int) -> int:
                 "notes",
                 "venue",          # explicit upstream physical venue, display only
                 "venue_id",       # CFBD's physical venue identity
+                # Per-period scores, already in the payload compute_went_ot()
+                # reads. Display only: no rating reads them.
+                "home_line_scores", "away_line_scores",
             ],
         )
 
@@ -570,6 +587,8 @@ def main(year: int) -> int:
                 "notes": notes,
                 "venue": pick(g, "venue", default="") or "",
                 "venue_id": pick(g, "venue_id", "venueId", default="") or "",
+                "home_line_scores": line_score_text(g, "home"),
+                "away_line_scores": line_score_text(g, "away"),
             })
 
 

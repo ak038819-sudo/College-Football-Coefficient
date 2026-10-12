@@ -33,17 +33,25 @@ test('a rating with no value reads as unavailable, not as a zero Elo', () => {
 
 test('Elo rankings pass each audited change to the table', () => {
   const ctx = {
-    DATA: {team_elo_by_year: {2026: [{team: 'Florida', elo: 1551.4, change: -8.2}]}},
-    state: {year: 2026}, UPCOMING: {season: 2026, ratings_as_of: '2026-09-20'},
-    esc: x => x, rankTable: (rows, key, label, valueLabel, kind, format) =>
-      JSON.stringify(rows) + '|' + format(rows[0].value),
+    DATA: {team_elo_by_year: {2026: [{team: 'Florida', elo: 1551.4, change: -8.2}]},
+      team_records_by_year: {2026: {5: [3, 2, 0]}}, non_fbs_records_by_year: {2026: {5: [1, 0, 0]}}},
+    state: {year: 2026}, LATEST_SEASON: 2026, UPCOMING: {season: 2026, ratings_as_of: '2026-09-20'},
+    TEAM_BY_NAME: new Map([['Florida', {id: 5, name: 'Florida', conference: 'SEC'}]]),
+    esc: x => x, teamLink: name => '<a>' + name + '</a>', conferenceLink: name => '<a>' + name + '</a>',
   };
-  // eloValue is the real helper, lifted in: the table's value column is what
-  // renders a rating, so a stub here would stop proving it is a whole number.
-  vm.runInNewContext(sourceOf('eloValue') + '\n' + sourceOf('renderElo') + '\nthis.render = renderElo;', ctx);
-  assert.match(ctx.render(), /"change":-8\.2/);
+  // eloValue, eloChangeMarkup and seasonRecord are the real helpers, lifted in:
+  // the row is what renders a rating, its audited change and the record, so a
+  // stub here would stop proving any of the three.
+  vm.runInNewContext([sourceOf('eloValue'), sourceOf('eloChangeMarkup'), sourceOf('seasonRecord'),
+    sourceOf('eloHead'), sourceOf('renderElo'),
+    "const ELO_COLUMNS = ['Team', 'Conf', 'Record', 'Elo', 'Last 5', 'SOS', 'vs Exp'];",
+    'this.render = renderElo;'].join('\n'), ctx);
+  const html = ctx.render();
   // The rating rounds to a whole number; the audited change keeps its decimal.
-  assert.match(ctx.render(), /\|1551</);
+  assert.match(html, />1551<span class="elo-change down"[^>]*>\(▼8\.2\)</);
+  // The record is the whole season's, FCS win included.
+  assert.match(html, />4–2</);
+  assert.match(html, /<a>SEC<\/a>/);
 });
 
 test('a newer final marks only its teams as waiting for a model rebuild', () => {

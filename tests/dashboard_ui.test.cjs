@@ -150,6 +150,108 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    const button=[...d.querySelectorAll('.rank-table th button')].find(b=>b.textContent==='Elo');assert.ok(button);button.click();
    assert.equal(button.parentElement.getAttribute('aria-sort'),'descending');
   });
+  await t.test('an unreleased poll gives its width back instead of holding an empty column',async()=>{
+   await route('#section=rankings&view=top25&season=2026',()=>d.querySelector('.rank-boards'));
+   const boards=()=>[...d.querySelectorAll('.rank-boards .board-col')];
+   const now=boards().length;
+   assert.equal(d.querySelector('.rank-boards').dataset.boards,String(now),
+     'the row declares how many boards it holds');
+   assert.ok(boards().every(b=>b.querySelector('.mini-board li')),'no board is drawn empty');
+   // Polls are exported for the current season only, so a past season has none.
+   await route('#section=rankings&view=top25&season=1998',()=>d.querySelector('.rank-boards'));
+   assert.equal(boards().length,1,'a season with no poll shows the Elo board alone');
+   assert.equal(d.querySelector('.rank-boards').dataset.boards,'1');
+   const note=d.querySelector('#content .section-note')?.textContent||'';
+   assert.match(note,/AP Top 25 and CFP Rankings/,'the note names the polls that are missing');
+   assert.match(note,/1998/);
+  });
+  await t.test('the Elo page explains each rating, and the detail joins the right team-season',async()=>{
+   // The previous subtest may already be on this view, and route() waits for the
+   // rendered node to change, so step away first.
+   await route('#section=rankings&view=top25&season=2026',()=>d.querySelector('.rank-boards'));
+   await route('#section=rankings&view=elo&season=2026',()=>d.querySelector('.elo-table tbody tr'));
+   await until(w,()=>[...d.querySelectorAll('.elo-table .sos')].every(c=>c.textContent.trim()!=='\u2026'));
+   const rows=[...d.querySelectorAll('.elo-table tbody tr')];
+   assert.ok(rows.length>100,'the Elo page lists every rated team');
+   assert.deepEqual([...d.querySelectorAll('.elo-table thead th')].map(th=>th.textContent.trim()),
+     ['#','Team','Conf','Record','Elo','Last 5','SOS','vs Exp']);
+   for (const cls of ['.last5','.sos','.vsexp'])
+     assert.ok(rows.every(r=>r.querySelector(cls).textContent.trim()!=='\u2026'),cls+' fills in');
+   assert.ok(rows.every(r=>{const text=r.querySelector('.conf-cell').textContent.trim();
+     return text && text!=='\u2026';}),'every team shows a conference or an explicit dash');
+   // Each team-season carries its own schedule-strength rank, so the column must
+   // be a permutation: a join that borrowed another team's or another season's
+   // row would repeat one and drop another.
+   const ranks=rows.map(r=>Number(r.querySelector('.sos .fpv').textContent.replace('#','')));
+   assert.deepEqual([...ranks].sort((a,b)=>a-b),ranks.map((_,i)=>i+1),'SOS ranks are 1..N exactly once');
+   // And the number itself must be the one the team page shows for that team.
+   const target=rows[3];
+   const name=target.querySelector('.team-link-name').textContent.trim();
+   const sos=target.querySelector('.sos').textContent.replace(/\s+/g,' ').trim();
+   await route('#team='+encodeURIComponent(name)+'&season=2026&tab=analytics',
+     ()=>/Strength of schedule/i.test(d.querySelector('#content').textContent));
+   const stat=[...d.querySelectorAll('.team-stat')].find(el=>/Strength of schedule/i.test(el.querySelector('.lbl')?.textContent||''));
+   assert.ok(stat,'the team page shows a strength of schedule for '+name);
+   const expected=stat.querySelector('.val').textContent.trim()+' #'+
+     stat.querySelector('.sub').textContent.trim().match(/#(\d+)/)[1];
+   assert.equal(sos,expected,'the Elo page and the team page disagree on '+name+'\u2019s schedule');
+  });
+  await t.test('a ranking board carries each team\'s record, and it agrees with the team page',async()=>{
+   await route('#section=rankings&view=top25&season=2026',()=>d.querySelector('.rank-boards .mini-board'));
+   const rows=[...d.querySelectorAll('.rank-boards .board-col:first-child .mini-board li')];
+   assert.ok(rows.length>=25,'the Elo board lists a full top 25');
+   assert.ok(rows.every(li=>/^\d+\u2013\d+(\u2013\d+)?$/.test(li.querySelector('.rec')?.textContent||'')),
+     'every ranked team shows a win-loss record');
+   const leader=rows[0].querySelector('.team-link-name, a')?.textContent.trim();
+   const board=rows[0].querySelector('.rec').textContent;
+   // The team page is the authority on a record; the board must not disagree.
+   await route('#team='+encodeURIComponent(leader)+'&season=2026',()=>d.querySelector('.team-stats'));
+   const stat=[...d.querySelectorAll('.team-stats .team-stat')]
+     .find(el=>el.querySelector('.lbl')?.textContent.trim()==='Record');
+   assert.ok(stat,'the team page shows a record for '+leader);
+   // Compare the headline value only: the sub-line names the rated part, so a
+   // board that quietly dropped the FCS games would match it by substring.
+   assert.equal(board,stat.querySelector('.val').textContent.trim(),
+     'the board and the team page disagree on '+leader+'\u2019s record');
+   assert.match(stat.querySelector('.sub').textContent,/against rated opponents/,
+     'this check only bites while the leader has a non-FBS game to drop');
+  });
+  await t.test('the page chrome names each control once and keeps them on one row',async()=>{
+   // The view selector and the season selector are one control group: if they
+   // stop sharing a parent they stack, which on a phone pushed the first row of
+   // content below the fold. Headings that merely repeat the selected view or
+   // the active tab are the other half of that cost.
+   for (const hash of ['#section=rankings&view=top25&season=2026','#section=rankings&view=elo&season=2026','#section=playoff&view=bracket&season=2026']) {
+    await route(hash,()=>d.querySelector('#content').firstElementChild);
+    const row=d.querySelector('.control-row');
+    assert.ok(row,'the controls share a row on '+hash);
+    assert.equal(d.querySelector('#subnav').parentElement,row);
+    assert.equal(d.querySelector('#year-row').parentElement,row);
+    // Every view selector, not only the one #subnav happens to hold: a
+    // selector left inside #content sits on a row of its own below this one.
+    const selectors=[...d.querySelectorAll('[data-route-select]')];
+    assert.ok(selectors.length,'the view is chosen by a selector on '+hash);
+    for (const select of selectors)
+      assert.ok(row.contains(select),'a view selector is outside the control row on '+hash);
+    const spoken=new Set([...d.querySelectorAll('#tabs a.active, #subnav a[aria-current="page"]')].map(a=>a.textContent.trim().toLowerCase()));
+    for (const select of d.querySelectorAll('[data-route-select]')) spoken.add(select.selectedOptions[0].textContent.trim().toLowerCase());
+    const repeats=[...d.querySelectorAll('#content h1, #content h2')]
+      .map(h=>h.textContent.trim().toLowerCase()).filter(text=>spoken.has(text));
+    assert.deepEqual(repeats,[],'no heading repeats a control already on screen at '+hash);
+   }
+   // A route with no controls at all must not keep the row's spacing: the
+   // wrapper is always in the document, so it cannot rely on :empty.
+   for (const hash of ['#section=home','#section=methodology']) {
+    await route(hash,()=>d.querySelector('#content').firstElementChild);
+    const row=d.querySelector('.control-row');
+    assert.ok([...row.children].every(child=>!child.textContent.trim()),hash+' has no controls');
+    // The spacing belongs to the controls, which hide when empty, not to the
+    // wrapper, which is always in the document. (Whether the children hide is
+    // a layout question jsdom does not answer; this pins where the margin is.)
+    assert.equal(w.getComputedStyle(row).marginBottom,'0px',
+      'the empty control row adds no chrome at '+hash);
+   }
+  });
   await t.test('one geographic stadium map supports marker and team navigation',async()=>{
    await route('#section=teams&view=stadiums',()=>d.querySelector('.stadium-map'));
    assert.equal(d.querySelectorAll('.stadium-map').length,1);assert.equal(d.querySelectorAll('.state-boundary').length,50);

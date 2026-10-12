@@ -248,8 +248,10 @@
   @media (max-width: 520px) { .gp-side .gp-score { font-size: 34px; } .gp-list li { grid-template-columns: 46px minmax(0, 1fr); } .gp-list .aux { grid-column: 2; text-align: left; } }
   .listing-game.is-target { border-color: var(--amber); box-shadow: inset 0 0 0 1px var(--amber); }
   .skip-link:focus { position: fixed; left: 12px; top: 12px; z-index: 10; background: var(--panel); padding: 12px; color: var(--ink); }
-  .subnav { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
-  .subnav:empty, .year-row:empty { display: none; }
+  .control-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0; }
+  .control-row > * { margin-bottom: 20px; }
+  .subnav { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+  .subnav:empty, .year-row:empty, .view-row:empty { display: none; }
   .subnav a { color: var(--ink-dim); padding: 9px 12px; border-bottom: 2px solid transparent; text-decoration: none; }
   .subnav a[aria-current="page"] { color: var(--amber); border-color: var(--amber); }
   .view-title { font-family: var(--font-display); font-size: 26px; margin: 0 0 12px; }
@@ -319,19 +321,30 @@
                   border: 0; font-size: 12px; }
   #content, .panel { min-width: 0; }
   .table-scroll { max-width: 100%; overflow-x: auto; }
+  /* On a phone the masthead was costing a whole screen before the first row of
+     content: a tagline, a secondary link row, five tabs wrapping onto two
+     lines, a search field and a labelled view selector. Everything below keeps
+     the same elements but stops them stacking. */
   @media (max-width: 520px) {
-    .wrap { padding: 20px 12px 60px; }
-    .nav-row { display: block; }
-    nav.tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
-    nav.tabs a { padding: 9px 0; font-size: 15px; text-align: center; }
+    .wrap { padding: 14px 12px 60px; }
+    header.top { gap: 6px; padding-bottom: 10px; margin-bottom: 14px; }
+    .title-block h1 { font-size: 30px; }
+    .release-label { display: none; }
+    .header-links { width: 100%; margin: 0; justify-content: space-between; gap: 8px; font-size: 12.5px; }
+    .nav-row { display: block; margin-top: 4px; }
+    nav.tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin-bottom: 8px; }
+    nav.tabs a { padding: 7px 0; font-size: 13px; letter-spacing: 0; text-align: center; }
     .global-search { max-width: none; }
+    .global-search input { padding: 7px 10px; }
     .panel { padding: 14px; }
     .subnav a { padding: 9px 8px; font-size: 14px; }
+    .control-row { gap: 8px 10px; }
+    .control-row > * { margin-bottom: 12px; }
   }
 
   .year-row {
     display: flex;
-    margin-bottom: 26px;
+    margin: 0;
   }
   .year-select {
     font-family: var(--font-mono);
@@ -648,7 +661,10 @@
   /* Three Top 25 boards in one row. They drop to two columns and then one as
      the viewport narrows, so a board is never squeezed below a readable width. */
   .rank-boards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
-  @media (max-width: 1080px) { .rank-boards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .rank-boards[data-boards="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* One board alone would stretch a 25-row list across the whole page. */
+  .rank-boards[data-boards="1"] { grid-template-columns: minmax(0, 460px); }
+  @media (max-width: 1080px) { .rank-boards, .rank-boards[data-boards="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 700px) { .rank-boards { grid-template-columns: minmax(0, 1fr); } }
   .board-col { min-width: 0; }
   /* These boards are the view, not a sidebar, so they carry the rank at the
@@ -666,6 +682,10 @@
   .poll-toggle button.on { background: var(--amber); color: var(--bg); }
   .poll-toggle button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
   .mini-board .fpv { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-dim); }
+  .mini-board .rec { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); white-space: nowrap; }
+  /* With a record beside it the longest school name can outrun a phone's width
+     by a pixel, which is a sideways scroll on the whole page. */
+  .mini-board .nm .team-link-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mini-board .elo-rk { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); }
 
   .tag {
@@ -858,6 +878,22 @@
   }
   .seed-pill.seed-bye { color: var(--amber); font-weight: 600; }
   .rank-table tr.row-dim td { color: var(--ink-dim); }
+  .gp-line { margin: 18px auto 0; width: auto; font-family: var(--font-mono); font-size: 13px; }
+  .gp-line th, .gp-line td { padding: 4px 10px; text-align: right; }
+  .gp-line th[scope="row"] { text-align: left; padding-right: 18px; font-family: var(--font-display); }
+  .gp-line thead th { color: var(--ink-dim); font-weight: 400; font-size: 11px; }
+  .gp-line .gp-line-total { color: var(--amber); font-weight: 700; }
+  .elo-table .conf-cell { color: var(--ink-dim); font-size: 13px; }
+  .elo-table .conf-cell .team-link-name { font-size: 13px; }
+  .elo-table td.last5, .elo-table td.sos, .elo-table td.vsexp { font-family: var(--font-mono); font-size: 12.5px; }
+  /* On a phone the rating is what the page is for, so it has to be on screen
+     without a sideways scroll. Conference is the column a reader can most
+     easily do without; the rest still scrolls. */
+  @media (max-width: 520px) {
+    .elo-table th:nth-child(3), .elo-table td:nth-child(3) { display: none; }
+    .elo-table td, .elo-table th { padding: 6px 5px; font-size: 13px; }
+    .elo-table .logo-chip { width: 20px; height: 20px; }
+  }
 
   .bslot.filled { background: var(--panel-2); border-left: 3px solid var(--green-hl); }
 
@@ -1039,7 +1075,7 @@
   .games-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; align-items:end; }
   .games-filters label { min-width:0; display:flex; flex-direction:column; gap:6px; }
   .games-filters input,.games-filters select { width:100%; min-width:0; }
-  .view-select { display:flex; gap:12px; align-items:center; margin:12px 0 20px; color:var(--ink-dim); }
+  .view-select { display:flex; gap:12px; align-items:center; margin:0; color:var(--ink-dim); }
   .view-select select { max-width:100%; padding:10px 14px; background:var(--panel-2); color:var(--ink); border:1px solid var(--line); border-radius:8px; }
   .live-card,.live-team { position:relative; overflow:hidden; isolation:isolate; }
   .live-team > :not(.live-watermark) { position:relative; z-index:1; }
@@ -1077,6 +1113,11 @@
     .stadium-map { min-height:260px; }
     .view-select { flex-direction:column; align-items:stretch; }
     table th,table td { padding:9px; }
+  }
+  @media(max-width:520px) {
+    .view-select { flex-direction:row; align-items:center; margin:0; }
+    .view-select > span { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+    .view-select select { flex:1; }
   }
 #game-page > * + * { margin-top: 24px; }
 .live-player-team { min-width: 0; }
@@ -1118,8 +1159,11 @@
     </div>
   </header>
 
-  <nav class="subnav" id="subnav" aria-label="Section views"></nav>
-  <div class="year-row" id="year-row"></div>
+  <div class="control-row">
+    <nav class="subnav" id="subnav" aria-label="Section views"></nav>
+    <div class="view-row" id="view-row"></div>
+    <div class="year-row" id="year-row"></div>
+  </div>
 
   <main id="content" tabindex="-1"></main>
 
@@ -1635,15 +1679,92 @@ function renderConferenceCoe2() {
     '.</p></div>';
 }
 
+// The page the model is named after. The rating alone does not say how a team
+// earned it, so each row also carries who it played (conference, schedule
+// strength) and how the season has gone (record, recent movement, wins against
+// the pregame expectation). The single best and worst result stay on the team
+// page, where the rating ledger already explains each game.
+const ELO_COLUMNS = ['Team', 'Conf', 'Record', 'Elo', 'Last 5', 'SOS', 'vs Exp'];
+
+function eloHead() {
+  return '<thead><tr><th scope="col" class="rank-col">#</th>' +
+    ELO_COLUMNS.map((label, i) => '<th scope="col"' + (i >= 2 ? ' class="num"' : '') + '>' + label + '</th>').join('') +
+    '</tr></thead>';
+}
+
 function renderElo() {
-  const rows = (DATA.team_elo_by_year[state.year] || []).map(r => ({ name: r.team, value: r.elo, change: r.change }));
+  const rows = DATA.team_elo_by_year[state.year] || [];
   if (!rows.length) return '<div class="empty-note">No Elo data for this season.</div>';
+  const body = rows.map((r, i) => {
+    const team = TEAM_BY_NAME.get(r.team);
+    const conf = team && (state.year === LATEST_SEASON ? team.conference : null);
+    const rec = seasonRecord(r.team, state.year);
+    return '<tr data-elo-row="' + esc(team ? String(team.id) : '') + '">' +
+      '<td class="rk">' + (i + 1) + '</td>' +
+      '<td><div class="name-cell">' + teamLink(r.team, 'xs') + '</div></td>' +
+      '<td class="conf-cell" data-sort="">' + (conf ? conferenceLink(conf, null, state.year) : '\u2026') + '</td>' +
+      '<td class="num" data-sort="' + (rec ? rec.split('\u2013')[0] : '') + '">' + (rec || '—') + '</td>' +
+      '<td class="num coe-val" data-sort="' + Number(r.elo) + '">' + eloValue(r.elo) +
+        eloChangeMarkup(r.change, r.name) + '</td>' +
+      '<td class="num last5" data-sort="">…</td>' +
+      '<td class="num sos" data-sort="">…</td>' +
+      '<td class="num vsexp" data-sort="">…</td></tr>';
+  }).join('');
   return '<div class="panel"><h2 class="section-title">Elo Rating · ' + state.year + '</h2>' +
     '<p class="section-note">Published rating' + (state.year === UPCOMING.season && UPCOMING.ratings_as_of
       ? ' through ' + esc(UPCOMING.ratings_as_of) : ' within the selected season') +
-      '. Arrows show each team’s most recent game in that export, not a change in rank.</p>' +
+      '. SOS is the average pregame Elo of the opponents faced; vs Exp is wins above the pregame expectation. ' +
+      'Arrows show each team’s most recent game in that export, not a change in rank.</p>' +
     (state.year === UPCOMING.season ? '<p class="rating-freshness" id="rating-freshness" role="status"></p>' : '') +
-    rankTable(rows, 'value', 'Team', 'Elo', 'team', eloValue) + '</div>';
+    '<div class="table-scroll"><table class="rank-table elo-table">' + eloHead() +
+    '<tbody>' + body + '</tbody></table></div></div>';
+}
+
+// Conference, schedule strength, recent movement and wins-above-expectation all
+// live in team_pages.js, the same export a team page opens. It is fetched once
+// and cached, so the table paints from the inline data first and fills in.
+function hydrateEloDetail(version) {
+  const table = document.querySelector('.elo-table');
+  if (!table) return;
+  const season = state.year;
+  loadTeamPages().then(tp => {
+    if (version !== renderVersion) return;
+    const signedCell = (cell, value, digits) => {
+      cell.dataset.sort = String(value);
+      cell.textContent = signed(value, digits);
+      cell.classList.add(value > 0 ? 'pos' : value < 0 ? 'neg' : 'flat');
+    };
+    for (const row of table.tBodies[0].rows) {
+      const id = Number(row.dataset.eloRow);
+      const season_ = (tp.seasonsByTeam.get(id) || new Map()).get(season);
+      // A rated team with no membership row for the season -- an FCS program the
+      // model carries a rating for -- gets a dash, not an empty cell.
+      const confCell = row.querySelector('.conf-cell');
+      if (confCell.textContent.trim() === '\u2026')
+        confCell.innerHTML = season_?.conf ? conferenceLink(season_.conf, null, season) : '\u2014';
+      confCell.dataset.sort = '';
+      const last5 = row.querySelector('.last5'), sos = row.querySelector('.sos'), vsexp = row.querySelector('.vsexp');
+      const games = (tp.eloByTeam.get(id) || []).filter(g => tp.gamesById.get(g.gid)?.season === season);
+      if (games.length) {
+        const recent = games.slice(-5);
+        signedCell(last5, recent.reduce((sum, g) => sum + g.chg, 0), 1);
+        last5.title = recent.length + (recent.length === 1 ? ' game' : ' games');
+      } else { last5.textContent = '—'; last5.dataset.sort = ''; }
+      if (season_) {
+        sos.dataset.sort = String(season_.sos);
+        sos.innerHTML = eloValue(season_.sos) + ' <small class="fpv">#' + season_.sosRank + '</small>';
+        signedCell(vsexp, season_.aboveExp, 1);
+      } else {
+        sos.textContent = '—'; sos.dataset.sort = '';
+        vsexp.textContent = '—'; vsexp.dataset.sort = '';
+      }
+    }
+  }).catch(() => {
+    if (version !== renderVersion) return;
+    table.querySelectorAll('.last5, .sos, .vsexp').forEach(cell => {
+      cell.textContent = '—'; cell.dataset.sort = '';
+    });
+  });
 }
 
 function renderHomeFieldStandings() {
@@ -2052,7 +2173,7 @@ function runSimulationAndAnimate() {
   if (!pf) return;
   state.simResult = runBracketSimulation(pf);
   state.simYear = state.year;
-  document.getElementById('content').innerHTML = playoffTitle() + renderBracket() + playoffDisclaimer();
+  document.getElementById('content').innerHTML = renderBracket() + playoffDisclaimer();
   revealBracketSequence();
 }
 
@@ -2331,6 +2452,23 @@ function teamExtremes(team) {
 // The sub-label states the rated part whenever the two differ, because every
 // other number in this header -- Elo, CoE, every rank -- is computed from that
 // part alone.
+function seasonRecord(teamName, season) {
+  const team = TEAM_BY_NAME.get(teamName);
+  if (!team || !season) return '';
+  const rated = ((DATA.team_records_by_year || {})[season] || {})[team.id];
+  const unrated = ((DATA.non_fbs_records_by_year || {})[season] || {})[team.id];
+  if (!rated && !unrated) return '';
+  const r = rated || [0, 0, 0], u = unrated || [0, 0, 0];
+  const w = r[0] + u[0], l = r[1] + u[1], t = r[2] + u[2];
+  if (!w && !l && !t) return '';
+  return w + '\u2013' + l + (t ? '\u2013' + t : '');
+}
+
+function recordCell(teamName, season) {
+  const rec = seasonRecord(teamName, season);
+  return rec ? '<span class="rec">' + rec + '</span>' : '';
+}
+
 function teamHeaderRecord(rec, unrated) {
   const wlt = (w, l, ties) => w + '\u2013' + l + (ties ? '\u2013' + ties : '');
   const some = r => !!r && (r[0] || r[1] || r[2]);
@@ -3570,7 +3708,7 @@ document.getElementById('content').addEventListener('click',e=>{
 let renderVersion = 0;
 
 function routeSelect(label, items, selected) {
-  return '<label class="view-select">'+esc(label)+'<select data-route-select aria-label="'+esc(label)+'">'+
+  return '<label class="view-select"><span>'+esc(label)+'</span><select data-route-select aria-label="'+esc(label)+'">'+
     items.map(([value,text])=>'<option value="'+esc(routeHref({subview:value}))+'"'+
       (value===selected?' selected':'')+'>'+esc(text)+'</option>').join('')+'</select></label>';
 }
@@ -3589,6 +3727,10 @@ function renderNavigation() {
   const statsNav = [['overview', 'Overview'], ['teams', 'Teams'], ['players', 'Players'], ['matchup', 'Matchup'], ['playoff', 'Playoff']];
   const inStats = ['stats', 'matchups', 'playoff'].includes(state.section);
   const items = inStats ? statsNav : state.view === 'team' || state.section === 'teams' ? [] : SUBVIEWS[state.section] || [];
+  // A section whose views are chosen from a selector rather than tabs puts it
+  // in the control row, beside the season picker, not inside the page.
+  document.getElementById('view-row').innerHTML =
+    state.section === 'playoff' ? routeSelect('Playoff view', SUBVIEWS.playoff, state.subview) : '';
   if(state.section === 'rankings') {
     document.getElementById('subnav').innerHTML = routeSelect('Standings view',items,state.subview);
     return;
@@ -4080,6 +4222,7 @@ function liveTeam(t, g, pct) {
   const identity = logoMarkup(name, 'team', 'xs', liveSeason()) +
     '<span class="live-identity"><span class="team-link-name">' + esc(name) + '</span>' +
     '<span class="live-rating">' + (rating?.rank <= 25 ? '<span class="live-rank">#' + rating.rank + '</span>' : '') +
+    (g.status === 'scheduled' && seasonRecord(name, liveSeason()) ? seasonRecord(name, liveSeason()) + '  ' : '') +
     'Elo ' + (Number.isFinite(elo) ? elo.toFixed(0) : 'unrated') + '</span></span>';
   return '<div class="live-team' + (won ? ' is-winning' : lost ? ' is-losing' : '') +
     '" style="--team-brand:' + brand + '">' +
@@ -4757,7 +4900,8 @@ function top25EloBoard() {
   const body = rows.length
     ? '<ol class="mini-board">' + rows.map((r, i) =>
         '<li><span class="rk">' + (i + 1) + '</span><span class="nm">' +
-        teamLink(r.team, 'xs') + '</span><span class="v">' + eloValue(r.elo) + '</span></li>').join('') + '</ol>'
+        teamLink(r.team, 'xs') + recordCell(r.team, state.year) +
+        '</span><span class="v">' + eloValue(r.elo) + '</span></li>').join('') + '</ol>'
     : '<div class="empty-note">No Elo ratings for ' + state.year + '.</div>';
   return '<div class="panel board-col">' +
     panelHead('Elo Top 25', '<a class="side-link" href="' + esc(routeHref({ subview: 'elo' })) + '">All ratings &rarr;</a>') +
@@ -4768,16 +4912,17 @@ function top25EloBoard() {
 
 // A poll board, with this model's own rank beside each team so the three
 // columns can be read across. Polls are display data: no model reads them.
-function top25PollBoard(key) {
+function pollTitle(key) { return key === 'cfp' ? 'CFP Rankings' : 'AP Top 25'; }
+
+function pollRelease(key) {
   const polls = DATA.polls || {};
-  const release = polls[key];
-  const title = key === 'cfp' ? 'CFP Rankings' : 'AP Top 25';
-  if (state.year !== polls.season || !release?.rows?.length) {
-    return '<div class="panel board-col"><h2 class="section-title">' + title + '</h2><div class="empty-note">' +
-      (state.year === polls.season ? 'No ' + title + ' release available for ' + state.year + '.'
-        : 'Historical ' + title + ' releases for ' + state.year + ' are not included in this export.') +
-      '</div></div>';
-  }
+  return state.year === polls.season ? polls[key] : null;
+}
+
+function top25PollBoard(key) {
+  const release = pollRelease(key);
+  const title = pollTitle(key);
+  if (!release?.rows?.length) return '';
   // Elo rank for the season on screen, which is the poll's season here.
   const eloRank = new Map((DATA.team_elo_by_year[state.year] || []).map((r, i) => [r.team, i + 1]));
   const body = '<ol class="mini-board">' + release.rows.map(([rank, id, school, votes]) => {
@@ -4785,6 +4930,7 @@ function top25PollBoard(key) {
     const mine = t ? eloRank.get(t.name) : null;
     return '<li><span class="rk">' + rank + '</span><span class="nm">' +
       (t ? teamLink(t.name, 'xs') : '<span>' + esc(school) + '</span>') +
+      (t ? recordCell(t.name, state.year) : '') +
       (votes ? '<span class="fpv">(' + votes + ')</span>' : '') + '</span>' +
       '<span class="elo-rk">' + (mine ? 'Elo #' + mine : '') + '</span></li>';
   }).join('') + '</ol>';
@@ -4794,13 +4940,23 @@ function top25PollBoard(key) {
     '. Elo # = this model\u2019s rank, for comparison. Polls do not affect model ratings.</p></div>';
 }
 
+// A poll that has not been released holds a third of the row for weeks, so it
+// is left out rather than drawn empty and the remaining boards take the width.
+// The one line below the row says which poll is missing, so its absence reads
+// as a fact about the season rather than as something gone wrong.
 function renderTop25Boards() {
-  return '<div class="rank-boards">' + top25EloBoard() + top25PollBoard('ap') + top25PollBoard('cfp') + '</div>';
+  const polls = ['ap', 'cfp'];
+  const boards = polls.map(key => top25PollBoard(key)).filter(Boolean);
+  const missing = polls.filter(key => !pollRelease(key)?.rows?.length).map(pollTitle);
+  const current = state.year === (DATA.polls || {}).season;
+  const note = !missing.length ? '' :
+    '<p class="section-note">' + missing.join(' and ') +
+    (current ? (missing.length > 1 ? ' have' : ' has') + ' not been released for ' + state.year + '.'
+             : ' for ' + state.year + (missing.length > 1 ? ' are' : ' is') + ' not in this export.') + '</p>';
+  return '<div class="rank-boards" data-boards="' + (boards.length + 1) + '">' +
+    top25EloBoard() + boards.join('') + '</div>' + note;
 }
 
-function playoffTitle() {
-  return '<h2 class="view-title">Playoff</h2>';
-}
 // The scope disclaimer belongs on the page, but at the foot of it: a reader
 // scanning a bracket does not need it before the bracket, and a reader who
 // wants to know what they just read does.
@@ -6076,6 +6232,38 @@ function backLink() {
   return '<a class="back-link" href="' + esc(r) + '">&larr; Back to ' + esc(label) + '</a>';
 }
 
+// The scoring by period, as the games fetcher recorded it ("7-10-3-14", with
+// any further entries being overtimes). Drawn only when both sides have the
+// same number of periods and each side's periods add up to its final score: a
+// line that disagrees with the scoreboard is a line this page will not show.
+function lineScoreRows(detail, game) {
+  if (!detail || !game.completed) return null;
+  const parse = text => {
+    if (typeof text !== 'string' || !text) return null;
+    const parts = text.split('-').map(Number);
+    return parts.length && parts.every(n => Number.isInteger(n) && n >= 0) ? parts : null;
+  };
+  const home = parse(detail.home_line_scores), away = parse(detail.away_line_scores);
+  if (!home || !away || home.length !== away.length || home.length < 4) return null;
+  const total = periods => periods.reduce((sum, n) => sum + n, 0);
+  if (total(home) !== game.home_score || total(away) !== game.away_score) return null;
+  const labels = home.map((_, i) => i < 4 ? String(i + 1) : i === 4 ? 'OT' : (i - 3) + 'OT');
+  return { labels, home, away };
+}
+
+function lineScoreTable(detail, game, awayName, homeName) {
+  const rows = lineScoreRows(detail, game);
+  if (!rows) return '';
+  const head = '<tr><th scope="col"></th>' + rows.labels.map(l => '<th scope="col">' + l + '</th>').join('') +
+    '<th scope="col" class="gp-line-total">T</th></tr>';
+  const row = (name, periods, total) => '<tr><th scope="row">' + esc(name) + '</th>' +
+    periods.map(n => '<td>' + n + '</td>').join('') +
+    '<td class="gp-line-total">' + total + '</td></tr>';
+  return '<table class="gp-table gp-line"><thead>' + head + '</thead><tbody>' +
+    row(awayName, rows.away, game.away_score) + row(homeName, rows.home, game.home_score) +
+    '</tbody></table>';
+}
+
 const _gameDetails = new Map();
 function loadGameDetails(season) {
   if (_gameDetails.has(season)) return Promise.resolve(_gameDetails.get(season));
@@ -6235,6 +6423,8 @@ function hydrateGamePage(version) {
       const home = TEAM_BY_ID.get(String(g.home_id)), away = TEAM_BY_ID.get(String(g.away_id));
       const hn = home ? home.name : 'Unknown team', an = away ? away.name : 'Unknown team';
       document.title = an + (g.neutral ? ' vs. ' : ' at ') + hn + ', ' + season + ' · ' + BASE_TITLE;
+      const d = details && details.byId.get(id);
+      const P = details && details.params;
       const pct = g.p_home == null ? null : probPct(g.p_home);
       const tie = g.completed && g.home_score === g.away_score, homeWon = g.completed && g.home_score > g.away_score;
       const winnerP = g.completed && !tie && g.p_home != null ? (homeWon ? g.p_home : 1 - g.p_home) : null;
@@ -6253,7 +6443,8 @@ function hydrateGamePage(version) {
       const hero = '<div class="panel gp-hero"><div class="gl-top">' + badges.join('') + '<span class="gl-when">' + esc(when) + '</span></div>' +
         '<p class="gp-meta">' + season + ' season · ' + stage + (g.stadium ? ' · Venue: ' + esc(g.stadium) : '') + '</p>' +
         '<div class="gp-board">' + side(away, an, g.away_score, false) + '<div class="gp-mid">' + (g.neutral ? 'vs.' : 'at') +
-        (g.completed ? '' : '<br>win chance') + '</div>' + side(home, hn, g.home_score, true) + '</div></div>';
+        (g.completed ? '' : '<br>win chance') + '</div>' + side(home, hn, g.home_score, true) + '</div>' +
+        lineScoreTable(d, g, an, hn) + '</div>';
 
       const n1 = v => v == null ? '—' : Number(v).toFixed(1);
       const signed = v => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1);
@@ -6268,8 +6459,6 @@ function hydrateGamePage(version) {
       // Every number is still exactly what the old panels showed. A group whose
       // data this game does not have is left out entirely rather than filled
       // with dashes, so the table never widens to say nothing.
-      const d = details && details.byId.get(id);
-      const P = details && details.params;
       const pc = v => v == null ? '—' : Math.round(v * 1000) / 10 + '%';
       const pct1 = v => v == null ? 'N/A' : (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v * 100).toFixed(1) + '%';
       const hasCoe = !!(g.completed && d);
@@ -7357,14 +7546,13 @@ function render() {
     const views = { elo: renderElo, 'conference-standings': renderConferenceStandings, 'home-field': renderHomeFieldStandings, 'conference-elo': renderConferenceElo, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferences,
       'conference-coe2': renderConferenceCoe2, 'elo-weekly': renderEloWeekly,
       top25: renderTop25Boards };
-    content.innerHTML = '<h2 class="view-title">Standings</h2>' + views[state.subview]();
+    content.innerHTML = views[state.subview]();
     if (state.subview === 'conference-standings') hydrateConferenceStandings(version);
     if (state.subview === 'elo-weekly') hydrateEloWeekly(version);
-    if (state.subview === 'elo') hydrateRatingFreshness(version);
+    if (state.subview === 'elo') { hydrateRatingFreshness(version); hydrateEloDetail(version); }
   } else if (state.section === 'playoff') {
     const views = { field: renderField, projection: renderProjection, bracket: renderBracket, odds: renderOdds, history: renderHistory };
-    content.innerHTML = routeSelect('Playoff view', SUBVIEWS.playoff, state.subview) + playoffTitle() +
-      views[state.subview]() + playoffDisclaimer();
+    content.innerHTML = views[state.subview]() + playoffDisclaimer();
     // A simulation restored after navigating away should already be visible.
     content.querySelectorAll('.bracket-round-col.pending').forEach(el => el.classList.remove('pending'));
   }

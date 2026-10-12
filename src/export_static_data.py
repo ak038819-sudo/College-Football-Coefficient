@@ -71,7 +71,11 @@ DETAIL_FIELDS = ["game_id",
                  # Success Rate -- never 0, which would be a real claim.
                  "home_success_rate", "home_sr_diff", "home_xsr_diff", "home_sr_plus",
                  "away_success_rate", "away_sr_diff", "away_xsr_diff", "away_sr_plus",
-                 "performance_model"]
+                 "performance_model",
+                 # Per-period scores as "7-10-3-14", appended LAST so existing
+                 # positions never move. Null for a season fetched before the
+                 # games fetcher kept them.
+                 "home_line_scores", "away_line_scores"]
 SERIES_FIELDS = ["game_id", "season", "date", "kickoff_utc", "home_id", "away_id", "home_score", "away_score",
                  "p_home", "home_elo_change", "home_pre_elo", "away_pre_elo", "phase", "neutral", "ot"]
 SERIES_SHARDS = 32
@@ -176,6 +180,11 @@ def build_game_details(conn: sqlite3.Connection) -> dict:
         sr_side = {(g, t): (sr, d, x, plus, model) for g, t, sr, d, x, plus, model in conn.execute(
             "SELECT game_id, team_id, success_rate_team, sr_diff, xsr_diff, sr_plus, performance_model "
             "FROM elo_game_history")}
+    game_cols = {r[1] for r in conn.execute("PRAGMA table_info(games)")}
+    lines = {}
+    if {"home_line_scores", "away_line_scores"} <= game_cols:
+        lines = {g: (h, a) for g, h, a in conn.execute(
+            "SELECT game_id, home_line_scores, away_line_scores FROM games")}
     cfg = json.loads((REPO / "config" / "model_config.json").read_text(encoding="utf-8"))
     params = {k: v for sec in ("coe", "hybrid") for k, v in cfg.get(sec, {}).items() if not k.startswith("_")}
     out = defaultdict(list)
@@ -190,7 +199,8 @@ def build_game_details(conn: sqlite3.Connection) -> dict:
         out[season].append([gid, r(h[0]), r(h[1]), r(h[2]), r(h[3]), h[4], r(a[0]), r(a[1]), r(a[2]), r(a[3]), a[4],
                             r(hs_sr[0]), r(hs_sr[1]), r(hs_sr[2]), r(hs_sr[3]),
                             r(as_sr[0]), r(as_sr[1]), r(as_sr[2]), r(as_sr[3]),
-                            hs_sr[4] or as_sr[4]])
+                            hs_sr[4] or as_sr[4],
+                            *lines.get(gid, (None, None))])
     return {s: {"season": s, "fields": DETAIL_FIELDS, "params": params, "games": rows} for s, rows in out.items()}
 
 

@@ -3,7 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const {createResolver} = require('../ui/live_teams.js');
-const teams = JSON.parse(fs.readFileSync('ui/dashboard_data.json', 'utf8')).teams;
+const DATA = JSON.parse(fs.readFileSync('ui/dashboard_data.json', 'utf8'));
+const teams = DATA.teams;
 const resolve = createResolver(teams);
 const shell = fs.readFileSync('ui/dashboard_shell.html', 'utf8');
 const fn = name => shell.match(new RegExp('function ' + name + '\\([^)]*\\) \\{[\\s\\S]*?\\n\\}'))[0];
@@ -72,9 +73,12 @@ test('unknown teams retain their feed name and cannot receive borrowed Elo predi
     STATIC_MANIFEST: {model_params: {elo: {scale: 400, home_field: 55}}},
     pickDatedLogoEntry: () => null, DATED_LOGOS: {}, TEAM_BRAND_COLORS: {},
     liveSeason: () => 2026, logoMarkup: name => '[' + name + ']',
-    teamAnchor: (_, text) => text, esc: value => value, liveChange: () => ''
+    teamAnchor: (_, text) => text, esc: value => value, liveChange: () => '',
+    // The real record helper, not a stub: a card that showed the wrong team's
+    // record, or none, would otherwise still pass here.
+    DATA, TEAM_BY_NAME: new Map(teams.map(t => [t.name, t]))
   };
-  vm.runInNewContext(fn('livePrediction') + '\n' + fn('liveTeam') +
+  vm.runInNewContext(fn('livePrediction') + '\n' + fn('seasonRecord') + '\n' + fn('liveTeam') +
     '\nthis.predict = livePrediction; this.renderTeam = liveTeam;', context);
   const game = {id: 401862790, status: 'scheduled',
     away: {name: 'Texas Southern Tigers'}, home: {name: 'Florida Atlantic Owls'}};
@@ -84,4 +88,11 @@ test('unknown teams retain their feed name and cannot receive borrowed Elo predi
   assert.match(html, /Elo unrated/);
   assert.match(html, /N\/A/);
   assert.doesNotMatch(html, /live-rank|1800|Longhorns/);
+  // A team the feed does not resolve has no record to show, and must not borrow one.
+  assert.doesNotMatch(html, /\d+\u2013\d+/);
+  const fau = teams.find(t => t.name === 'FAU');
+  const rated = (DATA.team_records_by_year['2026'] || {})[fau.id] || [0, 0, 0];
+  const unrated = (DATA.non_fbs_records_by_year['2026'] || {})[fau.id] || [0, 0, 0];
+  const expected = (rated[0] + unrated[0]) + '\u2013' + (rated[1] + unrated[1]);
+  assert.match(context.renderTeam(game.home, game, null), new RegExp(expected));
 });
