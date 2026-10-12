@@ -173,7 +173,7 @@ test('an unrated game says vs at home, at on the road, and marks a neutral site'
 
 test('an unrated row keeps its week, its postseason label and its OT marker', () => {
   const reg = panelHtml(withUnrated(ratedFixture(), [unratedGame()], [1, 0, 0]));
-  assert.match(reg, /<tr class="sched-unrated"><td>[^<]*<\/td><td class="opp">[\s\S]*?<\/td><td>Wk 4<\/td>/);
+  assert.match(reg, /<tr class="sched-unrated"><td data-sort="[^"]*">[^<]*<\/td><td class="opp">[\s\S]*?<\/td><td>Wk 4<\/td>/);
   // A postseason game is labelled by phase, not by week: CFBD numbers some
   // postseason games week 1, so a week there would read as September.
   const post = panelHtml(withUnrated(ratedFixture(), [unratedGame({ phase: 1, week: 1 })], [1, 0, 0]));
