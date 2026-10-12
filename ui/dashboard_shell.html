@@ -248,7 +248,9 @@
   @media (max-width: 520px) { .gp-side .gp-score { font-size: 34px; } .gp-list li { grid-template-columns: 46px minmax(0, 1fr); } .gp-list .aux { grid-column: 2; text-align: left; } }
   .listing-game.is-target { border-color: var(--amber); box-shadow: inset 0 0 0 1px var(--amber); }
   .skip-link:focus { position: fixed; left: 12px; top: 12px; z-index: 10; background: var(--panel); padding: 12px; color: var(--ink); }
-  .subnav { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+  .control-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0 0 20px; }
+  .control-row:empty { display: none; }
+  .subnav { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
   .subnav:empty, .year-row:empty { display: none; }
   .subnav a { color: var(--ink-dim); padding: 9px 12px; border-bottom: 2px solid transparent; text-decoration: none; }
   .subnav a[aria-current="page"] { color: var(--amber); border-color: var(--amber); }
@@ -319,19 +321,29 @@
                   border: 0; font-size: 12px; }
   #content, .panel { min-width: 0; }
   .table-scroll { max-width: 100%; overflow-x: auto; }
+  /* On a phone the masthead was costing a whole screen before the first row of
+     content: a tagline, a secondary link row, five tabs wrapping onto two
+     lines, a search field and a labelled view selector. Everything below keeps
+     the same elements but stops them stacking. */
   @media (max-width: 520px) {
-    .wrap { padding: 20px 12px 60px; }
-    .nav-row { display: block; }
-    nav.tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
-    nav.tabs a { padding: 9px 0; font-size: 15px; text-align: center; }
+    .wrap { padding: 14px 12px 60px; }
+    header.top { gap: 6px; padding-bottom: 10px; margin-bottom: 14px; }
+    .title-block h1 { font-size: 30px; }
+    .release-label { display: none; }
+    .header-links { width: 100%; margin: 0; justify-content: space-between; gap: 8px; font-size: 12.5px; }
+    .nav-row { display: block; margin-top: 4px; }
+    nav.tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin-bottom: 8px; }
+    nav.tabs a { padding: 7px 0; font-size: 13px; letter-spacing: 0; text-align: center; }
     .global-search { max-width: none; }
+    .global-search input { padding: 7px 10px; }
     .panel { padding: 14px; }
     .subnav a { padding: 9px 8px; font-size: 14px; }
+    .control-row { gap: 8px 10px; margin-bottom: 12px; }
   }
 
   .year-row {
     display: flex;
-    margin-bottom: 26px;
+    margin: 0;
   }
   .year-select {
     font-family: var(--font-mono);
@@ -1039,7 +1051,7 @@
   .games-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; align-items:end; }
   .games-filters label { min-width:0; display:flex; flex-direction:column; gap:6px; }
   .games-filters input,.games-filters select { width:100%; min-width:0; }
-  .view-select { display:flex; gap:12px; align-items:center; margin:12px 0 20px; color:var(--ink-dim); }
+  .view-select { display:flex; gap:12px; align-items:center; margin:0; color:var(--ink-dim); }
   .view-select select { max-width:100%; padding:10px 14px; background:var(--panel-2); color:var(--ink); border:1px solid var(--line); border-radius:8px; }
   .live-card,.live-team { position:relative; overflow:hidden; isolation:isolate; }
   .live-team > :not(.live-watermark) { position:relative; z-index:1; }
@@ -1077,6 +1089,11 @@
     .stadium-map { min-height:260px; }
     .view-select { flex-direction:column; align-items:stretch; }
     table th,table td { padding:9px; }
+  }
+  @media(max-width:520px) {
+    .view-select { flex-direction:row; align-items:center; margin:0; }
+    .view-select > span { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+    .view-select select { flex:1; }
   }
 #game-page > * + * { margin-top: 24px; }
 .live-player-team { min-width: 0; }
@@ -1118,8 +1135,10 @@
     </div>
   </header>
 
-  <nav class="subnav" id="subnav" aria-label="Section views"></nav>
-  <div class="year-row" id="year-row"></div>
+  <div class="control-row">
+    <nav class="subnav" id="subnav" aria-label="Section views"></nav>
+    <div class="year-row" id="year-row"></div>
+  </div>
 
   <main id="content" tabindex="-1"></main>
 
@@ -2052,7 +2071,8 @@ function runSimulationAndAnimate() {
   if (!pf) return;
   state.simResult = runBracketSimulation(pf);
   state.simYear = state.year;
-  document.getElementById('content').innerHTML = playoffTitle() + renderBracket() + playoffDisclaimer();
+  document.getElementById('content').innerHTML = routeSelect('Playoff view', SUBVIEWS.playoff, state.subview) +
+    renderBracket() + playoffDisclaimer();
   revealBracketSequence();
 }
 
@@ -3570,7 +3590,7 @@ document.getElementById('content').addEventListener('click',e=>{
 let renderVersion = 0;
 
 function routeSelect(label, items, selected) {
-  return '<label class="view-select">'+esc(label)+'<select data-route-select aria-label="'+esc(label)+'">'+
+  return '<label class="view-select"><span>'+esc(label)+'</span><select data-route-select aria-label="'+esc(label)+'">'+
     items.map(([value,text])=>'<option value="'+esc(routeHref({subview:value}))+'"'+
       (value===selected?' selected':'')+'>'+esc(text)+'</option>').join('')+'</select></label>';
 }
@@ -4798,9 +4818,6 @@ function renderTop25Boards() {
   return '<div class="rank-boards">' + top25EloBoard() + top25PollBoard('ap') + top25PollBoard('cfp') + '</div>';
 }
 
-function playoffTitle() {
-  return '<h2 class="view-title">Playoff</h2>';
-}
 // The scope disclaimer belongs on the page, but at the foot of it: a reader
 // scanning a bracket does not need it before the bracket, and a reader who
 // wants to know what they just read does.
@@ -7357,13 +7374,13 @@ function render() {
     const views = { elo: renderElo, 'conference-standings': renderConferenceStandings, 'home-field': renderHomeFieldStandings, 'conference-elo': renderConferenceElo, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferences,
       'conference-coe2': renderConferenceCoe2, 'elo-weekly': renderEloWeekly,
       top25: renderTop25Boards };
-    content.innerHTML = '<h2 class="view-title">Standings</h2>' + views[state.subview]();
+    content.innerHTML = views[state.subview]();
     if (state.subview === 'conference-standings') hydrateConferenceStandings(version);
     if (state.subview === 'elo-weekly') hydrateEloWeekly(version);
     if (state.subview === 'elo') hydrateRatingFreshness(version);
   } else if (state.section === 'playoff') {
     const views = { field: renderField, projection: renderProjection, bracket: renderBracket, odds: renderOdds, history: renderHistory };
-    content.innerHTML = routeSelect('Playoff view', SUBVIEWS.playoff, state.subview) + playoffTitle() +
+    content.innerHTML = routeSelect('Playoff view', SUBVIEWS.playoff, state.subview) +
       views[state.subview]() + playoffDisclaimer();
     // A simulation restored after navigating away should already be visible.
     content.querySelectorAll('.bracket-round-col.pending').forEach(el => el.classList.remove('pending'));

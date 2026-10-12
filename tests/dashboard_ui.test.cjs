@@ -150,6 +150,24 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    const button=[...d.querySelectorAll('.rank-table th button')].find(b=>b.textContent==='Elo');assert.ok(button);button.click();
    assert.equal(button.parentElement.getAttribute('aria-sort'),'descending');
   });
+  await t.test('the page chrome names each control once and keeps them on one row',async()=>{
+   // The view selector and the season selector are one control group: if they
+   // stop sharing a parent they stack, which on a phone pushed the first row of
+   // content below the fold. Headings that merely repeat the selected view or
+   // the active tab are the other half of that cost.
+   for (const hash of ['#section=rankings&view=top25&season=2026','#section=rankings&view=elo&season=2026','#section=playoff&view=bracket&season=2026']) {
+    await route(hash,()=>d.querySelector('#content').firstElementChild);
+    const row=d.querySelector('.control-row');
+    assert.ok(row,'the controls share a row on '+hash);
+    assert.equal(d.querySelector('#subnav').parentElement,row);
+    assert.equal(d.querySelector('#year-row').parentElement,row);
+    const spoken=new Set([...d.querySelectorAll('#tabs a.active, #subnav a[aria-current="page"]')].map(a=>a.textContent.trim().toLowerCase()));
+    for (const select of d.querySelectorAll('[data-route-select]')) spoken.add(select.selectedOptions[0].textContent.trim().toLowerCase());
+    const repeats=[...d.querySelectorAll('#content h1, #content h2')]
+      .map(h=>h.textContent.trim().toLowerCase()).filter(text=>spoken.has(text));
+    assert.deepEqual(repeats,[],'no heading repeats a control already on screen at '+hash);
+   }
+  });
   await t.test('one geographic stadium map supports marker and team navigation',async()=>{
    await route('#section=teams&view=stadiums',()=>d.querySelector('.stadium-map'));
    assert.equal(d.querySelectorAll('.stadium-map').length,1);assert.equal(d.querySelectorAll('.state-boundary').length,50);
