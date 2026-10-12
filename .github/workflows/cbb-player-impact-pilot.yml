@@ -1,0 +1,77 @@
+name: College basketball player-impact pilot
+
+on:
+  workflow_dispatch:
+    inputs:
+      season:
+        description: "Ending year (2026 means 2025-26)"
+        type: choice
+        options: ["2024", "2025", "2026"]
+        default: "2026"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: cbb-player-impact-pilot
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install test runner
+        run: python -m pip install 'pytest>=7,<10'
+      - name: Validate prototype
+        run: python -m pytest tests/test_cbb_player_impact.py -q
+      - name: Collect three BYU games
+        env:
+          CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
+          PILOT_SEASON: ${{ inputs.season }}
+        run: |
+          python analysis/cbb_player_impact/collect.py \
+            --season "$PILOT_SEASON" --team BYU --limit 3 \
+            --out analysis/cbb_player_impact/snapshots/pilot
+      - name: Summarize structural checks
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          root = Path('analysis/cbb_player_impact/snapshots/pilot')
+          lines = ['## College basketball pilot', '']
+          manifest_path = root / 'manifest.json'
+          if manifest_path.exists():
+              manifest = json.loads(manifest_path.read_text())
+              lines.append('Collection status: ' + manifest['status'])
+          else:
+              lines.append('No snapshot produced. Inspect the failed step for access or validation errors.')
+          audit_path = root / 'audit.json'
+          if audit_path.exists():
+              audits = json.loads(audit_path.read_text())
+              passed = sum(row['structural_checks_passed'] for row in audits)
+              lines.append(f'Aggregate structural checks passed: {passed}/{len(audits)} games.')
+              for row in audits:
+                  for issue in row['issues']:
+                      lines.append(f'- Game {row["game_id"]}: {issue}')
+          lines.extend(['', 'Player-model readiness: pending paired-lineup and possession validation.',
+                        'A successful collection is not a validated player rating.'])
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('\n'.join(lines) + '\n')
+          PY
+      - name: Preserve pilot snapshot and audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cbb-pilot-${{ inputs.season }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: analysis/cbb_player_impact/snapshots/pilot/
+          if-no-files-found: warn
+          retention-days: 30
