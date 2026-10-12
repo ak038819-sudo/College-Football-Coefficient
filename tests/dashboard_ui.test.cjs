@@ -227,11 +227,29 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
     assert.ok(row,'the controls share a row on '+hash);
     assert.equal(d.querySelector('#subnav').parentElement,row);
     assert.equal(d.querySelector('#year-row').parentElement,row);
+    // Every view selector, not only the one #subnav happens to hold: a
+    // selector left inside #content sits on a row of its own below this one.
+    const selectors=[...d.querySelectorAll('[data-route-select]')];
+    assert.ok(selectors.length,'the view is chosen by a selector on '+hash);
+    for (const select of selectors)
+      assert.ok(row.contains(select),'a view selector is outside the control row on '+hash);
     const spoken=new Set([...d.querySelectorAll('#tabs a.active, #subnav a[aria-current="page"]')].map(a=>a.textContent.trim().toLowerCase()));
     for (const select of d.querySelectorAll('[data-route-select]')) spoken.add(select.selectedOptions[0].textContent.trim().toLowerCase());
     const repeats=[...d.querySelectorAll('#content h1, #content h2')]
       .map(h=>h.textContent.trim().toLowerCase()).filter(text=>spoken.has(text));
     assert.deepEqual(repeats,[],'no heading repeats a control already on screen at '+hash);
+   }
+   // A route with no controls at all must not keep the row's spacing: the
+   // wrapper is always in the document, so it cannot rely on :empty.
+   for (const hash of ['#section=home','#section=methodology']) {
+    await route(hash,()=>d.querySelector('#content').firstElementChild);
+    const row=d.querySelector('.control-row');
+    assert.ok([...row.children].every(child=>!child.textContent.trim()),hash+' has no controls');
+    // The spacing belongs to the controls, which hide when empty, not to the
+    // wrapper, which is always in the document. (Whether the children hide is
+    // a layout question jsdom does not answer; this pins where the margin is.)
+    assert.equal(w.getComputedStyle(row).marginBottom,'0px',
+      'the empty control row adds no chrome at '+hash);
    }
   });
   await t.test('one geographic stadium map supports marker and team navigation',async()=>{

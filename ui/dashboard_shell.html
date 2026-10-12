@@ -248,10 +248,10 @@
   @media (max-width: 520px) { .gp-side .gp-score { font-size: 34px; } .gp-list li { grid-template-columns: 46px minmax(0, 1fr); } .gp-list .aux { grid-column: 2; text-align: left; } }
   .listing-game.is-target { border-color: var(--amber); box-shadow: inset 0 0 0 1px var(--amber); }
   .skip-link:focus { position: fixed; left: 12px; top: 12px; z-index: 10; background: var(--panel); padding: 12px; color: var(--ink); }
-  .control-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0 0 20px; }
-  .control-row:empty { display: none; }
+  .control-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0; }
+  .control-row > * { margin-bottom: 20px; }
   .subnav { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
-  .subnav:empty, .year-row:empty { display: none; }
+  .subnav:empty, .year-row:empty, .view-row:empty { display: none; }
   .subnav a { color: var(--ink-dim); padding: 9px 12px; border-bottom: 2px solid transparent; text-decoration: none; }
   .subnav a[aria-current="page"] { color: var(--amber); border-color: var(--amber); }
   .view-title { font-family: var(--font-display); font-size: 26px; margin: 0 0 12px; }
@@ -338,7 +338,8 @@
     .global-search input { padding: 7px 10px; }
     .panel { padding: 14px; }
     .subnav a { padding: 9px 8px; font-size: 14px; }
-    .control-row { gap: 8px 10px; margin-bottom: 12px; }
+    .control-row { gap: 8px 10px; }
+    .control-row > * { margin-bottom: 12px; }
   }
 
   .year-row {
@@ -682,6 +683,9 @@
   .poll-toggle button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
   .mini-board .fpv { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-dim); }
   .mini-board .rec { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); white-space: nowrap; }
+  /* With a record beside it the longest school name can outrun a phone's width
+     by a pixel, which is a sideways scroll on the whole page. */
+  .mini-board .nm .team-link-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mini-board .elo-rk { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); }
 
   .tag {
@@ -1157,6 +1161,7 @@
 
   <div class="control-row">
     <nav class="subnav" id="subnav" aria-label="Section views"></nav>
+    <div class="view-row" id="view-row"></div>
     <div class="year-row" id="year-row"></div>
   </div>
 
@@ -2168,8 +2173,7 @@ function runSimulationAndAnimate() {
   if (!pf) return;
   state.simResult = runBracketSimulation(pf);
   state.simYear = state.year;
-  document.getElementById('content').innerHTML = routeSelect('Playoff view', SUBVIEWS.playoff, state.subview) +
-    renderBracket() + playoffDisclaimer();
+  document.getElementById('content').innerHTML = renderBracket() + playoffDisclaimer();
   revealBracketSequence();
 }
 
@@ -3723,6 +3727,10 @@ function renderNavigation() {
   const statsNav = [['overview', 'Overview'], ['teams', 'Teams'], ['players', 'Players'], ['matchup', 'Matchup'], ['playoff', 'Playoff']];
   const inStats = ['stats', 'matchups', 'playoff'].includes(state.section);
   const items = inStats ? statsNav : state.view === 'team' || state.section === 'teams' ? [] : SUBVIEWS[state.section] || [];
+  // A section whose views are chosen from a selector rather than tabs puts it
+  // in the control row, beside the season picker, not inside the page.
+  document.getElementById('view-row').innerHTML =
+    state.section === 'playoff' ? routeSelect('Playoff view', SUBVIEWS.playoff, state.subview) : '';
   if(state.section === 'rankings') {
     document.getElementById('subnav').innerHTML = routeSelect('Standings view',items,state.subview);
     return;
@@ -7544,8 +7552,7 @@ function render() {
     if (state.subview === 'elo') { hydrateRatingFreshness(version); hydrateEloDetail(version); }
   } else if (state.section === 'playoff') {
     const views = { field: renderField, projection: renderProjection, bracket: renderBracket, odds: renderOdds, history: renderHistory };
-    content.innerHTML = routeSelect('Playoff view', SUBVIEWS.playoff, state.subview) +
-      views[state.subview]() + playoffDisclaimer();
+    content.innerHTML = views[state.subview]() + playoffDisclaimer();
     // A simulation restored after navigating away should already be visible.
     content.querySelectorAll('.bracket-round-col.pending').forEach(el => el.classList.remove('pending'));
   }
