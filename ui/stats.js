@@ -90,6 +90,7 @@
   // back to a text sort. Each cell is read on its own instead.
   const BLANK=/^(?:[-‒–—―−]|…|\.\.\.|n\/?a)$/i;
   const MONTH_DATE=/^[A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{4}$/;
+  const ISO_DATE=/^(\d{4})-(\d{2})-(\d{2})(?:[T ].*)?$/;
   const NUMBERS=/^[-+]?\d+(?:\.\d+)?(?:\s+[-+]?\d+(?:\.\d+)?)*$/;
   // null means "no value": a blank sorts last in BOTH directions, so it is never
   // negated with the comparison. {nums} is a tuple, {text} a word.
@@ -99,6 +100,10 @@
     // A calendar date is neither a number nor a word: 'Sep 3, 2022' sorts before
     // 'Sep 10, 2022' by day, and after it in any text order.
     if(MONTH_DATE.test(raw)){const t=Date.parse(raw);if(Number.isFinite(t))return {nums:[t]};}
+    // A stored date is dash-separated like a record, and must not be read as one:
+    // its month is not a loss to be negated below.
+    const iso=ISO_DATE.exec(raw);
+    if(iso)return {nums:[Number(iso[1]),Number(iso[2]),Number(iso[3])]};
     // U+2212 is a minus sign; a dash or slash BETWEEN digits is a separator
     // ('10-2', '31/48'), so it becomes a space before the numbers are read.
     let s=raw.replace(/−/g,'-').replace(/(\d),(?=\d)/g,'$1').replace(/[#%±]/g,' ').trim();
@@ -106,12 +111,17 @@
     if(/^[<>]/.test(s)){nudge=s[0]==='<'?-1e-9:1e-9;s=s.slice(1).trim();}
     const paired=/(\d)\s*[–—/-]\s*(?=\d)/.test(s);
     s=s.replace(/(\d)\s*[–—/-]\s*(?=\d)/g,'$1 ').trim();
+    // A unit spelled out after the numbers is a label, not an order ('6-3 9 bids'
+    // is a record and a bid count), so one trailing word is dropped.
+    s=s.replace(/^((?:[-+]?\d+(?:\.\d+)?\s+)+)[A-Za-z]+$/,'$1').trim();
     if(!NUMBERS.test(s))return {text:raw.toLocaleLowerCase()};
     const nums=s.split(/\s+/).map(Number);
     if(!nums.every(Number.isFinite))return {text:raw.toLocaleLowerCase()};
     // A record or a made/attempted pair reads best first on both halves: more
-    // wins, then fewer losses. Negating the second half keeps one direction.
-    if(paired&&nums.length===2)nums[1]=-nums[1];
+    // wins, then fewer losses. Negating the losses keeps one direction -- and it
+    // holds however the cell continues, since a record is often followed by what
+    // it works out to ('30-11 73.2%', '6-3 9 bids') or by ties ('131-121-4').
+    if(paired)nums[1]=-nums[1];
     nums[0]+=nudge;
     return {nums};
   }

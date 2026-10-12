@@ -47,6 +47,26 @@ test('a record sorts by wins, then by the fewest losses', () => {
     ['10–2', '10–3', '9–3', '2–10']);
 });
 
+test('a record followed by what it works out to still sorts on the record', () => {
+  // The conference history columns render a record beside its percentage or its
+  // bid count, and a W-L-T record carries a third number of its own.
+  assert.deepEqual(CfbStats.cellKey('30\u201311 73.2%'), { nums: [30, -11, 73.2] });
+  assert.deepEqual(order(['10\u20132 83.3%', '10\u20133 76.9%', '9\u20133 75.0%'], 'desc'),
+    ['10\u20132 83.3%', '10\u20133 76.9%', '9\u20133 75.0%']);
+  assert.deepEqual(order(['6\u20133 9 bids', '6\u20132 9 bids', '10\u20132 3 bids'], 'desc'),
+    ['10\u20132 3 bids', '6\u20132 9 bids', '6\u20133 9 bids']);
+  assert.deepEqual(order(['76\u2013103\u20132', '131\u2013121\u20134', '131\u2013120\u20131'], 'desc'),
+    ['131\u2013120\u20131', '131\u2013121\u20134', '76\u2013103\u20132']);
+});
+
+test('a stored date is a date, not a record whose month is a loss', () => {
+  assert.deepEqual(CfbStats.cellKey('2024-09-07'), { nums: [2024, 9, 7] });
+  assert.deepEqual(order(['2024-11-30', '2024-09-07', '2024-10-01']),
+    ['2024-09-07', '2024-10-01', '2024-11-30']);
+  assert.deepEqual(order(['2024-09-07T19:30:00.000Z', '2024-09-06T23:00:00.000Z']),
+    ['2024-09-06T23:00:00.000Z', '2024-09-07T19:30:00.000Z']);
+});
+
 test('a made/attempted pair sorts by what was made', () => {
   assert.deepEqual(order(['21/26', '31/48', '21/30'], 'desc'), ['31/48', '21/26', '21/30']);
 });
