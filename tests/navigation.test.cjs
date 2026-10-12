@@ -302,6 +302,19 @@ test('season, subview, status and query survive URL round trips', () => {
   }
 });
 
+test('the old AP and CFP views open the combined Top 25 board', () => {
+  for (const hash of ['#section=rankings&view=ap', '#section=rankings&view=cfp',
+    '#section=rankings&view=ap&season=2024']) {
+    assert.equal(read(hash).subview, 'top25', hash + ' must land on the combined view');
+  }
+  // The canonical URL is rewritten, so a shared link stops naming a view that
+  // no longer exists, and the season rides along.
+  assert.equal(hashFor(read('#section=rankings&view=ap&season=2024')),
+    '#section=rankings&view=top25&season=2024');
+  assert.deepEqual(read(hashFor(read('#section=rankings&view=top25&season=2025'))),
+    read('#section=rankings&view=top25&season=2025'));
+});
+
 test('conference standings keeps its selected league in a shareable URL', () => {
   const route = read('#section=rankings&view=conference-standings&season=2025&conf=Big%2012');
   assert.equal(route.subview, 'conference-standings');

@@ -12,7 +12,7 @@
     // 2.0's frozen value ENTERING the season. Separate views with separate names,
     // for the same reason they are separate tables: they must never be read as
     // one number.
-    rankings: ['elo', 'conference-standings', 'home-field', 'conference-elo', 'team-coe', 'conference-coe', 'conference-coe2', 'elo-weekly', 'ap', 'cfp'],
+    rankings: ['elo', 'top25', 'conference-standings', 'home-field', 'conference-elo', 'team-coe', 'conference-coe', 'conference-coe2', 'elo-weekly'],
     playoff: ['field', 'projection', 'bracket', 'odds', 'history']
   };
   // Detail-page tabs (Milestone E). The first entry is the default and is left out
@@ -79,6 +79,9 @@
     if (section === 'stats' && subview === 'matchup') { section = 'matchups'; subview = ''; }
     if (section === 'stats' && subview === 'playoff') { section = 'playoff'; subview = p.get('tool') || 'field'; }
     if (section === 'standings') section = 'rankings';
+    // The AP and CFP tables are now two columns of one Top 25 view; the
+    // separate views they replace stay valid as links into it.
+    if (section === 'rankings' && (subview === 'ap' || subview === 'cfp')) subview = 'top25';
     // Older stadium bookmarks stay valid after the explorer moves under Teams.
     if (section === 'stadiums') { section = 'teams'; subview = 'stadiums'; }
     // `tab` means a detail page's tab when one is open, and only otherwise the pre-A1 tab names.
