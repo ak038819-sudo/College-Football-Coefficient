@@ -3144,7 +3144,9 @@ function fillSchedulePanel(tp, team) {
   const playedRows = played.map(r => {
     const g = tp.gamesById.get(r.gid), v = gameFor(team, g), ph = phaseLabel(tp, g);
     return [g.date, g.id, '<tr' + eloShade(r.chg) + '>' +
-      '<td><a href="' + esc(gameHref(g.id, g.season)) + '">' + esc(fmtGameDate(g)) + '</a></td>' +
+      // The date reads as a date ('Sat, Oct 31 · Time TBA' for a kickoff with no
+      // time yet), which is not an order, so the cell carries the stored one.
+      '<td data-sort="' + esc(g.date || '') + '"><a href="' + esc(gameHref(g.id, g.season)) + '">' + esc(fmtGameDate(g)) + '</a></td>' +
       '<td class="opp"><span class="swing-where">' + v.where + '</span> ' +
         (v.opp ? oppLink(v.opp.name, g.season) : 'Unknown') + (v.neutral ? ' <span class="swing-where">(N)</span>' : '') + '</td>' +
       '<td>' + (ph || wk(g)) + '</td>' +
@@ -3167,7 +3169,7 @@ function fillSchedulePanel(tp, team) {
       const res = u.mine > u.theirs ? 'W' : u.mine < u.theirs ? 'L' : 'T';
       const where = u.neutral || u.home ? 'vs' : 'at';
       return [u.date, u.id, '<tr class="sched-unrated">' +
-        '<td>' + esc(fmtGameDate(u)) + '</td>' +
+        '<td data-sort="' + esc(u.date || '') + '">' + esc(fmtGameDate(u)) + '</td>' +
         '<td class="opp"><span class="swing-where">' + where + '</span> ' + esc(u.opp) +
           (u.neutral ? ' <span class="swing-where">(N)</span>' : '') +
           ' <span class="tag-unrated" title="This project holds no rating for ' + esc(u.opp) +
@@ -3207,7 +3209,7 @@ function fillSchedulePanel(tp, team) {
       }
     }
     return '<tr>' +
-      '<td><a href="' + esc(gameHref(g.id, g.season)) + '">' + when + '</a></td>' +
+      '<td data-sort="' + esc(String(g.kickoff || '').slice(0, 10)) + '"><a href="' + esc(gameHref(g.id, g.season)) + '">' + when + '</a></td>' +
       '<td class="opp"><span class="swing-where">' + (g.neutral || home ? 'vs' : 'at') + '</span> ' +
         (opp ? oppLink(opp.name, g.season) : 'Unknown') + (g.neutral ? ' <span class="swing-where">(N)</span>' : '') + '</td>' +
       '<td>' + (g.phase === 2 ? 'CFP' : g.phase === 1 ? 'Bowl' : wk(g)) + '</td>' +
@@ -5030,7 +5032,9 @@ function fillLedgerPanel(tp, team) {
     return '<tr><td>' + esc(fmtGameDate(g)) + '</td><td class="opp">' + (g.neutral ? 'vs ' : home ? 'vs ' : 'at ') +
       (oppTeam ? oppLink(oppTeam.name, g.season) : 'Unknown') + '</td><td><a href="' + esc(gameHref(g.id, g.season)) + '">' + res + ' ' + my + '–' + opp + (g.ot ? ' OT' : '') + '</a></td>' +
       '<td>' + f3(r.exp) + '</td><td>' + (M == null ? '—' : f3(M)) + '</td>' +
-      '<td class="' + (r.chg >= 0 ? 'pos' : 'neg') + '">' + sgn(r.chg) + (M == null ? '' : '<small>' + K + ' × (' + S + ' − ' + f3(r.exp) + ') × ' + f3(M) + '</small>') + '</td>' +
+      // The cell shows the arithmetic beside the change, so the change itself
+      // is the sort key rather than the formula it is followed by.
+      '<td class="' + (r.chg >= 0 ? 'pos' : 'neg') + '" data-sort="' + r.chg + '">' + sgn(r.chg) + (M == null ? '' : '<small>' + K + ' × (' + S + ' − ' + f3(r.exp) + ') × ' + f3(M) + '</small>') + '</td>' +
       '<td>' + fe(r.post) + '</td></tr>';
   }).join('');
   const posts = mine.map(r => r.post), net = mine[mine.length - 1].post - mine[0].pre;
@@ -7631,11 +7635,11 @@ document.addEventListener('click', e=>{
   const button=e.target.closest('[data-roster-column]');if(!button)return;
   const table=button.closest('table'),index=Number(button.dataset.rosterColumn),head=button.closest('th');
   const asc=head.getAttribute('aria-sort')!=='ascending';
-  const cell=row=>row.cells[index].textContent.trim();
-  const rows=[...table.tBodies[0].rows].sort((a,b)=>{
-    const x=cell(a),y=cell(b);if(x==='—'||y==='—')return x==='—'?(y==='—'?0:1):-1;
-    return (asc?1:-1)*x.localeCompare(y,undefined,{numeric:true,sensitivity:'base'});
-  });
+  // The roster table declares itself sortable, so CfbStats.enhanceTable leaves it
+  // alone -- but it sorts through the same comparator, so a jersey number, a
+  // height and a weight order here exactly as they do everywhere else.
+  const entries=[...table.tBodies[0].rows].map(element=>({element,value:element.cells[index].textContent}));
+  const rows=CfbStats.sortCells(entries,asc?'asc':'desc').map(entry=>entry.element);
   table.querySelectorAll('th').forEach(th=>th.setAttribute('aria-sort','none'));
   head.setAttribute('aria-sort',asc?'ascending':'descending');rows.forEach(row=>table.tBodies[0].append(row));
 });

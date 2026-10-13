@@ -81,6 +81,73 @@
     for(const r of rows.values()){r.boxGames=covered.get(r.teamId)?.size||0;r.ppg=r.games?r.pointsFor/r.games:null;r.oppPpg=r.games?r.pointsAgainst/r.games:null;r.passYpg=r.passYards!=null&&r.boxGames?r.passYards/r.boxGames:null;r.rushYpg=r.rushYards!=null&&r.boxGames?r.rushYards/r.boxGames:null;r.fgPct=r.fgAttempts?r.fgMade/r.fgAttempts*100:null;Object.assign(r,ratings[r.name]||{});}
     return [...rows.values()];
   }
+  // ---- One sort key per cell, shared by every sortable table -------------
+  // A column's numbers are written for a reader, not for a sort: a rank reads
+  // '#12', a signed number uses U+2212, a probability can read '<0.1%', a record
+  // is '10-2' and a blank is an em dash. Reading such a column as text sorts
+  // 1, 10, 11; reading it as a leading number only held while EVERY cell in it
+  // started with a digit, so one '± 0', '<0.1%' or 'bye' sent the whole column
+  // back to a text sort. Each cell is read on its own instead.
+  const BLANK=/^(?:[-‒–—―−]|…|\.\.\.|n\/?a)$/i;
+  const MONTH_DATE=/^[A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{4}$/;
+  const ISO_DATE=/^(\d{4})-(\d{2})-(\d{2})(?:[T ].*)?$/;
+  const NUMBERS=/^[-+]?\d+(?:\.\d+)?(?:\s+[-+]?\d+(?:\.\d+)?)*$/;
+  // null means "no value": a blank sorts last in BOTH directions, so it is never
+  // negated with the comparison. {nums} is a tuple, {text} a word.
+  function cellKey(value) {
+    const raw=String(value==null?'':value).trim();
+    if(!raw||BLANK.test(raw))return null;
+    // A calendar date is neither a number nor a word: 'Sep 3, 2022' sorts before
+    // 'Sep 10, 2022' by day, and after it in any text order.
+    if(MONTH_DATE.test(raw)){const t=Date.parse(raw);if(Number.isFinite(t))return {nums:[t]};}
+    // A stored date is dash-separated like a record, and must not be read as one:
+    // its month is not a loss to be negated below.
+    const iso=ISO_DATE.exec(raw);
+    if(iso)return {nums:[Number(iso[1]),Number(iso[2]),Number(iso[3])]};
+    // U+2212 is a minus sign; a dash or slash BETWEEN digits is a separator
+    // ('10-2', '31/48'), so it becomes a space before the numbers are read.
+    let s=raw.replace(/−/g,'-').replace(/(\d),(?=\d)/g,'$1').replace(/[#%±]/g,' ').trim();
+    let nudge=0;
+    if(/^[<>]/.test(s)){nudge=s[0]==='<'?-1e-9:1e-9;s=s.slice(1).trim();}
+    const paired=/(\d)\s*[–—/-]\s*(?=\d)/.test(s);
+    s=s.replace(/(\d)\s*[–—/-]\s*(?=\d)/g,'$1 ').trim();
+    // A unit spelled out after the numbers is a label, not an order ('6-3 9 bids'
+    // is a record and a bid count), so one trailing word is dropped.
+    s=s.replace(/^((?:[-+]?\d+(?:\.\d+)?\s+)+)[A-Za-z]+$/,'$1').trim();
+    if(!NUMBERS.test(s))return {text:raw.toLocaleLowerCase()};
+    const nums=s.split(/\s+/).map(Number);
+    if(!nums.every(Number.isFinite))return {text:raw.toLocaleLowerCase()};
+    // A record or a made/attempted pair reads best first on both halves: more
+    // wins, then fewer losses. Negating the losses keeps one direction -- and it
+    // holds however the cell continues, since a record is often followed by what
+    // it works out to ('30-11 73.2%', '6-3 9 bids') or by ties ('131-121-4').
+    if(paired)nums[1]=-nums[1];
+    nums[0]+=nudge;
+    return {nums};
+  }
+  function compareCells(a,b,dir='asc') {
+    if(a==null||b==null)return a==null&&b==null?0:a==null?1:-1;
+    let cmp;
+    if(a.nums&&b.nums){cmp=0;
+      for(let i=0;i<Math.max(a.nums.length,b.nums.length)&&!cmp;i++)cmp=(a.nums[i]??0)-(b.nums[i]??0);
+      cmp=cmp<0?-1:cmp>0?1:0;}
+    else if(a.nums||b.nums)cmp=a.nums?-1:1;
+    else cmp=a.text.localeCompare(b.text,undefined,{numeric:true,sensitivity:'base'});
+    return dir==='desc'?-cmp:cmp;
+  }
+  // Keys for one whole column. Where the column is mostly numbers, a word in it
+  // ('bye') is treated as no value and sorts last, rather than deciding the
+  // order for every number around it.
+  function columnKeys(values) {
+    const keys=values.map(cellKey),live=keys.filter(key=>key!=null);
+    const numeric=live.filter(key=>key.nums).length;
+    return numeric&&numeric>=live.length*0.6?keys.map(key=>key&&key.nums?key:null):keys;
+  }
+  function sortCells(entries,dir) {
+    const keys=columnKeys(entries.map(entry=>entry.value));
+    return entries.map((entry,i)=>({entry,key:keys[i],i}))
+      .sort((a,b)=>compareCells(a.key,b.key,dir)||a.i-b.i).map(x=>x.entry);
+  }
   // Adapter for existing statistical tables: reuse the same comparator, retain
   // row links and hidden/filter state, and leave their initial order untouched.
   function enhanceTable(table) {
@@ -89,17 +156,12 @@
     const headers=[...table.tHead.rows[0].cells],body=table.tBodies[0];
     headers.forEach((header,index)=>{
       const label=header.textContent.trim();if(!label)return;
-      // A cell may carry its own sort key in data-sort. Needed where the text
-      // is not the number (a signed value using a minus sign, a rating with its
-      // rank beside it) and where the column is filled in after this runs, so
-      // the key must be read on the click rather than now.
-      const keyed=[...body.rows].some(row=>row.cells[index]?.hasAttribute('data-sort'));
-      const values=[...body.rows].map(row=>row.cells[index]?.textContent.trim()||'');
-      const numeric=keyed||values.filter(v=>v&&!/^[-—–]$/.test(v)).every(v=>/^[-+]?\d/.test(v));
-      const value=row=>{const cell=row.cells[index];
-        if(keyed){const raw=cell?.getAttribute('data-sort');if(raw==null||raw==='')return null;
-          const parsed=Number(raw);return Number.isFinite(parsed)?parsed:null;}
-        const text=cell?.textContent.trim()||'';if(!text||/^[-—–]$/.test(text))return null;if(!numeric)return text;const match=text.replaceAll(',','').match(/^[-+]?\d+(?:\.\d+)?/);return match?Number(match[0]):null;};
+      // A cell may carry its own sort key in data-sort. Needed where the text is
+      // not the value (a rating with its rank beside it) and where the column is
+      // filled in after this runs, so the key is read on the click, never now.
+      const value=row=>{const cell=row.cells[index];if(!cell)return '';
+        const keyed=cell.getAttribute('data-sort');
+        return keyed!=null&&keyed.trim()!==''?keyed:cell.textContent;};
       const button=table.ownerDocument.createElement('button');button.type='button';button.className='sort-button';button.textContent=label;
       header.replaceChildren(button);header.setAttribute('scope','col');
       let direction='asc';
@@ -107,10 +169,10 @@
         direction=direction==='asc'?'desc':'asc';
         for(const h of headers){h.setAttribute('aria-sort','none');const b=h.querySelector('.sort-button');if(b)b.textContent=b.dataset.label||b.textContent.replace(/ [▲▼]$/,'');}
         header.setAttribute('aria-sort',direction==='asc'?'ascending':'descending');button.dataset.label=label;button.textContent=label+(direction==='asc'?' ▲':' ▼');
-        const rows=[...body.rows].map(element=>({element,value:value(element)}));
-        for(const row of sortRows(rows,'value',direction,numeric?'number':'string'))body.appendChild(row.element);
+        const entries=[...body.rows].map(element=>({element,value:value(element)}));
+        for(const entry of sortCells(entries,direction))body.appendChild(entry.element);
       });
     });
   }
-  return {categories,labels,num,sortRows,filterRows,aggregatePlayers,aggregateTeams,enhanceTable};
+  return {categories,labels,num,sortRows,filterRows,aggregatePlayers,aggregateTeams,enhanceTable,cellKey,compareCells,columnKeys,sortCells};
 });
