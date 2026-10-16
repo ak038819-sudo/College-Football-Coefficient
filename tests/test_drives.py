@@ -119,7 +119,11 @@ class TestTheFetcher:
         finally:
             fd.cfbd_http.get_json = original
 
-    def test_a_failed_postseason_keeps_the_regular_season(self):
+    def test_a_failed_postseason_keeps_the_existing_file_too(self):
+        """The season file is written whole, so a postseason timeout that
+        returned the regular season alone would replace a complete archive with
+        one holding no bowl or playoff drives -- and the backfill, seeing a
+        success, would commit it and move on."""
         calls = []
 
         def answer(url, params=None, **kwargs):
@@ -135,6 +139,21 @@ class TestTheFetcher:
         finally:
             fd.cfbd_http.get_json = original
         assert calls == ["regular", "postseason"]
+        assert rows is None
+
+    def test_a_season_with_no_postseason_yet_is_not_a_failure(self):
+        """An empty answer is a successful fetch of nothing, which is what a
+        season still being played returns; only a request that got no answer
+        stops the season."""
+        def answer(url, params=None, **kwargs):
+            return PAYLOAD[:1] if params["seasonType"] == "regular" else []
+
+        original = fd.cfbd_http.get_json
+        fd.cfbd_http.get_json = answer
+        try:
+            rows = fd.fetch_drives(2026, {})
+        finally:
+            fd.cfbd_http.get_json = original
         assert rows is not None and len(rows) == 1
 
 

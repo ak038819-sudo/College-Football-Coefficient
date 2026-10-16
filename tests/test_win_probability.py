@@ -165,6 +165,20 @@ class TestTheFeed:
         value = wp.live_probability_from_feed(0, 14, 7, 3, "7:30", "in_progress", PARAMS)
         assert value == pytest.approx(p(0, 7, 1350))
 
+    def test_a_game_in_overtime_gets_no_live_number(self):
+        """Regulation seconds remaining is 0 all through overtime, which is a
+        finished game to the model. A team that has just scored in the first
+        overtime is not certain: its opponent still has a possession coming."""
+        for period in (5, 6, "5"):
+            assert wp.live_probability_from_feed(0, 24, 21, period, "0:00", "in_progress", PARAMS) is None
+            assert wp.live_probability_from_feed(0, 24, 21, period, None, "in_progress", PARAMS) is None
+        # The fourth quarter running out is NOT overtime: a tie there is headed
+        # for overtime and is worth the overtime term, and a lead is a win.
+        assert wp.live_probability_from_feed(0, 24, 24, 4, "0:00", "in_progress", PARAMS) == 0.5
+        assert wp.live_probability_from_feed(0, 24, 21, 4, "0:00", "in_progress", PARAMS) == 1.0
+        # And once the game IS final, an overtime result is decided by its score.
+        assert wp.live_probability_from_feed(0, 24, 21, 5, "0:00", "completed", PARAMS) == 1.0
+
     def test_a_completed_game_is_decided_by_its_score_alone(self):
         assert wp.live_probability_from_feed(-400, 31, 28, None, None, "completed", PARAMS) == 1.0
         assert wp.live_probability_from_feed(400, 28, 31, None, None, "completed", PARAMS) == 0.0

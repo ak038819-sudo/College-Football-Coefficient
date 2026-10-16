@@ -167,13 +167,19 @@ def _blank_if_none(value):
 
 
 def fetch_drives(year: int, headers: dict) -> list[dict] | None:
-    """Both season types for one year, or None when nothing could be fetched.
+    """Both season types for one year, or None when either could not be fetched.
 
-    A failure on one season type is not allowed to publish a half season as if
-    it were whole: the regular season is what almost every drive is in, so a
-    failure there returns None and keeps whatever file already exists, while a
-    postseason failure only warns -- a season still being played has no
-    postseason to fetch and must not be treated as broken.
+    A failure on EITHER season type returns None, because what this function
+    returns is written over the whole season file. A postseason request that
+    times out would otherwise hand back the regular season alone, and
+    `write_drives` would replace a complete archive with one that silently
+    holds no bowl or playoff drives -- while the backfill, seeing a success,
+    committed it and moved on.
+
+    A season still being played is not that case: CFBD answers its postseason
+    request with an empty list, which is a successful fetch of nothing and
+    leaves the regular season alone. Only a request that failed to get an
+    answer stops the season.
     """
     if year < FIRST_SEASON:
         print(f"{year}: CFBD drive data begins in {FIRST_SEASON}; skipped.")
@@ -187,13 +193,9 @@ def fetch_drives(year: int, headers: dict) -> list[dict] | None:
                 headers=headers, timeout=180,
                 describe=f"GET /drives {year} {season_type}")
         except Exception as exc:  # noqa: BLE001 -- the reason is printed, not swallowed
-            if season_type == "regular":
-                print(f"WARNING: could not fetch {year} regular-season drives ({exc}); "
-                      "keeping any existing file.")
-                return None
             print(f"WARNING: could not fetch {year} {season_type} drives ({exc}); "
-                  "regular season kept.")
-            continue
+                  "keeping any existing file.")
+            return None
         part, dropped = drive_rows(payload, year, season_type)
         if dropped:
             print(f"  {year} {season_type}: dropped {dropped} drives with no game or drive number")

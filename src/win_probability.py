@@ -199,6 +199,14 @@ def _clock_seconds(clock) -> int | None:
     return hours * 3600 + minutes * 60 + secs
 
 
+def in_overtime(period, *, regulation_periods: int = REGULATION_PERIODS) -> bool:
+    """Is this period past the end of regulation? False when the feed is unreadable."""
+    try:
+        return int(period) > regulation_periods
+    except (TypeError, ValueError):
+        return False
+
+
 def fraction_remaining(secs: float, *, regulation: int = REGULATION_SECONDS) -> float:
     """Clamped to [0, 1]: a feed that reports a clock past the period length
     should not be allowed to widen the model's spread beyond kickoff."""
@@ -269,16 +277,27 @@ def live_probability_from_feed(elo_diff: float, home_points, away_points,
       * a scheduled game has no state yet (the pregame number IS the answer);
       * CFBD publishes a 0-0 pregame row, so points are read only once the
         status says the game is under way;
-      * a feed with no period or an unreadable clock gives no time.
+      * a feed with no period or an unreadable clock gives no time;
+      * a game that is IN overtime, where this model has nothing to say.
+
+    That last one matters on the scoreboard. Regulation seconds remaining is 0
+    throughout overtime, which is the right answer for a finished game and the
+    wrong one for a game still being played: a team that has just scored in the
+    first overtime period would read as a certainty, while its opponent still
+    has a possession coming. The model knows nothing about possessions, so the
+    honest answer is no number, and the page keeps showing the pregame chance.
 
     A completed game is 1, 0 or the overtime term by the score alone, which is
-    what `secs_left = 0` already does.
+    what `secs_left = 0` already does -- including a game that was decided in
+    overtime, because by then the score is final.
     """
     if status not in ("in_progress", "completed"):
         return None
     if not isinstance(home_points, int) or not isinstance(away_points, int):
         return None
     if isinstance(home_points, bool) or isinstance(away_points, bool):
+        return None
+    if status == "in_progress" and in_overtime(period):
         return None
     secs = 0 if status == "completed" else seconds_remaining(period, clock)
     if secs is None:

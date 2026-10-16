@@ -122,6 +122,24 @@ test('a scheduled game, a pregame 0-0 row and a clockless game get no live numbe
   assert.equal(liveChanceFor(null, 0.6), null);
 });
 
+test('a game in overtime gets no live number, so the card keeps the pregame one', () => {
+  // Regulation seconds remaining is zero all through overtime, which reads as a
+  // finished game: a team that has just scored in the first overtime would show
+  // as certain while its opponent still has a possession coming.
+  const {liveChanceFor} = load();
+  for (const period of [5, 6, '5']) {
+    assert.equal(liveChanceFor(game({period, clock: '0:00', home: {points: 31}, away: {points: 24}}), 0.5), null);
+    assert.equal(liveChanceFor(game({period, clock: null, home: {points: 31}, away: {points: 24}}), 0.5), null);
+  }
+  // The fourth quarter running out is not overtime: a lead there is a win and a
+  // tie is worth the overtime term.
+  assert.equal(liveChanceFor(game({period: 4, clock: '0:00', home: {points: 31}, away: {points: 24}}), 0.5).home, 100);
+  assert.equal(liveChanceFor(game({period: 4, clock: '0:00', home: {points: 24}, away: {points: 24}}), 0.5).home, 51);
+  // A final is decided by its score however many overtimes it took.
+  assert.equal(liveChanceFor(game({status: 'completed', period: 5, clock: '0:00',
+    home: {points: 31}, away: {points: 24}}), 0.5).home, 100);
+});
+
 test('a live game gets a whole-percent pair that adds to a hundred', () => {
   const {liveChanceFor} = load();
   const chance = liveChanceFor(game({home: {points: 21}, away: {points: 7}, period: 3, clock: '5:00'}), 0.5);

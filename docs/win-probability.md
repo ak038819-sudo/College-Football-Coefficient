@@ -69,6 +69,14 @@ scoreboard feed carries the period, the clock and the score, so those are the
 inputs. A tie game with two minutes left reads the same whether the home team
 has the ball on the opponent's 20 or has just punted.
 
+Overtime, while it is being played, gets **no live number at all**. Regulation
+seconds remaining is zero throughout it, which is the right answer for a
+finished game and the wrong one for a game still going: a team that has just
+scored in the first overtime period would read as a certainty while its
+opponent still has a possession coming. The scorebug keeps showing the pregame
+chance until the game is final. A game that is already final is decided by its
+score however many overtimes it took.
+
 `time_exponent = 0.5` is the sharper limitation, and it bites exactly where
 viewers are watching. At 0.5 the spread of the remaining margin with a minute
 left is about two points, so a favourite trailing by 3 reads around 13% — too

@@ -2139,10 +2139,17 @@ function liveWinProbability(pHome, margin, secondsLeft) {
 }
 // A scoreboard game -> the live chance for each side, or null when the feed
 // does not support one: a scheduled game (whose pregame chance IS the answer),
-// CFBD's 0-0 pregame row, or a game under way with no readable clock.
+// CFBD's 0-0 pregame row, a game under way with no readable clock, or a game
+// in overtime.
 function liveChanceFor(g, pHome) {
   if (!g || (g.status !== 'in_progress' && g.status !== 'completed')) return null;
   if (!Number.isInteger(g.home?.points) || !Number.isInteger(g.away?.points)) return null;
+  // A game IN overtime has no live number here. Regulation seconds remaining is
+  // zero throughout it, which reads as a finished game: a team that has just
+  // scored in the first overtime would show as a certainty while its opponent
+  // still has a possession coming. This model knows nothing about possessions,
+  // so the card keeps the pregame chance instead.
+  if (g.status === 'in_progress' && Number(g.period) > LIVE_REGULATION_PERIODS) return null;
   const secondsLeft = g.status === 'completed' ? 0 : liveSecondsRemaining(g.period, g.clock);
   if (secondsLeft == null) return null;
   const value = liveWinProbability(pHome, g.home.points - g.away.points, secondsLeft);
