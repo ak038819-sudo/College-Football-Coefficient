@@ -5606,7 +5606,16 @@ function scheduleStrengthPanels(data) {
         ' against an opponent this project does not rate \u2014 an FCS program, almost always. ' +
         'They are counted in the games left and marked on the row, but they are not in the ' +
         'average, because there is no rating to average. '
-      : 'Every game left is against a team this project rates. ') +
+      // Zero can also mean the schedule file has not been fetched yet -- the
+      // deploy only refreshes it when a game has finished since the last one
+      // -- and the page cannot tell that apart from a season with genuinely
+      // none. So this branch says only what the AVERAGE does, which is true
+      // either way. It must not promise that such games are counted or marked
+      // (they are not, when the data is absent) and must not claim the season
+      // has none.
+      : 'The average covers the games left against teams this project rates. A game against ' +
+        'an opponent it does not rate \u2014 an FCS program, almost always \u2014 is never ' +
+        'in it. ') +
       'Nothing is counted at the engine\u2019s 1500 prior: that is what Elo gives a team it ' +
       'has never seen, not an estimate of an FCS program, and averaging it in would make the ' +
       'softest run in the sport look ordinary.</p>';
