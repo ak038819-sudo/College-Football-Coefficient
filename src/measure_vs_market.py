@@ -93,10 +93,18 @@ GAMES_SQL = """
      ORDER BY g.season_year, g.game_id
 """
 
+# Only CLOSING lines. CFBD serves the current number for a game yet to kick
+# off and the closing one after it finishes, in the same column, so a file
+# fetched mid-season carries both. The snapshot's own record of the result is
+# what separates them: it cannot know a score the game had not produced yet.
+# Without this clause a week-15 spread captured in October would be scored as
+# that game's closing line once the game was played.
 LINES_SQL = """
     SELECT game_id, provider, market_home_margin
       FROM game_lines
      WHERE market_home_margin IS NOT NULL
+       AND snapshot_home_score IS NOT NULL
+       AND snapshot_away_score IS NOT NULL
 """
 
 

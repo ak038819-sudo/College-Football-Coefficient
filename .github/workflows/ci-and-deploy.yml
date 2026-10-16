@@ -250,6 +250,14 @@ jobs:
           # Preserve the weekly player lines after the live slate rolls over.
           # A temporary CFBD failure leaves the last complete archive intact.
           python3 src/fetch_cfbd_players.py "$SEASON" || echo "Player archive unavailable; retry next refresh."
+          # Betting lines for the current season, re-fetched beside the games
+          # so the two stay consistent. CFBD serves the CLOSING line for a game
+          # once it is final and the current number before kickoff, so without
+          # this a line captured weeks early would be scored as that game's
+          # close the moment it was played. The measurement also refuses any
+          # snapshot taken before the game ended, so a failed fetch here costs
+          # coverage of the newest finals rather than publishing a stale line.
+          python3 src/fetch_cfbd_lines.py "$SEASON" || echo "Line archive unavailable; retry next refresh."
 
       # The catalog only enriches stadiums with CFBD ids and coordinates.
       # build_stadiums.py's import_venue_catalog() returns zero counts when the

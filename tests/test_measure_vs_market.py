@@ -195,12 +195,14 @@ def _db(tmp_path, lines=True):
     if lines:
         conn.executescript("""
             CREATE TABLE game_lines (game_id INTEGER, provider TEXT, season_year INTEGER,
-                                     market_home_margin REAL);
+                                     market_home_margin REAL,
+                                     snapshot_home_score INTEGER,
+                                     snapshot_away_score INTEGER);
             INSERT INTO game_lines VALUES
-                (1, 'consensus', 2024, 10.5), (1, 'Bovada', 2024, 11.0),
-                (2, 'consensus', 2024, -7.0),
-                (3, 'consensus', 2024, NULL),
-                (4, 'Bovada', 2024, -2.0);
+                (1, 'consensus', 2024, 10.5, 31, 17), (1, 'Bovada', 2024, 11.0, 31, 17),
+                (2, 'consensus', 2024, -7.0, 10, 24),
+                (3, 'consensus', 2024, NULL, 21, 20),
+                (4, 'Bovada', 2024, -2.0, 14, 14);
         """)
     conn.commit()
     return conn
@@ -226,6 +228,32 @@ class TestTheReport:
         # -20. Reading the away team's row would flip all three.
         assert rows[1] > 0
         assert rows[2] < 0 and rows[4] < 0
+
+    def test_a_line_captured_before_the_game_ended_is_not_a_closing_line(self, tmp_path):
+        """CFBD serves the CURRENT number before kickoff and the closing one
+        after, in the same column. A mid-season file therefore carries weeks-
+        early spreads for games still to come, and scoring one of those as a
+        close the moment the game is played would quietly corrupt the whole
+        comparison. The snapshot's own record of the result is what tells them
+        apart: it cannot know a score the game had not produced yet."""
+        conn = _db(tmp_path)
+        # Game 2's only line was captured before the game ended.
+        conn.execute("UPDATE game_lines SET snapshot_home_score = NULL, "
+                     "snapshot_away_score = NULL WHERE game_id = 2")
+        conn.commit()
+        assert [r["game_id"] for r in mm.load_market_games(conn, PARAMS)] == [1, 4]
+
+    def test_one_pre_kickoff_provider_does_not_cost_the_game_its_closing_line(self, tmp_path):
+        """Game 1 has two providers. If one of them was snapshotted early the
+        game still has a closing line from the other, and the early number must
+        not be the one chosen even though its provider ranks first."""
+        conn = _db(tmp_path)
+        conn.execute("UPDATE game_lines SET snapshot_away_score = NULL "
+                     "WHERE game_id = 1 AND provider = 'consensus'")
+        conn.commit()
+        rows = {r["game_id"]: r for r in mm.load_market_games(conn, PARAMS)}
+        assert rows[1]["provider"] == "Bovada"
+        assert rows[1]["market_margin"] == 11.0
 
     def test_a_checkout_with_no_line_archive_reports_nothing(self, tmp_path):
         conn = _db(tmp_path, lines=False)

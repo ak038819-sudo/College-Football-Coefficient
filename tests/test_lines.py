@@ -224,6 +224,25 @@ class TestTheLoader:
         assert conn.execute(
             "SELECT COUNT(*) FROM game_lines WHERE game_id = 101").fetchone()[0] == 2
 
+    def test_the_snapshots_own_record_of_the_result_is_stored(self, tmp_path):
+        """This is what says whether a spread is a CLOSING line. CFBD serves
+        the current number before kickoff and the closing one afterwards, in
+        the same column, so the only thing separating them is whether the
+        snapshot already knew the score."""
+        conn, path = _league(tmp_path)
+        stats = load_lines(conn, path)
+        stored = {r[0]: (r[1], r[2]) for r in conn.execute(
+            "SELECT game_id, snapshot_home_score, snapshot_away_score "
+            "FROM game_lines WHERE provider = 'consensus'")}
+        assert stored[101] == (31, 17)          # captured after the final
+        assert stored[103] == (None, None)      # captured before the game ended
+        assert stored[104] == (None, None)
+        assert stats["pre_kickoff"] == 2
+        # And they are NOT a source of scores: the games table holds 103 as a
+        # 20-20 tie, which the snapshot does not know about.
+        assert conn.execute("SELECT home_score, away_score FROM games WHERE game_id = 103"
+                            ).fetchone() == (20, 20)
+
     def test_a_line_for_a_game_this_project_does_not_hold_is_skipped(self, tmp_path):
         conn, path = _league(tmp_path)
         conn.execute("DELETE FROM games WHERE game_id = 102")

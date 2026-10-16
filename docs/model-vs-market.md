@@ -38,6 +38,32 @@ lost to it. Five mutation checks fail if the flip is removed or reversed.
 A blank spread stays NULL rather than 0, because 0 is a real line. A pick'em is
 a game the market found hard to call, not a game nobody priced.
 
+### Closing, and only closing
+
+CFBD serves the **current** line for a game that has not kicked off and the
+**closing** line once it is final — the same row, the same column, with nothing
+in it to say which. A file fetched mid-season therefore holds both: real
+closing lines for the games already played, and weeks-early numbers for the
+ones still to come. Left alone, a week-15 spread captured in October would be
+scored as that game's close the moment the game was played, and the whole
+current-season comparison would drift without ever looking wrong.
+
+Two things stop that.
+
+**The snapshot's own record of the result.** A capture taken before the game
+ended cannot carry its score, and one taken after always does — in the
+2013-2025 archive every single row has both scores, and only the unplayed 2026
+games lack them. `load_lines.py` stores them as `snapshot_home_score` /
+`snapshot_away_score`, `measure_vs_market.py` requires both, and the loader
+reports how many rows it took in early. They are metadata about the snapshot
+and not a source of scores; a result still comes from the `games` table.
+
+**The current season is re-fetched on every deploy**, in the same step as the
+games, so the two stay consistent and a game that has just finished carries
+the line as of a fetch that already knew it had. If that fetch fails the
+deploy carries on: the guard above means the cost is coverage of the newest
+finals, not a stale number published as a close.
+
 ## The four comparisons
 
 `src/measure_vs_market.py` writes `data/processed/market_comparison.json` and
@@ -102,6 +128,9 @@ headline:
 * **A closing line is not available when a bet would be placed.** Every figure
   here is measured against the sharpest price of the week, which is the right
   test of a forecast and the wrong test of a betting strategy.
+* **Only games with a closing line count** — a current-season game whose only
+  snapshot predates its final is excluded until the next refresh picks it up,
+  so the newest week can lag by an hour.
 * **Only priced games count**, which skews modern and towards games people
   cared about. The season table publishes the share of each season the market
   priced, because a hit rate over 40 games is a curiosity.

@@ -19,6 +19,21 @@
 -- A line with no spread is stored with NULL spreads rather than 0: a pick'em
 -- is a real line at 0, and a game nobody priced is not a game the market
 -- called even. The same holds for the total and the moneylines.
+--
+-- WHEN THE SNAPSHOT WAS TAKEN. CFBD serves the CURRENT line for a game that
+-- has not kicked off yet, and the closing line once it has finished -- the
+-- same row, the same column. A file fetched mid-season therefore holds a
+-- mixture: real closing lines for the games already played, and weeks-early
+-- numbers for the ones still to come. Nothing in the row says which.
+--
+-- Nothing, that is, except the scores CFBD puts on it. A snapshot taken
+-- before the game ended cannot carry its result, and one taken after always
+-- does: in the 2013-2025 archive every single row has both scores, and only
+-- the unplayed 2026 games lack them. So `snapshot_home_score` and
+-- `snapshot_away_score` are stored as the capture's own record of the result,
+-- and a reader measuring against "the closing line" requires them. They are
+-- metadata about the snapshot, NOT a source of scores: the games table is
+-- where a result comes from.
 CREATE TABLE IF NOT EXISTS game_lines (
     game_id            INTEGER NOT NULL,
     provider           TEXT    NOT NULL,
@@ -35,6 +50,11 @@ CREATE TABLE IF NOT EXISTS game_lines (
     home_moneyline     INTEGER,
     away_moneyline     INTEGER,
     formatted_spread   TEXT,
+
+    -- The result as the snapshot knew it; NULL means it was taken before the
+    -- game ended, so its spread is not a closing line. See the note above.
+    snapshot_home_score INTEGER,
+    snapshot_away_score INTEGER,
 
     PRIMARY KEY (game_id, provider),
     FOREIGN KEY (game_id) REFERENCES games(game_id)

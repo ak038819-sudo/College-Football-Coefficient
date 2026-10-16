@@ -18,6 +18,11 @@
   provider), 2013-2026 — every FBS game of every one of those seasons has a
   line. Nothing reads them as a rating input and nothing will — a benchmark
   the model can see is not a benchmark.
+- Only **closing** lines are scored. CFBD serves the current number before
+  kickoff and the closing one after, in the same column, so a mid-season file
+  carries both; the measurement requires the snapshot's own record of the
+  result, which a pre-kickoff capture cannot have. The current season's lines
+  are also re-fetched on every deploy, beside the games.
 - The page is honest about what the comparison is not: a closing line is not
   available when a bet would be placed, only priced games count (the season
   table says what share of each season that was), and break-even at the usual
