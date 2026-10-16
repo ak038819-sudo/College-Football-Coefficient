@@ -1,0 +1,106 @@
+# One-off, resumable backfill of the drive-by-drive archive.
+#
+# Same shape as backfill-players.yml, and for the same reasons: it is run by
+# hand, it walks many seasons of CFBD in one job, and it has to be able to stop
+# and resume. fetch_cfbd_drives.py rewrites one season's file per call, so
+# re-running a range only rewrites those seasons.
+#
+# What the archive is for: a game page's scoring summary, and the in-game
+# score-and-clock states that src/calibrate_win_probability.py needs to fit the
+# live model's time curve. No rating reads it, so a gap here cannot change a
+# rating -- only what a game page shows and what the live fit is measured on.
+#
+# CFBD's drive data begins in 2001 (the play-by-play era). Earlier seasons are
+# skipped by the fetcher without calling the API.
+name: Backfill drives
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_year:
+        description: "First season to fetch (2001 or later)"
+        required: true
+        default: "2001"
+      end_year:
+        description: "Last season to fetch"
+        required: true
+        default: "2026"
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    # Share the deploy job's lock: both push to main, and the scheduled refresh
+    # rewrites data/raw too.
+    concurrency:
+      group: rebuild-and-deploy-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Fetch and commit one season at a time
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          START: ${{ inputs.start_year }}
+          END: ${{ inputs.end_year }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CFBD_API_KEY:-}" ]; then
+            echo "::error::CFBD_API_KEY is not set for this repository."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # One season per commit, pushed as it lands, so a timeout or a CFBD
+          # outage costs the season in flight rather than the whole backfill.
+          #
+          # Every step is checked explicitly: `set -e` does NOT stop a shell
+          # loop, so an unchecked failure here would skip a season while later
+          # ones commit on top of the gap, leaving an archive that looks whole.
+          for year in $(seq "$START" "$END"); do
+            echo "::group::season $year"
+            if ! python3 src/fetch_cfbd_drives.py "$year"; then
+              echo "::endgroup::"
+              echo "::error::Season $year failed to fetch. Seasons before it are committed; re-run this workflow from $year to resume."
+              exit 1
+            fi
+            if ! scripts/publish_to_main.sh "Archive $year drives [skip ci]" data/raw/drives/; then
+              echo "::endgroup::"
+              echo "::error::Could not publish season $year. Nothing was published for it; re-run this workflow from $year."
+              exit 1
+            fi
+            echo "::endgroup::"
+          done
+
+      # Read from the files rather than the database: this job never builds
+      # db/league.db, and the loader's own counts print on the next pipeline run.
+      - name: Summarise the archive
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import csv, gzip, pathlib
+          directory = pathlib.Path('data/raw/drives')
+          total_drives = total_games = size = 0
+          for path in sorted(directory.glob('*.csv.gz')):
+              with gzip.open(path, 'rt', newline='', encoding='utf-8') as fh:
+                  rows = list(csv.DictReader(fh))
+              games = len({r['game_id'] for r in rows})
+              timed = sum(1 for r in rows if r['end_period'] and r['end_clock'])
+              total_drives += len(rows)
+              total_games += games
+              size += path.stat().st_size
+              print(f'{path.name}: {len(rows)} drives across {games} games, '
+                    f'{timed} with an end clock ({path.stat().st_size / 1e6:.1f} MB)')
+          print(f'archive total: {total_drives} drives across {total_games} games, '
+                f'{size / 1e6:.1f} MB')
+          PY
