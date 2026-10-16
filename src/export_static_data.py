@@ -259,6 +259,11 @@ def model_params() -> dict:
                               "RANKING_LABEL", "RANKING_NOTE"])
     return {"elo": clean(cfg.get("elo")), "hybrid": clean(cfg.get("hybrid")), "coe2": clean(cfg.get("coe")),
             "coe_v1": v1, "playoff_format": playoff,
+            # The live scorebug's in-game win chance (src/win_probability.py).
+            # Shipped rather than hardcoded in the page for the same reason as
+            # every other model constant here: a fitted value that also lives
+            # in the JavaScript drifts from the fit the first time either moves.
+            "live_win_probability": clean(cfg.get("live_win_probability")),
             # EXP-03: which performance multiplier the ratings on this page were built with.
             "performance": clean(cfg.get("performance"))}
 
