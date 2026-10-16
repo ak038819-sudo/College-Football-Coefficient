@@ -175,7 +175,11 @@ test('a count of zero states the rule and does not claim the season has none', (
   const {html} = view({...SEASON, remaining_unrated: 0});
   assert.doesNotMatch(html, /Every game left is against/);
   assert.doesNotMatch(html, /Of those games/);
-  assert.match(html, /never in the average/);
+  // Nor that such a game is counted or marked: with the data absent it is
+  // neither, so this branch may only describe what the average excludes.
+  assert.doesNotMatch(html, /counted in the games left|marked on the row/);
+  assert.match(html, /The average covers the games left against teams this project rates/);
+  assert.match(html, /is never\s+in it/);
   // The 1500 paragraph stays: it explains the rule, not an exception to it.
   assert.match(html, /1500 prior/);
 });
