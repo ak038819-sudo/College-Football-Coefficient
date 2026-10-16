@@ -1299,6 +1299,23 @@ function loadEloTimeline(season) {
   });
 }
 
+const _scheduleStrength = new Map();
+// Resolves to {season, teams: [...], conferences: [...], remaining_games, remaining_team_games}.
+// One file per season (src/build_schedule_strength.py via export_static_data),
+// loaded only when the schedule view opens -- the whole history is 1.5 MB.
+function loadScheduleStrength(season) {
+  season = Number(season);
+  if (_scheduleStrength.has(season)) return Promise.resolve(_scheduleStrength.get(season));
+  const src = (STATIC_MANIFEST.schedule_strength || {})[String(season)];
+  if (!src) return Promise.reject(new Error('no schedule strength for season ' + season));
+  return loadDataScript(src).then(() => {
+    const raw = (window.__CFB_SCHEDULE_STRENGTH__ || {})[season];
+    if (!raw) throw new Error('schedule strength for ' + season + ' was empty');
+    _scheduleStrength.set(season, raw);
+    return raw;
+  });
+}
+
 let _searchIndex = null;
 // Resolves to {teams: [{id, name, slug, aliases}], seasons: [..], games: [[game_id, season, home_id, away_id]],
 //               conferences: [[slug, name, [aliases]]]}.
@@ -1550,7 +1567,7 @@ let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult
   homeGroup: null, homeTop25: false, homePoll: null };
 const SECTION_LABELS = { people: 'People', stats: 'Stats', home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', accuracy: 'Track Record', coverage: 'Data coverage', methodology: 'How it works' };
 const SUBVIEWS = {
-  rankings: [['top25', 'Top 25'], ['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['home-field', 'Home-Field Advantage'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
+  rankings: [['top25', 'Top 25'], ['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['schedule', 'Schedule Strength'], ['home-field', 'Home-Field Advantage'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
     ['conference-coe2', 'Conference CoE 2.0'], ['elo-weekly', 'Week by Week']],
   playoff: [['field', 'Field'], ['projection', 'Rest of Season'], ['bracket', 'Bracket & Simulator'], ['odds', 'Title Odds'], ['history', 'History']]
 };
@@ -5511,6 +5528,128 @@ function renderMarketSeasons() {
   return html + '</tbody></table></div>';
 }
 
+// A team page already carries one strength-of-schedule number. This is the
+// league-wide version, and the half nothing else had: what is still to come.
+function renderScheduleStrength() {
+  if (!(STATIC_MANIFEST.schedule_strength || {})[String(state.year)]) {
+    return '<h2 class="view-title">Schedule Strength</h2>' +
+      '<div class="empty-note">' + state.year + ' has no rated games, so there is no schedule ' +
+      'to measure.</div>';
+  }
+  return '<h2 class="view-title">Schedule Strength</h2>' +
+    '<div id="ss-body"><div class="panel">Loading schedules…</div></div>';
+}
+
+function scheduleCell(value, rank, unrated) {
+  // The value is what sorts; the rank is what a reader actually reads. A blank
+  // data-sort would send the whole column to a text sort (see ui/stats.js), so
+  // an absent number gets an explicit key that sorts last either way.
+  //
+  // `unrated` is games this cell's average cannot cover -- an FCS opponent has
+  // no rating to average. The count belongs on the row rather than only in the
+  // note above, because which teams have them is the whole question a reader
+  // brings to a remaining schedule.
+  const extra = unrated
+    ? ' <small class="section-note">+' + unrated + ' unrated</small>' : '';
+  if (value == null) return '<td class="num" data-sort="">—' + extra + '</td>';
+  // The note above the table says what the ranks are out of, so repeating
+  // "of 138" in all three columns of all 138 rows is noise, not information.
+  return '<td class="num" data-sort="' + Number(value) + '">' + eloValue(value) +
+    (rank ? ' <small class="section-note">#' + rank + '</small>' : '') + extra + '</td>';
+}
+
+function scheduleStrengthPanels(data) {
+  const teams = data.teams || [];
+  if (!teams.length) {
+    return '<div class="empty-note">No rated teams in ' + data.season + '.</div>';
+  }
+  const ranked = teams.filter(t => t.full_sos != null).length;
+  const live = data.remaining_games > 0;
+  let html = '<div class="panel"><h2 class="section-title">Schedule Strength</h2>';
+  html += '<p class="section-note">The average Elo of the opponents each team faces, which is ' +
+    'the question behind every record: was it earned? <b>Played</b> takes each opponent at the ' +
+    'rating it held entering that game, the same number a team page shows. ' +
+    (live
+      ? '<b>Remaining</b> takes the ' + data.remaining_games.toLocaleString() + ' games still to ' +
+        'be played at their opponents\u2019 ratings today, because a game nobody has played has ' +
+        'no pregame rating. '
+      : 'The ' + data.season + ' season is over, so nothing remains and the two outer columns ' +
+        'are the same. ') +
+    'Ranks are out of the ' + ranked + ' rated teams, 1 = toughest. Elo is a within-season ' +
+    'chain, so these rank within ' + data.season + ' and do not compare across eras.</p>';
+  if (live) {
+    html += '<p class="section-note">The split is the point. A team that has already played its ' +
+      'hard games and one that still has them to play can sit on the same record and be in very ' +
+      'different positions, and only the two columns together say which is which.</p>';
+  }
+  html += '<table class="rank-table"><thead><tr><th class="num">#</th><th>Team</th>' +
+    '<th>Conference</th><th class="num">Played</th><th class="num">Remaining</th>' +
+    '<th class="num">Full schedule</th></tr></thead><tbody>';
+  teams.forEach(t => {
+    html += '<tr><td class="rk">' + (t.full_rank || '—') + '</td>' +
+      '<td><div class="name-cell">' + teamLink(t.team, 'sm') + '</div></td>' +
+      '<td><div class="name-cell">' + (t.conference
+        ? logoMarkup(t.conference, 'conf', 'sm') + esc(t.conference) : '—') + '</div></td>' +
+      scheduleCell(t.played_sos, t.played_rank) +
+      scheduleCell(t.remaining_sos, t.remaining_rank, t.remaining_unrated) +
+      scheduleCell(t.full_sos, t.full_rank) +
+      '</tr>';
+  });
+  html += '</tbody></table></div>';
+  if (live) {
+    // What the remaining average covers, and what it does not, with the real
+    // number rather than a caveat. An FCS opponent has no rating here, so it
+    // cannot be averaged -- but it is a game, and it is counted as one.
+    const unrated = data.remaining_unrated || 0;
+    html += '<p class="section-note">' + (unrated
+      ? 'Of those games, ' + unrated.toLocaleString() + ' ' + (unrated === 1 ? 'is' : 'are') +
+        ' against an opponent this project does not rate \u2014 an FCS program, almost always. ' +
+        'They are counted in the games left and marked on the row, but they are not in the ' +
+        'average, because there is no rating to average. '
+      : 'Every game left is against a team this project rates. ') +
+      'Nothing is counted at the engine\u2019s 1500 prior: that is what Elo gives a team it ' +
+      'has never seen, not an estimate of an FCS program, and averaging it in would make the ' +
+      'softest run in the sport look ordinary.</p>';
+  }
+  html += scheduleStrengthConferences(data);
+  return html;
+}
+
+function scheduleStrengthConferences(data) {
+  const rows = (data.conferences || []).filter(c => c.full_sos != null);
+  if (!rows.length) return '';
+  let html = '<div class="panel"><h2 class="section-title">By conference</h2>' +
+    '<p class="section-note">Each conference\u2019s member teams averaged. This measures who its ' +
+    'teams play, which includes each other, so a strong conference is tough on itself before it ' +
+    'plays anybody else.</p>' +
+    '<table class="rank-table"><thead><tr><th class="num">#</th><th>Conference</th>' +
+    '<th class="num">Teams</th><th class="num">Played</th><th class="num">Remaining</th>' +
+    '<th class="num">Full schedule</th></tr></thead><tbody>';
+  rows.forEach((c, i) => {
+    html += '<tr><td class="rk">' + (i + 1) + '</td>' +
+      '<td><div class="name-cell">' + logoMarkup(c.conference, 'conf', 'sm') +
+      conferenceLink(c.conference, null, data.season) + '</div></td>' +
+      '<td class="num">' + c.teams + '</td>' +
+      scheduleCell(c.played_sos) +
+      scheduleCell(c.remaining_sos) +
+      scheduleCell(c.full_sos) +
+      '</tr>';
+  });
+  return html + '</tbody></table></div>';
+}
+
+function hydrateScheduleStrength(version) {
+  const body = document.getElementById('ss-body');
+  if (!body) return;                      // the no-data note is already drawn
+  loadScheduleStrength(state.year).then(data => {
+    if (version !== renderVersion) return;
+    body.innerHTML = scheduleStrengthPanels(data);
+  }).catch(() => {
+    if (version !== renderVersion) return;
+    body.innerHTML = '<div class="empty-note">Schedule strength could not be loaded.</div>';
+  });
+}
+
 function renderCoverage() {
   const dims = COVERAGE.dimensions || [];
   const seasons = Object.keys(COVERAGE.seasons || {}).map(Number).sort((a, b) => a - b);
@@ -8177,8 +8316,10 @@ function render() {
   else if (state.section === 'rankings') {
     const views = { elo: renderElo, 'conference-standings': renderConferenceStandings, 'home-field': renderHomeFieldStandings, 'conference-elo': renderConferenceElo, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferences,
       'conference-coe2': renderConferenceCoe2, 'elo-weekly': renderEloWeekly,
+      schedule: renderScheduleStrength,
       top25: renderTop25Boards };
     content.innerHTML = views[state.subview]();
+    if (state.subview === 'schedule') hydrateScheduleStrength(version);
     if (state.subview === 'conference-standings') hydrateConferenceStandings(version);
     if (state.subview === 'elo-weekly') hydrateEloWeekly(version);
     if (state.subview === 'elo') { hydrateRatingFreshness(version); hydrateEloDetail(version); }

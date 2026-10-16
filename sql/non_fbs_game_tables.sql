@@ -32,3 +32,37 @@ CREATE TABLE IF NOT EXISTS non_fbs_games (
 
 CREATE INDEX IF NOT EXISTS idx_non_fbs_games_team_season
     ON non_fbs_games (team_id, season_year);
+
+-- Games an FBS team has still to play against a non-FBS opponent.
+--
+-- Separate from `scheduled_games` for the same reason non_fbs_games is
+-- separate from `games`: predict_upcoming.py reads scheduled_games and would
+-- be asked to price a game whose opponent has no rating. It is separate from
+-- non_fbs_games because that table's scores are NOT NULL, and a game not yet
+-- played has no score -- storing one as 0-0 would put a tie in every record.
+--
+-- What it is for: counting. A team with two FCS games left has two more games
+-- left than scheduled_games knows about, and the Schedule Strength page said
+-- so wrongly until this table existed. The opponent is a name here too, and
+-- for the same reason.
+CREATE TABLE IF NOT EXISTS scheduled_non_fbs_games (
+    game_id                 INTEGER PRIMARY KEY,
+    season_year             INTEGER NOT NULL,
+    week                    INTEGER,
+    season_type             TEXT,
+    kickoff_utc             TEXT,               -- ISO timestamp from CFBD; NULL if unknown
+    start_time_tbd          INTEGER NOT NULL DEFAULT 0 CHECK (start_time_tbd IN (0,1)),
+    team_id                 INTEGER NOT NULL,   -- the FBS side; the only side we hold
+    opponent_name           TEXT    NOT NULL,   -- as the source spells it
+    opponent_conference     TEXT,
+    opponent_classification TEXT,               -- CFBD's own division string, '' when it gave none
+    is_home                 INTEGER NOT NULL CHECK (is_home IN (0,1)),
+    neutral_site            INTEGER NOT NULL DEFAULT 0 CHECK (neutral_site IN (0,1)),
+    game_phase              TEXT    NOT NULL CHECK (game_phase IN ('regular','bowl','cfp')),
+    notes                   TEXT,
+    venue                   TEXT,               -- CFBD stadium name, display only
+    FOREIGN KEY (team_id) REFERENCES teams(team_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_scheduled_non_fbs_games_team_season
+    ON scheduled_non_fbs_games (team_id, season_year);

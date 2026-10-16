@@ -1,5 +1,49 @@
 # Site release history
 
+## Unreleased — Schedule strength, played and remaining (2026-10-16)
+
+- **Standings → Schedule Strength** puts every team's schedule difficulty in
+  one sortable table: the average Elo of the opponents already played, the
+  average of the ones still to come, and the two pooled, each ranked within
+  the season. Conferences get the same three numbers underneath.
+- The forward-looking half is new. Strength of schedule existed only as one
+  number on a team page, and only for games already played — so a team whose
+  hard games were all still to come looked identical to one that had already
+  played them. In 2026 the gap is stark: Auburn has faced the 39th-toughest
+  schedule and has the 2nd-toughest left.
+- **Played** takes each opponent at the rating it held entering that game,
+  which is exactly the number a team page already shows — two pages
+  disagreeing about one team's schedule would be worse than neither having it.
+  **Remaining** takes opponents at their current rating, because a game nobody
+  has played has no pregame rating.
+- An opponent with no rating contributes nothing to a remaining average rather
+  than being counted at the engine's 1500 prior, which would make a soft run
+  look average when it is the opposite.
+- **Games still to come against an FCS opponent are now counted.** They were
+  not in the data at all: `fetch_cfbd_games.py` dropped an unplayed
+  FBS-vs-FCS game rather than write it to the schedule file, which feeds
+  `predict_upcoming.py` and has no rating to price such a game with. So every
+  count of a team's remaining games was too low. Those fixtures are now
+  fetched to `data/raw/fcs_schedule_<year>.csv` and loaded into their own
+  `scheduled_non_fbs_games` table — counted, never predicted. The page says
+  how many of the games left it cannot price, and marks them on each team's
+  row; nothing feeds a projection or a win probability.
+- The average still excludes them, and that is the point: 1500 is the Elo
+  engine's prior for a team it has never seen, not an estimate of an FCS
+  program, so averaging it in would make the softest run in the sport look
+  ordinary.
+- "Current" means the rating a team would carry into its next game, the whole
+  chain replayed (`predict_upcoming.current_ratings`), not the rating it took
+  into the postseason. The latter is frozen at the end of the regular season
+  and does not exist at all for a team yet to play this year, so using it
+  would leave a preseason table with no remaining column and price a team in
+  a bowl at its November rating.
+- Ranks are within a season, deliberately: Elo is a within-season chain, so a
+  1,650 average opponent in 2026 and in 1994 are not the same claim.
+- One file per season (`ui/data/schedule_strength/<season>.js`), loaded when
+  the view opens. The whole history is 1.5 MB and the manifest is fetched on
+  every page view.
+
 ## Unreleased — The ratings against the market (2026-10-16)
 
 - The Track Record page now answers the question the baselines never could:

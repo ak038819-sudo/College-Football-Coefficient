@@ -119,6 +119,14 @@ def main() -> None:
             run([python, "src/load_fcs_games.py", year, "--db", str(DB_PATH),
                  "--csv", str(fcs_path)], f"Load non-FBS games: {year}")
 
+        # Games still to come against an opponent no rating holds. Their own
+        # table again, and loaded after games so a fixture that has since been
+        # played is dropped rather than reported as still to come.
+        for fcs_sched in sorted(Path("data/raw").glob("fcs_schedule_*.csv")):
+            year = fcs_sched.stem.replace("fcs_schedule_", "")
+            run([python, "src/load_fcs_schedule.py", year, "--db", str(DB_PATH),
+                 "--csv", str(fcs_sched)], f"Load non-FBS schedule: {year}")
+
         # Not-yet-final games (Milestone 3) go to their own scheduled_games
         # table, which no rating engine reads. Loaded after games so any
         # game that has since been played is skipped.
