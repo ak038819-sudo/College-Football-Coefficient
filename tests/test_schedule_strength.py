@@ -184,6 +184,95 @@ class TestTheFullNumber:
         assert table["remaining_team_games"] == 4   # each on two teams
 
 
+def _with_fcs_fixtures(conn, rows):
+    """Add scheduled_non_fbs_games, built from the real schema so the test
+    tracks it, holding (game_id, season, team_id) rows."""
+    conn.executescript(
+        (Path(__file__).resolve().parents[1] / "sql/non_fbs_game_tables.sql").read_text())
+    conn.executemany(
+        """INSERT INTO scheduled_non_fbs_games
+               (game_id, season_year, team_id, opponent_name, is_home, game_phase)
+           VALUES (?, ?, ?, 'Mercer', 1, 'regular')""", rows)
+    conn.commit()
+    return conn
+
+
+class TestTheNonFbsGamesStillToCome:
+    """A game left against an FCS opponent is a game left.
+
+    It is not in scheduled_games -- that table feeds predict_upcoming.py, which
+    has no rating to price it with -- so it comes from its own table. It must
+    be counted and must not be averaged: 1500 is the engine's prior for a team
+    it has never seen, not an estimate of an FCS program.
+    """
+
+    def test_it_counts_towards_the_games_a_team_has_left(self, tmp_path):
+        conn = _with_fcs_fixtures(_league(tmp_path), [(30, 2026, 3)])
+        table = ss.build_season(conn, 2026, elo=ELO_TODAY)
+        charlie = next(t for t in table["teams"] if t["team"] == "Charlie")
+        # Charlie had nothing left in scheduled_games and now has one unrated
+        # game. Reporting nothing left would be the bug this table fixes.
+        assert charlie["remaining_unrated"] == 1
+
+    def test_it_does_not_move_the_remaining_average(self, tmp_path):
+        conn = _with_fcs_fixtures(_league(tmp_path), [(30, 2026, 1)])
+        table = ss.build_season(conn, 2026, elo=ELO_TODAY)
+        alpha = next(t for t in table["teams"] if t["team"] == "Alpha")
+        assert alpha["remaining_sos"] == pytest.approx(1280.0)   # Delta alone
+        assert alpha["remaining_games"] == 1                     # rated games only
+        assert alpha["remaining_unrated"] == 1
+
+    def test_a_team_with_only_unrated_games_left_has_no_remaining_number(self, tmp_path):
+        conn = _with_fcs_fixtures(_league(tmp_path), [(30, 2026, 3)])
+        table = ss.build_season(conn, 2026, elo=ELO_TODAY)
+        charlie = next(t for t in table["teams"] if t["team"] == "Charlie")
+        assert charlie["remaining_sos"] is None
+        assert charlie["remaining_rank"] is None
+
+    def test_it_is_added_to_the_seasons_game_count_once_each(self, tmp_path):
+        """One row per game in each table, and a non-FBS fixture sits on
+        exactly one rated team, so the two counts add without halving."""
+        conn = _with_fcs_fixtures(_league(tmp_path), [(30, 2026, 1), (31, 2026, 3)])
+        table = ss.build_season(conn, 2026, elo=ELO_TODAY)
+        assert table["remaining_games"] == 4            # 2 scheduled + 2 non-FBS
+        assert table["remaining_team_games"] == 6       # 2 x 2 + 2 x 1
+        assert table["remaining_unrated"] == 2
+
+    def test_another_season_is_not_counted_into_this_one(self, tmp_path):
+        conn = _with_fcs_fixtures(_league(tmp_path), [(30, 2026, 1), (31, 2025, 1)])
+        table = ss.build_season(conn, 2026, elo=ELO_TODAY)
+        assert table["remaining_unrated"] == 1
+        assert table["remaining_games"] == 3
+
+    def test_an_unrated_fbs_opponent_and_an_fcs_one_are_one_counter(self, tmp_path):
+        """They are the same fact to a reader -- a game left this page cannot
+        price -- so a team with one of each has two, not one of each kind."""
+        conn = _league(tmp_path)
+        conn.execute("INSERT INTO scheduled_games VALUES (22, 2026, 1, 99)")
+        conn.commit()
+        _with_fcs_fixtures(conn, [(30, 2026, 1)])
+        table = ss.build_season(conn, 2026, elo=ELO_TODAY)
+        alpha = next(t for t in table["teams"] if t["team"] == "Alpha")
+        assert alpha["remaining_unrated"] == 2
+
+    def test_a_database_without_the_table_measures_everything_else(self, tmp_path):
+        """An old checkout, or one that has not run the loader. The season
+        still has its rated games left; it simply does not know about these."""
+        table = ss.build_season(_league(tmp_path), 2026, elo=ELO_TODAY)
+        assert table["remaining_games"] == 2
+        assert table["remaining_unrated"] == 0
+
+    def test_a_season_whose_only_games_left_are_unrated_still_reports_them(self, tmp_path):
+        """scheduled_games is empty, so the Elo chain is never replayed -- and
+        the count must survive that shortcut."""
+        conn = _with_fcs_fixtures(_league(tmp_path, scheduled=False), [(30, 2026, 1)])
+        table = ss.build_season(conn, 2026)
+        assert table["remaining_games"] == 1
+        assert table["remaining_unrated"] == 1
+        assert next(t for t in table["teams"]
+                    if t["team"] == "Alpha")["remaining_unrated"] == 1
+
+
 class TestTheConferenceRollup:
     def test_each_conference_averages_its_own_members(self, tmp_path):
         table = ss.build_season(_league(tmp_path), 2026, elo=ELO_TODAY)

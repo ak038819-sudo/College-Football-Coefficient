@@ -54,15 +54,15 @@ What this is not
   team whose remaining schedule is all unrated has no remaining number rather
   than a flattering one.
 
-  There is a known limit here, and the page states it rather than papering
-  over it: `fetch_cfbd_games.py` deliberately leaves an UPCOMING FBS-vs-FCS
-  game out of schedule_<year>.csv, because that file feeds the upcoming-game
-  cards and there is no rating to predict such a game with. Those games
-  therefore never reach scheduled_games and cannot be counted here either. So
-  a remaining schedule is the games left against RATED opponents, and a team
-  with an FCS game still to come has one more game than this says. The
-  remaining_unrated counter is still correct for anything that does reach it;
-  it is simply zero on the real archive.
+  An upcoming FBS-vs-FCS game is not in `scheduled_games` -- that table feeds
+  predict_upcoming.py, which has no rating to price such a game with -- so it
+  is read from `scheduled_non_fbs_games` instead and counted in
+  remaining_unrated. It contributes nothing to remaining_sos, which is
+  deliberate: 1500 is the engine's prior for a team it has never seen, not an
+  estimate of an FCS program, and averaging it in would make the easiest
+  schedules in the sport look ordinary. So remaining_sos is the average of
+  the RATED games left and remaining_unrated says how many others there are;
+  the two together are the real count of games to come.
 
 Usage:
     python src/build_schedule_strength.py            # prints the current season
@@ -110,6 +110,28 @@ def scheduled_games(conn: sqlite3.Connection, season: int) -> int:
         return 0
     return conn.execute(
         "SELECT COUNT(*) FROM scheduled_games WHERE season_year = ?", (season,)).fetchone()[0]
+
+
+# Games still to come against an opponent no rating holds. One row per game,
+# hanging off its FBS side, so this counts once per game AND once per team --
+# unlike SCHEDULED_SQL, where each game sits on two teams.
+SCHEDULED_NON_FBS_SQL = """
+    SELECT team_id
+      FROM scheduled_non_fbs_games
+     WHERE season_year = ?
+"""
+
+
+def scheduled_non_fbs(conn: sqlite3.Connection, season: int) -> dict[int, int]:
+    """team_id -> how many unrated opponents it has left to play."""
+    if not conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' "
+            "AND name='scheduled_non_fbs_games'").fetchone():
+        return {}
+    counts: dict[int, int] = {}
+    for (team_id,) in conn.execute(SCHEDULED_NON_FBS_SQL, (season,)):
+        counts[int(team_id)] = counts.get(int(team_id), 0) + 1
+    return counts
 
 
 def _mean(values: list[float]) -> float | None:
@@ -200,6 +222,13 @@ def build_season(conn: sqlite3.Connection, season: int,
     else:
         elo = {}
     remaining, unrated = remaining_opponents(conn, season, elo)
+    # A scheduled opponent with no rating can reach this two ways: an FBS team
+    # in scheduled_games that the Elo chain has not rated, and a non-FBS
+    # opponent, which is in its own table. Both are the same fact to a reader
+    # -- a game left that this page cannot price -- so they are one counter.
+    non_fbs_left = scheduled_non_fbs(conn, season)
+    for team_id, count in non_fbs_left.items():
+        unrated[team_id] = unrated.get(team_id, 0) + count
     names = {tid: name for tid, name in conn.execute("SELECT team_id, team_name FROM teams")}
     membership = {}
     if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
@@ -268,12 +297,19 @@ def build_season(conn: sqlite3.Connection, season: int,
         # remaining columns mean anything, so the page is told rather than
         # inferring it from a column of dashes.
         #
-        # Each remaining game appears on BOTH teams, so summing the per-team
-        # counts gives team-games, not games. Halving it would be wrong too:
-        # a game against an unrated opponent counts for one team only. The
-        # scheduled table is the only honest source for a game count.
-        "remaining_team_games": sum(t["remaining_games"] for t in ordered),
-        "remaining_games": scheduled_games(conn, season),
+        # An FBS-vs-FBS game left appears on BOTH teams, so summing the
+        # per-team counts gives team-games, not games. Halving the sum would
+        # be wrong too: a game against an unrated opponent counts for one
+        # team only. The two scheduled tables are the only honest source for
+        # a game count, and that is what remaining_games below is.
+        "remaining_team_games": sum(t["remaining_games"] + t["remaining_unrated"]
+                                    for t in ordered),
+        # One row per game in each table, so these add. Every non-FBS fixture
+        # is on exactly one rated team, which is why it is not halved.
+        "remaining_games": scheduled_games(conn, season) + sum(non_fbs_left.values()),
+        # How many of those games the average cannot cover. Each one is on
+        # exactly one rated team, so the per-team sum is a game count.
+        "remaining_unrated": sum(t["remaining_unrated"] for t in ordered),
     }
 
 

@@ -359,6 +359,52 @@ def schedule_row(g: dict, year: int, cfp_top4) -> dict:
     }
 
 
+# A not-yet-played game against a non-FBS opponent. It is kept out of
+# schedule_<year>.csv for the reason given at the branch that fills these
+# lists -- predict_upcoming.py has no rating to predict such a game with --
+# but "we cannot predict it" is not the same as "it does not exist", and
+# leaving it unrecorded made every count of a team's remaining games too low.
+# So it gets its own file, carrying both sides' classifications and
+# conferences, which is the only thing in the payload that knows which side
+# was FBS *that season*.
+FCS_SCHEDULE_FIELDS = SCHEDULE_FIELDS + [
+    "home_conference", "away_conference",
+    "home_classification", "away_classification",
+]
+
+
+def fcs_schedule_row(g: dict, year: int, cfp_top4) -> dict:
+    """A not-yet-final game vs a non-FBS opponent, for data/raw/fcs_schedule_<year>.csv."""
+    row = schedule_row(g, year, cfp_top4)
+    row.update({
+        "home_conference": pick(g, "home_conference", "homeConference", default="") or "",
+        "away_conference": pick(g, "away_conference", "awayConference", default="") or "",
+        "home_classification": classification_of(g, "home"),
+        "away_classification": classification_of(g, "away"),
+    })
+    return row
+
+
+# Which file a game that has not finished belongs in. Kept out of the fetch
+# loop so it can be tested without a network call: getting it wrong is silent
+# either way -- a game lands in a file nothing reads, or in one that asks the
+# model to price an opponent it has no rating for.
+UNFINISHED_BUCKETS = {BOTH_FBS: "schedule", FBS_VS_OTHER: "fcs_schedule"}
+
+
+def unfinished_row(g: dict, year: int, cfp_top4, division: str):
+    """('schedule'|'fcs_schedule', row) for a not-yet-final game, or (None, None).
+
+    A game with no FBS side at all (NEITHER_FBS) is dropped, as it is
+    everywhere else in this fetcher: there is no team here for it to hang off.
+    """
+    bucket = UNFINISHED_BUCKETS.get(division)
+    if bucket is None:
+        return None, None
+    builder = schedule_row if bucket == "schedule" else fcs_schedule_row
+    return bucket, builder(g, year, cfp_top4)
+
+
 def game_phase(season_type_val: str, game_type: str) -> str:
     if season_type_val == "regular":
         return "regular"
@@ -457,6 +503,7 @@ def main(year: int) -> int:
 
     scheduled: List[dict] = []
     non_fbs: List[dict] = []
+    fcs_scheduled: List[dict] = []
     out_path = OUT_DIR / f"games_{year}.csv"
     with out_path.open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(
@@ -499,15 +546,18 @@ def main(year: int) -> int:
             # Not final yet (no scores, or CFBD says in progress): goes to the
             # schedule file instead, never the games file.
             if not is_completed(g):
-                # An upcoming game against a non-FBS opponent is left out of
+                # An upcoming game against a non-FBS opponent is kept out of
                 # the schedule file on purpose. That file feeds the upcoming-
                 # game cards and predict_upcoming.py, and there is no rating
-                # for an opponent this project does not hold, so a row here
-                # would ask the model to predict a game it cannot see. Only
-                # completed non-FBS games are recorded, which is what a
-                # schedule and a record need.
-                if division == BOTH_FBS:
-                    scheduled.append(schedule_row(g, year, cfp_top4))
+                # for an opponent this project does not hold, so a row there
+                # would ask the model to predict a game it cannot see. It is
+                # still a game on somebody's schedule, so it is recorded in
+                # its own file instead of being dropped.
+                bucket, row = unfinished_row(g, year, cfp_top4, division)
+                if bucket == "schedule":
+                    scheduled.append(row)
+                elif bucket == "fcs_schedule":
+                    fcs_scheduled.append(row)
                 continue
 
             start_date = pick(g, "start_date", "startDate")
@@ -610,6 +660,16 @@ def main(year: int) -> int:
         sw.writeheader()
         sw.writerows(scheduled)
     print(f"Wrote {sched_path} ({len(scheduled)} not-yet-final FBS games)")
+
+    # Always written (even when empty) for the same reason as the two above: a
+    # season that has finished must stop reporting games still to come.
+    fcs_sched_path = OUT_DIR / f"fcs_schedule_{year}.csv"
+    with fcs_sched_path.open("w", newline="", encoding="utf-8") as f:
+        fsw = csv.DictWriter(f, fieldnames=FCS_SCHEDULE_FIELDS)
+        fsw.writeheader()
+        fsw.writerows(fcs_scheduled)
+    print(f"Wrote {fcs_sched_path} ({len(fcs_scheduled)} not-yet-final games "
+          "vs non-FBS opponents)")
 
     # Full AP + CFP polls (Milestone 5). Only written when the request succeeded,
     # so a network hiccup can't replace good data with an empty file.

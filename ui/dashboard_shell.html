@@ -5540,15 +5540,22 @@ function renderScheduleStrength() {
     '<div id="ss-body"><div class="panel">Loading schedules…</div></div>';
 }
 
-function scheduleCell(value, rank) {
+function scheduleCell(value, rank, unrated) {
   // The value is what sorts; the rank is what a reader actually reads. A blank
   // data-sort would send the whole column to a text sort (see ui/stats.js), so
   // an absent number gets an explicit key that sorts last either way.
-  if (value == null) return '<td class="num" data-sort="">—</td>';
+  //
+  // `unrated` is games this cell's average cannot cover -- an FCS opponent has
+  // no rating to average. The count belongs on the row rather than only in the
+  // note above, because which teams have them is the whole question a reader
+  // brings to a remaining schedule.
+  const extra = unrated
+    ? ' <small class="section-note">+' + unrated + ' unrated</small>' : '';
+  if (value == null) return '<td class="num" data-sort="">—' + extra + '</td>';
   // The note above the table says what the ranks are out of, so repeating
   // "of 138" in all three columns of all 138 rows is noise, not information.
   return '<td class="num" data-sort="' + Number(value) + '">' + eloValue(value) +
-    (rank ? ' <small class="section-note">#' + rank + '</small>' : '') + '</td>';
+    (rank ? ' <small class="section-note">#' + rank + '</small>' : '') + extra + '</td>';
 }
 
 function scheduleStrengthPanels(data) {
@@ -5584,23 +5591,25 @@ function scheduleStrengthPanels(data) {
       '<td><div class="name-cell">' + (t.conference
         ? logoMarkup(t.conference, 'conf', 'sm') + esc(t.conference) : '—') + '</div></td>' +
       scheduleCell(t.played_sos, t.played_rank) +
-      scheduleCell(t.remaining_sos, t.remaining_rank) +
+      scheduleCell(t.remaining_sos, t.remaining_rank, t.remaining_unrated) +
       scheduleCell(t.full_sos, t.full_rank) +
       '</tr>';
   });
   html += '</tbody></table></div>';
   if (live) {
-    // What the remaining column leaves out, said plainly. An upcoming
-    // FBS-vs-FCS game is deliberately absent from this project's schedule
-    // data -- there is no rating to predict it with -- so it cannot be
-    // counted here, and claiming a complete remaining schedule would be a
-    // quiet overstatement for every team that has one left.
-    html += '<p class="section-note">Remaining counts the games left against teams this ' +
-      'project rates. A game still to come against an FCS opponent is not in its schedule ' +
-      'data at all, so a team with one of those left has one more game than this says \u2014 ' +
-      'and none of those games would move the average anyway, since there is no rating to ' +
-      'average. Nothing is counted at the engine\u2019s 1500 prior, which would make a soft ' +
-      'run look average when it is the opposite.</p>';
+    // What the remaining average covers, and what it does not, with the real
+    // number rather than a caveat. An FCS opponent has no rating here, so it
+    // cannot be averaged -- but it is a game, and it is counted as one.
+    const unrated = data.remaining_unrated || 0;
+    html += '<p class="section-note">' + (unrated
+      ? 'Of those games, ' + unrated.toLocaleString() + ' ' + (unrated === 1 ? 'is' : 'are') +
+        ' against an opponent this project does not rate \u2014 an FCS program, almost always. ' +
+        'They are counted in the games left and marked on the row, but they are not in the ' +
+        'average, because there is no rating to average. '
+      : 'Every game left is against a team this project rates. ') +
+      'Nothing is counted at the engine\u2019s 1500 prior: that is what Elo gives a team it ' +
+      'has never seen, not an estimate of an FCS program, and averaging it in would make the ' +
+      'softest run in the sport look ordinary.</p>';
   }
   html += scheduleStrengthConferences(data);
   return html;

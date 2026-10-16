@@ -19,12 +19,19 @@
 - An opponent with no rating contributes nothing to a remaining average rather
   than being counted at the engine's 1500 prior, which would make a soft run
   look average when it is the opposite.
-- **Remaining counts games against rated teams only, and the page says so.**
-  `fetch_cfbd_games.py` deliberately leaves an upcoming FBS-vs-FCS game out of
-  the schedule file — there is no rating to predict such a game with — so it
-  never reaches `scheduled_games` and cannot be counted here. A team with one
-  of those left has one more game than the table says, and the note states
-  that rather than implying a complete remaining schedule.
+- **Games still to come against an FCS opponent are now counted.** They were
+  not in the data at all: `fetch_cfbd_games.py` dropped an unplayed
+  FBS-vs-FCS game rather than write it to the schedule file, which feeds
+  `predict_upcoming.py` and has no rating to price such a game with. So every
+  count of a team's remaining games was too low. Those fixtures are now
+  fetched to `data/raw/fcs_schedule_<year>.csv` and loaded into their own
+  `scheduled_non_fbs_games` table — counted, never predicted. The page says
+  how many of the games left it cannot price, and marks them on each team's
+  row; nothing feeds a projection or a win probability.
+- The average still excludes them, and that is the point: 1500 is the Elo
+  engine's prior for a team it has never seen, not an estimate of an FCS
+  program, so averaging it in would make the softest run in the sport look
+  ordinary.
 - "Current" means the rating a team would carry into its next game, the whole
   chain replayed (`predict_upcoming.current_ratings`), not the rating it took
   into the postseason. The latter is frozen at the end of the regular season

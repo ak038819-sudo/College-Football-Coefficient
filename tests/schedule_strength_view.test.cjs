@@ -30,6 +30,7 @@ const SEASON = {
   season: 2026,
   remaining_games: 432,
   remaining_team_games: 864,
+  remaining_unrated: 11,
   teams: [
     {team_id: 1, team: 'Missouri', conference: 'SEC', played_games: 6, played_sos: 1582.2,
      played_rank: 24, remaining_games: 6, remaining_sos: 1733.8, remaining_rank: 1,
@@ -151,25 +152,59 @@ test('a live season explains why the two columns are worth reading together', ()
   assert.match(html, /hard games and one that still has them/);
 });
 
-test('a live season states what the remaining column leaves out', () => {
-  // An upcoming FBS-vs-FCS game is deliberately absent from this project's
-  // schedule data (fetch_cfbd_games.py keeps only BOTH_FBS rows), so it cannot
-  // be counted here. Saying nothing would overstate every remaining schedule
-  // that has one, and the earlier draft of this page promised a count of them
-  // that the real archive can never produce.
+test('a live season says how many of the games left it cannot price', () => {
+  // These games are real and counted (scheduled_non_fbs_games); what they do
+  // not have is a rating to average. Saying "some" where the data says 11
+  // would be a caveat standing in for a number we now have.
   const {html} = view(SEASON);
-  assert.match(html, /against teams this project rates/);
-  assert.match(html, /one more game than this says/);
+  assert.match(html, /Of those games, 11 are against an opponent this project does not rate/);
+  assert.match(html, /not in the average/);
   assert.match(html, /1500 prior/);
 });
 
+test('one such game is singular, because 1 are reads as broken', () => {
+  const {html} = view({...SEASON, remaining_unrated: 1});
+  assert.match(html, /Of those games, 1 is against/);
+});
+
+test('a season with nothing unrated left says so rather than warning about none', () => {
+  const {html} = view({...SEASON, remaining_unrated: 0});
+  assert.match(html, /Every game left is against a team this project rates/);
+  assert.doesNotMatch(html, /does not rate \u2014|not in the average/);
+  // The 1500 paragraph stays: it explains the rule, not an exception to it.
+  assert.match(html, /1500 prior/);
+});
+
+test('the count is marked on the row, not only in the note', () => {
+  // Which teams have them is the question a reader brings to a remaining
+  // schedule, and a season total cannot answer it.
+  const {html} = view(SEASON);
+  const row = html.split('<tr>').find(r => r.includes('Kennesaw State'));
+  assert.match(row, /\+2 unrated/);
+  // And a team with none is not told it has none.
+  const texas = html.split('<tr>').find(r => r.includes('Texas'));
+  assert.doesNotMatch(texas, /unrated/);
+});
+
+test('the marker does not become the cell sort key', () => {
+  const {ctx} = view(SEASON);
+  // A rated average with unrated games beside it still sorts on the average.
+  assert.ok(ctx.cell(1645, 16, 2).includes('data-sort="1645"'));
+  // And a team with only unrated games left still sorts as absent, not as 2.
+  const none = ctx.cell(null, null, 2);
+  assert.ok(none.includes('data-sort=""'), none);
+  assert.ok(none.includes('\u2014'));
+  assert.ok(none.includes('+2 unrated'));
+});
+
 test('a finished season does not warn about a remaining schedule it has not got', () => {
-  const done = {...SEASON, remaining_games: 0,
+  const done = {...SEASON, remaining_games: 0, remaining_unrated: 0,
     teams: SEASON.teams.map(t => ({...t, remaining_games: 0, remaining_sos: null,
-      remaining_rank: null, full_sos: t.played_sos, full_rank: t.played_rank}))};
+      remaining_rank: null, remaining_unrated: 0,
+      full_sos: t.played_sos, full_rank: t.played_rank}))};
   const {html} = view(done);
   assert.doesNotMatch(html, /1500 prior/);
-  assert.doesNotMatch(html, /one more game than this says/);
+  assert.doesNotMatch(html, /Of those games/);
 });
 
 test('the conference table averages members and tolerates a missing half', () => {
