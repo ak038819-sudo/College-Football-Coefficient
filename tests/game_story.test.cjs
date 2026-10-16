@@ -9,9 +9,14 @@ function sourceOf(name) {
   assert.ok(source, `missing ${name}`);
   return source;
 }
+// 2025 has a drive archive here and 2026 does not, so the story's scoring
+// summary link is exercised on both sides. driveArchiveEntry is lifted from the
+// shell rather than stubbed: a stub keeps passing when the real one changes.
 const ctx = {esc: value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;'),
-  stadiumHref: id => `#section=teams&view=stadiums&stadium=${id}`};
+  stadiumHref: id => `#section=teams&view=stadiums&stadium=${id}`,
+  STATIC_MANIFEST: {drives: {2025: {shards: 32, files: {0: 'data/drives/2025/0.js'}}}}};
 vm.runInNewContext(sourceOf('gameStory') + '\n' + sourceOf('storyPlayerLeaders') +
+  '\n' + sourceOf('driveArchiveEntry') +
   '\nthis.story = gameStory; this.leaders = storyPlayerLeaders;', ctx);
 
 test('completed game story uses stored outcome, venue, SR+ and Elo change', () => {
@@ -23,6 +28,7 @@ test('completed game story uses stored outcome, venue, SR+ and Elo change', () =
   assert.match(html, /Visitors \+8\.0 pp/);
   assert.match(html, /Visitors \+18\.2/);
   assert.match(html, /#gp-efficiency/);
+  assert.match(html, /#gp-drives/);
 });
 
 test('missing stats stay absent, and upcoming game shows stored win chance', () => {
@@ -30,11 +36,14 @@ test('missing stats stay absent, and upcoming game shows stored win chance', () 
   const html = ctx.story(g, null, 2026, 'Visitors', 'Hosts');
   assert.match(html, /Hosts 65%/);
   assert.match(html, /Unverified Park \(venue unverified\)/);
-  assert.doesNotMatch(html, /#gp-efficiency|#gp-players|Explore the stadium/);
+  assert.doesNotMatch(html, /#gp-efficiency|#gp-players|#gp-drives|Explore the stadium/);
   assert.match(html, /Efficiency edge<\/small><strong>Unavailable/);
   assert.match(ctx.story({...g, completed: true, home_score: 7, away_score: 7},
     {home_sr_plus: 0, away_sr_plus: 0}, 2026, 'Visitors', 'Hosts'),
     /Efficiency edge<\/small><strong>Even/);
+  // A season WITH a drive archive still gets no scoring summary before the game
+  // is played: there are no drives to list yet.
+  assert.doesNotMatch(ctx.story(g, null, 2025, 'Visitors', 'Hosts'), /#gp-drives/);
 });
 
 test('player leaders use only numeric yardage from published categories', () => {

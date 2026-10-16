@@ -1,4 +1,4 @@
-# Live win probability, and the drive archive it will be fitted on
+# Live win probability, and the drive archive it is fitted on
 
 The scoreboard shows a **pregame** win chance: the Elo expectation that existed
 before kickoff. It is right once and then never moves. A viewer watching a
@@ -7,8 +7,8 @@ that was true three hours earlier.
 
 `src/win_probability.py` answers the live question instead — given the pregame
 ratings, the score now, and how much of regulation is left, how often does the
-home team win? — and `src/fetch_cfbd_drives.py` fetches the data that will
-finish calibrating it.
+home team win? — and `src/fetch_cfbd_drives.py` fetches the drive archive it is
+calibrated on.
 
 ## The model
 
@@ -39,7 +39,7 @@ Fitted by `src/calibrate_win_probability.py` against every completed game from
 | `sigma` | 16.651 | That fit's residual spread, in points. |
 | `tie_half_width` | 1.142 | Solved so the model's tie mass equals how often games really end regulation level (4.39% in the overtime era). |
 | `overtime_home_win` | 0.5099 | Counted: the home team's share of the 812 games tied after regulation. |
-| `time_exponent` | 0.5 | **Assumed.** A plain random walk. Nothing in this database can fit it yet. |
+| `time_exponent` | 0.4395 | Log loss over 440,918 in-game states read off the drive archive, by golden section. |
 
 Three things are worth saying plainly about that table.
 
@@ -77,16 +77,31 @@ opponent still has a possession coming. The scorebug keeps showing the pregame
 chance until the game is final. A game that is already final is decided by its
 score however many overtimes it took.
 
-`time_exponent = 0.5` is the sharper limitation, and it bites exactly where
-viewers are watching. At 0.5 the spread of the remaining margin with a minute
-left is about two points, so a favourite trailing by 3 reads around 13% — too
-low, because late-game football is more volatile per second than early-game
-football (clock stoppages, hurry-up, onside kicks). A smaller exponent widens
-the late spread. Fitting it needs the score at known moments *during* games.
+## The time curve, measured
 
-`games.home_line_scores` exists as a column but every committed season CSV
-predates it, so the archive holds no per-quarter scores. Hence the drive
-archive.
+`time_exponent` used to be the sharper limitation: 0.5 was assumed, because
+fitting it needs the score at known moments *during* games and
+`games.home_line_scores` is empty in every committed season CSV. The drive
+archive is that data — every drive ends at a known period and clock with a
+known score — so the exponent is now fitted on **440,918** in-game states from
+2001 to 2026.
+
+The answer is **0.4395**: the remaining uncertainty narrows a little more slowly
+than a random walk, which is the same statement as late-game football swinging
+more per second than early-game football (clock stoppages, hurry-up, onside
+kicks). Fitted on states before 2018 and scored on 2018-2026, it gives log loss
+0.39929 against 0.40044 for 0.5. The production value refits on every state
+against the all-season sigma, since an exponent fitted beside a different spread
+is not the same number.
+
+It shows exactly where viewers are watching. A 400-Elo favourite trailing by 3
+with a minute left read 14% at 0.5 and reads **19%** now; tied at the start of
+the fourth quarter barely moves (73% to 72%).
+
+Held-out log loss by quarter runs 0.504 in Q1 down to 0.337 in Q4, and across
+all four the model sits about a point under-confident in the eventual favourite
+(predicted 0.576 against 0.585 actual in Q3, and the same gap elsewhere). That
+is the pregame Elo gap doing the tilting, not anything the clock can fix.
 
 ## The drive archive
 
@@ -110,6 +125,16 @@ seconds left at the end of the drive: a drive that ended in overtime is 0, and a
 drive with an unreadable clock is NULL — never 0, which is a real and different
 state.
 
+Coverage is CFBD's, and it is far from uniform. Measured against the games this
+database carries, drives exist for 62% of 2001, **4% of 2002** (31 games — a
+hole in the source, not in the fetch), 66-67% of 2003-2004, 85% of 2005, and
+then a climb to 97% by 2008 and effectively every game from 2013 on. So a game
+page from 2004 may have no scoring summary while one from 2014 always does, and
+the time-curve fit is weighted towards the modern game by sheer volume. From
+2022 each season's file also holds several hundred games the `games` table has
+no row for (FCS matchups the site never shows), which the loader skips and
+counts. All 26 seasons together are 441,307 drives.
+
 Nothing here is a rating input. The Elo and CoE builders never read
 `game_drives`, so a gap in drive coverage can change what a game page shows and
 what the live fit is measured on, but can never change a rating.
@@ -130,6 +155,8 @@ Two things to know, both learned the hard way on earlier backfills:
 * the commits say `[skip ci]`, so dispatch `ci-and-deploy.yml` afterwards or the
   new data never reaches the site.
 
-Once a range is committed, `python3 src/calibrate_win_probability.py` can fit
-the time curve, and `config/model_config.json` gets a measured
-`time_exponent` in place of the assumption.
+Once a range is committed, load it (`python3 src/load_drives.py
+data/raw/drives/<year>.csv.gz` per season, which `run_pipeline.py` also does)
+and `python3 src/calibrate_win_probability.py` refits the time curve. The run
+prints both the held-out comparison and the production value, and writes
+everything to `data/processed/win_probability_calibration.csv`.
