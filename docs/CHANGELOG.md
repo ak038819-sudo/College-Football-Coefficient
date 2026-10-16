@@ -1,5 +1,19 @@
 # Site release history
 
+## Unreleased — Live win probability (2026-10-16)
+
+- A game being played now shows a **live win chance** on each team, from the
+  score, the clock and the pregame ratings, in place of a pregame number that
+  stopped being true at kickoff. The pregame chance moves into the tooltip.
+- The model behind it (`src/win_probability.py`) is fitted against every
+  completed game since 1980: a point of margin is worth about 19 Elo points,
+  and a game lands about 16.7 points either side of what the ratings implied.
+  One parameter is assumed rather than fitted — how fast the remaining
+  uncertainty narrows — and `docs/win-probability.md` says so.
+- Drive-by-drive data is now fetched and loaded (`game_drives`), which is both
+  the source for a game page's scoring summary and the in-game states that
+  will fit that last parameter. Run `backfill-drives.yml` to fill the archive.
+
 ## Unreleased — The real 12-team playoff (2026-10-10)
 
 - The playoff is now the real College Football Playoff format: 12 teams, the

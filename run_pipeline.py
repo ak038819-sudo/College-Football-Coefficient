@@ -148,6 +148,14 @@ def main() -> None:
             run([python, "src/load_game_advanced.py", str(gadv_path), "--db", str(DB_PATH)],
                 f"Load per-game advanced stats: {gadv_path.stem.replace('game_advanced_', '')}")
 
+        # Drive-by-drive records: a game page's scoring summary, and the only
+        # source of in-game score-and-clock states for the live win-probability
+        # fit. Display and calibration data -- no rating engine reads it, and a
+        # checkout with no drive archive runs this loop zero times.
+        for drive_path in sorted(Path("data/raw/drives").glob("*.csv.gz")):
+            run([python, "src/load_drives.py", str(drive_path), "--db", str(DB_PATH)],
+                f"Load drives: {drive_path.name.split('.')[0]}")
+
         run(
             [python, "src/patch_known_membership_gaps.py", "--db", str(DB_PATH)],
             "Patch known conference-membership gaps",

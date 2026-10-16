@@ -1043,6 +1043,10 @@
   .live-team .live-right strong { font: 30px/1 var(--font-display); letter-spacing: -.04em; }
   .live-team .live-right .live-odds { color: #ffde91; font: 21px/1 var(--font-display); }
   .live-team .live-right .live-pregame { font: 10px/1.3 var(--font-mono); white-space: nowrap; }
+  /* The live chance replaces the pregame line in the same slot, so it carries
+     the same size and only the weight and colour change: it is the number that
+     is true now, and the pregame figure moves into the tooltip. */
+  .live-team .live-right .live-odds-now { font: 600 11px/1.3 var(--font-mono); white-space: nowrap; color: var(--amber); }
   .live-card .gc-foot { display: flex; justify-content: space-between; gap: 8px; align-items: center;
     padding: 10px 13px; background: #17241f; color: #bec9c2; font: 11px var(--font-mono); }
   .live-card .live-venue { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2049,6 +2053,100 @@ function renderField() {
 function winProbability(ratingA, ratingB, scale, homeField, hosted) {
   const effA = ratingA + (hosted ? homeField : 0);
   return 1 / (1 + Math.pow(10, (ratingB - effA) / scale));
+}
+// ---------------------------------------------------------------------------
+// Live, in-game win probability. Mirrors src/win_probability.py, whose
+// docstring has the model; the fitted parameters arrive in the manifest so the
+// page and the fit cannot drift apart.
+//
+// The Elo gap is recovered from the PREGAME probability the page is already
+// showing rather than from today's ratings. That is what keeps the two numbers
+// on a scorebug consistent: at kickoff this model returns the pregame chance
+// beside it, whether that chance came from the stored pregame export, the
+// historical record, or an estimate off current ratings.
+const LIVE_PERIOD_SECONDS = 900;
+const LIVE_REGULATION_PERIODS = 4;
+const LIVE_REGULATION_SECONDS = LIVE_PERIOD_SECONDS * LIVE_REGULATION_PERIODS;
+function liveWinParams() {
+  const raw = STATIC_MANIFEST.model_params?.live_win_probability;
+  if (!raw) return null;
+  const params = {
+    pointsPerElo: Number(raw.points_per_elo), sigma: Number(raw.sigma),
+    timeExponent: Number(raw.time_exponent), overtimeHome: Number(raw.overtime_home_win),
+    tieHalfWidth: Number(raw.tie_half_width)
+  };
+  // No fallback constants: an incomplete payload means no live number, never a
+  // number computed from a guessed parameter.
+  // The same guards as WinProbabilityParams.validate(): a zero sigma makes every
+  // number 0 or 1, and a zero points_per_elo silently drops the ratings from a
+  // model whose whole point is that it starts from them.
+  const usable = Object.values(params).every(Number.isFinite) && params.sigma > 0 &&
+    params.pointsPerElo > 0 && params.timeExponent > 0 &&
+    params.overtimeHome >= 0 && params.overtimeHome <= 1 && params.tieHalfWidth >= 0;
+  return usable ? params : null;
+}
+// Abramowitz & Stegun 7.1.26: |error| < 1.5e-7, which is five decimal places
+// more than a percentage needs. JavaScript has no erf of its own.
+function erf(x) {
+  const sign = x < 0 ? -1 : 1, t = 1 / (1 + 0.3275911 * Math.abs(x));
+  const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t +
+    0.254829592) * t * Math.exp(-x * x);
+  return sign * y;
+}
+function normalCdf(z) {
+  return 0.5 * (1 + erf(z / Math.SQRT2));
+}
+function liveSecondsRemaining(period, clock) {
+  const quarter = Number(period);
+  if (!Number.isInteger(quarter) || quarter < 1) return null;
+  if (quarter > LIVE_REGULATION_PERIODS) return 0;        // overtime: regulation is spent
+  const seconds = livePeriodClock(clock);
+  if (seconds == null) return null;
+  return (LIVE_REGULATION_PERIODS - quarter) * LIVE_PERIOD_SECONDS +
+    Math.min(seconds, LIVE_PERIOD_SECONDS);
+}
+function livePeriodClock(clock) {
+  if (typeof clock === 'number') return Number.isFinite(clock) && clock >= 0 ? clock : null;
+  if (typeof clock !== 'string') return null;
+  const parts = clock.trim().split(':');
+  if (parts.length < 2 || parts.length > 3 || !parts.every(part => /^\d+$/.test(part))) return null;
+  const values = parts.map(Number);
+  const [hours, minutes, seconds] = values.length === 3 ? values : [0, values[0], values[1]];
+  if (minutes > 59 || seconds > 59) return null;
+  return hours * 3600 + minutes * 60 + seconds;
+}
+// The venue-adjusted Elo gap that produces this pregame probability under the
+// rating engine's own logistic. Inverting it, rather than subtracting two
+// ratings, is what ties the live number to the pregame number on screen.
+function liveEloGap(pHome) {
+  const scale = Number(STATIC_MANIFEST.model_params?.elo?.scale);
+  if (!Number.isFinite(scale) || scale <= 0) return null;
+  if (!Number.isFinite(pHome) || pHome <= 0 || pHome >= 1) return null;
+  return scale * Math.log10(pHome / (1 - pHome));
+}
+function liveWinProbability(pHome, margin, secondsLeft) {
+  const params = liveWinParams();
+  const gap = liveEloGap(pHome);
+  if (!params || gap == null || !Number.isFinite(margin) || !Number.isFinite(secondsLeft)) return null;
+  const left = Math.max(0, Math.min(1, secondsLeft / LIVE_REGULATION_SECONDS));
+  if (left <= 0) return margin > 0 ? 1 : margin < 0 ? 0 : params.overtimeHome;
+  const expected = margin + params.pointsPerElo * gap * left;
+  const spread = params.sigma * Math.pow(left, params.timeExponent);
+  const upper = normalCdf((params.tieHalfWidth - expected) / spread);
+  const lower = normalCdf((-params.tieHalfWidth - expected) / spread);
+  const value = (1 - upper) + (upper - lower) * params.overtimeHome;
+  return Math.max(0, Math.min(1, value));
+}
+// A scoreboard game -> the live chance for each side, or null when the feed
+// does not support one: a scheduled game (whose pregame chance IS the answer),
+// CFBD's 0-0 pregame row, or a game under way with no readable clock.
+function liveChanceFor(g, pHome) {
+  if (!g || (g.status !== 'in_progress' && g.status !== 'completed')) return null;
+  if (!Number.isInteger(g.home?.points) || !Number.isInteger(g.away?.points)) return null;
+  const secondsLeft = g.status === 'completed' ? 0 : liveSecondsRemaining(g.period, g.clock);
+  if (secondsLeft == null) return null;
+  const value = liveWinProbability(pHome, g.home.points - g.away.points, secondsLeft);
+  return value == null ? null : probPct(value);
 }
 function simulateGame(a, b, ratings, scale, homeField, hosted) {
   const pA = winProbability(ratings[a], ratings[b], scale, homeField, hosted);
@@ -4233,13 +4331,16 @@ function liveChange(g, t) {
     (up ? '▲' : '▼') + (historical?.home_elo_change == null ? '≈' : '') +
     Math.abs(delta).toFixed(1) + ')</span>';
 }
-function liveTeam(t, g, pct) {
+function liveTeam(t, g, pct, live) {
   const team = liveTeamId(t);
   const name = team?.name || String(t?.name || 'Unknown team');
   const rating = team && (CURRENT_ELO.get(team.id) || CURRENT_ELO.get(String(team.id)));
   const projected = livePrediction(g);
   const elo = t === g.home ? projected?.homeElo : projected?.awayElo;
   const chance = t === g.home ? pct?.home : pct?.away;
+  // Live only while the game is being played. A final score needs no
+  // probability, and on a scheduled game the pregame chance IS the live one.
+  const liveChance = g.status === 'in_progress' ? (t === g.home ? live?.home : live?.away) : null;
   const logo = pickDatedLogoEntry(DATED_LOGOS, name, liveSeason());
   const brand = TEAM_BRAND_COLORS[name] || '#304250';
   const homeWon = Number.isInteger(g.home?.points) && Number.isInteger(g.away?.points) &&
@@ -4260,19 +4361,33 @@ function liveTeam(t, g, pct) {
     (g.status === 'scheduled'
       ? '<span class="live-odds" title="Pregame win chance">' + (chance == null ? 'N/A' : chance + '%') + '</span>'
       : '<strong>' + (Number.isInteger(t?.points) ? t.points : '—') + '</strong>' +
-        '<span class="live-odds live-pregame" title="Pregame win chance">' +
-        (chance == null ? 'N/A' : chance + '%') + ' pregame</span>') +
+        (liveChance == null
+          ? '<span class="live-odds live-pregame" title="Pregame win chance">' +
+            (chance == null ? 'N/A' : chance + '%') + ' pregame</span>'
+          : '<span class="live-odds live-odds-now" title="Live win chance, from the score, the clock and the pregame ratings' +
+            (chance == null ? '' : ' \u00b7 ' + chance + '% pregame') + '">' +
+            liveOddsText(liveChance) + ' win</span>')) +
     liveChange(g, t) + '</span></div>';
+}
+// A live chance never reaches certainty while a game is being played, so the
+// two ends of the scale say so rather than printing 100% or 0% over a team
+// that can still lose or still win.
+function liveOddsText(pct) {
+  if (pct == null) return 'N/A';
+  if (pct >= 100) return '>99%';
+  if (pct <= 0) return '<1%';
+  return pct + '%';
 }
 function renderLiveCard(g) {
   const p = livePrediction(g), pct = p ? probPct(p.pHome) : null;
+  const live = p ? liveChanceFor(g, p.pHome) : null;
   const venue = g.venue || UPCOMING_BY_ID.get(g.id)?.venue;
   return '<article class="live-card' + (g.status === 'in_progress' ? ' is-live' : '') +
     '" role="link" tabindex="0" data-live-id="' + Number(g.id) +
     '" aria-label="' + esc(String(g.away?.name || 'Away') + ' at ' + String(g.home?.name || 'Home') +
     ', ' + liveLabel(g) + '. Open game') + '"><div class="live-meta"><span class="gbadge ' +
     (g.status === 'completed' ? 'final' : 'upcoming') + '">' + esc(liveLabel(g)) + '</span>' +
-    (g.tv ? '<span class="live-tv">' + esc(g.tv) + '</span>' : '') + '</div>' + liveTeam(g.away, g, pct) + liveTeam(g.home, g, pct) +
+    (g.tv ? '<span class="live-tv">' + esc(g.tv) + '</span>' : '') + '</div>' + liveTeam(g.away, g, pct, live) + liveTeam(g.home, g, pct, live) +
     '<div class="gc-foot"><span class="live-venue"' + (venue ? ' title="' + esc(venue) + '"' : '') + '>' +
     esc(venue || 'Venue unavailable') + '</span><span>Game details &rarr;</span></div></article>';
 }
@@ -5321,6 +5436,7 @@ function renderCoverage() {
 function renderMethodology() {
   const M = STATIC_MANIFEST.model_params || {};
   const E = M.elo || {}, H = M.hybrid || {}, C2 = M.coe2 || {}, V1 = M.coe_v1 || {};
+  const LW = M.live_win_probability || {};
   const PF = M.playoff_format || {};
   const pw = V1.PHASE_WEIGHTS || {};
   const frText = (PF.FIRST_ROUND_PAIRS || []).map(([hi, lo]) => hi + ' v ' + lo).join(', ');
@@ -5334,6 +5450,17 @@ function renderMethodology() {
     '<h3>Live scoreboard</h3><p>Scores from CollegeFootballData.com. ' +
     'Featured games lead by Elo rank, matchup strength and projected closeness. The feed timestamp shows its freshness. ' +
     'Live Elo rankings are an illustrative scenario; published ratings update separately.</p>' +
+    (LW.sigma ? '<p>While a game is being played, each side shows a <b>live win chance</b> in place of the pregame one, ' +
+      'which is in its tooltip. It reads the score and the clock: what is left of the game is treated as a drift of about ' +
+      Number(LW.sigma).toFixed(1) + ' points over a full game, tilted by the pregame rating gap, and that drift narrows as time runs out. ' +
+      'It knows nothing about possession, field position or timeouts, so a tie game with two minutes left reads the same whether ' +
+      'a team has the ball on the opponent\'s 20 or has just punted.</p>' +
+      f('How the live chance is fitted', '<p>Fitted against every completed game since 1980 with a pregame rating: ' +
+        'one point of margin is worth about ' + Math.round(1 / Number(LW.points_per_elo)) + ' Elo points, and a game lands ' +
+        Number(LW.sigma).toFixed(1) + ' points either side of what the ratings implied. A level game at the end of regulation goes to ' +
+        'overtime, which is close to a coin flip (' + Math.round(Number(LW.overtime_home_win) * 100) + '% to the home team over the ' +
+        'games on record). One part is not fitted: how fast the remaining uncertainty narrows is assumed to follow a random walk, ' +
+        'because measuring it needs the score at known moments inside games, which the archive does not yet hold.</p>') : '') +
 
     '<h3>Elo: strength right now</h3><p>Every team carries a rating, starting at ' + E.initial_rating + '. Before each game, the gap between the two ' +
     'ratings (plus a home-field bump for the home team, none at neutral sites) gives each side\'s chance of winning. Afterward, the winner takes points ' +
