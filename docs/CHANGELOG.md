@@ -16,10 +16,21 @@
   disagreeing about one team's schedule would be worse than neither having it.
   **Remaining** takes opponents at their current rating, because a game nobody
   has played has no pregame rating.
-- An opponent this project does not rate contributes nothing to a remaining
-  average rather than being counted at the engine's 1500 prior, and the page
-  says how many such games there are. Counting them would make a schedule full
-  of FCS opponents look average when it is the opposite.
+- An opponent with no rating contributes nothing to a remaining average rather
+  than being counted at the engine's 1500 prior, which would make a soft run
+  look average when it is the opposite.
+- **Remaining counts games against rated teams only, and the page says so.**
+  `fetch_cfbd_games.py` deliberately leaves an upcoming FBS-vs-FCS game out of
+  the schedule file — there is no rating to predict such a game with — so it
+  never reaches `scheduled_games` and cannot be counted here. A team with one
+  of those left has one more game than the table says, and the note states
+  that rather than implying a complete remaining schedule.
+- "Current" means the rating a team would carry into its next game, the whole
+  chain replayed (`predict_upcoming.current_ratings`), not the rating it took
+  into the postseason. The latter is frozen at the end of the regular season
+  and does not exist at all for a team yet to play this year, so using it
+  would leave a preseason table with no remaining column and price a team in
+  a bowl at its November rating.
 - Ranks are within a season, deliberately: Elo is a within-season chain, so a
   1,650 average opponent in 2026 and in 1994 are not the same claim.
 - One file per season (`ui/data/schedule_strength/<season>.js`), loaded when

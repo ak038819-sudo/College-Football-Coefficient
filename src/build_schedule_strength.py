@@ -24,6 +24,15 @@ league:
              no pregame rating for a game nobody has played, so this is the
              best available estimate and it moves as those opponents do.
 
+             "Current" means what predict_upcoming.current_ratings() means:
+             the rating every team would carry into its next game, replayed
+             over every completed game in the database. NOT the rating a team
+             took into the postseason, which is what the playoff selector
+             reads -- that one is frozen at the end of the regular season and
+             does not exist at all for a team yet to play this year, so a
+             preseason table would have no remaining column and a team in a
+             bowl would be priced at its November rating.
+
   FULL       the two pooled by game count, which is the season's schedule as
              it stands today.
 
@@ -41,9 +50,19 @@ What this is not
   reason.
 
 * NOT a count of games this project does not hold. A game against an unrated
-  opponent -- an FCS team -- has no Elo to average, so it is excluded and
-  counted separately. A team whose remaining schedule is all unrated has no
-  remaining number rather than a flattering one.
+  opponent has no Elo to average, so it is excluded and counted separately. A
+  team whose remaining schedule is all unrated has no remaining number rather
+  than a flattering one.
+
+  There is a known limit here, and the page states it rather than papering
+  over it: `fetch_cfbd_games.py` deliberately leaves an UPCOMING FBS-vs-FCS
+  game out of schedule_<year>.csv, because that file feeds the upcoming-game
+  cards and there is no rating to predict such a game with. Those games
+  therefore never reach scheduled_games and cannot be counted here either. So
+  a remaining schedule is the games left against RATED opponents, and a team
+  with an FCS game still to come has one more game than this says. The
+  remaining_unrated counter is still correct for anything that does reach it;
+  it is simply zero on the real archive.
 
 Usage:
     python src/build_schedule_strength.py            # prints the current season
@@ -61,7 +80,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(REPO / "src" / "coefficients"))
 
-from select_cfp_field import load_team_elo  # noqa: E402
+from predict_upcoming import current_ratings, elo_config  # noqa: E402
 
 DEFAULT_DB = REPO / "db" / "league.db"
 
@@ -123,14 +142,29 @@ def played_opponents(conn: sqlite3.Connection) -> dict[tuple[int, int], list[flo
     return played
 
 
+def live_ratings(conn: sqlite3.Connection) -> dict[int, float]:
+    """team_id -> the rating it would carry into its next game, right now.
+
+    This is the whole season's chain replayed, postseason games included, so a
+    team still playing is priced at what it is worth today and a team yet to
+    play this year keeps last season's regressed rating instead of vanishing.
+    """
+    ratings, _, _ = current_ratings(conn, elo_config(), latest_season(conn))
+    return ratings
+
+
+def latest_season(conn: sqlite3.Connection) -> int:
+    row = conn.execute("SELECT MAX(season_year) FROM games").fetchone()
+    return int(row[0]) if row and row[0] is not None else 0
+
+
 def remaining_opponents(conn: sqlite3.Connection, season: int,
                         elo: dict[int, float]) -> tuple[dict[int, list[float]], dict[int, int]]:
     """team_id -> the current Elo of each opponent it has left, plus a count of
     the ones with no rating at all.
 
-    A scheduled opponent this project does not rate (an FCS team, or a
-    first-year program with no games) cannot contribute a number. Averaging it
-    in at the engine's 1500 prior would quietly make such a schedule look
+    A scheduled opponent with no rating cannot contribute a number. Averaging
+    it in at the engine's 1500 prior would quietly make such a schedule look
     average when it is the opposite, so it is excluded and counted.
     """
     if not conn.execute(
@@ -151,10 +185,20 @@ def remaining_opponents(conn: sqlite3.Connection, season: int,
 
 
 def build_season(conn: sqlite3.Connection, season: int,
-                 played: dict[tuple[int, int], list[float]] | None = None) -> dict:
-    """One season's schedule-strength table, teams and conferences."""
+                 played: dict[tuple[int, int], list[float]] | None = None,
+                 elo: dict[int, float] | None = None) -> dict:
+    """One season's schedule-strength table, teams and conferences.
+
+    `elo` is the live rating map, passed in by a caller measuring several
+    seasons so the Elo chain is replayed once rather than once per season. It
+    is only read for a season that still has games in it, which is why a
+    finished season costs nothing.
+    """
     played = played if played is not None else played_opponents(conn)
-    elo = load_team_elo(conn, season, by_id=True)
+    if scheduled_games(conn, season):
+        elo = live_ratings(conn) if elo is None else elo
+    else:
+        elo = {}
     remaining, unrated = remaining_opponents(conn, season, elo)
     names = {tid: name for tid, name in conn.execute("SELECT team_id, team_name FROM teams")}
     membership = {}
@@ -246,7 +290,9 @@ def build_report(conn: sqlite3.Connection, seasons: list[int] | None = None) -> 
     if not played:
         return None
     available = seasons if seasons is not None else sorted({s for (_, s) in played}, reverse=True)
-    return {"seasons": {str(season): build_season(conn, season, played)
+    # Replayed once for the whole report, not once per season.
+    elo = live_ratings(conn)
+    return {"seasons": {str(season): build_season(conn, season, played, elo)
                         for season in available}}
 
 

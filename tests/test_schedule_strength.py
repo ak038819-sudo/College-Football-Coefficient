@@ -23,6 +23,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src" / "coefficien
 import build_schedule_strength as ss  # noqa: E402
 
 
+# The ratings a live chain would hold for the fixture's four teams. Passed in
+# explicitly by the arithmetic tests below so each average is a round number
+# that can be asserted as a literal: a test comparing against whatever the Elo
+# engine happened to produce would pass whatever the maths did. Which rating
+# source is the right one is a separate question, tested on its own in
+# TestWhichRatingCountsAsCurrent.
+ELO_TODAY = {1: 1540.0, 2: 1420.0, 3: 1580.0, 4: 1280.0}
+
+
 def _league(tmp_path, scheduled=True):
     """Four rated teams, one season played in part, with games still to come.
 
@@ -35,7 +44,8 @@ def _league(tmp_path, scheduled=True):
         CREATE TABLE games (game_id INTEGER PRIMARY KEY, season_year INTEGER,
                             game_date TEXT, game_phase TEXT,
                             home_team_id INTEGER, away_team_id INTEGER,
-                            home_score INTEGER, away_score INTEGER);
+                            home_score INTEGER, away_score INTEGER,
+                            neutral_site INTEGER DEFAULT 0, went_ot INTEGER DEFAULT 0);
         CREATE TABLE elo_game_history (game_id INTEGER, team_id INTEGER,
                                        pregame_elo REAL, opponent_pregame_elo REAL,
                                        postgame_elo REAL);
@@ -44,7 +54,8 @@ def _league(tmp_path, scheduled=True):
         CREATE TABLE team_membership_by_season (team_id INTEGER, season_year INTEGER,
                                                 conference_real TEXT);
         INSERT INTO teams VALUES (1, 'Alpha'), (2, 'Bravo'), (3, 'Charlie'), (4, 'Delta');
-        INSERT INTO games VALUES
+        INSERT INTO games (game_id, season_year, game_date, game_phase,
+                           home_team_id, away_team_id, home_score, away_score) VALUES
             (10, 2026, '2026-09-05', 'regular', 1, 2, 30, 10),
             (11, 2026, '2026-09-12', 'regular', 1, 3, 20, 17),
             (12, 2026, '2026-09-19', 'regular', 4, 2, 7, 35);
@@ -112,14 +123,14 @@ class TestTheRemainingNumber:
     def test_it_uses_the_opponents_rating_today(self, tmp_path):
         """There is no pregame rating for a game nobody has played, so the
         current one is the only honest estimate. Alpha has Delta (1280) left."""
-        table = ss.build_season(_league(tmp_path), 2026)
+        table = ss.build_season(_league(tmp_path), 2026, elo=ELO_TODAY)
         remaining = {t["team"]: t["remaining_sos"] for t in table["teams"]}
         assert remaining["Alpha"] == pytest.approx(1280.0)
         # Delta has Alpha (1540) and Bravo (1420) left: mean 1480.
         assert remaining["Delta"] == pytest.approx(1480.0)
 
     def test_a_team_with_nothing_left_has_no_remaining_number(self, tmp_path):
-        table = ss.build_season(_league(tmp_path), 2026)
+        table = ss.build_season(_league(tmp_path), 2026, elo=ELO_TODAY)
         charlie = next(t for t in table["teams"] if t["team"] == "Charlie")
         assert charlie["remaining_games"] == 0
         assert charlie["remaining_sos"] is None
@@ -132,7 +143,7 @@ class TestTheRemainingNumber:
         conn = _league(tmp_path)
         conn.execute("INSERT INTO scheduled_games VALUES (22, 2026, 1, 99)")
         conn.commit()
-        table = ss.build_season(conn, 2026)
+        table = ss.build_season(conn, 2026, elo=ELO_TODAY)
         alpha = next(t for t in table["teams"] if t["team"] == "Alpha")
         # Still only Delta's 1280, NOT the mean of 1280 and 1500.
         assert alpha["remaining_sos"] == pytest.approx(1280.0)
@@ -154,13 +165,13 @@ class TestTheFullNumber:
         """Alpha has played two games (1800, 1600) and has one left (1280), so
         the full average is 1560. Averaging 1700 and 1280 would give 1490 and
         would weight one remaining game as heavily as two played ones."""
-        table = ss.build_season(_league(tmp_path), 2026)
+        table = ss.build_season(_league(tmp_path), 2026, elo=ELO_TODAY)
         alpha = next(t for t in table["teams"] if t["team"] == "Alpha")
         assert alpha["full_sos"] == pytest.approx((1800 + 1600 + 1280) / 3)
         assert alpha["full_sos"] != pytest.approx((1700 + 1280) / 2)
 
     def test_the_table_is_ordered_by_the_full_schedule(self, tmp_path):
-        table = ss.build_season(_league(tmp_path), 2026)
+        table = ss.build_season(_league(tmp_path), 2026, elo=ELO_TODAY)
         values = [t["full_sos"] for t in table["teams"]]
         assert values == sorted(values, reverse=True)
 
@@ -168,14 +179,14 @@ class TestTheFullNumber:
         """Each scheduled game appears on both teams, so summing per-team
         counts gives team-games. Publishing that as a game count would double
         the season that is left."""
-        table = ss.build_season(_league(tmp_path), 2026)
+        table = ss.build_season(_league(tmp_path), 2026, elo=ELO_TODAY)
         assert table["remaining_games"] == 2        # two scheduled games
         assert table["remaining_team_games"] == 4   # each on two teams
 
 
 class TestTheConferenceRollup:
     def test_each_conference_averages_its_own_members(self, tmp_path):
-        table = ss.build_season(_league(tmp_path), 2026)
+        table = ss.build_season(_league(tmp_path), 2026, elo=ELO_TODAY)
         rows = {c["conference"]: c for c in table["conferences"]}
         # Big is Alpha (1700) and Bravo (1400).
         assert rows["Big"]["played_sos"] == pytest.approx(1550.0)
@@ -188,11 +199,64 @@ class TestTheConferenceRollup:
         has the tougher one left, which puts Small ahead on the full figure
         (1487 against 1460). Ordering by the played column would reverse them,
         and the column the table is sorted by is the one it is headed with."""
-        table = ss.build_season(_league(tmp_path), 2026)
+        table = ss.build_season(_league(tmp_path), 2026, elo=ELO_TODAY)
         rows = {c["conference"]: c for c in table["conferences"]}
         assert rows["Big"]["played_sos"] > rows["Small"]["played_sos"]
         assert rows["Small"]["full_sos"] > rows["Big"]["full_sos"]
         assert [c["conference"] for c in table["conferences"]] == ["Small", "Big"]
+
+
+class TestWhichRatingCountsAsCurrent:
+    """The remaining column promises the opponents' ratings TODAY.
+
+    The playoff selector's load_team_elo() reads the rating a team took into
+    the postseason, which is a different thing in two cases that both reach
+    this page: a team that has not played yet this season has no such rating
+    at all, and a team playing in the postseason is frozen at its November
+    one. Both would be wrong here.
+    """
+
+    def test_a_team_yet_to_play_this_season_is_still_a_rated_opponent(self, tmp_path):
+        """In week zero nobody has a rating "entering the postseason", so the
+        whole remaining column would be empty -- a preseason table of dashes.
+        The live chain carries last season's rating forward instead."""
+        conn = _league(tmp_path)
+        # Move every game into 2025 and leave 2026 entirely unplayed.
+        conn.execute("UPDATE games SET season_year = 2025, game_date = "
+                     "REPLACE(game_date, '2026', '2025')")
+        conn.execute("DELETE FROM team_membership_by_season")
+        conn.commit()
+        elo = ss.live_ratings(conn)
+        assert len(elo) == 4, "every team that has ever played keeps a rating"
+        table = ss.build_season(conn, 2026)
+        alpha = next(t for t in table["teams"] if t["team"] == "Alpha")
+        assert alpha["played_games"] == 0
+        assert alpha["played_sos"] is None
+        # The point: a remaining number EXISTS before the season starts.
+        assert alpha["remaining_sos"] is not None
+        assert alpha["remaining_unrated"] == 0
+
+    def test_a_postseason_result_moves_the_rating_the_remaining_column_uses(self, tmp_path):
+        """A team in a bowl is priced at what it is worth today, not at what it
+        was worth in November. load_team_elo() would ignore this game."""
+        conn = _league(tmp_path)
+        before = ss.live_ratings(conn)[2]
+        conn.execute("INSERT INTO games (game_id, season_year, game_date, game_phase, "
+                     "home_team_id, away_team_id, home_score, away_score) "
+                     "VALUES (13, 2026, '2026-12-28', 'postseason', 2, 3, 3, 45)")
+        conn.commit()
+        after = ss.live_ratings(conn)[2]
+        assert after < before, "Bravo lost a bowl by 42 and must be rated lower for it"
+
+    def test_a_finished_season_needs_no_rating_replay_at_all(self, tmp_path, monkeypatch):
+        """Replaying the Elo chain costs real time, and a season with nothing
+        left to play never reads it. 47 seasons would otherwise mean 47
+        replays on every export."""
+        conn = _league(tmp_path, scheduled=False)
+        called = []
+        monkeypatch.setattr(ss, "live_ratings", lambda c: called.append(1) or {})
+        ss.build_season(conn, 2026)
+        assert called == []
 
 
 class TestTheReport:

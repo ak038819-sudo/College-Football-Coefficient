@@ -151,16 +151,25 @@ test('a live season explains why the two columns are worth reading together', ()
   assert.match(html, /hard games and one that still has them/);
 });
 
-test('unrated remaining opponents are reported rather than silently dropped', () => {
+test('a live season states what the remaining column leaves out', () => {
+  // An upcoming FBS-vs-FCS game is deliberately absent from this project's
+  // schedule data (fetch_cfbd_games.py keeps only BOTH_FBS rows), so it cannot
+  // be counted here. Saying nothing would overstate every remaining schedule
+  // that has one, and the earlier draft of this page promised a count of them
+  // that the real archive can never produce.
   const {html} = view(SEASON);
-  assert.match(html, /2 remaining games against an opponent this project does not rate/);
+  assert.match(html, /against teams this project rates/);
+  assert.match(html, /one more game than this says/);
   assert.match(html, /1500 prior/);
 });
 
-test('no unrated remaining opponents means no note about them', () => {
-  const clean = {...SEASON, teams: SEASON.teams.map(t => ({...t, remaining_unrated: 0}))};
-  const {html} = view(clean);
+test('a finished season does not warn about a remaining schedule it has not got', () => {
+  const done = {...SEASON, remaining_games: 0,
+    teams: SEASON.teams.map(t => ({...t, remaining_games: 0, remaining_sos: null,
+      remaining_rank: null, full_sos: t.played_sos, full_rank: t.played_rank}))};
+  const {html} = view(done);
   assert.doesNotMatch(html, /1500 prior/);
+  assert.doesNotMatch(html, /one more game than this says/);
 });
 
 test('the conference table averages members and tolerates a missing half', () => {
