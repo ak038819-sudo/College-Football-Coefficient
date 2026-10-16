@@ -34,7 +34,7 @@ COLUMNS = [
     "game_id", "provider", "season_year", "season_type", "week",
     "spread", "market_home_margin", "spread_open", "market_home_open",
     "over_under", "over_under_open", "home_moneyline", "away_moneyline",
-    "formatted_spread",
+    "formatted_spread", "snapshot_home_score", "snapshot_away_score",
 ]
 
 
@@ -91,6 +91,10 @@ def load_lines(conn: sqlite3.Connection, csv_path: str) -> dict:
     statement = f"INSERT OR REPLACE INTO game_lines ({', '.join(COLUMNS)}) VALUES ({placeholders})"
 
     loaded, skipped_games, unpriced, providers = 0, set(), 0, set()
+    # A snapshot with no result on it was taken before the game ended, so its
+    # spread is not a closing line. Counted here and excluded by whoever
+    # measures against the close -- see sql/line_tables.sql.
+    pre_kickoff = 0
     for row in rows:
         game_id = _int(row.get("game_id"))
         season = _int(row.get("season_year"))
@@ -111,11 +115,15 @@ def load_lines(conn: sqlite3.Connection, csv_path: str) -> dict:
             _float(row.get("over_under")), _float(row.get("over_under_open")),
             _int(row.get("home_moneyline")), _int(row.get("away_moneyline")),
             (row.get("formatted_spread") or None),
+            _int(row.get("home_score")), _int(row.get("away_score")),
         ])
         loaded += 1
+        if _int(row.get("home_score")) is None or _int(row.get("away_score")) is None:
+            pre_kickoff += 1
     conn.commit()
     return {"loaded": loaded, "skipped_games": sorted(skipped_games),
-            "unpriced": unpriced, "providers": sorted(providers)}
+            "unpriced": unpriced, "providers": sorted(providers),
+            "pre_kickoff": pre_kickoff}
 
 
 def main(argv=None) -> None:
@@ -133,6 +141,9 @@ def main(argv=None) -> None:
         message += f" from {len(stats['providers'])} providers ({', '.join(stats['providers'][:6])})"
     if stats["unpriced"]:
         message += f" ({stats['unpriced']} with no spread)"
+    if stats["pre_kickoff"]:
+        message += (f" ({stats['pre_kickoff']} captured before the game ended, "
+                    f"not closing lines)")
     if stats["skipped_games"]:
         message += f" ({len(stats['skipped_games'])} games not in the games table, skipped)"
     print(message)

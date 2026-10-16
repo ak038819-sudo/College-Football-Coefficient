@@ -1,5 +1,35 @@
 # Site release history
 
+## Unreleased — The ratings against the market (2026-10-16)
+
+- The Track Record page now answers the question the baselines never could:
+  how the ratings do against the **closing betting line**, game by game.
+  Average margin miss for both sides, the model's record against the spread,
+  who called the winner on the games where the two disagreed, and both Brier
+  scores on one scale.
+- **The market wins, and the page says so.** Over 10,151 games, 2013-2026, the
+  ratings miss a margin by 13.32 points on average and the closing line by
+  12.35; Brier 0.1846 against 0.1712. Read as a pick the ratings go
+  4925–5015–211 against the spread (49.5%, where 52.4% is break-even), and on
+  the 1,408 games where the two disagreed about the winner outright the
+  ratings were right 41.4% of the time. That last number is the honest one:
+  when this model disagrees with the market, the market is usually right.
+- Closing lines are archived from CFBD (`game_lines`, one row per game per
+  provider), 2013-2026 — every FBS game of every one of those seasons has a
+  line. Nothing reads them as a rating input and nothing will — a benchmark
+  the model can see is not a benchmark.
+- Only **closing** lines are scored. CFBD serves the current number before
+  kickoff and the closing one after, in the same column, so a mid-season file
+  carries both; the measurement requires the snapshot's own record of the
+  result, which a pre-kickoff capture cannot have. The current season's lines
+  are also re-fetched on every deploy, beside the games.
+- The page is honest about what the comparison is not: a closing line is not
+  available when a bet would be placed, only priced games count (the season
+  table says what share of each season that was), and break-even at the usual
+  price is 52.4%, not 50%.
+- See `docs/model-vs-market.md`, including the sign convention — CFBD writes a
+  home favourite as −7 and every margin here runs the other way.
+
 ## Unreleased — Live win probability (2026-10-16)
 
 - A game being played now shows a **live win chance** on each team, from the

@@ -10,18 +10,20 @@
 # reads game_lines -- deliberately, since a market number that leaked into a
 # rating would make the comparison meaningless.
 #
-# CFBD has lines back to the mid-1980s for some games and near-complete
-# coverage from about 2013. A season it has none for prints "no lines" and
-# leaves any existing file alone; only a failed request stops the run.
+# CFBD's line archive starts in 2013. Asked for 1979-2012 it answers with an
+# empty list rather than an error, so those seasons are not a failure: the
+# fetcher prints "no lines", writes nothing, and the loop moves on. The default
+# range therefore starts at 2013; an earlier start_year is allowed and will
+# simply print "no lines" until it reaches 2013.
 name: Backfill betting lines
 
 on:
   workflow_dispatch:
     inputs:
       start_year:
-        description: "First season to fetch"
+        description: "First season to fetch (CFBD has no lines before 2013)"
         required: true
-        default: "1980"
+        default: "2013"
       end_year:
         description: "Last season to fetch"
         required: true
@@ -75,13 +77,19 @@ jobs:
               echo "::error::Season $year failed to fetch. Seasons before it are committed; re-run this workflow from $year to resume."
               exit 1
             fi
-            # A season CFBD has no lines for writes no file, and
-            # publish_to_main.sh with nothing to commit is a no-op, so this
-            # stays a single checked step either way.
-            if ! scripts/publish_to_main.sh "Archive $year betting lines [skip ci]" data/raw/lines/; then
-              echo "::endgroup::"
-              echo "::error::Could not publish season $year. Nothing was published for it; re-run this workflow from $year."
-              exit 1
+            # A season CFBD has no lines for writes no file at all, and on a
+            # checkout with no line archive yet that leaves data/raw/lines/
+            # missing entirely -- `git add` on a path that does not exist is a
+            # fatal error, not a no-op, which is how run 38869684863 died on
+            # 1980 and published nothing. Publish only what actually landed.
+            if [ -f "data/raw/lines/$year.csv.gz" ]; then
+              if ! scripts/publish_to_main.sh "Archive $year betting lines [skip ci]" "data/raw/lines/$year.csv.gz"; then
+                echo "::endgroup::"
+                echo "::error::Could not publish season $year. Nothing was published for it; re-run this workflow from $year."
+                exit 1
+              fi
+            else
+              echo "No file for $year; nothing to publish."
             fi
             echo "::endgroup::"
           done
@@ -95,6 +103,9 @@ jobs:
           import csv, gzip, pathlib
           directory = pathlib.Path('data/raw/lines')
           total_lines = total_games = size = 0
+          if not directory.is_dir():
+              print('No line archive on this checkout.')
+              raise SystemExit(0)
           for path in sorted(directory.glob('*.csv.gz')):
               with gzip.open(path, 'rt', newline='', encoding='utf-8') as fh:
                   rows = list(csv.DictReader(fh))

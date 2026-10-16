@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import csv
 import gzip
+import hashlib
 import sqlite3
+import time
 
 import pytest
 
@@ -131,6 +133,26 @@ class TestTheFetcher:
             rows = list(csv.DictReader(fh))
         assert len(rows) == 5
 
+    def test_the_same_rows_written_twice_are_the_same_bytes(self, monkeypatch, tmp_path):
+        """gzip stamps the current time into its header unless told not to, so
+        re-fetching a season that has not changed would produce a different
+        file and the backfill would commit a "change" for every season in its
+        range. mtime=0 is what makes a re-fetch the no-op it is meant to be."""
+        monkeypatch.setattr(fl.cfbd_http, "get_json",
+                            lambda url, params=None, **k:
+                            PAYLOAD if params["seasonType"] == "regular" else [])
+        path = tmp_path / "2024.csv.gz"
+        assert fl.write_lines(2024, {}, out_dir=tmp_path) == "written"
+        first = hashlib.sha256(path.read_bytes()).hexdigest()
+        # A full second apart, so a header timestamp would have to differ.
+        now = time.time()
+        monkeypatch.setattr(time, "time", lambda: now + 5.0)
+        assert fl.write_lines(2024, {}, out_dir=tmp_path) == "written"
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == first
+        # And it is still a readable archive, not an empty deterministic one.
+        with gzip.open(path, "rt", encoding="utf-8") as fh:
+            assert len(list(csv.DictReader(fh))) == 5
+
 
 class TestTheSign:
     """The one conversion that decides whether the comparison means anything."""
@@ -201,6 +223,25 @@ class TestTheLoader:
         assert stats["providers"] == ["Bovada", "consensus"]
         assert conn.execute(
             "SELECT COUNT(*) FROM game_lines WHERE game_id = 101").fetchone()[0] == 2
+
+    def test_the_snapshots_own_record_of_the_result_is_stored(self, tmp_path):
+        """This is what says whether a spread is a CLOSING line. CFBD serves
+        the current number before kickoff and the closing one afterwards, in
+        the same column, so the only thing separating them is whether the
+        snapshot already knew the score."""
+        conn, path = _league(tmp_path)
+        stats = load_lines(conn, path)
+        stored = {r[0]: (r[1], r[2]) for r in conn.execute(
+            "SELECT game_id, snapshot_home_score, snapshot_away_score "
+            "FROM game_lines WHERE provider = 'consensus'")}
+        assert stored[101] == (31, 17)          # captured after the final
+        assert stored[103] == (None, None)      # captured before the game ended
+        assert stored[104] == (None, None)
+        assert stats["pre_kickoff"] == 2
+        # And they are NOT a source of scores: the games table holds 103 as a
+        # 20-20 tie, which the snapshot does not know about.
+        assert conn.execute("SELECT home_score, away_score FROM games WHERE game_id = 103"
+                            ).fetchone() == (20, 20)
 
     def test_a_line_for_a_game_this_project_does_not_hold_is_skipped(self, tmp_path):
         conn, path = _league(tmp_path)
