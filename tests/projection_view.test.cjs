@@ -314,6 +314,24 @@ test('the market season table carries how much of each season was priced', () =>
   assert.match(seasons, /92%/);     // 700 of 760
 });
 
+test('the season note says whether a thinly priced season is in the table', () => {
+  // The fixture's seasons are priced 92%, so the caution has to appear...
+  const thin = accuracyContext(ACCURACY, MARKET).render();
+  assert.match(thin, /Treat the 2 seasons under 95% as indicative/);
+  assert.doesNotMatch(thin, /a number on every game/);
+  // ...and must NOT appear when the archive prices every game, which is what
+  // 2013-2026 actually looks like. A hardcoded sentence either way would be
+  // wrong for one of these two archives.
+  const full = {
+    ...MARKET,
+    coverage: MARKET.coverage.map(c => ({...c, priced: c.games, share: 1})),
+  };
+  const whole = accuracyContext(ACCURACY, full).render();
+  assert.match(whole, /a number on every game of every season/);
+  assert.doesNotMatch(whole, /as indicative/);
+  assert.match(whole, /100%/);
+});
+
 test('no line archive means no market section at all, not an empty one', () => {
   const ctx = accuracyContext(ACCURACY, undefined);
   assert.equal(ctx.market(), '');

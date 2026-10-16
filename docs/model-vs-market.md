@@ -67,6 +67,36 @@ probabilities it never implied and then score it on them. The report measures
 the root mean square error of the market's own margins on the same games and
 uses that width, publishing it as `market_sigma`.
 
+## What it found
+
+Measured on 2026-10-16 over the whole archive, 10,151 priced games, 2013-2026:
+
+| | This model | Closing line |
+| --- | --- | --- |
+| Average margin miss (MAE) | 13.32 | **12.35** |
+| Big misses (RMSE) | 16.86 | **15.68** |
+| Lean (signed) | +0.63 | −0.07 |
+| Brier | 0.1846 | **0.1712** |
+
+Against the spread: **4925–5015–211**, a 49.5% hit rate on the games that were
+not a push, against the 52.38% a bettor needs at −110. On the 1,408 games where
+the two disagreed about who would win outright, the ratings called **41.4%**.
+
+The market wins every comparison, which is the expected result and the reason
+the comparison is worth publishing. Two things in it are worth more than the
+headline:
+
+* **The gap is small and stable.** Just under a point of margin a game, in
+  every season of the archive (the model's MAE runs 12.71 to 13.85, the
+  market's 11.47 to 13.05). A rating built from scores alone, with no injury
+  report, no line movement and no money at stake, lands within a point a game
+  of the sharpest consensus in sport.
+* **The disagreements are where it loses.** 41.4% is well below a coin flip,
+  so the model's disagreements with the line are not an edge — they are mostly
+  the model being wrong. That is the single most useful thing on the page, and
+  the reason the straight-up figure is reported on the disagreements alone
+  rather than over every game, where the two agree far too often to separate.
+
 ## What this cannot claim
 
 * **A closing line is not available when a bet would be placed.** Every figure

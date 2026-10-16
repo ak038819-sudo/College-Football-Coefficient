@@ -5477,8 +5477,17 @@ function renderMarketSeasons() {
   const coverage = {};
   (MARKET.coverage || []).forEach(c => { coverage[c.season] = c; });
   let html = '<div class="panel"><h2 class="section-title">Against the line, season by season</h2>';
-  html += '<p class="section-note">Newest first. The priced column is how much of the season the ' +
-    'market covered: an early season with a handful of games is a curiosity, not evidence.</p>';
+  // Whether every season is fully priced is a fact about the archive, not a
+  // sentence to hardcode: widen it to a thin season and this has to change.
+  const thin = rows.filter(r => (coverage[r.season] || {}).share != null &&
+    coverage[r.season].share < 0.95);
+  html += '<p class="section-note">Newest first. The priced column is how much of each season the ' +
+    'market covered, and it is there so a thin season cannot be read as evidence. ' +
+    (thin.length
+      ? 'Treat the ' + thin.length + (thin.length === 1 ? ' season' : ' seasons') +
+        ' under 95% as indicative rather than settled.'
+      : 'On this archive the market put a number on every game of every season.') +
+    ' The current season counts only the games played so far.</p>';
   html += '<table class="rank-table"><thead><tr><th class="num">Season</th>' +
     '<th class="num">Priced</th><th class="num">Model miss</th><th class="num">Line miss</th>' +
     '<th class="num">Against the spread</th><th class="num">Model Brier</th>' +

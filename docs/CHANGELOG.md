@@ -7,9 +7,17 @@
   Average margin miss for both sides, the model's record against the spread,
   who called the winner on the games where the two disagreed, and both Brier
   scores on one scale.
+- **The market wins, and the page says so.** Over 10,151 games, 2013-2026, the
+  ratings miss a margin by 13.32 points on average and the closing line by
+  12.35; Brier 0.1846 against 0.1712. Read as a pick the ratings go
+  4925–5015–211 against the spread (49.5%, where 52.4% is break-even), and on
+  the 1,408 games where the two disagreed about the winner outright the
+  ratings were right 41.4% of the time. That last number is the honest one:
+  when this model disagrees with the market, the market is usually right.
 - Closing lines are archived from CFBD (`game_lines`, one row per game per
-  provider). Nothing reads them as a rating input and nothing will — a
-  benchmark the model can see is not a benchmark.
+  provider), 2013-2026 — every FBS game of every one of those seasons has a
+  line. Nothing reads them as a rating input and nothing will — a benchmark
+  the model can see is not a benchmark.
 - The page is honest about what the comparison is not: a closing line is not
   available when a bet would be placed, only priced games count (the season
   table says what share of each season that was), and break-even at the usual
