@@ -5466,8 +5466,9 @@ function renderMethodology() {
         'one point of margin is worth about ' + Math.round(1 / Number(LW.points_per_elo)) + ' Elo points, and a game lands ' +
         Number(LW.sigma).toFixed(1) + ' points either side of what the ratings implied. A level game at the end of regulation goes to ' +
         'overtime, which is close to a coin flip (' + Math.round(Number(LW.overtime_home_win) * 100) + '% to the home team over the ' +
-        'games on record). One part is not fitted: how fast the remaining uncertainty narrows is assumed to follow a random walk, ' +
-        'because measuring it needs the score at known moments inside games, which the archive does not yet hold.</p>') : '') +
+        'games on record). How fast the remaining uncertainty narrows is measured too, on the score at every drive boundary of ' +
+        'every game since 2001: it narrows a little more slowly than a plain random walk, which is another way of saying that ' +
+        'the last few minutes swing more per second than the first few do.</p>') : '') +
 
     '<h3>Elo: strength right now</h3><p>Every team carries a rating, starting at ' + E.initial_rating + '. Before each game, the gap between the two ' +
     'ratings (plus a home-field bump for the home team, none at neutral sites) gives each side\'s chance of winning. Afterward, the winner takes points ' +
@@ -6703,6 +6704,90 @@ function loadPlayerArchive(season, gameId) {
   return Promise.all(wanted.map(loadDataScript))
     .then(() => (window.__CFB_PLAYERS__ || {})[season] || {});
 }
+// Drive-by-drive records for one game: the scoring summary, and the drive list
+// behind it. Sharded on the game id exactly as the box scores are, so a game
+// page asks for one drive shard and one box-score shard and nothing else.
+function driveArchiveEntry(season) {
+  const entry = (STATIC_MANIFEST.drives || {})[String(season)];
+  return entry && entry.files ? entry : null;
+}
+function loadDriveArchive(season, gameId) {
+  const entry = driveArchiveEntry(season);
+  if (!entry) return Promise.resolve([]);
+  const file = entry.files[String(boxScoreShard(gameId, entry.shards))];
+  if (!file) return Promise.resolve([]);
+  // Read the global only after the script resolves: the shard merges into it.
+  return loadDataScript(file)
+    .then(() => ((window.__CFB_DRIVES__ || {})[season] || {})[String(gameId)] || []);
+}
+// The exporter ships one array per drive plus the field order, so the page
+// never carries a copy of that order and the two cannot drift apart.
+function driveObjects(rows) {
+  const fields = STATIC_MANIFEST.drive_fields || [];
+  if (!fields.length) return [];
+  return (rows || []).map(row => Object.fromEntries(fields.map((f, i) => [f, row[i]])));
+}
+function driveClock(period, clock) {
+  if (period == null || !Number.isInteger(Number(period))) return '';
+  const label = Number(period) > 4 ? 'OT' + (Number(period) - 4 > 1 ? Number(period) - 4 : '') : 'Q' + period;
+  // `clock == null` BEFORE coercing: Number(null) is 0, so a drive CFBD never
+  // clocked would otherwise read as the period expiring at 0:00.
+  if (clock == null || !Number.isFinite(Number(clock))) return label;
+  const seconds = Math.max(0, Number(clock));
+  return label + ' ' + Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+}
+// A drive scored when the scoreboard moved across it. Read from the SCORE, not
+// from which team had the ball: a pick six or a safety puts points on the
+// defence's side, and crediting the offence would name the wrong team.
+function scoringDrives(drives) {
+  const out = [];
+  let home = 0, away = 0;
+  for (const drive of drives) {
+    if (drive.home_score == null || drive.away_score == null) continue;
+    const h = Number(drive.home_score), a = Number(drive.away_score);
+    // Again Number(null) is 0: a drive with no recorded score would read as
+    // 0-0 and invent a swing back to level and another one away from it.
+    if (!Number.isFinite(h) || !Number.isFinite(a)) continue;
+    if (h !== home || a !== away) out.push({...drive, home_points: h - home, away_points: a - away});
+    home = h; away = a;
+  }
+  return out;
+}
+function gameDrivesPanel(drives, an, hn) {
+  if (!drives.length) return '';
+  const scoring = scoringDrives(drives);
+  const teamOf = drive => drive.home_offense === 1 ? hn : an;
+  const scoreCell = drive => esc(String(drive.away_score)) + '&ndash;' + esc(String(drive.home_score));
+  const scoringRows = scoring.map(drive => {
+    const scored = drive.home_points > 0 ? hn : an;
+    const points = Math.max(drive.home_points, drive.away_points);
+    return '<tr><td>' + esc(driveClock(drive.end_period, drive.end_clock)) + '</td>' +
+      '<td>' + esc(scored) + '</td><td>' + esc(String(drive.result || '')) + '</td>' +
+      '<td class="num">' + points + '</td><td class="num">' + scoreCell(drive) + '</td></tr>';
+  }).join('');
+  const driveRows = drives.map(drive =>
+    '<tr><td>' + esc(driveClock(drive.start_period, drive.start_clock)) + '</td>' +
+    '<td>' + esc(teamOf(drive)) + '</td><td>' + esc(String(drive.result || '')) + '</td>' +
+    '<td class="num">' + (drive.plays == null ? '&mdash;' : drive.plays) + '</td>' +
+    '<td class="num">' + (drive.yards == null ? '&mdash;' : drive.yards) + '</td>' +
+    '<td class="num">' + scoreCell(drive) + '</td></tr>').join('');
+  return '<div class="panel" id="gp-drives"><h2 class="section-title">Scoring summary</h2>' +
+    (scoring.length
+      ? '<div class="table-scroll" tabindex="0" role="region" aria-label="Scoring drives">' +
+        '<table class="gp-table"><thead><tr><th>Clock</th><th>Team</th><th>Drive</th>' +
+        '<th class="num">Pts</th><th class="num">' + esc(an) + '&ndash;' + esc(hn) + '</th></tr></thead>' +
+        '<tbody>' + scoringRows + '</tbody></table></div>'
+      : '<p class="empty-note">No points were scored on any recorded drive.</p>') +
+    '<details class="help"><summary>All ' + drives.length + ' drives</summary>' +
+    '<div class="table-scroll" tabindex="0" role="region" aria-label="Every drive">' +
+    '<table class="gp-table"><thead><tr><th>Start</th><th>Team</th><th>Result</th>' +
+    '<th class="num">Plays</th><th class="num">Yards</th><th class="num">' +
+    esc(an) + '&ndash;' + esc(hn) + '</th></tr></thead><tbody>' + driveRows +
+    '</tbody></table></div></details>' +
+    '<p class="section-note">Drives as CollegeFootballData recorded them. The score is the score ' +
+    'after each drive, away first. Points are credited by the scoreboard, so a defensive ' +
+    'touchdown counts for the team that scored it rather than the team with the ball.</p></div>';
+}
 // The story uses recorded game values; a missing stat never becomes a zero or a claimed edge.
 function gameStory(g, d, season, an, hn) {
   const tie = g.completed && g.home_score === g.away_score;
@@ -6742,6 +6827,7 @@ function gameStory(g, d, season, an, hn) {
     '<nav class="story-links" aria-label="Explore this game">' +
     (g.stadium_id != null && g.stadium ? '<a href="' + esc(stadiumHref(g.stadium_id)) + '">Explore the stadium →</a>' : '') +
     (edge ? '<a href="#gp-efficiency">Efficiency details →</a>' : '') +
+    (g.completed && driveArchiveEntry(season) ? '<a id="story-drives-link" href="#gp-drives">Scoring summary →</a>' : '') +
     (g.completed ? '<a href="#gp-players">Player box score →</a>' : '') +
     '<a href="#gp-series">Series history →</a></nav></section>';
 }
@@ -6945,6 +7031,7 @@ function hydrateGamePage(version) {
         '<div class="gp-fact"><b>Teams</b>' + (away ? teamLink(an, 'xs', season) : esc(an)) + ' ' + (home ? teamLink(hn, 'xs', season) : esc(hn)) + '</div></div></div>';
       target().innerHTML = hero + matchupPanel +
         gameStory(g, d, season, an, hn) + gameVenuePanel(g, hn) +
+        (g.completed && driveArchiveEntry(season) ? '<div id="gp-drives" class="panel"><h2 class="section-title">Scoring summary</h2><p class="empty-note">Loading drives…</p></div>' : '') +
         (g.completed ? '<div id="gp-players" class="panel"><h2 class="section-title">Player box score</h2><p class="empty-note">Loading player stats…</p></div>' : '') +
         '<div class="panel" id="gp-series"><h2 class="section-title">Series history</h2><p class="empty-note">Loading meetings…</p></div>' + more;
       if (g.completed) Promise.all([loadPlayerArchive(season, id), loadRoster(season).catch(() => null)])
@@ -6962,6 +7049,23 @@ function hydrateGamePage(version) {
           document.getElementById('story-leaders').innerHTML = storyPlayerLeaders([], season);
         if (version === renderVersion && document.getElementById('gp-players'))
           document.getElementById('gp-players').innerHTML = '<h2 class="section-title">Player box score</h2><p class="empty-note">Player stats could not be loaded.</p>';
+      });
+      if (g.completed && driveArchiveEntry(season)) loadDriveArchive(season, id).then(rows => {
+        if (version !== renderVersion) return;
+        const panel = document.getElementById('gp-drives');
+        if (!panel) return;
+        const html = gameDrivesPanel(driveObjects(rows), an, hn);
+        // A game the archive does not cover gets no empty section: CFBD's drive
+        // coverage is per game, not per season, and an empty panel would read
+        // as "this game had no drives".
+        if (html) { panel.outerHTML = html; return; }
+        panel.remove();
+        // The story's link pointed at a section that is no longer there.
+        document.getElementById('story-drives-link')?.remove();
+      }).catch(() => {
+        if (version === renderVersion && document.getElementById('gp-drives'))
+          document.getElementById('gp-drives').innerHTML =
+            '<h2 class="section-title">Scoring summary</h2><p class="empty-note">Drives could not be loaded.</p>';
       });
       loadSeries(g.home_id, g.away_id).then(rows => {
         if (version === renderVersion) document.getElementById('gp-series').innerHTML = seriesHtml(rows, g, an, hn);

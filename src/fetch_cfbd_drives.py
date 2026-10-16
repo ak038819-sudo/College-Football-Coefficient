@@ -10,11 +10,11 @@ Two things need this, and neither can be done without it:
    the scoring drives pulled out of it, is that story in the data's own terms.
 
 2. The live win-probability model's time curve. `src/win_probability.py`
-   shrinks its spread by `fraction_remaining ** time_exponent`, and 0.5 -- a
-   plain random walk -- is the only parameter in that model that is assumed
-   rather than measured, because fitting it needs the score at known moments
-   DURING games. Every drive here ends at a known period and clock with a known
-   score, which is exactly that.
+   shrinks its spread by `fraction_remaining ** time_exponent`, which was the
+   one parameter in that model assumed (0.5, a plain random walk) rather than
+   measured, because fitting it needs the score at known moments DURING games.
+   Every drive here ends at a known period and clock with a known score, which
+   is exactly that; the fit on this archive gives 0.4395.
 
 Each drive row therefore carries the clock and the score at both ends of the
 drive. The scores are CFBD's running totals (offense/defense perspective);

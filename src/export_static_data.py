@@ -435,6 +435,61 @@ def write_box_score_shards(players_dir: Path, season: int, selected: dict) -> di
     return {"shards": BOX_SCORE_SHARDS, "files": files}
 
 
+# A game page's drive list and scoring summary. One row per drive, in the order
+# they were played, sharded on the game id exactly as the box scores are -- so a
+# game page asks for one drive shard and one box-score shard, and nothing else.
+#
+# The scores are the HOME team's, already resolved by src/load_drives.py, so no
+# reader has to track which side had the ball. Everything here is stored, never
+# recomputed in the browser.
+DRIVE_FIELDS = ["number", "home_offense", "result", "plays", "yards",
+                "start_period", "start_clock", "end_period", "end_clock",
+                "home_score", "away_score"]
+
+
+def build_game_drives(conn: sqlite3.Connection) -> dict:
+    """{season: {game_id: [drive rows]}}, oldest drive first.
+
+    Empty when the drive archive has not been loaded -- a checkout with no
+    `data/raw/drives` runs the whole export unchanged, leaving an empty drives
+    map in the manifest and a game page that simply does not show the section.
+    """
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='game_drives'").fetchone():
+        return {}
+    out: dict = defaultdict(lambda: defaultdict(list))
+    for (season, game_id, number, home_offense, result, plays, yards,
+         start_period, start_clock, end_period, end_clock,
+         home_score, away_score) in conn.execute(
+            "SELECT season_year, game_id, drive_number, is_home_offense, drive_result, plays, yards, "
+            "       start_period, start_clock, end_period, end_clock, home_score_after, away_score_after "
+            "  FROM game_drives ORDER BY season_year, game_id, drive_number"):
+        out[int(season)][str(game_id)].append(
+            [number, home_offense, result, plays, yards,
+             start_period, start_clock, end_period, end_clock, home_score, away_score])
+    return {season: dict(games) for season, games in out.items()}
+
+
+def write_drive_shards(drives_dir: Path, season: int, games: dict) -> dict:
+    """One season's drives as shards, on the same rule the box scores use.
+
+    Sharing the rule is the point: a game's drives and its box score land in the
+    same shard index, so the two requests a game page makes are predictable and
+    a change to one rule cannot leave the other asking for a file nobody wrote.
+    """
+    shards: dict = {}
+    for game_id, rows in games.items():
+        shards.setdefault(box_score_shard(game_id), {})[game_id] = rows
+    files = {}
+    for shard in sorted(shards):
+        version = _write_js_expr(
+            drives_dir / str(season) / f"{shard}.js",
+            "(window.__CFB_DRIVES__=window.__CFB_DRIVES__||{{}}),"
+            "Object.assign(window.__CFB_DRIVES__[%d]=window.__CFB_DRIVES__[%d]||{{}},"
+            "{payload});" % (season, season), shards[shard])
+        files[str(shard)] = f"data/drives/{season}/{shard}.js?v={version}"
+    return {"shards": BOX_SCORE_SHARDS, "files": files}
+
+
 # A player page wants ONE player's career, game by game. The archive holds
 # 1,045,854 player-game-category rows across 85,583 people -- about 83 MB of
 # them for games this project also holds -- so the log is written per SEASON
@@ -649,6 +704,19 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
             continue
         archives[season] = selected
         players[str(season)] = write_box_score_shards(players_dir, season, selected)
+    # Drive-by-drive records, sharded the same way and for the same reason.
+    drives_dir = out_dir / "drives"
+    if drives_dir.exists():
+        shutil.rmtree(drives_dir)                                    # no orphan shards
+    drives = {}
+    all_drives = build_game_drives(conn)
+    if all_drives:
+        drives_dir.mkdir(parents=True)
+        for season, games in sorted(all_drives.items()):
+            known = {str(row[0]) for row in payloads.get(season, {}).get("games", []) if row[4]}
+            selected = {gid: rows for gid, rows in games.items() if gid in known and rows}
+            if selected:
+                drives[str(season)] = write_drive_shards(drives_dir, season, selected)
     # The same lines, turned the other way up: by player rather than by game, so
     # a player page can show a career game by game without fetching a season of
     # box scores per season played.
@@ -680,6 +748,7 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
     manifest = {"seasons": seasons, "search_index": f"data/search_index.js?v={sv}",
                 "stadiums": f"data/stadiums.js?v={stadium_version}", "game_fields": FIELDS,
                 "details": details, "players": players, "game_logs": game_logs, "series": series, "series_shards": SERIES_SHARDS,
+                "drives": drives, "drive_fields": DRIVE_FIELDS,
                 # P1-05/06: which seasons have a week-by-week Elo table, so the view
                 # knows whether it exists before fetching anything.
                 "elo_timeline": elo_timeline,
@@ -711,7 +780,8 @@ def main() -> None:
     print(f"Season game files: {len(m['seasons'])} seasons, {sum(s['completed'] for s in m['seasons'])} completed + "
           f"{sum(s['scheduled'] for s in m['seasons'])} scheduled games ({games_bytes:,} bytes total); "
           f"search index {(OUT_DIR / 'search_index.js').stat().st_size:,} bytes; "
-          f"game details {len(m['details'])} seasons; series {m['series_shards']} files; "
+          f"game details {len(m['details'])} seasons; drives {len(m['drives'])} seasons; "
+          f"series {m['series_shards']} files; "
           f"Elo timeline {len(m['elo_timeline'])} seasons "
           f"({sum((OUT_DIR / 'elo_timeline' / f'{s}.js').stat().st_size for s in m['elo_timeline']):,} bytes)")
 

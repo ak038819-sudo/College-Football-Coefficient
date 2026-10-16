@@ -5,12 +5,13 @@ train_intercept,1.483022,24055
 train_sigma,16.648249,24055
 train_overtime_home_win,0.500935,24055
 train_tie_half_width,1.146525,24055
-train_time_exponent,0.500000,24055
+train_time_exponent,0.452552,24055
 all_seasons_points_per_elo,0.052627,30408
 all_seasons_intercept,1.247067,30408
 all_seasons_sigma,16.650559,30408
 all_seasons_overtime_home_win,0.509852,30408
 all_seasons_tie_half_width,1.142166,30408
+all_seasons_time_exponent,0.439508,30408
 train_brier,0.177456,24055
 train_log_loss,0.532930,24055
 train_engine_brier,0.177279,24055
@@ -33,3 +34,7 @@ test_calibration_0.6-0.7,0.649821|0.674686,956
 test_calibration_0.7-0.8,0.748034|0.770544,937
 test_calibration_0.8-0.9,0.848362|0.893588,733
 test_calibration_0.9-1.0,0.939446|0.952128,376
+test_states_q1_log_loss,0.503742,32003
+test_states_q2_log_loss,0.427819,40975
+test_states_q3_log_loss,0.352536,38049
+test_states_q4_log_loss,0.336582,43568

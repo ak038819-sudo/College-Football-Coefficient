@@ -203,6 +203,114 @@ def fit_tie_half_width(rows: list[dict], points_per_elo: float, sigma: float,
     return width, mass(width), actual
 
 
+DRIVE_STATES_SQL = """
+    SELECT g.season_year,
+           e.elo_diff_adjusted,
+           d.home_score_after - d.away_score_after AS margin,
+           d.seconds_remaining,
+           g.home_score - g.away_score AS final_margin
+      FROM game_drives d
+      JOIN games g ON g.game_id = d.game_id
+      JOIN elo_game_history e
+        ON e.game_id = g.game_id AND e.team_id = g.home_team_id
+     WHERE g.home_score IS NOT NULL AND g.away_score IS NOT NULL
+       AND e.elo_diff_adjusted IS NOT NULL
+       AND d.seconds_remaining IS NOT NULL
+       AND d.home_score_after IS NOT NULL AND d.away_score_after IS NOT NULL
+"""
+
+
+def load_drive_states(conn: sqlite3.Connection) -> list[dict]:
+    """Every drive boundary as a game state with a known outcome.
+
+    This is what `time_exponent` needs and what final scores cannot give: the
+    score at a known moment inside a game. A drive's end is such a moment --
+    the clock and both scores are recorded -- and the game's final result says
+    how it turned out.
+
+    States from the same game are heavily correlated (one game contributes two
+    dozen of them, mostly with the same margin), so the fit is consistent but
+    the effective sample is nearer the number of GAMES than the number of
+    rows. Read the held-out log loss, not a standard error, as the evidence.
+    """
+    states = []
+    for season, elo_diff, margin, secs, final_margin in conn.execute(DRIVE_STATES_SQL):
+        if secs is None or not 0 <= secs <= REGULATION_SECONDS:
+            continue
+        states.append({
+            "season": int(season),
+            "elo_diff": float(elo_diff),
+            "margin": int(margin),
+            "secs": int(secs),
+            "home_result": 0.5 if final_margin == 0 else (1.0 if final_margin > 0 else 0.0),
+        })
+    return states
+
+
+def state_log_loss(states: list[dict], params: WinProbabilityParams) -> float:
+    eps = 1e-12
+    total = 0.0
+    for state in states:
+        p = home_win_probability(state["elo_diff"], state["margin"], state["secs"], params)
+        y = state["home_result"]
+        total -= y * math.log(max(p, eps)) + (1 - y) * math.log(max(1 - p, eps))
+    return total / len(states)
+
+
+def fit_time_exponent(states: list[dict], base: WinProbabilityParams,
+                      low: float = 0.1, high: float = 1.5, tolerance: float = 1e-3) -> tuple[float, float]:
+    """The exponent that best predicts in-game states, by golden section.
+
+    Golden section rather than a grid because the loss is smooth and unimodal
+    in this parameter -- a bigger exponent narrows the late-game spread, which
+    is monotone in its effect on every state -- and because each evaluation
+    walks every drive in the archive.
+
+    Returns (exponent, log loss at it).
+    """
+    phi = (math.sqrt(5) - 1) / 2
+    with_exponent = lambda e: WinProbabilityParams(
+        points_per_elo=base.points_per_elo, sigma=base.sigma, time_exponent=e,
+        overtime_home_win=base.overtime_home_win, tie_half_width=base.tie_half_width)
+    a, b = low, high
+    c, d = b - phi * (b - a), a + phi * (b - a)
+    fc, fd = state_log_loss(states, with_exponent(c)), state_log_loss(states, with_exponent(d))
+    while b - a > tolerance:
+        if fc < fd:
+            b, d, fd = d, c, fc
+            c = b - phi * (b - a)
+            fc = state_log_loss(states, with_exponent(c))
+        else:
+            a, c, fc = c, d, fd
+            d = a + phi * (b - a)
+            fd = state_log_loss(states, with_exponent(d))
+    best = (a + b) / 2
+    return best, state_log_loss(states, with_exponent(best))
+
+
+def state_calibration(states: list[dict], params: WinProbabilityParams) -> list[dict]:
+    """Held-out states grouped by how much of the game was left.
+
+    The quarter a state belongs to is where the model's time curve shows: an
+    exponent that is wrong late is invisible in a pooled number and obvious
+    here.
+    """
+    buckets = {}
+    for state in states:
+        quarter = min(3, int((REGULATION_SECONDS - state["secs"]) / (REGULATION_SECONDS / 4)))
+        buckets.setdefault(quarter, []).append(state)
+    rows = []
+    for quarter in sorted(buckets):
+        group = buckets[quarter]
+        pairs = [(home_win_probability(s["elo_diff"], s["margin"], s["secs"], params), s["home_result"])
+                 for s in group]
+        rows.append({"quarter": quarter + 1, "states": len(group),
+                     "log_loss": log_loss(pairs), "brier": brier(pairs),
+                     "mean_predicted": sum(p for p, _ in pairs) / len(pairs),
+                     "actual": sum(y for _, y in pairs) / len(pairs)})
+    return rows
+
+
 def brier(pairs) -> float:
     pairs = list(pairs)
     return sum((p - y) ** 2 for p, y in pairs) / len(pairs)
@@ -269,8 +377,12 @@ def main(argv=None) -> int:
     ap.add_argument("--out", default=str(DEFAULT_OUT))
     args = ap.parse_args(argv)
 
-    with sqlite3.connect(args.db) as conn:
-        rows = load_games(conn)
+    conn_states = sqlite3.connect(args.db)
+    rows = load_games(conn_states)
+    if not conn_states.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='game_drives'").fetchone():
+        conn_states.close()
+        conn_states = None
     if not rows:
         print("No games with a pregame Elo gap; run build_elo.py first.", file=sys.stderr)
         return 1
@@ -302,7 +414,28 @@ def main(argv=None) -> int:
     print(f"  overtime_home_win  {ot_share:.4f} over {ot_games} games tied after regulation")
     print(f"  tie_half_width     {width:.3f} points  (model {width_mass:.4f} vs actual "
           f"{width_actual:.4f} level games, overtime era only)")
-    print(f"  time_exponent      {TIME_EXPONENT} (ASSUMED: a random walk; no in-game scores to fit it)")
+    states = load_drive_states(conn_states) if conn_states else []
+    train_states = [st for st in states if st["season"] < args.holdout_from]
+    test_states = [st for st in states if st["season"] >= args.holdout_from]
+    if train_states and test_states:
+        exponent, fitted_loss = fit_time_exponent(train_states, params)
+        params = WinProbabilityParams(points_per_elo=slope, sigma=sigma, time_exponent=exponent,
+                                      overtime_home_win=ot_share, tie_half_width=width)
+        walk = WinProbabilityParams(points_per_elo=slope, sigma=sigma, time_exponent=TIME_EXPONENT,
+                                    overtime_home_win=ot_share, tie_half_width=width)
+        print(f"  time_exponent      {exponent:.4f} fitted on {len(train_states)} in-game states "
+              f"from {len({(st['season'], st['margin'], st['secs']) for st in train_states})} distinct states")
+        print(f"                     train log loss {fitted_loss:.5f} against "
+              f"{state_log_loss(train_states, walk):.5f} for a plain random walk (0.5)")
+        print(f"                     held-out log loss {state_log_loss(test_states, params):.5f} against "
+              f"{state_log_loss(test_states, walk):.5f}")
+        print("\n  Held-out in-game states, by quarter")
+        for row in state_calibration(test_states, params):
+            print(f"    Q{row['quarter']}  n={row['states']:7d}  log loss {row['log_loss']:.5f}  "
+                  f"predicted {row['mean_predicted']:.3f}  actual {row['actual']:.3f}")
+    else:
+        exponent = None
+        print(f"  time_exponent      {TIME_EXPONENT} (ASSUMED: a random walk; no loaded drives to fit it)")
 
     scored = {"train": score(train, params), "test": score(test, params)}
     for name, s in scored.items():
@@ -316,10 +449,20 @@ def main(argv=None) -> int:
         print(f"  {row['bin']}  n={row['games']:5d}  predicted {row['mean_predicted']:.3f}  "
               f"actual {row['actual']:.3f}")
 
+    # The production parameters use every season; the holdout above is what
+    # shows the fit generalises, not what ships. The time exponent is refit the
+    # same way, on every state and against the all-season margin model, because
+    # an exponent fitted beside a different sigma is not the same number.
+    full_params = WinProbabilityParams(points_per_elo=full_slope, sigma=full_sigma,
+                                       time_exponent=TIME_EXPONENT,
+                                       overtime_home_win=full_ot, tie_half_width=full_width)
+    full_exponent = fit_time_exponent(states, full_params)[0] if states else None
     print("\nRefitted on every season (the production values):")
     print(f"  points_per_elo {full_slope:.6f}  intercept {full_intercept:+.3f}  "
           f"sigma {full_sigma:.3f}  overtime_home_win {full_ot:.4f} ({full_ot_games} games)  "
           f"tie_half_width {full_width:.3f} (actual {full_width_actual:.4f} level)")
+    if full_exponent is not None:
+        print(f"  time_exponent {full_exponent:.4f} on {len(states)} in-game states")
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -329,11 +472,14 @@ def main(argv=None) -> int:
         writer.writerow(["holdout_from", args.holdout_from, len(rows)])
         for key, value in (("points_per_elo", slope), ("intercept", intercept), ("sigma", sigma),
                            ("overtime_home_win", ot_share), ("tie_half_width", width),
-                           ("time_exponent", TIME_EXPONENT)):
+                           ("time_exponent", exponent if exponent is not None else TIME_EXPONENT)):
             writer.writerow([f"train_{key}", f"{value:.6f}", len(train)])
-        for key, value in (("points_per_elo", full_slope), ("intercept", full_intercept),
-                           ("sigma", full_sigma), ("overtime_home_win", full_ot),
-                           ("tie_half_width", full_width)):
+        all_season_values = [("points_per_elo", full_slope), ("intercept", full_intercept),
+                             ("sigma", full_sigma), ("overtime_home_win", full_ot),
+                             ("tie_half_width", full_width)]
+        if full_exponent is not None:
+            all_season_values.append(("time_exponent", full_exponent))
+        for key, value in all_season_values:
             writer.writerow([f"all_seasons_{key}", f"{value:.6f}", len(rows)])
         for name, s in scored.items():
             for key in ("brier", "log_loss", "engine_brier", "engine_log_loss",
@@ -342,6 +488,12 @@ def main(argv=None) -> int:
         for row in calibration_bins(test, params):
             writer.writerow([f"test_calibration_{row['bin']}",
                              f"{row['mean_predicted']:.6f}|{row['actual']:.6f}", row["games"]])
+        if states:
+            for row in state_calibration(test_states, params):
+                writer.writerow([f"test_states_q{row['quarter']}_log_loss",
+                                 f"{row['log_loss']:.6f}", row["states"]])
+    if conn_states is not None:
+        conn_states.close()
     print(f"\nWrote {out}")
     return 0
 

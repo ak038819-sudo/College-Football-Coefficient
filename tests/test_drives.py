@@ -16,6 +16,7 @@ import sqlite3
 
 import pytest
 
+import export_static_data as esd
 import fetch_cfbd_drives as fd
 from load_drives import home_away, load_drives, regulation_seconds_remaining
 
@@ -258,3 +259,50 @@ class TestTheLoader:
                                 cwd=str(Path(__file__).resolve().parent.parent),
                                 capture_output=True, text=True)
         assert result.returncode == 0, result.stderr
+
+
+class TestTheExport:
+    """What a game page receives: one shard per game id, drives in play order.
+
+    The shard rule is shared with the box scores on purpose, so these tests pin
+    that it really is the same rule rather than a second copy of it.
+    """
+
+    @staticmethod
+    def _conn(tmp_path):
+        conn, path = _league(tmp_path)
+        load_drives(conn, path)
+        return conn
+
+    def test_drives_come_out_in_play_order_with_home_perspective_scores(self, tmp_path):
+        built = esd.build_game_drives(self._conn(tmp_path))
+        rows = built[2024]["101"]
+        number = esd.DRIVE_FIELDS.index("number")
+        assert [row[number] for row in rows] == [1, 2, 3]
+        home, away = esd.DRIVE_FIELDS.index("home_score"), esd.DRIVE_FIELDS.index("away_score")
+        assert [(row[home], row[away]) for row in rows] == [(7, 0), (7, 0), (10, 7)]
+        # Which side had the ball is kept, because the drive list names the team.
+        assert rows[0][esd.DRIVE_FIELDS.index("home_offense")] == 1
+        assert rows[1][esd.DRIVE_FIELDS.index("home_offense")] == 0
+
+    def test_a_checkout_with_no_drive_table_exports_nothing_and_does_not_fail(self, tmp_path):
+        conn = sqlite3.connect(str(tmp_path / "bare.db"))
+        assert esd.build_game_drives(conn) == {}
+
+    def test_a_game_lands_in_the_same_shard_as_its_box_score(self, tmp_path):
+        out = tmp_path / "ui-data"
+        entry = esd.write_drive_shards(out / "drives", 2024, {"101": [[1, 1, "TD"]]})
+        shard = esd.box_score_shard("101")
+        assert entry["shards"] == esd.BOX_SCORE_SHARDS
+        assert list(entry["files"]) == [str(shard)]
+        assert entry["files"][str(shard)].startswith(f"data/drives/2024/{shard}.js?v=")
+        assert (out / "drives" / "2024" / f"{shard}.js").exists()
+
+    def test_a_shard_merges_into_the_global_rather_than_replacing_it(self, tmp_path):
+        """Two seasons' shards load into one page; the second must not erase the first."""
+        out = tmp_path / "ui-data"
+        esd.write_drive_shards(out / "drives", 2024, {"101": [[1]]})
+        shard = esd.box_score_shard("101")
+        text = (out / "drives" / "2024" / f"{shard}.js").read_text(encoding="utf-8")
+        assert "window.__CFB_DRIVES__=window.__CFB_DRIVES__||{}" in text
+        assert "Object.assign(window.__CFB_DRIVES__[2024]" in text

@@ -8,11 +8,21 @@
 - The model behind it (`src/win_probability.py`) is fitted against every
   completed game since 1980: a point of margin is worth about 19 Elo points,
   and a game lands about 16.7 points either side of what the ratings implied.
-  One parameter is assumed rather than fitted — how fast the remaining
-  uncertainty narrows — and `docs/win-probability.md` says so.
-- Drive-by-drive data is now fetched and loaded (`game_drives`), which is both
-  the source for a game page's scoring summary and the in-game states that
-  will fit that last parameter. Run `backfill-drives.yml` to fill the archive.
+  How fast the remaining uncertainty narrows is measured too — see below.
+- Drive-by-drive data is now fetched and loaded (`game_drives`): 441,307
+  drives, 2001-2026. CFBD's coverage is thin before 2005 (2002 has 31 games)
+  and effectively complete from 2013.
+- **A finished game page now tells the story of the game**: a scoring summary
+  of every drive the scoreboard moved across, and the full drive list behind
+  it. Points are credited by the score rather than by who had the ball, so a
+  pick six counts for the team that scored it. A game CFBD has no drives for
+  shows no section at all rather than an empty one.
+- The last assumed parameter in the live model is now **measured**:
+  `time_exponent` is 0.4395, fitted on 440,918 in-game states from the drive
+  archive, in place of the 0.5 a plain random walk gives. Late-game margins
+  swing more per second than early-game ones, and the live number now says so:
+  a 400-Elo favourite trailing by 3 with a minute left reads 19% rather than
+  14%. Held out on 2018-2026 states it scores 0.39929 against 0.40044.
 
 ## Unreleased — The real 12-team playoff (2026-10-10)
 
