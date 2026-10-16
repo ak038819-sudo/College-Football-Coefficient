@@ -1,0 +1,112 @@
+# One-off, resumable backfill of the closing-line archive.
+#
+# Same shape as backfill-drives.yml, and for the same reasons: run by hand, it
+# walks many seasons of CFBD in one job and has to be able to stop and resume.
+# fetch_cfbd_lines.py rewrites one season's file per call, so re-running a
+# range only rewrites those seasons.
+#
+# What the archive is for: measuring this project's ratings against the market,
+# which is the only benchmark in sports forecasting worth the name. No rating
+# reads game_lines -- deliberately, since a market number that leaked into a
+# rating would make the comparison meaningless.
+#
+# CFBD has lines back to the mid-1980s for some games and near-complete
+# coverage from about 2013. A season it has none for prints "no lines" and
+# leaves any existing file alone; only a failed request stops the run.
+name: Backfill betting lines
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_year:
+        description: "First season to fetch"
+        required: true
+        default: "1980"
+      end_year:
+        description: "Last season to fetch"
+        required: true
+        default: "2026"
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    # Share the deploy job's lock: both push to main, and the scheduled refresh
+    # rewrites data/raw too.
+    concurrency:
+      group: rebuild-and-deploy-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Fetch and commit one season at a time
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          START: ${{ inputs.start_year }}
+          END: ${{ inputs.end_year }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CFBD_API_KEY:-}" ]; then
+            echo "::error::CFBD_API_KEY is not set for this repository."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # One season per commit, pushed as it lands, so a timeout or a CFBD
+          # outage costs the season in flight rather than the whole backfill.
+          #
+          # Every step is checked explicitly: `set -e` does NOT stop a shell
+          # loop, so an unchecked failure here would skip a season while later
+          # ones commit on top of the gap, leaving an archive that looks whole.
+          for year in $(seq "$START" "$END"); do
+            echo "::group::season $year"
+            if ! python3 src/fetch_cfbd_lines.py "$year"; then
+              echo "::endgroup::"
+              echo "::error::Season $year failed to fetch. Seasons before it are committed; re-run this workflow from $year to resume."
+              exit 1
+            fi
+            # A season CFBD has no lines for writes no file, and
+            # publish_to_main.sh with nothing to commit is a no-op, so this
+            # stays a single checked step either way.
+            if ! scripts/publish_to_main.sh "Archive $year betting lines [skip ci]" data/raw/lines/; then
+              echo "::endgroup::"
+              echo "::error::Could not publish season $year. Nothing was published for it; re-run this workflow from $year."
+              exit 1
+            fi
+            echo "::endgroup::"
+          done
+
+      # Read from the files rather than the database: this job never builds
+      # db/league.db, and the loader's own counts print on the next pipeline run.
+      - name: Summarise the archive
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import csv, gzip, pathlib
+          directory = pathlib.Path('data/raw/lines')
+          total_lines = total_games = size = 0
+          for path in sorted(directory.glob('*.csv.gz')):
+              with gzip.open(path, 'rt', newline='', encoding='utf-8') as fh:
+                  rows = list(csv.DictReader(fh))
+              games = len({r['game_id'] for r in rows})
+              priced = sum(1 for r in rows if r['spread'])
+              providers = sorted({r['provider'] for r in rows if r['provider']})
+              total_lines += len(rows)
+              total_games += games
+              size += path.stat().st_size
+              print(f'{path.name}: {len(rows)} lines across {games} games, '
+                    f'{priced} with a spread, providers: {", ".join(providers) or "none"} '
+                    f'({path.stat().st_size / 1e6:.1f} MB)')
+          print(f'archive total: {total_lines} lines across {total_games} games, '
+                f'{size / 1e6:.1f} MB')
+          PY
