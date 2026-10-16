@@ -156,6 +156,14 @@ def main() -> None:
             run([python, "src/load_drives.py", str(drive_path), "--db", str(DB_PATH)],
                 f"Load drives: {drive_path.name.split('.')[0]}")
 
+        # Closing betting lines: the benchmark the ratings are measured against
+        # on the Track Record page. Deliberately NOT a rating input -- a market
+        # number that reached a rating would make the comparison meaningless --
+        # and a checkout with no line archive runs this loop zero times.
+        for line_path in sorted(Path("data/raw/lines").glob("*.csv.gz")):
+            run([python, "src/load_lines.py", str(line_path), "--db", str(DB_PATH)],
+                f"Load betting lines: {line_path.name.split('.')[0]}")
+
         run(
             [python, "src/patch_known_membership_gaps.py", "--db", str(DB_PATH)],
             "Patch known conference-membership gaps",
