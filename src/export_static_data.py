@@ -442,9 +442,13 @@ def write_box_score_shards(players_dir: Path, season: int, selected: dict) -> di
 # The scores are the HOME team's, already resolved by src/load_drives.py, so no
 # reader has to track which side had the ball. Everything here is stored, never
 # recomputed in the browser.
+# The score at BOTH ends of each drive, because CFBD's record of a game does
+# not always begin at 0-0: game 332430152 (2013) opens its first drive at 7-0.
+# A page that tracked a running total from zero would credit those 7 points to
+# the first recorded drive. Each drive carries its own delta instead.
 DRIVE_FIELDS = ["number", "home_offense", "result", "plays", "yards",
                 "start_period", "start_clock", "end_period", "end_clock",
-                "home_score", "away_score"]
+                "home_score_before", "away_score_before", "home_score", "away_score"]
 
 
 def build_game_drives(conn: sqlite3.Connection) -> dict:
@@ -459,13 +463,15 @@ def build_game_drives(conn: sqlite3.Connection) -> dict:
     out: dict = defaultdict(lambda: defaultdict(list))
     for (season, game_id, number, home_offense, result, plays, yards,
          start_period, start_clock, end_period, end_clock,
-         home_score, away_score) in conn.execute(
+         home_before, away_before, home_score, away_score) in conn.execute(
             "SELECT season_year, game_id, drive_number, is_home_offense, drive_result, plays, yards, "
-            "       start_period, start_clock, end_period, end_clock, home_score_after, away_score_after "
+            "       start_period, start_clock, end_period, end_clock, "
+            "       home_score_before, away_score_before, home_score_after, away_score_after "
             "  FROM game_drives ORDER BY season_year, game_id, drive_number"):
         out[int(season)][str(game_id)].append(
             [number, home_offense, result, plays, yards,
-             start_period, start_clock, end_period, end_clock, home_score, away_score])
+             start_period, start_clock, end_period, end_clock,
+             home_before, away_before, home_score, away_score])
     return {season: dict(games) for season, games in out.items()}
 
 

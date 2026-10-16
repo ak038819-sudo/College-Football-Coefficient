@@ -63,11 +63,15 @@ test('the clock reads as a quarter, an overtime period, or just the period', () 
 
 test('a scoring drive is one the SCOREBOARD moved across, whoever had the ball', () => {
   const rows = ctx.objects([
-    drive({number: 1, home_offense: 1, result: 'TD', home_score: 7, away_score: 0}),
-    drive({number: 2, home_offense: 0, result: 'PUNT', home_score: 7, away_score: 0}),
+    drive({number: 1, home_offense: 1, result: 'TD', home_score_before: 0,
+      away_score_before: 0, home_score: 7, away_score: 0}),
+    drive({number: 2, home_offense: 0, result: 'PUNT', home_score_before: 7,
+      away_score_before: 0, home_score: 7, away_score: 0}),
     // The away team had the ball and the HOME score moved: a pick six.
-    drive({number: 3, home_offense: 0, result: 'INT TD', home_score: 14, away_score: 0}),
-    drive({number: 4, home_offense: 0, result: 'FG', home_score: 14, away_score: 3}),
+    drive({number: 3, home_offense: 0, result: 'INT TD', home_score_before: 7,
+      away_score_before: 0, home_score: 14, away_score: 0}),
+    drive({number: 4, home_offense: 0, result: 'FG', home_score_before: 14,
+      away_score_before: 0, home_score: 14, away_score: 3}),
   ]);
   const scoring = ctx.scoring(rows);
   assert.deepEqual(Array.from(scoring).map(d => d.number), [1, 3, 4]);
@@ -77,9 +81,11 @@ test('a scoring drive is one the SCOREBOARD moved across, whoever had the ball',
 
 test('a drive with no recorded score is skipped rather than read as 0-0', () => {
   const rows = ctx.objects([
-    drive({number: 1, home_offense: 1, result: 'TD', home_score: 7, away_score: 0}),
+    drive({number: 1, home_offense: 1, result: 'TD', home_score_before: 0,
+      away_score_before: 0, home_score: 7, away_score: 0}),
     drive({number: 2, home_offense: 0, result: 'PUNT'}),
-    drive({number: 3, home_offense: 1, result: 'FG', home_score: 10, away_score: 0}),
+    drive({number: 3, home_offense: 1, result: 'FG', home_score_before: 7,
+      away_score_before: 0, home_score: 10, away_score: 0}),
   ]);
   // Without the guard the blank row reads as 0-0, which would invent a 7-point
   // swing back to level and then another one away from it.
@@ -90,10 +96,10 @@ test('the panel names the scoring team, lists every drive, and is empty for none
   const rows = ctx.objects([
     drive({number: 1, home_offense: 1, result: 'TD', plays: 8, yards: 75,
       start_period: 1, start_clock: 900, end_period: 1, end_clock: 690,
-      home_score: 7, away_score: 0}),
+      home_score_before: 0, away_score_before: 0, home_score: 7, away_score: 0}),
     drive({number: 2, home_offense: 0, result: 'INT TD', plays: 3, yards: 12,
       start_period: 1, start_clock: 690, end_period: 1, end_clock: 600,
-      home_score: 14, away_score: 0}),
+      home_score_before: 7, away_score_before: 0, home_score: 14, away_score: 0}),
   ]);
   const html = ctx.panel(rows, 'Visitors', 'Hosts');
   assert.match(html, /id="gp-drives"/);
@@ -112,8 +118,42 @@ test('the panel names the scoring team, lists every drive, and is empty for none
 
 test('a game where nobody scored says so instead of showing an empty table', () => {
   const rows = ctx.objects([drive({number: 1, home_offense: 1, result: 'PUNT',
-    start_period: 1, start_clock: 900, home_score: 0, away_score: 0})]);
+    start_period: 1, start_clock: 900, home_score_before: 0, away_score_before: 0,
+    home_score: 0, away_score: 0})]);
   const html = ctx.panel(rows, 'Visitors', 'Hosts');
   assert.match(html, /No points were scored/);
   assert.match(html, /All 1 drives/);
+});
+
+test('an archive that does not start at 0-0 credits only what each drive scored', () => {
+  // CFBD's record of game 332430152 (2013) opens its first drive at 7-0. A
+  // running total from zero would call that first touchdown a 14-point drive.
+  const rows = ctx.objects([
+    drive({number: 1, home_offense: 1, result: 'RUSHING TD', home_score_before: 7,
+      away_score_before: 0, home_score: 14, away_score: 0}),
+    drive({number: 2, home_offense: 0, result: 'PUNT', home_score_before: 14,
+      away_score_before: 0, home_score: 14, away_score: 0}),
+  ]);
+  const scoring = Array.from(ctx.scoring(rows));
+  assert.deepEqual(scoring.map(d => d.number), [1]);
+  assert.equal(scoring[0].home_points, 7);
+});
+
+test('a drive with no score recorded at its start is skipped', () => {
+  const rows = ctx.objects([drive({number: 1, home_offense: 1, result: 'TD',
+    home_score: 7, away_score: 0})]);
+  assert.deepEqual(Array.from(ctx.scoring(rows)), []);
+});
+
+test('a record that begins mid-game says so rather than losing points silently', () => {
+  const late = ctx.objects([
+    drive({number: 1, home_offense: 1, result: 'RUSHING TD', home_score_before: 14,
+      away_score_before: 0, home_score: 21, away_score: 0, start_period: 1, start_clock: 700}),
+  ]);
+  assert.match(ctx.panel(late, 'Visitors', 'Hosts'), /This record begins at 0&ndash;14/);
+  const whole = ctx.objects([
+    drive({number: 1, home_offense: 1, result: 'RUSHING TD', home_score_before: 0,
+      away_score_before: 0, home_score: 7, away_score: 0, start_period: 1, start_clock: 900}),
+  ]);
+  assert.doesNotMatch(ctx.panel(whole, 'Visitors', 'Hosts'), /This record begins/);
 });

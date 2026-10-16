@@ -281,6 +281,12 @@ class TestTheExport:
         assert [row[number] for row in rows] == [1, 2, 3]
         home, away = esd.DRIVE_FIELDS.index("home_score"), esd.DRIVE_FIELDS.index("away_score")
         assert [(row[home], row[away]) for row in rows] == [(7, 0), (7, 0), (10, 7)]
+        # The score at the START of each drive ships too, because CFBD's record
+        # of a game does not always begin at 0-0 and the page credits each
+        # drive with its own delta rather than a running total from zero.
+        before = (esd.DRIVE_FIELDS.index("home_score_before"),
+                  esd.DRIVE_FIELDS.index("away_score_before"))
+        assert [(row[before[0]], row[before[1]]) for row in rows] == [(0, 0), (7, 0), (7, 7)]
         # Which side had the ball is kept, because the drive list names the team.
         assert rows[0][esd.DRIVE_FIELDS.index("home_offense")] == 1
         assert rows[1][esd.DRIVE_FIELDS.index("home_offense")] == 0

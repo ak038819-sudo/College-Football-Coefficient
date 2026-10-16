@@ -6739,23 +6739,32 @@ function driveClock(period, clock) {
 // A drive scored when the scoreboard moved across it. Read from the SCORE, not
 // from which team had the ball: a pick six or a safety puts points on the
 // defence's side, and crediting the offence would name the wrong team.
+//
+// Each drive's delta is its OWN before and after, never a running total from
+// 0-0: CFBD's record of a game does not always start at kickoff (game 332430152
+// in 2013 opens at 7-0), and a running total would credit the points scored
+// before the archive begins to the first recorded drive.
 function scoringDrives(drives) {
   const out = [];
-  let home = 0, away = 0;
   for (const drive of drives) {
+    // Number(null) is 0, so every one of these is checked before coercing: a
+    // drive with no recorded score would otherwise read as 0-0 and invent a
+    // swing back to level and another one away from it.
     if (drive.home_score == null || drive.away_score == null) continue;
+    if (drive.home_score_before == null || drive.away_score_before == null) continue;
     const h = Number(drive.home_score), a = Number(drive.away_score);
-    // Again Number(null) is 0: a drive with no recorded score would read as
-    // 0-0 and invent a swing back to level and another one away from it.
-    if (!Number.isFinite(h) || !Number.isFinite(a)) continue;
-    if (h !== home || a !== away) out.push({...drive, home_points: h - home, away_points: a - away});
-    home = h; away = a;
+    const hb = Number(drive.home_score_before), ab = Number(drive.away_score_before);
+    if (![h, a, hb, ab].every(Number.isFinite)) continue;
+    if (h !== hb || a !== ab) out.push({...drive, home_points: h - hb, away_points: a - ab});
   }
   return out;
 }
 function gameDrivesPanel(drives, an, hn) {
   if (!drives.length) return '';
   const scoring = scoringDrives(drives);
+  const first = drives.find(d => d.home_score_before != null && d.away_score_before != null);
+  const opened = first && (Number(first.home_score_before) || Number(first.away_score_before))
+    ? first : null;
   const teamOf = drive => drive.home_offense === 1 ? hn : an;
   const scoreCell = drive => esc(String(drive.away_score)) + '&ndash;' + esc(String(drive.home_score));
   const scoringRows = scoring.map(drive => {
@@ -6786,7 +6795,12 @@ function gameDrivesPanel(drives, an, hn) {
     '</tbody></table></div></details>' +
     '<p class="section-note">Drives as CollegeFootballData recorded them. The score is the score ' +
     'after each drive, away first. Points are credited by the scoreboard, so a defensive ' +
-    'touchdown counts for the team that scored it rather than the team with the ball.</p></div>';
+    'touchdown counts for the team that scored it rather than the team with the ball.' +
+    // Some games' records begin after play started, and a summary that said
+    // nothing about it would look as though points had gone missing.
+    (opened ? ' This record begins at ' + esc(String(opened.away_score_before)) + '&ndash;' +
+      esc(String(opened.home_score_before)) + ', so anything scored before its first drive is not listed.' : '') +
+    '</p></div>';
 }
 // The story uses recorded game values; a missing stat never becomes a zero or a claimed edge.
 function gameStory(g, d, season, an, hn) {
