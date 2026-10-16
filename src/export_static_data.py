@@ -46,6 +46,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from accuracy import build_accuracy  # noqa: E402
+from measure_vs_market import build_report as build_market_report  # noqa: E402
 from coverage import build_coverage  # noqa: E402
 from elo_timeline import build_timeline  # noqa: E402
 import player_archive  # noqa: E402
@@ -767,6 +768,11 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                 # not empty, when no report has been generated, so the page can
                 # be missing rather than blank.
                 **({"accuracy": accuracy} if (accuracy := build_accuracy()) else {}),
+                # The same track record against the closing line (see
+                # src/measure_vs_market.py). Absent, not empty, when no line
+                # archive has been loaded -- the market section of the page then
+                # does not exist rather than rendering as a row of dashes.
+                **({"market": market} if (market := build_market_report(conn)) else {}),
                 # v0.1.1: player and coach pages. Absent, not empty, when the
                 # database has no person tables, so the UI can tell "no data
                 # here" from "no such feature".

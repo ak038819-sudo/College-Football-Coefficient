@@ -1,5 +1,22 @@
 # Site release history
 
+## Unreleased — The ratings against the market (2026-10-16)
+
+- The Track Record page now answers the question the baselines never could:
+  how the ratings do against the **closing betting line**, game by game.
+  Average margin miss for both sides, the model's record against the spread,
+  who called the winner on the games where the two disagreed, and both Brier
+  scores on one scale.
+- Closing lines are archived from CFBD (`game_lines`, one row per game per
+  provider). Nothing reads them as a rating input and nothing will — a
+  benchmark the model can see is not a benchmark.
+- The page is honest about what the comparison is not: a closing line is not
+  available when a bet would be placed, only priced games count (the season
+  table says what share of each season that was), and break-even at the usual
+  price is 52.4%, not 50%.
+- See `docs/model-vs-market.md`, including the sign convention — CFBD writes a
+  home favourite as −7 and every margin here runs the other way.
+
 ## Unreleased — Live win probability (2026-10-16)
 
 - A game being played now shows a **live win chance** on each team, from the

@@ -5293,7 +5293,8 @@ function accuracyNum(value, digits) {
 function renderAccuracy() {
   if (!ACCURACY || !ACCURACY.models?.length) {
     return '<h2 class="view-title">Track record</h2>' +
-      '<div class="empty-note">No validation report has been generated for this build.</div>';
+      '<div class="empty-note">No validation report has been generated for this build.</div>' +
+      renderMarketComparison();
   }
   const headline = ACCURACY.models.find(m => m.headline) || ACCURACY.models[0];
   const homeBaseline = ACCURACY.models.find(m => m.key === 'baseline_home_rate');
@@ -5344,6 +5345,7 @@ function renderAccuracy() {
   html += '</tbody></table></div>';
 
   html += renderCalibration();
+  html += renderMarketComparison();
   html += renderAccuracyBySeason();
   return html;
 }
@@ -5391,6 +5393,111 @@ function renderAccuracyBySeason() {
       '<td class="num">' + accuracyPct(r.base_rate) + '</td>' +
       '<td class="num">' + accuracyNum(r.brier) + '</td>' +
       '<td class="num coe-val">' + accuracyPct(r.brier_skill) + '</td></tr>';
+  });
+  return html + '</tbody></table></div>';
+}
+
+// STATIC_MANIFEST.market comes from src/measure_vs_market.py: the same
+// predictions scored against the closing spread instead of against a baseline.
+// Beating "always pick the home team" is table stakes; the market is the real
+// question, and a rating that will not answer it is not worth quoting.
+//
+// Absent, not empty, when no line archive has been loaded -- so this section
+// does not exist rather than rendering as a row of dashes.
+const MARKET = STATIC_MANIFEST.market || null;
+
+function marketVerdict(model, market) {
+  // Lower error is better, so the model wins when its number is SMALLER. The
+  // sentence is generated from the measurement rather than written, because a
+  // hand-written claim here would outlive the numbers that justified it.
+  if (model == null || market == null) return '';
+  const gap = Number(market) - Number(model);
+  if (!Number.isFinite(gap)) return '';
+  if (Math.abs(gap) < 0.05) return 'The two are level, within a twentieth of a point.';
+  return gap > 0
+    ? 'The ratings are closer, by ' + gap.toFixed(2) + ' of a point per game.'
+    : 'The market is closer, by ' + Math.abs(gap).toFixed(2) + ' of a point per game.';
+}
+
+function renderMarketComparison() {
+  if (!MARKET || !MARKET.overall || !MARKET.overall.games) return '';
+  const o = MARKET.overall, ats = o.ats || {}, dis = o.disagreements || {};
+  let html = '<div class="panel"><h2 class="section-title">Against the closing line</h2>';
+  html += '<p>The baselines above are the easy test. This is the hard one: over <b>' +
+    (o.games || 0).toLocaleString() + '</b> games from ' + o.first_season + ' to ' +
+    o.last_season + ' that the market priced, the ratings expected a margin and so did the ' +
+    'closing spread, and both can be scored against what happened. The ratings miss by <b>' +
+    accuracyNum(o.model_mae, 2) + '</b> points a game on average; the line misses by <b>' +
+    accuracyNum(o.market_mae, 2) + '</b>. ' + marketVerdict(o.model_mae, o.market_mae) + '</p>';
+  html += '<table class="rank-table"><thead><tr><th>Measure</th>' +
+    '<th class="num">This model</th><th class="num">Closing line</th></tr></thead><tbody>' +
+    '<tr><td><div class="name-cell">Average margin miss</div>' +
+    '<small class="section-note">Points, mean absolute error. Lower is better.</small></td>' +
+    '<td class="num coe-val">' + accuracyNum(o.model_mae, 2) + '</td>' +
+    '<td class="num">' + accuracyNum(o.market_mae, 2) + '</td></tr>' +
+    '<tr><td><div class="name-cell">Big misses</div>' +
+    '<small class="section-note">Root mean square error, which punishes a blowout nobody saw.</small></td>' +
+    '<td class="num coe-val">' + accuracyNum(o.model_rmse, 2) + '</td>' +
+    '<td class="num">' + accuracyNum(o.market_rmse, 2) + '</td></tr>' +
+    '<tr><td><div class="name-cell">Lean</div>' +
+    '<small class="section-note">Average signed error. Positive means the home team was ' +
+    'underrated.</small></td>' +
+    '<td class="num coe-val">' + accuracyNum(o.model_bias, 2) + '</td>' +
+    '<td class="num">' + accuracyNum(o.market_bias, 2) + '</td></tr>' +
+    '<tr><td><div class="name-cell">Brier score</div>' +
+    '<small class="section-note">Win probability, lower is better. The spread is turned into a ' +
+    'chance through a curve ' + accuracyNum(MARKET.market_sigma, 1) + ' points wide, measured ' +
+    'from the market’s own misses on these games.</small></td>' +
+    '<td class="num coe-val">' + accuracyNum(o.model_brier) + '</td>' +
+    '<td class="num">' + accuracyNum(o.market_brier) + '</td></tr>' +
+    '</tbody></table>';
+  if (ats.decided) {
+    html += '<p>Read as a pick — back the home team whenever the ratings expect more than the ' +
+      'line does — the ratings went <b>' + ats.wins + '–' + ats.losses +
+      (ats.pushes ? '–' + ats.pushes : '') + '</b> against the spread, or <b>' +
+      accuracyPct(ats.rate) + '</b> of the games that were not a push. At the usual price a ' +
+      'bettor needs ' + accuracyPct(ats.break_even_with_vig) + ' to break even, so anything ' +
+      'under that is a losing ticket however it reads.</p>';
+  }
+  if (dis.games) {
+    html += '<p>On the <b>' + dis.games.toLocaleString() + '</b> games where the two disagreed ' +
+      'about who would win outright, the ratings called <b>' + accuracyPct(dis.model_rate) +
+      '</b> of them correctly. Games they agreed on are left out: they cannot separate the two.</p>';
+  }
+  html += '<p class="section-note">A closing line is the sharpest price of the week and is not ' +
+    'available when a bet would be placed, so this is a test of a forecast rather than of a ' +
+    'betting strategy. Only priced games count, which skews modern — the season table says by ' +
+    'how much — and no vigorish, bet sizing or line shopping is modelled.</p>';
+  return html + '</div>' + renderMarketSeasons();
+}
+
+function renderMarketSeasons() {
+  const rows = (MARKET.by_season || []).slice().reverse();
+  if (!rows.length) return '';
+  const coverage = {};
+  (MARKET.coverage || []).forEach(c => { coverage[c.season] = c; });
+  let html = '<div class="panel"><h2 class="section-title">Against the line, season by season</h2>';
+  html += '<p class="section-note">Newest first. The priced column is how much of the season the ' +
+    'market covered: an early season with a handful of games is a curiosity, not evidence.</p>';
+  html += '<table class="rank-table"><thead><tr><th class="num">Season</th>' +
+    '<th class="num">Priced</th><th class="num">Model miss</th><th class="num">Line miss</th>' +
+    '<th class="num">Against the spread</th><th class="num">Model Brier</th>' +
+    '<th class="num">Line Brier</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    const cover = coverage[r.season] || {};
+    const ats = r.ats || {};
+    html += '<tr><td class="num">' + r.season + '</td>' +
+      '<td class="num">' + (r.games || 0).toLocaleString() +
+      (cover.share != null ? ' <small class="section-note">' + accuracyPct(cover.share, 0) +
+        '</small>' : '') + '</td>' +
+      '<td class="num">' + accuracyNum(r.model_mae, 2) + '</td>' +
+      '<td class="num">' + accuracyNum(r.market_mae, 2) + '</td>' +
+      '<td class="num coe-val">' + (ats.decided
+        ? ats.wins + '–' + ats.losses + ' <small class="section-note">' +
+          accuracyPct(ats.rate) + '</small>'
+        : '—') + '</td>' +
+      '<td class="num">' + accuracyNum(r.model_brier) + '</td>' +
+      '<td class="num">' + accuracyNum(r.market_brier) + '</td></tr>';
   });
   return html + '</tbody></table></div>';
 }

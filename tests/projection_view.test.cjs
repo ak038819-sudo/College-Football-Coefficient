@@ -159,14 +159,21 @@ const ACCURACY = {
   ],
 };
 
-function accuracyContext(manifestAccuracy) {
-  const ctx = {STATIC_MANIFEST: {accuracy: manifestAccuracy}, esc: s => String(s)};
+// The market comparison is lifted from the shell rather than stubbed, and the
+// manifest carries it or not: the page has to render with a line archive and
+// without one, since most checkouts have no lines loaded.
+function accuracyContext(manifestAccuracy, manifestMarket) {
+  const ctx = {STATIC_MANIFEST: {accuracy: manifestAccuracy, market: manifestMarket},
+    esc: s => String(s)};
   vm.runInNewContext(
     'const ACCURACY = STATIC_MANIFEST.accuracy || null;\n' +
     sourceOf('accuracyPct') + '\n' + sourceOf('accuracyNum') + '\n' +
     sourceOf('renderCalibration') + '\n' + sourceOf('renderAccuracyBySeason') + '\n' +
+    sourceOfConst('MARKET') + '\n' + sourceOf('marketVerdict') + '\n' +
+    sourceOf('renderMarketSeasons') + '\n' + sourceOf('renderMarketComparison') + '\n' +
     sourceOf('renderAccuracy') + '\n' +
-    'this.render = renderAccuracy; this.pct = accuracyPct; this.num = accuracyNum;',
+    'this.render = renderAccuracy; this.pct = accuracyPct; this.num = accuracyNum;' +
+    'this.market = renderMarketComparison; this.verdict = marketVerdict;',
     ctx);
   return ctx;
 }
@@ -238,6 +245,91 @@ test('every registered section has a label', () => {
   // a page that does not exist.
   const orphan = Object.keys(labels.l).filter(s => !sections.includes(s));
   assert.deepEqual(orphan, []);
+});
+
+// The market comparison: the Track Record page's hardest claim, so the tests
+// pin the direction of it. "Lower is better" twice over -- a verdict that read
+// the comparison backwards would be the most confident wrong sentence on the
+// site.
+const MARKET = {
+  overall: {
+    games: 15234, first_season: 2013, last_season: 2026,
+    model_mae: 11.42, market_mae: 10.88, model_rmse: 14.9, market_rmse: 14.1,
+    model_bias: 0.31, market_bias: -0.12,
+    model_brier: 0.1871, market_brier: 0.1802, scored: 15234,
+    ats: {wins: 7400, losses: 7600, pushes: 234, decided: 15000, rate: 7400 / 15000,
+          break_even_with_vig: 110 / 210},
+    disagreements: {games: 1200, model_right: 560, market_right: 640,
+                    model_rate: 560 / 1200},
+  },
+  by_season: [
+    {season: 2013, games: 700, model_mae: 11.8, market_mae: 11.1,
+     model_brier: 0.19, market_brier: 0.18,
+     ats: {wins: 340, losses: 350, pushes: 10, decided: 690, rate: 340 / 690}},
+    {season: 2014, games: 720, model_mae: 11.2, market_mae: 10.7,
+     model_brier: 0.185, market_brier: 0.179,
+     ats: {wins: 360, losses: 350, pushes: 10, decided: 710, rate: 360 / 710}},
+  ],
+  coverage: [{season: 2013, priced: 700, games: 760, share: 700 / 760},
+             {season: 2014, priced: 720, games: 760, share: 720 / 760}],
+  market_sigma: 13.6,
+};
+
+test('the market verdict names whichever side is CLOSER, not whichever number is bigger', () => {
+  const {verdict} = accuracyContext(ACCURACY, MARKET);
+  // Lower error is better, so a smaller model number means the model wins.
+  assert.match(verdict(10.0, 11.0), /ratings are closer, by 1\.00/);
+  assert.match(verdict(11.0, 10.0), /market is closer, by 1\.00/);
+  assert.match(verdict(11.0, 11.02), /level/);
+  assert.equal(verdict(null, 11.0), '');
+});
+
+test('the market panel states both margin errors, the spread record and the vig break-even', () => {
+  const html = accuracyContext(ACCURACY, MARKET).render();
+  assert.match(html, /Against the closing line/);
+  assert.match(html, /15,234<\/b> games from 2013 to 2026/);
+  assert.match(html, /ratings miss by <b>11\.42<\/b> points/);
+  assert.match(html, /line misses by <b>10\.88<\/b>/);
+  assert.match(html, /market is closer, by 0\.54/);
+  assert.match(html, /7400–7600–234/);
+  // 49.3% is a losing ticket, and the page has to say so rather than leaving
+  // a number under 50% looking like a near miss.
+  assert.match(html, /52\.4% to break even/);
+  assert.match(html, /losing ticket/);
+  assert.match(html, /test of a forecast rather than of a betting strategy/);
+});
+
+test('the market panel reports the straight-up disagreements and the curve it used', () => {
+  const html = accuracyContext(ACCURACY, MARKET).render();
+  assert.match(html, /1,200<\/b> games where the two disagreed/);
+  assert.match(html, /46\.7%<\/b> of them correctly/);
+  assert.match(html, /13\.6 points wide/);
+});
+
+test('the market season table carries how much of each season was priced', () => {
+  const html = accuracyContext(ACCURACY, MARKET).render();
+  const seasons = html.slice(html.indexOf('season by season'));
+  // Newest first, and the coverage share beside the count.
+  assert.ok(seasons.indexOf('2014') < seasons.indexOf('2013'));
+  assert.match(seasons, /92%/);     // 700 of 760
+});
+
+test('no line archive means no market section at all, not an empty one', () => {
+  const ctx = accuracyContext(ACCURACY, undefined);
+  assert.equal(ctx.market(), '');
+  const html = ctx.render();
+  assert.doesNotMatch(html, /Against the closing line/);
+  assert.match(html, /How often the model is right/);
+});
+
+test('a line archive with no priced games is still no section', () => {
+  assert.equal(accuracyContext(ACCURACY, {overall: {games: 0}}).market(), '');
+});
+
+test('the market section survives a build with no validation report', () => {
+  const html = accuracyContext(null, MARKET).render();
+  assert.match(html, /No validation report/);
+  assert.match(html, /Against the closing line/);
 });
 
 function sourceOfConst(name) {
