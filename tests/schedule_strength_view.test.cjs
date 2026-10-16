@@ -167,10 +167,15 @@ test('one such game is singular, because 1 are reads as broken', () => {
   assert.match(html, /Of those games, 1 is against/);
 });
 
-test('a season with nothing unrated left says so rather than warning about none', () => {
+test('a count of zero states the rule and does not claim the season has none', () => {
+  // Zero also means "not fetched yet": the deploy refreshes the schedule file
+  // only when a game has finished since the last one, so a freshly published
+  // season reads zero before the first refresh. The page cannot tell that
+  // apart from a season with genuinely none, so it must not assert either.
   const {html} = view({...SEASON, remaining_unrated: 0});
-  assert.match(html, /Every game left is against a team this project rates/);
-  assert.doesNotMatch(html, /does not rate \u2014|not in the average/);
+  assert.doesNotMatch(html, /Every game left is against/);
+  assert.doesNotMatch(html, /Of those games/);
+  assert.match(html, /never in the average/);
   // The 1500 paragraph stays: it explains the rule, not an exception to it.
   assert.match(html, /1500 prior/);
 });
