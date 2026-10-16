@@ -84,7 +84,17 @@ uses that width, publishing it as `market_sigma`.
 Run `.github/workflows/backfill-lines.yml` (Actions → Backfill betting lines →
 Run workflow) with a season range. It commits one season at a time with
 `[skip ci]` and stops at the first season it cannot fetch, naming the season to
-resume from. The same two cautions as every other backfill here:
+resume from.
+
+**CFBD's line archive starts in 2013**, which is why the range defaults to
+2013. Asked for an earlier season it answers with an empty list rather than an
+error, so an earlier start is harmless: the fetcher prints "no lines" and the
+loop moves on. It writes no file for such a season, and the publish step is
+guarded on the file existing — staging a path that is not there is a fatal git
+error, not a no-op, which is how the first run of this workflow published
+nothing at all starting from 1980.
+
+The same two cautions as every other backfill here:
 
 * a pending run is **cancelled** when another run enters the
   `rebuild-and-deploy-main` concurrency group, so dispatch it when nothing else

@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import csv
 import gzip
+import hashlib
 import sqlite3
+import time
 
 import pytest
 
@@ -130,6 +132,26 @@ class TestTheFetcher:
         with gzip.open(tmp_path / "2024.csv.gz", "rt", encoding="utf-8") as fh:
             rows = list(csv.DictReader(fh))
         assert len(rows) == 5
+
+    def test_the_same_rows_written_twice_are_the_same_bytes(self, monkeypatch, tmp_path):
+        """gzip stamps the current time into its header unless told not to, so
+        re-fetching a season that has not changed would produce a different
+        file and the backfill would commit a "change" for every season in its
+        range. mtime=0 is what makes a re-fetch the no-op it is meant to be."""
+        monkeypatch.setattr(fl.cfbd_http, "get_json",
+                            lambda url, params=None, **k:
+                            PAYLOAD if params["seasonType"] == "regular" else [])
+        path = tmp_path / "2024.csv.gz"
+        assert fl.write_lines(2024, {}, out_dir=tmp_path) == "written"
+        first = hashlib.sha256(path.read_bytes()).hexdigest()
+        # A full second apart, so a header timestamp would have to differ.
+        now = time.time()
+        monkeypatch.setattr(time, "time", lambda: now + 5.0)
+        assert fl.write_lines(2024, {}, out_dir=tmp_path) == "written"
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == first
+        # And it is still a readable archive, not an empty deterministic one.
+        with gzip.open(path, "rt", encoding="utf-8") as fh:
+            assert len(list(csv.DictReader(fh))) == 5
 
 
 class TestTheSign:

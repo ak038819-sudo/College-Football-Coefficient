@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import csv
 import gzip
+import io
 import os
 import sys
 from pathlib import Path
@@ -178,10 +179,15 @@ def write_lines(year: int, headers: dict, out_dir: Path = OUT_DIR) -> str:
         return "empty"
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / f"{year}.csv.gz"
-    with gzip.open(path, "wt", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=CSV_FIELDS)
-        writer.writeheader()
-        writer.writerows(rows)
+    # mtime=0, because gzip puts the current time in its header: the same rows
+    # written twice would otherwise be different bytes, and the backfill's
+    # publish step would commit a "change" for every season it re-fetched,
+    # which is exactly the no-op it is built to be.
+    with open(path, "wb") as raw, gzip.GzipFile(fileobj=raw, mode="wb", mtime=0) as gz:
+        with io.TextIOWrapper(gz, newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=CSV_FIELDS)
+            writer.writeheader()
+            writer.writerows(rows)
     games = len({r["game_id"] for r in rows})
     providers = sorted({r["provider"] for r in rows if r["provider"]})
     priced = sum(1 for r in rows if r["spread"] != "")
