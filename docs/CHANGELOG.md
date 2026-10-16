@@ -1,5 +1,31 @@
 # Site release history
 
+## Unreleased — Schedule strength, played and remaining (2026-10-16)
+
+- **Standings → Schedule Strength** puts every team's schedule difficulty in
+  one sortable table: the average Elo of the opponents already played, the
+  average of the ones still to come, and the two pooled, each ranked within
+  the season. Conferences get the same three numbers underneath.
+- The forward-looking half is new. Strength of schedule existed only as one
+  number on a team page, and only for games already played — so a team whose
+  hard games were all still to come looked identical to one that had already
+  played them. In 2026 the gap is stark: Auburn has faced the 39th-toughest
+  schedule and has the 2nd-toughest left.
+- **Played** takes each opponent at the rating it held entering that game,
+  which is exactly the number a team page already shows — two pages
+  disagreeing about one team's schedule would be worse than neither having it.
+  **Remaining** takes opponents at their current rating, because a game nobody
+  has played has no pregame rating.
+- An opponent this project does not rate contributes nothing to a remaining
+  average rather than being counted at the engine's 1500 prior, and the page
+  says how many such games there are. Counting them would make a schedule full
+  of FCS opponents look average when it is the opposite.
+- Ranks are within a season, deliberately: Elo is a within-season chain, so a
+  1,650 average opponent in 2026 and in 1994 are not the same claim.
+- One file per season (`ui/data/schedule_strength/<season>.js`), loaded when
+  the view opens. The whole history is 1.5 MB and the manifest is fetched on
+  every page view.
+
 ## Unreleased — The ratings against the market (2026-10-16)
 
 - The Track Record page now answers the question the baselines never could:
