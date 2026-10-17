@@ -455,6 +455,42 @@
   }
   .monogram.lg { width: 140px; height: 140px; font-size: 52px; }
   .monogram.sm { width: 63px; height: 63px; font-size: 28px; }
+
+  /* ---- A player's own marks (see "What a player page shows instead of a portrait") ---- */
+  .jersey-plate {
+    width: 140px; height: 140px;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 58px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
+  }
+  .jersey-plate .plate-hash { font-size: 0.4em; opacity: 0.65; margin-right: 0.05em; }
+  .jersey-plate.initials { font-size: 46px; letter-spacing: 0; }
+  .home-pin-wrap { flex: 0 0 auto; width: 280px; max-width: 100%; }
+  .home-pin { min-height: 0; }
+  .home-pin circle { fill: var(--amber); stroke: var(--bg); stroke-width: 1.2; }
+  .home-pin-label { margin: 6px 0 0; text-align: center; font-size: 13px; color: var(--muted); }
+  .career-strip { width: 100%; height: 96px; display: block; }
+  .career-strip .strip-bar { fill: var(--amber); }
+  .career-strip a:hover .strip-bar, .career-strip a:focus .strip-bar { fill: var(--green-hl); }
+  .career-strip .strip-bar.negative { fill: var(--red); }
+  .career-strip .strip-zero { stroke: var(--line); stroke-width: 1; }
+  .strip-axis { position: relative; height: 16px; margin-top: 2px; }
+  .strip-axis .strip-season {
+    position: absolute; top: 0; font-size: 11px; color: var(--muted); white-space: nowrap;
+  }
+  @media (max-width: 520px) {
+    .jersey-plate { width: 104px; height: 104px; font-size: 44px; }
+    .jersey-plate.initials { font-size: 34px; }
+    .home-pin-wrap { width: 100%; }
+  }
   .name-cell { display: flex; align-items: center; gap: 14px; }
 
   /* ---- Clickable teams (Milestone 1) ---- */
@@ -6819,6 +6855,288 @@ function samePersonNote(p) {
     'id never moves.</p></div>';
 }
 
+// ---------------- What a player page shows instead of a portrait ----------------
+// A team page opens on its logo. A player page has nothing to open on: no
+// source of licensed headshots covers this archive's 99,813 players at a price
+// a site like this can pay, and docs/people-pages.md's standing rule is that a
+// reachable image URL is not redistribution permission. A grey silhouette in
+// the slot would only say "photo missing" 99,813 times.
+//
+// So the slot holds marks built from what this project does have, each of which
+// is about the person rather than a stand-in for him: the number he wore, the
+// town he came from, and the shape of his career.
+
+// Whether to write on a colour in white or in near-black. 335 of the 499
+// extracted team chip colours are light enough that white numerals on them are
+// unreadable -- Wyoming's is #F8FAFC -- so the ink is chosen per colour by
+// relative luminance (WCAG's formula) rather than assumed.
+function plateInk(hex) {
+  const match = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+  if (!match) return '#fff';
+  const channel = i => {
+    const c = parseInt(match[1].slice(i * 2, i * 2 + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  const luminance = 0.2126 * channel(0) + 0.7152 * channel(1) + 0.0722 * channel(2);
+  return luminance > 0.33 ? '#10161f' : '#fff';
+}
+
+// The colour his team wore that season. The same accent colour
+// build_dated_logo_assets.py extracts for the logo chip, and picked for the
+// season rather than for today, so a 1998 player and the logo his team wore in
+// 1998 are the same colour on the same screen.
+function playerPlateColor(teamId, season) {
+  const name = teamId == null ? null : teamNameById(teamId);
+  const entry = name ? pickDatedLogoEntry(DATED_LOGOS, name, season) : null;
+  return (entry && entry.bg) || null;
+}
+
+// The plate. His jersey number, large, where a team page puts its logo.
+// 96,928 of 99,813 players (97.1%) have a number in at least one season; the
+// rest get their initials, which is the fallback a team with no logo already
+// gets. The number comes from the season being shown, so a transfer who
+// changed numbers gets the one he wore at the school named beside it.
+function playerPlate(player, season) {
+  // A licensed photo wins the slot if one ever exists. The headshot columns in
+  // the schema are deliberately empty rather than absent, so the day a source
+  // clears, nothing here has to change for it to appear.
+  if (player && player.headshot_url) {
+    return '<span class="logo-chip lg"><img class="logo-img" src="' + esc(player.headshot_url) +
+      '" alt="' + esc(player.display_name || '') + '" loading="lazy"></span>';
+  }
+  const jersey = season && season.jersey != null ? season.jersey : null;
+  const color = playerPlateColor(season && season.team_id, season && season.season_year);
+  // A player whose team has no colour here keeps the monogram's own hue rule,
+  // so the plate is never the one element on the page with no colour at all.
+  const background = color || 'hsl(' + hashHue(String((player && player.display_name) || '')) + ',48%,38%)';
+  const ink = color ? plateInk(color) : '#fff';
+  const style = 'background:' + background + ';color:' + ink;
+  if (jersey == null) {
+    const name = String((player && player.display_name) || '');
+    return '<span class="jersey-plate initials" style="' + style + '" role="img" aria-label="' +
+      esc(name ? name + ', no jersey number recorded' : 'No jersey number recorded') + '">' +
+      esc(name ? initials(name) : '?') + '</span>';
+  }
+  return '<span class="jersey-plate" style="' + style + '" role="img" aria-label="' +
+    esc('Jersey number ' + jersey) + '"><span class="plate-hash">#</span>' + esc(jersey) + '</span>';
+}
+
+// ---- the hometown -----------------------------------------------------------
+// The town is already on the page as text. The pin says where that is, which is
+// the thing a reader of a recruiting-shaped sport actually wants from it, and it
+// is drawn in the same frame and the same colours as the stadium and recruiting
+// maps so the three read as one map at different scales.
+//
+// 88.8% of players have a coordinate (src/hometown_points.py). A player with
+// none -- no match, an off-continent hometown, or a coordinate that failed the
+// plausibility check -- gets no pin, and his hometown stays text alone.
+function hometownPin(player) {
+  const point = player && player.hometown_point;
+  if (!Array.isArray(point)) return '';
+  const lat = Number(point[0]), lon = Number(point[1]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return '';
+  const alaska = lat > 55;
+  const map = CfbGeography.projection(alaska);
+  // project() takes longitude first, as every other map on this site calls it.
+  const [x, y] = map.project(lon, lat);
+  const town = [player.hometown, player.home_state].filter(Boolean).join(', ');
+  // Where the coordinate came from, said rather than implied: 'own' is his own
+  // recruiting record, 'town' is this project matching his hometown text to a
+  // town of that name and state in the recruiting archive. The same
+  // attributed-versus-inferred distinction the box-score lines carry.
+  const sourced = point[2] === 'own'
+    ? 'from his own recruiting record'
+    : 'located by matching the town name and state';
+  return '<div class="home-pin-wrap">' +
+    '<svg class="stadium-map home-pin" viewBox="0 0 ' + map.width + ' ' + map.height +
+      '" role="img" aria-label="' + esc('Map showing ' + (town || 'this hometown')) + '">' +
+    '<g aria-label="United States state boundaries">' +
+    CfbGeography.statePaths(alaska).map(st => '<path class="state-boundary" d="' + st.d +
+      '"><title>' + esc(st.name) + '</title></path>').join('') + '</g>' +
+    '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5"><title>' +
+      esc(town || 'Hometown') + '</title></circle></svg>' +
+    '<p class="home-pin-label" title="' + esc(sourced) + '">' +
+    (town ? esc(town) : 'Hometown') + '</p></div>';
+}
+
+// ---- the career -------------------------------------------------------------
+// One bar per game he has a box-score line in, oldest first, drawn from the
+// game log the page has already loaded. It is a shape only this person has, and
+// it is an index into the table below it: every bar links to its game.
+//
+// The bar is his production in ONE category, named above the strip, because a
+// career drawn as a mixture of tackles and receiving yards would be a number
+// nobody computed. The category is the one his listed position plays in, and
+// where that is unknown, whichever he has the most games in.
+const STRIP_PRIMARY_STAT = {
+  passing: 'YDS', rushing: 'YDS', receiving: 'YDS', defensive: 'TOT',
+  interceptions: 'INT', kicking: 'PTS', punting: 'YDS',
+  kickReturns: 'YDS', puntReturns: 'YDS'
+};
+// `fumbles` is deliberately absent: it is the one category that records a
+// mistake, and a career drawn as a row of fumbles would be a claim about a
+// player that no box score makes.
+
+const STRIP_STAT_LABELS = {
+  YDS: 'yards', TOT: 'tackles', INT: 'interceptions', PTS: 'points'
+};
+
+// What a position plays. A quarterback appears in the rushing box score of
+// nearly every game he plays, so counting games alone drew Max Johnson's career
+// as 31 games of rushing yardage, 11 of them negative from sacks, and said
+// nothing about the passing it was actually made of. The 26 labels this archive
+// uses, with the line's five positions left unmapped: a lineman's career has no
+// box-score category, so his strip falls back to whatever he does appear in.
+const STRIP_POSITION_CATEGORY = {
+  QB: 'passing', RB: 'rushing', FB: 'rushing', WR: 'receiving', TE: 'receiving',
+  LB: 'defensive', OLB: 'defensive', ILB: 'defensive', DL: 'defensive',
+  DE: 'defensive', DT: 'defensive', NT: 'defensive', EDGE: 'defensive',
+  DB: 'defensive', CB: 'defensive', S: 'defensive',
+  PK: 'kicking', P: 'punting', PR: 'puntReturns'
+};
+// A position has to earn its category: two games with a readable number in it,
+// so a quarterback who moved to receiver is drawn as the receiver he became
+// rather than as the one pass he threw in 2019.
+const STRIP_POSITION_MINIMUM = 2;
+
+// A box-score number. A value the feed sends as a pair ("18/29", "2/3") is not
+// a quantity this strip can draw, so only the plain numbers are read; anything
+// else is no bar rather than a guess at which half to use.
+function stripValue(line, type) {
+  if (!line || line[type] == null) return null;
+  const raw = String(line[type]).trim();
+  if (raw === '' || raw.indexOf('/') !== -1) return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
+// Which category this career is drawn in, and WHICH RULE chose it: his
+// position's, where he has enough games in it, else the one he has the most
+// games with a readable number in. Ties go to the order a box score is read in,
+// so the choice is stable between renders and a two-way player is drawn in the
+// category he appears in more often rather than whichever sorted first.
+//
+// The rule is returned with the category because the note under the strip tells
+// a reader why this category and not another, and a note that says "the one he
+// appears in most often" under a strip chosen by position is a false
+// explanation. One return value means the two cannot disagree.
+function stripCategory(log, position) {
+  const counts = new Map();
+  for (const season of Object.keys(log || {})) {
+    for (const row of log[season] || []) {
+      const stats = row[6] || {};
+      for (const category of Object.keys(stats)) {
+        const type = STRIP_PRIMARY_STAT[category];
+        if (!type || stripValue(stats[category], type) == null) continue;
+        counts.set(category, (counts.get(category) || 0) + 1);
+      }
+    }
+  }
+  const played = STRIP_POSITION_CATEGORY[position];
+  if (played && (counts.get(played) || 0) >= STRIP_POSITION_MINIMUM) {
+    return { category: played, byPosition: true };
+  }
+  let best = null, bestCount = 0;
+  for (const category of STAT_CATEGORY_ORDER) {
+    const count = counts.get(category) || 0;
+    if (count > bestCount) { best = category; bestCount = count; }
+  }
+  return bestCount ? { category: best, byPosition: false } : null;
+}
+
+// The games of one career in the chosen category, oldest first. The log is
+// stored newest-first per season, which is how the table reads; a career drawn
+// left to right reads the other way.
+function stripGames(log, category) {
+  const type = STRIP_PRIMARY_STAT[category];
+  const games = [];
+  for (const season of Object.keys(log || {}).map(Number).sort((a, b) => a - b)) {
+    const rows = (log[season] || []).slice().reverse();
+    for (const row of rows) {
+      const value = stripValue((row[6] || {})[category], type);
+      if (value == null) continue;
+      games.push({ season: season, gameId: row[0], date: row[1], opponent: row[2],
+                   home: row[3], kickoff: row[7], neutral: row[8], value: value });
+    }
+  }
+  return games;
+}
+
+const STRIP_BAR_WIDTH = 7;
+const STRIP_BAR_GAP = 2;
+const STRIP_SEASON_GAP = 12;
+const STRIP_HEIGHT = 96;
+
+function careerStripPanel(log, position) {
+  const chosen = stripCategory(log, position);
+  if (!chosen) return '';
+  const category = chosen.category;
+  const games = stripGames(log, category);
+  // One bar is not a shape. A reader learns nothing from it that the game log's
+  // single row does not already say.
+  if (games.length < 2) return '';
+  const type = STRIP_PRIMARY_STAT[category];
+  const high = Math.max(...games.map(g => g.value), 0);
+  const low = Math.min(...games.map(g => g.value), 0);
+  // Negative yardage is real -- a sacked quarterback rushes for -8 -- so the
+  // baseline sits wherever zero falls in the range and those bars hang below
+  // it, rather than being clamped away where the strip would claim he gained
+  // nothing.
+  const span = (high - low) || 1;
+  const zeroY = STRIP_HEIGHT * (high / span);
+  const step = STRIP_BAR_WIDTH + STRIP_BAR_GAP;
+
+  let x = 0, lastSeason = null;
+  const bars = [], labels = [];
+  for (const game of games) {
+    if (lastSeason !== null && game.season !== lastSeason) {
+      x += STRIP_SEASON_GAP;
+    }
+    if (game.season !== lastSeason) labels.push({ season: game.season, x: x });
+    lastSeason = game.season;
+    const scaled = STRIP_HEIGHT * (Math.abs(game.value) / span);
+    // A game he played and recorded nothing in is a 1px tick, not a gap: the
+    // bar's absence would read as a game he did not play.
+    const height = Math.max(scaled, 1);
+    const y = game.value >= 0 ? zeroY - height : zeroY;
+    const opponent = teamNameById(game.opponent);
+    const where = (game.neutral || game.home) ? 'vs ' : 'at ';
+    const title = fmtGameDate({ kickoff_utc: game.kickoff, date: game.date }) + ' ' + where +
+      (opponent || 'an opponent outside this dataset') + ' — ' +
+      game.value + ' ' + (STRIP_STAT_LABELS[type] || type);
+    bars.push('<a href="' + esc(gameHref(game.gameId, game.season)) + '">' +
+      '<rect class="strip-bar' + (game.value < 0 ? ' negative' : '') + '" x="' + x.toFixed(1) +
+      '" y="' + y.toFixed(1) + '" width="' + STRIP_BAR_WIDTH + '" height="' + height.toFixed(1) +
+      '"><title>' + esc(title) + '</title></rect></a>');
+    x += step;
+  }
+  const width = Math.max(x - STRIP_BAR_GAP, 1);
+  const labelRow = labels.map(l => '<span class="strip-season" style="left:' +
+    ((l.x / width) * 100).toFixed(3) + '%">' + esc(l.season) + '</span>').join('');
+  // "Interceptions interceptions" is what naming both the category and the
+  // statistic produces when they are the same word, which is the real case for
+  // a defender before 2016: the box-score archive carries no tackles that far
+  // back, so his strip falls back to the interceptions category.
+  const categoryLabel = STAT_CATEGORY_LABELS[category] || category;
+  const statLabel = STRIP_STAT_LABELS[type] || type;
+  const label = statLabel.toLowerCase() === categoryLabel.toLowerCase()
+    ? categoryLabel : categoryLabel + ' ' + statLabel;
+  return '<div class="panel team-section"><h2 class="section-title">Career shape</h2>' +
+    '<svg class="career-strip" viewBox="0 0 ' + width.toFixed(1) + ' ' + STRIP_HEIGHT +
+      '" preserveAspectRatio="none" role="img" aria-label="' +
+      esc(label + ' in each of ' + games.length + ' games, oldest first') + '">' +
+    (low < 0 ? '<line class="strip-zero" x1="0" y1="' + zeroY.toFixed(1) + '" x2="' +
+      width.toFixed(1) + '" y2="' + zeroY.toFixed(1) + '"></line>' : '') +
+    bars.join('') + '</svg>' +
+    '<div class="strip-axis">' + labelRow + '</div>' +
+    '<p class="section-note">' + esc(label) + ' in each of his ' + games.length +
+    ' games with a box-score line, oldest first, against a high of ' + esc(high) + '. ' +
+    (chosen.byPosition
+      ? 'Drawn in the category his listed position plays in; a bar links to its game. '
+      : 'Drawn in the category he appears in most often; a bar links to its game. ') +
+    'Games before 2005, and games the source published no box score for, are not here.</p></div>';
+}
+
 function playerPanels(p, id, gameLog) {
   const seasons = p.seasons || [];
   const last = seasons[seasons.length - 1] || {};
@@ -6828,12 +7146,16 @@ function playerPanels(p, id, gameLog) {
   const bio = [position && esc(position), last.jersey != null ? 'No. ' + esc(last.jersey) : null,
                height, weight ? esc(weight) + ' lb' : null].filter(Boolean).join(' · ');
   const home = [p.hometown, p.home_state].filter(Boolean).join(', ');
+  // Same three-part header a team page has: the mark, the text, and the thing
+  // on the right. The plate takes the slot a team page gives its logo, which is
+  // why a player and his school line up at the same place on the screen.
   const header = '<div class="panel team-header"><div class="team-header-main">' +
+    playerPlate(p, last) +
     '<div class="team-header-text"><h1 class="team-title">' + esc(p.display_name) + '</h1>' +
     '<div class="team-sub">' + (bio || 'No listed position') +
     (last.team_id != null ? ' · ' + teamCellById(last.team_id) : '') + '</div>' +
     (home ? '<div class="team-sub">' + esc(home) + '</div>' : '') +
-    '</div></div></div>';
+    '</div></div>' + hometownPin(p) + '</div>';
   const rows = seasons.slice().reverse().map(s =>
     '<tr><td>' + esc(s.season_year) + '</td><td>' + teamCellById(s.team_id) + '</td>' +
     '<td>' + (s.jersey == null ? '&mdash;' : esc(s.jersey)) + '</td>' +
@@ -6858,8 +7180,11 @@ function playerPanels(p, id, gameLog) {
     '<table class="data-table"><thead><tr><th>Season</th><th>Team</th><th>No.</th>' +
     '<th>Pos</th><th>Class</th><th>Ht</th><th>Wt</th></tr></thead><tbody>' + rows +
     '</tbody></table></div>';
+  // The strip sits directly above the table it indexes, so a bar and the row it
+  // belongs to are read together.
   return header + samePersonNote(p) + note + table +
-    playerStatsPanel(p.stats, p.same_person, p.identity_note) + gameLogPanel(gameLog);
+    playerStatsPanel(p.stats, p.same_person, p.identity_note) +
+    careerStripPanel(gameLog, position) + gameLogPanel(gameLog);
 }
 
 function coachRecord(tenures) {
