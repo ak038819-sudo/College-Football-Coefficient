@@ -339,6 +339,7 @@
     .global-search input { padding: 7px 10px; }
     .panel { padding: 14px; }
     .subnav a { padding: 9px 8px; font-size: 14px; }
+    .adj-movers-grid { grid-template-columns: minmax(0, 1fr); }
     .control-row { gap: 8px 10px; }
     .control-row > * { margin-bottom: 12px; }
   }
@@ -524,6 +525,15 @@
   details.help { margin-top: 12px; font-size: 12.5px; color: var(--ink-dim); }
   details.help summary { cursor: pointer; font-family: var(--font-mono); font-size: 11px; }
   details.help ul { margin: 8px 0 0; padding-left: 18px; line-height: 1.5; }
+  /* The two ends of the opponent adjustment, four short lists rather than one
+     long table. Two columns on a phone keeps all four on one screen. */
+  .adj-movers-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 20px; margin-top: 18px; }
+  .adj-movers-grid h3.section-title { margin: 0 0 4px; }
+  .adj-movers { list-style: none; margin: 8px 0 0; padding: 0; font-size: 13px; }
+  .adj-movers li { display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--panel-2); }
+  .adj-movers li:last-child { border-bottom: 0; }
   .swing-list { list-style: none; margin: 0; padding: 0; }
   .swing-row { display: grid; grid-template-columns: 78px 1fr; gap: 3px 12px; padding: 10px 0; border-bottom: 1px solid var(--panel-2); }
   .swing-row:last-child { border-bottom: 0; }
@@ -1312,6 +1322,23 @@ function loadScheduleStrength(season) {
     const raw = (window.__CFB_SCHEDULE_STRENGTH__ || {})[season];
     if (!raw) throw new Error('schedule strength for ' + season + ' was empty');
     _scheduleStrength.set(season, raw);
+    return raw;
+  });
+}
+
+const _adjustedStats = new Map();
+// Resolves to {season, metrics: [...], teams: [...]}. One file per season
+// (src/build_adjusted_stats.py via export_static_data), loaded only when the
+// adjusted view opens.
+function loadAdjustedStats(season) {
+  season = Number(season);
+  if (_adjustedStats.has(season)) return Promise.resolve(_adjustedStats.get(season));
+  const src = (STATIC_MANIFEST.adjusted_stats || {})[String(season)];
+  if (!src) return Promise.reject(new Error('no adjusted stats for season ' + season));
+  return loadDataScript(src).then(() => {
+    const raw = (window.__CFB_ADJUSTED_STATS__ || {})[season];
+    if (!raw) throw new Error('adjusted stats for ' + season + ' was empty');
+    _adjustedStats.set(season, raw);
     return raw;
   });
 }
@@ -4137,7 +4164,7 @@ function renderNavigation() {
     if (selected) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
-  const statsNav = [['overview', 'Overview'], ['teams', 'Teams'], ['players', 'Players'], ['matchup', 'Matchup'], ['playoff', 'Playoff']];
+  const statsNav = [['overview', 'Overview'], ['teams', 'Teams'], ['players', 'Players'], ['adjusted', 'Adjusted'], ['matchup', 'Matchup'], ['playoff', 'Playoff']];
   const inStats = ['stats', 'matchups', 'playoff'].includes(state.section);
   const items = inStats ? statsNav : state.view === 'team' || state.section === 'teams' ? [] : SUBVIEWS[state.section] || [];
   // A section whose views are chosen from a selector rather than tabs puts it
@@ -5920,6 +5947,187 @@ function hydrateScheduleStrength(version) {
     body.innerHTML = '<div class="empty-note">Schedule strength could not be loaded.</div>';
   });
 }
+
+// ---- Opponent-adjusted team statistics (src/build_adjusted_stats.py) -------
+// Every other team number on this site is a raw total: it does not know who
+// the team played. These do. The raw column stays beside the adjusted one on
+// purpose -- the gap between them IS the schedule, and dropping the raw number
+// would turn a correction into an assertion.
+let adjustedMetric = null;
+let adjustedStatsData = null;
+
+function adjustedValue(value, unit) {
+  if (value == null) return '\u2014';
+  if (unit === 'pct') return (value * 100).toFixed(1) + '%';
+  if (unit === 'epa') return (value > 0 ? '+' : value < 0 ? '\u2212' : '') + Math.abs(value).toFixed(3);
+  return value.toFixed(1);
+}
+
+// How far a team's rank moved once its opponents were accounted for. Positive
+// means the adjustment was kind to it, which for a defense usually means it
+// played good offenses.
+function adjustedMove(cells, side) {
+  if (!cells) return null;
+  const raw = cells[side + '_raw_rank'], adj = cells[side + '_adj_rank'];
+  if (raw == null || adj == null) return null;
+  return raw - adj;
+}
+
+function adjustedMoveNote(move) {
+  if (!move) return '';                   // no movement is worth no mark
+  return ' ' + (move > 0 ? '\u25b2' : '\u25bc') + Math.abs(move);
+}
+
+// A value with its rank beside it. The value is what sorts, written as an
+// explicit key -- a cell holding two numbers would otherwise sort on the pair
+// (see ui/stats.js).
+function adjustedCell(value, rank, unit, move) {
+  if (value == null) return '<td class="num" data-sort="">\u2014</td>';
+  return '<td class="num" data-sort="' + Number(value) + '">' + adjustedValue(value, unit) +
+    (rank ? ' <small class="section-note">#' + rank + adjustedMoveNote(move) + '</small>' : '') +
+    '</td>';
+}
+
+function adjustedMetricOf(data) {
+  const keys = (data.metrics || []).map(m => m.key);
+  return keys.includes(adjustedMetric) ? adjustedMetric : keys[0];
+}
+
+function renderAdjustedStats() {
+  if (!(STATIC_MANIFEST.adjusted_stats || {})[String(state.year)]) {
+    return '<div class="panel"><h2 class="view-title">Stats \u00b7 Opponent-adjusted</h2>' +
+      '<div class="empty-note">' + state.year + ' has too few rated games to separate a team ' +
+      'from its schedule, so there is nothing to adjust.</div></div>';
+  }
+  return '<div class="panel"><h2 class="view-title">Stats \u00b7 Opponent-adjusted</h2>' +
+    '<div id="adj-body" aria-live="polite">Loading ' + state.year + ' statistics\u2026</div></div>';
+}
+
+function adjustedStatsHtml(data) {
+  const key = adjustedMetricOf(data);
+  const metric = (data.metrics || []).find(m => m.key === key);
+  if (!metric) return '<div class="empty-note">No statistic has enough of ' + data.season +
+    ' to adjust.</div>';
+  const rows = (data.teams || []).filter(t => t[key]);
+  if (!rows.length) return '<div class="empty-note">No team has enough of ' + data.season +
+    ' to adjust.</div>';
+  const unit = metric.unit;
+  // By adjusted offense, with a team that has no offense for this metric last
+  // rather than first: a null rank subtracts as a zero, which would put every
+  // team missing the number at the top of the table.
+  const ordered = rows.slice().sort((a, b) => {
+    const x = a[key].off_adj_rank, y = b[key].off_adj_rank;
+    if (x == null && y == null) return a.name.localeCompare(b.name);
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return x - y;
+  });
+  const choices = (data.metrics || []).map(m => [m.key, m.label]);
+
+  let html = choices.length > 1
+    ? '<div class="control-row"><label class="view-select"><span>Statistic</span>' +
+      '<select id="adj-metric">' + choices.map(([k, label]) => '<option value="' + esc(k) + '"' +
+        (k === key ? ' selected' : '') + '>' + esc(label) + '</option>').join('') +
+      '</select></label></div>'
+    : '';
+
+  html += '<p class="section-note">What each team would have done against an average ' +
+    data.season + ' opponent, beside what it actually did. <b>Offense</b> is what the team ' +
+    'produced, <b>defense</b> what it allowed, both in ' + esc(metric.label.toLowerCase()) +
+    ', so a good defense has a LOW number in both defense columns. The average was ' +
+    adjustedValue(metric.mu, unit) + ' and playing at home was worth ' +
+    adjustedValue(Math.abs(metric.home), unit) + ' of it. Ranks are out of ' + metric.rated +
+    ' teams, 1 = best; the triangle is how far the rank moved once the opponents were ' +
+    'accounted for.</p>';
+
+  html += '<table class="rank-table"><thead><tr><th>Team</th><th>Conference</th>' +
+    '<th class="num">Offense</th><th class="num">Offense adjusted</th>' +
+    '<th class="num">Defense</th><th class="num">Defense adjusted</th></tr></thead><tbody>';
+  ordered.forEach(t => {
+    const c = t[key];
+    html += '<tr><td><div class="name-cell">' + teamLink(t.name, 'sm') + '</div></td>' +
+      '<td><div class="name-cell">' + (t.conference
+        ? logoMarkup(t.conference, 'conf', 'sm') + esc(t.conference) : '\u2014') + '</div></td>' +
+      adjustedCell(c.off_raw, c.off_raw_rank, unit) +
+      adjustedCell(c.off_adj, c.off_adj_rank, unit, adjustedMove(c, 'off')) +
+      adjustedCell(c.def_raw, c.def_raw_rank, unit) +
+      adjustedCell(c.def_adj, c.def_adj_rank, unit, adjustedMove(c, 'def')) +
+      '</tr>';
+  });
+  html += '</tbody></table>';
+  return html + adjustedMoversHtml(data, key) + adjustedHelpHtml();
+}
+
+// The two ends of the correction. A table of 136 rows answers "where does my
+// team stand"; these answer "whose number was the schedule's doing", which is
+// the question the page exists for.
+function adjustedMoversHtml(data, key) {
+  const rows = (data.teams || []).filter(t => t[key] && adjustedMove(t[key], 'def') != null);
+  if (rows.length < 10) return '';
+  const list = (ranked, side) => '<ul class="adj-movers">' + ranked.slice(0, 5).map(t => {
+    const c = t[key];
+    return '<li>' + teamLink(t.name, 'sm') + ' <span class="section-note">#' +
+      c[side + '_raw_rank'] + ' \u2192 #' + c[side + '_adj_rank'] + '</span></li>';
+  }).join('') + '</ul>';
+  // Sorted most-flattered first; the punished end is the same ordering reversed.
+  const by = side => rows.slice().sort((a, b) =>
+    adjustedMove(a[key], side) - adjustedMove(b[key], side));
+  const defense = by('def'), offense = by('off');
+  const block = (title, note, ranked, side) =>
+    '<div><h3 class="section-title">' + title + '</h3>' +
+    '<p class="section-note">' + note + '</p>' + list(ranked, side) + '</div>';
+  return '<div class="adj-movers-grid">' +
+    block('Defenses the schedule flattered',
+      'Faced weak offenses, so they allowed less than an average opponent would have taken.',
+      defense, 'def') +
+    block('Defenses the schedule punished',
+      'Faced strong offenses, so they allowed more than an average opponent would have taken.',
+      defense.slice().reverse(), 'def') +
+    block('Offenses the schedule flattered', 'Faced weak defenses.', offense, 'off') +
+    block('Offenses the schedule punished', 'Faced strong defenses.',
+      offense.slice().reverse(), 'off') +
+    '</div>';
+}
+
+function adjustedHelpHtml() {
+  return '<details class="help"><summary>How this is calculated</summary><ul>' +
+    '<li>Every game gives two observations \u2014 each team\u2019s offense against the ' +
+    'other\u2019s defense. Each is modelled as the league average plus that offense, plus that ' +
+    'defense, plus a single league-wide home-field term, and all of them are fitted at once by ' +
+    'ridge regression. The published numbers put the result back on the statistic\u2019s own ' +
+    'scale, so they read beside the raw ones.</li>' +
+    '<li>The ridge term pulls every team toward the league average by an amount that shrinks as ' +
+    'its games accumulate, because in September one opponent is not a season. Its strength was ' +
+    'chosen by holding out a fifth of each season\u2019s games and measuring how well the fit ' +
+    'predicted them.</li>' +
+    '<li>Games against opponents this project does not rate are excluded from both columns, so ' +
+    'the raw and adjusted numbers on a row always cover the same games. That is also why these ' +
+    'raw numbers can differ from the Teams table, which counts every opponent.</li>' +
+    '<li>Nothing here feeds Elo, CoE, the playoff model or any prediction. It is a description ' +
+    'of statistics that were already published, with one known distortion taken out.</li>' +
+    '</ul></details>';
+}
+
+function hydrateAdjustedStats(version) {
+  const body = document.getElementById('adj-body');
+  if (!body) return;                      // the no-data note is already drawn
+  loadAdjustedStats(state.year).then(data => {
+    if (version !== renderVersion) return;
+    adjustedStatsData = data;
+    body.innerHTML = adjustedStatsHtml(data);
+    wrapWideTables();
+  }).catch(() => {
+    if (version !== renderVersion) return;
+    body.innerHTML = '<div class="empty-note">Adjusted statistics could not be loaded.</div>';
+  });
+}
+
+document.addEventListener('change', e => {
+  if (!e.target.matches('#adj-metric') || !adjustedStatsData) return;
+  adjustedMetric = e.target.value;
+  document.getElementById('adj-body').innerHTML = adjustedStatsHtml(adjustedStatsData);
+  wrapWideTables();
+});
 
 function renderCoverage() {
   const dims = COVERAGE.dimensions || [];
@@ -8570,7 +8778,12 @@ function render() {
     return;
   }
   if (state.section === 'home') { content.innerHTML = renderHome(); hydrateLiveScores(version); hydrateHomeDiscovery(version); }
-  else if (state.section === 'stats') {content.innerHTML = renderStats(); hydrateStats(version);}
+  else if (state.section === 'stats') {
+    // The adjusted view reads one small season file and nothing else -- not the
+    // player archive or the season's games -- so it does not go through loadStats.
+    if (state.subview === 'adjusted') { content.innerHTML = renderAdjustedStats(); hydrateAdjustedStats(version); }
+    else { content.innerHTML = renderStats(); hydrateStats(version); }
+  }
   else if (state.section === 'people') { content.innerHTML = renderPeople(); hydratePeople(version); }
   else if (state.section === 'methodology') content.innerHTML = renderMethodology();
   else if (state.section === 'coverage') content.innerHTML = renderCoverage();
