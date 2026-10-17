@@ -6,7 +6,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
   const views = {
-    people: [], stats: ['overview', 'teams', 'players'], home: [], live: [], games: [], matchups: [], teams: ['', 'stadiums'], methodology: [], coverage: [], accuracy: [],
+    people: [], stats: ['overview', 'teams', 'players', 'adjusted'], home: [], live: [], games: [], matchups: [], teams: ['', 'stadiums'], methodology: [], coverage: [], accuracy: [],
     // 'conference-coe' is CoE v1's five-year rolling value, which INCLUDES the
     // current season and feeds the live playoff model. 'conference-coe2' is CoE
     // 2.0's frozen value ENTERING the season. Separate views with separate names,
