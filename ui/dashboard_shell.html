@@ -1567,7 +1567,7 @@ let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult
   homeGroup: null, homeTop25: false, homePoll: null };
 const SECTION_LABELS = { people: 'People', stats: 'Stats', home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', accuracy: 'Track Record', coverage: 'Data coverage', methodology: 'How it works' };
 const SUBVIEWS = {
-  rankings: [['top25', 'Top 25'], ['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['schedule', 'Schedule Strength'], ['home-field', 'Home-Field Advantage'], ['conference-elo', 'Conference Elo'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
+  rankings: [['top25', 'Top 25'], ['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['schedule', 'Schedule Strength'], ['home-field', 'Home-Field Advantage'], ['conference-elo', 'Conference Elo'], ['conference-history', 'Conference History'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
     ['conference-coe2', 'Conference CoE 2.0'], ['elo-weekly', 'Week by Week']],
   playoff: [['field', 'Field'], ['projection', 'Rest of Season'], ['bracket', 'Bracket & Simulator'], ['odds', 'Title Odds'], ['history', 'History']]
 };
@@ -1869,6 +1869,267 @@ function renderConferenceElo() {
     rows.map((r, i) => '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' +
       conferenceLink(r.conference, 'sm', state.year) + '</div></td><td class="num coe-val">' + eloValue(r.elo) +
       '</td><td class="num">' + r.rated + ' / ' + r.members + '</td></tr>').join('') + '</tbody></table></div>';
+}
+
+// ---------------- Conference history (strength over time) ----------------
+// The one-season Conference Elo view answers "who is strong now". This one
+// answers "who was strong when", which is the question realignment makes
+// interesting: the Pac-12 of 2011 and the Big 12 of today are both numbers
+// this project already holds, and nothing put them beside each other.
+//
+// Every number here comes from DATA.conference_elo_by_year, which
+// src/export_dashboard_data.py already computes for all 47 seasons -- the mean
+// end-of-season Elo of a conference's RATED members, using that season's
+// membership rather than today's. Nothing is recomputed here and no new data
+// is exported; this is a second reading of a measurement the site already
+// published one season at a time.
+function conferenceHistorySeries() {
+  const byYear = DATA.conference_elo_by_year || {};
+  const seasons = Object.keys(byYear).map(Number).sort((a, b) => a - b);
+  const series = new Map();
+  seasons.forEach(season => {
+    const rows = byYear[String(season)] || [];
+    // The exporter already sorts each season by Elo descending, so position is
+    // the rank. Read rather than recomputed, so the two views cannot disagree.
+    rows.forEach((row, i) => {
+      if (!series.has(row.conference)) series.set(row.conference, []);
+      series.get(row.conference).push({
+        season: season, elo: row.elo, rank: i + 1, of: rows.length,
+        rated: row.rated, members: row.members,
+      });
+    });
+  });
+  return {seasons: seasons, series: series};
+}
+
+function conferenceHistorySummary(series, seasons) {
+  // One row per conference: when it existed, its best and worst seasons, and
+  // where it stands now. "Now" is empty for a conference that no longer
+  // exists, which is the honest answer and also the interesting one.
+  const last = seasons[seasons.length - 1];
+  const rows = [];
+  series.forEach((points, conference) => {
+    const best = points.reduce((a, p) => (p.elo > a.elo ? p : a), points[0]);
+    const worst = points.reduce((a, p) => (p.elo < a.elo ? p : a), points[0]);
+    const latest = points[points.length - 1];
+    rows.push({
+      conference: conference,
+      seasons: points.length,
+      first: points[0].season,
+      last: latest.season,
+      best: best, worst: worst,
+      current: latest.season === last ? latest : null,
+      mean: points.reduce((sum, p) => sum + p.elo, 0) / points.length,
+    });
+  });
+  rows.sort((a, b) => (b.current ? b.current.elo : -Infinity) - (a.current ? a.current.elo : -Infinity)
+    || b.mean - a.mean || a.conference.localeCompare(b.conference));
+  return rows;
+}
+
+function renderConferenceHistory() {
+  const data = conferenceHistorySeries();
+  if (!data.seasons.length) {
+    return '<div class="panel"><h2 class="section-title">Conference History</h2>' +
+      '<p class="empty-note">Conference membership by season is unavailable, so no history ' +
+      'can be measured.</p></div>';
+  }
+  const rows = conferenceHistorySummary(data.series, data.seasons);
+  const span = data.seasons[0] + '\u2013' + data.seasons[data.seasons.length - 1];
+  const live = rows.filter(r => r.current).length;
+  const gone = rows.length - live;
+  const pick = (rows.find(r => r.current) || rows[0]).conference;
+  let html = '<div class="panel"><h2 class="section-title">Conference Elo over time</h2>' +
+    '<p class="section-note">The average end-of-season Elo of a conference\u2019s rated members, ' +
+    'season by season, ' + span + '. Membership is each season\u2019s own, never today\u2019s, so a ' +
+    'team counts for the conference it actually played in. The chosen conference is drawn in ' +
+    'full; every other conference of the same era is behind it in grey, because a conference ' +
+    'rating only means something against the rest of the sport. Independents are not a ' +
+    'conference and have no rating here.</p>' +
+    '<div class="control-row"><label>Conference ' +
+    '<select id="ch-pick">' + rows.map(r => '<option value="' + esc(r.conference) + '"' +
+      (r.conference === pick ? ' selected' : '') + '>' + esc(r.conference) +
+      (r.current ? '' : ' (' + r.first + '\u2013' + r.last + ')') + '</option>').join('') +
+    '</select></label></div>' +
+    '<div class="elo-chart" id="ch-chart"></div>' +
+    '<p class="section-note" id="ch-caption"></p>' +
+    '<div class="chart-legend"><span><i class="sw" style="background:var(--amber)"></i>Chosen ' +
+    'conference</span><span><i class="sw" style="background:var(--line)"></i>Every other ' +
+    'conference</span><span>Dashed = 1500, the engine\u2019s starting rating</span></div></div>';
+  html += '<div class="panel"><h2 class="section-title">Every conference, ' + span + '</h2>' +
+    '<p class="section-note">' + live + ' conferences are in the newest season and ' + gone +
+    ' no longer exist. A rename shows up as two rows: the Pac-10 and the Pac-12 are separate ' +
+    'here because the source names them separately, and the renames came with real changes of ' +
+    'membership rather than being only a change of name.</p>' +
+    '<table class="rank-table"><thead><tr><th>Conference</th><th class="num">Seasons</th>' +
+    '<th class="num">From</th><th class="num">To</th><th class="num">Best</th>' +
+    '<th class="num">Worst</th><th class="num">Now</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    html += '<tr><td><div class="name-cell">' + logoMarkup(r.conference, 'conf', 'sm') +
+      conferenceLink(r.conference, null, r.last) + '</div></td>' +
+      '<td class="num">' + r.seasons + '</td>' +
+      '<td class="num">' + r.first + '</td><td class="num">' + r.last + '</td>' +
+      conferenceHistoryCell(r.best) + conferenceHistoryCell(r.worst) +
+      conferenceHistoryCell(r.current) + '</tr>';
+  });
+  return html + '</tbody></table></div>';
+}
+
+function conferenceHistoryCell(point) {
+  // Every value cell carries its own sort key: one cell without one sends the
+  // whole column to a text sort (ui/stats.js), which is PR #85's bug. A cell
+  // with no value sorts as absent rather than as zero, so a conference that no
+  // longer exists does not rank as the weakest in the sport.
+  if (!point) return '<td class="num" data-sort="">\u2014</td>';
+  return '<td class="num" data-sort="' + Number(point.elo) + '">' + eloValue(point.elo) +
+    ' <small class="section-note">' + point.season + '</small></td>';
+}
+
+function hydrateConferenceHistory(version) {
+  const select = document.getElementById('ch-pick');
+  if (!select) return;
+  const data = conferenceHistorySeries();
+  const draw = () => {
+    if (version !== renderVersion) return;
+    drawConferenceHistoryChart(data, select.value);
+  };
+  select.addEventListener('change', draw);
+  window.addEventListener('resize', draw);
+  draw();
+}
+
+function drawConferenceHistoryChart(data, conference) {
+  const box = document.getElementById('ch-chart');
+  if (!box) return;
+  const chosen = data.series.get(conference) || [];
+  if (!chosen.length) { box.innerHTML = '<div class="empty-note">No seasons for ' +
+    esc(conference) + '.</div>'; return; }
+
+  // The y-axis covers every conference drawn, not only the chosen one, or the
+  // grey lines would leave the plot and the comparison would be a lie.
+  const W = Math.max(280, Math.floor(box.clientWidth)), H = W < 560 ? 240 : 320;
+  const m = {l: 46, r: 14, t: 12, b: 26};
+  const {lo, hi, step, span, first, pw, X, Y} = conferenceHistoryScale(data, m, W, H);
+
+  const best = chosen.reduce((a, p) => (p.elo > a.elo ? p : a), chosen[0]);
+  const summary = conference + ' average member Elo by season, ' + chosen[0].season + ' to ' +
+    chosen[chosen.length - 1].season + ': peak ' + eloValue(best.elo) + ' in ' + best.season +
+    ', latest ' + eloValue(chosen[chosen.length - 1].elo) + '.';
+  let svg = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H +
+    '" role="img" aria-label="' + esc(summary) + '">';
+  for (let v = lo; v <= hi + 1e-9; v += step) {
+    svg += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(v).toFixed(1) + '" y2="' +
+      Y(v).toFixed(1) + '" style="stroke:var(--line);stroke-width:1"/>' +
+      '<text x="' + (m.l - 6) + '" y="' + (Y(v) + 3).toFixed(1) + '" text-anchor="end" ' +
+      'style="font-family:var(--font-mono);font-size:10px;fill:var(--ink-dim)">' +
+      Math.round(v) + '</text>';
+  }
+  if (1500 > lo && 1500 < hi) {
+    svg += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(1500).toFixed(1) + '" y2="' +
+      Y(1500).toFixed(1) + '" style="stroke:var(--ink-dim);stroke-width:1;stroke-dasharray:4 4;' +
+      'opacity:0.7"/>';
+  }
+  const everyNth = Math.max(1, Math.ceil(44 * span / pw));
+  data.seasons.forEach(season => {
+    if ((season - first) % everyNth !== 0) return;
+    svg += '<text x="' + X(season).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" ' +
+      'style="font-family:var(--font-mono);font-size:10px;fill:var(--ink-dim)">' + season +
+      '</text>';
+  });
+
+  // Every other conference first, so the chosen one is drawn over the top of
+  // them rather than under.
+  data.series.forEach((points, name) => {
+    if (name === conference) return;
+    svg += '<path d="' + conferenceHistoryPath(points, X, Y) + '" style="fill:none;stroke:' +
+      'var(--line);stroke-width:1.2;stroke-linejoin:round"/>';
+  });
+  svg += '<path d="' + conferenceHistoryPath(chosen, X, Y) + '" style="fill:none;stroke:' +
+    'var(--amber);stroke-width:2;stroke-linejoin:round;stroke-linecap:round"/>';
+  chosen.forEach(p => {
+    svg += '<circle cx="' + X(p.season).toFixed(1) + '" cy="' + Y(p.elo).toFixed(1) +
+      '" r="2.6" style="fill:var(--amber)"/>';
+  });
+  svg += '<circle id="ch-hover-dot" r="6" style="fill:none;stroke:var(--ink);stroke-width:2;' +
+    'display:none"/></svg>';
+  box.innerHTML = svg + '<div class="elo-tip" id="ch-tip" role="status"></div>';
+
+  const caption = document.getElementById('ch-caption');
+  if (caption) caption.textContent = summary;
+
+  const svgEl = box.querySelector('svg'), tip = box.querySelector('#ch-tip');
+  const dot = box.querySelector('#ch-hover-dot');
+  const show = ev => {
+    const rect = svgEl.getBoundingClientRect();
+    const px = (ev.clientX - rect.left) * (W / rect.width);
+    const wanted = first + (px - m.l) * span / pw;
+    const p = chosen.reduce((a, q) =>
+      (Math.abs(q.season - wanted) < Math.abs(a.season - wanted) ? q : a), chosen[0]);
+    dot.setAttribute('cx', X(p.season)); dot.setAttribute('cy', Y(p.elo));
+    dot.style.display = '';
+    tip.innerHTML = conferenceHistoryTip(conference, p);
+    tip.style.display = 'block';
+    const bx = X(p.season) * rect.width / W, by = Y(p.elo) * rect.height / H;
+    let left = bx + 14;
+    if (left + tip.offsetWidth > rect.width) left = bx - tip.offsetWidth - 14;
+    let top = by - tip.offsetHeight - 10;
+    if (top < 0) top = by + 14;
+    tip.style.left = Math.max(0, left) + 'px';
+    tip.style.top = top + 'px';
+  };
+  svgEl.addEventListener('pointermove', show);
+  svgEl.addEventListener('pointerdown', show);
+  svgEl.addEventListener('pointerleave', () => {
+    tip.style.display = 'none'; dot.style.display = 'none';
+  });
+}
+
+function conferenceHistoryScale(data, m, W, H) {
+  // The y-axis covers EVERY conference in the data, not only the chosen one.
+  // Scaling to the chosen series would push the grey context lines out of the
+  // plot, and the claim this chart makes is that one conference's rating only
+  // means something against the rest of the sport.
+  const pw = W - m.l - m.r, ph = H - m.t - m.b;
+  let lo = Infinity, hi = -Infinity;
+  data.series.forEach(points => points.forEach(p => {
+    lo = Math.min(lo, p.elo); hi = Math.max(hi, p.elo);
+  }));
+  const step = niceStep(Math.max(20, hi - lo) / 4);
+  lo = Math.floor(lo / step) * step;
+  hi = Math.ceil(hi / step) * step;
+  // One conference in one season, or several at the same rating, leaves no
+  // range at all, and Y() would then divide by zero and draw nothing at all
+  // rather than failing loudly. A step of headroom gives it a flat line
+  // through the middle. The real archive never reaches this; a chart that
+  // silently renders empty is worth two lines of guard anyway.
+  if (hi - lo < step) { lo -= step; hi += step; }
+  // The x-axis is the season itself, so a conference that lasted four seasons
+  // sits under those four years rather than being stretched across the chart.
+  const first = data.seasons[0];
+  const span = Math.max(1, data.seasons[data.seasons.length - 1] - first);
+  return {
+    lo: lo, hi: hi, step: step, first: first, span: span, pw: pw, ph: ph,
+    X: season => m.l + (season - first) * pw / span,
+    Y: elo => m.t + (hi - elo) / (hi - lo) * ph,
+  };
+}
+
+function conferenceHistoryPath(points, X, Y) {
+  // Broken wherever a conference missed a season, so a gap reads as a gap
+  // instead of a straight line across years it did not exist.
+  let d = '';
+  points.forEach((p, i) => {
+    const brk = i === 0 || p.season !== points[i - 1].season + 1;
+    d += (brk ? 'M' : 'L') + X(p.season).toFixed(1) + ' ' + Y(p.elo).toFixed(1) + ' ';
+  });
+  return d.trim();
+}
+
+function conferenceHistoryTip(conference, p) {
+  return '<div class="tip-date">' + p.season + '</div>' +
+    '<div class="tip-main">' + esc(conference) + ' ' + eloValue(p.elo) + '</div>' +
+    '<div>#' + p.rank + ' of ' + p.of + ' conferences that season</div>' +
+    '<div>' + p.rated + ' of ' + p.members + ' members rated</div>';
 }
 
 // ---------------- Week by week (P1-05, P1-06) ----------------
@@ -8323,12 +8584,13 @@ function render() {
   else if (state.section === 'games') { content.innerHTML = renderGames(); hydrateGames(version); }
   else if (state.section === 'live') { content.innerHTML = renderLiveScores(); hydrateLiveScores(version); }
   else if (state.section === 'rankings') {
-    const views = { elo: renderElo, 'conference-standings': renderConferenceStandings, 'home-field': renderHomeFieldStandings, 'conference-elo': renderConferenceElo, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferences,
+    const views = { elo: renderElo, 'conference-standings': renderConferenceStandings, 'home-field': renderHomeFieldStandings, 'conference-elo': renderConferenceElo, 'conference-history': renderConferenceHistory, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferences,
       'conference-coe2': renderConferenceCoe2, 'elo-weekly': renderEloWeekly,
       schedule: renderScheduleStrength,
       top25: renderTop25Boards };
     content.innerHTML = views[state.subview]();
     if (state.subview === 'schedule') hydrateScheduleStrength(version);
+    if (state.subview === 'conference-history') hydrateConferenceHistory(version);
     if (state.subview === 'conference-standings') hydrateConferenceStandings(version);
     if (state.subview === 'elo-weekly') hydrateEloWeekly(version);
     if (state.subview === 'elo') { hydrateRatingFreshness(version); hydrateEloDetail(version); }

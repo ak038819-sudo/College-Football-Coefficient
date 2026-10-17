@@ -12,7 +12,7 @@
     // 2.0's frozen value ENTERING the season. Separate views with separate names,
     // for the same reason they are separate tables: they must never be read as
     // one number.
-    rankings: ['top25', 'elo', 'conference-standings', 'schedule', 'home-field', 'conference-elo', 'team-coe', 'conference-coe', 'conference-coe2', 'elo-weekly'],
+    rankings: ['top25', 'elo', 'conference-standings', 'schedule', 'home-field', 'conference-elo', 'conference-history', 'team-coe', 'conference-coe', 'conference-coe2', 'elo-weekly'],
     playoff: ['field', 'projection', 'bracket', 'odds', 'history']
   };
   // Detail-page tabs (Milestone E). The first entry is the default and is left out

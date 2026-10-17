@@ -1,5 +1,31 @@
 # Site release history
 
+## Unreleased — Conference strength over time (2026-10-17)
+
+- **Standings → Conference History** charts every conference's average member
+  Elo season by season, 1980–2026. The existing Conference Elo view answers
+  "who is strong now"; this one answers "who was strong when", which is the
+  question realignment makes interesting.
+- The chosen conference is drawn in full, with every other conference of the
+  same era behind it in grey. A conference rating only means something against
+  the rest of the sport, so the chart draws the rest of the sport; the y-axis
+  covers all of them and a test holds every point inside the plot.
+- Underneath, one row per conference: how many seasons it lasted, its best and
+  worst seasons with the years they fell in, and where it stands now. A
+  conference that no longer exists has no "now" and sorts as absent rather
+  than as the weakest in the sport.
+- What it shows. The Pac-12 was 1,619 and second in the sport in 2015 and is
+  1,460 and fifth now. The Pac-10 peaked at 1,673 in 1997, first. The Big 8's
+  last season, 1995, was its best — 1,647 and first — immediately before it
+  became the Big 12. The Big East was first in 2002 and sixth when it ended in
+  2012. The SEC has been first in the most recent season and peaked at 1,677
+  in 2014.
+- No new data and no new export: every number comes from the
+  `conference_elo_by_year` payload the one-season view already reads, which
+  uses each season's own membership rather than today's. A rename appears as
+  two rows (Pac-10 and Pac-12 are separate) because the source names them
+  separately and the renames came with real changes of membership.
+
 ## Unreleased — Schedule strength, played and remaining (2026-10-16)
 
 - **Standings → Schedule Strength** puts every team's schedule difficulty in
