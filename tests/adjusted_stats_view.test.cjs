@@ -188,6 +188,27 @@ test('every value cell carries its own sort key, so one dash cannot break the co
   assert.ok(!/data-sort="#/.test(html));
 });
 
+test('a team with no number on one side shows dashes there and sorts last', () => {
+  // The per-game metrics are nullable, so a team can have a defense for a
+  // metric and no offense. A null rank subtracts as a zero, which would put
+  // such a team at the TOP of a table ordered by adjusted offense.
+  const oneSided = {id: 5, name: 'AAA No Offense', conference: 'Sun Belt', unrated: 0,
+    points: {games: 12, off_raw: null, off_adj: null, def_raw: 24.0, def_adj: 25.5,
+             off_raw_rank: null, off_adj_rank: null, def_raw_rank: 50, def_adj_rank: 55}};
+  const data = withFiller({...SEASON, teams: [...SEASON.teams, oneSided]});
+  const {html} = view(data);
+  const cells = cellsOf(rowOf(html, 'AAA No Offense'));
+  assert.equal(cells[0], '\u2014');
+  assert.equal(cells[1], '\u2014');
+  assert.match(cells[3], /^25\.5 /);
+  const names = [...html.matchAll(/<a class="t">([^<]*)<\/a>/g)].map(m => m[1]);
+  // Last in the table despite a name that sorts first alphabetically.
+  const body = html.slice(html.indexOf('<tbody>'), html.indexOf('</tbody>'));
+  const inBody = [...body.matchAll(/<a class="t">([^<]*)<\/a>/g)].map(m => m[1]);
+  assert.equal(inBody[inBody.length - 1], 'AAA No Offense');
+  assert.ok(names.includes('Indiana'));
+});
+
 test('an absent value is a dash whose key sorts as absent, never as zero', () => {
   const {ctx} = view(null);
   assert.equal(ctx.cell(null, 4, 'points', 2), '<td class="num" data-sort="">—</td>');

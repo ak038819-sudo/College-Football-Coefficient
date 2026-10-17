@@ -270,20 +270,28 @@ def raw_means(obs: list[tuple]) -> tuple[dict, dict, dict]:
 
     Over the SAME observations the fit used, so the raw and adjusted columns on
     a row always describe the same games.
+
+    A team can be missing from one of the two sides. The per-game metrics are
+    nullable by design -- the schema says NULL means CFBD did not report it,
+    never 0 -- and a team whose own offensive rows are all null for a metric
+    still appears in every one of its opponents' rows as the defence. So the
+    game count is the larger of the two sides' counts rather than half their
+    sum: half the sum would halve such a team's season.
     """
-    off_n, off_d, def_n, def_d, played = {}, {}, {}, {}, {}
+    off_n, off_d, def_n, def_d = {}, {}, {}, {}
+    off_games, def_games = {}, {}
     for team, opp, v, w, _ in obs:
         off_n[team] = off_n.get(team, 0.0) + v * w
         off_d[team] = off_d.get(team, 0.0) + w
         def_n[opp] = def_n.get(opp, 0.0) + v * w
         def_d[opp] = def_d.get(opp, 0.0) + w
-        played[team] = played.get(team, 0) + 1
-        played[opp] = played.get(opp, 0) + 1
+        off_games[team] = off_games.get(team, 0) + 1
+        def_games[opp] = def_games.get(opp, 0) + 1
     off = {t: off_n[t] / off_d[t] for t in off_n if off_d[t]}
     dfn = {t: def_n[t] / def_d[t] for t in def_n if def_d[t]}
-    # Each game gives one observation per side, so a team appears once as the
-    # offence and once as the defence in every game it played.
-    return off, dfn, {t: n // 2 for t, n in played.items()}
+    games = {t: max(off_games.get(t, 0), def_games.get(t, 0))
+             for t in set(off_games) | set(def_games)}
+    return off, dfn, games
 
 
 def ranked(values: dict[int, float], best_high: bool) -> dict[int, int]:
@@ -312,24 +320,30 @@ def build_metric(conn: sqlite3.Connection, season: int, metric: str, digits: int
     keep = {t for t, n in games.items() if n >= MIN_TEAM_GAMES}
     if not keep:
         return None
-    adj_off = {t: fit["mu"] + fit["off"][t] for t in keep}
-    adj_def = {t: fit["mu"] + fit["def"][t] for t in keep}
+    # Each side is published only for the teams that HAVE that side. A team
+    # whose own rows are all null for this metric has a defence (its opponents
+    # reported theirs) and no offence, and it must not be ranked on a number it
+    # does not have -- nor abort the season's export by being asked for one.
+    adj_off = {t: fit["mu"] + fit["off"][t] for t in keep if t in raw_off}
+    adj_def = {t: fit["mu"] + fit["def"][t] for t in keep if t in raw_def}
 
     rank = {
-        "off_raw": ranked({t: raw_off[t] for t in keep}, True),
+        "off_raw": ranked({t: raw_off[t] for t in keep if t in raw_off}, True),
         "off_adj": ranked(adj_off, True),
-        "def_raw": ranked({t: raw_def[t] for t in keep}, False),
+        "def_raw": ranked({t: raw_def[t] for t in keep if t in raw_def}, False),
         "def_adj": ranked(adj_def, False),
     }
     teams = {}
     for t in keep:
         teams[t] = {
             "games": games[t],
-            "off_raw": round_or_none(raw_off[t], digits),
-            "off_adj": round_or_none(adj_off[t], digits),
-            "def_raw": round_or_none(raw_def[t], digits),
-            "def_adj": round_or_none(adj_def[t], digits),
-            **{f"{k}_rank": rank[k][t] for k in rank},
+            "off_raw": round_or_none(raw_off.get(t), digits),
+            "off_adj": round_or_none(adj_off.get(t), digits),
+            "def_raw": round_or_none(raw_def.get(t), digits),
+            "def_adj": round_or_none(adj_def.get(t), digits),
+            # None, not a rank, where the side has no value: an absent number
+            # is absent, and the view renders it as a dash that sorts last.
+            **{f"{k}_rank": rank[k].get(t) for k in rank},
         }
     return {"mu": round_or_none(fit["mu"], digits + 2),
             "home": round_or_none(fit["home"], digits + 2),

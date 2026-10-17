@@ -6012,7 +6012,16 @@ function adjustedStatsHtml(data) {
   if (!rows.length) return '<div class="empty-note">No team has enough of ' + data.season +
     ' to adjust.</div>';
   const unit = metric.unit;
-  const ordered = rows.slice().sort((a, b) => a[key].off_adj_rank - b[key].off_adj_rank);
+  // By adjusted offense, with a team that has no offense for this metric last
+  // rather than first: a null rank subtracts as a zero, which would put every
+  // team missing the number at the top of the table.
+  const ordered = rows.slice().sort((a, b) => {
+    const x = a[key].off_adj_rank, y = b[key].off_adj_rank;
+    if (x == null && y == null) return a.name.localeCompare(b.name);
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return x - y;
+  });
   const choices = (data.metrics || []).map(m => [m.key, m.label]);
 
   let html = choices.length > 1

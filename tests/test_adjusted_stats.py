@@ -425,6 +425,48 @@ class TestTheAdvancedMetrics:
         assert len(thinned) < full
         assert all(v != 0.0 for _, _, v, _, _ in thinned)
 
+    def test_a_team_with_no_rows_of_its_own_still_has_a_defence(self, tmp_path):
+        # The per-game metrics are nullable by design, and a team whose own rows
+        # are all null for one metric still appears in every opponent's row as
+        # the defence. It must be published with the side it HAS and no number
+        # on the side it has not -- and it must not abort the season's export by
+        # being asked for one.
+        conn = _db(tmp_path)
+        teams = list(range(1, 17))
+        _round_robin(conn, teams, {(i, j): 24 for i in teams for j in teams if i != j})
+        self._advanced(conn, teams, {t: 0.1 for t in teams})
+        conn.execute("UPDATE game_team_advanced SET off_ppa = NULL WHERE team_id = 1")
+        conn.commit()
+        table = adj.build_season(conn, SEASON)
+        assert "ppa" in {m["key"] for m in table["metrics"]}
+        row = next(r for r in table["teams"] if r["id"] == 1)
+        cells = row["ppa"]
+        assert cells["def_raw"] is not None and cells["def_adj"] is not None
+        assert cells["def_raw_rank"] is not None
+        assert cells["off_raw"] is None and cells["off_adj"] is None
+        assert cells["off_raw_rank"] is None and cells["off_adj_rank"] is None
+        # Its season is its real one, not halved because only one side counted.
+        assert cells["games"] == 30
+        assert row["points"]["off_raw"] is not None   # points are unaffected
+        # And nobody else lost their offence.
+        others = [r for r in table["teams"] if r["id"] != 1 and "ppa" in r]
+        assert others and all(r["ppa"]["off_raw"] is not None for r in others)
+
+    def test_a_rank_is_only_given_to_a_team_that_has_the_number(self, tmp_path):
+        conn = _db(tmp_path)
+        teams = list(range(1, 17))
+        _round_robin(conn, teams, {(i, j): 24 for i in teams for j in teams if i != j})
+        self._advanced(conn, teams, {t: 0.1 + t / 100 for t in teams})
+        conn.execute("UPDATE game_team_advanced SET off_ppa = NULL WHERE team_id IN (1, 2)")
+        conn.commit()
+        table = adj.build_season(conn, SEASON)
+        rows = [r for r in table["teams"] if "ppa" in r]
+        ranked_off = [r for r in rows if r["ppa"]["off_adj_rank"] is not None]
+        # Fourteen teams have an offence, so the ranks run 1..14 with no gap.
+        assert sorted(r["ppa"]["off_adj_rank"] for r in ranked_off) == list(range(1, 15))
+        # Every team still has a defence rank.
+        assert all(r["ppa"]["def_adj_rank"] is not None for r in rows)
+
     def test_a_metric_table_the_database_has_never_had_is_not_an_error(self, tmp_path):
         conn = sqlite3.connect(str(tmp_path / "bare.db"))
         conn.executescript("""
