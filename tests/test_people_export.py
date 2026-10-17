@@ -93,6 +93,43 @@ def test_a_transfer_carries_both_team_seasons_in_order(conn):
     assert [(s["season_year"], s["team_id"]) for s in player["seasons"]] == [(2025, 1), (2026, 2)]
 
 
+# Named apart from the _recruit helper further down: two helpers of one name in
+# one module means the later one silently wins, which is how this test first
+# handed a town name to a team_id column.
+def _hometown_recruit(conn, athlete_id, city, state, lat, lon, season=2015):
+    conn.execute("INSERT INTO recruits (recruit_id, athlete_id, season_year, name, city, "
+                 "state_province, country, hometown_latitude, hometown_longitude) "
+                 "VALUES ((SELECT COALESCE(MAX(recruit_id), 0) + 1 FROM recruits), "
+                 "?, ?, ?, ?, ?, 'USA', ?, ?)",
+                 (athlete_id, season, city + " Recruit", city, state, lat, lon))
+
+
+def test_a_player_carries_the_point_his_hometown_can_be_drawn_at(conn, repo_root):
+    """The pin on his page. His own recruiting record where there is one, else
+    the coordinate the archive holds for a town of that name and state."""
+    conn.executescript((repo_root / "sql" / "recruiting_tables.sql").read_text(encoding="utf-8"))
+    own = _player(conn, "Own Record", [(2026, 1)], hometown="Portland", home_state="OR")
+    matched = _player(conn, "Name Match", [(2026, 1)], hometown="Austin", home_state="TX")
+    _player(conn, "No Town", [(2026, 1)])
+    conn.execute("INSERT INTO player_external_ids (player_id, source, external_id, confidence, "
+                 "is_primary) VALUES (?, 'cfbd', ?, 'id', 1)", (own, str(own)))
+    _hometown_recruit(conn, own, "Portland", "OR", 45.52, -122.68)
+    _hometown_recruit(conn, None, "Austin", "TX", 30.2672, -97.7431)
+    players = build_players(conn)
+    assert players[own]["hometown_point"] == [45.52, -122.68, "own"]
+    assert players[matched]["hometown_point"] == [30.2672, -97.7431, "town"]
+    assert "hometown_point" not in players[next(
+        pid for pid, p in players.items() if p["display_name"] == "No Town")]
+
+
+def test_a_database_with_no_recruiting_archive_still_exports_players(conn):
+    """The people exports run against databases that carry only some of what
+    the site shows, so a missing archive is no pin rather than no page."""
+    pid = _player(conn, "Unlocated Person", [(2026, 1)], hometown="Austin", home_state="TX")
+    player = build_players(conn)[pid]
+    assert "hometown_point" not in player
+    assert player["hometown"] == "Austin"
+
 def test_a_coach_carries_every_tenure_with_its_own_hire_date(conn):
     cid = _coach(conn, "Al Golden", [(2010, 1, "2005-12-08"), (2011, 2, "2010-12-12")])
     coach = build_coaches(conn)[cid]

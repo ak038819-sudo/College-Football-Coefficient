@@ -43,6 +43,7 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import hometown_points  # noqa: E402
 import person_identity as identity  # noqa: E402
 from person_identity import normalize_name  # noqa: E402
 
@@ -148,6 +149,17 @@ def build_players(conn: sqlite3.Connection) -> dict:
         player = players.get(player_id)
         if player is not None:
             player["identity_note"] = reason
+
+    # Where he is from, as a point the page can draw: his own recruiting record
+    # where the archive has one, else the coordinate the archive holds for a
+    # town of that name in that state. See src/hometown_points.py for the
+    # plausibility rule and why the two cases are kept apart. A player with no
+    # plausible coordinate carries no key at all, and his page shows the
+    # hometown as text alone.
+    for player_id, point in hometown_points.player_points(conn)[0].items():
+        player = players.get(player_id)
+        if player is not None:
+            player["hometown_point"] = point
 
     # A person with no season row is not displayable: the roster that justified
     # them is gone, so the page would have nothing true to show.
