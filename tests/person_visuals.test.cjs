@@ -200,8 +200,9 @@ test('a quarterback is drawn as a passer, not as the sacks he took', () => {
            game(2, 2023, '2023-09-09', { passing: { YDS: 310 }, rushing: { YDS: -3 } }),
            game(1, 2023, '2023-09-02', { rushing: { YDS: 4 } })]
   };
-  assert.equal(stripCategory(log, 'QB'), 'passing');
-  assert.equal(stripCategory(log, undefined), 'rushing', 'and without a position, games still decide');
+  assert.deepEqual(Object.assign({}, stripCategory(log, 'QB')), { category: 'passing', byPosition: true });
+  assert.deepEqual(Object.assign({}, stripCategory(log, undefined)),
+    { category: 'rushing', byPosition: false }, 'and without a position, games still decide');
   assert.match(careerStripPanel(log, 'QB'), /Passing yards/);
 });
 
@@ -213,11 +214,12 @@ test('a position has to earn its category', () => {
            game(2, 2023, '2023-09-09', { receiving: { YDS: 70 } }),
            game(1, 2023, '2023-09-02', { passing: { YDS: 12 } })]
   };
-  assert.equal(stripCategory(log, 'QB'), 'receiving');
+  assert.deepEqual(Object.assign({}, stripCategory(log, 'QB')), { category: 'receiving', byPosition: false });
   // A lineman's position maps to no box-score category at all.
-  assert.equal(stripCategory({ 2023: [
+  assert.deepEqual(Object.assign({}, stripCategory({ 2023: [
     game(2, 2023, '2023-09-09', { defensive: { TOT: 1 } }),
-    game(1, 2023, '2023-09-02', { defensive: { TOT: 2 } })] }, 'OL'), 'defensive');
+    game(1, 2023, '2023-09-02', { defensive: { TOT: 2 } })] }, 'OL')),
+    { category: 'defensive', byPosition: false });
 });
 
 test('the category is the one he appears in most, not the first one listed', () => {
@@ -229,7 +231,7 @@ test('the category is the one he appears in most, not the first one listed', () 
            game(2, 2023, '2023-09-09', { receiving: { YDS: 70 }, passing: { YDS: 12 } }),
            game(1, 2023, '2023-09-02', { receiving: { YDS: 55 } })]
   };
-  assert.equal(stripCategory(log), 'receiving');
+  assert.equal(stripCategory(log).category, 'receiving');
   // A category with no readable number in it is not a category he appears in.
   assert.equal(stripCategory({ 2023: [game(1, 2023, '2023-09-02', { passing: { 'C/ATT': '1/2' } })] }), null);
   assert.equal(stripCategory({}), null);
@@ -311,6 +313,22 @@ test('seasons are separated and labelled where they start', () => {
   const xs = Array.from(html.matchAll(/<rect class="strip-bar" x="([\d.]+)"/g)).map(m => Number(m[1]));
   assert.ok(xs[1] - xs[0] > STRIP_BAR_WIDTH + STRIP_BAR_GAP,
     'a new season leaves a wider gap than the next game in the same one');
+});
+
+test('the note says which rule chose the category, not a rule it did not use', () => {
+  // A note reading "the category he appears in most often" under a strip chosen
+  // by position is a false explanation of what the reader is looking at.
+  const qb = {
+    2023: [game(3, 2023, '2023-09-16', { passing: { YDS: 240 }, rushing: { YDS: -7 } }),
+           game(2, 2023, '2023-09-09', { passing: { YDS: 310 }, rushing: { YDS: -3 } }),
+           game(1, 2023, '2023-09-02', { rushing: { YDS: 4 } })]
+  };
+  const byPosition = careerStripPanel(qb, 'QB');
+  assert.match(byPosition, /Drawn in the category his listed position plays in/);
+  assert.doesNotMatch(byPosition, /appears in most often/);
+  const byGames = careerStripPanel(qb, 'OL');
+  assert.match(byGames, /Drawn in the category he appears in most often/);
+  assert.doesNotMatch(byGames, /listed position plays in/);
 });
 
 test('the category and the statistic are not named twice over', () => {

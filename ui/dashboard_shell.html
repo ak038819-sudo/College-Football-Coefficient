@@ -6540,11 +6540,16 @@ function stripValue(line, type) {
   return Number.isFinite(value) ? value : null;
 }
 
-// Which category this career is drawn in: his position's, where he has enough
-// games in it, else the one he has the most games with a readable number in.
-// Ties go to the order a box score is read in, so the choice is stable between
-// renders and a two-way player is drawn in the category he appears in more
-// often rather than whichever sorted first.
+// Which category this career is drawn in, and WHICH RULE chose it: his
+// position's, where he has enough games in it, else the one he has the most
+// games with a readable number in. Ties go to the order a box score is read in,
+// so the choice is stable between renders and a two-way player is drawn in the
+// category he appears in more often rather than whichever sorted first.
+//
+// The rule is returned with the category because the note under the strip tells
+// a reader why this category and not another, and a note that says "the one he
+// appears in most often" under a strip chosen by position is a false
+// explanation. One return value means the two cannot disagree.
 function stripCategory(log, position) {
   const counts = new Map();
   for (const season of Object.keys(log || {})) {
@@ -6558,13 +6563,15 @@ function stripCategory(log, position) {
     }
   }
   const played = STRIP_POSITION_CATEGORY[position];
-  if (played && (counts.get(played) || 0) >= STRIP_POSITION_MINIMUM) return played;
+  if (played && (counts.get(played) || 0) >= STRIP_POSITION_MINIMUM) {
+    return { category: played, byPosition: true };
+  }
   let best = null, bestCount = 0;
   for (const category of STAT_CATEGORY_ORDER) {
     const count = counts.get(category) || 0;
     if (count > bestCount) { best = category; bestCount = count; }
   }
-  return bestCount ? best : null;
+  return bestCount ? { category: best, byPosition: false } : null;
 }
 
 // The games of one career in the chosen category, oldest first. The log is
@@ -6591,8 +6598,9 @@ const STRIP_SEASON_GAP = 12;
 const STRIP_HEIGHT = 96;
 
 function careerStripPanel(log, position) {
-  const category = stripCategory(log, position);
-  if (!category) return '';
+  const chosen = stripCategory(log, position);
+  if (!chosen) return '';
+  const category = chosen.category;
   const games = stripGames(log, category);
   // One bar is not a shape. A reader learns nothing from it that the game log's
   // single row does not already say.
@@ -6653,7 +6661,9 @@ function careerStripPanel(log, position) {
     '<div class="strip-axis">' + labelRow + '</div>' +
     '<p class="section-note">' + esc(label) + ' in each of his ' + games.length +
     ' games with a box-score line, oldest first, against a high of ' + esc(high) + '. ' +
-    'Drawn in the category he appears in most often; a bar links to its game. ' +
+    (chosen.byPosition
+      ? 'Drawn in the category his listed position plays in; a bar links to its game. '
+      : 'Drawn in the category he appears in most often; a bar links to its game. ') +
     'Games before 2005, and games the source published no box score for, are not here.</p></div>';
 }
 
