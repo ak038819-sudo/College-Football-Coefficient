@@ -1,0 +1,106 @@
+# National award winners from ESPN, committed to data/raw/awards.
+#
+# Run by hand. It is the only feed in this project that does not come from
+# CollegeFootballData -- CFBD has no awards endpoint at all -- so it needs no
+# API key and lives apart from the CFBD jobs.
+#
+# Committed rather than fetched at build time for the same reason the roster
+# snapshots are: a rebuild of 2014's pages must not depend on what ESPN serves
+# today. An award, once given, does not change.
+name: Sync award winners
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_year:
+        description: "First season to fetch"
+        required: true
+        default: "2026"
+      end_year:
+        description: "Last season to fetch"
+        required: true
+        default: "2026"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    # Share the deploy job's lock: this pushes to main, and the scheduled
+    # refresh rewrites data/raw too.
+    concurrency:
+      group: rebuild-and-deploy-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Fetch and commit one season of awards at a time
+        env:
+          START: ${{ inputs.start_year }}
+          END: ${{ inputs.end_year }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # One season per commit, pushed as it lands, so a timeout costs the
+          # season in flight rather than the whole range. Every fetch and
+          # publish is checked explicitly: `set -e` does NOT stop a shell loop,
+          # so an unchecked failure would let later seasons commit on top of a
+          # gap and leave the archive looking complete while a year was missing.
+          for year in $(seq "$START" "$END"); do
+            echo "::group::awards $year"
+            if ! python3 src/fetch_espn_awards.py "$year"; then
+              echo "::endgroup::"
+              echo "::error::Awards $year failed to fetch. Earlier seasons are committed; re-run this workflow from $year to resume."
+              exit 1
+            fi
+            # A season ESPN does not carry writes no file, which is not a
+            # failure and leaves nothing to publish.
+            if [ ! -f "data/raw/awards/$year.json.gz" ]; then
+              echo "No award data for $year; nothing to publish."
+              echo "::endgroup::"
+              continue
+            fi
+            if ! scripts/publish_to_main.sh "Snapshot $year award winners [skip ci]" data/raw/awards/; then
+              echo "::endgroup::"
+              echo "::error::Could not publish awards $year. Nothing was published for it; re-run this workflow from $year."
+              exit 1
+            fi
+            echo "::endgroup::"
+          done
+
+      # What actually came back, per season and per award, so the run log says
+      # which seasons ESPN carries and how many winners it names -- the two
+      # things that decide what the pages can show.
+      - name: Summarise the archive
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import gzip, json, pathlib
+          files = sorted(pathlib.Path('data/raw/awards').glob('*.json.gz')) \
+              if pathlib.Path('data/raw/awards').exists() else []
+          names = {}
+          for f in files:
+              with gzip.open(f, 'rt', encoding='utf-8') as fh:
+                  payload = json.load(fh)
+              winners = [w for a in payload['awards'] for w in a['winners']]
+              named = sum(1 for w in winners if w.get('display_name'))
+              schooled = sum(1 for w in winners if w.get('school'))
+              print(f"{payload['season']}: {len(payload['awards'])} awards, "
+                    f"{len(winners)} winners, {named} named, {schooled} with a school")
+              for a in payload['awards']:
+                  names.setdefault(a['name'], 0)
+                  names[a['name']] += len(a['winners'])
+          print(f"\n{len(files)} seasons archived; {len(names)} distinct awards seen:")
+          for name, count in sorted(names.items()):
+              print(f"  {name}: {count} winners")
+          PY

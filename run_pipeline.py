@@ -197,6 +197,15 @@ def main() -> None:
             run([python, "src/load_coaches.py", str(coaches_path), "--db", str(DB_PATH)],
                 "Load head-coaching history")
 
+        # Awards are loaded after the rosters for the same reason the statistics
+        # are: a winner is resolved by name, team and season against the roster
+        # rows, so nothing would resolve in the other order. A season before the
+        # roster archive begins still loads -- the awards are recorded with the
+        # winner's name and no person to link to, which is what the page shows.
+        for awards_path in sorted(Path("data/raw/awards").glob("*.json*")):
+            run([python, "src/load_player_awards.py", str(awards_path), "--db", str(DB_PATH)],
+                f"Load award winners: {awards_path.name.split('.')[0]}")
+
         # Recruiting is loaded after coaches so a class and the coach who signed
         # it are both present; nothing here depends on that order, but reading
         # the pipeline in the order the join is made is worth the line.
