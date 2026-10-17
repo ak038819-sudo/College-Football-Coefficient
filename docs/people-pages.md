@@ -14,7 +14,7 @@ refuses to do, and where the data runs out. It is updated as each phase lands.
 | 3 — Coach pages | Coach export and detail pages, team-page coach links | Landed |
 | 4 — Stats integration | Season statistics on player pages; Stats tab names linked to people | Landed for 2025 |
 | 5 — Coefficient metrics | Coach Elo and CoE analysis | Not started |
-| 6 — Visual assets | Portraits, with licensing cleared before anything is committed | Not started |
+| 6 — Visual assets | Portraits, with licensing cleared before anything is committed | Blocked on licensing; the plate, pin and career strip carry the slot instead |
 
 Nothing in any phase is read by a rating engine. Elo, CoE, the xSRDiff
 performance layer and the playoff builders are untouched by roster or coaching
@@ -455,3 +455,37 @@ source with explicit redistribution rights is cleared; the fallback is a
 team-coloured silhouette or initials. A stable image URL being technically
 reachable is not redistribution permission, and no media-site headshot is
 scraped into this repository.
+
+Sportradar's Images API was assessed on 2026-10-17 and rejected: it does carry
+NCAA football headshots (College Pressbox media-day PNGs, ~16,000 across FBS and
+FCS), but only for the current season against this archive's seventeen, its
+asset ids are Sportradar GUIDs with no crosswalk to a CFBD athlete id, its terms
+are media-use-only and limit display to properties named on a paid order form,
+and a static site has nowhere to put the images that the licence would allow.
+
+### What the slot holds instead
+
+Rather than a silhouette repeated 99,813 times, a player page carries three
+marks built from data this project already has. Each is about the person, and
+none of them is a placeholder waiting for a photo:
+
+- **The jersey plate**, where a team page puts its logo: his number for the
+  season named beside it, on the colour `build_dated_logo_assets.py` extracted
+  from that team's logo for that era. 97.1% of players have a number in at least
+  one season; the rest get their initials. The ink is chosen per colour by
+  relative luminance, because 335 of the 499 extracted colours are light enough
+  that white numerals on them are unreadable.
+- **The hometown pin**, in the same frame and palette as the stadium and
+  recruiting maps. 88.8% of players have a coordinate, and the page says whether
+  it came from his own recruiting record or from matching his hometown text to a
+  town of that name and state -- the same attributed-versus-inferred distinction
+  the box-score lines carry. See `src/hometown_points.py` for the plausibility
+  rule that keeps a mis-geocoded town off the map.
+- **The career strip**, one bar per game he has a box-score line in, oldest
+  first, each linking to its game. Drawn in a single category -- his listed
+  position's, or the one he appears in most where that position plays nowhere in
+  a box score -- because a career drawn as a mixture of tackles and receiving
+  yards would be a number nobody computed.
+
+A licensed photo, if one is ever cleared, takes the plate's slot without any
+other change.
