@@ -1038,3 +1038,38 @@ test('a season split across two athlete ids is marked on every table and named o
   assert.match(two, /In 2022, 2021, CFBD holds/);
   assert.match(two, /part of those seasons rather than all of them/);
 });
+
+test('conference history is a whole-history view, so it carries no season', () => {
+  // The chart measures 1980 to the present at once. A season picker on it is a
+  // control that changes nothing: Codex found it rerendering the identical
+  // chart and resetting the chosen conference (PR #92).
+  const route = read('#section=rankings&view=conference-history&season=1980');
+  assert.equal(route.subview, 'conference-history');
+  assert.equal(route.year, 2026);
+  assert.equal(hashFor(route), '#section=rankings&view=conference-history');
+});
+
+test('one list decides which rankings views are seasonless', () => {
+  // Three places ask the question -- readRoute's year, hashFor's season
+  // parameter and the shell's year row -- and they drifted the moment a second
+  // seasonless view existed. The shell must read the same list, not its own.
+  assert.equal(typeof CfbNav.seasonless, 'function');
+  assert.ok(CfbNav.seasonless('rankings', 'home-field'));
+  assert.ok(CfbNav.seasonless('rankings', 'conference-history'));
+  // And a view that IS about one season keeps its picker.
+  assert.ok(!CfbNav.seasonless('rankings', 'conference-elo'));
+  assert.ok(!CfbNav.seasonless('rankings', 'schedule'));
+  assert.ok(!CfbNav.seasonless('rankings', 'top25'));
+  const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
+  assert.match(shell, /CfbNavigation\.seasonless\(state\.section, state\.subview\)/);
+  // No second copy of the list: the shell must not name a seasonless rankings
+  // view itself, or it can disagree with the route.
+  assert.doesNotMatch(shell, /state\.subview === 'home-field'\)\) \{/);
+});
+
+test('a season-specific rankings view still keeps its season in the route', () => {
+  // The guard above must not have made every rankings view seasonless.
+  const route = read('#section=rankings&view=conference-elo&season=1980');
+  assert.equal(route.year, 1980);
+  assert.equal(hashFor(route), '#section=rankings&view=conference-elo&season=1980');
+});

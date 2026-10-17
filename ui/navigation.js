@@ -12,7 +12,7 @@
     // 2.0's frozen value ENTERING the season. Separate views with separate names,
     // for the same reason they are separate tables: they must never be read as
     // one number.
-    rankings: ['top25', 'elo', 'conference-standings', 'schedule', 'home-field', 'conference-elo', 'team-coe', 'conference-coe', 'conference-coe2', 'elo-weekly'],
+    rankings: ['top25', 'elo', 'conference-standings', 'schedule', 'home-field', 'conference-elo', 'conference-history', 'team-coe', 'conference-coe', 'conference-coe2', 'elo-weekly'],
     playoff: ['field', 'projection', 'bracket', 'odds', 'history']
   };
   // Detail-page tabs (Milestone E). The first entry is the default and is left out
@@ -92,9 +92,7 @@
     const years = seasonsFor(section, config);
     let year = Number(p.get('season'));
     if (!p.has('season') || !years.includes(year)) year = latest(years);
-    if (section === 'home' || section === 'live' || section === 'matchups' || section === 'teams' || section === 'methodology' || section === 'coverage' || section === 'accuracy' ||
-        (section === 'rankings' && subview === 'home-field'))
-      year = latest(config.yearsAll || []);
+    if (seasonless(section, subview)) year = latest(config.yearsAll || []);
     const season = (config.gameSeasons || []).find(s => s.season === year);
     // The Games landing page searches every season. Explicit old explorer URLs
     // keep their season/status/week filters and remain valid.
@@ -194,6 +192,21 @@
     return route;
   }
 
+  // Rankings views that measure every season at once, so a season picker on
+  // them is a control that changes nothing. Kept as one list because three
+  // separate places ask the question -- readRoute's year, hashFor's season
+  // parameter and the shell's year row -- and they drifted the moment a second
+  // such view existed: Conference History shipped with a dropdown that
+  // rerendered the identical chart and reset the chosen conference.
+  const SEASONLESS_RANKINGS = ['home-field', 'conference-history'];
+
+  function seasonless(section, subview) {
+    return section === 'home' || section === 'live' || section === 'matchups' ||
+      section === 'teams' || section === 'methodology' || section === 'coverage' ||
+      section === 'accuracy' ||
+      (section === 'rankings' && SEASONLESS_RANKINGS.includes(subview));
+  }
+
   function hashFor(route) {
     const p = new URLSearchParams();
     const kind = route.view;
@@ -231,7 +244,8 @@
         for (const key of ['category', 'statTeam', 'statConf', 'statQuery', 'minimum', 'sort', 'dir', 'page'])
           if (route[key] != null && route[key] !== '') p.set(key, route[key]);
       }
-      if (route.year != null && ((route.section === 'games' && !route.finder) || (route.section === 'rankings' && route.subview !== 'home-field') ||
+      if (route.year != null && ((route.section === 'games' && !route.finder) ||
+          (route.section === 'rankings' && !seasonless('rankings', route.subview)) ||
           (route.section === 'playoff' && route.subview !== 'history'))) p.set('season', route.year);
       if (route.section === 'games' && route.finder) {
         p.set('mode', 'find');
@@ -267,6 +281,6 @@
   // `sections` is the list of routes this module will accept, published so
   // that the page can be held to labelling all of them -- a section with a
   // route and no label renders the word "undefined" as its browser title.
-  return { readRoute, hashFor, seasonsFor, normalizeSearch, pageTabs,
+  return { readRoute, hashFor, seasonsFor, seasonless, normalizeSearch, pageTabs,
     sections: Object.keys(views), views };
 });
