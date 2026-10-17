@@ -1,5 +1,41 @@
 # Site release history
 
+## Unreleased — Team statistics with the schedule taken out (2026-10-17)
+
+- **Stats → Adjusted** answers the question the raw table cannot: how would
+  this team's offense have done against an average opponent, and how would an
+  average offense have done against this defense. Every other team number on
+  the site is a raw total, so a defense that faced four of the best offenses in
+  the country reads as worse than one that faced four of the worst.
+- The raw column stays beside the adjusted one, with each value's rank and how
+  far that rank moved. The gap between the two *is* the schedule, and dropping
+  the raw number would turn a correction into an assertion.
+- What it shows in 2025. Akron's scoring defense is 89th raw and 126th once its
+  opponents are accounted for; Buffalo's 60th becomes 95th; Fresno State's 16th
+  becomes 45th. In the other direction Florida's 70th becomes 32nd, UCLA's
+  119th becomes 76th and Syracuse's 129th becomes 103rd. On offense, Alabama is
+  55th raw and 21st adjusted.
+- Three statistics: points per game for every season the game archive covers
+  (1980 onwards), and CFBD's EPA per play and success rate from 2001, weighted
+  by plays. A season with too little of a statistic has no fit for it rather
+  than one built on scraps, so 2002 — which CFBD covers for 31 games — shows
+  points only, as every season before 2001 does.
+- The model fits a league average, one offense and one defense per team and a
+  single league-wide home-field term all at once, by ridge regression on every
+  game. Home field comes out at 3.9 points a game in 2025, which is the first
+  time this project has measured it on scoring rather than on Elo.
+- How hard to shrink was measured, not assumed: holding out a fifth of each
+  season's games across 2005–2026, the fit predicts them to within 9.32 points
+  of mean absolute error against 11.29 for the league average alone and 9.54
+  with no shrinkage at all. The curve is flat around its floor, so the shipped
+  values are round numbers inside the flat region rather than a claim that one
+  decimal beats another.
+- Games against opponents this project does not rate are excluded from both
+  columns, so the two numbers on a row always cover the same games — which is
+  also why these raw numbers can differ from the Teams table, which counts
+  every opponent. Nothing here feeds Elo, CoE, the playoff model or any
+  prediction.
+
 ## Unreleased — Conference strength over time (2026-10-17)
 
 - **Standings → Conference History** charts every conference's average member

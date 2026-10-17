@@ -50,6 +50,7 @@ from measure_vs_market import build_report as build_market_report  # noqa: E402
 from coverage import build_coverage  # noqa: E402
 from elo_timeline import build_timeline  # noqa: E402
 from build_schedule_strength import build_season as build_schedule_season  # noqa: E402
+from build_adjusted_stats import build_season as build_adjusted_season  # noqa: E402
 import player_archive  # noqa: E402
 from export_people_pages import export as export_people  # noqa: E402
 from predict_upcoming import build_upcoming, elo_config  # noqa: E402
@@ -758,6 +759,25 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                       table)
         schedule_strength[str(season)] = f"data/schedule_strength/{season}.js?v={v}"
 
+    # Opponent-adjusted team statistics, one file per season for the same reason:
+    # the view opens on one season and nothing else needs the other forty-six.
+    adjusted_dir = out_dir / "adjusted_stats"
+    if adjusted_dir.exists():
+        shutil.rmtree(adjusted_dir)                                  # no orphan seasons
+    adjusted_dir.mkdir(parents=True)
+    adjusted_stats = {}
+    for season in sorted(payloads):
+        table = build_adjusted_season(conn, int(season))
+        # A season with no metric fitted has nothing to show, and is absent from
+        # the manifest rather than present and empty -- the view then says the
+        # season has none instead of rendering an empty table.
+        if not table["metrics"]:
+            continue
+        v = _write_js(adjusted_dir / f"{season}.js",
+                      f"(window.__CFB_ADJUSTED_STATS__=window.__CFB_ADJUSTED_STATS__||{{}})[{season}]",
+                      table)
+        adjusted_stats[str(season)] = f"data/adjusted_stats/{season}.js?v={v}"
+
     shard_payloads = build_series(payloads)
     for k in range(SERIES_SHARDS):
         p = shard_payloads.get(k, {"shard": k, "fields": SERIES_FIELDS, "pairs": {}})
@@ -780,6 +800,9 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                 # Which seasons have a schedule-strength table (played and
                 # remaining), so the view knows before fetching anything.
                 "schedule_strength": schedule_strength,
+                # Which seasons have an opponent-adjusted statistics table, so
+                # the view knows before fetching anything.
+                "adjusted_stats": adjusted_stats,
                 "model_params": model_params(),
                 # P1-08: what each season actually has, so an absent metric can say
                 # why it is absent instead of rendering as a zero.
@@ -816,6 +839,7 @@ def main() -> None:
           f"game details {len(m['details'])} seasons; drives {len(m['drives'])} seasons; "
           f"series {m['series_shards']} files; "
           f"schedule strength {len(m['schedule_strength'])} seasons; "
+          f"adjusted stats {len(m['adjusted_stats'])} seasons; "
           f"Elo timeline {len(m['elo_timeline'])} seasons "
           f"({sum((OUT_DIR / 'elo_timeline' / f'{s}.js').stat().st_size for s in m['elo_timeline']):,} bytes)")
 
