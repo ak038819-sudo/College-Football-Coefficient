@@ -1595,7 +1595,8 @@ function renderYearRow() {
   if (state.view === 'team' || state.view === 'conference' || state.view === 'game' ||
       state.view === 'player' || state.view === 'coach' ||
       state.section === 'teams' || state.section === 'live' || state.section === 'matchups' || state.section === 'methodology' || state.section === 'coverage' || state.section === 'accuracy' ||
-      (state.section === 'games' && state.finder) || (state.section === 'rankings' && state.subview === 'home-field')) {
+      (state.section === 'games' && state.finder) ||
+      CfbNavigation.seasonless(state.section, state.subview)) {
     row.innerHTML = '';
     return;
   }
