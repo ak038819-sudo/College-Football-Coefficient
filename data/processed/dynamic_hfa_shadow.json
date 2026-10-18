@@ -1625,6 +1625,10 @@
     },
     "401860903": {
       "away_id": 2,
+      "candidate_brier": 0.09560959,
+      "candidate_log_loss": 0.36991651,
+      "flat_brier": 0.09101565,
+      "flat_log_loss": 0.35908928,
       "home_bonus": 47.102,
       "home_id": 4,
       "kickoff_utc": "2026-10-17T22:00:00.000Z",
@@ -1632,6 +1636,8 @@
       "p_candidate": 0.690792,
       "p_flat": 0.698312,
       "recorded_at": "2026-10-10T23:46:09.004479Z",
+      "result": 1.0,
+      "scored_at": "2026-10-18T02:21:56.046125Z",
       "season": 2026
     },
     "401860904": {
@@ -2297,6 +2303,17 @@
       "recorded_at": "2026-10-17T19:44:00.655655Z",
       "season": 2026
     },
+    "401864527": {
+      "away_id": 59,
+      "home_bonus": 45.615,
+      "home_id": 26,
+      "kickoff_utc": "2026-10-25T02:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.612796,
+      "p_flat": 0.612385,
+      "recorded_at": "2026-10-18T02:21:56.046125Z",
+      "season": 2026
+    },
     "401864528": {
       "away_id": 9,
       "home_bonus": 44.949,
@@ -2772,6 +2789,10 @@
     },
     "401869934": {
       "away_id": 57,
+      "candidate_brier": 0.14104231,
+      "candidate_log_loss": 0.47089363,
+      "flat_brier": 0.1476496,
+      "flat_log_loss": 0.48491749,
       "home_bonus": 36.964,
       "home_id": 68,
       "kickoff_utc": "2026-10-17T23:00:00.000Z",
@@ -2779,6 +2800,8 @@
       "p_candidate": 0.375556,
       "p_flat": 0.384252,
       "recorded_at": "2026-10-10T23:46:09.004479Z",
+      "result": 0.0,
+      "scored_at": "2026-10-18T02:21:56.046125Z",
       "season": 2026
     },
     "401869935": {
@@ -3226,11 +3249,11 @@
     "version": "centered_hfa_v1"
   },
   "summary": {
-    "candidate_brier": 0.206013,
-    "candidate_log_loss": 0.601948,
-    "flat_brier": 0.205662,
-    "flat_log_loss": 0.601178,
-    "games": 147
+    "candidate_brier": 0.204836,
+    "candidate_log_loss": 0.599511,
+    "flat_brier": 0.204503,
+    "flat_log_loss": 0.598773,
+    "games": 149
   },
   "version": "centered_hfa_v1"
 }
