@@ -577,3 +577,62 @@ class TestThePayloadThePagesRead:
         # existed, and still has to produce a dashboard.
         conn = sqlite3.connect(str(tmp_path / "bare.db"))
         assert payloads.build_payload(conn) == {"awards": [], "winners": [], "by_player": {}}
+
+
+# --- loading into a database that already exists ---------------------------
+
+class TestReloadingAndMigrating:
+    """run_pipeline.py keeps an existing db/league.db unless --force."""
+
+    def test_a_database_from_before_the_category_column_is_migrated(self, tmp_path):
+        # CREATE TABLE IF NOT EXISTS leaves an existing table as it was, so
+        # every statement naming `category` would fail against the awards table
+        # the previous version created.
+        conn = _people_db(tmp_path)
+        conn.execute("DROP TABLE awards")
+        conn.execute("""CREATE TABLE awards (
+            award_key TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT,
+            espn_award_id TEXT, first_season INTEGER, last_season INTEGER)""")
+        conn.execute("INSERT INTO awards VALUES ('heisman-trophy', 'Heisman Trophy',"
+                     " 'The most outstanding player', '1', 2023, 2023)")
+        conn.commit()
+        _roster(conn, 4426339, "Travis Hunter", 1, 2024, "WR")
+        stats = load.load_awards(conn, _season_file(tmp_path, 2024, [_heisman()]))
+        assert stats["linked"] == 1
+        assert "category" in {r[1] for r in conn.execute("PRAGMA table_info(awards)")}
+        # The row that was already there keeps its default rather than vanishing.
+        assert conn.execute("SELECT category FROM awards").fetchone()[0] == "player"
+
+    def test_migrating_twice_is_not_an_error(self, tmp_path):
+        conn = _people_db(tmp_path)
+        load.apply_schema(conn)
+        load.apply_schema(conn)
+        assert "category" in {r[1] for r in conn.execute("PRAGMA table_info(awards)")}
+
+    def test_a_reload_drops_the_audit_rows_it_wrote_last_time(self, tmp_path):
+        # record_unresolved only ever inserts, so without this the review queue
+        # both duplicates every name still unplaced and keeps reporting the ones
+        # a later run resolved.
+        conn = _people_db(tmp_path)
+        unplaced = _season_file(tmp_path, 2022, [
+            _heisman(name="Olu Oluwatimi", school="Colorado", athlete="4", position="C")])
+        load.load_awards(conn, unplaced)
+        load.load_awards(conn, unplaced)
+        assert conn.execute("SELECT COUNT(*) FROM person_unresolved "
+                            "WHERE context = 'awards'").fetchone()[0] == 1, \
+            "two runs must not leave two rows for one name"
+        # Now the roster arrives and the same file resolves him.
+        _roster(conn, 4370807, "Olusegun Oluwatimi", 1, 2022, "OL")
+        stats = load.load_awards(conn, unplaced)
+        assert stats["linked"] == 1
+        assert conn.execute("SELECT COUNT(*) FROM person_unresolved "
+                            "WHERE context = 'awards'").fetchone()[0] == 0, \
+            "the queue must not report an identity this run resolved"
+
+    def test_another_source_s_audit_rows_are_left_alone(self, tmp_path):
+        conn = _people_db(tmp_path)
+        pid.record_unresolved(conn, "player", "cfbd", "rosters", "Someone", "no match", 2024)
+        conn.commit()
+        load.load_awards(conn, _season_file(tmp_path, 2024, [_heisman()]))
+        assert conn.execute("SELECT COUNT(*) FROM person_unresolved "
+                            "WHERE context = 'rosters'").fetchone()[0] == 1

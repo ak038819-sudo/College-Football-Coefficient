@@ -158,6 +158,25 @@ def positions_compatible(left: str | None, right: str | None) -> bool:
 
 def apply_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA.read_text(encoding="utf-8"))
+    _add_missing_columns(conn)
+
+
+# CREATE TABLE IF NOT EXISTS leaves an existing table exactly as it was, and
+# run_pipeline.py keeps an existing db/league.db unless --force. So a database
+# built before `category` existed still has the old `awards` table, and every
+# statement here that names the column would fail against it. Added rather than
+# assumed, because the alternative is telling anyone with a database to rebuild
+# it from scratch to load one season of awards.
+_COLUMNS = {"awards": {"category": "TEXT NOT NULL DEFAULT 'player'"}}
+
+
+def _add_missing_columns(conn: sqlite3.Connection) -> None:
+    for table, columns in _COLUMNS.items():
+        have = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+        for name, declaration in columns.items():
+            if name not in have:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {declaration}")
+    conn.commit()
 
 
 def award_key(name: str) -> str:
@@ -288,6 +307,12 @@ def load_awards(conn: sqlite3.Connection, path: str | Path) -> dict:
     # Replaced wholesale so a re-run after a correction cannot leave a stale
     # winner beside the right one.
     cur.execute("DELETE FROM player_awards WHERE season_year = ?", (season,))
+    # And the season's audit rows with it. record_unresolved only ever inserts,
+    # so without this a reload both duplicates every name it still cannot place
+    # and keeps reporting the ones it now can -- the review queue would show
+    # Olu Oluwatimi as a failed match in the same run that resolved him.
+    cur.execute("DELETE FROM person_unresolved WHERE context = 'awards' "
+                "AND source = 'espn' AND season_year = ?", (season,))
 
     stats = {"awards": 0, "winners": 0, "linked": 0, "by_espn_id": 0,
              "by_surname": 0, "coach_awards": 0, "outside": 0, "weekly": 0,
