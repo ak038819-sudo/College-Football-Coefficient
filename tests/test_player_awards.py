@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import fetch_espn_awards as fetch  # noqa: E402
 import load_player_awards as load  # noqa: E402
+import build_awards_payload as payloads  # noqa: E402
 import person_identity as pid  # noqa: E402
 
 ATHLETES = "https://sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/2024/athletes"
@@ -230,7 +231,9 @@ class TestResolvingAWinnerToAPerson:
         _roster(conn, 4426339, "Travis Hunter", 1, 2024, "WR")
         stats = load.load_awards(conn, _season_file(tmp_path, 2024, [_heisman()]))
         assert stats == {"awards": 1, "winners": 1, "linked": 1, "by_espn_id": 0,
-                         "coach_awards": 0, "unresolved": 0, "no_winner": 0}
+                         "by_surname": 0, "coach_awards": 0, "outside": 0, "weekly": 0,
+                         "unresolved": 0, "no_winner": 0,
+                         "uncategorised": ["Heisman Trophy"]}
         row = conn.execute("SELECT player_id, team_id, resolution FROM player_awards").fetchone()
         assert row == (4426339, 1, "context")
 
@@ -281,14 +284,159 @@ class TestResolvingAWinnerToAPerson:
         assert row == (None, None, "unknown team")
 
     def test_a_coach_award_is_not_reported_as_a_failed_player_match(self, tmp_path):
+        # Named from the table, not from the word "coach": not one of ESPN's
+        # four coach awards has that word in its name, which is why the pattern
+        # this replaced matched none of them and reported every coach as a
+        # player the project had failed to identify.
         conn = _people_db(tmp_path)
-        award = {"espn_award_id": "9", "name": "Coach of the Year",
+        award = {"espn_award_id": "9", "name": "The Home Depot Award",
                  "winners": [{"display_name": "Kalen DeBoer", "school": "Colorado",
                               "espn_athlete_id": None, "espn_team_id": "38"}]}
         stats = load.load_awards(conn, _season_file(tmp_path, 2024, [award]))
         assert stats["coach_awards"] == 1 and stats["unresolved"] == 0
         assert conn.execute("SELECT resolution FROM player_awards").fetchone()[0] == "coach award"
         assert conn.execute("SELECT COUNT(*) FROM person_unresolved").fetchone()[0] == 0
+        assert conn.execute("SELECT category FROM awards").fetchone()[0] == "coach"
+
+    def test_each_of_the_four_coach_awards_is_one(self, tmp_path):
+        for name in ("The Home Depot Award", "Eddie Robinson Award",
+                     "Frank Broyles Award", "Buddy Teevens Award"):
+            assert load.AWARD_CATEGORY[load.award_key(name)] == "coach", name
+
+    def test_a_division_two_winner_is_not_counted_as_one_we_failed_to_find(self, tmp_path):
+        # The Harlon Hill goes to a Division II player. He is not in an FBS
+        # roster archive and never will be, so counting him among the winners
+        # this project could not identify would make the gap look like a defect.
+        conn = _people_db(tmp_path)
+        award = {"espn_award_id": "7", "name": "Harlon Hill Trophy",
+                 "winners": [{"display_name": "Hank Goff", "school": "Ferris State",
+                              "espn_athlete_id": "1", "espn_team_id": "9"}]}
+        stats = load.load_awards(conn, _season_file(tmp_path, 2015, [award]))
+        assert stats["outside"] == 1 and stats["unresolved"] == 0
+        assert conn.execute("SELECT resolution FROM player_awards").fetchone()[0] \
+            == "outside this archive"
+
+    def test_a_weekly_honour_is_kept_and_not_counted_as_a_season_award(self, tmp_path):
+        conn = _people_db(tmp_path)
+        award = {"espn_award_id": "8", "name": "Offensive Player of the Week",
+                 "winners": [{"display_name": "Nobody At All", "school": "Colorado",
+                              "espn_athlete_id": None, "espn_team_id": "38"}]}
+        stats = load.load_awards(conn, _season_file(tmp_path, 2024, [award]))
+        assert stats["weekly"] == 1 and stats["unresolved"] == 0
+        assert conn.execute("SELECT COUNT(*) FROM player_awards").fetchone()[0] == 1
+
+    def test_a_trophy_espn_adds_later_is_named_in_the_run(self, tmp_path):
+        conn = _people_db(tmp_path)
+        award = {"espn_award_id": "99", "name": "Brand New Trophy",
+                 "winners": [{"display_name": "Travis Hunter", "school": "Colorado",
+                              "espn_athlete_id": "4426339", "espn_team_id": "38"}]}
+        stats = load.load_awards(conn, _season_file(tmp_path, 2024, [award]))
+        # Treated as a player award so a real new trophy still reaches the page,
+        # and named so it shows up in the log rather than silently.
+        assert stats["uncategorised"] == ["Brand New Trophy"]
+        assert conn.execute("SELECT category FROM awards").fetchone()[0] == "player"
+
+
+class TestPositionIsATieBreakerAndNotAFilter:
+    """The bug that cost 86 winners, all of them defenders and linemen.
+
+    ESPN and the roster feed draw on one vocabulary and still disagree per
+    player: Manti Te'o is a LB to one and an ILB to the other, Aaron Donald a
+    DT and a DL, Jahdae Barron a CB and a DB. Matching the strings exactly
+    threw away the only candidate; the offensive skill positions resolved
+    because those are the words the two feeds happen to spell the same way.
+    """
+
+    def test_a_linebacker_the_roster_calls_an_inside_linebacker_still_resolves(self, tmp_path):
+        conn = _people_db(tmp_path)
+        _roster(conn, 517633, "Manti Te'o", 1, 2012, "ILB")
+        stats = load.load_awards(conn, _season_file(tmp_path, 2012, [
+            _heisman(name="Manti Te'o", athlete="1", position="LB")]))
+        assert stats["linked"] == 1, "a LB and an ILB are the same player"
+        assert conn.execute("SELECT player_id FROM player_awards").fetchone()[0] == 517633
+
+    @pytest.mark.parametrize("espn_position,roster_position", [
+        ("DT", "DL"), ("DE", "DL"), ("EDGE", "DL"), ("EDGE", "OLB"),
+        ("CB", "DB"), ("S", "DB"), ("C", "OL"), ("OT", "OL"), ("PK", "P"),
+    ])
+    def test_two_words_for_one_part_of_a_roster_are_compatible(self, espn_position,
+                                                               roster_position):
+        assert load.positions_compatible(espn_position, roster_position)
+
+    def test_a_quarterback_and_a_cornerback_are_not_compatible(self):
+        assert not load.positions_compatible("QB", "CB")
+        assert not load.positions_compatible("OL", "DL")
+
+    def test_a_position_nobody_recorded_rules_nobody_out(self):
+        # ESPN writes a position it does not know as a dash.
+        assert load.positions_compatible("-", "DL")
+        assert load.positions_compatible(None, "QB")
+        assert load.positions_compatible("QB", None)
+        assert load.positions_compatible("ATH", "WR")
+
+    def test_a_position_still_separates_two_players_of_one_name(self, tmp_path):
+        # The tie-break has to do its job, or widening the first query would
+        # trade 86 found winners for a crop of wrong ones.
+        conn = _people_db(tmp_path)
+        _roster(conn, 20, "Jordan Davis", 1, 2021, "DL")
+        _roster(conn, 21, "Jordan Davis", 1, 2021, "WR")
+        stats = load.load_awards(conn, _season_file(tmp_path, 2021, [
+            _heisman(name="Jordan Davis", athlete="2", position="DT")]))
+        assert stats["linked"] == 1
+        assert conn.execute("SELECT player_id FROM player_awards").fetchone()[0] == 20
+
+    def test_two_players_of_one_name_in_one_position_stay_two_people(self, tmp_path):
+        conn = _people_db(tmp_path)
+        _roster(conn, 30, "D'Onta Foreman", 1, 2016, "RB")
+        _roster(conn, 31, "D'Onta Foreman", 1, 2016, "RB")
+        stats = load.load_awards(conn, _season_file(tmp_path, 2016, [
+            _heisman(name="D'Onta Foreman", athlete="3", position="RB")]))
+        assert stats["linked"] == 0
+        assert conn.execute("SELECT resolution FROM player_awards").fetchone()[0] \
+            == "name collision"
+
+
+class TestTheNameHeIsAnnouncedBy:
+    def test_a_surname_resolves_a_winner_the_roster_enrolled_differently(self, tmp_path):
+        # ESPN: "Olu Oluwatimi" won the 2022 Rimington. The roster that season
+        # says Olusegun.
+        conn = _people_db(tmp_path)
+        _roster(conn, 4370807, "Olusegun Oluwatimi", 1, 2022, "OL")
+        stats = load.load_awards(conn, _season_file(tmp_path, 2022, [
+            _heisman(name="Olu Oluwatimi", athlete="4", position="C")]))
+        assert stats["linked"] == 1 and stats["by_surname"] == 1
+        row = conn.execute("SELECT player_id, resolution FROM player_awards").fetchone()
+        assert row == (4370807, "surname")
+
+    def test_a_surname_two_players_share_resolves_neither(self, tmp_path):
+        conn = _people_db(tmp_path)
+        _roster(conn, 40, "Olusegun Oluwatimi", 1, 2022, "OL")
+        _roster(conn, 41, "Chidi Oluwatimi", 1, 2022, "OT")
+        stats = load.load_awards(conn, _season_file(tmp_path, 2022, [
+            _heisman(name="Olu Oluwatimi", athlete="5", position="C")]))
+        assert stats["linked"] == 0
+        assert conn.execute("SELECT resolution FROM player_awards").fetchone()[0] \
+            == "name collision"
+
+    def test_a_surname_nobody_on_that_roster_has_resolves_nobody(self, tmp_path):
+        conn = _people_db(tmp_path)
+        _roster(conn, 50, "Somebody Else", 1, 2022, "OL")
+        stats = load.load_awards(conn, _season_file(tmp_path, 2022, [
+            _heisman(name="Olu Oluwatimi", athlete="6", position="C")]))
+        assert stats["linked"] == 0
+        assert conn.execute("SELECT resolution FROM player_awards").fetchone()[0] == "no match"
+
+    def test_a_full_name_is_preferred_to_a_surname(self, tmp_path):
+        # Two Oluwatimis, one of whom the full name names exactly: the full
+        # name wins outright and the surname rule is never reached.
+        conn = _people_db(tmp_path)
+        _roster(conn, 60, "Olu Oluwatimi", 1, 2022, "OL")
+        _roster(conn, 61, "Chidi Oluwatimi", 1, 2022, "OL")
+        stats = load.load_awards(conn, _season_file(tmp_path, 2022, [
+            _heisman(name="Olu Oluwatimi", athlete="7", position="C")]))
+        assert stats["linked"] == 1 and stats["by_surname"] == 0
+        row = conn.execute("SELECT player_id, resolution FROM player_awards").fetchone()
+        assert row == (60, "context")
 
     def test_a_winner_the_source_did_not_name_is_recorded_as_such(self, tmp_path):
         conn = _people_db(tmp_path)
@@ -350,3 +498,82 @@ class TestTheAwardsTable:
         load.load_awards(conn, _season_file(tmp_path, 2024, [_heisman(name="Travis Hunter")]))
         rows = conn.execute("SELECT winner_name FROM player_awards").fetchall()
         assert rows == [("Travis Hunter",)]
+
+
+# --- the payload the pages read --------------------------------------------
+
+class TestThePayloadThePagesRead:
+    def _loaded(self, tmp_path, season, awards):
+        conn = _people_db(tmp_path)
+        _roster(conn, 4426339, "Travis Hunter", 1, season, "WR")
+        load.load_awards(conn, _season_file(tmp_path, season, awards))
+        return conn
+
+    def test_a_trophy_and_its_winner_are_keyed_both_ways(self, tmp_path):
+        conn = self._loaded(tmp_path, 2024, [_heisman()])
+        payload = payloads.build_payload(conn)
+        assert [a["name"] for a in payload["awards"]] == ["Heisman Trophy"]
+        assert payload["winners"][0]["name"] == "Travis Hunter"
+        # The player index points AT the winner row rather than repeating it,
+        # so a player page and the awards view cannot disagree about a trophy.
+        [index] = payload["by_player"]["4426339"]
+        assert payload["winners"][index]["key"] == "heisman-trophy"
+
+    def test_a_winner_with_no_page_carries_no_player(self, tmp_path):
+        conn = _people_db(tmp_path)
+        load.load_awards(conn, _season_file(tmp_path, 1997, [
+            _heisman(name="Charles Woodson", school="Colorado")]))
+        payload = payloads.build_payload(conn)
+        assert "player" not in payload["winners"][0]
+        assert payload["winners"][0]["name"] == "Charles Woodson"
+        assert payload["by_player"] == {}
+
+    def test_the_school_is_this_projects_own_name_where_one_was_resolved(self, tmp_path):
+        # So a link and the text on it agree. ESPN's own string is the fallback
+        # and not the preference, which only shows where the two differ.
+        conn = _people_db(tmp_path)
+        conn.execute("INSERT INTO team_aliases VALUES ('Colo. Buffaloes', 'Colorado')")
+        _roster(conn, 4426339, "Travis Hunter", 1, 2024, "WR")
+        load.load_awards(conn, _season_file(tmp_path, 2024, [
+            _heisman(school="Colo. Buffaloes")]))
+        winner = payloads.build_payload(conn)["winners"][0]
+        assert winner["team"] == 1
+        assert winner["school"] == "Colorado", "the label must match the link"
+
+    def test_a_school_outside_this_project_keeps_the_sources_own_string(self, tmp_path):
+        conn = _people_db(tmp_path)
+        load.load_awards(conn, _season_file(tmp_path, 2024, [
+            _heisman(name="Someone", school="North Dakota State")]))
+        winner = payloads.build_payload(conn)["winners"][0]
+        assert winner["school"] == "North Dakota State" and "team" not in winner
+
+    def test_a_dash_is_not_a_position(self, tmp_path):
+        conn = self._loaded(tmp_path, 2024, [_heisman(position="-")])
+        assert "position" not in payloads.build_payload(conn)["winners"][0]
+
+    def test_the_non_fbs_and_weekly_trophies_are_held_back_from_the_pages(self, tmp_path):
+        conn = _people_db(tmp_path)
+        load.load_awards(conn, _season_file(tmp_path, 2024, [
+            _heisman(),
+            {"espn_award_id": "7", "name": "Harlon Hill Trophy",
+             "winners": [{"display_name": "A Winner", "school": "Ferris State"}]},
+            {"espn_award_id": "8", "name": "Offensive Player of the Week",
+             "winners": [{"display_name": "Another", "school": "Colorado"}]},
+            {"espn_award_id": "9", "name": "The Home Depot Award",
+             "winners": [{"display_name": "A Coach", "school": "Colorado"}]}]))
+        payload = payloads.build_payload(conn)
+        # The coach award is shown, because a reader looking for the national
+        # coach of the year expects to find it. The Division II trophy and the
+        # weekly honour are not: their winners can never have a page here.
+        assert sorted(a["name"] for a in payload["awards"]) == \
+            ["Heisman Trophy", "The Home Depot Award"]
+        assert sorted(w["name"] for w in payload["winners"]) == ["A Coach", "Travis Hunter"]
+        # Still in the database, though: the archive does not pretend they
+        # were never given.
+        assert conn.execute("SELECT COUNT(*) FROM player_awards").fetchone()[0] == 4
+
+    def test_a_database_with_no_award_tables_is_not_a_crash(self, tmp_path):
+        # The static export runs against a database built before these tables
+        # existed, and still has to produce a dashboard.
+        conn = sqlite3.connect(str(tmp_path / "bare.db"))
+        assert payloads.build_payload(conn) == {"awards": [], "winners": [], "by_player": {}}

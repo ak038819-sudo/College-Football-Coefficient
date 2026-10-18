@@ -1,5 +1,49 @@
 # Site release history
 
+## Unreleased — Who won what (2026-10-18)
+
+- **Stats → Awards** lists every national trophy of a season with its winner,
+  his school and what the trophy is for, and a **player page now carries an
+  Awards panel** naming the trophies that player won. Travis Hunter's 2024
+  reads as the six-trophy sweep it was.
+- 26 seasons, 2000 through 2025, 28 trophies and 666 winners. This is the first
+  feed in the project that is not CollegeFootballData, which has no awards
+  endpoint at all; the source is ESPN, fetched by hand into `data/raw/awards`
+  and committed, because rebuilding 2014's pages must not depend on what ESPN
+  serves today.
+- A winner is a link only where this project identified the person. Before
+  2009, where the roster archive begins, that is nobody: those 188 winners are
+  names, and the page says the name. Since 2009 it is 372 of 394.
+- Getting to those 372 meant fixing what the first attempt got wrong. Matching
+  a winner to a roster row had required his position to match the string the
+  roster used, and the two feeds disagree per player: ESPN called Manti Te'o a
+  LB where the roster says ILB, Aaron Donald a DT where it says DL, Jahdae
+  Barron a CB where it says DB. That threw away 86 winners who were in the
+  archive all along, every one of them a defender or a lineman — the offensive
+  skill positions resolved because those are the words the two feeds happen to
+  spell the same way. Position is now a tie-breaker between candidates of one
+  name and never a filter on the only one.
+- A surname is tried when a full name finds nobody, because ESPN prints the
+  name a player is announced by and the roster prints the name he enrolled
+  under: "Olu Oluwatimi" won the 2022 Rimington, and that roster says Olusegun.
+  Held to the same rule as every other match — exactly one candidate, or none.
+- The 37 trophies ESPN serves are not all the same kind of thing, and each is
+  now named as what it is. Four are won by coaches, and not one of those four
+  has the word "coach" in its name, so the pattern that used to decide this
+  matched none of them and reported every coach as a player the project had
+  failed to find. Five are FCS, Division II or Division III player awards,
+  whose winners are not in an FBS roster archive and never will be; three are
+  weekly honours, a different grain from everything else here. All of them stay
+  in the database — the archive does not pretend a trophy was not given — and
+  the counts no longer read a question of scope as a defect.
+- 22 winners since 2009 are still names. ESPN gave no school at all for 12 of
+  them, named no winner for 5, and the rest are a roster gap or two players of
+  one name whom nothing but a coin flip would separate.
+- Display data only. An award is a vote taken after the season, so it is
+  already an opinion about the season; feeding it back into a rating would be
+  circular, and nothing in Elo, CoE, the playoff model or any prediction reads
+  it.
+
 ## Unreleased — Team statistics with the schedule taken out (2026-10-17)
 
 - **Stats → Adjusted** answers the question the raw table cannot: how would

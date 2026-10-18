@@ -51,6 +51,7 @@ from coverage import build_coverage  # noqa: E402
 from elo_timeline import build_timeline  # noqa: E402
 from build_schedule_strength import build_season as build_schedule_season  # noqa: E402
 from build_adjusted_stats import build_season as build_adjusted_season  # noqa: E402
+from build_awards_payload import build_payload as build_awards_payload  # noqa: E402
 import player_archive  # noqa: E402
 from export_people_pages import export as export_people  # noqa: E402
 from predict_upcoming import build_upcoming, elo_config  # noqa: E402
@@ -778,6 +779,19 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                       table)
         adjusted_stats[str(season)] = f"data/adjusted_stats/{season}.js?v={v}"
 
+    # National award winners. One file, not one per season: a player page needs
+    # the trophies one person won, which are spread across his career, and the
+    # awards view needs every winner of one trophy, which is spread across every
+    # season. Either page would have to fetch the whole archive anyway.
+    awards_payload = build_awards_payload(conn)
+    awards = None
+    if awards_payload["winners"]:
+        av = _write_js(out_dir / "awards.js", "window.__CFB_AWARDS__", awards_payload)
+        awards = f"data/awards.js?v={av}"
+        linked = sum(1 for w in awards_payload["winners"] if "player" in w)
+        print(f"awards: {len(awards_payload['winners'])} winners of "
+              f"{len(awards_payload['awards'])} trophies, {linked} with a page")
+
     shard_payloads = build_series(payloads)
     for k in range(SERIES_SHARDS):
         p = shard_payloads.get(k, {"shard": k, "fields": SERIES_FIELDS, "pairs": {}})
@@ -803,6 +817,10 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                 # Which seasons have an opponent-adjusted statistics table, so
                 # the view knows before fetching anything.
                 "adjusted_stats": adjusted_stats,
+                # National award winners, absent rather than empty when the
+                # database has none, so the pages can say there are none
+                # instead of fetching a file that is not there.
+                **({"awards": awards} if awards else {}),
                 "model_params": model_params(),
                 # P1-08: what each season actually has, so an absent metric can say
                 # why it is absent instead of rendering as a zero.
@@ -840,6 +858,7 @@ def main() -> None:
           f"series {m['series_shards']} files; "
           f"schedule strength {len(m['schedule_strength'])} seasons; "
           f"adjusted stats {len(m['adjusted_stats'])} seasons; "
+
           f"Elo timeline {len(m['elo_timeline'])} seasons "
           f"({sum((OUT_DIR / 'elo_timeline' / f'{s}.js').stat().st_size for s in m['elo_timeline']):,} bytes)")
 
