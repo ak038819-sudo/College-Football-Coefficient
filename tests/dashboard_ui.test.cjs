@@ -202,19 +202,33 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    assert.ok(rows.length>=25,'the Elo board lists a full top 25');
    assert.ok(rows.every(li=>/^\d+\u2013\d+(\u2013\d+)?$/.test(li.querySelector('.rec')?.textContent||'')),
      'every ranked team shows a win-loss record');
-   const leader=rows[0].querySelector('.team-link-name, a')?.textContent.trim();
-   const board=rows[0].querySelector('.rec').textContent;
    // The team page is the authority on a record; the board must not disagree.
-   await route('#team='+encodeURIComponent(leader)+'&season=2026',()=>d.querySelector('.team-stats'));
-   const stat=[...d.querySelectorAll('.team-stats .team-stat')]
-     .find(el=>el.querySelector('.lbl')?.textContent.trim()==='Record');
-   assert.ok(stat,'the team page shows a record for '+leader);
-   // Compare the headline value only: the sub-line names the rated part, so a
-   // board that quietly dropped the FCS games would match it by substring.
-   assert.equal(board,stat.querySelector('.val').textContent.trim(),
-     'the board and the team page disagree on '+leader+'\u2019s record');
-   assert.match(stat.querySelector('.sub').textContent,/against rated opponents/,
-     'this check only bites while the leader has a non-FBS game to drop');
+   const check=async(li)=>{
+    const name=li.querySelector('.team-link-name, a')?.textContent.trim();
+    const board=li.querySelector('.rec').textContent;
+    await route('#team='+encodeURIComponent(name)+'&season=2026',()=>d.querySelector('.team-stats'));
+    const stat=[...d.querySelectorAll('.team-stats .team-stat')]
+      .find(el=>el.querySelector('.lbl')?.textContent.trim()==='Record');
+    assert.ok(stat,'the team page shows a record for '+name);
+    // Compare the headline value only: the sub-line names the rated part, so a
+    // board that quietly dropped the FCS games would match it by substring.
+    assert.equal(board,stat.querySelector('.val').textContent.trim(),
+      'the board and the team page disagree on '+name+'\u2019s record');
+    return {name,droppable:/against rated opponents/.test(stat.querySelector('.sub').textContent)};
+   };
+   // The check only has teeth against a team with a non-FBS game to drop, and
+   // whether the leader has one is this week's data, not a property of the
+   // code: walk the board for the highest-ranked team that does. Asserting it
+   // of rows[0] alone made a scheduled refresh a publish blocker.
+   const leader=await check(rows[0]);
+   let droppable=leader.droppable?leader:null;
+   for (const li of rows.slice(1)) {
+    if (droppable) break;
+    const seen=await check(li);
+    if (seen.droppable) droppable=seen;
+   }
+   assert.ok(droppable,'no ranked team has a non-FBS game, so the board could '+
+     'drop every FCS result and still match the team pages');
   });
   await t.test('the page chrome names each control once and keeps them on one row',async()=>{
    // The view selector and the season selector are one control group: if they
