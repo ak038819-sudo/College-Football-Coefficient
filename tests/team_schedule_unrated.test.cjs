@@ -76,6 +76,13 @@ function panelHtml(tp, { team = TEAM, season = 2024 } = {}) {
     phaseLabel: () => '',
     teamSeasonsList: () => [2024],
     wrapWideTables: () => {},
+    // The real manifest shape: one undated mark for an FCS school (year 0, so
+    // it covers every season) and nothing at all for a school the archive does
+    // not carry. Stubbing logoMarkup instead would let this file pass while the
+    // page drew nothing.
+    DATED_LOGOS: {
+      Mercer: [{ start: 0, end: null, src: 'assets/logos/non_fbs/mercer/0-now.png?v=abc1234567', bg: '#2a1a4a' }],
+    },
     tp,
   };
   vm.createContext(ctx);
@@ -86,6 +93,10 @@ function panelHtml(tp, { team = TEAM, season = 2024 } = {}) {
     'let liveResults = new Map();\nlet liveResultsSignature = "";\n' +
     'const MONTHS = ' + JSON.stringify(
       ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']) + ';\n' +
+    sourceOf('hashHue') + '\n' +
+    sourceOf('initials') + '\n' +
+    sourceOf('pickDatedLogoEntry') + '\n' +
+    sourceOf('logoMarkup') + '\n' +
     sourceOf('fmtDate') + '\n' +
     sourceOf('fmtGameDate') + '\n' +
     sourceOf('signed') + '\n' +
@@ -149,6 +160,28 @@ test('an unrated opponent is plain text, with no team page and no game page', ()
   assert.doesNotMatch(row, /#game=50/);
 });
 
+// The schools in this table are the only ones on the site with no page of their
+// own, so the mark is all the identity the row can give them.
+test('an unrated opponent carries its own mark, on its own chip color', () => {
+  const html = panelHtml(withUnrated(ratedFixture(), [unratedGame()], [1, 0, 0]));
+  const row = html.match(/<tr class="sched-unrated">[\s\S]*?<\/tr>/)[0];
+  assert.match(row, /<span class="logo-chip xs" style="background:#2a1a4a">/);
+  assert.match(row, /src="assets\/logos\/non_fbs\/mercer\/0-now\.png\?v=abc1234567"/);
+  // The mark sits inside the opponent cell, beside the name, not anywhere else
+  // on the row.
+  const cell = row.match(/<td class="opp">[\s\S]*?<\/td>/)[0];
+  assert.match(cell, /logo-chip[\s\S]*Mercer/);
+  assert.doesNotMatch(row, /<a/);
+});
+
+test('an opponent the archive has no mark for keeps the monogram', () => {
+  const html = panelHtml(withUnrated(ratedFixture(), [unratedGame({ opp: 'Lambuth' })], [1, 0, 0]));
+  const row = html.match(/<tr class="sched-unrated">[\s\S]*?<\/tr>/)[0];
+  assert.match(row, /<span class="monogram xs"/);
+  assert.doesNotMatch(row, /logo-chip/);
+  assert.match(row, /Lambuth/);
+});
+
 test('the tag names the division the source gave, or says unrated when it gave none', () => {
   const fcs = panelHtml(withUnrated(ratedFixture(), [unratedGame()], [1, 0, 0]));
   assert.match(fcs, /<span class="tag-unrated"[^>]*>FCS<\/span>/);
@@ -161,14 +194,18 @@ test('the tag names the division the source gave, or says unrated when it gave n
 });
 
 test('an unrated game says vs at home, at on the road, and marks a neutral site', () => {
-  const home = panelHtml(withUnrated(ratedFixture(), [unratedGame()], [1, 0, 0]));
-  assert.match(home, /<span class="swing-where">vs<\/span> Mercer/);
-  const away = panelHtml(withUnrated(ratedFixture(), [unratedGame({ home: false })], [1, 0, 0]));
-  assert.match(away, /<span class="swing-where">at<\/span> Mercer/);
+  // The opponent's mark sits between the preposition and the name, so each of
+  // these reads the whole opponent cell rather than the two words together.
+  const oppCell = html => html.match(/<tr class="sched-unrated">[\s\S]*?<\/tr>/)[0]
+    .match(/<td class="opp">[\s\S]*?<\/td>/)[0];
+  const home = oppCell(panelHtml(withUnrated(ratedFixture(), [unratedGame()], [1, 0, 0])));
+  assert.match(home, /<span class="swing-where">vs<\/span>[\s\S]*Mercer/);
+  const away = oppCell(panelHtml(withUnrated(ratedFixture(), [unratedGame({ home: false })], [1, 0, 0])));
+  assert.match(away, /<span class="swing-where">at<\/span>[\s\S]*Mercer/);
   // A neutral-site game is nobody's home game, so it reads vs and is flagged.
-  const neutral = panelHtml(withUnrated(
-    ratedFixture(), [unratedGame({ home: false, neutral: true })], [1, 0, 0]));
-  assert.match(neutral, /<span class="swing-where">vs<\/span> Mercer <span class="swing-where">\(N\)<\/span>/);
+  const neutral = oppCell(panelHtml(withUnrated(
+    ratedFixture(), [unratedGame({ home: false, neutral: true })], [1, 0, 0])));
+  assert.match(neutral, /<span class="swing-where">vs<\/span>[\s\S]*Mercer<\/span><\/span> <span class="swing-where">\(N\)<\/span>/);
 });
 
 test('an unrated row keeps its week, its postseason label and its OT marker', () => {

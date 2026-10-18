@@ -1280,7 +1280,12 @@ const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
 // carrying the image inline, so the browser only fetches logos it displays.
 // Built by src/export_logo_files.py.
 const LOGO_MANIFEST = JSON.parse(document.getElementById('logo-manifest').textContent);
-const DATED_LOGOS = LOGO_MANIFEST.teams || {};
+// One lookup for every school a page can name. The non-FBS section holds one
+// undated mark each for the FCS and lower schools this project rates nothing
+// (src/fetch_non_fbs_logos.py); the teams section holds the dated eras of the
+// FBS programs it does. Teams go second, so a school in both -- one of ours met
+// in a season it was not FBS -- keeps its era-accurate set.
+const DATED_LOGOS = Object.assign({}, LOGO_MANIFEST.non_fbs || {}, LOGO_MANIFEST.teams || {});
 const TEAM_BRAND_COLORS = JSON.parse(document.getElementById('team-brand-colors').textContent);
 const DATED_CONFERENCE_LOGOS = LOGO_MANIFEST.conferences || {};
 
@@ -3624,8 +3629,9 @@ function fillSchedulePanel(tp, team) {
   // pregame Elo for either side, no expectation, no change and no post-game
   // rating, because the model never saw it. Those five columns are em-dashes
   // rather than zeroes, and the row takes no Elo tint for the same reason. The
-  // opponent is plain text, not a link: this project holds no page for it, and
-  // there is no game page either, since those are built from the rated set.
+  // opponent carries its own mark where one exists, but is not a link: this
+  // project holds no page for it, and there is no game page either, since those
+  // are built from the rated set. A school with no mark keeps the monogram.
   const unratedRows = (tp.nonFbsByTeam.get(team.id) || [])
     .filter(u => u.season === season)
     .map(u => {
@@ -3633,7 +3639,9 @@ function fillSchedulePanel(tp, team) {
       const where = u.neutral || u.home ? 'vs' : 'at';
       return [u.date, u.id, '<tr class="sched-unrated">' +
         '<td data-sort="' + esc(u.date || '') + '">' + esc(fmtGameDate(u)) + '</td>' +
-        '<td class="opp"><span class="swing-where">' + where + '</span> ' + esc(u.opp) +
+        '<td class="opp"><span class="swing-where">' + where + '</span> ' +
+          '<span class="team-link team-link-static">' + logoMarkup(u.opp, 'team', 'xs', u.season) +
+          '<span class="team-link-name">' + esc(u.opp) + '</span></span>' +
           (u.neutral ? ' <span class="swing-where">(N)</span>' : '') +
           ' <span class="tag-unrated" title="This project holds no rating for ' + esc(u.opp) +
           ', so the game counts in the record and in nothing else.">' +

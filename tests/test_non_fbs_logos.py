@@ -1,0 +1,408 @@
+"""
+Marks for the schools this project rates nothing (src/fetch_non_fbs_logos.py).
+
+Two things are worth pinning here. The opponent list has to be the same set of
+names the database actually holds, because a name this misses is a school that
+silently keeps its monogram. And the join has to be by id with nothing guessed:
+a school ESPN does not list, or lists twice, gets no mark rather than the wrong
+one.
+"""
+from __future__ import annotations
+
+import base64
+import csv
+import hashlib
+import io
+import json
+
+import pytest
+from PIL import Image
+
+import export_logo_files as lf
+import fetch_non_fbs_logos as fn
+
+REPO = fn.REPO
+
+
+def png_bytes(color=(32, 64, 192), size=(500, 500)) -> bytes:
+    """A real PNG, since the pipeline opens it with Pillow and reads its colors."""
+    image = Image.new("RGBA", size, (255, 255, 255, 255))
+    image.paste(Image.new("RGBA", (size[0] // 2, size[1] // 2), (*color, 255)), (10, 10))
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def write_csv(path, rows, fields):
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+GAME_FIELDS = ["game_id", "home_team", "away_team", "home_classification", "away_classification"]
+
+
+def game(home, away, home_cls="fbs", away_cls="fcs", game_id=1):
+    return {"game_id": game_id, "home_team": home, "away_team": away,
+            "home_classification": home_cls, "away_classification": away_cls}
+
+
+# ---------------- which names the schools are ----------------
+
+def test_the_opponent_is_the_side_this_project_does_not_hold(tmp_path):
+    write_csv(tmp_path / "fcs_games_2024.csv", [game("Alabama", "Mercer")], GAME_FIELDS)
+    assert fn.opponent_names(tmp_path) == ["Mercer"]
+
+
+def test_a_game_between_two_schools_we_hold_neither_of_is_not_ours(tmp_path):
+    # The schedule file is the whole division, most of it games this project has
+    # no side of at all.
+    write_csv(tmp_path / "fcs_games_2024.csv",
+              [game("Mercer", "Furman", "fcs", "fcs")], GAME_FIELDS)
+    assert fn.opponent_names(tmp_path) == []
+
+
+def test_both_sides_held_is_read_from_the_sources_own_classification(tmp_path):
+    # Utah 66, Idaho 14 in 2026: both names resolve, and the row is Idaho's
+    # because the source says Utah was the FBS side.
+    write_csv(tmp_path / "fcs_games_2026.csv",
+              [game("Utah", "Idaho", "fbs", "fcs")], GAME_FIELDS)
+    assert fn.opponent_names(tmp_path) == ["Idaho"]
+    # Two FBS sides, or a classification the source left blank, is not a
+    # division gap, so there is no opponent to name.
+    write_csv(tmp_path / "fcs_games_2026.csv",
+              [game("Utah", "Idaho", "fbs", "fbs")], GAME_FIELDS)
+    assert fn.opponent_names(tmp_path) == []
+    write_csv(tmp_path / "fcs_games_2026.csv",
+              [game("Utah", "Idaho", "fbs", "")], GAME_FIELDS)
+    assert fn.opponent_names(tmp_path) == []
+
+
+def test_scheduled_games_count_too(tmp_path):
+    # A school on next season's schedule has played nobody yet and still needs
+    # its mark, or the page gets it only after the game.
+    write_csv(tmp_path / "fcs_schedule_2026.csv", [game("Ohio State", "Grambling")], GAME_FIELDS)
+    assert fn.opponent_names(tmp_path) == ["Grambling"]
+
+
+def test_the_opponent_list_is_the_one_the_shipped_pages_hold():
+    """Measured against the exported team pages, not against a number here.
+
+    The rule this file reimplements lives in load_fcs_games.py and reads the
+    database; getting it subtly wrong would drop schools quietly. So the list is
+    compared with the opponents the shipped team-page export actually names.
+    """
+    export = (REPO / "ui/data/team_pages.js").read_text(encoding="utf-8")
+    payload = json.loads(export[export.index("=") + 1:].rstrip().rstrip(";"))
+    shipped = {row[5] for row in payload["non_fbs"]}
+    dated = json.loads((REPO / "ui/dated_logo_assets.json").read_text(encoding="utf-8"))
+    assert shipped, "the export carries no non-FBS games at all"
+    # Every school the pages name, except the ones whose own dated set already
+    # covers them, is a school this script has to resolve a mark for.
+    assert {n for n in fn.opponent_names() if n not in dated} == {n for n in shipped if n not in dated}
+
+
+# ---------------- the join ----------------
+
+DIRECTORY = {"teams": [
+    {"id": "2000", "location": "Mercer", "displayName": "Mercer Bears"},
+    {"id": "2429", "location": "Charlotte", "displayName": "Charlotte 49ers"},
+    {"id": "3253", "location": "Charlotte", "displayName": "Charlotte Saints"},
+    {"id": "135", "location": "Minnesota State", "displayName": "Minnesota State Mavericks"},
+]}
+
+
+def directory(tmp_path):
+    path = tmp_path / "espn.json"
+    path.write_text(json.dumps(DIRECTORY), encoding="utf-8")
+    return fn.espn_directory(path)
+
+
+def test_a_school_resolves_to_its_espn_id(tmp_path):
+    matched, unmatched, ambiguous = fn.resolve(["Mercer"], directory(tmp_path))
+    assert matched["Mercer"]["id"] == "2000"
+    assert (unmatched, ambiguous) == ([], [])
+
+
+def test_a_school_espn_does_not_list_gets_no_mark(tmp_path):
+    matched, unmatched, ambiguous = fn.resolve(["Lambuth"], directory(tmp_path))
+    assert (matched, unmatched, ambiguous) == ({}, ["Lambuth"], [])
+
+
+def test_two_schools_under_one_name_resolve_to_neither(tmp_path):
+    # ESPN lists a Charlotte 49ers and a Charlotte Saints. Picking either would
+    # be a guess, and the point of joining on an id is that nothing is guessed.
+    matched, unmatched, ambiguous = fn.resolve(["Charlotte"], directory(tmp_path))
+    assert (matched, unmatched, ambiguous) == ({}, [], ["Charlotte"])
+
+
+def test_a_renamed_school_resolves_through_the_rename(tmp_path):
+    matched, _, _ = fn.resolve(["Mankato State"], directory(tmp_path))
+    assert matched["Mankato State"]["displayName"] == "Minnesota State Mavericks"
+
+
+def test_the_real_reference_files_resolve_nearly_every_school():
+    """The actual join, against the actual committed reference data."""
+    dated = json.loads((REPO / "ui/dated_logo_assets.json").read_text(encoding="utf-8"))
+    names = [n for n in fn.opponent_names() if n not in dated]
+    matched, unmatched, ambiguous = fn.resolve(names, fn.espn_directory())
+    assert not ambiguous, f"ambiguous: {ambiguous}"
+    # Measured at 186 of 207 on 2026-10-18. Asserted as a share rather than a
+    # count so a season of new opponents does not fail it, and as a floor
+    # because the only way it drops is a join that stopped working.
+    assert len(matched) / len(names) > 0.85, f"only {len(matched)} of {len(names)} resolved"
+    # Named schools rather than row zero: a monogram for Mercer or Eastern
+    # Washington would be this feature not working.
+    for school in ("Mercer", "Eastern Washington", "Montana State", "Grambling", "Furman"):
+        assert school in matched, f"{school} no longer resolves"
+    # And the schools that genuinely have no ESPN entry are still unresolved,
+    # rather than quietly matched to something else.
+    assert "Lambuth" in unmatched
+
+
+# ---------------- the archive manifest ----------------
+
+MANIFEST_FIELDS = ["level", "league", "entity_id", "entity_name", "mark_type", "variant",
+                   "source", "sha256", "ext", "bytes", "archive_url", "first_seen", "last_seen"]
+
+
+def manifest_row(**over):
+    row = {"level": "team", "league": "cfb", "entity_id": "2000", "entity_name": "Mercer Bears",
+           "mark_type": "logo", "variant": "default", "source": "espn", "sha256": "x",
+           "ext": "png", "bytes": "1", "archive_url": "https://cdn/x.png",
+           "first_seen": "2026-09-26", "last_seen": "2026-10-01"}
+    row.update(over)
+    return row
+
+
+def manifest_csv(rows) -> str:
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=MANIFEST_FIELDS)
+    writer.writeheader()
+    writer.writerows(rows)
+    return buffer.getvalue()
+
+
+def test_only_the_default_college_football_team_logo_is_taken():
+    rows = [manifest_row(),
+            manifest_row(entity_id="1", league="nfl"),
+            manifest_row(entity_id="2", level="conference"),
+            manifest_row(entity_id="3", mark_type="wordmark"),
+            manifest_row(entity_id="4", variant="dark"),
+            manifest_row(entity_id="5", ext="svg")]
+    assert sorted(fn.sdv_default_marks(manifest_csv(rows))) == ["2000"]
+
+
+def test_the_newest_capture_of_a_changed_mark_wins():
+    # A school that rebrands gets a second row; the old one keeps its last_seen.
+    rows = [manifest_row(sha256="old", archive_url="https://cdn/old.png", last_seen="2026-10-01"),
+            manifest_row(sha256="new", archive_url="https://cdn/new.png", last_seen="2026-11-01")]
+    assert fn.sdv_default_marks(manifest_csv(rows))["2000"]["sha256"] == "new"
+    assert fn.sdv_default_marks(manifest_csv(list(reversed(rows))))["2000"]["sha256"] == "new"
+
+
+# ---------------- end to end ----------------
+
+@pytest.fixture
+def world(tmp_path):
+    """A whole small world: two games, a directory, a dated set and an archive."""
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    write_csv(raw / "fcs_games_2024.csv",
+              [game("Alabama", "Mercer", game_id=1),
+               game("Georgia", "App State", game_id=2)], GAME_FIELDS)
+    directory_path = tmp_path / "espn.json"
+    directory_path.write_text(json.dumps({"teams": [
+        {"id": "2000", "location": "Mercer", "displayName": "Mercer Bears"},
+        {"id": "2026", "location": "App State", "displayName": "App State Mountaineers"},
+    ]}), encoding="utf-8")
+    dated_path = tmp_path / "dated.json"
+    era = {"start": 1999, "end": None,
+           "data": "data:image/png;base64," + base64.b64encode(png_bytes()).decode(), "bg": "#abcdef"}
+    dated_path.write_text(json.dumps({"Appalachian State": [era]}), encoding="utf-8")
+
+    image = png_bytes()
+    marks = manifest_csv([manifest_row(sha256=hashlib.sha256(image).hexdigest(),
+                                       archive_url="https://cdn/mercer.png")])
+    served = {"https://manifest": marks.encode("utf-8"), "https://cdn/mercer.png": image}
+    calls = []
+
+    def fetcher(url):
+        calls.append(url)
+        return served[url]
+
+    return {"raw": raw, "directory": directory_path, "dated": dated_path,
+            "out": tmp_path / "non_fbs.json", "sources": tmp_path / "sources.csv",
+            "fetcher": fetcher, "calls": calls, "image": image}
+
+
+def run(world, **over):
+    kwargs = dict(manifest_url="https://manifest", out=world["out"], sources_out=world["sources"],
+                  raw_dir=world["raw"], directory_path=world["directory"],
+                  dated_path=world["dated"], fetcher=world["fetcher"])
+    kwargs.update(over)
+    return fn.build(**kwargs)
+
+
+def test_a_fetched_mark_is_one_undated_entry_with_a_chip_color(world):
+    report = run(world)
+    written = json.loads(world["out"].read_text(encoding="utf-8"))
+    assert report["fetched"] == 1
+    entries = written["Mercer"]
+    assert len(entries) == 1
+    assert (entries[0]["start"], entries[0]["end"]) == (fn.UNDATED_START, None)
+    assert entries[0]["bg"].startswith("#") and len(entries[0]["bg"]) == 7
+    # Resized to the icon it is displayed as, not the 500px source.
+    raw = base64.b64decode(entries[0]["data"].partition(",")[2])
+    assert max(Image.open(io.BytesIO(raw)).size) == fn.TARGET_SIZE
+
+
+def test_an_fbs_program_under_an_older_name_takes_its_own_dated_eras(world):
+    report = run(world)
+    written = json.loads(world["out"].read_text(encoding="utf-8"))
+    assert report["aliased_to_dated_set"] == ["App State"]
+    assert written["App State"] == json.loads(world["dated"].read_text())["Appalachian State"]
+    # Nothing was fetched for it: the manifest and one image, and that is all.
+    assert world["calls"] == ["https://manifest", "https://cdn/mercer.png"]
+
+
+def test_bytes_that_do_not_match_the_manifest_stop_the_run(world):
+    other = png_bytes(color=(200, 10, 10))
+    world["fetcher"] = lambda url: (other if url.endswith("mercer.png")
+                                    else manifest_csv([manifest_row(
+                                        sha256=hashlib.sha256(world["image"]).hexdigest(),
+                                        archive_url="https://cdn/mercer.png")]).encode("utf-8"))
+    with pytest.raises(ValueError, match="archive served"):
+        run(world)
+
+
+def test_the_provenance_of_every_school_is_written_down(world):
+    run(world)
+    rows = {r["opponent_name"]: r for r in csv.DictReader(world["sources"].open(encoding="utf-8"))}
+    assert rows["Mercer"]["espn_id"] == "2000"
+    assert rows["Mercer"]["sha256"] == hashlib.sha256(world["image"]).hexdigest()
+    assert rows["App State"]["source"] == "dated set"
+
+
+def test_a_dry_run_resolves_without_touching_the_network(world):
+    report = run(world, dry_run=True)
+    assert world["calls"] == []
+    assert not world["out"].exists()
+    assert report["matched"] == 2 and report["fetched"] == 0
+
+
+# ---------------- what the page gets ----------------
+
+def test_the_non_fbs_marks_are_their_own_section_of_the_manifest(tmp_path):
+    uri = "data:image/png;base64," + base64.b64encode(png_bytes()).decode()
+    teams = tmp_path / "teams.json"
+    teams.write_text(json.dumps({"Idaho": [{"start": 1980, "end": None, "data": uri, "bg": "#111111"}]}),
+                     encoding="utf-8")
+    non_fbs = tmp_path / "non_fbs.json"
+    non_fbs.write_text(json.dumps({"Mercer": [{"start": 0, "end": None, "data": uri, "bg": "#222222"}]}),
+                       encoding="utf-8")
+    out, manifest_path = tmp_path / "logos", tmp_path / "manifest.json"
+    stats = lf.export({"teams": teams, "non_fbs": non_fbs}, out, manifest_path)
+    manifest = json.loads(manifest_path.read_text())
+    assert set(manifest) == {"teams", "non_fbs"}
+    assert manifest["non_fbs"]["Mercer"][0]["src"].startswith("assets/logos/non_fbs/mercer/0-now.png?v=")
+    assert (out / "non_fbs" / "mercer" / "0-now.png").exists()
+    assert stats["non_fbs"] == {"names": 1, "files": 1}
+
+
+def test_a_missing_source_file_leaves_its_section_out(tmp_path):
+    """The marks are fetched by a workflow of their own, so the file can be absent."""
+    uri = "data:image/png;base64," + base64.b64encode(png_bytes()).decode()
+    teams = tmp_path / "teams.json"
+    teams.write_text(json.dumps({"Idaho": [{"start": 1980, "end": None, "data": uri, "bg": "#111111"}]}),
+                     encoding="utf-8")
+    manifest_path = tmp_path / "manifest.json"
+    lf.export({"teams": teams, "non_fbs": tmp_path / "missing.json"}, tmp_path / "logos", manifest_path)
+    assert set(json.loads(manifest_path.read_text())) == {"teams"}
+
+
+# ---------------- the workflow that fetches them ----------------
+
+def test_the_fetch_workflow_keeps_its_own_lock_and_commits_the_whole_set():
+    """The two ways this job could quietly do nothing useful.
+
+    A job queued in the deploy's concurrency group is cancelled outright by the
+    next run to enter it, which is how a dispatched backfill was lost on
+    2026-10-03. And a commit of the source set without the manifest would leave
+    the page's manifest pointing at marks nothing had written yet.
+    """
+    import yaml
+    workflow = yaml.safe_load(
+        (REPO / ".github/workflows/fetch-non-fbs-logos.yml").read_text(encoding="utf-8"))
+    job = workflow["jobs"]["fetch"]
+    assert job["concurrency"]["group"] != "rebuild-and-deploy-main"
+
+    steps = job["steps"]
+    publish = next(s for s in steps if s.get("name") == "Publish")
+    for path in ("ui/non_fbs_logo_assets.json", "ui/logo_manifest.json", "ui/assets/logos/",
+                 "data/reference/non_fbs_logo_sources.csv"):
+        assert path in publish["run"], f"{path} is not published"
+    # Nothing rebuilds on a [skip ci] commit, so the message has to carry it and
+    # the run has to say what is still needed.
+    assert "[skip ci]" in publish["run"]
+    assert any("ci-and-deploy" in str(s.get("run", "")) for s in steps)
+
+    fetch = next(s for s in steps if s.get("name", "").startswith("Fetch the marks"))
+    assert "src/fetch_non_fbs_logos.py" in fetch["run"]
+    assert fetch["run"].index("fetch_non_fbs_logos.py") < fetch["run"].index("export_logo_files.py")
+    # A dry run resolves and reports without writing anything, so the fetching
+    # steps are the only gated ones.
+    gated = {s.get("name") for s in steps if s.get("if")}
+    assert gated == {"Fetch the marks and rebuild the logo manifest", "Publish",
+                     "Say what has to happen next"}
+    assert all("dry_run" in s["if"] for s in steps if s.get("if"))
+
+
+# ---------------- when the archive is unreliable ----------------
+
+def test_one_image_the_archive_will_not_serve_costs_one_school(world):
+    """A stale manifest row is one school's mark, not the whole set's."""
+    manifest = manifest_csv([
+        manifest_row(sha256=hashlib.sha256(world["image"]).hexdigest(),
+                     archive_url="https://cdn/mercer.png"),
+        manifest_row(entity_id="2026", entity_name="App State Mountaineers",
+                     sha256="whatever", archive_url="https://cdn/gone.png")])
+
+    def fetcher(url):
+        if url == "https://manifest":
+            return manifest.encode("utf-8")
+        if url == "https://cdn/gone.png":
+            raise OSError("404")
+        return world["image"]
+
+    # App State takes its dated set, so give the failing row to a school that
+    # has to be fetched: another game, another opponent.
+    write_csv(world["raw"] / "fcs_games_2025.csv",
+              [game("Alabama", "Furman", game_id=3)], GAME_FIELDS)
+    (world["directory"]).write_text(json.dumps({"teams": [
+        {"id": "2000", "location": "Mercer", "displayName": "Mercer Bears"},
+        {"id": "2026", "location": "Furman", "displayName": "Furman Paladins"},
+    ]}), encoding="utf-8")
+
+    report = run(world, fetcher=fetcher)
+    written = json.loads(world["out"].read_text(encoding="utf-8"))
+    assert report["fetch_failed"] == ["Furman"]
+    assert report["fetched"] == 1
+    assert "Mercer" in written and "Furman" not in written
+    # And the provenance file says a mark was looked for and not found.
+    rows = {r["opponent_name"]: r for r in csv.DictReader(world["sources"].open(encoding="utf-8"))}
+    assert rows["Furman"]["sha256"] == "" and rows["Furman"]["archive_url"] == "https://cdn/gone.png"
+
+
+def test_an_archive_that_is_simply_down_writes_nothing(world):
+    manifest = manifest_csv([manifest_row(sha256="x", archive_url="https://cdn/mercer.png")])
+
+    def fetcher(url):
+        if url == "https://manifest":
+            return manifest.encode("utf-8")
+        raise OSError("connection refused")
+
+    with pytest.raises(RuntimeError, match="reads as an outage"):
+        run(world, fetcher=fetcher)
+    assert not world["out"].exists(), "a partial set was written"
