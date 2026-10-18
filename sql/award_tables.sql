@@ -15,6 +15,13 @@ CREATE TABLE IF NOT EXISTS awards (
     name           TEXT NOT NULL,
     description    TEXT,
     espn_award_id  TEXT,               -- provenance; not the key, see above
+    -- What kind of thing this trophy is: 'player' (an FBS player's award, the
+    -- only kind a player page shows), 'coach', 'non_fbs' (the FCS, Division II
+    -- and Division III player awards), 'weekly' (a week's honour, a different
+    -- grain from everything else here) or 'other'. ESPN serves all five from
+    -- one endpoint, so without this a coach-of-the-year winner reads as a
+    -- player this project failed to identify.
+    category       TEXT NOT NULL DEFAULT 'player',
     first_season   INTEGER,            -- first season this project HOLDS, not the
     last_season    INTEGER             -- award's own history
 );

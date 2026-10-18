@@ -1379,6 +1379,22 @@ function loadAdjustedStats(season) {
   });
 }
 
+// National award winners (src/build_awards_payload.py). One file for both the
+// player page and the awards view: a player's trophies are spread across his
+// career and a trophy's winners across every season, so either page would have
+// to fetch the whole archive anyway. Resolves to null when the database held
+// none, because a page that says "none recorded" is better than one that fails.
+let _awards = undefined;
+function loadAwards() {
+  if (_awards !== undefined) return Promise.resolve(_awards);
+  if (!STATIC_MANIFEST.awards) { _awards = null; return Promise.resolve(null); }
+  return loadDataScript(STATIC_MANIFEST.awards).then(() => {
+    const raw = window.__CFB_AWARDS__;
+    _awards = raw && raw.winners ? raw : null;
+    return _awards;
+  });
+}
+
 let _searchIndex = null;
 // Resolves to {teams: [{id, name, slug, aliases}], seasons: [..], games: [[game_id, season, home_id, away_id]],
 //               conferences: [[slug, name, [aliases]]]}.
@@ -4200,7 +4216,7 @@ function renderNavigation() {
     if (selected) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
-  const statsNav = [['overview', 'Overview'], ['teams', 'Teams'], ['players', 'Players'], ['adjusted', 'Adjusted'], ['matchup', 'Matchup'], ['playoff', 'Playoff']];
+  const statsNav = [['overview', 'Overview'], ['teams', 'Teams'], ['players', 'Players'], ['adjusted', 'Adjusted'], ['awards', 'Awards'], ['matchup', 'Matchup'], ['playoff', 'Playoff']];
   const inStats = ['stats', 'matchups', 'playoff'].includes(state.section);
   const items = inStats ? statsNav : state.view === 'team' || state.section === 'teams' ? [] : SUBVIEWS[state.section] || [];
   // A section whose views are chosen from a selector rather than tabs puts it
@@ -6144,6 +6160,82 @@ function adjustedHelpHtml() {
     '</ul></details>';
 }
 
+// ---------------- Awards (Stats > Awards) ----------------
+// One season at a time, on the season picker the stats views already carry, so
+// the view adds no control of its own. A season is what a reader holds in mind
+// when they ask who won what, and the one thing the archive can show for every
+// trophy at once.
+//
+// A winner links to his page where this project identified him and is plain
+// text where it did not, which is every winner before 2009 -- where the roster
+// archive begins -- and twenty-two since. Nothing is inferred to fill a gap.
+function renderAwards() {
+  if (!STATIC_MANIFEST.awards) {
+    return '<div class="panel"><h2 class="view-title">Stats \u00b7 Awards</h2>' +
+      '<div class="empty-note">This build holds no award winners.</div></div>';
+  }
+  return '<div class="panel"><h2 class="view-title">Stats \u00b7 Awards</h2>' +
+    '<div id="awards-body" aria-live="polite">Loading ' + state.year +
+    ' awards\u2026</div></div>';
+}
+
+function awardsHtml(data, season) {
+  const byKey = {};
+  (data.awards || []).forEach(a => { byKey[a.key] = a; });
+  const won = (data.winners || []).filter(w => w.season === Number(season));
+  if (!won.length) {
+    const held = [...new Set((data.winners || []).map(w => w.season))].sort((a, b) => a - b);
+    return '<div class="empty-note">No award winners are recorded for ' + esc(season) +
+      (held.length ? '. The archive covers ' + held[0] + '\u2013' + held[held.length - 1] + '.' : '.') +
+      '</div>';
+  }
+  // Ordered by the trophy's name, with a shared trophy's winners together
+  // rather than one of them standing for the award.
+  const order = won.slice().sort((a, b) => {
+    const an = byKey[a.key] ? byKey[a.key].name : a.key;
+    const bn = byKey[b.key] ? byKey[b.key].name : b.key;
+    return String(an).localeCompare(String(bn)) || String(a.name).localeCompare(String(b.name));
+  });
+  const rows = order.map(w => {
+    const award = byKey[w.key] || { name: w.key, description: null, category: 'player' };
+    return '<tr><td>' + esc(award.name) + '</td>' +
+      '<td>' + awardsWinnerCell(w) + '</td>' +
+      '<td>' + (w.school ? (w.team != null ? teamCellById(w.team) : esc(w.school)) : '&mdash;') + '</td>' +
+      '<td>' + (w.position ? esc(w.position) : '&mdash;') + '</td>' +
+      '<td>' + (award.description ? esc(award.description) : '&mdash;') + '</td></tr>';
+  }).join('');
+  const linked = order.filter(w => w.player != null).length;
+  return '<table class="data-table"><thead><tr><th>Award</th><th>Winner</th>' +
+    '<th>School</th><th>Pos</th><th>For</th></tr></thead><tbody>' + rows +
+    '</tbody></table><p class="section-note">' + order.length + ' winners of ' +
+    new Set(order.map(w => w.key)).size + ' trophies in ' + esc(season) + '; ' +
+    linked + ' of them are identified in this archive and link to a page. ' +
+    'The coach-of-the-year awards are included and carry no link, because coaches ' +
+    'are not matched to these records yet. Source: ESPN.</p>';
+}
+
+// A name is a link only where this project matched it to a person. A winner it
+// did not match is the name the source printed, and nothing more is claimed.
+function awardsWinnerCell(w) {
+  if (w.player == null) return esc(w.name);
+  return '<a href="' + esc(playerHref(w.player)) + '">' + esc(w.name) + '</a>';
+}
+
+function hydrateAwards(version) {
+  const body = document.getElementById('awards-body');
+  if (!body) return;                      // the no-data note is already drawn
+  const season = state.year;
+  loadAwards().then(data => {
+    if (version !== renderVersion) return;
+    body.innerHTML = data ? awardsHtml(data, season)
+      : '<div class="empty-note">This build holds no award winners.</div>';
+    wrapWideTables();
+  }).catch(() => {
+    if (version !== renderVersion) return;
+    body.innerHTML = '<div class="empty-note">Award winners could not be loaded.</div>';
+  });
+}
+
 function hydrateAdjustedStats(version) {
   const body = document.getElementById('adj-body');
   if (!body) return;                      // the no-data note is already drawn
@@ -7137,7 +7229,7 @@ function careerStripPanel(log, position) {
     'Games before 2005, and games the source published no box score for, are not here.</p></div>';
 }
 
-function playerPanels(p, id, gameLog) {
+function playerPanels(p, id, gameLog, awards) {
   const seasons = p.seasons || [];
   const last = seasons[seasons.length - 1] || {};
   const position = last.position || p.primary_position;
@@ -7182,9 +7274,38 @@ function playerPanels(p, id, gameLog) {
     '</tbody></table></div>';
   // The strip sits directly above the table it indexes, so a bar and the row it
   // belongs to are read together.
-  return header + samePersonNote(p) + note + table +
+  // Awards sit above the seasons, directly under the header: they are the one
+  // thing on the page a reader may have come for by name.
+  return header + samePersonNote(p) + note + playerAwardsPanel(awards, id) + table +
     playerStatsPanel(p.stats, p.same_person, p.identity_note) +
     careerStripPanel(gameLog, position) + gameLogPanel(gameLog);
+}
+
+// ---------------- Awards on a player page ----------------
+// Only the trophies this person actually won, newest first. A player with none
+// gets no panel at all rather than an empty one: the great majority of 99,813
+// players never won a national award, and a heading saying so on every page
+// would be the loudest thing on most of them.
+function playerAwardsPanel(awards, id) {
+  const indexes = awards && awards.by_player ? awards.by_player[String(id)] : null;
+  if (!indexes || !indexes.length) return '';
+  const byKey = {};
+  (awards.awards || []).forEach(a => { byKey[a.key] = a; });
+  // Newest first, and a season's trophies together, which is how a career reads.
+  const won = indexes.map(i => awards.winners[i]).filter(Boolean)
+    .slice().sort((a, b) => (b.season - a.season) ||
+      String(byKey[a.key] ? byKey[a.key].name : a.key)
+        .localeCompare(String(byKey[b.key] ? byKey[b.key].name : b.key)));
+  const rows = won.map(w => {
+    const award = byKey[w.key] || { name: w.key, description: null };
+    return '<tr><td class="num">' + esc(w.season) + '</td><td>' + esc(award.name) + '</td>' +
+      '<td>' + (award.description ? esc(award.description) : '&mdash;') + '</td></tr>';
+  }).join('');
+  return '<div class="panel team-section"><h2 class="section-title">Awards</h2>' +
+    '<table class="data-table"><thead><tr><th>Season</th><th>Award</th>' +
+    '<th>For</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<p class="section-note">National awards from ESPN\u2019s record. ' +
+    '<a href="#section=stats&view=awards">Who won what, season by season</a>.</p></div>';
 }
 
 function coachRecord(tenures) {
@@ -7622,10 +7743,13 @@ function hydratePersonPage(version, kind) {
     // The index of which seasons have a line is fetched beside the player's
     // record, not after it, so a career page is two round trips rather than
     // three. A log that will not load leaves the page standing.
-    ? Promise.all([loadPlayer(id), loadGameLogSeasons(id)])
-        .then(([p, seasons]) => !p ? [personMissing(kind, id), null]
+    // The awards archive is fetched alongside the record for the same reason,
+    // and a failure to load it resolves to null: the page is the career, the
+    // trophies are an extra.
+    ? Promise.all([loadPlayer(id), loadGameLogSeasons(id), loadAwards().catch(() => null)])
+        .then(([p, seasons, awards]) => !p ? [personMissing(kind, id), null]
           : loadGameLog(id, seasons).catch(() => ({}))
-              .then(log => [playerPanels(p, id, log), p.display_name]))
+              .then(log => [playerPanels(p, id, log, awards), p.display_name]))
     // The map's shard is fetched alongside the coach file rather than after it,
     // so a coach page is one round trip and not two. A missing or failed shard
     // resolves to null: the page is the career, the map is an extra.
@@ -9107,6 +9231,8 @@ function render() {
     // The adjusted view reads one small season file and nothing else -- not the
     // player archive or the season's games -- so it does not go through loadStats.
     if (state.subview === 'adjusted') { content.innerHTML = renderAdjustedStats(); hydrateAdjustedStats(version); }
+    // Awards read one small file and nothing else either.
+    else if (state.subview === 'awards') { content.innerHTML = renderAwards(); hydrateAwards(version); }
     else { content.innerHTML = renderStats(); hydrateStats(version); }
   }
   else if (state.section === 'people') { content.innerHTML = renderPeople(); hydratePeople(version); }
