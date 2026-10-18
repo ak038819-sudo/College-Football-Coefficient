@@ -99,9 +99,15 @@ def export(sources: dict = SOURCES, out_root: Path = OUT_ROOT, manifest_path: Pa
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(raw)
                 files += 1
-                entries.append({"start": e["start"], "end": e["end"],
-                                "src": f"{url_prefix}/{kind}/{slug}/{fname}?v={hashlib.sha256(raw).hexdigest()[:10]}",
-                                "bg": e["bg"]})
+                entry = {"start": e["start"], "end": e["end"],
+                         "src": f"{url_prefix}/{kind}/{slug}/{fname}?v={hashlib.sha256(raw).hexdigest()[:10]}",
+                         "bg": e["bg"]}
+                # The provider id, where the source set carries one: it is how
+                # the live scoreboard finds the mark of a school that has no
+                # name in this project to look up (see the non-FBS set).
+                if e.get("espn"):
+                    entry["espn"] = e["espn"]
+                entries.append(entry)
             kind_manifest[name] = entries
         manifest[kind] = kind_manifest
         stats[kind] = {"names": len(kind_manifest), "files": files}

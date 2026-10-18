@@ -68,6 +68,24 @@ The rest:
 
 Measured 2026-10-18: 207 opponents, 186 resolved, 21 without a mark.
 
+## The live scoreboard
+
+A team page knows its opponent by CFBD's schedule spelling ('Charleston
+Southern'), which is what the set is keyed by. The live feed does not: it names
+a school ESPN's way, mascot and all ('Charleston Southern Buccaneers'), and
+`ui/live_teams.js` resolves only the 139 teams in the registry, so a school
+this project does not hold has no canonical name to look a mark up under.
+
+So the ESPN id travels with the mark, in each entry's `espn` field and through
+to the manifest, and `liveLogoName()` finds the mark by the feed's own team id.
+That works because CFBD's scoreboard ids ARE ESPN's: all 124 teams in the feed
+on 2026-10-18 matched the ESPN directory by id, the three FCS sides among them.
+A school with no mark falls back to the feed's name, finds nothing and draws the
+monogram, exactly as before.
+
+Found by Codex on the first review of this work: merging the marks into the
+name lookup alone fixed the team page and did nothing for the scoreboard.
+
 ## Running it
 
 ```sh

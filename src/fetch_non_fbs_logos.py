@@ -214,7 +214,10 @@ def build(*, dry_run: bool = False, size: int = TARGET_SIZE, manifest_url: str =
     rows = []
     for name in names:
         if name in aliases:
-            result[name] = aliases[name]
+            # Its eras, under this spelling, carrying the id for the same reason.
+            espn = matched.get(name, {}).get("id")
+            result[name] = [dict(entry, **({"espn": espn} if espn else {}))
+                            for entry in aliases[name]]
             rows.append({"opponent_name": name, "espn_id": "", "espn_display_name": "",
                          "source": "dated set", "sha256": "", "archive_url": ""})
             continue
@@ -252,7 +255,13 @@ def build(*, dry_run: bool = False, size: int = TARGET_SIZE, manifest_url: str =
             handle.write(raw)
             handle.flush()
             data, bg = encode_resized(Path(handle.name), size)
-        result[name] = [{"start": UNDATED_START, "end": None, "data": data, "bg": bg}]
+        # The id travels with the mark. The live scoreboard names a school the
+        # way ESPN does, mascot and all, and a school this project does not hold
+        # has no canonical name to fall back on -- so the page finds its mark by
+        # the feed's team id, which is this id (CFBD's scoreboard ids are ESPN's;
+        # all 124 teams in the feed on 2026-10-18 matched the directory by id).
+        result[name] = [{"start": UNDATED_START, "end": None, "data": data, "bg": bg,
+                         "espn": team["id"]}]
         report["fetched"] += 1
         rows.append({"opponent_name": name, "espn_id": team["id"],
                      "espn_display_name": team["displayName"], "source": mark["source"],

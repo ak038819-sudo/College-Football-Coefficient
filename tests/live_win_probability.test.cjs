@@ -202,13 +202,18 @@ test('the scorebug prints the live chance while a game is on, and the pregame on
       pickDatedLogoEntry: () => null, TEAM_BRAND_COLORS: {}, logoMarkup: () => '',
       teamAnchor: (name, inner) => inner, esc: value => String(value),
       seasonRecord: () => '', liveSeason: () => 2026, liveChange: () => '',
-      DATED_LOGOS: {}
+      DATED_LOGOS: {}, NON_FBS_BY_ESPN_ID: new Map()
     };
     // The real formatter, not a stub: what the two ends of the scale print is
     // part of what this test is checking.
     const oddsText = shell.match(/^function liveOddsText\([^)]*\) \{[\s\S]*?\n\}/m)?.[0];
     assert.ok(oddsText, 'missing liveOddsText');
-    vm.runInNewContext(oddsText + '\n' + liveTeam + '\nthis.render = liveTeam;', ctx);
+    // liveLogoName is lifted, not stubbed: liveTeam calls it, and a stub here
+    // would let this file pass while the page threw.
+    const logoName = shell.match(/^function liveLogoName\([^)]*\) \{[\s\S]*?\n\}/m)?.[0];
+    assert.ok(logoName, 'missing liveLogoName');
+    vm.runInNewContext(oddsText + '\n' + logoName + '\n' + liveTeam +
+      '\nthis.render = liveTeam;', ctx);
     const g = {status, home: {points: 21, name: 'Alpha'}, away: {points: 17, name: 'Bravo'}};
     return ctx.render(g.home, g, {home: 64, away: 36}, live);
   };

@@ -262,7 +262,11 @@ def test_an_fbs_program_under_an_older_name_takes_its_own_dated_eras(world):
     report = run(world)
     written = json.loads(world["out"].read_text(encoding="utf-8"))
     assert report["aliased_to_dated_set"] == ["App State"]
-    assert written["App State"] == json.loads(world["dated"].read_text())["Appalachian State"]
+    eras = json.loads(world["dated"].read_text())["Appalachian State"]
+    assert [{k: v for k, v in e.items() if k != "espn"} for e in written["App State"]] == eras
+    # The id rides along even here, so the live scoreboard can find the mark
+    # under the name the feed uses.
+    assert {e["espn"] for e in written["App State"]} == {"2026"}
     # Nothing was fetched for it: the manifest and one image, and that is all.
     assert world["calls"] == ["https://manifest", "https://cdn/mercer.png"]
 
