@@ -1069,6 +1069,18 @@
     align-items: center; gap: 8px; min-height: 89px; padding: 11px 14px;
     background: linear-gradient(95deg, #101b19bb 0%, #101b1970 60%, #101b19ad 100%), var(--team-brand, #304250);
     color: #f8f9f5; border-top: 1px solid #ffffff22; }
+  /* Shared team artwork: content remains live, selectable and accessible. */
+  .team-panel { --panel-art: none; }
+  .live-team.team-panel, .mini-board li.team-panel {
+    background-color: #072c50;
+    background-image: linear-gradient(90deg, #071b30b3, #071b301a 55%, #071b3070), var(--panel-art);
+    background-size: cover;
+    background-position: center 55%;
+  }
+  .team-panel .logo-chip { background: transparent !important; border-color: transparent !important; box-shadow: none !important; }
+  .team-panel .team-link-name, .team-panel .live-rating, .team-panel .v, .team-panel .rk { text-shadow: 0 1px 3px #000; }
+  .mini-board li.team-panel { border-radius: 3px; }
+  .mini-board li.team-panel .rk { color: #e1e9e3; }
   .live-team.is-losing { filter: saturate(.72); }
   .live-team.is-winning { box-shadow: inset 4px 0 #edc46b; }
   .live-team .live-watermark { position: absolute; z-index: -1; right: 15%; top: 50%;
@@ -4047,12 +4059,25 @@ function renderUpcomingPanel() {
   '</div>';
 }
 
+// Add approved background artwork here to migrate teams incrementally.
+// Keep typography and official dated logos separate from the background.
+const TEAM_PANELS = Object.freeze({
+  BYU: { image: 'assets/team-panels/byu-mountains.png' }
+});
+function teamPanelStyle(name) {
+  const panel = TEAM_PANELS[name];
+  return panel ? "--panel-art:url('" + panel.image + "');" : '';
+}
+function teamPanelRow(name) {
+  return TEAM_PANELS[name] ? '<li class="team-panel" style="' + teamPanelStyle(name) + '">' : '<li>';
+}
+
 function renderEloTop25() {
   const rows = (UPCOMING.current_elo || []).slice(0, 25);
   const body = rows.length
     ? '<ol class="mini-board">' + rows.map(([id, elo, rank]) => {
         const t = TEAM_BY_ID.get(String(id));
-        return '<li><span class="rk">' + rank + '</span><span class="nm">' +
+        return teamPanelRow(t?.name) + '<span class="rk">' + rank + '</span><span class="nm">' +
           (t ? teamAnchor(t.name, logoMarkup(t.name, 'team', 'xs') + '<span class="team-link-name">' + t.name + '</span>') : id) +
           '</span><span class="v">' + eloValue(elo) + eloChangeMarkup(t ? teamEloChange(UPCOMING.season, t.name) : null, t?.name) + '</span></li>';
       }).join('') + '</ol>'
@@ -4100,7 +4125,7 @@ function renderPollsPanel() {
     const name = t ? teamAnchor(t.name, logoMarkup(t.name, 'team', 'xs') + '<span class="team-link-name">' + t.name + '</span>')
                    : '<span>' + esc(school) + '</span>';
     const elo = t ? CURRENT_ELO.get(t.id) : null;
-    return '<li><span class="rk">' + rank + '</span><span class="nm">' + name +
+    return teamPanelRow(t?.name) + '<span class="rk">' + rank + '</span><span class="nm">' + name +
       (fpv ? '<span class="fpv">(' + fpv + ')</span>' : '') + '</span>' +
       '<span class="elo-rk">' + (elo ? 'Elo #' + elo.rank : '') + '</span></li>';
   }).join('') + '</ol>';
@@ -4654,7 +4679,7 @@ function renderLiveBoard(games) {
     const t = TEAM_BY_ID.get(id), old = CURRENT_ELO.get(Number(id)) || CURRENT_ELO.get(id);
     const movement = old && old.rank !== i + 1 ? ' <small class="fpv">' + (old.rank > i + 1 ? '▲' : '▼') +
       Math.abs(old.rank - i - 1) + '</small>' : '';
-    return '<li><span class="rk">' + (i + 1) + '</span><span class="nm">' +
+    return teamPanelRow(t?.name) + '<span class="rk">' + (i + 1) + '</span><span class="nm">' +
       (t ? teamLink(t.name, 'xs') : esc(id)) + movement + '</span><span class="v">' + eloValue(elo) + '</span></li>';
   }).join('') + '</ol>' : '<p class="empty-note">No Elo ratings yet.</p>';
   return '<div class="panel">' + panelHead(projection.active ? 'If scores hold · Elo' : 'Elo Top 25',
@@ -4720,9 +4745,9 @@ function liveTeam(t, g, pct, live) {
     '<span class="live-rating">' + (rating?.rank <= 25 ? '<span class="live-rank">#' + rating.rank + '</span>' : '') +
     (g.status === 'scheduled' && seasonRecord(name, liveSeason()) ? seasonRecord(name, liveSeason()) + '  ' : '') +
     'Elo ' + (Number.isFinite(elo) ? elo.toFixed(0) : 'unrated') + '</span></span>';
-  return '<div class="live-team' + (won ? ' is-winning' : lost ? ' is-losing' : '') +
-    '" style="--team-brand:' + brand + '">' +
-    (logo ? '<img class="live-watermark" src="' + esc(logo.src) + '" alt="" aria-hidden="true" loading="lazy">' : '') +
+  return '<div class="live-team' + (TEAM_PANELS[name] ? ' team-panel' : '') + (won ? ' is-winning' : lost ? ' is-losing' : '') +
+    '" style="--team-brand:' + brand + ';' + teamPanelStyle(name) + '">' +
+    (logo && !TEAM_PANELS[name] ? '<img class="live-watermark" src="' + esc(logo.src) + '" alt="" aria-hidden="true" loading="lazy">' : '') +
     '<span class="name-cell">' + teamAnchor(name, identity) + '</span><span class="live-right">' +
     (g.status === 'scheduled'
       ? '<span class="live-odds" title="Pregame win chance">' + (chance == null ? 'N/A' : chance + '%') + '</span>'
@@ -5409,7 +5434,7 @@ function top25EloBoard() {
   const rows = (DATA.team_elo_by_year[state.year] || []).slice(0, 25);
   const body = rows.length
     ? '<ol class="mini-board">' + rows.map((r, i) =>
-        '<li><span class="rk">' + (i + 1) + '</span><span class="nm">' +
+        teamPanelRow(r.team) + '<span class="rk">' + (i + 1) + '</span><span class="nm">' +
         teamLink(r.team, 'xs') + recordCell(r.team, state.year) +
         '</span><span class="v">' + eloValue(r.elo) + '</span></li>').join('') + '</ol>'
     : '<div class="empty-note">No Elo ratings for ' + state.year + '.</div>';
@@ -5438,7 +5463,7 @@ function top25PollBoard(key) {
   const body = '<ol class="mini-board">' + release.rows.map(([rank, id, school, votes]) => {
     const t = id != null ? TEAM_BY_ID.get(String(id)) : null;
     const mine = t ? eloRank.get(t.name) : null;
-    return '<li><span class="rk">' + rank + '</span><span class="nm">' +
+    return teamPanelRow(t?.name) + '<span class="rk">' + rank + '</span><span class="nm">' +
       (t ? teamLink(t.name, 'xs') : '<span>' + esc(school) + '</span>') +
       (t ? recordCell(t.name, state.year) : '') +
       (votes ? '<span class="fpv">(' + votes + ')</span>' : '') + '</span>' +
