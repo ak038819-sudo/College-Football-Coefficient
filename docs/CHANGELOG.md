@@ -30,6 +30,20 @@
   Track Record come off the chrome: they are reference reading rather than
   places to go, and their routes still work. None of this touches the site in
   a browser tab, which keeps the masthead it has always had.
+- **Home is built around the games now.** The followed team is one wide strip
+  rather than a card inside a panel; the week steps, the week picker and Today
+  share a row with the four status filters, with ordering moved into a select
+  beside them; and the freshness notice is a few words next to the Scoreboard
+  heading with a Refresh button, instead of a sentence of its own. On a 390x844
+  phone the first complete matchup moved from 663px down the page to 433, so
+  the app opens on a game rather than on controls. The installed window also
+  pads its own top by the safe-area inset, which it was not doing: the masthead
+  was running under the iPhone clock.
+- Team names and headings are set in the collegiate face, and the controls,
+  dates and supporting lines in the plain one. Board names dropped from 17px to
+  14 at the same time, measured rather than guessed: the collegiate face is
+  wider, and at 15px it ellipsised six more names at 961px wide, which is where
+  a scoreboard card is at its narrowest.
 - The iOS status bar is opaque now rather than translucent — translucent drew
   the page under the clock, and iOS writes that clock in light ink, which was
   white on the light theme's cream — and `theme-color` is declared once per

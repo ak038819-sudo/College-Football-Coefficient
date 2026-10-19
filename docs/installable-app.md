@@ -121,6 +121,42 @@ One trap worth recording: the site colours every link amber through a
 Measured in Chromium rather than assumed — before that rule, the active icon
 and the four inactive ones were all `rgb(181, 116, 26)`.
 
+## The shape of Home
+
+The bottom bar made Elocast feel like an app and left Home reading like a web
+page on a small screen. On a 390x844 phone the followed team took 278px and the
+controls another 170, so the first complete matchup started 663px down: an
+opening screen of chrome. Four changes, each measured in a real installed
+window rather than argued about:
+
+- The followed team is **one wide strip**, not a card inside a panel. Logo,
+  name, record and conference on the left, rating and rank on the right, next
+  opponent on a line underneath. 160px instead of 278.
+- The week steps, the week picker and Today are **one toolbar**, and the four
+  status filters are one row that does not wrap, with ordering in a select
+  beside them rather than a second row of buttons.
+- The freshness notice is **"Updated 33h ago"** beside the Scoreboard heading,
+  with a Refresh button on the same line. The old sentence — "Scoreboard is 33
+  hours old, newer scores may exist" — was two lines of a phone screen standing
+  between the reader and the first score. Stale is still said, just not shouted;
+  `feedAgeShort()` says nothing at all under ten minutes.
+- The installed window **pads its own top** by `env(safe-area-inset-top)`.
+  `viewport-fit=cover` puts the page under the iPhone clock as well as over the
+  home indicator, and only the bar was compensating.
+
+The first complete matchup now starts at 433px, so the followed team and a
+whole game are on the opening screen. `tests/home_layout.test.cjs` holds the
+order of the page, the strip's contents and the freshness wording; the
+safe-area padding is checked in `tests/test_installable.py`, because jsdom does
+not lay out.
+
+Typography follows the same split: the collegiate face for team names and
+headings, the plain one for controls, dates and supporting lines. Board names
+went from 17px in the display face to 14px in the collegiate one, which is not
+a style preference — the collegiate face is wider, and 15px ellipsised six more
+names at 961px, where a scoreboard card is at its narrowest because the sidebar
+has come back while the grid is still two columns.
+
 ## Favorite teams
 
 `ui/favorites.js` stores a list of team slugs in `localStorage` under
