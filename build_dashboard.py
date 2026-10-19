@@ -36,6 +36,7 @@ SEARCH_PATH = Path("ui/search.js")
 STATS_PATH = Path("ui/stats.js")
 GEOGRAPHY_PATH = Path("ui/geography.js")
 LIVE_TEAMS_PATH = Path("ui/live_teams.js")
+FAVORITES_PATH = Path("ui/favorites.js")
 
 
 def live_feed_url() -> str:
@@ -66,7 +67,8 @@ def render_from_exports() -> None:
     export()
     required = [SHELL_PATH, DATA_PATH, TEAM_PAGES_PATH, CONFERENCE_PAGES_PATH, LOGO_MANIFEST_PATH,
                 TEAM_BRAND_COLORS_PATH,
-                STATIC_MANIFEST_PATH, NAVIGATION_PATH, SEARCH_PATH, STATS_PATH, GEOGRAPHY_PATH, LIVE_TEAMS_PATH]
+                STATIC_MANIFEST_PATH, NAVIGATION_PATH, SEARCH_PATH, STATS_PATH, GEOGRAPHY_PATH, LIVE_TEAMS_PATH,
+                FAVORITES_PATH]
     missing = [str(path) for path in required if not path.exists()]
     if missing:
         raise SystemExit("Missing dashboard inputs: " + ", ".join(missing) +
@@ -83,6 +85,7 @@ def render_from_exports() -> None:
              .replace("__GEOGRAPHY_VERSION__", hashlib.sha256(GEOGRAPHY_PATH.read_bytes()).hexdigest()[:12])
              .replace("__STATS_VERSION__", hashlib.sha256(STATS_PATH.read_bytes()).hexdigest()[:12])
              .replace("__SEARCH_VERSION__", hashlib.sha256(SEARCH_PATH.read_bytes()).hexdigest()[:12])
+             .replace("__FAVORITES_VERSION__", hashlib.sha256(FAVORITES_PATH.read_bytes()).hexdigest()[:12])
              # Empty unless a deployment sets it, which keeps the page on the
              # committed snapshot. See docs/live-score-delivery.md.
              .replace("__LIVE_FEED_URL__", live_feed_url()))

@@ -25,6 +25,18 @@
 <link rel="icon" href="brand/mark.svg" type="image/svg+xml">
 <link rel="icon" href="brand/icon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+<!-- Installable on a phone home screen. The manifest sits at the repository
+     root because a service worker's scope can never reach above its own
+     directory, and the worker has to cover the root redirect as well as ui/.
+     A manifest's own members resolve against the MANIFEST's URL, not this
+     page's, so start_url there is written from the root. -->
+<link rel="manifest" href="../manifest.webmanifest">
+<!-- iOS reads none of the manifest except the icon: standalone display, the
+     home-screen name and the status bar are these three tags or nothing. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Elocast">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Elocast</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -562,6 +574,43 @@
   .rating-freshness:empty { display: none; }
   .mini-board .elo-change { margin-left: 3px; font-size: 10px; }
   .team-stat .sub { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); margin-top: 2px; }
+  /* ---- Favorites and the week view (app roadmap, phase 0) ---- */
+  .fav-toggle { display: inline-flex; align-items: center; gap: 5px; margin-left: 12px; padding: 5px 10px;
+    border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2); color: var(--ink-dim);
+    font: 12px var(--font-mono); cursor: pointer; vertical-align: middle; }
+  .fav-toggle:hover, .fav-toggle:focus-visible { color: var(--amber); border-color: var(--amber-dim); }
+  .fav-toggle.on { color: var(--amber); border-color: var(--amber-dim); }
+  .fav-panel { margin-bottom: 18px; }
+  .fav-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .fav-card { background: var(--panel-2); border-radius: 3px; padding: 12px; display: grid; gap: 8px; min-width: 0; }
+  .fav-card-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .fav-card-name { font-family: var(--font-display); font-size: 17px; color: var(--ink); text-decoration: none;
+    overflow-wrap: anywhere; }
+  .fav-card-name:hover, .fav-card-name:focus-visible { color: var(--amber); }
+  .fav-card-sub { font: 11px var(--font-mono); color: var(--ink-dim); margin-top: 2px; }
+  .fav-card-elo { font-family: var(--font-display); font-size: 24px; color: var(--amber); }
+  .fav-card-elo small { display: block; font: 11px var(--font-mono); color: var(--ink-dim); }
+  .fav-card-next { font: 12px/1.4 var(--font-mono); color: var(--ink-dim); overflow-wrap: anywhere; }
+  .fav-card-link { font: 12px var(--font-mono); color: var(--amber); text-decoration: none; }
+  .fav-card-link:hover, .fav-card-link:focus-visible { text-decoration: underline; }
+  .week-games { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+  .week-game { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px;
+    background: var(--panel-2); border-radius: 3px; font: 13px var(--font-mono); }
+  .week-game-res { font-family: var(--font-display); font-size: 16px; min-width: 76px; }
+  .week-game-opp { display: flex; align-items: center; gap: 6px; flex: 1 1 160px; min-width: 0; }
+  .week-game-elo { white-space: nowrap; }
+  .week-game-link { color: var(--amber); text-decoration: none; }
+  .week-game-link:hover, .week-game-link:focus-visible { text-decoration: underline; }
+  .week-games-note { margin: 10px 0 0; }
+  .week-game .pos, .team-stat .pos { color: var(--green-hl); }
+  .week-game .neg, .team-stat .neg { color: var(--red); }
+  .week-game .flat, .team-stat .flat { color: var(--ink-dim); }
+  /* The offline banner. Hidden entirely while the browser reports a connection,
+     so it costs nothing on the overwhelming majority of visits. */
+  .offline-banner { display: none; margin: 0 0 14px; padding: 9px 12px; border-left: 3px solid var(--amber);
+    background: var(--panel-2); color: var(--ink-dim); font: 12px/1.5 var(--font-mono); }
+  body.is-offline .offline-banner { display: block; }
   .team-section { margin-bottom: 18px; }
   .grid-2.team-section > .panel { margin-bottom: 0; }
 
@@ -1291,6 +1340,8 @@
     </div>
   </header>
 
+  <p class="offline-banner" role="status">You are offline. Elocast is showing the ratings this device saved last.</p>
+
   <div class="control-row">
     <nav class="subnav" id="subnav" aria-label="Section views"></nav>
     <div class="view-row" id="view-row"></div>
@@ -1328,6 +1379,7 @@ __STATIC_MANIFEST_JSON__
 <script src="navigation.js?v=__NAVIGATION_VERSION__"></script>
 <script src="live_teams.js?v=__LIVE_TEAMS_VERSION__"></script>
 <script src="search.js?v=__SEARCH_VERSION__"></script>
+<script src="favorites.js?v=__FAVORITES_VERSION__"></script>
 <script>
 const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
 // Logo manifest (data foundation step): the same {name: [{start, end, bg, ...}]}
@@ -3081,7 +3133,7 @@ function renderTeamPage(param) {
   const header =
     '<div class="panel team-header">' +
       '<div class="team-header-main">' + logoMarkup(team.name, 'team', 'lg', season || undefined) +
-        '<div class="team-header-text"><h1 class="team-title">' + team.name + '</h1>' +
+        '<div class="team-header-text"><h1 class="team-title">' + team.name + favButton(team) + '</h1>' +
         '<div class="team-sub">' +
           (team.conference ? conferenceLink(team.conference, null, team.conference_year || season) : 'No conference data') +
           (season ? ' &middot; ' + season + ' season' : '') + '</div>' +
@@ -3101,7 +3153,9 @@ function renderTeamPage(param) {
   // so a tab switch costs one render and no extra data load.
   const tab = activeTab('team');
   let body;
-  if (tab === 'schedule') {
+  if (tab === 'week') {
+    body = loading('tp-week', 'Since last week') + loading('tp-week-standing', 'Where it stands');
+  } else if (tab === 'schedule') {
     body = loading('tp-schedule', 'Schedule');
   } else if (tab === 'roster') {
     body = loading('tp-roster', 'Roster');
@@ -3122,7 +3176,7 @@ function renderTeamPage(param) {
 // ---------------- Detail-page tabs (Milestone E) ----------------
 // The tab lives in the URL (see ui/navigation.js), so every tab is a shareable
 // address and Back moves between tabs like any other navigation.
-const TEAM_TAB_LABELS = { overview: 'Overview', schedule: 'Schedule', roster: 'Roster',
+const TEAM_TAB_LABELS = { overview: 'Overview', week: 'This Week', schedule: 'Schedule', roster: 'Roster',
   stats: 'Stats', leaders: 'Leaders', history: 'History', analytics: 'Analytics' };
 const CONF_TAB_LABELS = { overview: 'Overview', members: 'Members', history: 'History', external: 'External' };
 
@@ -4044,6 +4098,7 @@ function hydrateTeamPage() {
   loadTeamPages().then(tp => {
     const cur = resolveTeam(state.teamParam);
     if (state.view !== 'team' || !cur || cur.id !== team.id) return;   // user navigated away meanwhile
+    fillWeekPanel(tp, team);
     fillEloPanel(tp, team);
     fillSchedulePanel(tp, team);
     fillSeasonHistoryPanel(tp, team);
@@ -4052,7 +4107,7 @@ function hydrateTeamPage() {
     fillLedgerPanel(tp, team);
     fillHistoryPanel(tp, team);
   }).catch(err => {
-    ['tp-elo', 'tp-schedule', 'tp-seasons', 'tp-analytics', 'tp-gains', 'tp-losses',
+    ['tp-week', 'tp-week-standing', 'tp-elo', 'tp-schedule', 'tp-seasons', 'tp-analytics', 'tp-gains', 'tp-losses',
      'tp-ledger', 'tp-history'].forEach(id => {
       const note = document.querySelector('#' + id + ' .empty-note');
       if (note) note.textContent = 'Team history is unavailable (' + err.message + ').';
@@ -4069,6 +4124,260 @@ window.addEventListener('resize', () => {
     if (t) drawEloChart(TP, t);
   }, 150);
 });
+
+// ---------------- Favorite teams and their week (app roadmap, phase 0) ----------------
+// Favorites live on the device, in localStorage, through ui/favorites.js. There
+// is no account and no server: a list of team slugs is the whole feature, and
+// it is the same shape a server would later store behind an anonymous token.
+// Nothing else on the page depends on them, so a browser that refuses storage
+// simply never shows a followed team.
+
+function favoriteTeams() {
+  return CfbFavorites.read().map(slug => TEAM_BY_SLUG.get(slug)).filter(Boolean);
+}
+
+function paintFavButton(el) {
+  const on = CfbFavorites.has(null, el.dataset.favSlug);
+  el.classList.toggle('on', on);
+  el.setAttribute('aria-pressed', on ? 'true' : 'false');
+  el.innerHTML = '<span aria-hidden="true">' + (on ? '★' : '☆') + '</span>' +
+    '<span>' + (on ? 'Following' : 'Follow') + '</span>' +
+    '<span class="visually-hidden"> ' + esc(el.dataset.favName || '') + '</span>';
+}
+
+function favButton(team) {
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.className = 'fav-toggle';
+  el.dataset.favSlug = team.slug;
+  el.dataset.favName = team.name;
+  paintFavButton(el);
+  return el.outerHTML;
+}
+
+// One card per followed team: where its rating stands now, what it did last,
+// and when it plays next. Every number here is already in the page's payload,
+// so the panel costs no extra request.
+function favoriteCard(team) {
+  const season = latestSeasonFor(team.name);
+  const elo = season ? rankLookup('team_elo_by_year', 'elo', season, team.name) : null;
+  const change = season ? teamEloChange(season, team.name) : null;
+  const rec = season ? ((DATA.team_records_by_year || {})[season] || {})[team.id] : null;
+  const unrated = season ? ((DATA.non_fbs_records_by_year || {})[season] || {})[team.id] : null;
+  const next = UPCOMING_GAMES.find(g => g.home === team.id || g.away === team.id);
+  const whenNext = next
+    ? (next.home === team.id || next.neutral ? 'vs ' : 'at ') +
+      (TEAM_BY_ID.get(String(next.home === team.id ? next.away : next.home))?.name || 'TBA') +
+      ' · ' + fmtKickoff(next.kickoff, next.tbd)
+    : 'No game scheduled';
+  return '<li class="fav-card">' +
+    '<div class="fav-card-head">' + logoMarkup(team.name, 'team', 'sm', season || undefined) +
+      '<div><a class="fav-card-name" href="' + esc('#team=' + encodeURIComponent(team.slug)) + '">' +
+        esc(team.name) + '</a>' +
+      '<div class="fav-card-sub">' + esc(teamHeaderRecord(rec, unrated).value) +
+        (team.conference ? ' · ' + esc(team.conference) : '') + '</div></div></div>' +
+    '<div class="fav-card-elo">' + (elo ? eloValue(elo.value) + eloChangeMarkup(change, team.name) : 'N/A') +
+      '<small>' + (elo ? 'Elo · ' + rankSub(elo) : 'no rating yet') + '</small></div>' +
+    '<div class="fav-card-next">' + esc(whenNext) + '</div>' +
+    '<a class="fav-card-link" href="' + esc('#team=' + encodeURIComponent(team.slug) + '&tab=week') +
+      '">This week →</a></li>';
+}
+
+function renderFavoriteTeams() {
+  const teams = favoriteTeams();
+  if (!teams.length) {
+    // Without this line the feature is undiscoverable: the only way to follow a
+    // team is a button on its own page, which nobody visits looking for one.
+    return '<section class="panel fav-panel" id="fav-teams"><p class="section-note">' +
+      'Follow a team on its page and it appears here, with what the last week did to its rating. ' +
+      '<a href="#section=teams">Browse teams</a>.</p></section>';
+  }
+  return '<section class="panel fav-panel" id="fav-teams"><h2 class="section-title">My teams</h2>' +
+    '<ul class="fav-grid">' + teams.map(favoriteCard).join('') + '</ul></section>';
+}
+
+document.addEventListener('click', e => {
+  const button = e.target.closest && e.target.closest('[data-fav-slug]');
+  if (!button) return;
+  CfbFavorites.toggle(null, button.dataset.favSlug);
+  // Every button for that team on the page, not just the one clicked.
+  document.querySelectorAll('[data-fav-slug]').forEach(paintFavButton);
+  const panel = document.getElementById('fav-teams');
+  if (panel) panel.outerHTML = renderFavoriteTeams();
+});
+
+// ---------------- Since last week ----------------
+// The one screen the app roadmap calls the highest-value thing on its list:
+// what the week just played did to a followed team.
+//
+// Every movement number here comes from data/elo_timeline/<season>.js, which
+// src/elo_timeline.py builds from the engine's own audit trail -- d_elo and
+// d_rank are a team against ITS OWN previous stage, computed from the rounded
+// ratings the site displays. Nothing is recomputed in the browser.
+//
+// What is NOT here, deliberately: how the team's SEED and TITLE ODDS moved.
+// Both are rebuilt from scratch on every deploy and no weekly snapshot of
+// either is kept, so there is nothing honest to subtract. The panel shows
+// where they stand now and says so, rather than inventing a change.
+
+function weekStageIndex(data) {
+  // The stage this team's week is: the latest one in the timeline. A team on a
+  // bye is still in it, with stage_games 0, which is what tells a real 0.0
+  // apart from a week it did not play.
+  return data.stages.length - 1;
+}
+
+function weekMovementRow(data, index, teamName) {
+  const teamIndex = data.teams.findIndex(t => t.name === teamName);
+  if (teamIndex < 0) return null;
+  return (data.rows[index] || []).find(r => r.team === teamIndex) || null;
+}
+
+function weekStat(label, value, sub) {
+  return '<div class="team-stat"><div class="lbl">' + label + '</div><div class="val">' + value +
+    '</div><div class="sub">' + (sub || '&nbsp;') + '</div></div>';
+}
+
+function weekDelta(value, digits, suffix) {
+  if (value == null || !Number.isFinite(value)) return '<span class="flat">&mdash;</span>';
+  const cls = value > 0 ? 'pos' : value < 0 ? 'neg' : 'flat';
+  return '<span class="' + cls + '">' + (value === 0 ? '± 0' : signed(value, digits)) +
+    (suffix || '') + '</span>';
+}
+
+// What this team played in that stage, from BOTH indexes. A game against an
+// opponent this project rates nothing for is in nonFbsByTeam and in no Elo
+// row at all, so the timeline's stage_games is 0 for a team whose only game
+// that week was one of those -- which is a week it played, not a bye.
+function weekStageGames(tp, team, season, stage) {
+  const inStage = g => g.season === season &&
+    (stage.key === 'post' ? g.phase > 0 : !g.phase && g.week === stage.week);
+  return {
+    rated: (tp.eloByTeam.get(team.id) || [])
+      .map(e => ({ e, g: tp.gamesById.get(e.gid) }))
+      .filter(x => x.g && inStage(x.g)),
+    unrated: (tp.nonFbsByTeam.get(team.id) || []).filter(inStage),
+  };
+}
+
+// The games that produced the movement, with the Elo each one moved. Read off
+// TP.eloByTeam, the same per-game ledger the Analytics tab draws, so a game's
+// change here and there cannot disagree.
+function weekGamesHtml(team, played) {
+  const rated = played.rated.map(({ e, g }) => {
+    const home = g.home === team.id;
+    const mine = home ? g.hs : g.as, theirs = home ? g.as : g.hs;
+    const opp = TEAM_BY_ID.get(String(home ? g.away : g.home));
+    const result = mine == null || theirs == null ? 'No result'
+      : (mine > theirs ? 'W' : mine < theirs ? 'L' : 'T') + ' ' + mine + '–' + theirs;
+    return '<li class="week-game"><span class="week-game-res ' +
+      (mine > theirs ? 'pos' : mine < theirs ? 'neg' : 'flat') + '">' + esc(result) + '</span>' +
+      '<span class="week-game-opp">' + (g.neutral ? 'vs ' : home ? 'vs ' : 'at ') +
+      (opp ? oppLink(opp.name, g.season) : 'Unknown') + '</span>' +
+      '<span class="week-game-elo">' + weekDelta(e.chg, 1, ' Elo') + '</span>' +
+      '<a class="week-game-link" href="' + esc(gameHref(g.id, g.season)) + '">Game story →</a></li>';
+  });
+  const others = played.unrated.map(g => {
+    const result = g.mine == null || g.theirs == null ? 'No result'
+      : (g.mine > g.theirs ? 'W' : g.mine < g.theirs ? 'L' : 'T') + ' ' + g.mine + '–' + g.theirs;
+    return '<li class="week-game"><span class="week-game-res">' + esc(result) + '</span>' +
+      '<span class="week-game-opp">' + (g.home ? 'vs ' : 'at ') + esc(g.opp) + '</span>' +
+      '<span class="week-game-elo"><span class="flat">unrated opponent</span></span></li>';
+  });
+  return '<ul class="week-games">' + rated.join('') + others.join('') + '</ul>' +
+    (rated.length ? '<p class="section-note week-games-note">A game\'s change is the engine\'s own ' +
+      'number for that game. The week\'s change above is measured on the rounded ratings the tables ' +
+      'show, so the two can differ by a tenth.</p>' : '');
+}
+
+// Where the team stands in the playoff picture right now. Seed comes from the
+// selected field, the percentages from the rest-of-season projection; neither
+// carries a week-ago value to compare against (see the note above).
+function weekStandingHtml(team, season) {
+  const playoff = (DATA.playoff_by_year || {})[String(season)];
+  const seat = playoff ? (playoff.field || []).find(q => q.team === team.name) : null;
+  const projected = PROJECTION && PROJECTION.season === season
+    ? (PROJECTION.teams || []).find(t => t.team === team.name) : null;
+  if (!seat && !projected) return '';
+  const seedValue = seat ? 'Seed ' + seat.seed : 'Out';
+  const seedNote = seat
+    ? (seat.bid_type === 'auto' ? 'automatic bid as ' + esc(seat.champion_of) + ' champion'
+       : 'at-large bid') + (seat.seed <= (playoff.format || {}).bye_seeds ? ' · first-round bye' : '')
+    : 'not in the field as it stands';
+  return '<h2 class="section-title">Where it stands</h2>' +
+    '<div class="team-stats">' +
+      weekStat('Playoff field', seedValue, seedNote) +
+      (projected ? weekStat('Makes the field', projected.playoff_pct.toFixed(1) + '%',
+        'by the rest-of-season simulation') : '') +
+      (projected ? weekStat('Wins the title', projected.champion_pct.toFixed(1) + '%',
+        'by the rest-of-season simulation') : '') +
+      (projected ? weekStat('Projected wins', fmtWins(projected.projected_wins),
+        projected.wins + '–' + projected.losses + ' so far') : '') +
+    '</div>' +
+    '<p class="section-note">Where the team stands today. No week-ago copy of the field or the odds ' +
+    'is kept, so there is no week-on-week change to show for these two.</p>';
+}
+
+function fillWeekPanel(tp, team) {
+  const panel = document.getElementById('tp-week');
+  if (!panel) return;
+  const season = latestSeasonFor(team.name);
+  if (!season || !(STATIC_MANIFEST.elo_timeline || {})[String(season)]) {
+    panel.innerHTML = '<h2 class="section-title">Since last week</h2>' +
+      '<div class="empty-note">No week-by-week record for ' + esc(String(season || 'this team')) + '.</div>';
+    return;
+  }
+  const version = renderVersion;
+  loadEloTimeline(season).then(data => {
+    if (version !== renderVersion || !document.getElementById('tp-week')) return;
+    const index = weekStageIndex(data);
+    const stage = data.stages[index];
+    const row = weekMovementRow(data, index, team.name);
+    const previous = index > 0 ? data.stages[index - 1].label.toLowerCase() : null;
+    if (!row) {
+      document.getElementById('tp-week').innerHTML = '<h2 class="section-title">Since last week</h2>' +
+        '<div class="empty-note">' + esc(team.name) + ' has no rating in ' + season + ' yet.</div>';
+      return;
+    }
+    // Whether the team played is read off the games, not off the timeline's
+    // stage_games: that counts rated games only, and a week whose single game
+    // was against an unrated opponent would read as a bye.
+    const played = weekStageGames(tp, team, season, stage);
+    const idle = !played.rated.length && !played.unrated.length;
+    const unchanged = ' the rating is unchanged — the rank can still move as others play.';
+    const restNote = idle ? esc(team.name) + ' did not play, so' + unchanged
+      : !played.rated.length ? esc(team.name) + ' played only an opponent this project rates nothing for, so' + unchanged
+      : '';
+    document.getElementById('tp-week').innerHTML =
+      '<h2 class="section-title">Since last week</h2>' +
+      '<p class="section-note">' + esc(stageNote(stage, season, data.rows[index] || [])) +
+      (previous ? ' Movement is against ' + esc(previous) + '.' : '') + '</p>' +
+      '<div class="team-stats">' +
+        weekStat('Elo', eloValue(row.elo), previous ? 'after ' + esc(stage.label.toLowerCase()) : 'current') +
+        weekStat('Elo change', weekDelta(row.d_elo, 1), previous ? 'since ' + esc(previous) : 'no earlier stage') +
+        weekStat('Rank', '#' + row.rank, 'of ' + (data.rows[index] || []).length + ' rated teams') +
+        weekStat('Rank change', weekDelta(row.d_rank, 0,
+          Math.abs(row.d_rank) === 1 ? ' place' : ' places'),
+          row.d_rank > 0 ? 'climbed' : row.d_rank < 0 ? 'fell' : 'held') +
+      '</div>' +
+      (restNote ? '<p class="section-note">' + restNote + '</p>' : '') +
+      (idle ? '' : weekGamesHtml(team, played));
+    const standing = document.getElementById('tp-week-standing');
+    // One panel, not two, when there is no playoff picture to show: a team in
+    // a season with no field would otherwise get an empty box.
+    if (standing) {
+      const html = weekStandingHtml(team, season);
+      if (html) standing.innerHTML = html; else standing.remove();
+    }
+    wrapWideTables();
+  }).catch(() => {
+    const target = document.getElementById('tp-week');
+    if (version === renderVersion && target) {
+      target.innerHTML = '<h2 class="section-title">Since last week</h2>' +
+        '<div class="empty-note">The week-by-week record could not be loaded.</div>';
+    }
+  });
+}
 
 // ---------------- Home (Milestone 4) ----------------
 // Everything here reads authoritative exports: DATA.upcoming (games, predictions
@@ -4239,7 +4548,7 @@ function renderPollsPanel() {
 }
 
 function renderHome() {
-  return renderLiveScores(true) + '<section class="panel home-discovery"><div class="panel-head"><h2>Game history</h2><a href="#section=home&view=games">Open game explorer →</a></div><details class="filter-drawer" id="home-filter-drawer"><summary><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 4h18l-7 8v7l-4 2v-9Z"/></svg> Filter games</summary><form id="home-filter-form"><div id="home-filters" class="games-filters">Loading filters…</div><div class="filter-actions"><button class="action-button" type="submit">Apply filters</button><a href="#section=home">Clear filters</a></div></form></details><div id="home-results" aria-live="polite"></div></section>';
+  return renderFavoriteTeams() + renderLiveScores(true) + '<section class="panel home-discovery"><div class="panel-head"><h2>Game history</h2><a href="#section=home&view=games">Open game explorer →</a></div><details class="filter-drawer" id="home-filter-drawer"><summary><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 4h18l-7 8v7l-4 2v-9Z"/></svg> Filter games</summary><form id="home-filter-form"><div id="home-filters" class="games-filters">Loading filters…</div><div class="filter-actions"><button class="action-button" type="submit">Apply filters</button><a href="#section=home">Clear filters</a></div></form></details><div id="home-results" aria-live="polite"></div></section>';
 }
 
 
@@ -9410,6 +9719,29 @@ function render() {
 function coverageRange(years) { return years?.length ? Math.min(...years) + '–' + Math.max(...years) : 'unavailable'; }
 new MutationObserver(() => wrapWideTables()).observe(document.getElementById('content'), {childList:true,subtree:true});
 applyRoute();
+
+// ---------------- Installable app (app roadmap, phase 0) ----------------
+// The worker is at the site root, two levels up from this page, because its
+// scope cannot reach above its own directory and it has to cover index.html
+// as well as everything under ui/. What it caches and why is documented in
+// service-worker.js; nothing on this page depends on it being there.
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('../service-worker.js', { scope: '../' })
+      // A failed registration is not a page error: the site works exactly as
+      // it did before, it simply is not installable in this browser.
+      .catch(() => {});
+  });
+}
+
+// Offline is silent otherwise: the page keeps rendering the ratings it has
+// and nothing says they are the ones this device saw last.
+function paintConnection() {
+  document.body.classList.toggle('is-offline', navigator.onLine === false);
+}
+window.addEventListener('online', paintConnection);
+window.addEventListener('offline', paintConnection);
+paintConnection();
 </script>
 </body>
 </html>

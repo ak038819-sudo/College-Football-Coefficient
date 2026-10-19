@@ -10,9 +10,11 @@
 | `ui/brand/icon-32.png` | the favicon fallback for browsers that will not take an SVG |
 | `ui/brand/apple-touch-icon.png` | the icon when the site is added to an iOS home screen |
 | `ui/brand/og-image.png` | the 1200x630 card shown when a link is pasted anywhere |
+| `ui/brand/icon-192.png` | the home-screen icon Android asks for by name |
+| `ui/brand/icon-512.png` | the splash-screen icon of an installed app |
+| `ui/brand/icon-maskable-512.png` | the same mark inset to 60%, so a launcher can crop it to its own silhouette without cutting the bars |
 
-Regenerate the three PNGs after any edit to the mark, and commit what it
-writes:
+Regenerate the PNGs after any edit to the mark, and commit what it writes:
 
 ```
 python3 scripts/build_brand_assets.py
@@ -22,8 +24,8 @@ It needs a Chromium and writes nothing if it cannot find one, rather than
 leaving a half-rendered asset that looks fine in git and broken on the site.
 
 **To change the logo**, replace `ui/brand/mark.svg` and re-run that script.
-Nothing else needs touching: the masthead, both favicons, the touch icon and
-the preview card all come from it. The two marks that were not chosen are kept
+Nothing else needs touching: the masthead, both favicons, the touch icon, the
+three install icons and the preview card all come from it. The two marks that were not chosen are kept
 outside the repository, in the project's `branding/` folder, beside the
 contact sheet they were picked from.
 

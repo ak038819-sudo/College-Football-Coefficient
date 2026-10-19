@@ -1,5 +1,30 @@
 # Site release history
 
+## Unreleased — Elocast on a home screen (2026-10-19)
+
+- **The site is installable.** Add to Home Screen on iOS or Install on Android
+  gives a chromeless Elocast with its own icon, and it opens on the scoreboard.
+  A manifest, a service worker and three icons rendered from the existing mark;
+  no other change to how anything is served.
+- **It works without a connection.** The dashboard carries its ratings payload
+  inline, so an offline launch shows the last ratings that device saw, with a
+  line saying that is what it is, rather than a browser error. Versioned assets
+  are served from cache and everything else is revalidated, which is only safe
+  because every generated file this site loads carries `?v=sha256(file)[:10]`:
+  the URL changes when the bytes do. `tests/service_worker.test.cjs` drives the
+  real worker to hold that rule in place.
+- **Follow a team.** A star on a team page; the teams you follow appear as *My
+  teams* at the top of the home page with their rating, record and next game.
+  Stored on the device in `localStorage` and nowhere else: no account, no
+  server, nothing personal collected.
+- **Since last week**, a new tab on a team page: what the week that just
+  finished did to the rating and the rank, the games that did it, and where the
+  team stands in the playoff field. Every movement figure is read off the Elo
+  timeline the engine already writes; nothing is recomputed in the browser.
+  Seed and odds are shown as they stand today, and the panel says so — no
+  week-ago copy of either is kept, so there is no honest change to subtract.
+  `docs/installable-app.md` has what closing that would take.
+
 ## Unreleased — Who won what (2026-10-18)
 
 - **Stats → Awards** lists every national trophy of a season with its winner,
