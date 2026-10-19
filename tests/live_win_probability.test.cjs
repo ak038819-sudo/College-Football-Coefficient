@@ -208,11 +208,17 @@ test('the scorebug prints the live chance while a game is on, and the pregame on
     // part of what this test is checking.
     const oddsText = shell.match(/^function liveOddsText\([^)]*\) \{[\s\S]*?\n\}/m)?.[0];
     assert.ok(oddsText, 'missing liveOddsText');
+    // The real artwork registry and its style helper, which liveTeam reads for
+    // every row it draws.
+    const panels = shell.match(/^const TEAM_PANELS = Object\.freeze\(\{[\s\S]*?^\}\);/m)?.[0];
+    assert.ok(panels, 'missing TEAM_PANELS');
+    const panelStyle = shell.match(/^function teamPanelStyle\([^)]*\) \{[\s\S]*?\n\}/m)?.[0];
+    assert.ok(panelStyle, 'missing teamPanelStyle');
     // liveLogoName is lifted, not stubbed: liveTeam calls it, and a stub here
     // would let this file pass while the page threw.
     const logoName = shell.match(/^function liveLogoName\([^)]*\) \{[\s\S]*?\n\}/m)?.[0];
     assert.ok(logoName, 'missing liveLogoName');
-    vm.runInNewContext(oddsText + '\n' + logoName + '\n' + liveTeam +
+    vm.runInNewContext(panels + '\n' + panelStyle + '\n' + oddsText + '\n' + logoName + '\n' + liveTeam +
       '\nthis.render = liveTeam;', ctx);
     const g = {status, home: {points: 21, name: 'Alpha'}, away: {points: 17, name: 'Bravo'}};
     return ctx.render(g.home, g, {home: 64, away: 36}, live);
