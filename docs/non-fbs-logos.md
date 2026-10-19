@@ -105,11 +105,23 @@ python3 src/fetch_non_fbs_logos.py             # fetch, then write the set
 python3 src/export_logo_files.py               # manifest + the files the page fetches
 ```
 
-In CI: dispatch **Fetch non-FBS logos**
+In CI: dispatch **Fetch logo artwork**
 (`.github/workflows/fetch-non-fbs-logos.yml`), which does all three and commits
 `ui/non_fbs_logo_assets.json`, `ui/logo_manifest.json`, `ui/assets/logos/` and
 the provenance file. It commits with `[skip ci]`, so dispatch
 `ci-and-deploy.yml` afterwards or the marks never reach the site.
+
+That workflow also runs `src/fetch_team_dark_logos.py`, which fetches the same
+light-ink artwork for the 139 teams this project rates. Their dated set has no
+version of it: it is built from a folder of era PNGs outside this repository
+and carries the colour mark alone. So the artwork is written as an OVERLAY,
+`ui/dated_logo_dark_assets.json`, keyed by team and carrying the era it was
+fetched for; `src/export_logo_files.py` attaches it to that era and no other,
+because ESPN serves today's mark and a 1985 page has to keep its 1985 one. A
+redrawn logo gives the team a new era, which leaves the overlay naming one that
+no longer exists -- that is reported as stale and dropped rather than attached
+to the wrong season. The join is the ESPN id `data/reference/team_identities.json`
+already records for all 139 teams, so no name is matched there at all.
 
 Run it when a new opponent appears on a schedule, or when a school has redrawn
 its mark. The archive re-captures monthly, so a redrawn mark shows up there

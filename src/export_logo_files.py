@@ -51,6 +51,12 @@ UI = REPO / "ui"
 SOURCES = {"teams": UI / "dated_logo_assets.json",
            "conferences": UI / "dated_conference_logo_assets.json",
            "non_fbs": UI / "non_fbs_logo_assets.json"}
+# The light-ink artwork for our own teams' CURRENT logo, fetched separately
+# (src/fetch_team_dark_logos.py) because the dated set is rebuilt from a folder
+# outside this repository. Keyed by team, carrying the era it belongs to: a
+# redrawn logo gives the team a new era, and an overlay naming the old one is
+# stale rather than wrong, so it is dropped and reported.
+DARK_OVERLAYS = {"teams": UI / "dated_logo_dark_assets.json"}
 OUT_ROOT = UI / "assets" / "logos"
 MANIFEST = UI / "logo_manifest.json"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -67,15 +73,23 @@ def decode_data_uri(uri: str) -> bytes:
 
 
 def export(sources: dict = SOURCES, out_root: Path = OUT_ROOT, manifest_path: Path = MANIFEST,
-           url_prefix: str = "assets/logos") -> dict:
+           url_prefix: str = "assets/logos", dark_overlays: dict = DARK_OVERLAYS) -> dict:
     """url_prefix: how dashboard.html (in ui/) addresses out_root; files land in out_root."""
     if out_root.exists():
         shutil.rmtree(out_root)
     manifest, stats, duplicates = {}, {}, []
+    stale_overlays = []
     for kind, src_path in sources.items():
         if not src_path.exists():
             continue
         data = json.loads(src_path.read_text(encoding="utf-8"))
+        overlay_path = (dark_overlays or {}).get(kind)
+        overlay = (json.loads(overlay_path.read_text(encoding="utf-8"))
+                   if overlay_path and overlay_path.exists() else {})
+        for name, mark in overlay.items():
+            entries = data.get(name) or []
+            if not any((e["start"], e["end"]) == (mark["start"], mark["end"]) for e in entries):
+                stale_overlays.append(f"{kind}: {name} {mark['start']}-{mark['end']}")
         kind_manifest, used_slugs, files = {}, {}, 0
         for name in sorted(data):
             slug = slugify(name)
@@ -109,12 +123,18 @@ def export(sources: dict = SOURCES, out_root: Path = OUT_ROOT, manifest_path: Pa
                 # name in this project to look up (see the non-FBS set).
                 if e.get("espn"):
                     entry["espn"] = e["espn"]
-                # The light-ink artwork for dark pages, where the source set has
-                # one. It is a second file beside the colour mark rather than a
-                # second entry, because it is the same era and the same logo --
-                # only the page it is meant to sit on differs.
-                if e.get("dark"):
-                    dark_raw = decode_data_uri(e["dark"])
+                # The light-ink artwork for dark pages. It is a second file
+                # beside the colour mark rather than a second entry, because it
+                # is the same era and the same logo -- only the page it is meant
+                # to sit on differs. A set may carry it per entry (the non-FBS
+                # one, fetched with the mark) or in an overlay keyed by era (our
+                # own teams, whose set is rebuilt from outside this repository).
+                dark_mark = overlay.get(name)
+                dark_uri = e.get("dark")
+                if dark_uri is None and dark_mark and (dark_mark["start"], dark_mark["end"]) == era:
+                    dark_uri = dark_mark["data"]
+                if dark_uri:
+                    dark_raw = decode_data_uri(dark_uri)
                     dark_name = f"{fname[:-len('.png')]}-dark.png"
                     (out_root / kind / slug / dark_name).write_bytes(dark_raw)
                     files += 1
@@ -126,6 +146,7 @@ def export(sources: dict = SOURCES, out_root: Path = OUT_ROOT, manifest_path: Pa
         stats[kind] = {"names": len(kind_manifest), "files": files}
     manifest_path.write_text(json.dumps(manifest, separators=(",", ":"), sort_keys=True), encoding="utf-8")
     stats["duplicates_dropped"] = duplicates
+    stats["stale_dark_overlays"] = stale_overlays
     return stats
 
 
@@ -135,6 +156,9 @@ def main() -> None:
     counts = ", ".join(f"{stats[kind]['files']} {kind} images ({stats[kind]['names']} names)"
                        for kind in SOURCES if kind in stats)
     print(f"Logo files: {counts}; manifest {size:,} bytes")
+    if stats["stale_dark_overlays"]:
+        print("  dark artwork dropped, the era it was fetched for is gone (re-run "
+              "src/fetch_team_dark_logos.py): " + "; ".join(stats["stale_dark_overlays"]))
     if stats["duplicates_dropped"]:
         print("  exact duplicate logo entries skipped (same era, image and color): "
               + "; ".join(stats["duplicates_dropped"]))
