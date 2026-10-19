@@ -1086,7 +1086,7 @@
        just, at 4.53:1. */
     background-image: linear-gradient(90deg, #071b30e0, #071b30b3 55%, #071b30bf), var(--panel-art);
     background-size: cover;
-    background-position: center 55%;
+    background-position: center var(--panel-focus, 55%);
   }
   .team-panel .logo-chip { background: transparent !important; border-color: transparent !important; box-shadow: none !important; }
   .team-panel .team-link-name, .team-panel .live-rating, .team-panel .live-odds,
@@ -4104,13 +4104,21 @@ const TEAM_PANELS = Object.freeze({
   BYU: { image: 'assets/team-panels/byu-mountains.png' },
   Charlotte: { image: 'assets/team-panels/charlotte-miner.png' },
   Florida: { image: 'assets/team-panels/florida-century-tower.png' },
-  Kentucky: { image: 'assets/team-panels/kentucky-wildcat.png' },
+  // focus moves the visible band up or down the artwork. A Top 25 row is 39px
+  // of a picture scaled to 107, barely a third of it, so the default 55% lands
+  // below a mascot standing above the skyline and shows only its legs. Smokey's
+  // head sits at 12-25% of the image and the Wildcat's at 13-30%; these values
+  // put each one in frame on both the short rankings rows and the tall
+  // scoreboard cards. Smaller is higher.
+  Kentucky: { image: 'assets/team-panels/kentucky-wildcat.png', focus: '24%' },
   'Ohio State': { image: 'assets/team-panels/ohio-state-stadium.png' },
-  Tennessee: { image: 'assets/team-panels/tennessee-smokey.png' }
+  Tennessee: { image: 'assets/team-panels/tennessee-smokey.png', focus: '19%' }
 });
 function teamPanelStyle(name) {
   const panel = TEAM_PANELS[name];
-  return panel ? "--panel-art:url('" + panel.image + "');" : '';
+  if (!panel) return '';
+  return "--panel-art:url('" + panel.image + "');" +
+    (panel.focus ? '--panel-focus:' + panel.focus + ';' : '');
 }
 function teamPanelRow(name) {
   return TEAM_PANELS[name] ? '<li class="team-panel" style="' + teamPanelStyle(name) + '">' : '<li>';

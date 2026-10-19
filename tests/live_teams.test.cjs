@@ -162,6 +162,34 @@ test('every registered panel names a real team and an asset that exists', () => 
   }
 });
 
+test('a panel that names a focus gets it, and the stylesheet reads it', () => {
+  // A row shows about a third of a 2048x682 picture, so where that band sits
+  // decides whether a mascot standing above the skyline is in frame or cut off
+  // at the knees. The value lives in the registry, which is only worth anything
+  // if both ends are wired: teamPanelStyle has to emit it, and the rule that
+  // positions the artwork has to read it rather than hard-coding a percentage.
+  const context = {};
+  vm.runInNewContext(panelSource + '\nthis.panels = TEAM_PANELS; this.style = teamPanelStyle;', context);
+  const focused = Object.entries(context.panels).filter(([, p]) => p.focus);
+  assert.ok(focused.length > 0, 'no panel sets a focus, so this wiring is untested');
+  for (const [name, panel] of focused) {
+    assert.match(panel.focus, /^\d+(\.\d+)?%$/,
+      name + ' has a focus of ' + panel.focus + ', which is not a percentage');
+    assert.ok(context.style(name).includes('--panel-focus:' + panel.focus + ';'),
+      name + ' names a focus that teamPanelStyle does not pass to the row');
+  }
+  for (const [name, panel] of Object.entries(context.panels)) {
+    if (!panel.focus) assert.ok(!context.style(name).includes('--panel-focus'),
+      name + ' sets no focus but the row declares one anyway');
+  }
+
+  const styles = shell.slice(0, shell.indexOf('</style>'));
+  const rule = styles.match(/\.live-team\.team-panel, \.mini-board li\.team-panel \{[\s\S]*?\n  \}/)?.[0];
+  assert.ok(rule, 'missing the shared panel background rule');
+  assert.match(rule, /background-position:[^;]*var\(--panel-focus/,
+    'the artwork is positioned without reading --panel-focus, so every focus in the registry is dead');
+});
+
 test('the panel scrim never thins to where artwork can swallow the labels', () => {
   // Measured, not guessed: with the scrim's middle stop at 10% navy, the names
   // and ratings on Tennessee's and Kentucky's panels came out at 1.0:1 against
