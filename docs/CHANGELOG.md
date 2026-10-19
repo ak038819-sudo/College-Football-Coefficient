@@ -24,6 +24,16 @@
   Seed and odds are shown as they stand today, and the panel says so — no
   week-ago copy of either is kept, so there is no honest change to subtract.
   `docs/installable-app.md` has what closing that would take.
+- **The installed app has its own navigation.** The five sections move to a bar
+  of icons along the bottom, where a thumb reaches them, and the masthead's
+  tabs give way to the title and the search. Data Coverage, How It Works and
+  Track Record come off the chrome: they are reference reading rather than
+  places to go, and their routes still work. None of this touches the site in
+  a browser tab, which keeps the masthead it has always had.
+- The iOS status bar is opaque now rather than translucent — translucent drew
+  the page under the clock, and iOS writes that clock in light ink, which was
+  white on the light theme's cream — and `theme-color` is declared once per
+  colour scheme so the bar matches the theme that is on.
 
 ## Unreleased — Who won what (2026-10-18)
 
