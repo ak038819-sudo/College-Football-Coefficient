@@ -16,8 +16,14 @@ brand color and watermark treatment. Panel-enabled rows remove the logo-chip
 background, while preserving dated official logo selection and image fallbacks.
 
 Keep the skyline and identifying detail near the vertical center: background-size
-cover crops the artwork for narrow rows without stretching. Check both compact
-rankings and scoreboard rows on mobile before adding a team. Keep school fonts
+cover crops the artwork for narrow rows without stretching. A compact rankings
+row shows only about a third of the picture's height, so a subject that sits
+high in the frame -- a mascot standing above a skyline -- falls outside that
+band at the default position. Where it does, give the registry entry a focus,
+which is the vertical background-position for that panel alone and defaults to
+55%: smaller moves the band up. Tennessee uses 19% and Kentucky 24% so their
+mascots' heads are in frame. Check both compact rankings and scoreboard rows on
+mobile before adding a team. Keep school fonts
 separate; use licensed web fonts when available, not lettering baked into art.
 
 Build with python3 build_dashboard.py --reuse-exports. The source template and
