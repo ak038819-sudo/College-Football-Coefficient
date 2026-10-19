@@ -15,7 +15,19 @@ from export_static_data import (CONFERENCE_ALIASES, FIELDS, SEARCH_GAME_FIELDS, 
                                 build_search_index, build_season_payloads)
 from predict_upcoming import build_upcoming, elo_config
 
-PNG = b"\x89PNG\r\n\x1a\n" + b"fake-image-bytes"
+def _png(color=(32, 64, 192)) -> bytes:
+    """A real PNG: the exporter opens every mark to measure its contrast."""
+    import io
+
+    from PIL import Image
+    image = Image.new("RGBA", (64, 64), (255, 255, 255, 0))
+    image.paste(Image.new("RGBA", (32, 32), (*color, 255)), (8, 8))
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+PNG = _png()
 URI = "data:image/png;base64," + base64.b64encode(PNG).decode()
 
 

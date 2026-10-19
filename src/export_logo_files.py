@@ -38,10 +38,13 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import io
 import json
 import shutil
 import sys
 from pathlib import Path
+
+from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from export_dashboard_data import slugify  # noqa: E402  (same URL slugs as team pages)
@@ -59,7 +62,57 @@ SOURCES = {"teams": UI / "dated_logo_assets.json",
 DARK_OVERLAYS = {"teams": UI / "dated_logo_dark_assets.json"}
 OUT_ROOT = UI / "assets" / "logos"
 MANIFEST = UI / "logo_manifest.json"
+SHELL = UI / "dashboard_shell.html"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+# The two page backgrounds a mark can land on, as --bg in ui/dashboard_shell.html.
+# tests/test_logo_contrast.py holds these to the stylesheet, which is the only
+# thing that makes them true.
+DARK_BG = (0x0e, 0x15, 0x12)
+LIGHT_BG = (0xf2, 0xf0, 0xe8)
+# A mark is "dim" on a background when less than this share of its ink clears
+# 3:1 against it. Mean luminance was tried first and reads a white mark with a
+# navy outline as mid-grey, which is neither; the share of ink you can actually
+# see is what decides whether the logo needs something behind it.
+READABLE_CONTRAST = 3.0
+READABLE_SHARE = 0.35
+INK_ALPHA = 160
+
+
+def _relative_luminance(rgb) -> float:
+    def channel(value: int) -> float:
+        v = value / 255
+        return v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4
+    r, g, b = (channel(v) for v in rgb)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _contrast(a: float, b: float) -> float:
+    hi, lo = max(a, b), min(a, b)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def is_dim_on(raw: bytes, background) -> bool:
+    """Would this mark disappear against that background?
+
+    Sampled every other pixel in each direction, which is plenty on a 256px
+    image and keeps a whole-set export to a second or so.
+    """
+    image = Image.open(io.BytesIO(raw)).convert("RGBA")
+    pixels = image.load()
+    bg = _relative_luminance(background)
+    ink = readable = 0
+    for y in range(0, image.height, 2):
+        for x in range(0, image.width, 2):
+            r, g, b, a = pixels[x, y]
+            if a < INK_ALPHA:
+                continue
+            ink += 1
+            if _contrast(_relative_luminance((r, g, b)), bg) >= READABLE_CONTRAST:
+                readable += 1
+    if not ink:
+        return False
+    return readable / ink < READABLE_SHARE
 
 
 def decode_data_uri(uri: str) -> bytes:
@@ -130,6 +183,7 @@ def export(sources: dict = SOURCES, out_root: Path = OUT_ROOT, manifest_path: Pa
                 # one, fetched with the mark) or in an overlay keyed by era (our
                 # own teams, whose set is rebuilt from outside this repository).
                 dark_mark = overlay.get(name)
+                dark_raw = None
                 dark_uri = e.get("dark")
                 if dark_uri is None and dark_mark and (dark_mark["start"], dark_mark["end"]) == era:
                     dark_uri = dark_mark["data"]
@@ -140,6 +194,19 @@ def export(sources: dict = SOURCES, out_root: Path = OUT_ROOT, manifest_path: Pa
                     files += 1
                     entry["darkSrc"] = (f"{url_prefix}/{kind}/{slug}/{dark_name}"
                                         f"?v={hashlib.sha256(dark_raw).hexdigest()[:10]}")
+                # Which page this mark would vanish on. The light theme always
+                # shows the colour mark; the dark one shows the light-ink
+                # artwork where there is one, so each is measured against the
+                # background it will actually sit on. The page puts a quiet
+                # plate behind a mark that is dim and nothing behind one that
+                # is not -- it is what replaced a coloured disc behind all of
+                # them.
+                dim = [theme for theme, image, background in
+                       (("dark", dark_raw if dark_uri else raw, DARK_BG),
+                        ("light", raw, LIGHT_BG))
+                       if is_dim_on(image, background)]
+                if dim:
+                    entry["dim"] = dim
                 entries.append(entry)
             kind_manifest[name] = entries
         manifest[kind] = kind_manifest

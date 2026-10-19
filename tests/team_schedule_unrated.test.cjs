@@ -162,15 +162,17 @@ test('an unrated opponent is plain text, with no team page and no game page', ()
 
 // The schools in this table are the only ones on the site with no page of their
 // own, so the mark is all the identity the row can give them.
-test('an unrated opponent carries its own mark, on its own chip color', () => {
+test('an unrated opponent carries its own mark, with nothing behind it', () => {
   const html = panelHtml(withUnrated(ratedFixture(), [unratedGame()], [1, 0, 0]));
   const row = html.match(/<tr class="sched-unrated">[\s\S]*?<\/tr>/)[0];
-  assert.match(row, /<span class="logo-chip xs" style="background:#2a1a4a">/);
+  assert.match(row, /<span class="logo-mark xs">/);
   assert.match(row, /src="assets\/logos\/non_fbs\/mercer\/0-now\.png\?v=abc1234567"/);
+  // The chip colour the set still carries is not painted behind it.
+  assert.doesNotMatch(row, /style="background:#2a1a4a"/);
   // The mark sits inside the opponent cell, beside the name, not anywhere else
   // on the row.
   const cell = row.match(/<td class="opp">[\s\S]*?<\/td>/)[0];
-  assert.match(cell, /logo-chip[\s\S]*Mercer/);
+  assert.match(cell, /logo-mark[\s\S]*Mercer/);
   assert.doesNotMatch(row, /<a/);
 });
 
@@ -178,7 +180,7 @@ test('an opponent the archive has no mark for keeps the monogram', () => {
   const html = panelHtml(withUnrated(ratedFixture(), [unratedGame({ opp: 'Lambuth' })], [1, 0, 0]));
   const row = html.match(/<tr class="sched-unrated">[\s\S]*?<\/tr>/)[0];
   assert.match(row, /<span class="monogram xs"/);
-  assert.doesNotMatch(row, /logo-chip/);
+  assert.doesNotMatch(row, /logo-mark/);
   assert.match(row, /Lambuth/);
 });
 

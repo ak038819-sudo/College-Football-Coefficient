@@ -245,7 +245,7 @@
   @media (max-width: 700px) { .story-grid { grid-template-columns: 1fr; } }
   .gp-side .team-link { flex-direction: column; align-items: center; max-width: 100%; text-align: center; }
   .gp-side .team-link-name { white-space: normal; overflow-wrap: anywhere; }
-  @media (max-width: 520px) { .gp-side .logo-chip.lg { width: 84px; height: 84px; padding: 6px; } .gp-board { gap: 8px; } }
+  @media (max-width: 520px) { .gp-side .logo-mark.lg { width: 84px; height: 84px; } .gp-board { gap: 8px; } }
   @media (max-width: 520px) { .gp-side .gp-score { font-size: 34px; } .gp-list li { grid-template-columns: 46px minmax(0, 1fr); } .gp-list .aux { grid-column: 2; text-align: left; } }
   .listing-game.is-target { border-color: var(--amber); box-shadow: inset 0 0 0 1px var(--amber); }
   .skip-link:focus { position: fixed; left: 12px; top: 12px; z-index: 10; background: var(--panel); padding: 12px; color: var(--ink); }
@@ -419,21 +419,38 @@
   }
   .coe-val { font-family: var(--font-mono); font-weight: 600; color: var(--amber); }
 
-  .logo-chip {
+  /* A mark sits on the page, not on a disc. Where ESPN publishes a light-ink
+     artwork we show that one on the dark theme and the colour mark on the
+     light one, which is what makes a backdrop unnecessary; a mark that is
+     still dim against the page it lands on (measured at export time, see
+     is_dim_on() in src/export_logo_files.py) gets the quiet plate below
+     instead. The plate is the only backdrop left, and it is a wash of the
+     page's own ink rather than a brand colour. */
+  .logo-mark {
+    --plate: transparent;
     width: 84px; height: 84px;
-    border-radius: 50%;
+    border-radius: 18%;
+    background: var(--plate);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
     vertical-align: middle;
-    padding: 6px;
+    padding: 5%;
     box-sizing: border-box;
     overflow: hidden;
   }
-  .logo-chip.lg { width: 140px; height: 140px; padding: 10px; }
-  .logo-chip.sm { width: 63px; height: 63px; padding: 4px; }
-  .logo-chip .logo-img {
+  .logo-mark.lg { width: 140px; height: 140px; }
+  .logo-mark.sm { width: 63px; height: 63px; }
+  /* Dim against the dark page, which is the default palette. */
+  .logo-mark.dim-dark { --plate: rgba(238, 241, 236, 0.13); }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) .logo-mark.dim-dark { --plate: transparent; }
+    :root:not([data-theme="dark"]) .logo-mark.dim-light { --plate: rgba(26, 31, 27, 0.09); }
+  }
+  :root[data-theme="light"] .logo-mark.dim-dark { --plate: transparent; }
+  :root[data-theme="light"] .logo-mark.dim-light { --plate: rgba(26, 31, 27, 0.09); }
+  .logo-mark .logo-img {
     width: 100%; height: 100%;
     min-width: 0; min-height: 0;
     max-width: 100%; max-height: 100%;
@@ -503,9 +520,9 @@
   .r24-team > .team-link { gap: 5px; }
   .bslot > .team-link { gap: 6px; }
   a.team-link.team-chip { display: flex; }
-  a.team-link .logo-chip, a.team-link .monogram { transition: box-shadow 0.12s ease; }
-  a.team-link:hover .logo-chip, a.team-link:hover .monogram,
-  a.team-link:focus-visible .logo-chip, a.team-link:focus-visible .monogram { box-shadow: 0 0 0 2px var(--amber); }
+  a.team-link .logo-mark, a.team-link .monogram { transition: box-shadow 0.12s ease; }
+  a.team-link:hover .logo-mark, a.team-link:hover .monogram,
+  a.team-link:focus-visible .logo-mark, a.team-link:focus-visible .monogram { box-shadow: 0 0 0 2px var(--amber); }
   a.team-link:hover .team-link-name, a.team-link:hover .name {
     color: var(--amber); text-decoration: underline; text-underline-offset: 3px;
   }
@@ -539,8 +556,7 @@
   .grid-2.team-section > .panel { margin-bottom: 0; }
 
   /* ---- Team page sections (Milestone 2) ---- */
-  .logo-chip.xs, .monogram.xs { width: 30px; height: 30px; }
-  .logo-chip.xs { padding: 2px; }
+  .logo-mark.xs, .monogram.xs { width: 30px; height: 30px; }
   .monogram.xs { font-size: 12px; }
   .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px;
     margin: 0 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
@@ -837,14 +853,14 @@
   /* A bracket cell is not a team card: the site's own 63px chip does not
      belong in one, and sizing it here keeps the rest of the page's logos
      alone. */
-  .bracket-tree .logo-chip, .bracket-tree .monogram,
-  .bye-chip .logo-chip, .bye-chip .monogram {
+  .bracket-tree .logo-mark, .bracket-tree .monogram,
+  .bye-chip .logo-mark, .bye-chip .monogram {
     width: var(--bracket-logo, 22px); height: var(--bracket-logo, 22px); padding: 2px; flex: 0 0 auto;
   }
   /* The first-round cards carry a conference line under the name, so they get
      a little more room than a bracket cell -- but nothing like the 63px chip
      they were inheriting, which made four games taller than the bracket. */
-  .game-card .logo-chip, .game-card .monogram {
+  .game-card .logo-mark, .game-card .monogram {
     width: 34px; height: 34px; padding: 3px; flex: 0 0 auto;
   }
   .bracket-tree .team-link { min-width: 0; }
@@ -939,7 +955,7 @@
   @media (max-width: 520px) {
     .elo-table th:nth-child(3), .elo-table td:nth-child(3) { display: none; }
     .elo-table td, .elo-table th { padding: 6px 5px; font-size: 13px; }
-    .elo-table .logo-chip { width: 20px; height: 20px; }
+    .elo-table .logo-mark { width: 20px; height: 20px; }
   }
 
   .bslot.filled { background: var(--panel-2); border-left: 3px solid var(--green-hl); }
@@ -1088,7 +1104,6 @@
     background-size: cover;
     background-position: center var(--panel-focus, 55%);
   }
-  .team-panel .logo-chip { background: transparent !important; border-color: transparent !important; box-shadow: none !important; }
   .team-panel .team-link-name, .team-panel .live-rating, .team-panel .live-odds,
   .team-panel .v, .team-panel .rk, .team-panel .live-rank { text-shadow: 0 1px 3px #000; }
   /* The two labels that would otherwise take the mid-luminance link gold, which
@@ -1106,8 +1121,8 @@
     opacity: .12; pointer-events: none; }
   .live-team .name-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .live-team .team-link, .live-team .team-link-static { gap: 10px; min-width: 0; }
-  .live-team .logo-chip.xs, .live-team .monogram.xs { width: 45px; height: 45px; padding: 4px;
-    border: 1px solid #ffffff44; box-shadow: 0 2px 8px #0005; }
+  .live-team .logo-mark.xs, .live-team .monogram.xs { width: 45px; height: 45px; }
+  .live-team .monogram.xs { border: 1px solid #ffffff44; box-shadow: 0 2px 8px #0005; }
   .live-team .monogram.xs { font-size: 15px; }
   .live-team .team-link-name { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
     font-family: var(--font-display); font-size: 17px; line-height: 1.1; }
@@ -1138,7 +1153,7 @@
   @media (max-width: 960px) { .live-layout { grid-template-columns: 1fr; } }
   @media (max-width: 700px) { .live-layout .live-grid { grid-template-columns: 1fr; } }
   @media (max-width: 700px) { .live-fold-grid { grid-template-columns: 1fr; } }
-  @media (max-width: 400px) { .live-team { padding: 10px; } .live-team .logo-chip.xs,
+  @media (max-width: 400px) { .live-team { padding: 10px; } .live-team .logo-mark.xs,
     .live-team .monogram.xs { width: 39px; height: 39px; } .live-team .team-link-name { font-size: 15px; }
     .live-card .gc-foot { font-size: 10px; } }
   .empty-note {
@@ -1205,7 +1220,6 @@
   .directory-grid > li:hover { border-color:var(--amber); }
   .directory-card { border:0; border-radius:0; padding:20px; background:transparent; }
   .directory-stadiums { border:0; border-radius:0; margin:0; padding:0 20px 18px; background:transparent; }
-  .directory-card .logo-chip { border:0; box-shadow:none; background:transparent!important; }
   .stadium-layout { grid-template-columns:minmax(0,3fr) minmax(230px,1fr); }
   .stadium-map { width:100%; max-height:none; min-height:420px; }
   .stadium-map a circle { r:5; }
@@ -1496,14 +1510,25 @@ function logoMarkup(name, kind, size, yearOverride) {
   const dataSource = (kind === 'conf') ? DATED_CONFERENCE_LOGOS : DATED_LOGOS;
   const entry = pickDatedLogoEntry(dataSource, name, year);
   if (entry) {
-    // A colored chip (drawn from the logo's own secondary/accent color,
-    // computed at build time -- see build_dated_logo_assets.py's
-    // extract_secondary_color()) sits behind the logo image. Some logos
-    // are nearly invisible against the dashboard's dark background once
-    // their background is transparent (dark-colored or thin-lined
-    // marks especially) -- a chip in the logo's own color gives every
-    // logo real contrast without an arbitrary/unrelated backdrop color.
-    return '<span class="logo-chip' + sizeClass + '" style="background:' + entry.bg + '">'
+    // The mark stands on the page. Where the set carries ESPN's light-ink
+    // artwork, the dark theme gets that one and the light theme the colour
+    // mark: <picture> picks by the same media query the palette uses, so the
+    // browser downloads one image and swaps it live if the reader's system
+    // theme changes. (A forced data-theme does not reach a media query, which
+    // is why that override is a debugging escape hatch and not a toggle.)
+    // Only a mark measured as dim against the page it lands on takes a plate,
+    // which is a wash of the page's own ink -- see is_dim_on() in
+    // src/export_logo_files.py.
+    const dim = entry.dim || [];
+    const markClass = 'logo-mark' + sizeClass +
+      (dim.includes('dark') ? ' dim-dark' : '') + (dim.includes('light') ? ' dim-light' : '');
+    if (entry.darkSrc) {
+      return '<picture class="' + markClass + '">'
+        + '<source srcset="' + entry.src + '" media="(prefers-color-scheme: light)">'
+        + '<img class="logo-img" src="' + entry.darkSrc + '" alt="" loading="lazy">'
+        + '</picture>';
+    }
+    return '<span class="' + markClass + '">'
       + '<img class="logo-img" src="' + entry.src + '" alt="" loading="lazy">'
       + '</span>';
   }
@@ -4808,7 +4833,7 @@ function liveTeam(t, g, pct, live) {
     'Elo ' + (Number.isFinite(elo) ? elo.toFixed(0) : 'unrated') + '</span></span>';
   return '<div class="live-team' + (TEAM_PANELS[name] ? ' team-panel' : '') + (won ? ' is-winning' : lost ? ' is-losing' : '') +
     '" style="--team-brand:' + brand + ';' + teamPanelStyle(name) + '">' +
-    (logo && !TEAM_PANELS[name] ? '<img class="live-watermark" src="' + esc(logo.src) + '" alt="" aria-hidden="true" loading="lazy">' : '') +
+    (logo && !TEAM_PANELS[name] ? '<img class="live-watermark" src="' + esc(logo.darkSrc || logo.src) + '" alt="" aria-hidden="true" loading="lazy">' : '') +
     '<span class="name-cell">' + teamAnchor(name, identity) + '</span><span class="live-right">' +
     (g.status === 'scheduled'
       ? '<span class="live-odds" title="Pregame win chance">' + (chance == null ? 'N/A' : chance + '%') + '</span>'
@@ -7080,7 +7105,7 @@ function playerPlate(player, season) {
   // the schema are deliberately empty rather than absent, so the day a source
   // clears, nothing here has to change for it to appear.
   if (player && player.headshot_url) {
-    return '<span class="logo-chip lg"><img class="logo-img" src="' + esc(player.headshot_url) +
+    return '<span class="logo-mark lg"><img class="logo-img" src="' + esc(player.headshot_url) +
       '" alt="' + esc(player.display_name || '') + '" loading="lazy"></span>';
   }
   const jersey = season && season.jersey != null ? season.jersey : null;

@@ -82,20 +82,20 @@ def test_a_first_round_card_fits_the_row_it_is_placed_in(shell):
         f"the row is {row}px but a first-round card needs at least {needed}px")
 
 
-def test_the_bracket_sizes_its_own_team_chip(shell):
-    """The site-wide chip is far taller than a bracket row, and a bracket that
+def test_the_bracket_sizes_its_own_team_mark(shell):
+    """The site-wide mark is far taller than a bracket row, and a bracket that
     inherits it overflows the panel. The override has to be scoped to the
     bracket, so the rest of the page's logos keep their own size."""
-    scoped = rule(shell, ".bracket-tree .logo-chip")
-    bracket_chip = px(rule(shell, ".bracket-tree"), "--bracket-logo")
-    site_chip = px(rule(shell, ".logo-chip.sm"), "height")
+    scoped = rule(shell, ".bracket-tree .logo-mark")
+    bracket_mark = px(rule(shell, ".bracket-tree"), "--bracket-logo")
+    site_mark = px(rule(shell, ".logo-mark.sm"), "height")
 
-    assert "var(--bracket-logo" in scoped, "the scoped chip ignores --bracket-logo"
-    assert bracket_chip < site_chip, (
-        f"the bracket's chip ({bracket_chip}px) is not smaller than the site's "
-        f"({site_chip}px), so scoping it buys nothing")
-    assert bracket_chip <= px(rule(shell, ".bracket-tree"), "--bracket-team-row"), (
-        "a chip taller than a team row pushes the row open again")
+    assert "var(--bracket-logo" in scoped, "the scoped mark ignores --bracket-logo"
+    assert bracket_mark < site_mark, (
+        f"the bracket's mark ({bracket_mark}px) is not smaller than the site's "
+        f"({site_mark}px), so scoping it buys nothing")
+    assert bracket_mark <= px(rule(shell, ".bracket-tree"), "--bracket-team-row"), (
+        "a mark taller than a team row pushes the row open again")
 
 
 def test_the_tree_scrolls_sideways_and_not_down(shell):
