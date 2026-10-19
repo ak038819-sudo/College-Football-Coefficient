@@ -7,12 +7,9 @@
   'use strict';
   const views = {
     people: [], stats: ['overview', 'teams', 'players', 'adjusted', 'awards'], home: [], live: [], games: [], matchups: [], teams: ['', 'stadiums'], methodology: [], coverage: [], accuracy: [],
-    // 'conference-coe' is CoE v1's five-year rolling value, which INCLUDES the
-    // current season and feeds the live playoff model. 'conference-coe2' is CoE
-    // 2.0's frozen value ENTERING the season. Separate views with separate names,
-    // for the same reason they are separate tables: they must never be read as
-    // one number.
-    rankings: ['top25', 'elo', 'conference-standings', 'schedule', 'home-field', 'conference-elo', 'conference-history', 'team-coe', 'conference-coe', 'conference-coe2', 'elo-weekly'],
+    // Merits is the default; old 2.0 bookmarks remain valid. The 1.0
+    // comparison is explicit at conference-coe-v1.
+    rankings: ['top25', 'elo', 'conference-standings', 'schedule', 'home-field', 'conference-elo', 'conference-history', 'team-coe', 'conference-coe', 'conference-coe2', 'conference-coe-v1', 'elo-weekly'],
     playoff: ['field', 'projection', 'bracket', 'odds', 'history']
   };
   // Detail-page tabs (Milestone E). The first entry is the default and is left out

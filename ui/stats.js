@@ -12,7 +12,7 @@
     // Derived from the sums above, never from a second source: YDS/CMP, carries
     // per TD, catches and tackles per game, extra-point rate, assisted tackles
     // (TKL - SOLO, the standard decomposition), and a team's own W-L for context.
-    ypc:'YDS/CMP',tdRate:'CAR/TD',recPg:'REC/G',tacklesPg:'TKL/G',xpPct:'XP %',assisted:'AST',record:'Team W-L',wins:'Wins',losses:'Losses',pointsFor:'Points',pointsAgainst:'Opp points',ppg:'PTS/G',oppPpg:'Opp PTS/G',passYards:'Pass YDS',rushYards:'Rush YDS',passYpg:'Pass YDS/recorded G',rushYpg:'Rush YDS/recorded G',boxGames:'Box score G',elo:'Elo',coefficient:'Season CoE',rolling:'5-year CoE',change:'Last-game Δ Elo'};
+    ypc:'YDS/CMP',tdRate:'CAR/TD',recPg:'REC/G',tacklesPg:'TKL/G',xpPct:'XP %',assisted:'AST',record:'Team W-L',wins:'Wins',losses:'Losses',pointsFor:'Points',pointsAgainst:'Opp points',ppg:'PTS/G',oppPpg:'Opp PTS/G',passYards:'Pass YDS',rushYards:'Rush YDS',passYpg:'Pass YDS/recorded G',rushYpg:'Rush YDS/recorded G',boxGames:'Box score G',elo:'Elo',coefficient:'Season Merits',rolling:'Legacy 5-year Merits',change:'Last-game Δ Elo'};
   const num=value=>{if(value==null||String(value).trim()==='')return null;const n=Number(String(value).replaceAll(',','').replace(/%$/,''));return Number.isFinite(n)?n:null;};
   function sortRows(rows,key,dir='desc',type='number') {
     return rows.map((r,i)=>({r,i})).sort((a,b)=>{

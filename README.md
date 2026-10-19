@@ -325,3 +325,7 @@ The pipeline is deterministic given a fixed `--draw-seed` and unchanged database
 ## Legacy / Archived
 
 The project originally used a discrete win/OT-loss/loss point system, drafted in `docs/coe_spec.md`. That system and everything built on it (bounty multiplier, conference champion derivation, Year 1/Year 2 qualifier and draw scripts) is archived under `archive/discrete_coe_system_2026-09/` for reference. It is fully superseded by the models above. Its SQL tables (`team_coefficient_by_year`, `conference_coefficient_by_year`, `playoff_field_by_year`, etc., still defined in `sql/`) are no longer written to by anything in `src/`.ull data refresh remains separate.
+
+### Merits
+
+Merits is the public name for CoE 2.0 and the default achievement metric in team rankings, Stats, team headers, and conference rankings. Season totals include game awards plus the configured explicit bonuses. Conference five-season Merits covers the five seasons entering the selected year. Legacy Merits (1.0) remains available for comparison; its history still supplies the existing hybrid formula. No award formula, Elo calculation, or Elo-based CFP selection rule changed. Internal `coe2` data keys and historical URLs remain compatible.

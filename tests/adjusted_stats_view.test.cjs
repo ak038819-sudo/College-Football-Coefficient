@@ -278,7 +278,7 @@ test('a season whose metrics are all empty says so rather than drawing a table',
 
 test('the help text says what the numbers are not', () => {
   const {html} = view(withFiller(SEASON));
-  assert.match(html, /Nothing here feeds Elo, CoE, the playoff model or any prediction/);
+  assert.match(html, /Nothing here feeds Elo, Merits, the playoff model or any prediction/);
   assert.match(html, /Games against opponents this project does not rate are excluded/);
 });
 
