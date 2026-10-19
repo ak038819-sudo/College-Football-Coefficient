@@ -1,4 +1,6 @@
-# Marks for the FCS and lower schools this project rates nothing.
+# The logo artwork this site cannot build for itself: marks for the FCS and
+# lower schools it rates nothing, and the light-ink version of our own teams'
+# current marks (the file name is older than the second job).
 #
 # Run by hand. It lives apart from ci-and-deploy.yml because it is the only job
 # that reaches the sportsdataverse logo archive, and because it has no schedule
@@ -7,7 +9,7 @@
 # The images are committed rather than fetched at build time for the reason the
 # dated set is: a deploy must not depend on somebody else's CDN, and the archive
 # grants no service.
-name: Fetch non-FBS logos
+name: Fetch logo artwork
 
 on:
   workflow_dispatch:
@@ -41,13 +43,20 @@ jobs:
         run: pip install -r requirements-dev.txt
 
       - name: Resolve and report
-        run: python3 src/fetch_non_fbs_logos.py --dry-run
+        run: |
+          set -euo pipefail
+          python3 src/fetch_non_fbs_logos.py --dry-run
+          python3 src/fetch_team_dark_logos.py --dry-run
 
       - name: Fetch the marks and rebuild the logo manifest
         if: ${{ !inputs.dry_run }}
         run: |
           set -euo pipefail
           python3 src/fetch_non_fbs_logos.py
+          # The light-ink artwork for our own teams' current marks, which the
+          # dated set has no version of: it is what lets a logo sit on a dark
+          # page with nothing behind it.
+          python3 src/fetch_team_dark_logos.py
           # The manifest and the image files the page actually fetches are
           # derived from the committed sets, here as on a deploy, so that the
           # source, the manifest and the files land in one commit rather than
@@ -60,9 +69,11 @@ jobs:
           PUBLISH_BRANCH: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          scripts/publish_to_main.sh "Fetch non-FBS opponent logos [skip ci]" \
-            ui/non_fbs_logo_assets.json ui/logo_manifest.json ui/assets/logos/ \
-            data/reference/non_fbs_logo_sources.csv
+          scripts/publish_to_main.sh "Fetch logo artwork [skip ci]" \
+            ui/non_fbs_logo_assets.json ui/dated_logo_dark_assets.json \
+            ui/logo_manifest.json ui/assets/logos/ \
+            data/reference/non_fbs_logo_sources.csv \
+            data/reference/team_dark_logo_sources.csv
 
       # The commit above carries [skip ci], so nothing rebuilds on its own: the
       # marks reach the site on the next deploy, dispatched by hand or by the

@@ -105,28 +105,62 @@ python3 src/fetch_non_fbs_logos.py             # fetch, then write the set
 python3 src/export_logo_files.py               # manifest + the files the page fetches
 ```
 
-In CI: dispatch **Fetch non-FBS logos**
+In CI: dispatch **Fetch logo artwork**
 (`.github/workflows/fetch-non-fbs-logos.yml`), which does all three and commits
 `ui/non_fbs_logo_assets.json`, `ui/logo_manifest.json`, `ui/assets/logos/` and
 the provenance file. It commits with `[skip ci]`, so dispatch
 `ci-and-deploy.yml` afterwards or the marks never reach the site.
+
+That workflow also runs `src/fetch_team_dark_logos.py`, which fetches the same
+light-ink artwork for the 139 teams this project rates. Their dated set has no
+version of it: it is built from a folder of era PNGs outside this repository
+and carries the colour mark alone. So the artwork is written as an OVERLAY,
+`ui/dated_logo_dark_assets.json`, keyed by team and carrying the era it was
+fetched for; `src/export_logo_files.py` attaches it to that era and no other,
+because ESPN serves today's mark and a 1985 page has to keep its 1985 one. A
+redrawn logo gives the team a new era, which leaves the overlay naming one that
+no longer exists -- that is reported as stale and dropped rather than attached
+to the wrong season. The join is the ESPN id `data/reference/team_identities.json`
+already records for all 139 teams, so no name is matched there at all.
 
 Run it when a new opponent appears on a schedule, or when a school has redrawn
 its mark. The archive re-captures monthly, so a redrawn mark shows up there
 within a month of the provider serving it; the script takes the newest capture
 of each mark.
 
-Each image is flood-filled to remove a white background, resized to 96 px and
+Each image is flood-filled to remove a white background, resized to 256 px and
 given a chip colour drawn from its own pixels -- the same treatment, through the
-same functions, as the dated set.
+same functions, as the dated set. 256 is the largest any mark is drawn at on a
+2x screen (the game-page hero chip is 140 CSS px), so a bigger file buys
+nothing; the archive's masters are 500 px, so nothing is upscaled either.
+
+## Two artworks per school
+
+ESPN publishes a second logo for every team it can: the colour mark, which
+reads on a light page, and a light-ink version meant for dark ones. The archive
+carries both, as `variant` rows under one entity id, and the fetcher takes the
+newest capture of each independently.
+
+A school's entry therefore holds `data` (colour) and, where the archive has
+one, `dark`. The dark artwork goes through the same resize but NOT the white
+flood fill (`encode_resized(..., remove_white=False)`): white is its ink, not
+its background. The two are exported as two files, `0-now.png` and
+`0-now-dark.png`, and the manifest entry carries `src` and `darkSrc`.
+
+A missing dark artwork costs a school nothing it had before -- the page falls
+back to the colour mark -- so it is reported (`missing_dark`) and never fatal.
+A dark image the archive will not serve is the same: `dark_failed`, the school
+keeps its colour mark. Both do count toward the outage rule, because an archive
+that has stopped serving anything should stop the run.
 
 ## What is written down
 
 | File | What it holds |
 | --- | --- |
-| `ui/non_fbs_logo_assets.json` | `{opponent_name: [{start: 0, end: null, data, bg}]}`, the committed source set |
-| `data/reference/non_fbs_logo_sources.csv` | one row per school: its ESPN id and display name, the archive's source and sha256, and the URL the image came from -- or empty columns where it has no mark |
+| `ui/non_fbs_logo_assets.json` | `{opponent_name: [{start: 0, end: null, data, bg, dark?}]}`, the committed source set |
+| `data/reference/non_fbs_logo_sources.csv` | one row per school: its ESPN id and display name, the archive's source, sha256 and URL for the colour mark, and `dark_sha256`/`dark_archive_url` for the light-ink one -- or empty columns where it has no mark |
 | `ui/assets/logos/non_fbs/<slug>/0-now.png` | what the browser actually fetches, derived by `src/export_logo_files.py` |
+| `ui/assets/logos/non_fbs/<slug>/0-now-dark.png` | the light-ink artwork, where the archive has one |
 
 The provenance file is the record of which school got which mark, so a wrong
 logo can be traced to the id it was taken from rather than re-derived.
