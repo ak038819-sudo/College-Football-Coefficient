@@ -1082,11 +1082,14 @@
     background-position: center 55%;
   }
   .team-panel .logo-chip { background: transparent !important; border-color: transparent !important; box-shadow: none !important; }
-  /* Panel rows carry their own ink: the gold link colour is mid-luminance, so
-     it loses against the bright half of a two-tone panel however dark the
-     scrim is. */
   .team-panel .team-link-name, .team-panel .live-rating, .team-panel .live-odds,
-  .mini-board li.team-panel .v, .team-panel .rk { color: #f8f9f5; text-shadow: 0 1px 3px #000; }
+  .team-panel .v, .team-panel .rk, .team-panel .live-rank { text-shadow: 0 1px 3px #000; }
+  /* The two labels that would otherwise take the mid-luminance link gold, which
+     loses against the bright half of a two-tone panel however dark the scrim
+     is. Every other label on a panel row is already given a light colour by its
+     own later rule, so this does not list them: a declaration the cascade
+     throws away reads as protection that is not there. */
+  .team-panel .team-link-name, .mini-board li.team-panel .v { color: #f8f9f5; }
   .mini-board li.team-panel { border-radius: 3px; }
   .mini-board li.team-panel .rk { color: #e1e9e3; }
   .live-team.is-losing { filter: saturate(.72); }
