@@ -9876,7 +9876,7 @@ function render() {
   else if (state.section === 'live') { content.innerHTML = renderLiveScores(); hydrateLiveScores(version); }
   else if (state.section === 'rankings') {
     const views = { elo: renderElo, 'conference-standings': renderConferenceStandings, 'home-field': renderHomeFieldStandings, 'conference-elo': renderConferenceElo, 'conference-history': renderConferenceHistory, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferenceCoe2, 'conference-coe-v1': renderConferences,
-      'conference-coe2': renderConferenceCoe2, 'elo-weekly': renderEloWeekly,
+      'elo-weekly': renderEloWeekly,
       schedule: renderScheduleStrength,
       top25: renderTop25Boards };
     content.innerHTML = views[state.subview]();

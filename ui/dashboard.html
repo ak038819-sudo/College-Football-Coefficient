@@ -1517,7 +1517,7 @@
 </script>
 <script src="geography.js?v=4017799eb6cf"></script>
 <script src="stats.js?v=43e2926a3bdc"></script>
-<script src="navigation.js?v=a6262279353f"></script>
+<script src="navigation.js?v=b994e39ddcc8"></script>
 <script src="live_teams.js?v=839a9d9c16b6"></script>
 <script src="search.js?v=3a1460ff4b97"></script>
 <script src="favorites.js?v=f60a9b0ee68c"></script>
@@ -9877,7 +9877,7 @@ function render() {
   else if (state.section === 'live') { content.innerHTML = renderLiveScores(); hydrateLiveScores(version); }
   else if (state.section === 'rankings') {
     const views = { elo: renderElo, 'conference-standings': renderConferenceStandings, 'home-field': renderHomeFieldStandings, 'conference-elo': renderConferenceElo, 'conference-history': renderConferenceHistory, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferenceCoe2, 'conference-coe-v1': renderConferences,
-      'conference-coe2': renderConferenceCoe2, 'elo-weekly': renderEloWeekly,
+      'elo-weekly': renderEloWeekly,
       schedule: renderScheduleStrength,
       top25: renderTop25Boards };
     content.innerHTML = views[state.subview]();
