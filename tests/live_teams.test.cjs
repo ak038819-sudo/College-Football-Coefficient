@@ -176,34 +176,41 @@ test('the panel scrim never thins to where artwork can swallow the labels', () =
   }
 });
 
-test('the narrow-width scrim is darker, because a phone row crops the artwork differently', () => {
-  // A 390px row shows a different part of the same picture and the label runs
-  // further across the scrim, so the wide-screen middle stop is not enough:
-  // measured in a browser at 390x844, Tennessee's and Kentucky's names came out
-  // at 4.19:1 and their Elo ratings at 3.64:1 and 3.59:1 with the middle stop
-  // at 55%. 65% is the lightest middle that holds all forty labels above
-  // 4.5:1 there; 60% leaves the worst at 4.14:1.
+test('nothing lightens the panel scrim at any width', () => {
+  // How much cover a label needs follows the width of its ROW, not the
+  // viewport, and the narrowest scoreboard card is not on a phone: at about
+  // 961px the sidebar returns while the cards are still two to a row, and the
+  // worst label there measured 3.26:1 with a 55% middle stop. A breakpoint
+  // cannot express that, so the scrim is one floor everywhere -- which only
+  // holds if no media query quietly puts a lighter one back.
   const styles = shell.slice(0, shell.indexOf('</style>'));
+  const base = styles.match(/\.live-team\.team-panel, \.mini-board li\.team-panel \{[\s\S]*?\n  \}/)?.[0];
+  assert.ok(base, 'missing the shared panel background rule');
+  const middles = text => {
+    const gradient = text.match(/linear-gradient\([^;]*--panel-art/)?.[0];
+    if (!gradient) return null;
+    const stops = [...gradient.matchAll(/#[0-9a-f]{6}([0-9a-f]{2})/g)].map(m => parseInt(m[1], 16) / 255);
+    assert.ok(stops.length >= 3, 'expected the scrim to be a gradient of at least three stops');
+    return Math.min(...stops.slice(1, -1));
+  };
+  const floor = middles(base);
+  assert.ok(floor >= 0.65, 'a middle stop at ' + Math.round(floor * 100) +
+    '% measured below 4.5:1 on the two checkerboard panels');
+
   // Balanced braces, not a lazy match: this stylesheet has one-line media
   // queries, and a regex that stops at the first closing brace on its own line
   // runs straight past them into unrelated rules.
-  const queries = [];
-  for (const m of styles.matchAll(/@media\s*\(max-width:\s*(\d+)px\)\s*\{/g)) {
+  for (const m of styles.matchAll(/@media[^{]*\{/g)) {
     let depth = 1, i = m.index + m[0].length;
     for (; i < styles.length && depth; i++) {
       if (styles[i] === '{') depth++;
       else if (styles[i] === '}') depth--;
     }
-    queries.push([null, m[1], styles.slice(m.index + m[0].length, i - 1)]);
+    const inner = middles(styles.slice(m.index, i));
+    if (inner === null) continue;
+    assert.ok(inner >= floor, m[0].trim() + ' sets a middle stop of ' + Math.round(inner * 100) +
+      '%, lighter than the ' + Math.round(floor * 100) + '% floor the panels were measured against');
   }
-  const narrow = queries.find(m => /\.live-team\.team-panel[\s\S]*?background-image:[^;]*--panel-art/.test(m[2]));
-  assert.ok(narrow, 'no narrow-width rule darkens the panel scrim, so a phone keeps the wide-screen one');
-  assert.ok(Number(narrow[1]) >= 700, 'the narrow scrim starts at ' + narrow[1] + 'px, which leaves phone widths on the wide one');
-  const stops = [...narrow[2].matchAll(/#[0-9a-f]{6}([0-9a-f]{2})/g)].map(m => parseInt(m[1], 16) / 255);
-  assert.ok(stops.length >= 3, 'expected the narrow scrim to be a gradient of at least three stops');
-  const middle = Math.min(...stops.slice(1, -1));
-  assert.ok(middle >= 0.65, 'a narrow-width middle stop at ' + Math.round(middle * 100) +
-    '% measured below 4.5:1 on the two checkerboard panels');
 });
 
 test('panel labels carry their own light ink, and the cascade lets them keep it', () => {
