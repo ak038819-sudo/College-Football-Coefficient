@@ -116,17 +116,39 @@ its mark. The archive re-captures monthly, so a redrawn mark shows up there
 within a month of the provider serving it; the script takes the newest capture
 of each mark.
 
-Each image is flood-filled to remove a white background, resized to 96 px and
+Each image is flood-filled to remove a white background, resized to 256 px and
 given a chip colour drawn from its own pixels -- the same treatment, through the
-same functions, as the dated set.
+same functions, as the dated set. 256 is the largest any mark is drawn at on a
+2x screen (the game-page hero chip is 140 CSS px), so a bigger file buys
+nothing; the archive's masters are 500 px, so nothing is upscaled either.
+
+## Two artworks per school
+
+ESPN publishes a second logo for every team it can: the colour mark, which
+reads on a light page, and a light-ink version meant for dark ones. The archive
+carries both, as `variant` rows under one entity id, and the fetcher takes the
+newest capture of each independently.
+
+A school's entry therefore holds `data` (colour) and, where the archive has
+one, `dark`. The dark artwork goes through the same resize but NOT the white
+flood fill (`encode_resized(..., remove_white=False)`): white is its ink, not
+its background. The two are exported as two files, `0-now.png` and
+`0-now-dark.png`, and the manifest entry carries `src` and `darkSrc`.
+
+A missing dark artwork costs a school nothing it had before -- the page falls
+back to the colour mark -- so it is reported (`missing_dark`) and never fatal.
+A dark image the archive will not serve is the same: `dark_failed`, the school
+keeps its colour mark. Both do count toward the outage rule, because an archive
+that has stopped serving anything should stop the run.
 
 ## What is written down
 
 | File | What it holds |
 | --- | --- |
-| `ui/non_fbs_logo_assets.json` | `{opponent_name: [{start: 0, end: null, data, bg}]}`, the committed source set |
-| `data/reference/non_fbs_logo_sources.csv` | one row per school: its ESPN id and display name, the archive's source and sha256, and the URL the image came from -- or empty columns where it has no mark |
+| `ui/non_fbs_logo_assets.json` | `{opponent_name: [{start: 0, end: null, data, bg, dark?}]}`, the committed source set |
+| `data/reference/non_fbs_logo_sources.csv` | one row per school: its ESPN id and display name, the archive's source, sha256 and URL for the colour mark, and `dark_sha256`/`dark_archive_url` for the light-ink one -- or empty columns where it has no mark |
 | `ui/assets/logos/non_fbs/<slug>/0-now.png` | what the browser actually fetches, derived by `src/export_logo_files.py` |
+| `ui/assets/logos/non_fbs/<slug>/0-now-dark.png` | the light-ink artwork, where the archive has one |
 
 The provenance file is the record of which school got which mark, so a wrong
 logo can be traced to the id it was taken from rather than re-derived.

@@ -50,7 +50,7 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_dated_logo_assets import TARGET_SIZE, encode_resized  # noqa: E402
+from build_dated_logo_assets import encode_resized  # noqa: E402
 from cfbd_http import with_retries  # noqa: E402
 from team_identity import canonical_name, normalize  # noqa: E402
 
@@ -63,6 +63,15 @@ SOURCES = REPO / "data/reference/non_fbs_logo_sources.csv"
 
 MANIFEST_URL = "https://raw.githubusercontent.com/sportsdataverse/sdv-assets/main/manifest/marks.csv"
 TIMEOUT = 60.0
+# The archive serves 500px masters. 256 is the largest size any chip on the
+# site draws on a 2x screen (the game-page hero is 140 CSS px), so it is the
+# point past which a bigger file buys nothing.
+MARK_SIZE = 256
+# ESPN publishes two artworks per team: the full-colour mark, which reads on a
+# light page, and a light-ink version for dark ones. The page picks by theme,
+# which is what lets a logo sit on the page with no backdrop behind it.
+DEFAULT_VARIANT = "default"
+DARK_VARIANT = "dark"
 # What tells a stale manifest row (one school, skipped) from the archive being
 # down (nothing written): more than a tenth of the attempts failing, and more
 # than a handful of them, or nothing downloading at all.
@@ -152,23 +161,28 @@ def resolve(names: list[str], directory: dict[str, list[dict]]) -> tuple[dict[st
     return matched, unmatched, ambiguous
 
 
-def sdv_default_marks(manifest_csv: str) -> dict[str, dict]:
-    """ESPN team id -> the archive's current default college-football logo for it.
+def sdv_marks(manifest_csv: str,
+              variants: tuple[str, ...] = (DEFAULT_VARIANT, DARK_VARIANT)) -> dict[str, dict[str, dict]]:
+    """ESPN team id -> {variant: the archive's current college-football logo of it}.
 
     One row per mark and image, so a mark whose bytes have changed since the
     archive started looking appears more than once. The newest capture
-    (`last_seen`) is the one the provider is serving now.
+    (`last_seen`) is the one the provider is serving now. A team without a dark
+    variant simply has no entry under that key; 15 of the archive's 687 teams
+    are in that position.
     """
-    marks: dict[str, dict] = {}
+    marks: dict[str, dict[str, dict]] = {}
     for row in csv.DictReader(io.StringIO(manifest_csv)):
-        if (row["league"], row["level"], row["mark_type"], row["variant"]) != \
-                ("cfb", "team", "logo", "default"):
+        if (row["league"], row["level"], row["mark_type"]) != ("cfb", "team", "logo"):
+            continue
+        if row["variant"] not in variants:
             continue
         if row["ext"] != "png":
             continue  # the pipeline here writes PNG; the handful of SVGs are not usable as-is
-        current = marks.get(row["entity_id"])
+        by_variant = marks.setdefault(row["entity_id"], {})
+        current = by_variant.get(row["variant"])
         if current is None or row["last_seen"] > current["last_seen"]:
-            marks[row["entity_id"]] = row
+            by_variant[row["variant"]] = row
     return marks
 
 
@@ -176,6 +190,14 @@ def fetch(url: str, *, timeout: float = TIMEOUT, opener=None) -> bytes:
     """A retried GET of raw bytes. urllib, not requests: see cfbd_http.get_json."""
     get = opener or (lambda: urllib.request.urlopen(url, timeout=timeout).read())
     return with_retries(get, describe=f"GET {url}")
+
+
+def encode_bytes(raw: bytes, size: int, *, remove_white: bool = True) -> tuple[str, str]:
+    """Run downloaded PNG bytes through the dated set's own image pipeline."""
+    with tempfile.NamedTemporaryFile(suffix=".png") as handle:
+        handle.write(raw)
+        handle.flush()
+        return encode_resized(Path(handle.name), size, remove_white=remove_white)
 
 
 def dated_entries(name: str, dated: dict) -> list[dict] | None:
@@ -191,7 +213,7 @@ def dated_entries(name: str, dated: dict) -> list[dict] | None:
     return [dict(e) for e in entries] if entries else None
 
 
-def build(*, dry_run: bool = False, size: int = TARGET_SIZE, manifest_url: str = MANIFEST_URL,
+def build(*, dry_run: bool = False, size: int = MARK_SIZE, manifest_url: str = MANIFEST_URL,
           out: Path = OUT, sources_out: Path = SOURCES, raw_dir: Path = RAW,
           directory_path: Path = DIRECTORY, dated_path: Path = DATED_TEAMS,
           fetcher=fetch) -> dict:
@@ -205,11 +227,12 @@ def build(*, dry_run: bool = False, size: int = TARGET_SIZE, manifest_url: str =
 
     report = {"opponents": len(names), "matched": len(matched), "unmatched": unmatched,
               "ambiguous": ambiguous, "aliased_to_dated_set": sorted(aliases),
-              "fetched": 0, "missing_in_archive": [], "fetch_failed": []}
+              "fetched": 0, "missing_in_archive": [], "fetch_failed": [],
+              "dark_fetched": 0, "missing_dark": [], "dark_failed": []}
     if dry_run:
         return report
 
-    marks = sdv_default_marks(fetcher(manifest_url).decode("utf-8"))
+    marks = sdv_marks(fetcher(manifest_url).decode("utf-8"))
     result: dict[str, list[dict]] = {}
     rows = []
     for name in names:
@@ -222,7 +245,8 @@ def build(*, dry_run: bool = False, size: int = TARGET_SIZE, manifest_url: str =
                          "source": "dated set", "sha256": "", "archive_url": ""})
             continue
         team = matched.get(name)
-        mark = marks.get(team["id"]) if team else None
+        by_variant = marks.get(team["id"], {}) if team else {}
+        mark = by_variant.get(DEFAULT_VARIANT)
         if mark is None:
             if team is not None:
                 report["missing_in_archive"].append(name)
@@ -251,24 +275,47 @@ def build(*, dry_run: bool = False, size: int = TARGET_SIZE, manifest_url: str =
         digest = hashlib.sha256(raw).hexdigest()
         if digest != mark["sha256"]:
             raise ValueError(f"{name}: archive served {digest} where the manifest says {mark['sha256']}")
-        with tempfile.NamedTemporaryFile(suffix=".png") as handle:
-            handle.write(raw)
-            handle.flush()
-            data, bg = encode_resized(Path(handle.name), size)
+        data, bg = encode_bytes(raw, size)
         # The id travels with the mark. The live scoreboard names a school the
         # way ESPN does, mascot and all, and a school this project does not hold
         # has no canonical name to fall back on -- so the page finds its mark by
         # the feed's team id, which is this id (CFBD's scoreboard ids are ESPN's;
         # all 124 teams in the feed on 2026-10-18 matched the directory by id).
-        result[name] = [{"start": UNDATED_START, "end": None, "data": data, "bg": bg,
-                         "espn": team["id"]}]
+        entry = {"start": UNDATED_START, "end": None, "data": data, "bg": bg,
+                 "espn": team["id"]}
         report["fetched"] += 1
-        rows.append({"opponent_name": name, "espn_id": team["id"],
-                     "espn_display_name": team["displayName"], "source": mark["source"],
-                     "sha256": mark["sha256"], "archive_url": mark["archive_url"]})
+        row = {"opponent_name": name, "espn_id": team["id"],
+               "espn_display_name": team["displayName"], "source": mark["source"],
+               "sha256": mark["sha256"], "archive_url": mark["archive_url"],
+               "dark_sha256": "", "dark_archive_url": ""}
+        # The light-ink artwork for dark pages. Its absence costs this school
+        # nothing it had before -- the page falls back to the colour mark -- so
+        # a missing or unservable dark variant is recorded, never fatal on its
+        # own. White is NOT flood-filled out of it: white is its ink.
+        dark = by_variant.get(DARK_VARIANT)
+        if dark is None:
+            report["missing_dark"].append(name)
+        else:
+            try:
+                raw_dark = fetcher(dark["archive_url"])
+            except Exception as error:  # noqa: BLE001 -- reported, and counted below
+                print(f"{name}: dark {dark['archive_url']} failed "
+                      f"({type(error).__name__}: {error})", flush=True)
+                report["dark_failed"].append(name)
+            else:
+                digest = hashlib.sha256(raw_dark).hexdigest()
+                if digest != dark["sha256"]:
+                    raise ValueError(f"{name} (dark): archive served {digest} where the "
+                                     f"manifest says {dark['sha256']}")
+                entry["dark"], _ = encode_bytes(raw_dark, size, remove_white=False)
+                report["dark_fetched"] += 1
+                row["dark_sha256"] = dark["sha256"]
+                row["dark_archive_url"] = dark["archive_url"]
+        result[name] = [entry]
+        rows.append(row)
 
-    failed = len(report["fetch_failed"])
-    attempted = report["fetched"] + failed
+    failed = len(report["fetch_failed"]) + len(report["dark_failed"])
+    attempted = report["fetched"] + report["dark_fetched"] + failed
     outage = failed and (not report["fetched"] or
                          (failed > FETCH_FAILURE_TOLERATED and failed > attempted * FETCH_FAILURE_LIMIT))
     if outage:
@@ -280,7 +327,8 @@ def build(*, dry_run: bool = False, size: int = TARGET_SIZE, manifest_url: str =
     Path(out).write_text(json.dumps(result), encoding="utf-8")
     with Path(sources_out).open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=["opponent_name", "espn_id", "espn_display_name",
-                                                    "source", "sha256", "archive_url"])
+                                                    "source", "sha256", "archive_url",
+                                                    "dark_sha256", "dark_archive_url"])
         writer.writeheader()
         writer.writerows(rows)
     report["written"] = len(result)
@@ -292,7 +340,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true",
                         help="resolve the names and report, without touching the network")
-    parser.add_argument("--size", type=int, default=TARGET_SIZE)
+    parser.add_argument("--size", type=int, default=MARK_SIZE)
     parser.add_argument("--manifest-url", default=MANIFEST_URL)
     parser.add_argument("--out", default=str(OUT))
     args = parser.parse_args()

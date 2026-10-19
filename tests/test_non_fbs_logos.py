@@ -184,22 +184,38 @@ def manifest_csv(rows) -> str:
     return buffer.getvalue()
 
 
-def test_only_the_default_college_football_team_logo_is_taken():
+def test_only_college_football_team_logos_are_taken_and_only_the_two_variants():
     rows = [manifest_row(),
+            manifest_row(variant="dark", sha256="d", archive_url="https://cdn/d.png"),
             manifest_row(entity_id="1", league="nfl"),
             manifest_row(entity_id="2", level="conference"),
             manifest_row(entity_id="3", mark_type="wordmark"),
-            manifest_row(entity_id="4", variant="dark"),
+            manifest_row(entity_id="4", variant="scoreboard"),
             manifest_row(entity_id="5", ext="svg")]
-    assert sorted(fn.sdv_default_marks(manifest_csv(rows))) == ["2000"]
+    marks = fn.sdv_marks(manifest_csv(rows))
+    assert sorted(marks) == ["2000"]
+    # The two artworks of one school are two rows under one id, not two schools.
+    assert sorted(marks["2000"]) == [fn.DARK_VARIANT, fn.DEFAULT_VARIANT]
+
+
+def test_a_school_the_archive_has_no_dark_artwork_for_simply_has_none():
+    marks = fn.sdv_marks(manifest_csv([manifest_row()]))
+    assert sorted(marks["2000"]) == [fn.DEFAULT_VARIANT]
 
 
 def test_the_newest_capture_of_a_changed_mark_wins():
     # A school that rebrands gets a second row; the old one keeps its last_seen.
     rows = [manifest_row(sha256="old", archive_url="https://cdn/old.png", last_seen="2026-10-01"),
             manifest_row(sha256="new", archive_url="https://cdn/new.png", last_seen="2026-11-01")]
-    assert fn.sdv_default_marks(manifest_csv(rows))["2000"]["sha256"] == "new"
-    assert fn.sdv_default_marks(manifest_csv(list(reversed(rows))))["2000"]["sha256"] == "new"
+    assert fn.sdv_marks(manifest_csv(rows))["2000"][fn.DEFAULT_VARIANT]["sha256"] == "new"
+    assert fn.sdv_marks(manifest_csv(list(reversed(rows))))["2000"][fn.DEFAULT_VARIANT]["sha256"] == "new"
+    # And the newest of each variant is picked independently of the other.
+    rows.append(manifest_row(variant="dark", sha256="dark-old", last_seen="2026-09-28",
+                             archive_url="https://cdn/dark-old.png"))
+    rows.append(manifest_row(variant="dark", sha256="dark-new", last_seen="2026-11-02",
+                             archive_url="https://cdn/dark-new.png"))
+    marks = fn.sdv_marks(manifest_csv(rows))["2000"]
+    assert (marks[fn.DEFAULT_VARIANT]["sha256"], marks[fn.DARK_VARIANT]["sha256"]) == ("new", "dark-new")
 
 
 # ---------------- end to end ----------------
@@ -255,7 +271,98 @@ def test_a_fetched_mark_is_one_undated_entry_with_a_chip_color(world):
     assert entries[0]["bg"].startswith("#") and len(entries[0]["bg"]) == 7
     # Resized to the icon it is displayed as, not the 500px source.
     raw = base64.b64decode(entries[0]["data"].partition(",")[2])
-    assert max(Image.open(io.BytesIO(raw)).size) == fn.TARGET_SIZE
+    assert max(Image.open(io.BytesIO(raw)).size) == fn.MARK_SIZE
+
+
+def dark_png(size=(500, 500)) -> bytes:
+    """ESPN's dark-background artwork: light ink, nothing behind it."""
+    image = Image.new("RGBA", size, (255, 255, 255, 0))
+    image.paste(Image.new("RGBA", (size[0] // 2, size[1] // 2), (255, 255, 255, 255)), (10, 10))
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def with_dark(world, image=None, url="https://cdn/mercer-dark.png"):
+    """Give Mercer a dark artwork in the archive as well as a colour one."""
+    dark = image if image is not None else dark_png()
+    rows = [manifest_row(sha256=hashlib.sha256(world["image"]).hexdigest(),
+                         archive_url="https://cdn/mercer.png"),
+            manifest_row(variant="dark", sha256=hashlib.sha256(dark).hexdigest(),
+                         archive_url=url)]
+    served = {"https://manifest": manifest_csv(rows).encode("utf-8"),
+              "https://cdn/mercer.png": world["image"], url: dark}
+
+    def fetcher(url_asked):
+        world["calls"].append(url_asked)
+        if url_asked not in served:
+            raise OSError("404")
+        return served[url_asked]
+
+    world["fetcher"] = fetcher
+    world["dark"] = dark
+    return world
+
+
+def test_a_school_with_a_dark_artwork_carries_both(world):
+    report = run(with_dark(world))
+    entry = json.loads(world["out"].read_text(encoding="utf-8"))["Mercer"][0]
+    assert (report["fetched"], report["dark_fetched"]) == (1, 1)
+    assert report["missing_dark"] == []
+    # Same era, same school, two images: the second is not a second entry.
+    assert entry["dark"].startswith("data:image/png;base64,")
+    for key in ("data", "dark"):
+        raw = base64.b64decode(entry[key].partition(",")[2])
+        assert max(Image.open(io.BytesIO(raw)).size) == fn.MARK_SIZE
+    # White is the dark artwork's ink, so it is still there.
+    dark = Image.open(io.BytesIO(base64.b64decode(entry["dark"].partition(",")[2]))).convert("RGBA")
+    assert any(count and pixel[3] > 200 and min(pixel[:3]) > 240
+               for count, pixel in dark.getcolors(maxcolors=1 << 20)), "the light ink was stripped"
+
+
+def test_a_school_the_archive_has_no_dark_artwork_for_keeps_its_colour_mark(world):
+    report = run(world)
+    entry = json.loads(world["out"].read_text(encoding="utf-8"))["Mercer"][0]
+    assert report["missing_dark"] == ["Mercer"] and report["dark_fetched"] == 0
+    assert "dark" not in entry and entry["data"]
+
+
+def test_a_dark_artwork_that_will_not_download_costs_the_variant_not_the_school(world):
+    with_dark(world)
+    inner = world["fetcher"]
+
+    def fetcher(url):
+        if url.endswith("mercer-dark.png"):
+            raise OSError("404")
+        return inner(url)
+
+    report = run(world, fetcher=fetcher)
+    entry = json.loads(world["out"].read_text(encoding="utf-8"))["Mercer"][0]
+    assert report["dark_failed"] == ["Mercer"] and report["fetched"] == 1
+    assert "dark" not in entry and entry["data"]
+
+
+def test_dark_bytes_that_do_not_match_the_manifest_stop_the_run(world):
+    with_dark(world)
+    served_dark = world["dark"]
+    inner = world["fetcher"]
+
+    def fetcher(url):
+        if url.endswith("mercer-dark.png"):
+            inner(url)
+            return dark_png(size=(400, 400))  # a different image, so a different digest
+        return inner(url)
+
+    assert served_dark  # the manifest describes the one above, not this
+    with pytest.raises(ValueError, match="archive served"):
+        run(world, fetcher=fetcher)
+
+
+def test_the_dark_provenance_is_written_down_too(world):
+    run(with_dark(world))
+    rows = {r["opponent_name"]: r for r in csv.DictReader(world["sources"].open(encoding="utf-8"))}
+    assert rows["Mercer"]["dark_sha256"] == hashlib.sha256(world["dark"]).hexdigest()
+    assert rows["Mercer"]["dark_archive_url"] == "https://cdn/mercer-dark.png"
 
 
 def test_an_fbs_program_under_an_older_name_takes_its_own_dated_eras(world):
@@ -313,6 +420,61 @@ def test_the_non_fbs_marks_are_their_own_section_of_the_manifest(tmp_path):
     assert manifest["non_fbs"]["Mercer"][0]["src"].startswith("assets/logos/non_fbs/mercer/0-now.png?v=")
     assert (out / "non_fbs" / "mercer" / "0-now.png").exists()
     assert stats["non_fbs"] == {"names": 1, "files": 1}
+
+
+def test_the_dark_artwork_is_exported_as_its_own_file_beside_the_colour_one(tmp_path):
+    uri = "data:image/png;base64," + base64.b64encode(png_bytes()).decode()
+    dark_uri = "data:image/png;base64," + base64.b64encode(dark_png()).decode()
+    non_fbs = tmp_path / "non_fbs.json"
+    non_fbs.write_text(json.dumps({"Mercer": [{"start": 0, "end": None, "data": uri,
+                                               "bg": "#222222", "dark": dark_uri}]}),
+                       encoding="utf-8")
+    out, manifest_path = tmp_path / "logos", tmp_path / "manifest.json"
+    stats = lf.export({"non_fbs": non_fbs}, out, manifest_path)
+    entry = json.loads(manifest_path.read_text())["non_fbs"]["Mercer"][0]
+    assert entry["darkSrc"].startswith("assets/logos/non_fbs/mercer/0-now-dark.png?v=")
+    assert entry["src"].startswith("assets/logos/non_fbs/mercer/0-now.png?v=")
+    assert (out / "non_fbs" / "mercer" / "0-now-dark.png").read_bytes() == dark_png()
+    # Both files are counted, and a school without a dark artwork gets no key.
+    assert stats["non_fbs"] == {"names": 1, "files": 2}
+
+
+def test_an_entry_with_no_dark_artwork_gets_no_dark_key(tmp_path):
+    uri = "data:image/png;base64," + base64.b64encode(png_bytes()).decode()
+    non_fbs = tmp_path / "non_fbs.json"
+    non_fbs.write_text(json.dumps({"Mercer": [{"start": 0, "end": None, "data": uri, "bg": "#222"}]}),
+                       encoding="utf-8")
+    manifest_path = tmp_path / "manifest.json"
+    lf.export({"non_fbs": non_fbs}, tmp_path / "logos", manifest_path)
+    assert "darkSrc" not in json.loads(manifest_path.read_text())["non_fbs"]["Mercer"][0]
+
+
+def test_two_eras_that_differ_only_in_their_dark_artwork_are_a_conflict(tmp_path):
+    """The duplicate check has to see the whole entry, or one silently wins."""
+    uri = "data:image/png;base64," + base64.b64encode(png_bytes()).decode()
+    dark_uri = "data:image/png;base64," + base64.b64encode(dark_png()).decode()
+    non_fbs = tmp_path / "non_fbs.json"
+    non_fbs.write_text(json.dumps({"Mercer": [
+        {"start": 0, "end": None, "data": uri, "bg": "#222", "dark": dark_uri},
+        {"start": 0, "end": None, "data": uri, "bg": "#222"}]}), encoding="utf-8")
+    with pytest.raises(ValueError, match="two different logos"):
+        lf.export({"non_fbs": non_fbs}, tmp_path / "logos", tmp_path / "manifest.json")
+
+
+def test_white_is_only_flood_filled_out_where_it_is_the_background(tmp_path):
+    """encode_resized's remove_white flag, which the dark artwork turns off."""
+    import build_dated_logo_assets as bd
+    path = tmp_path / "mark.png"
+    path.write_bytes(png_bytes())  # a white field with a coloured square on it
+
+    def corner_alpha(data_uri):
+        raw = base64.b64decode(data_uri.partition(",")[2])
+        return Image.open(io.BytesIO(raw)).convert("RGBA").getpixel((0, 0))[3]
+
+    stripped, _ = bd.encode_resized(path, 64)
+    kept, _ = bd.encode_resized(path, 64, remove_white=False)
+    assert corner_alpha(stripped) == 0, "the white background survived"
+    assert corner_alpha(kept) == 255, "white was removed from a mark that is made of it"
 
 
 def test_a_missing_source_file_leaves_its_section_out(tmp_path):

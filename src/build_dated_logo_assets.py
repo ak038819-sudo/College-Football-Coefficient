@@ -160,9 +160,20 @@ def extract_secondary_color(img: Image.Image) -> str:
     return "#{:02x}{:02x}{:02x}".format(*darkened)
 
 
-def encode_resized(path: Path, target_size: int, bg_color_override: str = None) -> tuple:
+def encode_resized(path: Path, target_size: int, bg_color_override: str = None,
+                   remove_white: bool = True) -> tuple:
+    """remove_white=False for a mark whose light ink IS the artwork.
+
+    ESPN's dark-background variant is white or near-white on transparency, and
+    while the flood fill cannot cross from a transparent border pixel into
+    opaque ink (alpha differs by far more than its threshold), there is nothing
+    for it to do there either. Skipping it keeps those bytes untouched.
+    """
     img = Image.open(path)
-    img = remove_white_background(img)
+    if remove_white:
+        img = remove_white_background(img)
+    else:
+        img = img.convert("RGBA")
     bg_color = bg_color_override or extract_secondary_color(img)
     img.thumbnail((target_size, target_size), Image.LANCZOS)
     buf = io.BytesIO()

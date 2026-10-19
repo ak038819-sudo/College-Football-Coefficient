@@ -16,6 +16,7 @@ non-FBS set by src/fetch_non_fbs_logos.py):
 
 Outputs:
     ui/assets/logos/teams/<slug>/<start>-<end|now>.png
+    ui/assets/logos/<kind>/<slug>/<start>-<end|now>-dark.png   (where the set has one)
     ui/assets/logos/conferences/<slug>/<start>-<end|now>.png
     ui/assets/logos/non_fbs/<slug>/<start>-<end|now>.png
     ui/logo_manifest.json   {"teams": {name: [{start, end, src, bg}]}, "conferences": {...},
@@ -88,7 +89,8 @@ def export(sources: dict = SOURCES, out_root: Path = OUT_ROOT, manifest_path: Pa
                     # An exact repeat (same era, same image, same color) is dropped and
                     # reported; the page always used the first one anyway. Two DIFFERENT
                     # logos claiming one era is a real conflict: stop, don't guess.
-                    if (seen[era]["data"], seen[era]["bg"]) != (e["data"], e["bg"]):
+                    if (seen[era]["data"], seen[era]["bg"], seen[era].get("dark")) != \
+                            (e["data"], e["bg"], e.get("dark")):
                         raise ValueError(f"{kind}: {name!r} has two different logos for era {era}")
                     duplicates.append(f"{kind}: {name} {era[0]}-{era[1] if era[1] is not None else 'now'}")
                     continue
@@ -107,6 +109,17 @@ def export(sources: dict = SOURCES, out_root: Path = OUT_ROOT, manifest_path: Pa
                 # name in this project to look up (see the non-FBS set).
                 if e.get("espn"):
                     entry["espn"] = e["espn"]
+                # The light-ink artwork for dark pages, where the source set has
+                # one. It is a second file beside the colour mark rather than a
+                # second entry, because it is the same era and the same logo --
+                # only the page it is meant to sit on differs.
+                if e.get("dark"):
+                    dark_raw = decode_data_uri(e["dark"])
+                    dark_name = f"{fname[:-len('.png')]}-dark.png"
+                    (out_root / kind / slug / dark_name).write_bytes(dark_raw)
+                    files += 1
+                    entry["darkSrc"] = (f"{url_prefix}/{kind}/{slug}/{dark_name}"
+                                        f"?v={hashlib.sha256(dark_raw).hexdigest()[:10]}")
                 entries.append(entry)
             kind_manifest[name] = entries
         manifest[kind] = kind_manifest
