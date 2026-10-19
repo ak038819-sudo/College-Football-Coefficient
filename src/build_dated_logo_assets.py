@@ -35,7 +35,9 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-TARGET_SIZE = 96  # px, per user decision -- these display as small inline icons, not full artwork
+TARGET_SIZE = 256  # px: the largest a mark is drawn at (a 140px hero on a 2x screen).
+# It was 96 while every logo sat on a small chip; the marks now stand on the page
+# and the non-FBS set is fetched at 256, so the dated set matches it.
 
 
 def is_whiteish(px, thresh=235) -> bool:
@@ -256,7 +258,7 @@ def main() -> None:
     p.add_argument("--db", default="db/league.db")
     p.add_argument("--kind", choices=["teams", "conferences"], default="teams")
     p.add_argument("--out", default=None, help="Defaults to ui/dated_logo_assets.json (teams) or ui/dated_conference_logo_assets.json (conferences)")
-    p.add_argument("--size", type=int, default=TARGET_SIZE, help="Resize target in pixels (square) -- these display as small inline icons")
+    p.add_argument("--size", type=int, default=TARGET_SIZE, help="Resize target in pixels (square)")
     args = p.parse_args()
     out_path = args.out or (
         "ui/dated_logo_assets.json" if args.kind == "teams" else "ui/dated_conference_logo_assets.json"
