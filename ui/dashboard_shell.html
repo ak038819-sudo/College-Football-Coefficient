@@ -245,7 +245,7 @@
   @media (max-width: 700px) { .story-grid { grid-template-columns: 1fr; } }
   .gp-side .team-link { flex-direction: column; align-items: center; max-width: 100%; text-align: center; }
   .gp-side .team-link-name { white-space: normal; overflow-wrap: anywhere; }
-  @media (max-width: 520px) { .gp-side .logo-mark.lg { width: 84px; height: 84px; } .gp-board { gap: 8px; } }
+  @media (max-width: 520px) { .gp-side .logo-mark.lg { width: 84px; height: 84px; padding: 6px; } .gp-board { gap: 8px; } }
   @media (max-width: 520px) { .gp-side .gp-score { font-size: 34px; } .gp-list li { grid-template-columns: 46px minmax(0, 1fr); } .gp-list .aux { grid-column: 2; text-align: left; } }
   .listing-game.is-target { border-color: var(--amber); box-shadow: inset 0 0 0 1px var(--amber); }
   .skip-link:focus { position: fixed; left: 12px; top: 12px; z-index: 10; background: var(--panel); padding: 12px; color: var(--ink); }
@@ -436,12 +436,16 @@
     justify-content: center;
     flex: 0 0 auto;
     vertical-align: middle;
-    padding: 5%;
+    /* px, never a percentage: CSS resolves percentage padding against the
+       CONTAINING BLOCK's width, so the same mark would take 20px of padding
+       in a wide table cell and 2px in a narrow one -- and with border-box
+       sizing a wide enough cell eats the whole 63px box. */
+    padding: 6px;
     box-sizing: border-box;
     overflow: hidden;
   }
-  .logo-mark.lg { width: 140px; height: 140px; }
-  .logo-mark.sm { width: 63px; height: 63px; }
+  .logo-mark.lg { width: 140px; height: 140px; padding: 10px; }
+  .logo-mark.sm { width: 63px; height: 63px; padding: 4px; }
   /* Dim against the dark page, which is the default palette. */
   .logo-mark.dim-dark { --plate: rgba(238, 241, 236, 0.13); }
   @media (prefers-color-scheme: light) {
@@ -450,6 +454,12 @@
   }
   :root[data-theme="light"] .logo-mark.dim-dark { --plate: transparent; }
   :root[data-theme="light"] .logo-mark.dim-light { --plate: rgba(26, 31, 27, 0.09); }
+  /* Some rows are dark whatever the reader's theme is: a live scoreboard row
+     carries a scrim over the team's brand colour, and a board row with team
+     artwork carries the artwork. A mark on one of those is handed the dark
+     page's treatment directly -- the media query above would give it the
+     colour mark and no plate, on a dark row, in light mode. */
+  .logo-mark.plate-on-dark { --plate: rgba(238, 241, 236, 0.13); }
   .logo-mark .logo-img {
     width: 100%; height: 100%;
     min-width: 0; min-height: 0;
@@ -557,6 +567,7 @@
 
   /* ---- Team page sections (Milestone 2) ---- */
   .logo-mark.xs, .monogram.xs { width: 30px; height: 30px; }
+  .logo-mark.xs { padding: 2px; }
   .monogram.xs { font-size: 12px; }
   .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px;
     margin: 0 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
@@ -1499,7 +1510,7 @@ function pickDatedLogoEntry(dataSource, name, year) {
   return entries[entries.length - 1];
 }
 
-function logoMarkup(name, kind, size, yearOverride) {
+function logoMarkup(name, kind, size, yearOverride, onDark) {
   const sizeClass = size ? ' ' + size : '';
   // Both team and conference logos are now sourced entirely from their
   // respective date-accurate sets (100% coverage confirmed for both --
@@ -1520,6 +1531,15 @@ function logoMarkup(name, kind, size, yearOverride) {
     // which is a wash of the page's own ink -- see is_dim_on() in
     // src/export_logo_files.py.
     const dim = entry.dim || [];
+    // onDark: the row's own background is dark in BOTH themes (a live
+    // scoreboard row, a board row with team artwork). There the media query
+    // would be answering the wrong question, so the light-ink artwork and the
+    // dark page's plate are chosen outright.
+    if (onDark) {
+      return '<span class="logo-mark' + sizeClass + (dim.includes('dark') ? ' plate-on-dark' : '') + '">'
+        + '<img class="logo-img" src="' + (entry.darkSrc || entry.src) + '" alt="" loading="lazy">'
+        + '</span>';
+    }
     const markClass = 'logo-mark' + sizeClass +
       (dim.includes('dark') ? ' dim-dark' : '') + (dim.includes('light') ? ' dim-light' : '');
     if (entry.darkSrc) {
@@ -1582,8 +1602,8 @@ function teamAnchor(name, innerHtml, extraClass) {
 }
 
 // Logo + name as one clickable unit. namePrefix lets the champion slot keep its trophy.
-function teamLink(name, size, yearOverride, namePrefix) {
-  return teamAnchor(name, logoMarkup(name, 'team', size, yearOverride) +
+function teamLink(name, size, yearOverride, namePrefix, onDark) {
+  return teamAnchor(name, logoMarkup(name, 'team', size, yearOverride, onDark) +
     '<span class="team-link-name">' + (namePrefix || '') + name + '</span>');
 }
 
@@ -4148,13 +4168,20 @@ function teamPanelRow(name) {
   return TEAM_PANELS[name] ? '<li class="team-panel" style="' + teamPanelStyle(name) + '">' : '<li>';
 }
 
+// The companion to teamPanelRow: a row opened by it is dark in both themes
+// where the team has artwork, so its mark is drawn for a dark page. Every
+// mini-board goes through this rather than repeating the condition.
+function boardTeamLink(name, size) {
+  return teamLink(name, size, undefined, undefined, !!TEAM_PANELS[name]);
+}
+
 function renderEloTop25() {
   const rows = (UPCOMING.current_elo || []).slice(0, 25);
   const body = rows.length
     ? '<ol class="mini-board">' + rows.map(([id, elo, rank]) => {
         const t = TEAM_BY_ID.get(String(id));
         return teamPanelRow(t?.name) + '<span class="rk">' + rank + '</span><span class="nm">' +
-          (t ? teamAnchor(t.name, logoMarkup(t.name, 'team', 'xs') + '<span class="team-link-name">' + t.name + '</span>') : id) +
+          (t ? boardTeamLink(t.name, 'xs') : id) +
           '</span><span class="v">' + eloValue(elo) + eloChangeMarkup(t ? teamEloChange(UPCOMING.season, t.name) : null, t?.name) + '</span></li>';
       }).join('') + '</ol>'
     : '<div class="empty-note">No Elo ratings yet.</div>';
@@ -4198,7 +4225,7 @@ function renderPollsPanel() {
   const title = avail.length > 1 ? 'AP / CFP Top 25' : (avail[0] === 'cfp' ? 'CFP Rankings' : 'AP Top 25');
   const body = '<ol class="mini-board">' + rel.rows.map(([rank, tid, school, fpv]) => {
     const t = tid != null ? TEAM_BY_ID.get(String(tid)) : null;
-    const name = t ? teamAnchor(t.name, logoMarkup(t.name, 'team', 'xs') + '<span class="team-link-name">' + t.name + '</span>')
+    const name = t ? boardTeamLink(t.name, 'xs')
                    : '<span>' + esc(school) + '</span>';
     const elo = t ? CURRENT_ELO.get(t.id) : null;
     return teamPanelRow(t?.name) + '<span class="rk">' + rank + '</span><span class="nm">' + name +
@@ -4756,7 +4783,7 @@ function renderLiveBoard(games) {
     const movement = old && old.rank !== i + 1 ? ' <small class="fpv">' + (old.rank > i + 1 ? '▲' : '▼') +
       Math.abs(old.rank - i - 1) + '</small>' : '';
     return teamPanelRow(t?.name) + '<span class="rk">' + (i + 1) + '</span><span class="nm">' +
-      (t ? teamLink(t.name, 'xs') : esc(id)) + movement + '</span><span class="v">' + eloValue(elo) + '</span></li>';
+      (t ? boardTeamLink(t.name, 'xs') : esc(id)) + movement + '</span><span class="v">' + eloValue(elo) + '</span></li>';
   }).join('') + '</ol>' : '<p class="empty-note">No Elo ratings yet.</p>';
   return '<div class="panel">' + panelHead(projection.active ? 'If scores hold · Elo' : 'Elo Top 25',
     '<a class="side-link" href="#section=rankings&view=elo">Full rankings &rarr;</a>') + body +
@@ -4826,7 +4853,7 @@ function liveTeam(t, g, pct, live) {
     g.home.points !== g.away.points && g.status === 'completed' && g.away.points > g.home.points;
   const won = t === g.home ? homeWon : awayWon;
   const lost = t === g.home ? awayWon : homeWon;
-  const identity = logoMarkup(logoName, 'team', 'xs', liveSeason()) +
+  const identity = logoMarkup(logoName, 'team', 'xs', liveSeason(), true) +
     '<span class="live-identity"><span class="team-link-name">' + esc(name) + '</span>' +
     '<span class="live-rating">' + (rating?.rank <= 25 ? '<span class="live-rank">#' + rating.rank + '</span>' : '') +
     (g.status === 'scheduled' && seasonRecord(name, liveSeason()) ? seasonRecord(name, liveSeason()) + '  ' : '') +
@@ -5521,7 +5548,7 @@ function top25EloBoard() {
   const body = rows.length
     ? '<ol class="mini-board">' + rows.map((r, i) =>
         teamPanelRow(r.team) + '<span class="rk">' + (i + 1) + '</span><span class="nm">' +
-        teamLink(r.team, 'xs') + recordCell(r.team, state.year) +
+        boardTeamLink(r.team, 'xs') + recordCell(r.team, state.year) +
         '</span><span class="v">' + eloValue(r.elo) + '</span></li>').join('') + '</ol>'
     : '<div class="empty-note">No Elo ratings for ' + state.year + '.</div>';
   return '<div class="panel board-col">' +
@@ -5550,7 +5577,7 @@ function top25PollBoard(key) {
     const t = id != null ? TEAM_BY_ID.get(String(id)) : null;
     const mine = t ? eloRank.get(t.name) : null;
     return teamPanelRow(t?.name) + '<span class="rk">' + rank + '</span><span class="nm">' +
-      (t ? teamLink(t.name, 'xs') : '<span>' + esc(school) + '</span>') +
+      (t ? boardTeamLink(t.name, 'xs') : '<span>' + esc(school) + '</span>') +
       (t ? recordCell(t.name, state.year) : '') +
       (votes ? '<span class="fpv">(' + votes + ')</span>' : '') + '</span>' +
       '<span class="elo-rk">' + (mine ? 'Elo #' + mine : '') + '</span></li>';
