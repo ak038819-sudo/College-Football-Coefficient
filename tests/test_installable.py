@@ -167,3 +167,54 @@ def test_the_dashboard_scripts_the_worker_precaches_are_all_versioned():
             continue
         assert '?v=' in src, f'{src} is loaded by the page but carries no version'
         assert (ROOT / 'ui' / src.split('?')[0]).is_file(), src
+
+
+# ---- the window an installed app actually gets ------------------------------
+
+def test_the_viewport_lets_the_page_reach_the_safe_area():
+    """Without viewport-fit=cover every env(safe-area-inset-*) resolves to 0,
+    and the bottom bar sits under the home-screen indicator."""
+    # Read off the tag itself. The stylesheet below it explains the same flag
+    # in a comment, so a search of the whole head passes with the tag gone.
+    content = re.search(r'<meta name="viewport" content="([^"]+)"', head(SHELL))
+    assert content, 'the dashboard has no viewport meta at all'
+    assert 'viewport-fit=cover' in content.group(1), content.group(1)
+
+
+@pytest.mark.parametrize('page', [INDEX, SHELL])
+def test_the_status_bar_is_opaque_in_both_entry_points(page):
+    """black-translucent draws the page under the clock, and iOS writes that
+    clock in light ink whatever the page behind it is -- white on the light
+    theme's cream. The two pages have to say the same thing, because either
+    can be the one added to a home screen."""
+    text = head(page)
+    assert 'content="black-translucent"' not in text
+    assert 'name="apple-mobile-web-app-status-bar-style" content="default"' in text
+
+
+@pytest.mark.parametrize('page', [INDEX, SHELL])
+def test_theme_color_is_declared_for_each_theme(page):
+    """One unconditional theme-color paints the status bar and the Android
+    address bar the dark theme's colour even when the light theme is on."""
+    found = dict(re.findall(
+        r'<meta name="theme-color" content="(#[0-9a-f]{6})" media="\(prefers-color-scheme: (\w+)\)">',
+        head(page)))
+    assert set(found.values()) == {'dark', 'light'}, f'{page.name} declares {found}'
+    assert found['#0e1512'] == 'dark' and found['#f2f0e8'] == 'light'
+
+
+def test_the_app_bar_is_hidden_until_the_page_is_running_as_an_app():
+    """Every rule that reveals the bar hangs off body.is-app. A rule that
+    forgot the gate would put a fixed bar across the bottom of the site in an
+    ordinary browser tab, which is the one failure mode of this whole change
+    that no test driving the page would notice -- jsdom does not lay out."""
+    style = SHELL.read_text(encoding='utf-8').split('</style>', 1)[0]
+    # Rules on the BAR, not on what is inside it: a link styled display:flex
+    # reveals nothing while its container is display:none.
+    reveals = [(selector.strip(), body) for selector, body in
+               re.findall(r'([^{}]*)\{([^{}]*)\}', style)
+               if re.search(r'\.app-tabs\s*$', selector)
+               and re.search(r'display:\s*(?!none)', body)]
+    assert reveals, 'nothing in the stylesheet ever shows the bar'
+    for selector, body in reveals:
+        assert 'body.is-app' in selector, f'{selector} shows the bar unconditionally'

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="description" content="Elocast rates every FBS team with Elo and an opponent-strength coefficient, seeds the 12-team College Football Playoff and simulates the bracket.">
 <meta property="og:site_name" content="Elocast">
 <meta property="og:title" content="Elocast">
@@ -21,7 +21,8 @@
 <meta property="og:image:alt" content="Elocast: Elo and opponent-strength ratings, playoff seeding and bracket odds.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://ak038819-sudo.github.io/College-Football-Coefficient/ui/brand/og-image.png">
-<meta name="theme-color" content="#0e1512">
+<meta name="theme-color" content="#0e1512" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f2f0e8" media="(prefers-color-scheme: light)">
 <link rel="icon" href="brand/mark.svg" type="image/svg+xml">
 <link rel="icon" href="brand/icon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
@@ -34,7 +35,13 @@
 <!-- iOS reads none of the manifest except the icon: standalone display, the
      home-screen name and the status bar are these three tags or nothing. -->
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- "default", not "black-translucent": translucent draws the page under
+     the clock, and iOS always writes that clock in light ink, which is
+     invisible over the light theme's cream background. An opaque bar takes
+     its colour from the theme-color tags above instead, in whichever theme
+     is on. viewport-fit=cover is still what makes env(safe-area-inset-*)
+     resolve to the real insets, which the app's bottom bar needs. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Elocast">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Elocast</title>
@@ -166,6 +173,70 @@
     border-bottom-color: var(--amber);
   }
   nav.tabs a:hover:not(.active) { border-bottom-color: var(--amber-dim); }
+
+  /* ---- Installed-app chrome ----
+     Everything here is gated on body.is-app, which paintAppChrome() sets only
+     when the page is running in an installed window (display-mode, or
+     navigator.standalone on iOS below 16.4). A browser tab keeps the masthead
+     it has always had: the top tabs, the About links, no bottom bar.
+
+     In the app the five sections move to a bar along the bottom, where a thumb
+     reaches them, and the three About pages come off the chrome entirely --
+     Data Coverage, How It Works and Track Record are reference reading, not
+     places to go, and three more targets in a five-target bar would make every
+     one of them smaller. Their routes still work; nothing links to them. */
+  .app-tabs { display: none; }
+  body.is-app .header-links,
+  body.is-app .nav-row nav.tabs { display: none; }
+  body.is-app .nav-row { margin-top: 0; }
+  body.is-app .global-search { max-width: none; }
+  body.is-app .wrap {
+    /* Clear the bar, and the home-screen indicator under it. The side insets
+       matter in landscape on a notched phone, where viewport-fit=cover puts
+       the page edge under the notch; max() keeps the site's own gutter
+       everywhere there is no notch to clear. */
+    padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    padding-left: max(20px, env(safe-area-inset-left, 0px));
+    padding-right: max(20px, env(safe-area-inset-right, 0px));
+  }
+  @media (max-width: 520px) {
+    body.is-app .wrap {
+      padding-left: max(12px, env(safe-area-inset-left, 0px));
+      padding-right: max(12px, env(safe-area-inset-right, 0px));
+    }
+  }
+  body.is-app .app-tabs {
+    display: flex;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 30;
+    gap: 2px;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+  }
+  .app-tabs a {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 5px 2px;
+    color: var(--ink-dim);
+    text-decoration: none;
+    font: 11px/1.1 var(--font-display);
+    letter-spacing: 0.2px;
+    text-align: center;
+  }
+  /* The site colours every link amber through a :root a:any-link rule that
+     outweighs a plain `.app-tabs a`, so the bar's resting ink has to be stated
+     at a weight above it or all five icons look selected at once. Measured in
+     Chromium, not assumed: both were rgb(181, 116, 26) before this rule. */
+  body.is-app .app-tabs a:any-link:not(.active) { color: var(--ink-dim); }
+  .app-tabs a[aria-current="page"] { color: var(--amber); }
+  .app-tabs svg { display: block; width: 25px; height: 25px; }
+  .app-tabs span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
   a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
   .skip-link { position: absolute; left: -10000px; }
   .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -1361,6 +1432,20 @@
   </footer>
 
 </div>
+
+<!-- The app's own navigation. Hidden in a browser tab by CSS, and the only way
+     around the five sections in an installed window, where the masthead's tabs
+     are hidden instead. The links carry the same data-section attributes as
+     #tabs so renderNavigation() marks the current one in both at once; the
+     icons are inline so they are part of the document the service worker
+     already caches, with no extra request to fail offline. -->
+<nav class="app-tabs" id="app-tabs" aria-label="App sections">
+  <a data-section="home" href="#section=home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 11.4 12 4l9 7.4"/><path d="M5.7 9.8V20h12.6V9.8"/><path d="M10 20v-4.6h4V20"/></svg><span>Home</span></a>
+  <a data-section="stats" href="#section=stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 20h16"/><path d="M7 20V12.5"/><path d="M12 20V5"/><path d="M17 20v-5"/></svg><span>Stats</span></a>
+  <a data-section="rankings" href="#section=rankings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 4h10v4.6a5 5 0 0 1-10 0V4Z"/><path d="M7 5.6H4.4v1.5A3.6 3.6 0 0 0 8 10.7"/><path d="M17 5.6h2.6v1.5A3.6 3.6 0 0 1 16 10.7"/><path d="M12 13.6V17"/><path d="M8 20h8"/></svg><span>Standings</span></a>
+  <a data-section="teams" href="#section=teams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3.6 19 6.1v5.3c0 4.2-2.8 7.3-7 9-4.2-1.7-7-4.8-7-9V6.1l7-2.5Z"/></svg><span>Teams</span></a>
+  <a data-section="people" href="#section=people"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8.2" r="3.5"/><path d="M5.4 20a6.6 6.6 0 0 1 13.2 0"/></svg><span>People</span></a>
+</nav>
 
 <script id="dashboard-data" type="application/json">
 __DATA_JSON__
@@ -4647,7 +4732,7 @@ document.addEventListener('change',e=>{
 });
 
 function renderNavigation() {
-  document.querySelectorAll('#tabs a').forEach(a => {
+  document.querySelectorAll('#tabs a, #app-tabs a').forEach(a => {
     const destination = state.section === 'games' || state.section === 'live' ? 'home' : ['matchups', 'playoff'].includes(state.section) ? 'stats' : state.section;
     const selected = a.dataset.section === destination;
     a.classList.toggle('active', selected);
@@ -9739,6 +9824,35 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 function paintConnection() {
   document.body.classList.toggle('is-offline', navigator.onLine === false);
 }
+
+// ---- Installed app, or a browser tab ----
+// The bottom bar and the hidden About links are app-only, so everything the
+// CSS keys on hangs off this one class. display-mode is the standard signal;
+// iOS only learned it in 16.4, and navigator.standalone is what it had before.
+// Both are read every time, because an installed window and a tab are the same
+// document and a browser can move between display modes without a reload.
+const APP_DISPLAY = '(display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui)';
+
+function appDisplayQuery() {
+  try { return window.matchMedia(APP_DISPLAY); } catch (err) { return null; }
+}
+
+function isInstalledApp() {
+  if (navigator.standalone === true) return true;
+  const query = appDisplayQuery();
+  return !!(query && query.matches);
+}
+
+function paintAppChrome() {
+  document.body.classList.toggle('is-app', isInstalledApp());
+}
+
+const appDisplay = appDisplayQuery();
+// addEventListener on a MediaQueryList is newer than addListener, and Safari
+// carried only the old one for years. Neither is guaranteed in a test harness.
+if (appDisplay && appDisplay.addEventListener) appDisplay.addEventListener('change', paintAppChrome);
+else if (appDisplay && appDisplay.addListener) appDisplay.addListener(paintAppChrome);
+paintAppChrome();
 window.addEventListener('online', paintConnection);
 window.addEventListener('offline', paintConnection);
 paintConnection();

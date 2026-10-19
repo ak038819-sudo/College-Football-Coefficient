@@ -81,6 +81,46 @@ installed app must not grow without limit on someone's phone.
 a rule changes; `activate` then deletes every `elocast-` cache that is not
 current and leaves anything else alone.
 
+## What the app shows that the site does not
+
+An installed window and a browser tab are the same document. The difference is
+one class, `is-app` on `<body>`, set from `display-mode: standalone` (or
+`navigator.standalone`, which is all iOS had before 16.4) and re-read whenever
+the display mode changes. Every app-only rule in the stylesheet hangs off it,
+and `tests/test_installable.py` fails if a rule that reveals the bar forgets
+the gate — a fixed bar across the bottom of the website is the one failure here
+that no test driving the page in jsdom would notice, because jsdom does not lay
+out.
+
+In the app:
+
+- The five sections move to a bar along the bottom, as icons with labels, where
+  a thumb reaches them. The links carry the same `data-section` attributes as
+  the masthead's tabs, so `renderNavigation()` marks the current section in
+  both with one pass and the two can never disagree about where you are. The
+  icons are inline SVG, so they are part of the document the service worker
+  already caches and cost no request that could fail offline.
+- The masthead's own tabs are hidden, and the masthead keeps the title and the
+  search.
+- **Data Coverage, How It Works and Track Record come off the chrome
+  entirely.** They are reference reading rather than places to go, and three
+  more targets in a five-target bar would make every one of them smaller. Their
+  routes still work; nothing links to them.
+
+Two window details go with it. `viewport-fit=cover` is what makes
+`env(safe-area-inset-*)` resolve to the real insets, which the bar needs to sit
+above the home-screen indicator rather than under it. And the iOS status bar is
+`default`, not `black-translucent`: translucent draws the page under the clock,
+and iOS writes that clock in light ink whatever is behind it, which was white
+on the light theme's cream. An opaque bar takes its colour from `theme-color`,
+now declared once per colour scheme.
+
+One trap worth recording: the site colours every link amber through a
+`:root a:any-link:not(.active):not(.action-button)` rule that outweighs a plain
+`.app-tabs a`, so the bar's resting ink had to be stated at a higher weight.
+Measured in Chromium rather than assumed — before that rule, the active icon
+and the four inactive ones were all `rgb(181, 116, 26)`.
+
 ## Favorite teams
 
 `ui/favorites.js` stores a list of team slugs in `localStorage` under
