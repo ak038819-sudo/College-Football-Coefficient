@@ -176,6 +176,36 @@ test('the panel scrim never thins to where artwork can swallow the labels', () =
   }
 });
 
+test('the narrow-width scrim is darker, because a phone row crops the artwork differently', () => {
+  // A 390px row shows a different part of the same picture and the label runs
+  // further across the scrim, so the wide-screen middle stop is not enough:
+  // measured in a browser at 390x844, Tennessee's and Kentucky's names came out
+  // at 4.19:1 and their Elo ratings at 3.64:1 and 3.59:1 with the middle stop
+  // at 55%. 65% is the lightest middle that holds all forty labels above
+  // 4.5:1 there; 60% leaves the worst at 4.14:1.
+  const styles = shell.slice(0, shell.indexOf('</style>'));
+  // Balanced braces, not a lazy match: this stylesheet has one-line media
+  // queries, and a regex that stops at the first closing brace on its own line
+  // runs straight past them into unrelated rules.
+  const queries = [];
+  for (const m of styles.matchAll(/@media\s*\(max-width:\s*(\d+)px\)\s*\{/g)) {
+    let depth = 1, i = m.index + m[0].length;
+    for (; i < styles.length && depth; i++) {
+      if (styles[i] === '{') depth++;
+      else if (styles[i] === '}') depth--;
+    }
+    queries.push([null, m[1], styles.slice(m.index + m[0].length, i - 1)]);
+  }
+  const narrow = queries.find(m => /\.live-team\.team-panel[\s\S]*?background-image:[^;]*--panel-art/.test(m[2]));
+  assert.ok(narrow, 'no narrow-width rule darkens the panel scrim, so a phone keeps the wide-screen one');
+  assert.ok(Number(narrow[1]) >= 700, 'the narrow scrim starts at ' + narrow[1] + 'px, which leaves phone widths on the wide one');
+  const stops = [...narrow[2].matchAll(/#[0-9a-f]{6}([0-9a-f]{2})/g)].map(m => parseInt(m[1], 16) / 255);
+  assert.ok(stops.length >= 3, 'expected the narrow scrim to be a gradient of at least three stops');
+  const middle = Math.min(...stops.slice(1, -1));
+  assert.ok(middle >= 0.65, 'a narrow-width middle stop at ' + Math.round(middle * 100) +
+    '% measured below 4.5:1 on the two checkerboard panels');
+});
+
 test('panel labels carry their own light ink, and the cascade lets them keep it', () => {
   const styles = shell.slice(0, shell.indexOf('</style>'));
   const rules = [...styles.matchAll(/([^{}]+)\{([^}]*)\}/g)].map(m => ({sel: m[1].trim(), body: m[2], at: m.index}));
