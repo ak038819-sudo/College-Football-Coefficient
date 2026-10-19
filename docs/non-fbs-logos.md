@@ -45,7 +45,7 @@ By ESPN team id, with nothing guessed.
 the provider evidence behind `docs/team-identity-audit.md`) and files each
 school under `location`, the school name without its mascot. Our opponent name
 -- CFBD's own spelling, as `non_fbs_games.opponent_name` -- matches that exactly
-for 182 of the 207 schools. No prefix matching, no fuzzy matching, no mascot
+for 185 of the 207 schools. No prefix matching, no fuzzy matching, no mascot
 stripping.
 
 The rest:
@@ -70,11 +70,14 @@ The rest:
   carry them. They are Eastern Oregon, Midwestern State, Oklahoma Panhandle,
   Point University, Reinhardt, Southwestern (KS), St. Francis (IL) and Virginia
   Lynchburg. The provenance file records their ESPN ids with the source columns
-  empty, which is how you tell them from the 21.
+  empty, which is how you tell them from the 21 -- and from the four dated
+  aliases, whose id column is blank because the row is not an ESPN lookup.
 
-Measured on the first fetch, 2026-10-19 (run 39193931559): 207 opponents, 182
-matched to an ESPN id, 174 marks fetched, 4 taking their own dated eras, so 178
-schools carry a mark and 29 keep the monogram.
+Measured on the first fetch, 2026-10-19 (run 39193931559): 207 opponents, 186
+of them resolved to an ESPN id (185 exact plus the rename), 174 marks fetched, 4
+taking their own dated eras, so 178 schools carry a mark and 29 keep the
+monogram. Resolving to an id is not the same as the archive having a logo,
+which is the difference between those last two bullets.
 
 ## The live scoreboard
 
