@@ -31,20 +31,29 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    assert.deepEqual([...d.querySelectorAll('#tabs a')].map(a=>a.textContent),['Home','Stats','Standings','Teams','People']);
    assert.ok(d.querySelector('#global-search'));assert.ok(d.querySelector('#live-games').textContent.trim());
    assert.ok(d.querySelector('#home-weeks').textContent.includes('Previous Week'));
-   d.querySelector('#home-weeks a').click();await until(w,()=>w.location.hash.includes('slateweek=')&&d.querySelector('#home-weeks strong')&&d.querySelector('#live-games .live-card')&&d.querySelector('#live-status')?.textContent==='');
+   // One toolbar: a week select between the two steps, Today beside it, and
+   // ordering in a dropdown rather than its own row of buttons.
+   assert.ok(d.querySelector('#home-weeks .week-pick select[data-route-select]'), 'the week bar picks weeks from a select');
+   assert.ok(d.querySelector('#home-weeks .week-today'), 'the week bar carries Today');
+   assert.deepEqual([...d.querySelectorAll('[data-live-order-select] option')].map(o=>o.value),['hype','time']);
+   assert.equal(d.querySelectorAll('[data-live-order]').length,0,'ordering moved out of the filter row');
+   d.querySelector('#home-weeks a').click();await until(w,()=>w.location.hash.includes('slateweek=')&&d.querySelector('#home-weeks select')?.value===w.location.hash&&d.querySelector('#live-games .live-card')&&d.querySelector('#live-status')?.textContent==='');
    const selectedWeek=w.location.hash;
    const cards=()=>[...d.querySelectorAll('#live-games .live-card')];
    assert.ok(cards().length>0, 'week browsing keeps full scoreboard cards');
    assert.ok(d.querySelector('#live-games .live-watermark'), 'team artwork survives week browsing');
    assert.ok(d.querySelector('#live-games .live-rating'), 'Elo labels survive week browsing');
    const ids=cards().map(c=>c.dataset.liveId).sort();
-   d.querySelector('[data-live-order="time"]').click();
+   const featured=cards().map(c=>c.dataset.liveId);
+   assert.ok(featured.length>2, 'the week needs enough games for an order to be visible');
+   const order=d.querySelector('[data-live-order-select]');order.value='time';order.dispatchEvent(new w.Event('change',{bubbles:true}));
+   assert.notDeepEqual(cards().map(c=>c.dataset.liveId),featured, 'the sort dropdown reorders the board');
    assert.deepEqual(cards().map(c=>c.dataset.liveId).sort(),ids, 'sorting stays on the selected week');
    d.querySelector('[data-live-filter="completed"]').click();
    assert.ok(cards().every(c=>ids.includes(c.dataset.liveId)), 'filtering stays on selected week');
    d.querySelector('[data-live-filter="all"]').click();
    await route('#section=home',()=>d.querySelector('#live-games .live-card'));
-   await route(selectedWeek,()=>d.querySelector('#home-weeks strong')&&d.querySelector('#live-games .live-card')&&d.querySelector('#live-status')?.textContent==='');
+   await route(selectedWeek,()=>d.querySelector('#home-weeks select')?.value===selectedWeek&&d.querySelector('#live-games .live-card')&&d.querySelector('#live-status')?.textContent==='');
    assert.deepEqual(cards().map(c=>c.dataset.liveId).sort(),ids, 'returning to the week keeps cards and game identities');
    await route('#section=home&findseason=2024&school=byu&status=completed',()=>d.querySelector('#home-season')?.value==='2024');
    assert.ok(d.querySelectorAll('#home-results .listing-game').length>0);

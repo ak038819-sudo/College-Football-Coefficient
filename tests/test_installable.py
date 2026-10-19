@@ -218,3 +218,14 @@ def test_the_app_bar_is_hidden_until_the_page_is_running_as_an_app():
     assert reveals, 'nothing in the stylesheet ever shows the bar'
     for selector, body in reveals:
         assert 'body.is-app' in selector, f'{selector} shows the bar unconditionally'
+
+
+def test_the_app_clears_the_top_safe_area():
+    """viewport-fit=cover puts the page under the iPhone clock as well as over
+    the home indicator. The bottom bar already pads itself; the content has to
+    pad its own top, or the masthead renders behind the status bar."""
+    style = SHELL.read_text(encoding='utf-8').split('</style>', 1)[0]
+    padded = [body for selector, body in re.findall(r'([^{}]*)\{([^{}]*)\}', style)
+              if 'body.is-app' in selector and '.wrap' in selector
+              and re.search(r'padding-top:[^;]*env\(safe-area-inset-top', body)]
+    assert padded, 'nothing pads the installed app clear of the status bar'
