@@ -1281,7 +1281,23 @@ const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
 // carrying the image inline, so the browser only fetches logos it displays.
 // Built by src/export_logo_files.py.
 const LOGO_MANIFEST = JSON.parse(document.getElementById('logo-manifest').textContent);
-const DATED_LOGOS = LOGO_MANIFEST.teams || {};
+// One lookup for every school a page can name. The non-FBS section holds one
+// undated mark each for the FCS and lower schools this project rates nothing
+// (src/fetch_non_fbs_logos.py); the teams section holds the dated eras of the
+// FBS programs it does. Teams go second, so a school in both -- one of ours met
+// in a season it was not FBS -- keeps its era-accurate set.
+const DATED_LOGOS = Object.assign({}, LOGO_MANIFEST.non_fbs || {}, LOGO_MANIFEST.teams || {});
+// The same non-FBS marks, by the ESPN team id each was fetched under. The live
+// feed names a school ESPN's way, mascot and all ('Charleston Southern
+// Buccaneers'), and a school this project does not hold has no canonical name
+// to resolve that to -- but the feed's team id IS the ESPN id, so the id finds
+// the mark where the name cannot. See liveLogoName().
+const NON_FBS_BY_ESPN_ID = new Map();
+Object.entries(LOGO_MANIFEST.non_fbs || {}).forEach(([name, entries]) => {
+  (entries || []).forEach(entry => {
+    if (entry.espn != null) NON_FBS_BY_ESPN_ID.set(String(entry.espn), name);
+  });
+});
 const TEAM_BRAND_COLORS = JSON.parse(document.getElementById('team-brand-colors').textContent);
 const DATED_CONFERENCE_LOGOS = LOGO_MANIFEST.conferences || {};
 
@@ -3625,8 +3641,9 @@ function fillSchedulePanel(tp, team) {
   // pregame Elo for either side, no expectation, no change and no post-game
   // rating, because the model never saw it. Those five columns are em-dashes
   // rather than zeroes, and the row takes no Elo tint for the same reason. The
-  // opponent is plain text, not a link: this project holds no page for it, and
-  // there is no game page either, since those are built from the rated set.
+  // opponent carries its own mark where one exists, but is not a link: this
+  // project holds no page for it, and there is no game page either, since those
+  // are built from the rated set. A school with no mark keeps the monogram.
   const unratedRows = (tp.nonFbsByTeam.get(team.id) || [])
     .filter(u => u.season === season)
     .map(u => {
@@ -3634,7 +3651,9 @@ function fillSchedulePanel(tp, team) {
       const where = u.neutral || u.home ? 'vs' : 'at';
       return [u.date, u.id, '<tr class="sched-unrated">' +
         '<td data-sort="' + esc(u.date || '') + '">' + esc(fmtGameDate(u)) + '</td>' +
-        '<td class="opp"><span class="swing-where">' + where + '</span> ' + esc(u.opp) +
+        '<td class="opp"><span class="swing-where">' + where + '</span> ' +
+          '<span class="team-link team-link-static">' + logoMarkup(u.opp, 'team', 'xs', u.season) +
+          '<span class="team-link-name">' + esc(u.opp) + '</span></span>' +
           (u.neutral ? ' <span class="swing-where">(N)</span>' : '') +
           ' <span class="tag-unrated" title="This project holds no rating for ' + esc(u.opp) +
           ', so the game counts in the record and in nothing else.">' +
@@ -4697,9 +4716,19 @@ function liveChange(g, t) {
     (up ? '▲' : '▼') + (historical?.home_elo_change == null ? '≈' : '') +
     Math.abs(delta).toFixed(1) + ')</span>';
 }
+// Which name to look a live side's mark up under: this project's own name for
+// a team it holds, and for a school it does not, the name the non-FBS set filed
+// that ESPN id under. Falls back to the feed's own name, which finds nothing and
+// draws the monogram -- the same outcome as before the non-FBS set existed.
+function liveLogoName(side, resolved) {
+  return resolved?.name || NON_FBS_BY_ESPN_ID.get(String(side?.id)) ||
+    String(side?.name || 'Unknown team');
+}
 function liveTeam(t, g, pct, live) {
   const team = liveTeamId(t);
   const name = team?.name || String(t?.name || 'Unknown team');
+  // The card still says what the feed says; only the mark is looked up by id.
+  const logoName = liveLogoName(t, team);
   const rating = team && (CURRENT_ELO.get(team.id) || CURRENT_ELO.get(String(team.id)));
   const projected = livePrediction(g);
   const elo = t === g.home ? projected?.homeElo : projected?.awayElo;
@@ -4707,7 +4736,7 @@ function liveTeam(t, g, pct, live) {
   // Live only while the game is being played. A final score needs no
   // probability, and on a scheduled game the pregame chance IS the live one.
   const liveChance = g.status === 'in_progress' ? (t === g.home ? live?.home : live?.away) : null;
-  const logo = pickDatedLogoEntry(DATED_LOGOS, name, liveSeason());
+  const logo = pickDatedLogoEntry(DATED_LOGOS, logoName, liveSeason());
   const brand = TEAM_BRAND_COLORS[name] || '#304250';
   const homeWon = Number.isInteger(g.home?.points) && Number.isInteger(g.away?.points) &&
     g.home.points !== g.away.points && g.status === 'completed' && g.home.points > g.away.points;
@@ -4715,7 +4744,7 @@ function liveTeam(t, g, pct, live) {
     g.home.points !== g.away.points && g.status === 'completed' && g.away.points > g.home.points;
   const won = t === g.home ? homeWon : awayWon;
   const lost = t === g.home ? awayWon : homeWon;
-  const identity = logoMarkup(name, 'team', 'xs', liveSeason()) +
+  const identity = logoMarkup(logoName, 'team', 'xs', liveSeason()) +
     '<span class="live-identity"><span class="team-link-name">' + esc(name) + '</span>' +
     '<span class="live-rating">' + (rating?.rank <= 25 ? '<span class="live-rank">#' + rating.rank + '</span>' : '') +
     (g.status === 'scheduled' && seasonRecord(name, liveSeason()) ? seasonRecord(name, liveSeason()) + '  ' : '') +
@@ -5081,7 +5110,7 @@ function liveDetail(g) {
       const team = liveTeamId(t), name = team?.name || String(t?.name || 'Unknown team');
       const chance = t === g.home ? pct?.home : pct?.away;
       return '<div class="gp-side">' + (team ? teamLink(name, 'lg', liveSeason()) :
-        logoMarkup(name, 'team', 'lg', liveSeason()) + esc(name)) +
+        logoMarkup(liveLogoName(t, team), 'team', 'lg', liveSeason()) + esc(name)) +
         '<span class="gp-score">' + (Number.isInteger(t?.points) ? t.points :
           chance != null ? chance + '%' : '—') + '</span></div>';
     }).join('<div class="gp-mid">' + (g.neutral_site ? 'vs.' : 'at') + '</div>') + '</div></div>';
