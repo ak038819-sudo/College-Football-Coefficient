@@ -227,7 +227,7 @@ python build_dashboard.py --draw-seed 1
 
 This writes `ui/dashboard.html`. Open it directly in a browser, or upload it anywhere that serves static files. To change the page's design or layout, edit `ui/dashboard_shell.html` (the template) and rerun the build. The `__DATA_JSON__` placeholder gets replaced with a fresh export from `src/export_dashboard_data.py`.
 
-Team and conference logos are date-accurate (a team's logo matches the season shown), built by `src/build_dated_logo_assets.py`.
+Team and conference logos are date-accurate (a team's logo matches the season shown), built by `src/build_dated_logo_assets.py`. The FCS and lower schools this project rates nothing have one undated mark each, fetched from the sportsdataverse logo archive by `src/fetch_non_fbs_logos.py`; see `docs/non-fbs-logos.md`.
 
 ## Live Features
 

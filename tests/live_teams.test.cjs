@@ -72,19 +72,36 @@ test('unknown teams retain their feed name and cannot receive borrowed Elo predi
     CURRENT_ELO: new Map(teams.map(t => [t.id, {elo: 1800, rank: 4}])),
     STATIC_MANIFEST: {model_params: {elo: {scale: 400, home_field: 55}}},
     pickDatedLogoEntry: () => null, DATED_LOGOS: {}, TEAM_BRAND_COLORS: {},
+    // The feed names an FCS school ESPN's way, so its mark is filed under the
+    // ESPN id rather than that name: Texas Southern's id, not 'Texas Southern
+    // Tigers'. The real index, so a card that drew the wrong school's mark, or
+    // none, cannot pass here.
+    NON_FBS_BY_ESPN_ID: new Map([['2640', 'Texas Southern']]),
     liveSeason: () => 2026, logoMarkup: name => '[' + name + ']',
     teamAnchor: (_, text) => text, esc: value => value, liveChange: () => '',
     // The real record helper, not a stub: a card that showed the wrong team's
     // record, or none, would otherwise still pass here.
     DATA, TEAM_BY_NAME: new Map(teams.map(t => [t.name, t]))
   };
-  vm.runInNewContext(fn('livePrediction') + '\n' + fn('seasonRecord') + '\n' + fn('liveTeam') +
-    '\nthis.predict = livePrediction; this.renderTeam = liveTeam;', context);
+  vm.runInNewContext(fn('livePrediction') + '\n' + fn('seasonRecord') + '\n' +
+    fn('liveLogoName') + '\n' + fn('liveTeam') +
+    '\nthis.predict = livePrediction; this.renderTeam = liveTeam;' +
+    '\nthis.logoName = liveLogoName;', context);
   const game = {id: 401862790, status: 'scheduled',
-    away: {name: 'Texas Southern Tigers'}, home: {name: 'Florida Atlantic Owls'}};
+    away: {id: 2640, name: 'Texas Southern Tigers', classification: 'fcs'},
+    home: {id: 2226, name: 'Florida Atlantic Owls'}};
   assert.equal(context.predict(game), null);
   const html = context.renderTeam(game.away, game, null);
   assert.match(html, /Texas Southern Tigers/);
+  // The card keeps the feed's name, and carries the school's own mark, found by
+  // the id the non-FBS set filed it under.
+  assert.match(html, /\[Texas Southern\]/);
+  assert.equal(context.logoName(game.away, null), 'Texas Southern');
+  // A school with no mark at all falls back to the feed name, which finds
+  // nothing and draws the monogram, as it did before the non-FBS set existed.
+  assert.equal(context.logoName({id: 9999, name: 'Lambuth Eagles'}, null), 'Lambuth Eagles');
+  // A team this project holds is unaffected: its own name wins over any id.
+  assert.equal(context.logoName({id: 2640, name: 'whatever'}, {name: 'FAU'}), 'FAU');
   assert.match(html, /Elo unrated/);
   assert.match(html, /N\/A/);
   assert.doesNotMatch(html, /live-rank|1800|Longhorns/);
