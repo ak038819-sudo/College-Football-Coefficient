@@ -8,6 +8,11 @@ const teams = DATA.teams;
 const resolve = createResolver(teams);
 const shell = fs.readFileSync('ui/dashboard_shell.html', 'utf8');
 const fn = name => shell.match(new RegExp('function ' + name + '\\([^)]*\\) \\{[\\s\\S]*?\\n\\}'))[0];
+// The real artwork registry, not a stub: liveTeam reads it to decide whether a
+// row gets a team panel instead of a logo watermark.
+const teamPanels = shell.match(/^const TEAM_PANELS = Object\.freeze\(\{[\s\S]*?^\}\);/m);
+if (!teamPanels) throw new Error('missing TEAM_PANELS in the shell');
+const panelSource = teamPanels[0] + '\n' + fn('teamPanelStyle');
 
 test('every supported provider identity and alias resolves; all other provider full names stay unmatched', () => {
   const registry = JSON.parse(fs.readFileSync('data/reference/team_identities.json', 'utf8')).teams;
@@ -78,7 +83,7 @@ test('unknown teams retain their feed name and cannot receive borrowed Elo predi
     // record, or none, would otherwise still pass here.
     DATA, TEAM_BY_NAME: new Map(teams.map(t => [t.name, t]))
   };
-  vm.runInNewContext(fn('livePrediction') + '\n' + fn('seasonRecord') + '\n' + fn('liveTeam') +
+  vm.runInNewContext(panelSource + '\n' + fn('livePrediction') + '\n' + fn('seasonRecord') + '\n' + fn('liveTeam') +
     '\nthis.predict = livePrediction; this.renderTeam = liveTeam;', context);
   const game = {id: 401862790, status: 'scheduled',
     away: {name: 'Texas Southern Tigers'}, home: {name: 'Florida Atlantic Owls'}};
@@ -95,4 +100,31 @@ test('unknown teams retain their feed name and cannot receive borrowed Elo predi
   const unrated = (DATA.non_fbs_records_by_year['2026'] || {})[fau.id] || [0, 0, 0];
   const expected = (rated[0] + unrated[0]) + '\u2013' + (rated[1] + unrated[1]);
   assert.match(context.renderTeam(game.home, game, null), new RegExp(expected));
+});
+
+test('a panel team carries its artwork instead of a logo watermark; every other team keeps the watermark', () => {
+  const context = {
+    liveTeamId: resolve, UPCOMING_BY_ID: new Map(), liveSeasonData: null,
+    CURRENT_ELO: new Map(), STATIC_MANIFEST: {model_params: {elo: {scale: 400, home_field: 55}}},
+    pickDatedLogoEntry: (_, name) => ({src: 'logos/' + name + '.png'}),
+    DATED_LOGOS: {}, TEAM_BRAND_COLORS: {},
+    liveSeason: () => 2026, logoMarkup: name => '[' + name + ']',
+    teamAnchor: (_, text) => text, esc: value => value, liveChange: () => '',
+    DATA, TEAM_BY_NAME: new Map(teams.map(t => [t.name, t]))
+  };
+  vm.runInNewContext(panelSource + '\n' + fn('livePrediction') + '\n' + fn('seasonRecord') + '\n' + fn('liveTeam') +
+    '\nthis.renderTeam = liveTeam; this.panels = TEAM_PANELS;', context);
+  const panelTeam = Object.keys(context.panels)[0];
+  assert.ok(teams.some(t => t.name === panelTeam), panelTeam + ' is not a team in the data');
+  const plainTeam = teams.find(t => !context.panels[t.name]).name;
+  const game = {id: 1, status: 'scheduled', home: {name: panelTeam}, away: {name: plainTeam}};
+
+  const panelled = context.renderTeam(game.home, game, null);
+  assert.match(panelled, /class="live-team team-panel/);
+  assert.match(panelled, new RegExp('--panel-art:url\\(\'' + context.panels[panelTeam].image + '\'\\)'));
+  assert.doesNotMatch(panelled, /live-watermark/);
+
+  const plain = context.renderTeam(game.away, game, null);
+  assert.doesNotMatch(plain, /team-panel|--panel-art/);
+  assert.match(plain, /live-watermark/);
 });

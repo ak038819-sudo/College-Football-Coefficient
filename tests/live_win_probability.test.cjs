@@ -208,7 +208,14 @@ test('the scorebug prints the live chance while a game is on, and the pregame on
     // part of what this test is checking.
     const oddsText = shell.match(/^function liveOddsText\([^)]*\) \{[\s\S]*?\n\}/m)?.[0];
     assert.ok(oddsText, 'missing liveOddsText');
-    vm.runInNewContext(oddsText + '\n' + liveTeam + '\nthis.render = liveTeam;', ctx);
+    // The real artwork registry and its style helper, which liveTeam reads for
+    // every row it draws.
+    const panels = shell.match(/^const TEAM_PANELS = Object\.freeze\(\{[\s\S]*?^\}\);/m)?.[0];
+    assert.ok(panels, 'missing TEAM_PANELS');
+    const panelStyle = shell.match(/^function teamPanelStyle\([^)]*\) \{[\s\S]*?\n\}/m)?.[0];
+    assert.ok(panelStyle, 'missing teamPanelStyle');
+    vm.runInNewContext(panels + '\n' + panelStyle + '\n' + oddsText + '\n' + liveTeam +
+      '\nthis.render = liveTeam;', ctx);
     const g = {status, home: {points: 21, name: 'Alpha'}, away: {points: 17, name: 'Bravo'}};
     return ctx.render(g.home, g, {home: 64, away: 36}, live);
   };
