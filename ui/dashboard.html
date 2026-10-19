@@ -190,11 +190,21 @@
   body.is-app .nav-row nav.tabs { display: none; }
   body.is-app .nav-row { margin-top: 0; }
   body.is-app .global-search { max-width: none; }
+  /* The masthead is a wordmark and a search field in the app. The release
+     label and the big type belong on a page someone arrived at by link. */
+  body.is-app header.top { gap: 6px; padding-bottom: 8px; margin-bottom: 10px; }
+  body.is-app .title-block h1 { font-size: 25px; }
+  body.is-app .masthead-mark { width: 26px; height: 26px; }
+  body.is-app .release-label { display: none; }
+  body.is-app .global-search input { padding: 7px 10px; font-size: 14px; }
   body.is-app .wrap {
-    /* Clear the bar, and the home-screen indicator under it. The side insets
-       matter in landscape on a notched phone, where viewport-fit=cover puts
-       the page edge under the notch; max() keeps the site's own gutter
-       everywhere there is no notch to clear. */
+    /* Clear the status bar above and the bar plus the home-screen indicator
+       below. The top inset is 0 wherever iOS reserves the status bar itself,
+       so the calc costs nothing there and saves the masthead from sitting
+       under the clock where it does not. The side insets matter in landscape
+       on a notched phone, where viewport-fit=cover puts the page edge under
+       the notch; max() keeps the site's own gutter where there is no notch. */
+    padding-top: calc(14px + env(safe-area-inset-top, 0px));
     padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
     padding-left: max(20px, env(safe-area-inset-left, 0px));
     padding-right: max(20px, env(safe-area-inset-right, 0px));
@@ -651,20 +661,35 @@
     font: 12px var(--font-mono); cursor: pointer; vertical-align: middle; }
   .fav-toggle:hover, .fav-toggle:focus-visible { color: var(--amber); border-color: var(--amber-dim); }
   .fav-toggle.on { color: var(--amber); border-color: var(--amber-dim); }
-  .fav-panel { margin-bottom: 18px; }
-  .fav-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
-  .fav-card { background: var(--panel-2); border-radius: 3px; padding: 12px; display: grid; gap: 8px; min-width: 0; }
-  .fav-card-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
-  .fav-card-name { font-family: var(--font-display); font-size: 17px; color: var(--ink); text-decoration: none;
-    overflow-wrap: anywhere; }
-  .fav-card-name:hover, .fav-card-name:focus-visible { color: var(--amber); }
-  .fav-card-sub { font: 11px var(--font-mono); color: var(--ink-dim); margin-top: 2px; }
-  .fav-card-elo { font-family: var(--font-display); font-size: 24px; color: var(--amber); }
-  .fav-card-elo small { display: block; font: 11px var(--font-mono); color: var(--ink-dim); }
-  .fav-card-next { font: 12px/1.4 var(--font-mono); color: var(--ink-dim); overflow-wrap: anywhere; }
-  .fav-card-link { font: 12px var(--font-mono); color: var(--amber); text-decoration: none; }
-  .fav-card-link:hover, .fav-card-link:focus-visible { text-decoration: underline; }
+  /* ---- A followed team, as one wide strip ----
+     Logo, record, rank, rating, next opponent. It used to be a card inside a
+     panel: two nested boxes, 278px of an 844px phone screen, with the first
+     game of the day below the fold underneath it. */
+  .fav-panel { margin-bottom: 14px; }
+  .fav-title { margin: 0 0 8px; font-family: var(--font-collegiate); letter-spacing: .02em; }
+  .fav-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .fav-card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+    padding: 9px 11px; min-width: 0;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px;
+  }
+  .fav-card-head { display: flex; align-items: center; gap: 10px; min-width: 0; text-decoration: none; }
+  .fav-card-id { min-width: 0; display: block; }
+  .fav-card-name { display: block; font-family: var(--font-collegiate); font-size: 16px;
+    letter-spacing: .02em; color: var(--ink);
+    line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fav-card-head:hover .fav-card-name, .fav-card-head:focus-visible .fav-card-name { color: var(--amber); }
+  /* Supporting information reads in the body face, not the monospace the
+     tables use: a record and a conference are words, not a column of digits. */
+  .fav-card-sub { display: block; font: 12px var(--font-body); color: var(--ink-dim); margin-top: 1px; }
+  .fav-card-elo { font-family: var(--font-display); font-size: 22px; line-height: 1.1;
+    color: var(--amber); text-align: right; white-space: nowrap; }
+  .fav-card-elo small { display: block; font: 11px var(--font-body); color: var(--ink-dim); }
+  .fav-card-next { grid-column: 1 / -1; font: 12.5px/1.35 var(--font-body); color: var(--ink-dim);
+    text-decoration: none; border-top: 1px solid var(--line); padding-top: 7px; margin-top: 3px;
+    display: flex; gap: 8px; align-items: baseline; }
+  .fav-card-next:hover, .fav-card-next:focus-visible { color: var(--ink); }
+  .fav-card-go { margin-left: auto; color: var(--amber); }
   .week-games { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
   .week-game { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px;
     background: var(--panel-2); border-radius: 3px; font: 13px var(--font-mono); }
@@ -1184,9 +1209,39 @@
   .teams-switch a[aria-current="page"] { border-color: var(--amber); color: var(--amber); }
   @media (max-width: 720px) { .stadium-layout { grid-template-columns: 1fr; } .stadium-list { max-height: 340px; } }
 
-  .live-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 18px; }
-  .live-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 16px; }
-  .live-controls fieldset { display: flex; flex-wrap: wrap; gap: 5px; margin: 0; padding: 0; border: 0; }
+  .live-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 4px; }
+  /* ---- One scoreboard toolbar ----
+     The heading, how old the feed is and a refetch on one line; the week on
+     the next; the status filters and the sort on the third. It was a
+     two-line sentence, two rows of pill buttons and a four-link week nav. */
+  .live-head { display: flex; align-items: baseline; gap: 10px; margin: 14px 0 8px; flex-wrap: wrap; }
+  .live-head-title { font-family: var(--font-collegiate); font-size: 19px; letter-spacing: .02em;
+    margin: 0; line-height: 1.2; }
+  #live-status { font: 12px var(--font-body); color: var(--ink-dim); min-width: 0; }
+  #live-status:not(:empty)::before { content: '\00b7'; margin-right: 8px; }
+  .live-refresh { margin-left: auto; padding: 4px 10px; border: 1px solid var(--line);
+    border-radius: 5px; background: var(--panel-2); color: var(--ink-dim);
+    font: 12px var(--font-body); cursor: pointer; }
+  .live-refresh:hover:not(:disabled) { color: var(--amber); border-color: var(--amber); }
+  .live-refresh:disabled { opacity: .55; cursor: default; }
+  .week-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .week-step { display: flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 5px;
+    font-size: 19px; line-height: 1; text-decoration: none; color: var(--amber); }
+  .week-step[aria-disabled="true"] { color: var(--ink-dim); opacity: .45; }
+  .week-pick { flex: 0 1 150px; min-width: 0; }
+  .week-pick select, .order-pick select {
+    width: 100%; padding: 7px 9px; background: var(--panel-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 5px; font: 13px var(--font-body); }
+  .week-today { margin-left: auto; padding: 8px 11px; border: 1px solid var(--line);
+    border-radius: 5px; font: 12.5px var(--font-body); text-decoration: none; white-space: nowrap; }
+  .order-pick { margin-left: auto; flex: 0 1 124px; min-width: 92px; }
+  /* One row, never two: the four states and the order picker have to fit the
+     width of a phone, so nothing here wraps and no button grows to fill. */
+  .live-controls { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; margin: 0 0 10px; }
+  .live-controls fieldset { display: flex; flex-wrap: nowrap; flex: 0 1 auto; min-width: 0;
+    gap: 6px; margin: 0; padding: 0; border: 0; }
+  .live-controls fieldset button { flex: 0 1 auto; white-space: nowrap; }
   .live-controls legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .live-controls button { padding: 7px 11px; border: 1px solid var(--line); border-radius: 5px;
     background: var(--panel-2); color: var(--ink); cursor: pointer; font: 12px var(--font-mono); }
@@ -1195,7 +1250,8 @@
   .live-fold > summary, .home-side-fold > summary { padding: 12px 15px; cursor: pointer;
     color: var(--amber); font: 13px var(--font-mono); }
   .live-fold > summary:hover, .home-side-fold > summary:hover { background: #ffffff0b; }
-  .live-slate-title { grid-column: 1 / -1; margin: 0; font: 15px var(--font-display); color: var(--ink); }
+  .live-slate-title { grid-column: 1 / -1; margin: 0; font: 15px var(--font-collegiate);
+    letter-spacing: .02em; color: var(--ink); }
   .live-fold-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 0 12px 12px; }
   .home-side-fold > summary { border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); }
   .home-side-fold[open] > summary { margin-bottom: 12px; }
@@ -1256,7 +1312,7 @@
   .live-team .monogram.xs { border: 1px solid #ffffff44; box-shadow: 0 2px 8px #0005; }
   .live-team .monogram.xs { font-size: 15px; }
   .live-team .team-link-name { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-    font-family: var(--font-display); font-size: 17px; line-height: 1.1; }
+    font-family: var(--font-collegiate); font-size: 14px; letter-spacing: 0; line-height: 1.25; }
   .live-team .live-identity { min-width: 0; }
   .live-team .live-rating { display: block; margin-top: 4px; font: 11px var(--font-mono); color: #e1e9e3; }
   .live-team .live-rank { color: #f7d47e; margin-right: 5px; }
@@ -1311,7 +1367,6 @@
   .stats-table th.rank-col,.stats-table th:nth-child(2) {z-index:2;}
   .table-scroll {overflow-x:auto;max-width:100%;}
   .tabs {flex-wrap:wrap;}
-  #home-weeks {align-items:center;gap:20px;flex-wrap:wrap;}
   /* Keep text links on the theme accent, including visited links. */
   :root a:any-link:not(.active):not(.action-button) { color: var(--amber); }
 
@@ -4256,17 +4311,19 @@ function favoriteCard(team) {
       (TEAM_BY_ID.get(String(next.home === team.id ? next.away : next.home))?.name || 'TBA') +
       ' · ' + fmtKickoff(next.kickoff, next.tbd)
     : 'No game scheduled';
+  // One wide strip, not a card inside a panel: on a phone the nested box cost
+  // 278px of an 844px screen and pushed the first game below the fold. Logo,
+  // record, rank, rating and next opponent, in that order, on two short lines.
   return '<li class="fav-card">' +
-    '<div class="fav-card-head">' + logoMarkup(team.name, 'team', 'sm', season || undefined) +
-      '<div><a class="fav-card-name" href="' + esc('#team=' + encodeURIComponent(team.slug)) + '">' +
-        esc(team.name) + '</a>' +
-      '<div class="fav-card-sub">' + esc(teamHeaderRecord(rec, unrated).value) +
-        (team.conference ? ' · ' + esc(team.conference) : '') + '</div></div></div>' +
-    '<div class="fav-card-elo">' + (elo ? eloValue(elo.value) + eloChangeMarkup(change, team.name) : 'N/A') +
-      '<small>' + (elo ? 'Elo · ' + rankSub(elo) : 'no rating yet') + '</small></div>' +
-    '<div class="fav-card-next">' + esc(whenNext) + '</div>' +
-    '<a class="fav-card-link" href="' + esc('#team=' + encodeURIComponent(team.slug) + '&tab=week') +
-      '">This week →</a></li>';
+    '<a class="fav-card-head" href="' + esc('#team=' + encodeURIComponent(team.slug)) + '">' +
+      logoMarkup(team.name, 'team', 'sm', season || undefined) +
+      '<span class="fav-card-id"><span class="fav-card-name">' + esc(team.name) + '</span>' +
+      '<span class="fav-card-sub">' + esc(teamHeaderRecord(rec, unrated).value) +
+        (team.conference ? ' · ' + esc(team.conference) : '') + '</span></span></a>' +
+    '<span class="fav-card-elo">' + (elo ? eloValue(elo.value) + eloChangeMarkup(change, team.name) : 'N/A') +
+      '<small>' + (elo ? 'Elo · ' + rankSub(elo) : 'no rating yet') + '</small></span>' +
+    '<a class="fav-card-next" href="' + esc('#team=' + encodeURIComponent(team.slug) + '&tab=week') + '">' +
+      esc(whenNext) + ' <span class="fav-card-go">→</span></a></li>';
 }
 
 function renderFavoriteTeams() {
@@ -4274,11 +4331,11 @@ function renderFavoriteTeams() {
   if (!teams.length) {
     // Without this line the feature is undiscoverable: the only way to follow a
     // team is a button on its own page, which nobody visits looking for one.
-    return '<section class="panel fav-panel" id="fav-teams"><p class="section-note">' +
+    return '<section class="panel fav-panel is-empty" id="fav-teams"><p class="section-note">' +
       'Follow a team on its page and it appears here, with what the last week did to its rating. ' +
       '<a href="#section=teams">Browse teams</a>.</p></section>';
   }
-  return '<section class="panel fav-panel" id="fav-teams"><h2 class="section-title">My teams</h2>' +
+  return '<section class="fav-panel" id="fav-teams"><h2 class="section-title fav-title">My teams</h2>' +
     '<ul class="fav-grid">' + teams.map(favoriteCard).join('') + '</ul></section>';
 }
 
@@ -4668,8 +4725,19 @@ function hydrateHomeDiscovery(version) {
     const defaultWeek = data.byId.get(Number(first?.id))?.week || upcomingGroups()[0]?.games[0]?.week || weeks[weeks.length-1];
     const week = state.slateWeek ?? defaultWeek;
     const i = weeks.indexOf(week);
-    const link = (w,label) => w == null ? '<span aria-disabled="true">' + label + '</span>' : '<a href="' + esc(routeHref({slateWeek:w})) + '">' + label + '</a>';
-    document.getElementById('home-weeks').innerHTML = link(weeks[i-1],'← Previous Week') + '<strong>' + (week === 'post' ? 'Postseason' : 'Week ' + week) + '</strong>' + link(weeks[i+1],'Next Week →') + '<a href="' + esc(routeHref({slateWeek:null})) + '">Current week</a>';
+    const weekName = w => w === 'post' ? 'Postseason' : 'Week ' + w;
+    const step = (w,glyph,label) => w == null
+      ? '<span class="week-step" aria-disabled="true">' + glyph + '</span>'
+      : '<a class="week-step" href="' + esc(routeHref({slateWeek:w})) + '">' + glyph +
+        '<span class="visually-hidden">' + label + '</span></a>';
+    document.getElementById('home-weeks').innerHTML =
+      step(weeks[i-1],'\u2039','Previous Week') +
+      '<label class="week-pick"><span class="visually-hidden">Week</span>' +
+      '<select data-route-select aria-label="Week">' + weeks.map(w =>
+        '<option value="' + esc(routeHref({slateWeek:w})) + '"' + (w === week ? ' selected' : '') +
+        '>' + weekName(w) + '</option>').join('') + '</select></label>' +
+      step(weeks[i+1],'\u203a','Next Week') +
+      '<a class="week-today" href="' + esc(routeHref({slateWeek:null})) + '">Today</a>';
     if (state.slateWeek != null) {
       const games = data.games.filter(g=>week === 'post' ? g.phase : !g.phase && g.week === week);
       liveSeasonData = data;
@@ -4730,6 +4798,9 @@ function routeSelect(label, items, selected) {
 }
 document.addEventListener('change',e=>{
   if(e.target.matches('[data-route-select]')) window.location.hash=e.target.value;
+  // Featured or Kickoff. A sort is one choice of several, not a pair of
+  // toggles, and the two buttons cost a row of the phone screen.
+  else if(e.target.matches('[data-live-order-select]')){ liveOrder=e.target.value; paintLiveGames(); }
 });
 
 function renderNavigation() {
@@ -5188,16 +5259,20 @@ function renderLiveBoard(games) {
 }
 function renderLiveScores(includeWeeks = false) {
   const mobile = window.matchMedia('(max-width: 700px)').matches;
-  return '<div id="live-status" role="status" aria-live="polite">Loading the scoreboard…</div>' +
+  return '<div class="live-head"><h2 class="live-head-title">Scoreboard</h2>' +
+    '<div id="live-status" role="status" aria-live="polite">Loading…</div>' +
+    '<button type="button" id="live-refresh" class="live-refresh">Refresh</button></div>' +
+    (includeWeeks ? '<nav id="home-weeks" class="week-bar" aria-label="Browse weeks"></nav>' : '') +
     '<div class="live-controls"><fieldset aria-label="Game status"><legend>Game status</legend>' +
     [['all', 'All'], ['in_progress', 'Live'], ['scheduled', 'Upcoming'], ['completed', 'Final']]
       .map(([value, label]) => '<button type="button" data-live-filter="' + value + '" aria-pressed="' +
         (liveFilter === value) + '">' + label + '</button>').join('') +
-    '</fieldset><fieldset aria-label="Game order"><legend>Game order</legend>' +
+    '</fieldset><label class="order-pick"><span class="visually-hidden">Order games by</span>' +
+    '<select data-live-order-select>' +
     [['hype', 'Featured'], ['time', 'Kickoff']]
-      .map(([value, label]) => '<button type="button" data-live-order="' + value + '" aria-pressed="' +
-        (liveOrder === value) + '">' + label + '</button>').join('') + '</fieldset></div>' +
-    (includeWeeks ? '<nav id="home-weeks" class="live-controls" aria-label="Browse weeks"></nav>' : '') +
+      .map(([value, label]) => '<option value="' + value + '"' +
+        (liveOrder === value ? ' selected' : '') + '>' + label + '</option>').join('') +
+    '</select></label></div>' +
     '<div class="live-layout"><div id="live-games" class="live-grid"></div>' +
     '<aside class="home-side" aria-label="Rankings">' + (mobile ?
       '<details class="home-side-fold"><summary>Rankings and conference boards</summary>' : '') +
@@ -5404,9 +5479,9 @@ function hydrateLiveScores(version) {
       // delayed refresh leaves the last good snapshot published with a
       // perfectly valid timestamp, so silence here would show hours-old
       // in-progress scores as if they were current.
-      const stale = validStamp ? feedAgeLabel(Date.now() - stamp.getTime()) : '';
-      status.textContent = !validStamp ? 'Live feed is not active yet.'
-        : stale ? 'Scoreboard is ' + stale : '';
+      const stale = validStamp ? feedAgeShort(Date.now() - stamp.getTime()) : '';
+      status.textContent = !validStamp ? 'Not active yet'
+        : stale ? 'Updated ' + stale : '';
       paintLiveGames();
       if (state.section === 'home') hydrateHomeDiscovery(version);
       board.innerHTML = renderLiveBoard(slate.games);
@@ -5418,7 +5493,7 @@ function hydrateLiveScores(version) {
       }).catch(() => {});
     }).catch(() => {
       if (version === renderVersion && (state.section === 'live' || state.section === 'home')) {
-        document.getElementById('live-status').textContent = 'The live feed could not be loaded. Try refreshing this page.';
+        document.getElementById('live-status').textContent = 'Feed unavailable';
       }
     });
 }
@@ -5576,6 +5651,16 @@ function feedAgeLabel(ms) {
   if (minutes < 120) return minutes + ' min old';
   const hours = Math.round(minutes / 60);
   return hours + (hours === 1 ? ' hour' : ' hours') + ' old, newer scores may exist';
+}
+// The same age in the fewest characters that still say it, for the scoreboard
+// heading. "Scoreboard is 33 hours old, newer scores may exist" was two lines
+// of a phone screen standing between the reader and the first score.
+function feedAgeShort(ms) {
+  if (!Number.isFinite(ms) || ms < 10 * 60 * 1000) return '';
+  const minutes = Math.round(ms / 60000);
+  if (minutes < 120) return minutes + 'm ago';
+  const hours = Math.round(minutes / 60);
+  return hours < 48 ? hours + 'h ago' : Math.round(hours / 24) + 'd ago';
 }
 function liveDetail(g) {
   const stamp = liveSnapshot?.updated_at ? new Date(liveSnapshot.updated_at) : null;
@@ -9486,15 +9571,23 @@ document.getElementById('content').addEventListener('click', e => {
   const marker=e.target.closest('[data-stadium-marker]');
   if(marker){e.preventDefault();navigate({section:'teams',subview:'stadiums',stadium:Number(marker.dataset.stadiumMarker),view:'tab'});return;}
   const filterButton = e.target.closest('[data-live-filter]');
-  const orderButton = e.target.closest('[data-live-order]');
-  if (filterButton || orderButton) {
-    if (filterButton) liveFilter = filterButton.dataset.liveFilter;
-    if (orderButton) liveOrder = orderButton.dataset.liveOrder;
-    document.querySelectorAll('[data-live-filter], [data-live-order]').forEach(button => {
-      button.setAttribute('aria-pressed', String(button.dataset.liveFilter === liveFilter || button.dataset.liveOrder === liveOrder));
+  if (filterButton) {
+    liveFilter = filterButton.dataset.liveFilter;
+    document.querySelectorAll('[data-live-filter]').forEach(button => {
+      button.setAttribute('aria-pressed', String(button.dataset.liveFilter === liveFilter));
     });
     paintLiveGames();
-    (filterButton || orderButton).focus();
+    filterButton.focus();
+    return;
+  }
+  if (e.target.id === 'live-refresh') {
+    // The scoreboard is refreshed by a cron that GitHub runs when it feels
+    // like it, so the reader gets a way to ask for the current file rather
+    // than reloading the whole page to find out nothing has changed.
+    e.target.disabled = true;
+    document.getElementById('live-status').textContent = 'Checking…';
+    hydrateLiveScores(renderVersion);
+    setTimeout(() => { e.target.disabled = false; }, 1500);
     return;
   }
   if (e.target.id === 'matchup-swap' && state.section === 'matchups') {
