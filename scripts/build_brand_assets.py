@@ -46,6 +46,17 @@ SQUARE = """
 <div style="width:{size}px;height:{size}px">{mark}</div>
 """
 
+# A maskable icon is cropped to whatever shape the launcher wants, and the
+# platforms only guarantee the middle 80% of the width (a circle inscribed in
+# it). The mark already carries its own rounded-rectangle background, so here it
+# is inset to 60% on a full-bleed field: the bars survive a circular crop, and
+# the corners that get cut are background.
+MASKABLE = """
+<div style="width:{size}px;height:{size}px;display:flex;align-items:center;justify-content:center">
+  <div style="width:{inner}px;height:{inner}px">{mark}</div>
+</div>
+"""
+
 OG = """
 <div class="card">
   <div class="mark">{mark}</div>
@@ -123,10 +134,23 @@ def main(argv=None):
                        body=SQUARE.format(size=32, mark=mark))
     shoot(chromium, page, BRAND / "icon-32.png", 32, 32)
 
+    # The home-screen install icons. 192 and 512 are the two sizes Android
+    # asks for by name, and the maskable one is what keeps the mark intact
+    # inside a launcher's own silhouette.
+    for size in (192, 512):
+        page = PAGE.format(bg=BG, ink=INK, amber=AMBER,
+                           body=SQUARE.format(size=size, mark=mark))
+        shoot(chromium, page, BRAND / f"icon-{size}.png", size, size)
+
+    page = PAGE.format(bg=BG, ink=INK, amber=AMBER,
+                       body=MASKABLE.format(size=512, inner=round(512 * 0.6), mark=mark))
+    shoot(chromium, page, BRAND / "icon-maskable-512.png", 512, 512)
+
     page = PAGE.format(bg=BG, ink=INK, amber=AMBER, body=OG.format(mark=mark))
     shoot(chromium, page, BRAND / "og-image.png", 1200, 630)
 
-    for name in ("apple-touch-icon.png", "icon-32.png", "og-image.png"):
+    for name in ("apple-touch-icon.png", "icon-32.png", "icon-192.png",
+                 "icon-512.png", "icon-maskable-512.png", "og-image.png"):
         path = BRAND / name
         print(f"Wrote {path.relative_to(ROOT)} ({path.stat().st_size} bytes)")
     return 0
