@@ -62,11 +62,45 @@ const MAX_ASSET_ENTRIES = 600;
 
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
-// Precached on install so a first offline launch has a page and an icon. The
-// rest of the site is cached as it is used; these are relative to this file,
+// Precached on install, so a first offline launch has a page and an icon
+// without having had to visit one first. Paths are relative to this file,
 // which is also the scope, so they work under a project path or a bare domain.
-const PRECACHE = ['index.html', 'ui/dashboard.html', 'manifest.webmanifest',
-                  'ui/brand/mark.svg', 'ui/brand/icon-192.png', 'ui/brand/icon-512.png'];
+//
+// Documents and assets go to their own caches rather than all landing in one.
+// caches.match() searches every cache and returns the FIRST hit, in creation
+// order, so an asset precached into the document cache would keep winning over
+// the fresh copy stale-while-revalidate writes to the asset cache, and the
+// deploy that changed it would never reach anybody.
+const PRECACHE_DOCUMENTS = ['index.html', 'ui/dashboard.html'];
+const PRECACHE_ASSETS = ['manifest.webmanifest', 'ui/brand/mark.svg',
+                         'ui/brand/icon-192.png', 'ui/brand/icon-512.png'];
+
+// The dashboard's own <script src="...?v=hash"> files, which it cannot render
+// without: with none of them the page reaches an undefined CfbNavigation and
+// draws nothing. They are not in the list above because their URLs change on
+// every deploy, and they are not picked up by the normal runtime rules either
+// -- the worker registers on `load`, by which time this visit has already
+// fetched them uncontrolled. So install reads the page it just cached and
+// takes the script URLs from it. Nothing here is hardcoded, so the list cannot
+// drift from what the page actually loads.
+const SCRIPT_SRC = /<script[^>]+src=["']([^"']+)["']/gi;
+
+async function precacheRuntimeScripts(documents) {
+  const page = await documents.match('ui/dashboard.html');
+  if (!page) return;
+  const html = await page.text();
+  const assets = await caches.open(ASSET_CACHE);
+  const urls = new Set();
+  let match;
+  while ((match = SCRIPT_SRC.exec(html)) !== null) {
+    const src = match[1];
+    // Same-origin only: a cross-origin script would need CORS to be cached,
+    // and the page has none of those.
+    const url = new URL(src, new URL('ui/dashboard.html', self.location.href));
+    if (url.origin === self.location.origin) urls.add(url.href);
+  }
+  await Promise.all([...urls].map(url => assets.add(url).catch(() => null)));
+}
 
 const OFFLINE_HTML = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -154,14 +188,17 @@ async function documentRequest(request) {
   }
 }
 
-async function staleWhileRevalidate(request) {
+async function staleWhileRevalidate(request, event) {
   const hit = await caches.match(request);
   const network = fetch(request)
-    .then(response => {
-      if (cacheable(response)) putAndTrim(ASSET_CACHE, request, response.clone());
-      return response;
-    })
+    .then(response => cacheable(response)
+      ? putAndTrim(ASSET_CACHE, request, response.clone()).then(() => response)
+      : response)
     .catch(() => null);
+  // The whole point of this strategy is the refetch, and respondWith() settling
+  // lets the browser kill the worker -- so the event has to stay open until the
+  // new copy is actually written, or the "revalidate" half never happens.
+  if (event) event.waitUntil(network);
   if (hit) return hit;
   const response = await network;
   return response || offlineResponse();
@@ -169,10 +206,15 @@ async function staleWhileRevalidate(request) {
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
-    const cache = await caches.open(DOCUMENT_CACHE);
-    // One at a time, and never fatal: a precache entry that 404s on a branch
-    // where it has not been generated yet must not stop the worker installing.
-    await Promise.all(PRECACHE.map(path => cache.add(path).catch(() => null)));
+    const [documents, assets] = await Promise.all([caches.open(DOCUMENT_CACHE),
+                                                   caches.open(ASSET_CACHE)]);
+    // Never fatal: a precache entry that 404s on a branch where it has not
+    // been generated yet must not stop the worker installing.
+    await Promise.all([
+      ...PRECACHE_DOCUMENTS.map(path => documents.add(path).catch(() => null)),
+      ...PRECACHE_ASSETS.map(path => assets.add(path).catch(() => null)),
+    ]);
+    await precacheRuntimeScripts(documents).catch(() => null);
     await self.skipWaiting();
   })());
 });
@@ -202,7 +244,7 @@ self.addEventListener('fetch', event => {
   if (sameOrigin && isDocument(request, url)) event.respondWith(documentRequest(request));
   else if (sameOrigin && isLiveFeed(url)) event.respondWith(networkFirst(request, ASSET_CACHE));
   else if (sameOrigin && isVersioned(url)) event.respondWith(cacheFirst(request));
-  else event.respondWith(staleWhileRevalidate(request));
+  else event.respondWith(staleWhileRevalidate(request, event));
 });
 
 // The page asks for this when the user pulls the scoreboard, so a new deploy

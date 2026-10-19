@@ -54,6 +54,25 @@ whenever there is a network. Its cached copy is the offline screen: the
 dashboard carries its ratings payload inline, so an offline launch shows the
 last ratings this device saw rather than a browser error.
 
+Install does one thing beyond fetching that table's files: it reads the page
+it just cached and precaches the `<script src="...?v=hash">` files named in it.
+Those cannot be listed by hand, because their URLs change on every deploy, and
+the runtime rules never see them on a first visit — the worker registers on
+`load`, by which time the page has already fetched them uncontrolled. Without
+that step, a first visit followed by an offline launch draws an empty page:
+`cacheFirst` has no copy, the fetch fails, and the inline application reaches
+an undefined `CfbNavigation`.
+
+Documents and assets go to separate caches, and the precache list is split the
+same way. `caches.match()` returns the first hit across every cache in creation
+order, so an unversioned asset precached into the document cache would keep
+winning over the fresh copy stale-while-revalidate writes to the asset cache,
+and the deploy that changed it would never reach anybody.
+
+The stale-while-revalidate refetch is handed to `event.waitUntil()`. Once
+`respondWith()` settles the browser may terminate the worker, so without it the
+revalidate half of the strategy is not guaranteed to happen at all.
+
 The asset cache is capped at `MAX_ASSET_ENTRIES`, oldest insertion out first.
 A season of browsing touches thousands of per-game and per-player files and an
 installed app must not grow without limit on someone's phone.
@@ -89,8 +108,14 @@ this team.
 Every movement number comes from `data/elo_timeline/<season>.js`, which
 `src/elo_timeline.py` builds from the engine's own audit trail. `d_elo` and
 `d_rank` are a team against **its own** previous stage, and nothing is
-recomputed in the browser. A team on a bye is in the stage with `stage_games`
-of 0, which is what tells a real 0.0 apart from a week it did not play.
+recomputed in the browser.
+
+Whether the team played is read off the games, not off the timeline's
+`stage_games`. That column counts rated games, and a game against an opponent
+this project rates nothing for is in no `elo_game_history` row at all — so a
+team whose only game that week was an FCS opponent has a `stage_games` of 0 and
+would read as a bye. It played, its rating is unchanged because the opponent is
+unrated, and the panel says that and lists the game.
 
 Two Elo figures appear on one screen and they are measured differently: the
 week's change is computed from the rounded ratings the tables display (so a

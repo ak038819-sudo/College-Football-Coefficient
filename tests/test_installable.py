@@ -141,12 +141,29 @@ def test_the_dashboard_registers_the_worker_from_the_root():
     assert "scope: '../'" in text
 
 
-def test_everything_the_worker_precaches_exists():
+@pytest.mark.parametrize('name', ['PRECACHE_DOCUMENTS', 'PRECACHE_ASSETS'])
+def test_everything_the_worker_precaches_exists(name):
     """A precache list is fetched on install; an entry that 404s is tolerated
     by the worker but means the shell is not actually available offline."""
-    listed = re.search(r'const PRECACHE = \[(.*?)\];', WORKER.read_text(encoding='utf-8'), re.S)
-    assert listed, 'PRECACHE is no longer a literal list'
+    listed = re.search(rf'const {name} = \[(.*?)\];', WORKER.read_text(encoding='utf-8'), re.S)
+    assert listed, f'{name} is no longer a literal list'
     paths = re.findall(r"'([^']+)'", listed.group(1))
     assert paths
     for path in paths:
         assert (ROOT / path).is_file(), f'{path} is precached but not published'
+
+
+def test_the_dashboard_scripts_the_worker_precaches_are_all_versioned():
+    """Install reads the built page and caches the scripts it names. Those are
+    served cache-first, which is only safe because each URL carries the hash of
+    its own bytes -- a script without one would be frozen at install forever."""
+    built = ROOT / 'ui' / 'dashboard.html'
+    if not built.is_file():
+        pytest.skip('ui/dashboard.html has not been built in this checkout')
+    srcs = re.findall(r'<script[^>]+src="([^"]+)"', built.read_text(encoding='utf-8'))
+    assert srcs, 'the dashboard loads no external scripts at all'
+    for src in srcs:
+        if src.startswith(('http://', 'https://', '//')):
+            continue
+        assert '?v=' in src, f'{src} is loaded by the page but carries no version'
+        assert (ROOT / 'ui' / src.split('?')[0]).is_file(), src

@@ -40,6 +40,15 @@ function timeline(season){
     rows:raw.rows.map(stage=>stage.map(r=>unpack(raw.row_fields,r)))};
 }
 
+/** The team-page export, parsed the same way the page's loader parses it. */
+function teamPages(){
+  const file=path.join(root,'ui/data/team_pages.js');
+  const sandbox={window:{}};
+  sandbox.window.window=sandbox.window;
+  require('node:vm').runInNewContext(fs.readFileSync(file,'utf8'),sandbox);
+  return sandbox.window.__CFB_TEAM_PAGES__||sandbox.window.TEAM_PAGES||sandbox.window.__TEAM_PAGES__;
+}
+
 function open(){
   const vc=new VirtualConsole();const errors=[];vc.on('jsdomError',e=>errors.push(e.message));
   const dom=new JSDOM(fs.readFileSync(path.join(root,'ui/dashboard.html'),'utf8'),{
@@ -151,6 +160,27 @@ test('following a team, and what the last week did to it',async t=>{
       await route('#team='+team.slug,()=>d.querySelector('[data-fav-slug]'));
       await route('#section=home',()=>d.querySelector('#fav-teams .fav-card'));
       assert.equal(d.querySelectorAll('#fav-teams .fav-card').length,1);
+    });
+
+    await t.test('a week whose only game was unrated is not called a bye',async()=>{
+      // The timeline counts RATED games, so a team whose single game that week
+      // was against an FCS opponent has stage_games 0 and would read as a bye.
+      // Found from the data rather than named, so it holds in any week.
+      const tp=teamPages();
+      const nonFbs=(tp.non_fbs||[]);            // [id, season, date, week, tid, opp, ...]
+      const stage=tl.stages[tl.stages.length-1];
+      const idleIds=new Set(last.filter(r=>r.stage_games===0)
+        .map(r=>DATA.teams.find(x=>x.name===tl.teams[r.team].name)?.id));
+      const hit=nonFbs.find(r=>r[1]===season&&r[10]===0&&r[3]===stage.week&&idleIds.has(r[4]));
+      if(!hit){ t.diagnostic('no unrated-only week in '+season+' '+stage.key); return; }
+      const only=DATA.teams.find(x=>x.id===hit[4]);
+      await route('#team='+only.slug+'&tab=week',
+        ()=>d.querySelector('#tp-week')&&!d.querySelector('#tp-week .empty-note'));
+      const text=d.querySelector('#tp-week').textContent;
+      assert.ok(!/did not play/.test(text),only.name+' played '+hit[5]+' and was called a bye');
+      assert.ok(d.querySelector('#tp-week .week-game'),'the unrated game is not listed');
+      assert.match(text,new RegExp(hit[5].replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+      assert.match(text,/rates nothing for/,'the unchanged rating is not explained');
     });
 
     assert.deepEqual(Array.from(errors),[]);

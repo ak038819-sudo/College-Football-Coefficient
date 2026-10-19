@@ -4245,21 +4245,26 @@ function weekDelta(value, digits, suffix) {
     (suffix || '') + '</span>';
 }
 
-// The games that produced the movement: this team's games in that stage, with
-// the Elo each one moved. Read off TP.eloByTeam, the same per-game ledger the
-// Analytics tab draws, so a game's change here and there cannot disagree.
-function weekGamesHtml(tp, team, season, stage) {
+// What this team played in that stage, from BOTH indexes. A game against an
+// opponent this project rates nothing for is in nonFbsByTeam and in no Elo
+// row at all, so the timeline's stage_games is 0 for a team whose only game
+// that week was one of those -- which is a week it played, not a bye.
+function weekStageGames(tp, team, season, stage) {
   const inStage = g => g.season === season &&
     (stage.key === 'post' ? g.phase > 0 : !g.phase && g.week === stage.week);
-  const rows = (tp.eloByTeam.get(team.id) || [])
-    .map(e => ({ e, g: tp.gamesById.get(e.gid) }))
-    .filter(x => x.g && inStage(x.g));
-  const unrated = (tp.nonFbsByTeam.get(team.id) || []).filter(inStage);
-  if (!rows.length && !unrated.length) {
-    return '<p class="empty-note">' + esc(team.name) + ' did not play in ' +
-      esc(stage.label.toLowerCase()) + '.</p>';
-  }
-  const rated = rows.map(({ e, g }) => {
+  return {
+    rated: (tp.eloByTeam.get(team.id) || [])
+      .map(e => ({ e, g: tp.gamesById.get(e.gid) }))
+      .filter(x => x.g && inStage(x.g)),
+    unrated: (tp.nonFbsByTeam.get(team.id) || []).filter(inStage),
+  };
+}
+
+// The games that produced the movement, with the Elo each one moved. Read off
+// TP.eloByTeam, the same per-game ledger the Analytics tab draws, so a game's
+// change here and there cannot disagree.
+function weekGamesHtml(team, played) {
+  const rated = played.rated.map(({ e, g }) => {
     const home = g.home === team.id;
     const mine = home ? g.hs : g.as, theirs = home ? g.as : g.hs;
     const opp = TEAM_BY_ID.get(String(home ? g.away : g.home));
@@ -4272,7 +4277,7 @@ function weekGamesHtml(tp, team, season, stage) {
       '<span class="week-game-elo">' + weekDelta(e.chg, 1, ' Elo') + '</span>' +
       '<a class="week-game-link" href="' + esc(gameHref(g.id, g.season)) + '">Game story →</a></li>';
   });
-  const others = unrated.map(g => {
+  const others = played.unrated.map(g => {
     const result = g.mine == null || g.theirs == null ? 'No result'
       : (g.mine > g.theirs ? 'W' : g.mine < g.theirs ? 'L' : 'T') + ' ' + g.mine + '–' + g.theirs;
     return '<li class="week-game"><span class="week-game-res">' + esc(result) + '</span>' +
@@ -4334,8 +4339,14 @@ function fillWeekPanel(tp, team) {
         '<div class="empty-note">' + esc(team.name) + ' has no rating in ' + season + ' yet.</div>';
       return;
     }
-    const byeNote = row.stage_games === 0
-      ? esc(team.name) + ' did not play, so the rating is unchanged — the rank can still move as others play.'
+    // Whether the team played is read off the games, not off the timeline's
+    // stage_games: that counts rated games only, and a week whose single game
+    // was against an unrated opponent would read as a bye.
+    const played = weekStageGames(tp, team, season, stage);
+    const idle = !played.rated.length && !played.unrated.length;
+    const unchanged = ' the rating is unchanged — the rank can still move as others play.';
+    const restNote = idle ? esc(team.name) + ' did not play, so' + unchanged
+      : !played.rated.length ? esc(team.name) + ' played only an opponent this project rates nothing for, so' + unchanged
       : '';
     document.getElementById('tp-week').innerHTML =
       '<h2 class="section-title">Since last week</h2>' +
@@ -4349,8 +4360,8 @@ function fillWeekPanel(tp, team) {
           Math.abs(row.d_rank) === 1 ? ' place' : ' places'),
           row.d_rank > 0 ? 'climbed' : row.d_rank < 0 ? 'fell' : 'held') +
       '</div>' +
-      (byeNote ? '<p class="section-note">' + byeNote + '</p>'
-        : weekGamesHtml(tp, team, season, stage));
+      (restNote ? '<p class="section-note">' + restNote + '</p>' : '') +
+      (idle ? '' : weekGamesHtml(team, played));
     const standing = document.getElementById('tp-week-standing');
     // One panel, not two, when there is no playoff picture to show: a team in
     // a season with no field would otherwise get an empty box.
