@@ -65,8 +65,19 @@ The rest:
   Mankato-era opponents like Menlo, and programs that dropped the sport
   (Boston University, Wichita State, Hofstra, Long Beach State, Santa Clara,
   Pacific). The script prints the list on every run.
+- **Eight schools ESPN lists but the archive has no mark for** keep the monogram
+  too, and this is the group that can change on its own: a later capture may
+  carry them. They are Eastern Oregon, Midwestern State, Oklahoma Panhandle,
+  Point University, Reinhardt, Southwestern (KS), St. Francis (IL) and Virginia
+  Lynchburg. The provenance file records their ESPN ids with the source columns
+  empty, which is how you tell them from the 21 -- and from the four dated
+  aliases, whose id column is blank because the row is not an ESPN lookup.
 
-Measured 2026-10-18: 207 opponents, 186 resolved, 21 without a mark.
+Measured on the first fetch, 2026-10-19 (run 39193931559): 207 opponents, 186
+of them resolved to an ESPN id (185 exact plus the rename), 174 marks fetched, 4
+taking their own dated eras, so 178 schools carry a mark and 29 keep the
+monogram. Resolving to an id is not the same as the archive having a logo,
+which is the difference between those last two bullets.
 
 ## The live scoreboard
 
