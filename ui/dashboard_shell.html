@@ -1073,12 +1073,20 @@
   .team-panel { --panel-art: none; }
   .live-team.team-panel, .mini-board li.team-panel {
     background-color: #072c50;
-    background-image: linear-gradient(90deg, #071b30b3, #071b301a 55%, #071b3070), var(--panel-art);
+    /* The scrim's middle used to fade to 10% navy, which is nothing behind a
+       white checkerboard: Tennessee's and Kentucky's names measured 1.0:1
+       against their own artwork. 55% is the lightest floor that keeps every
+       label above 4.5:1 on all eight panels. */
+    background-image: linear-gradient(90deg, #071b30e0, #071b308c 55%, #071b30bf), var(--panel-art);
     background-size: cover;
     background-position: center 55%;
   }
   .team-panel .logo-chip { background: transparent !important; border-color: transparent !important; box-shadow: none !important; }
-  .team-panel .team-link-name, .team-panel .live-rating, .team-panel .v, .team-panel .rk { text-shadow: 0 1px 3px #000; }
+  /* Panel rows carry their own ink: the gold link colour is mid-luminance, so
+     it loses against the bright half of a two-tone panel however dark the
+     scrim is. */
+  .team-panel .team-link-name, .team-panel .live-rating, .team-panel .live-odds,
+  .mini-board li.team-panel .v, .team-panel .rk { color: #f8f9f5; text-shadow: 0 1px 3px #000; }
   .mini-board li.team-panel { border-radius: 3px; }
   .mini-board li.team-panel .rk { color: #e1e9e3; }
   .live-team.is-losing { filter: saturate(.72); }

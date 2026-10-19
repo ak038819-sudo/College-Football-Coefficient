@@ -161,3 +161,31 @@ test('every registered panel names a real team and an asset that exists', () => 
     assert.ok(fs.existsSync('ui/' + panel.image), panel.image + ' is not in the repository');
   }
 });
+
+test('the panel scrim never thins to where artwork can swallow the labels', () => {
+  // Measured, not guessed: with the scrim's middle stop at 10% navy, the names
+  // and ratings on Tennessee's and Kentucky's panels came out at 1.0:1 against
+  // their own checkerboards -- the same luminance as the artwork behind them.
+  // 50% is the floor that keeps every label on all eight panels above 4.5:1.
+  const rule = shell.match(/\.live-team\.team-panel[\s\S]*?\n  \}/)?.[0];
+  assert.ok(rule, 'missing the shared panel background rule');
+  const stops = [...rule.matchAll(/#[0-9a-f]{6}([0-9a-f]{2})/g)].map(m => parseInt(m[1], 16) / 255);
+  assert.ok(stops.length >= 3, 'expected the scrim to be a gradient of at least three stops');
+  for (const alpha of stops) {
+    assert.ok(alpha >= 0.5, 'a scrim stop at ' + Math.round(alpha * 100) + '% cannot cover bright artwork');
+  }
+});
+
+test('panel labels carry their own light ink, not the inherited link gold', () => {
+  // The gold link colour is mid-luminance, so it loses against the bright half
+  // of a two-tone panel however dark the scrim is: Tennessee's name measured
+  // 1.0:1 in gold and 7.8:1 in near-white over the same artwork.
+  const rule = shell.match(/\.team-panel \.team-link-name[\s\S]*?\{[^}]*\}/)?.[0];
+  assert.ok(rule, 'missing the panel label rule');
+  const hex = rule.match(/color:\s*#([0-9a-f]{6})/)?.[1];
+  assert.ok(hex, 'the panel label rule sets no colour of its own');
+  const channel = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16));
+  const luminance = 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+  assert.ok(luminance > 0.6, 'ink at luminance ' + luminance.toFixed(2) + ' is too dark to read over artwork');
+});
