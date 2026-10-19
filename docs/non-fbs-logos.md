@@ -45,7 +45,7 @@ By ESPN team id, with nothing guessed.
 the provider evidence behind `docs/team-identity-audit.md`) and files each
 school under `location`, the school name without its mascot. Our opponent name
 -- CFBD's own spelling, as `non_fbs_games.opponent_name` -- matches that exactly
-for 185 of the 207 schools. No prefix matching, no fuzzy matching, no mascot
+for 182 of the 207 schools. No prefix matching, no fuzzy matching, no mascot
 stripping.
 
 The rest:
@@ -65,8 +65,16 @@ The rest:
   Mankato-era opponents like Menlo, and programs that dropped the sport
   (Boston University, Wichita State, Hofstra, Long Beach State, Santa Clara,
   Pacific). The script prints the list on every run.
+- **Eight schools ESPN lists but the archive has no mark for** keep the monogram
+  too, and this is the group that can change on its own: a later capture may
+  carry them. They are Eastern Oregon, Midwestern State, Oklahoma Panhandle,
+  Point University, Reinhardt, Southwestern (KS), St. Francis (IL) and Virginia
+  Lynchburg. The provenance file records their ESPN ids with the source columns
+  empty, which is how you tell them from the 21.
 
-Measured 2026-10-18: 207 opponents, 186 resolved, 21 without a mark.
+Measured on the first fetch, 2026-10-19 (run 39193931559): 207 opponents, 182
+matched to an ESPN id, 174 marks fetched, 4 taking their own dated eras, so 178
+schools carry a mark and 29 keep the monogram.
 
 ## The live scoreboard
 
