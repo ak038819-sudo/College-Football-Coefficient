@@ -7,13 +7,13 @@ logo or embedded game information.
 
 Add future approved art to this folder and register its canonical team name in
 TEAM_PANELS in ui/dashboard_shell.html. The key must be the team's name exactly
-as the ratings data spells it, or the row quietly keeps its chip and nothing
+as the ratings data spells it, or the row quietly keeps its plain mark and nothing
 reports an error; tests/live_teams.test.cjs holds every key to a real team and
 every image to a file that exists. Art is committed as opaque RGB PNG, which is
 what these were delivered as once their unused alpha channel was dropped. The shared helpers apply it to scoreboard
 rows and home/Standings Top-25 boards. Teams without artwork keep the existing
-brand color and watermark treatment. Panel-enabled rows remove the logo-chip
-background, while preserving dated official logo selection and image fallbacks.
+brand color and watermark treatment. Panel-enabled rows remove the mark's
+plate, while preserving dated official logo selection and image fallbacks.
 
 Keep the skyline and identifying detail near the vertical center: background-size
 cover crops the artwork for narrow rows without stretching. A compact rankings
