@@ -147,3 +147,17 @@ test('a panel team carries its artwork instead of a logo watermark; every other 
   assert.doesNotMatch(plain, /team-panel|--panel-art/);
   assert.match(plain, /live-watermark/);
 });
+
+test('every registered panel names a real team and an asset that exists', () => {
+  const context = {};
+  vm.runInNewContext(panelSource + '\nthis.panels = TEAM_PANELS;', context);
+  const names = new Set(teams.map(t => t.name));
+  const entries = Object.entries(context.panels);
+  assert.ok(entries.length > 0, 'the registry is empty');
+  for (const [name, panel] of entries) {
+    // A key that is not a team name is not an error anywhere: the row simply
+    // never finds its artwork, which is only visible by looking at the page.
+    assert.ok(names.has(name), name + ' is not a team in the data');
+    assert.ok(fs.existsSync('ui/' + panel.image), panel.image + ' is not in the repository');
+  }
+});

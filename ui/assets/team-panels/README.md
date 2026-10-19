@@ -1,11 +1,16 @@
 # Team panels
 
-The BYU mountain background is the first approved panel. Foreground logos and all
-scores, names, ratings and links remain live HTML. The decorative image has no
-foreground team logo or embedded game information.
+Eight teams have approved panels: Auburn, Ball State, BYU, Charlotte, Florida,
+Kentucky, Ohio State and Tennessee. Foreground logos and all scores, names,
+ratings and links remain live HTML. The decorative image has no foreground team
+logo or embedded game information.
 
 Add future approved art to this folder and register its canonical team name in
-TEAM_PANELS in ui/dashboard_shell.html. The shared helpers apply it to scoreboard
+TEAM_PANELS in ui/dashboard_shell.html. The key must be the team's name exactly
+as the ratings data spells it, or the row quietly keeps its chip and nothing
+reports an error; tests/live_teams.test.cjs holds every key to a real team and
+every image to a file that exists. Art is committed as opaque RGB PNG, which is
+what these were delivered as once their unused alpha channel was dropped. The shared helpers apply it to scoreboard
 rows and home/Standings Top-25 boards. Teams without artwork keep the existing
 brand color and watermark treatment. Panel-enabled rows remove the logo-chip
 background, while preserving dated official logo selection and image fallbacks.
