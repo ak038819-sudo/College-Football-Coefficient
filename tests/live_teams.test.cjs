@@ -176,6 +176,43 @@ test('the panel scrim never thins to where artwork can swallow the labels', () =
   }
 });
 
+test('nothing lightens the panel scrim at any width', () => {
+  // How much cover a label needs follows the width of its ROW, not the
+  // viewport, and the narrowest scoreboard card is not on a phone: at about
+  // 961px the sidebar returns while the cards are still two to a row, and the
+  // worst label there measured 3.26:1 with a 55% middle stop. A breakpoint
+  // cannot express that, so the scrim is one floor everywhere -- which only
+  // holds if no media query quietly puts a lighter one back.
+  const styles = shell.slice(0, shell.indexOf('</style>'));
+  const base = styles.match(/\.live-team\.team-panel, \.mini-board li\.team-panel \{[\s\S]*?\n  \}/)?.[0];
+  assert.ok(base, 'missing the shared panel background rule');
+  const middles = text => {
+    const gradient = text.match(/linear-gradient\([^;]*--panel-art/)?.[0];
+    if (!gradient) return null;
+    const stops = [...gradient.matchAll(/#[0-9a-f]{6}([0-9a-f]{2})/g)].map(m => parseInt(m[1], 16) / 255);
+    assert.ok(stops.length >= 3, 'expected the scrim to be a gradient of at least three stops');
+    return Math.min(...stops.slice(1, -1));
+  };
+  const floor = middles(base);
+  assert.ok(floor >= 0.65, 'a middle stop at ' + Math.round(floor * 100) +
+    '% measured below 4.5:1 on the two checkerboard panels');
+
+  // Balanced braces, not a lazy match: this stylesheet has one-line media
+  // queries, and a regex that stops at the first closing brace on its own line
+  // runs straight past them into unrelated rules.
+  for (const m of styles.matchAll(/@media[^{]*\{/g)) {
+    let depth = 1, i = m.index + m[0].length;
+    for (; i < styles.length && depth; i++) {
+      if (styles[i] === '{') depth++;
+      else if (styles[i] === '}') depth--;
+    }
+    const inner = middles(styles.slice(m.index, i));
+    if (inner === null) continue;
+    assert.ok(inner >= floor, m[0].trim() + ' sets a middle stop of ' + Math.round(inner * 100) +
+      '%, lighter than the ' + Math.round(floor * 100) + '% floor the panels were measured against');
+  }
+});
+
 test('panel labels carry their own light ink, and the cascade lets them keep it', () => {
   const styles = shell.slice(0, shell.indexOf('</style>'));
   const rules = [...styles.matchAll(/([^{}]+)\{([^}]*)\}/g)].map(m => ({sel: m[1].trim(), body: m[2], at: m.index}));

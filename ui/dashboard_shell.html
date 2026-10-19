@@ -1075,9 +1075,16 @@
     background-color: #072c50;
     /* The scrim's middle used to fade to 10% navy, which is nothing behind a
        white checkerboard: Tennessee's and Kentucky's names measured 1.0:1
-       against their own artwork. 55% is the lightest floor that keeps every
-       label above 4.5:1 on all eight panels. */
-    background-image: linear-gradient(90deg, #071b30e0, #071b308c 55%, #071b30bf), var(--panel-art);
+       against their own artwork. How much cover a label needs depends on how
+       wide its ROW is, not on the viewport: a narrow row crops the artwork
+       differently and the label runs further across the scrim. The narrowest
+       scoreboard card is not on a phone but at about 961px, where the sidebar
+       returns while the cards are still two to a row -- 55% left the worst
+       label there at 3.26:1. So this is one width-independent floor rather
+       than a breakpoint: 70%, measured at or above 5.39:1 on all forty labels
+       at 390, 786, 961, 1024, 1100 and 1440px wide. 65% passes too, but only
+       just, at 4.53:1. */
+    background-image: linear-gradient(90deg, #071b30e0, #071b30b3 55%, #071b30bf), var(--panel-art);
     background-size: cover;
     background-position: center 55%;
   }
