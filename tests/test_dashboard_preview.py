@@ -50,16 +50,22 @@ def test_every_routable_view_has_a_renderer_and_a_link(repo_root):
     views_block = re.search(r"const views = \{(.*?)\};", nav, re.S).group(1)
 
     rankings = re.findall(r"'([a-z0-9-]+)'", re.search(r"rankings: \[([^\]]*)\]", nav).group(1))
-    assert "conference-coe" in rankings and "conference-coe2" in rankings, \
-        "CoE v1 and CoE 2.0 conference rankings are separate views and must stay separate"
+    assert "conference-coe" in rankings and "conference-coe-v1" in rankings, \
+        "Conference Merits (CoE 2.0) and Legacy Merits (CoE v1) are separate views and must stay separate"
+    assert "conference-coe2" not in rankings, \
+        "the old 2.0 view name is a legacy alias now, rewritten in readRoute rather than routed"
     labels = dict(re.findall(r"\['([a-z0-9-]+)', '([^']+)'\]",
                              re.search(r"rankings: \[(.*?)\],\n\s*playoff:", shell, re.S).group(1)))
     for view in rankings:
         assert view in labels, f"rankings view {view} has no tab label, so nothing links to it"
-    assert labels["conference-coe2"] != labels["conference-coe"], \
+    assert labels["conference-coe-v1"] != labels["conference-coe"], \
         "the two conference rankings must be distinguishable in the tab bar"
     view_map = re.search(r"const views = \{ elo: renderElo,(.*?)\};", shell, re.S).group(1)
-    assert "'conference-coe2': renderConferenceCoe2" in view_map
+    assert "'conference-coe': renderConferenceCoe2" in view_map
+    assert "conference-coe2" not in view_map, \
+        "the alias is resolved before dispatch, so a second entry for it would only rot"
+    nav_alias = "subview === 'conference-coe2') subview = 'conference-coe'"
+    assert nav_alias in nav, "old CoE 2.0 conference bookmarks must still open Conference Merits"
     # Every rankings view, not just the two named above, has to be drawable: a
     # routable view with no entry here renders undefined and throws (P1-05).
     for view in rankings:

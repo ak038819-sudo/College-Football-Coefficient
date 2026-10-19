@@ -46,6 +46,7 @@ import project_season  # noqa: E402
 sys.path.insert(0, str(Path(__file__).parent))
 from build_coe2_rollups import conference_coe2_rank, load_bonus_config  # noqa: E402
 import random
+from export_merits import build_team_merits
 
 DATA_DIR = Path("data/processed")
 
@@ -639,7 +640,9 @@ def main() -> None:
         rows_sorted = sorted(rows, key=lambda r: -float(r[key]))
         return rows_sorted if n is None else rows_sorted[:n]
 
+    teams = build_team_index(args.db)
     out = {
+        "team_merits_by_year": build_team_merits(teams, coe2_bonuses["version"]),
         "years_all": sorted(team_ratings.keys()),
         "years_playoff": membership_years,
         "team_ratings_by_year": {
@@ -672,7 +675,7 @@ def main() -> None:
         "playoff_by_year": {},
         # Team-page router data (Milestone 1). Keyed by stable team_id; the
         # existing name-keyed exports above are left as-is.
-        "teams": build_team_index(args.db),
+        "teams": teams,
         "team_records_by_year": load_team_records_by_year(args.db),
         # The same seasons, counted over the games no rating ever saw. Kept as a
         # separate key rather than folded into the records above, because every

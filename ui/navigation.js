@@ -7,12 +7,11 @@
   'use strict';
   const views = {
     people: [], stats: ['overview', 'teams', 'players', 'adjusted', 'awards'], home: [], live: [], games: [], matchups: [], teams: ['', 'stadiums'], methodology: [], coverage: [], accuracy: [],
-    // 'conference-coe' is CoE v1's five-year rolling value, which INCLUDES the
-    // current season and feeds the live playoff model. 'conference-coe2' is CoE
-    // 2.0's frozen value ENTERING the season. Separate views with separate names,
-    // for the same reason they are separate tables: they must never be read as
-    // one number.
-    rankings: ['top25', 'elo', 'conference-standings', 'schedule', 'home-field', 'conference-elo', 'conference-history', 'team-coe', 'conference-coe', 'conference-coe2', 'elo-weekly'],
+    // Conference Merits is CoE 2.0's frozen value entering the season, and is
+    // now the default board. CoE 1.0's five-year rolling value keeps its own
+    // view at 'conference-coe-v1': they are different numbers and must never be
+    // read as one.
+    rankings: ['top25', 'elo', 'conference-standings', 'schedule', 'home-field', 'conference-elo', 'conference-history', 'team-coe', 'conference-coe', 'conference-coe-v1', 'elo-weekly'],
     playoff: ['field', 'projection', 'bracket', 'odds', 'history']
   };
   // Detail-page tabs (Milestone E). The first entry is the default and is left out
@@ -82,6 +81,9 @@
     // The AP and CFP tables are now two columns of one Top 25 view; the
     // separate views they replace stay valid as links into it.
     if (section === 'rankings' && (subview === 'ap' || subview === 'cfp')) subview = 'top25';
+    // Conference Merits moved onto 'conference-coe' when CoE 2.0 became the
+    // default, so old 2.0 bookmarks name a view that no longer exists.
+    if (section === 'rankings' && subview === 'conference-coe2') subview = 'conference-coe';
     // Older stadium bookmarks stay valid after the explorer moves under Teams.
     if (section === 'stadiums') { section = 'teams'; subview = 'stadiums'; }
     // `tab` means a detail page's tab when one is open, and only otherwise the pre-A1 tab names.

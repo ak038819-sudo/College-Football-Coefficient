@@ -26,6 +26,22 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
  const route=async(hash,predicate)=>{const old=d.querySelector('#content').firstElementChild;w.location.hash=hash;await until(w,()=>d.querySelector('#content').firstElementChild!==old&&predicate());};
  const change=(id,value)=>{d.getElementById(id).value=String(value);d.getElementById(id).dispatchEvent(new w.Event('change',{bubbles:true}));};
  try {
+  await t.test('Merits defaults read 2.0 totals and keep legacy comparison explicit', async()=>{
+   await until(w,()=>d.querySelector('#home-team'));
+   const data=JSON.parse(fs.readFileSync(path.join(root,'ui/dashboard_data.json'),'utf8'));
+   const year=Math.max(...Object.keys(data.team_merits_by_year).map(Number));
+   await route('#section=rankings&view=team-coe&season='+year,()=>d.querySelector('.rank-table'));
+   const row=d.querySelector('.rank-table tbody tr');
+   assert.ok(row.textContent.includes(data.team_merits_by_year[year][0].team));
+   assert.ok(row.textContent.includes(data.team_merits_by_year[year][0].merits.toFixed(3)));
+   assert.equal(d.querySelector('details.panel').open,false);
+   await route('#section=rankings&view=conference-coe&season='+year,()=>d.querySelector('.rank-table'));
+   assert.match(d.querySelector('#content').textContent,/Conference Merits entering/);
+   assert.ok(d.querySelector('.rank-table tbody tr').textContent.includes(data.conference_coe2_5yr_by_year[year][0].conference));
+   await route('#section=rankings&view=conference-coe-v1&season='+year,()=>d.querySelector('.rank-table'));
+   assert.match(d.querySelector('#content').textContent,/Legacy Season Merits/);
+   await route('#section=home',()=>d.querySelector('#home-team'));
+  });
   await t.test('Home has current games, previous weeks and combined historical filters',async()=>{
    await until(w,()=>d.querySelector('#home-team'));
    assert.deepEqual([...d.querySelectorAll('#tabs a')].map(a=>a.textContent),['Home','Stats','Standings','Teams','People']);
@@ -81,10 +97,10 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    assert.ok(matchup,'the matchup table is missing');
    assert.equal(d.querySelectorAll('table.gp-matchup').length,1,'the three panels must not come back');
    const groups=[...matchup.querySelectorAll('thead tr:first-child th.gp-group')].map(h=>h.textContent.trim());
-   assert.deepEqual(groups,['Elo','Game CoE \u00b7 CoE 2.0','Efficiency']);
+   assert.deepEqual(groups,['Elo','Game Merits','Efficiency']);
    const metrics=[...matchup.querySelectorAll('thead tr:last-child th')].map(h=>h.textContent.trim());
    assert.deepEqual(metrics,['Team','Before','Win chance','After','\u0394 Elo','Result','Hybrid','P',
-     'Game CoE','Success Rate','SRDiff','xSRDiff','SR+']);
+     'Game Merits','Success Rate','SRDiff','xSRDiff','SR+']);
    // Each group header spans exactly the metric columns beneath it, or the
    // body cells land under the wrong headings.
    const spans=[...matchup.querySelectorAll('thead tr:first-child th.gp-group')].map(h=>Number(h.getAttribute('colspan')));
@@ -114,7 +130,7 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    assert.deepEqual([...t2.querySelectorAll('thead tr:last-child th')].map(h=>h.textContent.trim()),
      ['Team','Before','Win chance','After','\u0394 Elo']);
    assert.ok(!t2.classList.contains('is-wide'),'five columns must not be stretched across the panel');
-   assert.match(d.querySelector('#gp-efficiency').textContent,/CoE 2\.0 begins in 1985/);
+   assert.match(d.querySelector('#gp-efficiency').textContent,/Merits begins in 1985/);
    assert.doesNotMatch(d.querySelector('#gp-efficiency').textContent,/SRDiff/);
   });
   await t.test('player category, conference, minimum and numeric sort work together',async()=>{

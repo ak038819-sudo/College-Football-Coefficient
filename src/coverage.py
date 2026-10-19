@@ -68,9 +68,9 @@ DIMENSIONS = [
     {"key": "elo", "label": "Elo ratings",
      "source": "src/build_elo.py",
      "absent": "No Elo history for this season."},
-    {"key": "coe2", "label": "CoE 2.0",
+    {"key": "coe2", "label": "Merits",
      "source": "src/build_hybrid_coefficients.py",
-     "absent": "CoE 2.0 needs five prior seasons of CoE, which this season does not have."},
+     "absent": "Merits needs five prior seasons of history, which this season does not have."},
 ]
 
 

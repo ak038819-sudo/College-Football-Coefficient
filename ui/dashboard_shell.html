@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="description" content="Elocast rates every FBS team with Elo and an opponent-strength coefficient, seeds the 12-team College Football Playoff and simulates the bracket.">
+<meta name="description" content="Elocast rates every FBS team with Elo and an achievement metric, Merits, seeds the 12-team College Football Playoff and simulates the bracket.">
 <meta property="og:site_name" content="Elocast">
 <meta property="og:title" content="Elocast">
 <meta property="og:description" content="Real time sports intelligence. Ratings, playoff seeding and bracket odds for 46 seasons of college football.">
@@ -819,13 +819,13 @@
     padding: .05rem .3rem; border-radius: 3px; border: 1px solid var(--line);
     color: var(--ink-dim); white-space: nowrap; cursor: help; }
   .ledger tr.sched-post td { border-top: 1px solid var(--line); }
-  /* Contribution breakdown: each member's share of the conference's season CoE. */
+  /* Contribution breakdown: each member's share of the conference's season Merits. */
   .share-list { list-style: none; margin: 0; padding: 0; }
   .share-row { display: grid; grid-template-columns: minmax(0, 1fr) 56px; gap: 4px 10px; align-items: center; padding: 7px 0; }
   .share-row .share-pct { font-family: var(--font-mono); font-size: 13px; color: var(--amber); text-align: right; }
   .share-bar { grid-column: 1 / -1; height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
   .share-bar i { display: block; height: 100%; background: var(--amber); }
-  /* One bar per season: conference CoE over time, at a glance. */
+  /* One bar per season: conference Merits over time, at a glance. */
   .bar-strip { display: flex; align-items: flex-end; gap: 2px; height: 96px; margin: 6px 0 4px; }
   .bar-strip button { flex: 1 1 0; min-width: 3px; display: flex; align-items: flex-end; height: 100%;
     padding: 0; border: 0; background: none; cursor: pointer; }
@@ -1929,8 +1929,7 @@ let state = { ...CfbNavigation.readRoute(location.hash, ROUTE_CONFIG), simResult
   homeGroup: null, homeTop25: false, homePoll: null };
 const SECTION_LABELS = { people: 'People', stats: 'Stats', home: 'Home', live: 'Live Scores', games: 'Find a Game', matchups: 'Matchups', teams: 'Teams', rankings: 'Standings', playoff: 'Playoff', accuracy: 'Track Record', coverage: 'Data coverage', methodology: 'How it works' };
 const SUBVIEWS = {
-  rankings: [['top25', 'Top 25'], ['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['schedule', 'Schedule Strength'], ['home-field', 'Home-Field Advantage'], ['conference-elo', 'Conference Elo'], ['conference-history', 'Conference History'], ['team-coe', 'Team CoE'], ['conference-coe', 'Conference CoE'],
-    ['conference-coe2', 'Conference CoE 2.0'], ['elo-weekly', 'Week by Week']],
+  rankings: [['top25', 'Top 25'], ['elo', 'Elo'], ['conference-standings', 'Conference Standings'], ['schedule', 'Schedule Strength'], ['home-field', 'Home-Field Advantage'], ['conference-elo', 'Conference Elo'], ['conference-history', 'Conference History'], ['team-coe', 'Team Merits'], ['conference-coe', 'Conference Merits'], ['conference-coe-v1', 'Legacy Conference Merits'], ['elo-weekly', 'Week by Week']],
   playoff: [['field', 'Field'], ['projection', 'Rest of Season'], ['bracket', 'Bracket & Simulator'], ['odds', 'Title Odds'], ['history', 'History']]
 };
 
@@ -1994,7 +1993,7 @@ function renderYearRow() {
   row.appendChild(select);
 }
 
-// `format` renders the value column; it defaults to the three-decimal CoE form,
+// `format` renders the value column; it defaults to the three-decimal Merits form,
 // and the Elo table passes eloValue so its ratings read as whole numbers.
 function rankTable(rows, valueKey, labelKey, valueLabel, kind, format = fmt) {
   if (!rows || !rows.length) return '<div class="empty-note">No data for this season.</div>';
@@ -2008,27 +2007,27 @@ function rankTable(rows, valueKey, labelKey, valueLabel, kind, format = fmt) {
 }
 
 function renderTeamCoeRankings() {
-  const single = (DATA.team_ratings_by_year[state.year] || []).map(r => ({ name: r.team, value: r.rating }));
-  const rolling = (DATA.team_rolling_by_year[state.year] || []).map(r => ({ name: r.team, value: r.coeff_5yr }));
-  return '<div class="grid-2">' +
-    '<div class="panel"><h2 class="section-title">Single-Season Rating</h2>' + rankTable(single, 'value', 'Team', 'Rating', 'team') + '</div>' +
-    '<div class="panel"><h2 class="section-title">5-Year Rolling CoE</h2>' + rankTable(rolling, 'value', 'Team', 'CoE', 'team') + '</div>' +
-    '</div>';
+  const rows = ((DATA.team_merits_by_year || {})[state.year] || []).map(r => ({ name: r.team, value: r.merits }));
+  return '<div class="panel"><h2 class="section-title">Season Merits</h2>' +
+    '<p class="section-note">Earned game awards plus explicit season bonuses. Merits uses the CoE 2.0 formula.</p>' +
+    (rows.length ? rankTable(rows, 'value', 'Team', 'Merits', 'team') : '<div class="empty-note">No Merits available for this season.</div>') +
+    '</div><details class="panel"><summary>Legacy Merits (1.0)</summary>' +
+    rankTable((DATA.team_ratings_by_year[state.year] || []).map(r => ({name:r.team,value:r.rating})), 'value', 'Team', 'Legacy Merits', 'team') + '</details>';
 }
 
-// ---- Conference CoE 2.0, five seasons ENTERING a season (ENG-14) ----
+// ---- Conference Merits, five seasons ENTERING a season (ENG-14) ----
 // DATA.conference_coe2_5yr_by_year is exported in the canonical bid-allocation
 // order by src/export_dashboard_data.py, which asks
 // build_coe2_rollups.conference_coe2_rank() -- so the order and the exclusions
 // here are the model's, not this page's. Deliberately NOT the same number as the
-// 'Conference CoE' tab: that one is CoE v1 and INCLUDES the current season.
+// 'Conference Merits' tab: that one is Legacy Merits and INCLUDES the current season.
 function coe2Entering(season) {
   return (DATA.conference_coe2_5yr_by_year || {})[String(season)] || [];
 }
 function coe2EnteringFor(conference, season) {
   return coe2Entering(season).find(r => r.conference === conference) || null;
 }
-// The earliest season any window reaches back to: the first season with CoE 2.0
+// The earliest season any window reaches back to: the first season with Merits
 // game awards. Derived from the feed rather than restated, so it cannot claim a
 // boundary the data no longer has.
 function coe2FirstAwardSeason() {
@@ -2038,19 +2037,19 @@ function coe2FirstAwardSeason() {
 }
 // Why a season has no value. A short window is never the reason: a window of one
 // season is published (the earliest value counts a single season). The reasons are
-// that no earlier season has CoE 2.0 game awards at all, or that the rollups have
+// that no earlier season has Merits game awards at all, or that the rollups have
 // not been built for the configured formula version.
 function coe2EmptyReason(season) {
   const first = coe2FirstAwardSeason();
   if (first == null) {
-    return 'No CoE 2.0 five-season values have been built for this site yet.';
+    return 'No Merits five-season values have been built for this site yet.';
   }
   if (season <= first) {
-    return 'No CoE 2.0 value entering ' + season + '. It is built from CoE 2.0 game awards in earlier ' +
+    return 'No Merits value entering ' + season + '. It is built from Merits game awards in earlier ' +
       'seasons, and the first season with any is ' + first + ' \u2014 so the first value is the one ' +
       'entering ' + (first + 1) + '.';
   }
-  return 'No CoE 2.0 value entering ' + season + '. No conference holds a rank entering this season: ' +
+  return 'No Merits value entering ' + season + '. No conference holds a rank entering this season: ' +
     'either no member conference has contributing games in the window, or membership for ' + season +
     ' is not recorded.';
 }
@@ -2058,13 +2057,11 @@ function coe2EmptyReason(season) {
 function renderConferenceCoe2() {
   const rows = coe2Entering(state.year);
   const bonuses = DATA.coe2_bonuses || null;
-  const intro = '<p class="section-note">Conference CoE 2.0 over the (at most) five seasons <b>before</b> ' + state.year +
-    ' \u2014 the value <b>entering</b> it, frozen. It never includes ' + state.year + ' itself, so it cannot be ' +
-    'moved by a game played this season. The <a href="' + esc(routeHref({ subview: 'conference-coe' })) +
-    '">Conference CoE</a> tab is a different number: CoE v1\u2019s rolling five years, which does include the ' +
-    'current season and is what drives the playoff model. CoE 2.0 is experimental and sets nothing.</p>';
+  const intro = '<p class="section-note">Conference Merits over the (at most) five seasons <b>before</b> ' + state.year +
+    ' — the value <b>entering</b> it, frozen. Current-season games do not change this value. ' +
+    '<a href="' + esc(routeHref({ subview: 'conference-coe-v1' })) + '">Legacy Merits</a> includes the current season and uses the old formula. The playoff selector uses Elo.</p>';
   if (!rows.length) {
-    return '<div class="panel"><h2 class="section-title">Conference CoE 2.0 entering ' + state.year + '</h2>' +
+    return '<div class="panel"><h2 class="section-title">Conference Merits entering ' + state.year + '</h2>' +
       intro + '<div class="empty-note">' + esc(coe2EmptyReason(state.year)) + '</div></div>';
   }
   const body = rows.map(r =>
@@ -2077,9 +2074,9 @@ function renderConferenceCoe2() {
   const zeroNote = bonuses && bonuses.all_zero
     ? ' Every bonus category is currently weighted 0.000, so these totals are exactly the sum of their game awards.'
     : '';
-  return '<div class="panel"><h2 class="section-title">Conference CoE 2.0 entering ' + state.year + '</h2>' + intro +
-    '<div class="table-scroll" tabindex="0" role="region" aria-label="Conference CoE 2.0 entering ' + state.year + '">' +
-    '<table class="rank-table"><thead><tr><th></th><th>Conference</th><th class="num">CoE 2.0</th>' +
+  return '<div class="panel"><h2 class="section-title">Conference Merits entering ' + state.year + '</h2>' + intro +
+    '<div class="table-scroll" tabindex="0" role="region" aria-label="Conference Merits entering ' + state.year + '">' +
+    '<table class="rank-table"><thead><tr><th></th><th>Conference</th><th class="num">Merits</th>' +
     '<th class="num">Window</th><th class="num">Seasons</th><th class="num">External games</th>' +
     '</tr></thead><tbody>' + body + '</tbody></table></div>' +
     '<p class="section-note">A season is weighted by recency within its window (0.92 per year back from ' +
@@ -2226,7 +2223,7 @@ function renderConferenceElo() {
   return '<div class="panel"><h2 class="section-title">Conference Elo · ' + state.year + '</h2>' +
     '<p class="section-note">Average end-of-season Elo of rated member teams. Membership is from ' + state.year +
     ', not today. Each count shows rated teams / all members; teams without a completed game are excluded. ' +
-    'Independents are excluded. This is a strength comparison, not Conference CoE.' +
+    'Independents are excluded. This is a strength comparison, not Conference Merits.' +
     (state.year === UPCOMING.season && UPCOMING.ratings_as_of ? ' Ratings through ' + esc(UPCOMING.ratings_as_of) + '.' : '') + '</p>' +
     '<table class="rank-table"><thead><tr><th></th><th>Conference</th><th class="num">Avg Elo</th><th class="num">Rated / members</th></tr></thead><tbody>' +
     rows.map((r, i) => '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' +
@@ -2613,8 +2610,8 @@ function renderConferences() {
   const single = (DATA.conference_ratings_by_year[state.year] || []).map(r => ({ name: r.conference, value: r.rating }));
   const rolling = (DATA.conference_rolling_by_year[state.year] || []).map(r => ({ name: r.conference, value: r.coeff_5yr }));
   return '<div class="grid-2">' +
-    '<div class="panel"><h2 class="section-title">Single-Season Rating</h2>' + rankTable(single, 'value', 'Conference', 'Rating', 'conf') + '</div>' +
-    '<div class="panel"><h2 class="section-title">5-Year Rolling CoE</h2>' + rankTable(rolling, 'value', 'Conference', 'CoE', 'conf') + '</div>' +
+    '<div class="panel"><h2 class="section-title">Legacy Season Merits</h2>' + rankTable(single, 'value', 'Conference', 'Rating', 'conf') + '</div>' +
+    '<div class="panel"><h2 class="section-title">Legacy 5-Year Merits</h2>' + rankTable(rolling, 'value', 'Conference', 'Legacy Merits', 'conf') + '</div>' +
     '</div>';
 }
 
@@ -3202,8 +3199,8 @@ function rankSub(hit) { return hit ? '#' + hit.rank + ' of ' + hit.of : 'N/A'; }
 
 function teamExtremes(team) {
   // The third entry is the formatter for that row's values: an Elo rating reads
-  // as a whole number, a CoE rating keeps its decimals.
-  const specs=[['Elo','team_elo_by_year','elo',eloValue],['Season CoE','team_ratings_by_year','rating',statValue]];
+  // as a whole number, a Merits rating keeps its decimals.
+  const specs=[['Elo','team_elo_by_year','elo',eloValue],['Season Merits','team_merits_by_year','merits',statValue]];
   const rows=specs.map(([label,source,key,format])=>{
     const points=DATA.years_all.map(y=>({year:y,...rankLookup(source,key,y,team.name)})).filter(p=>Number.isFinite(p.value));
     if(!points.length)return '';
@@ -3223,7 +3220,7 @@ function teamExtremes(team) {
 // tab further down. Both numbers are real; only one of them is the record.
 //
 // The sub-label states the rated part whenever the two differ, because every
-// other number in this header -- Elo, CoE, every rank -- is computed from that
+// other number in this header -- Elo, Merits, every rank -- is computed from that
 // part alone.
 function seasonRecord(teamName, season) {
   const team = TEAM_BY_NAME.get(teamName);
@@ -3264,7 +3261,7 @@ function renderTeamPage(param) {
   }
   const season = latestSeasonFor(team.name);
   const elo = season ? rankLookup('team_elo_by_year', 'elo', season, team.name) : null;
-  const coe = season ? rankLookup('team_ratings_by_year', 'rating', season, team.name) : null;
+  const coe = season ? rankLookup('team_merits_by_year', 'merits', season, team.name) : null;
   const coe5 = season ? rankLookup('team_rolling_by_year', 'coeff_5yr', season, team.name) : null;
   const rec = season ? ((DATA.team_records_by_year || {})[season] || {})[team.id] : null;
   const unrated = season ? ((DATA.non_fbs_records_by_year || {})[season] || {})[team.id] : null;
@@ -3282,8 +3279,8 @@ function renderTeamPage(param) {
       '</div>' +
       '<div class="team-stats">' +
         teamStat('Elo', elo ? eloValue(elo.value) + eloChangeMarkup(teamEloChange(season, team.name), team.name) : 'N/A', rankSub(elo)) +
-        teamStat('CoE (season)', coe ? fmt(coe.value) : 'N/A', rankSub(coe)) +
-        teamStat('CoE (5-yr)', coe5 ? fmt(coe5.value) : 'N/A', rankSub(coe5)) +
+        teamStat('Merits (season)', coe ? fmt(coe.value) : 'N/A', rankSub(coe)) +
+        teamStat('Legacy Merits (5-yr)', coe5 ? fmt(coe5.value) : 'N/A', rankSub(coe5)) +
         teamStat('Record', recStr, recNote) +
       '</div>' +
     '</div>' + (season === UPCOMING.season ? '<p class="rating-freshness" id="rating-freshness" role="status"></p>' : '');
@@ -3641,6 +3638,7 @@ function fillAnalyticsPanel(tp, team) {
   const eloR = rankLookup('team_elo_by_year', 'elo', s.season, team.name);
   const coe = rankLookup('team_ratings_by_year', 'rating', s.season, team.name);
   const coe5 = rankLookup('team_rolling_by_year', 'coeff_5yr', s.season, team.name);
+  const merits = rankLookup('team_merits_by_year', 'merits', s.season, team.name);
   el.innerHTML = panelHead('Advanced Analytics', seasonSelect('tp-an-season', seasons, s.season, false)) +
     coverageRow(['scores', 'elo', 'coe2'], s.season) +
     '<div class="an-grid">' +
@@ -3658,14 +3656,13 @@ function fillAnalyticsPanel(tp, team) {
       teamStat('Expected wins', s.expWins.toFixed(2), 'sum of pregame win probabilities') +
       teamStat('Actual wins', fmtWins(s.actWins), s.t ? 'ties count as &frac12;' : '&nbsp;') +
       teamStat('Wins vs. expectation', signed(s.aboveExp, 2), s.aboveExp >= 0 ? 'won more than Elo odds implied' : 'won fewer than Elo odds implied') +
-      teamStat('CoE v1 (season / 5-yr)', coe ? fmt(coe.value) : 'N/A',
+      teamStat('Season Merits', merits ? fmt(merits.value) : 'N/A', rankSub(merits)) +
+      teamStat('Legacy Merits (season / 5-yr)', coe ? fmt(coe.value) : 'N/A',
         (coe ? '#' + coe.rank : 'N/A') + ' &middot; 5-yr ' + (coe5 ? fmt(coe5.value) + ' (#' + coe5.rank + ')' : 'N/A')) +
-      teamStat('Game CoE 2.0 (season)', s.coe2 != null ? s.coe2.toFixed(2) : 'N/A',
-        s.coe2 != null ? '#' + s.coe2Rank + ' of ' + tp.coe2PerSeason.get(s.season) + ' &middot; experimental' : 'not computed for this season') +
     '</div>' +
     advancedBlock(tp, team, s.season) +
     '<details class="help"><summary>How these are calculated</summary><ul>' +
-      '<li><b>Play-by-play efficiency</b> comes from CollegeFootballData.com and is display-only: it never feeds Elo, CoE or the playoff model. ' +
+      '<li><b>Play-by-play efficiency</b> comes from CollegeFootballData.com and is display-only: it never feeds Elo, Merits or the playoff model. ' +
         '<b>EPA/play</b>: average expected points added per play. <b>Success rate</b>: share of plays that gain enough yardage for the down and distance. ' +
         '<b>Explosiveness</b>: average EPA on successful plays. <b>Points / scoring opp.</b>: points per drive that reaches the opponent\'s 40. ' +
         '<b>Line yards</b>: rushing yardage credited to the offensive line. <b>Havoc</b>: share of plays with a tackle for loss, forced fumble, interception or pass breakup. ' +
@@ -3675,9 +3672,9 @@ function fillAnalyticsPanel(tp, team) {
       '<li><b>Wins vs. expectation</b>: actual wins minus expected wins. A positive number can mean real improvement the ratings hadn\'t caught up to yet, close-game results, or luck; it doesn\'t by itself say which.</li>' +
       '<li><b>Record</b> counts every completed game, including any against an opponent this project holds ' +
         'no rating for. Every other number on this card — Elo, strength of schedule, expected wins, wins vs. ' +
-        'expectation, CoE — is computed from rated games only, which is what the sub-label under Record names. ' +
+        'expectation, Merits — is computed from rated games only, which is what the sub-label under Record names. ' +
         'The Schedule tab shows the unrated games and tags them.</li>' +
-      '<li><b>CoE v1</b> drives the playoff model. <b>Game CoE 2.0</b> is the experimental hybrid layer (it drives nothing), shown only for seasons where it has been computed.</li>' +
+      '<li><b>Merits</b> is the default achievement metric, using the former CoE 2.0 formula. Legacy Merits is retained for comparison. The playoff selector uses Elo.</li>' +
     '</ul></details>';
   const sel = document.getElementById('tp-an-season');
   if (sel) sel.addEventListener('change', () => { teamPageState.season = Number(sel.value); fillAnalyticsPanel(tp, team); });
@@ -3729,7 +3726,7 @@ function titleList(titles) {
   }).join('') + '</ul>';
 }
 
-// ---- Program history: REAL results and CoE MODEL results, never mixed ----
+// ---- Program history: REAL results and Merits MODEL results, never mixed ----
 function fillHistoryPanel(tp, team) {
   const el = document.getElementById('tp-history');
   if (!el) return;
@@ -3751,7 +3748,7 @@ function fillHistoryPanel(tp, team) {
       titleList(h.titles || []);
   }
   real += '</div>';
-  const sim = '<div class="hist-block"><h3>CoE model</h3><div class="hist-tag">Simulated &middot; not real results' +
+  const sim = '<div class="hist-block"><h3>Model postseason</h3><div class="hist-tag">Simulated &middot; not real results' +
       (yrs.length ? ' &middot; ' + yrs[0] + '&ndash;' + yrs[yrs.length - 1] : '') + '</div>' +
     row('Model playoff appearances', model ? model.appearances : 0) +
     row('First-round byes', model ? model.byes : 0) +
@@ -4025,7 +4022,7 @@ function fillSchedulePanel(tp, team) {
         'record are still the pregame values: the rating columns fill in, and the row joins the results above, ' +
         'once the model rebuilds.</li>' +
       '<li>A row tagged <b>FCS</b> or <b>unrated</b> is a game against an opponent this project holds no ' +
-        'rating for. It is in the schedule and in the record, and in nothing else: no Elo, no CoE, no strength ' +
+        'rating for. It is in the schedule and in the record, and in nothing else: no Elo, no Merits, no strength ' +
         'of schedule, no expected wins. Its rating columns are em-dashes because the model never saw the game, ' +
         'not because the numbers are missing. Most are FCS; a few 1980s opponents were then-Division I-A ' +
         'programs this project does not carry.</li>' +
@@ -4053,6 +4050,7 @@ function fillSeasonHistoryPanel(tp, team) {
   const rows = seasons.map(year => {
     const s = byId.get(year);
     const coe = rankLookup('team_ratings_by_year', 'rating', year, team.name);
+    const merits = rankLookup('team_merits_by_year', 'merits', year, team.name);
     tot.games += s.games; tot.w += s.w; tot.l += s.l; tot.t += s.t;
     tot.exp += s.expWins; tot.act += s.actWins;
     return '<tr>' +
@@ -4064,7 +4062,7 @@ function fillSeasonHistoryPanel(tp, team) {
       '<td>' + s.sos.toFixed(0) + ' <small>#' + s.sosRank + '</small></td>' +
       '<td class="' + (s.aboveExp >= 0 ? 'pos' : 'neg') + '">' + signed(s.aboveExp, 1) + '</td>' +
       '<td>' + (coe ? fmt(coe.value) + ' <small>#' + coe.rank + '</small>' : '<span class="dim">—</span>') + '</td>' +
-      '<td>' + (s.coe2 != null ? s.coe2.toFixed(1) + ' <small>#' + s.coe2Rank + '</small>' : '<span class="dim">—</span>') + '</td>' +
+      '<td>' + (merits ? fmt(merits.value) + ' <small>#' + merits.rank + '</small>' : '<span class="dim">—</span>') + '</td>' +
     '</tr>';
   });
   el.innerHTML = '<h2 class="section-title">Season by Season</h2>' +
@@ -4073,8 +4071,8 @@ function fillSeasonHistoryPanel(tp, team) {
     'Ranks are that season\u2019s, among teams with a rating.</caption>' +
     '<thead><tr><th scope="col">Season</th><th scope="col">Conference</th>' +
     '<th scope="col">Record</th><th scope="col" class="tr">End Elo</th><th scope="col">Elo &Delta;</th>' +
-    '<th scope="col">SoS</th><th scope="col">vs exp.</th><th scope="col">CoE v1</th>' +
-    '<th scope="col">CoE 2.0</th></tr></thead><tbody>' + rows.join('') + '</tbody>' +
+    '<th scope="col">SoS</th><th scope="col">vs exp.</th><th scope="col">Legacy Merits</th>' +
+    '<th scope="col">Merits</th></tr></thead><tbody>' + rows.join('') + '</tbody>' +
     '<tfoot><tr><td colspan="2">' + seasons.length + ' seasons · ' + tot.games + ' games</td>' +
     '<td>' + recStr(tot.w, tot.l, tot.t) + '</td><td colspan="3" class="tl">expected ' + tot.exp.toFixed(1) +
     ' W</td><td class="' + (tot.act - tot.exp >= 0 ? 'pos' : 'neg') + '">' + signed(tot.act - tot.exp, 1) +
@@ -4085,7 +4083,7 @@ function fillSeasonHistoryPanel(tp, team) {
       '<li><b>SoS</b> is the average opponent pregame Elo (higher = tougher) with that season’s rank beside it.</li>' +
       '<li><b>vs exp.</b> is actual wins minus the sum of pregame win probabilities. Positive can mean real improvement ' +
         'the ratings hadn’t caught up to, close-game results, or luck — it doesn’t say which.</li>' +
-      '<li><b>CoE v1</b> is the season rating that drives the playoff model. <b>CoE 2.0</b> is the experimental hybrid ' +
+      '<li><b>Legacy Merits</b> is the previous season rating. <b>Merits</b> is the default hybrid ' +
         'layer, present only for seasons where it has been computed.</li>' +
     '</ul></details>';
   // A season opens that season's schedule: set the panel's season before the hash changes.
@@ -4641,14 +4639,15 @@ function renderEloTop25() {
 }
 
 function renderConferenceBoard() {
-  const b = DATA.conference_board || { rows: [] };
+  const season = DATA.conference_board?.season;
+  const b = {season, rows: coe2Entering(season).map(r => [r.conference, r.coe2_5yr])};
   const body = b.rows.length
     ? '<ol class="mini-board">' + b.rows.map(([conf, coe], i) =>
         '<li><span class="rk">' + (i + 1) + '</span><span class="nm">' + conferenceLink(conf, 'xs', b.season) +
         '</span><span class="v">' + fmt(coe) + '</span></li>').join('') + '</ol>'
     : '<div class="empty-note">No conference ratings yet.</div>';
-  return '<div class="panel">' + panelHead('Conference CoE', '<a class="side-link" href="#section=rankings&view=conference-coe&season=' + b.season + '">Details &rarr;</a>') + body +
-    '<p class="side-note">5-year rolling CoE' + (b.season ? ', ' + b.season : '') + ': conference strength, strongest first.</p></div>';
+  return '<div class="panel">' + panelHead('Conference Merits', '<a class="side-link" href="#section=rankings&view=conference-coe&season=' + b.season + '">Details &rarr;</a>') + body +
+    '<p class="side-note">Five-season entering Merits' + (b.season ? ', ' + b.season : '') + ': conference strength, strongest first.</p></div>';
 }
 
 // ---- AP / CFP Top 25 (Milestone 5) ----
@@ -5719,7 +5718,7 @@ function hydrateLiveGamePage(version) {
     liveSnapshot = data;
     setLiveResults(data.games);
     // The live feed retains finals after the model has archived them. Use the
-    // full page once the archived result agrees, so stored efficiency, CoE and
+    // full page once the archived result agrees, so stored efficiency, Merits and
     // official Elo are visible instead of remaining in the live-only view.
     const archived = liveSeasonData?.byId?.get(id);
     if (g.status === 'completed' && archived?.completed &&
@@ -6088,7 +6087,7 @@ function renderTop25Boards() {
 // scanning a bracket does not need it before the bracket, and a reader who
 // wants to know what they just read does.
 function playoffDisclaimer() {
-  return '<p class="section-note playoff-disclaimer">CoE model postseason. Fields, brackets, title odds, and history reflect this project\'s model, not official CFP results.</p>';
+  return '<p class="section-note playoff-disclaimer">Model postseason. Fields, brackets, title odds, and history reflect this project\'s model, not official CFP results.</p>';
 }
 
 // ---------------- Rating ledger (Milestone D) ----------------
@@ -6150,7 +6149,7 @@ function fillLedgerPanel(tp, team) {
     '<p class="section-note">Change = K × (S − E) × M, with K = ' + K + '; S = 1 for a win, ½ tie, 0 loss; E is the pregame expectation (home field included); ' +
       'M grows with the margin of victory. Season high ' + fe(Math.max(...posts)) + ', low ' + fe(Math.min(...posts)) +
       '. All-time since 1980: peak ' + at(peak) + ', low ' + at(low) + '.</p>' +
-    '<h3 class="an-title">CoE 2.0</h3><div id="tp-ledger-coe"><div class="empty-note">Loading&hellip;</div></div>';
+    '<h3 class="an-title">Merits</h3><div id="tp-ledger-coe"><div class="empty-note">Loading&hellip;</div></div>';
   fillCoeLedger(tp, team, season);
 }
 
@@ -6159,7 +6158,7 @@ function fillCoeLedger(tp, team, season) {
   const ok = () => state.view === 'team' && teamPageState.teamId === team.id && (teamPageState.ledgerSeason ?? season) === season && target();
   Promise.all([loadSeasonGames(season), loadGameDetails(season)]).then(([data, details]) => {
     if (!ok()) return;
-    if (!details) { target().innerHTML = '<div class="empty-note">Not available for ' + season + ': CoE 2.0 begins in 1985, once five prior seasons exist.</div>'; return; }
+    if (!details) { target().innerHTML = '<div class="empty-note">Not available for ' + season + ': Merits begins in 1985, once five prior seasons exist.</div>'; return; }
     const C = details.params;
     const games = data.games.filter(g => g.completed && (g.home_id === team.id || g.away_id === team.id));
     let total = 0, mismatch = false;
@@ -6184,20 +6183,20 @@ function fillCoeLedger(tp, team, season) {
     }).join('');
     const seasonRow = (tp.seasonsByTeam.get(team.id) || new Map()).get(season);
     const shown = seasonRow && seasonRow.coe2 != null ? seasonRow.coe2 : null;
-    target().innerHTML = '<div class="table-scroll" tabindex="0" role="region" aria-label="CoE ledger for ' + season + '"><table class="ledger"><thead><tr>' +
+    target().innerHTML = '<div class="table-scroll" tabindex="0" role="region" aria-label="Merits ledger for ' + season + '"><table class="ledger"><thead><tr>' +
       '<th scope="col">Date</th><th scope="col">Opponent</th><th scope="col">Result</th><th scope="col">Hybrid expectation (P)</th>' +
-      '<th scope="col">Base</th><th scope="col">Difficulty bonus</th><th scope="col">Game CoE</th></tr></thead><tbody>' + body + '</tbody>' +
-      '<tfoot><tr><td colspan="6">' + season + ' season total (sum of Game CoE)</td><td>' + total.toFixed(3) + '</td></tr></tfoot></table></div>' +
+      '<th scope="col">Base</th><th scope="col">Difficulty bonus</th><th scope="col">Game Merits</th></tr></thead><tbody>' + body + '</tbody>' +
+      '<tfoot><tr><td colspan="6">' + season + ' season total (sum of Game Merits)</td><td>' + total.toFixed(3) + '</td></tr></tfoot></table></div>' +
       '<p class="section-note">Win: base ' + C.win_base + ' plus a difficulty bonus of ' + C.difficulty_alpha + ' × (1 − P), so a less likely win earns more. ' +
-      'Overtime loss ' + C.ot_loss + ', regulation loss ' + C.regulation_loss + '; a tie is 1 + ' + C.tie_delta + ' × (0.5 − P). CoE 2.0 has no separate postseason bonus.' +
-      (shown != null ? ' The total ' + (Math.abs(shown - total) < 0.01 ? 'matches' : 'does NOT match')   /* per-game values are stored to 3 decimals */ + ' the season CoE 2.0 in Advanced Analytics (' + shown.toFixed(3) + ').' : '') +
+      'Overtime loss ' + C.ot_loss + ', regulation loss ' + C.regulation_loss + '; a tie is 1 + ' + C.tie_delta + ' × (0.5 − P). Game awards have no separate postseason bonus; season bonuses are itemized below.' +
+      (shown != null ? ' The total ' + (Math.abs(shown - total) < 0.01 ? 'matches' : 'does NOT match')   /* per-game values are stored to 3 decimals */ + ' the game-award subtotal (' + shown.toFixed(3) + ').' : '') +
       (mismatch ? ' <b>Some rows don\'t reconcile with the current parameters; the model may need a rebuild.</b>' : '') +
-      ' Note: the playoff still uses CoE v1, which comes from an iterative whole-season calculation and can\'t be split into per-game amounts.</p>' +
+      ' Legacy Merits comes from an iterative whole-season calculation and can\'t be split into per-game amounts.</p>' +
       coe2SeasonBreakdown(tp, team, season);
-  }).catch(() => { if (ok()) target().innerHTML = '<div class="empty-note">The CoE ledger could not be loaded.</div>'; });
+  }).catch(() => { if (ok()) target().innerHTML = '<div class="empty-note">The Merits ledger could not be loaded.</div>'; });
 }
 
-// ---- Season CoE 2.0 = game awards + explicit bonuses (ENG-13) ----
+// ---- Season Merits = game awards + explicit bonuses (ENG-13) ----
 // Every figure comes from src/build_coe2_rollups.py's tables; the page only
 // formats them. The point of showing the split is that a bonus can never hide
 // inside opponent strength -- if it contributed, it is named here.
@@ -6215,13 +6214,13 @@ function coe2SeasonBreakdown(tp, team, season) {
     '<td>' + (pts === 0 ? '<span class="dim">0.000</span>' : n3(pts)) + '</td></tr>').join('');
   const zeroWeighted = (r.items || []).length && r.bonus === 0;
   return '<h3 class="an-title">Season total</h3>' +
-    '<div class="table-scroll" tabindex="0" role="region" aria-label="Season CoE 2.0 breakdown">' +
+    '<div class="table-scroll" tabindex="0" role="region" aria-label="Season Merits breakdown">' +
     '<table class="ledger"><tbody>' +
     '<tr><td class="tl">Game awards (' + season + ')</td><td>' + n3(r.games) + '</td></tr>' +
     items +
     '<tr><td class="tl">Bonuses</td><td>' + n3(r.bonus) + '</td></tr>' +
-    '</tbody><tfoot><tr><td class="tl">Season CoE 2.0</td><td>' + n3(r.total) + '</td></tr></tfoot></table></div>' +
-    '<p class="section-note">Season CoE 2.0 = the sum of this season\u2019s game awards plus explicit bonuses. ' +
+    '</tbody><tfoot><tr><td class="tl">Season Merits</td><td>' + n3(r.total) + '</td></tr></tfoot></table></div>' +
+    '<p class="section-note">Season Merits = the sum of this season\u2019s game awards plus explicit bonuses. ' +
     (zeroWeighted
       ? 'The achievements above are recorded, but every bonus category is currently weighted <b>0.000</b>, so the ' +
         'season total is exactly the sum of its game awards. The weights live in the model configuration and are ' +
@@ -6773,7 +6772,7 @@ function adjustedHelpHtml() {
     '<li>Games against opponents this project does not rate are excluded from both columns, so ' +
     'the raw and adjusted numbers on a row always cover the same games. That is also why these ' +
     'raw numbers can differ from the Teams table, which counts every opponent.</li>' +
-    '<li>Nothing here feeds Elo, CoE, the playoff model or any prediction. It is a description ' +
+    '<li>Nothing here feeds Elo, Merits, the playoff model or any prediction. It is a description ' +
     'of statistics that were already published, with one known distortion taken out.</li>' +
     '</ul></details>';
 }
@@ -6930,7 +6929,7 @@ function renderMethodology() {
   const f = (title, html) => '<details class="help"><summary>' + title + '</summary>' + html + '</details>';
   return '<h2 class="view-title">How it works</h2><div class="panel method">' +
     '<p>This site measures college football three different ways, on purpose kept separate: <b>Elo</b> asks how strong a team is right now; ' +
-    '<b>CoE</b> asks what a team has actually earned through results against the schedule it played; and the <b>efficiency stats</b> on team pages ' +
+    '<b>Merits</b> asks what a team has actually earned through results against the schedule it played; and the <b>efficiency stats</b> on team pages ' +
     '(EPA, success rate) describe how well it played, independent of the scoreboard. Every number shown is computed once, from information available ' +
     'before each game, and never rewritten later.</p>' +
 
@@ -6961,28 +6960,28 @@ function renderMethodology() {
       '<p>The winner always gains exactly what the loser drops. The margin multiplier shrinks when a heavy favorite wins big, so running up the score on a weak ' +
       'opponent counts for less.</p>') +
 
-    '<h3>CoE v1: the playoff coefficient</h3><p>The coefficient the playoff model runs on: it picks the field, sets the seeds and decides who hosts. It\'s solved for a whole season at once: ' +
+    '<h3>Legacy Merits (1.0): historical comparison</h3><p>The previous achievement metric, retained for historical comparison. It\'s solved for a whole season at once: ' +
     'a win is worth the opponent\'s rating, a loss still earns a little, and the calculation repeats until the ratings settle. Postseason games count more. ' +
     'Early in a season, when few games are played, ratings lean on the previous season so a couple of results can\'t swing everything.</p>' +
-    f('The CoE v1 details', '<ul><li>' + V1.ITERATIONS + ' passes; each win adds the opponent\'s rating × the game weight (regular ' + pw.regular + ', bowl ' + pw.bowl +
+    f('The Legacy Merits details', '<ul><li>' + V1.ITERATIONS + ' passes; each win adds the opponent\'s rating × the game weight (regular ' + pw.regular + ', bowl ' + pw.bowl +
       ', CFP ' + pw.cfp + '); each loss adds ' + V1.LOSS_PENALTY + ' × that amount.</li>' +
       '<li>Early-season damping: full weight after ' + V1.CONFIDENCE_GAMES + ' games; before that the result is blended with the prior season ' +
       '(regressed ' + V1.PRIOR_REGRESSION + ' of the way to average).</li>' +
-      '<li>The five-year CoE sums seasons Y−' + (V1.ROLLING_YEARS - 1) + ' through Y — <b>including the current season</b> — ' +
+      '<li>The legacy five-year Merits sums seasons Y−' + (V1.ROLLING_YEARS - 1) + ' through Y — <b>including the current season</b> — ' +
       (V1.USE_WITHIN_WINDOW_DECAY ? 'each year weighted ' + V1.WITHIN_WINDOW_DECAY_BASE + '<sup>age</sup>' : 'unweighted') + '.</li>' +
       '<li>A conference\'s rating is the sum of its members\' ratings, <b>including games against each other</b>.</li></ul>' +
-      '<p>Because v1 is solved all at once, it can\'t be split into a per-game amount; that\'s what CoE 2.0 adds.</p>') +
+      '<p>Because v1 is solved all at once, it can\'t be split into a per-game amount; that\'s what Merits adds.</p>') +
 
-    '<h3>CoE 2.0: achievement, game by game (experimental)</h3><p>Every game earns a Game CoE when it\'s played. A win is worth at least ' + C2.win_base +
+    '<h3>Merits: achievement, game by game (default)</h3><p>Every completed rated game earns Merits when it\'s played. A win is worth at least ' + C2.win_base +
     ', plus a bonus for how unlikely it was; losses earn nothing (' + C2.ot_loss + ' in overtime). "How unlikely" uses a hybrid rating that blends current ' +
-    'Elo with the last five completed seasons of CoE, so beating a team that is strong now <i>and</i> has a track record is worth the most. ' +
-    'A season\'s CoE 2.0 is simply the sum of its games, which the Rating Ledger shows row by row. CoE 2.0 is shown alongside the playoff model but does not ' +
-    'drive it yet.</p>' +
-    f('The CoE 2.0 formulas', '<div class="gp-formula">Hybrid strength = ' + H.elo_weight + ' × z(Elo) + ' + H.coe_weight + ' × z(five prior seasons of CoE)<br>' +
+    'Elo with the last five completed seasons of Legacy Merits, so beating a team that is strong now <i>and</i> has a track record is worth the most. ' +
+    'A season\'s Merits is the sum of its game awards plus explicit bonuses, which the Rating Ledger shows row by row. The playoff selector uses Elo; Merits does not ' +
+    'drive playoff selection.</p>' +
+    f('The Merits formulas', '<div class="gp-formula">Hybrid strength = ' + H.elo_weight + ' × z(Elo) + ' + H.coe_weight + ' × z(five prior seasons of Legacy Merits)<br>' +
       'P = the win expectation those hybrid ratings imply (home field included)<br>' +
       'Win: G = ' + C2.win_base + ' + ' + C2.difficulty_alpha + ' × (1 − P)   OT loss: ' + C2.ot_loss + '   Loss: ' + C2.regulation_loss +
       '   Tie: 1 + ' + C2.tie_delta + ' × (0.5 − P)</div>' +
-      '<p>The five-season CoE is frozen before the season starts, so this season\'s results never change how earlier games were valued. It begins in 1985, ' +
+      '<p>The five-season Legacy Merits input is frozen before the season starts, so this season\'s results never change how earlier games were valued. It begins in 1985, ' +
       'once five prior seasons exist.</p>') +
 
     '<h3>The playoff model</h3><p>This is the real College Football Playoff format: ' + PF.FIELD_SIZE +
@@ -7006,7 +7005,7 @@ function renderMethodology() {
 
     '<h3>Rules the data follows</h3><ul>' +
     '<li>Win probabilities and ratings shown for past games are the values stored <b>before</b> kickoff, never recomputed with today\'s ratings.</li>' +
-    '<li>Scheduled games never change Elo, CoE or standings.</li>' +
+    '<li>Scheduled games never change Elo, Merits or standings.</li>' +
     '<li>Missing data is shown as unavailable, never as zero.</li>' +
     '<li>Real history (bowls, CFP, national titles) and model history (simulated playoffs) are always shown separately.</li>' +
     '<li>Games are FBS vs. FBS from CollegeFootballData.com, ' + coverageRange(DATA.years_all) + '. ' +
@@ -8387,7 +8386,7 @@ function hydratePersonPage(version, kind) {
 
 // ---------------- Game pages (Milestone C) ----------------
 // One reusable view keyed by game id. Every number is a stored, point-in-time value from
-// the exports -- the page never recomputes Elo or CoE; formulas are shown with the stored
+// the exports -- the page never recomputes Elo or Merits; formulas are shown with the stored
 // inputs purely as explanation.
 function gameHref(id, season) {
   const back = state.view === 'game' ? state.returnTo : CfbNavigation.hashFor(state);
@@ -8458,7 +8457,7 @@ const _gameDetails = new Map();
 function loadGameDetails(season) {
   if (_gameDetails.has(season)) return Promise.resolve(_gameDetails.get(season));
   const src = (STATIC_MANIFEST.details || {})[String(season)];
-  if (!src) { _gameDetails.set(season, null); return Promise.resolve(null); }    // e.g. before CoE 2.0 exists
+  if (!src) { _gameDetails.set(season, null); return Promise.resolve(null); }    // e.g. before Merits exists
   return loadDataScript(src).then(() => {
     const raw = (window.__CFB_DETAILS__ || {})[season];
     const byId = new Map((raw ? raw.games : []).map(r => {
@@ -8739,7 +8738,7 @@ function hydrateGamePage(version) {
       const signed = v => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1);
       // ---- One matchup table instead of three ----
       //
-      // Elo, Game CoE and Efficiency all answered the same question -- how did
+      // Elo, Game Merits and Efficiency all answered the same question -- how did
       // these two teams compare -- in three separate three-column tables, each
       // a few hundred pixels wide inside a full-width panel. Transposed, they
       // are one table: a row per team, a column group per model. It reads as
@@ -8779,11 +8778,11 @@ function hydrateGamePage(version) {
            ['Δ Elo', 'How far the result moved the rating.']]
         : [['Before', 'Each team’s rating entering the game.'],
            ['Win chance', 'The current expectation, home field included.']], eloCells]];
-      if (hasCoe) groups.push(['Game CoE · CoE 2.0',
-        [['Result', 'Win, loss or tie, as CoE 2.0 scores it.'],
-         ['Hybrid', 'Pregame Elo blended with the frozen five-season CoE.'],
+      if (hasCoe) groups.push(['Game Merits',
+        [['Result', 'Win, loss or tie, as Merits scores it.'],
+         ['Hybrid', 'Pregame Elo blended with the frozen five-season Legacy Merits.'],
          ['P', 'The win expectation those hybrid ratings imply.'],
-         ['Game CoE', 'What the result earned. A tougher win earns more.']], coeCells]);
+         ['Game Merits', 'What the result earned. A tougher win earns more.']], coeCells]);
       if (hasSr) groups.push(['Efficiency',
         [['Success Rate', 'Share of this team’s plays that gained enough for the down and distance.'],
          ['SRDiff', 'How much better this team performed by Success Rate than its opponent.'],
@@ -8798,21 +8797,21 @@ function hydrateGamePage(version) {
         groups.flatMap(([, , cells]) => cells(side)).map(v => '<td>' + v + '</td>').join('') + '</tr>';
 
       const coeHelp = hasCoe
-        ? '<details class="help"><summary>How Game CoE was calculated</summary>' +
+        ? '<details class="help"><summary>How Game Merits was calculated</summary>' +
           '<p class="section-note">Each team’s <b>hybrid rating</b> blends its pregame Elo (z = ' + n1(d.away_elo_z) + ' / ' + n1(d.home_elo_z) +
-          ') with its frozen five-season CoE (z = ' + n1(d.away_coe_z) + ' / ' + n1(d.home_coe_z) + ')' +
+          ') with its frozen five-season Legacy Merits (z = ' + n1(d.away_coe_z) + ' / ' + n1(d.home_coe_z) + ')' +
           (P && P.elo_weight != null ? ', weighted ' + Math.round(P.elo_weight * 100) + '% Elo' : '') +
           '. <b>P</b> is the win expectation those ratings imply, home field included. A tougher win (lower P) earns more.</p>' +
           '<div class="gp-formula">' + esc(an) + ': ' + coeFormula(d.away_result, d.away_hybrid_p, P, g.away_game_coe) + '<br>' +
           esc(hn) + ': ' + coeFormula(d.home_result, d.home_hybrid_p, P, g.home_game_coe) + '</div>' +
-          '<p class="section-note">All inputs are the stored pregame values; later games never change this game’s CoE. CoE 2.0 is the experimental layer; playoff selection still uses CoE v1.</p></details>'
+          '<p class="section-note">All inputs are the stored pregame values; later games never change this game’s Merits. Merits is the default achievement metric; playoff selection uses Elo.</p></details>'
         : '';
-      // The two reasons a completed game has no Game CoE are different facts and
+      // The two reasons a completed game has no Game Merits are different facts and
       // are still told apart, now as a line under the table rather than a panel
       // of their own.
       const coeMissing = g.completed && !d
-        ? '<p class="section-note">No Game CoE: CoE 2.0 begins in 1985, once five prior seasons exist.</p>'
-        : !g.completed ? '<p class="section-note">Game CoE is awarded when the game is played.</p>' : '';
+        ? '<p class="section-note">No Game Merits: Merits begins in 1985, once five prior seasons exist.</p>'
+        : !g.completed ? '<p class="section-note">Game Merits is awarded when the game is played.</p>' : '';
       const srHelp = hasSr
         ? '<p class="section-note"><b>xSRDiff</b> is what the matchup implied before kickoff; <b>SR+</b> is how far ' +
           'the team beat it. The two sides are mirror images by construction. ' +
@@ -9074,9 +9073,9 @@ const CONF_RECORD_NOTE =
       'half a win.</li>' +
     '<li><b>Bowl</b> and <b>CFP</b> are real results. Pre-2014 title bowls count as bowls, not CFP, because the ' +
       'College Football Playoff began with the 2014 season.</li>' +
-    '<li><b>Conference CoE 2.0</b> is copied from <code>conference_coe2_by_season</code> and counts a slightly ' +
+    '<li><b>Conference Merits</b> is copied from <code>conference_coe2_by_season</code> and counts a slightly ' +
       'different game set: every postseason game is external to it, including the rare same-conference bowl. It is ' +
-      'experimental and drives nothing.</li>' +
+      'the default conference achievement metric.</li>' +
     '<li><b>National titles</b> come from the hand-maintained reference list, credited to the conference the team ' +
       'belonged to that season. They are never inferred from game results.</li>' +
   '</ul></details>';
@@ -9135,7 +9134,7 @@ function hydrateConferencePage() {
   });
 }
 
-// ---- Overview: one season's standing, the all-time totals, and CoE over time ----
+// ---- Overview: one season's standing, the all-time totals, and Merits over time ----
 // The season selector here drives the contribution breakdown below it, so the two
 // panels always describe the same season.
 function fillConfSummary(cp, c) {
@@ -9145,7 +9144,8 @@ function fillConfSummary(cp, c) {
   const season = selectedConfSeason(cp, c.slug);
   const row = cp.rowFor(c.slug, season) || rows[rows.length - 1];
   const rank = (r, of) => (r ? '#' + r + (of ? ' of ' + of : '') : 'N/A');
-  const board = DATA.conference_board || { rows: [] };
+  const boardSeason = DATA.conference_board?.season;
+  const board = {season: boardSeason, rows: coe2Entering(boardSeason).map(r => [r.conference, r.coe2_5yr])};
   const bidIdx = (board.rows || []).findIndex(r => r[0] === c.name);
   const ext = T.ext || [0, 0, 0], bowl = T.bowl || [0, 0, 0, 0], cfp = T.cfp || [0, 0, 0];
 
@@ -9155,26 +9155,26 @@ function fillConfSummary(cp, c) {
   // strength. The rank below is a strength standing, and is labeled as one.
   const bidTile = (bidIdx >= 0 && season === (board.season ?? season))
     ? teamStat('Conference strength rank', '#' + (bidIdx + 1),
-        'by 5-year rolling CoE &middot; ' + board.season)
+        'by Five-season entering Merits &middot; ' + board.season)
     : '';
   const tiles =
-    teamStat('CoE (season)', row[F.coe] == null ? 'N/A' : fmt(row[F.coe]),
-      rank(row[F.coe_rank], row[F.coe_of]) + ' &middot; ' + season) +
-    teamStat('CoE (5-yr)', row[F.coe5] == null ? 'N/A' : fmt(row[F.coe5]),
-      row[F.coe5] == null ? 'no full window yet' : rank(row[F.coe5_rank], row[F.coe5_of]) + ' &middot; conference strength') +
-    teamStat('Conference CoE 2.0', row[F.coe2] == null ? 'N/A' : row[F.coe2].toFixed(1),
+    teamStat('Conference Merits', row[F.coe2] == null ? 'N/A' : row[F.coe2].toFixed(1),
       row[F.coe2] == null ? 'not computed for ' + season
-        : row[F.coe2_games] + ' external games &middot; experimental') +
+        : row[F.coe2_games] + ' external games') +
     // The five-season value ENTERING this season, frozen: a different window from
-    // both the tile above (this season alone) and the CoE 5-yr tile (CoE v1, which
+    // both the tile above (this season alone) and the Merits 5-yr tile (Legacy Merits, which
     // includes this season). Labeled with its window so the three can't be read as
     // one number.
     (() => {
       const e = coe2EnteringFor(c.name, season);
-      return teamStat('CoE 2.0 entering ' + season, e ? e.coe2_5yr.toFixed(1) : 'N/A',
-        e ? '#' + e.rank + ' &middot; ' + e.window[0] + '\u2013' + e.window[1] + ' &middot; experimental'
+      return teamStat('Merits entering ' + season, e ? e.coe2_5yr.toFixed(1) : 'N/A',
+        e ? '#' + e.rank + ' &middot; ' + e.window[0] + '\u2013' + e.window[1] + ''
           : 'no five-season window entering ' + season);
     })() +
+    teamStat('Legacy Merits (season)', row[F.coe] == null ? 'N/A' : fmt(row[F.coe]),
+      rank(row[F.coe_rank], row[F.coe_of]) + ' &middot; ' + season) +
+    teamStat('Legacy Merits (5-yr)', row[F.coe5] == null ? 'N/A' : fmt(row[F.coe5]),
+      row[F.coe5] == null ? 'no full window yet' : rank(row[F.coe5_rank], row[F.coe5_of]) + ' &middot; conference strength') +
     teamStat('Members', String(row[F.members]), season + ' season &middot; ' + (T.members_ever || 0) + ' ever') +
     teamStat('External record', wlt(row[F.ext_w], row[F.ext_l], row[F.ext_t]),
       wltPct(row[F.ext_w], row[F.ext_l], row[F.ext_t]) + ' vs other conferences, ' + season) +
@@ -9184,13 +9184,13 @@ function fillConfSummary(cp, c) {
       bowl[0] + ' bowl bids &middot; ' + cfp[0] + ' CFP bids') +
     teamStat('National titles', String(T.titles || 0), 'won by members while in the conference');
 
-  // One bar per season: this conference's own CoE over time. Absolute heights are not
+  // One bar per season: this conference's own Merits over time. Absolute heights are not
   // comparable across eras (FBS size and schedule length changed), so the tooltip
   // carries the rank, which is.
   const max = Math.max(...rows.map(r => r[F.coe] || 0), 0);
   const peak = T.peak_coe ? T.peak_coe[0] : null;
   const strip = max > 0
-    ? '<h3 class="an-title">Conference CoE by season</h3>' +
+    ? '<h3 class="an-title">Legacy Conference Merits by season</h3>' +
       '<div class="bar-strip">' + rows.map(r => {
         const y = r[F.season], v = r[F.coe] || 0;
         return '<button type="button" data-season="' + y + '"' +
@@ -9201,7 +9201,7 @@ function fillConfSummary(cp, c) {
       }).join('') + '</div>' +
       '<div class="bar-axis"><span>' + rows[0][F.season] + '</span>' +
         (peak ? '<span>peak ' + peak + '</span>' : '') + '<span>' + rows[rows.length - 1][F.season] + '</span></div>' +
-      '<p class="section-note">CoE is a sum over member teams, so a bigger conference scores higher and the scale ' +
+      '<p class="section-note">Legacy Merits is a sum over member teams, so a bigger conference scores higher and the scale ' +
         'shifts as FBS and the schedule change — across eras, compare the rank rather than the bar height. ' +
         (T.best_rank ? 'Best finish: #' + T.best_rank[1] + ' of ' + T.best_rank[2] + ' in ' + T.best_rank[0] + '. ' : '') +
         'Pick a bar to see that season.</p>'
@@ -9222,7 +9222,7 @@ function fillConfSummary(cp, c) {
   }));
 }
 
-// ---- Overview: who earned the conference's season CoE, and how much of it ----
+// ---- Overview: who earned the conference's season Merits, and how much of it ----
 function fillConfContrib(cp, c) {
   const el = document.getElementById('cp-contrib');
   if (!el) return;
@@ -9235,7 +9235,7 @@ function fillConfContrib(cp, c) {
           '<span>' + confTeamCell(m[M.team_id], season) + '</span>' +
           '<span class="share-pct">' + m[M.share].toFixed(1) + '%</span>' +
           '<span class="share-bar"><i style="width:' + Math.max(0.6, m[M.share]) + '%"></i></span></li>').join('') + '</ol>' +
-        '<p class="section-note">' + season + ' conference CoE ' +
+        '<p class="section-note">' + season + ' legacy conference Merits ' +
           (row && row[F.coe] != null ? '<b>' + fmt(row[F.coe]) + '</b>' : 'N/A') +
           ' is the sum of its members’ season ratings, so each share is one team’s rating divided by that ' +
           'total. A team with no completed games that season has no rating and no share. ' +
@@ -9269,11 +9269,11 @@ function fillConfMembers(cp, c) {
         (titles.length ? '<p class="ledger-note">National title' + (titles.length === 1 ? '' : 's') + ' in ' + season +
           ': <b>' + titles.map(t => esc(t.name)).join(', ') + '</b>.</p>' : '') +
         '<div class="table-scroll" tabindex="0" role="region" aria-label="' + season + ' members">' +
-        '<table class="ledger"><caption>Ordered by season CoE. &ldquo;Share&rdquo; is this team’s part of the ' +
-        'conference’s season CoE.</caption><thead><tr><th scope="col">Team</th>' +
+        '<table class="ledger"><caption>Ordered by legacy season Merits. &ldquo;Share&rdquo; is this team’s part of the ' +
+        'conference’s legacy season Merits.</caption><thead><tr><th scope="col">Team</th>' +
         '<th scope="col" class="tr">Standing</th><th scope="col" class="tr">Record</th>' +
         '<th scope="col">Conference</th><th scope="col">External</th><th scope="col">End Elo</th>' +
-        '<th scope="col">CoE v1</th><th scope="col">Share</th></tr></thead><tbody>' + body + '</tbody>' +
+        '<th scope="col">Legacy Merits</th><th scope="col">Share</th></tr></thead><tbody>' + body + '</tbody>' +
         (row ? '<tfoot><tr><td colspan="3">' + row[F.members] + ' members &middot; ' + row[F.conf_games] +
           ' conference games</td><td class="dim">—</td><td>' +
           wlt(row[F.ext_w], row[F.ext_l], row[F.ext_t]) + '</td><td class="dim">—</td><td>' +
@@ -9315,7 +9315,7 @@ function fillConfHistory(cp, c) {
     '<table class="ledger"><caption>A season opens that season’s members. Ranks are among the conferences that ' +
     'actually had members that season, so a dissolved conference never occupies a rank it no longer holds.</caption>' +
     '<thead><tr><th scope="col">Season</th><th scope="col" class="tr">Members</th>' +
-    '<th scope="col" class="tr">CoE</th><th scope="col">CoE 5-yr</th><th scope="col">CoE 2.0</th>' +
+    '<th scope="col" class="tr">Legacy Merits</th><th scope="col">Legacy Merits 5-yr</th><th scope="col">Merits</th>' +
     '<th scope="col">External</th><th scope="col">Bowl</th><th scope="col">CFP</th>' +
     '<th scope="col">Standings leader</th></tr></thead><tbody>' + body + '</tbody>' +
     '<tfoot><tr><td>' + rows.length + ' seasons</td><td class="tr">' + (T.members_ever || 0) + ' ever</td>' +
@@ -9330,7 +9330,7 @@ function fillConfHistory(cp, c) {
   }));
 }
 
-// ---- External: the question conference CoE exists to answer ----
+// ---- External: the question conference Merits exists to answer ----
 function fillConfExternal(cp, c) {
   const el = document.getElementById('cp-external');
   if (!el) return;
@@ -9363,13 +9363,13 @@ function fillConfExternal(cp, c) {
       teamStat('CFP record, ' + season, row[F.cfp_teams] ? wlt(row[F.cfp_w], row[F.cfp_l], 0) : '—',
         row[F.cfp_teams] ? row[F.cfp_teams] + ' member' + (row[F.cfp_teams] === 1 ? '' : 's') + ' in the CFP'
           : (season < (cp.raw.cfp_first_season || 2014) ? 'no CFP before ' + (cp.raw.cfp_first_season || 2014) : 'no CFP bids')) +
-      teamStat('Conference CoE 2.0, ' + season, row[F.coe2] == null ? 'N/A' : row[F.coe2].toFixed(1),
-        row[F.coe2] == null ? 'not computed' : row[F.coe2_games] + ' external games &middot; experimental') +
+      teamStat('Conference Merits, ' + season, row[F.coe2] == null ? 'N/A' : row[F.coe2].toFixed(1),
+        row[F.coe2] == null ? 'not computed' : row[F.coe2_games] + ' external games') +
       teamStat('Conference games, ' + season, String(row[F.conf_games]), 'played inside the conference') +
       '</div>'
     : '';
   el.innerHTML = panelHead('External Performance', confSeasonSelect(cp, c.slug, 'cp-ext-season')) +
-    '<p class="section-note">Conference CoE asks one question: how did this conference do against everyone else? ' +
+    '<p class="section-note">Conference Merits asks one question: how did this conference do against everyone else? ' +
       'These are the games that answer it.</p>' + post +
     '<h3 class="an-title">' + season + ', by opponent conference</h3>' + table(cp.vsFor(c.slug, season), 'in ' + season) +
     '<h3 class="an-title">All seasons, by opponent conference</h3>' + table(cp.vsAll(c.slug), 'on record') +
@@ -9685,7 +9685,7 @@ function loadStats(season) {
     const players=CfbStats.aggregatePlayers(archive,games.byId,games.conferences||{},TEAM_BY_ID);
     const ratings={};
     for(const r of DATA.team_elo_by_year[season]||[]) ratings[r.team]={elo:r.elo,change:r.change};
-    for(const r of DATA.team_ratings_by_year[season]||[]) {ratings[r.team]??={};ratings[r.team].coefficient=r.rating;}
+    for(const r of (DATA.team_merits_by_year||{})[season]||[]) {ratings[r.team]??={};ratings[r.team].coefficient=r.merits;}
     for(const r of DATA.team_rolling_by_year[season]||[]) {ratings[r.team]??={};ratings[r.team].rolling=r.coeff_5yr;}
     return {season,roster,players:players.rows,teams:CfbStats.aggregateTeams(games.games,players,games.conferences||{},TEAM_BY_ID,ratings),completed:games.games.filter(g=>g.completed).length,covered:new Set([...players.covered].map(k=>k.split('|')[0])).size};
   }).catch(error=>{statsCache.delete(season);throw error;}));
@@ -9817,7 +9817,7 @@ function statsOverviewHtml(data) {
   card('Team points per game',data.teams,'ppg',{subview:'teams',category:'overall'});
   card('Fewest opponent points per game',data.teams,'oppPpg',{subview:'teams',category:'defense'},'asc');
   card('Elo',data.teams,'elo',{subview:'teams',category:'ratings'});
-  card('Season CoE',data.teams,'coefficient',{subview:'teams',category:'ratings'});
+  card('Season Merits',data.teams,'coefficient',{subview:'teams',category:'ratings'});
   card('Most Elo gained · last game',data.teams.filter(r=>r.change>0),'change',{subview:'teams',category:'ratings'});
   card('Most Elo lost · last game',data.teams.filter(r=>r.change<0),'change',{subview:'teams',category:'ratings'},'asc');
   return cards.length?'<div class="stats-leaders">'+cards.join('')+'</div>':'<p class="empty-note">No leaders available for this season.</p>';
@@ -9875,8 +9875,8 @@ function render() {
   else if (state.section === 'games') { content.innerHTML = renderGames(); hydrateGames(version); }
   else if (state.section === 'live') { content.innerHTML = renderLiveScores(); hydrateLiveScores(version); }
   else if (state.section === 'rankings') {
-    const views = { elo: renderElo, 'conference-standings': renderConferenceStandings, 'home-field': renderHomeFieldStandings, 'conference-elo': renderConferenceElo, 'conference-history': renderConferenceHistory, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferences,
-      'conference-coe2': renderConferenceCoe2, 'elo-weekly': renderEloWeekly,
+    const views = { elo: renderElo, 'conference-standings': renderConferenceStandings, 'home-field': renderHomeFieldStandings, 'conference-elo': renderConferenceElo, 'conference-history': renderConferenceHistory, 'team-coe': renderTeamCoeRankings, 'conference-coe': renderConferenceCoe2, 'conference-coe-v1': renderConferences,
+      'elo-weekly': renderEloWeekly,
       schedule: renderScheduleStrength,
       top25: renderTop25Boards };
     content.innerHTML = views[state.subview]();

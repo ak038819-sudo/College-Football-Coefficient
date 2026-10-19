@@ -674,16 +674,19 @@ test('section routes carry no detail-page state', () => {
   }
 });
 
-test('the CoE 2.0 conference view is a first-class rankings view', () => {
+test('old CoE 2.0 conference bookmarks open Conference Merits', () => {
   const r = read('#section=rankings&view=conference-coe2&season=2025');
   assert.equal(r.section, 'rankings');
-  assert.equal(r.subview, 'conference-coe2');
-  assert.equal(r.year, 2025);
-  // It round-trips, so the tab can be linked to and bookmarked.
-  assert.equal(hashFor(r), '#section=rankings&view=conference-coe2&season=2025');
+  assert.equal(r.subview, 'conference-coe', 'Conference Merits lives at conference-coe now');
+  assert.equal(r.year, 2025, 'the season rides along');
+  // The canonical URL is rewritten, so a shared link stops naming a view that
+  // no longer exists.
+  assert.equal(hashFor(r), '#section=rankings&view=conference-coe&season=2025');
+  assert.deepEqual(read(hashFor(read('#section=rankings&view=conference-coe&season=2025'))),
+    read('#section=rankings&view=conference-coe&season=2025'));
   // CoE v1's rolling value keeps its own URL: the two are different numbers and
   // must never collapse into one view.
-  assert.equal(read('#section=rankings&view=conference-coe').subview, 'conference-coe');
+  assert.equal(read('#section=rankings&view=conference-coe-v1').subview, 'conference-coe-v1');
   assert.equal(read('#tab=conferences').subview, 'conference-coe');
 });
 
