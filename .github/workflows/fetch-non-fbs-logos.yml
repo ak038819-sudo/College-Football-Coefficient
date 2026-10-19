@@ -1,0 +1,72 @@
+# Marks for the FCS and lower schools this project rates nothing.
+#
+# Run by hand. It lives apart from ci-and-deploy.yml because it is the only job
+# that reaches the sportsdataverse logo archive, and because it has no schedule
+# to keep: these are current marks for schools whose logo changes once in a
+# decade, so this runs when a new opponent appears or a mark has been redrawn.
+# The images are committed rather than fetched at build time for the reason the
+# dated set is: a deploy must not depend on somebody else's CDN, and the archive
+# grants no service.
+name: Fetch non-FBS logos
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Resolve the schools and report, without fetching or committing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Its own lock, NOT the deploy's. A job queued behind the deploy in
+    # rebuild-and-deploy-main is cancelled outright by the next run to enter
+    # that group, which is how a dispatched backfill was lost on 2026-10-03.
+    concurrency:
+      group: fetch-non-fbs-logos-${{ github.ref_name }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Resolve and report
+        run: python3 src/fetch_non_fbs_logos.py --dry-run
+
+      - name: Fetch the marks and rebuild the logo manifest
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          python3 src/fetch_non_fbs_logos.py
+          # The manifest and the image files the page actually fetches are
+          # derived from the committed sets, here as on a deploy, so that the
+          # source, the manifest and the files land in one commit rather than
+          # leaving the manifest pointing at marks nothing has written yet.
+          python3 src/export_logo_files.py
+
+      - name: Publish
+        if: ${{ !inputs.dry_run }}
+        env:
+          PUBLISH_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          scripts/publish_to_main.sh "Fetch non-FBS opponent logos [skip ci]" \
+            ui/non_fbs_logo_assets.json ui/logo_manifest.json ui/assets/logos/ \
+            data/reference/non_fbs_logo_sources.csv
+
+      # The commit above carries [skip ci], so nothing rebuilds on its own: the
+      # marks reach the site on the next deploy, dispatched by hand or by the
+      # scheduled refresh.
+      - name: Say what has to happen next
+        if: ${{ !inputs.dry_run }}
+        run: echo "::notice::Committed with [skip ci]. Dispatch ci-and-deploy.yml to publish the marks to the site."

@@ -8,14 +8,24 @@ decodes the committed logo sets into individual image files that the browser
 fetches only when a logo is actually on screen, plus a small manifest the page
 embeds instead of the images.
 
-Inputs (committed; produced by src/build_dated_logo_assets.py):
+Inputs (committed; produced by src/build_dated_logo_assets.py, and for the
+non-FBS set by src/fetch_non_fbs_logos.py):
     ui/dated_logo_assets.json              {team_name: [{start, end, data, bg}, ...]}
     ui/dated_conference_logo_assets.json   {conference: [{start, end, data, bg}, ...]}
+    ui/non_fbs_logo_assets.json            {opponent_name: [{start, end, data, bg}, ...]}
 
 Outputs:
     ui/assets/logos/teams/<slug>/<start>-<end|now>.png
     ui/assets/logos/conferences/<slug>/<start>-<end|now>.png
-    ui/logo_manifest.json   {"teams": {name: [{start, end, src, bg}]}, "conferences": {...}}
+    ui/assets/logos/non_fbs/<slug>/<start>-<end|now>.png
+    ui/logo_manifest.json   {"teams": {name: [{start, end, src, bg}]}, "conferences": {...},
+                             "non_fbs": {...}}
+
+A kind the page has no source file for is simply absent from the manifest; the
+dashboard reads each section with a default of {}. The non-FBS marks are not
+dated (ESPN's college CDN serves only today's logo), so each carries one entry
+starting at year 0 -- "every season", since nothing reads that number as a date
+-- and the dashboard lets a team's dated eras win wherever both hold a name.
 
 The images are the exact bytes that were embedded (decoded, not re-encoded),
 so nothing looks different. `src` is relative to ui/dashboard.html and carries
@@ -37,7 +47,9 @@ from export_dashboard_data import slugify  # noqa: E402  (same URL slugs as team
 
 REPO = Path(__file__).resolve().parent.parent
 UI = REPO / "ui"
-SOURCES = {"teams": UI / "dated_logo_assets.json", "conferences": UI / "dated_conference_logo_assets.json"}
+SOURCES = {"teams": UI / "dated_logo_assets.json",
+           "conferences": UI / "dated_conference_logo_assets.json",
+           "non_fbs": UI / "non_fbs_logo_assets.json"}
 OUT_ROOT = UI / "assets" / "logos"
 MANIFEST = UI / "logo_manifest.json"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -60,7 +72,9 @@ def export(sources: dict = SOURCES, out_root: Path = OUT_ROOT, manifest_path: Pa
         shutil.rmtree(out_root)
     manifest, stats, duplicates = {}, {}, []
     for kind, src_path in sources.items():
-        data = json.loads(src_path.read_text(encoding="utf-8")) if src_path.exists() else {}
+        if not src_path.exists():
+            continue
+        data = json.loads(src_path.read_text(encoding="utf-8"))
         kind_manifest, used_slugs, files = {}, {}, 0
         for name in sorted(data):
             slug = slugify(name)
@@ -85,9 +99,15 @@ def export(sources: dict = SOURCES, out_root: Path = OUT_ROOT, manifest_path: Pa
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(raw)
                 files += 1
-                entries.append({"start": e["start"], "end": e["end"],
-                                "src": f"{url_prefix}/{kind}/{slug}/{fname}?v={hashlib.sha256(raw).hexdigest()[:10]}",
-                                "bg": e["bg"]})
+                entry = {"start": e["start"], "end": e["end"],
+                         "src": f"{url_prefix}/{kind}/{slug}/{fname}?v={hashlib.sha256(raw).hexdigest()[:10]}",
+                         "bg": e["bg"]}
+                # The provider id, where the source set carries one: it is how
+                # the live scoreboard finds the mark of a school that has no
+                # name in this project to look up (see the non-FBS set).
+                if e.get("espn"):
+                    entry["espn"] = e["espn"]
+                entries.append(entry)
             kind_manifest[name] = entries
         manifest[kind] = kind_manifest
         stats[kind] = {"names": len(kind_manifest), "files": files}
@@ -99,9 +119,9 @@ def export(sources: dict = SOURCES, out_root: Path = OUT_ROOT, manifest_path: Pa
 def main() -> None:
     stats = export()
     size = MANIFEST.stat().st_size
-    print(f"Logo files: {stats['teams']['files']} team images ({stats['teams']['names']} teams), "
-          f"{stats['conferences']['files']} conference images ({stats['conferences']['names']} conferences); "
-          f"manifest {size:,} bytes")
+    counts = ", ".join(f"{stats[kind]['files']} {kind} images ({stats[kind]['names']} names)"
+                       for kind in SOURCES if kind in stats)
+    print(f"Logo files: {counts}; manifest {size:,} bytes")
     if stats["duplicates_dropped"]:
         print("  exact duplicate logo entries skipped (same era, image and color): "
               + "; ".join(stats["duplicates_dropped"]))
