@@ -106,6 +106,17 @@ def test_overtime_duration():
     assert audit_lineups(g, rows)['structural_checks_passed']
 
 
+def boxes(g, team=1, minutes=40.0, points=None):
+    """One team's box score row: five starters plus a bench player."""
+    scored = g['homePoints'] if team == g['homeTeamId'] else g['awayPoints']
+    scored = scored if points is None else points
+    players = [dict(athleteId=team * 100 + i, starter=i < 5, minutes=minutes,
+                    points=scored if i == 0 else 0)
+               for i in range(6)]
+    players[5]['minutes'] = 0.0
+    return [dict(gameId=g['id'], teamId=team, players=players)]
+
+
 def test_collection_manifest_and_failure_boundary(tmp_path):
     g = game()
     calls = []
@@ -114,18 +125,27 @@ def test_collection_manifest_and_failure_boundary(tmp_path):
         calls.append(path)
         if path == '/games':
             return [g]
+        if path == '/games/players':
+            return boxes(g)
         return lineups(g) if path.startswith('/lineups') else []
 
     output = tmp_path / 'success'
     result = collect(2025, 'BYU', 1, output, 'secret-not-to-persist', getter)
-    assert len(calls) == 4
-    assert len(result['files']) == 6
+    assert calls == ['/games', '/lineups/game/1', '/substitutions/game/1',
+                     '/plays/game/1', '/games/players']
+    assert len(result['files']) == 8
+    assert result['reconciled_games'] == 1
+    assert result['box_score_games'] == 1
     integration = json.loads((output / 'integration.json').read_text())
     assert integration['sport'] == 'ncaambb'
     assert not any(integration['readiness'].values())
     assert 'secret-not-to-persist' not in (output / 'manifest.json').read_text()
     with pytest.raises(ValueError, match='already exists'):
         collect(2025, 'BYU', 1, output, 'unused', getter)
+
+    reconciliation = json.loads((output / 'reconciliation.json').read_text())
+    assert reconciliation[0]['reconciled_teams'] == [1]
+    assert reconciliation[0]['teams'][0]['minutes_from_lineups'] == pytest.approx(200)
 
     def failing(path, params, key):
         if path == '/games':

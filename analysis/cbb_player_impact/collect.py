@@ -13,10 +13,18 @@ from urllib.request import Request, urlopen
 
 if __package__:
     from .contract import pilot_export
+    from .reconcile import (clock_ordering_issues, lineup_seconds_by_team,
+                            filtered_team_id, reconcile_game)
 else:
     from contract import pilot_export
+    from reconcile import (clock_ordering_issues, lineup_seconds_by_team,
+                           filtered_team_id, reconcile_game)
 
 BASE = 'https://api.collegebasketballdata.com'
+# /games returns at most 3,000 records and /games/players at most 1,000 games.
+# Hitting either cap truncates silently, so the collector refuses the result.
+GAMES_CAP = 3000
+BOX_SCORE_GAMES_CAP = 1000
 
 
 def fetch(path, params, key):
@@ -105,7 +113,7 @@ def collect(season, team, limit, output, key, getter=fetch):
     if output.exists():
         raise ValueError('Output already exists; choose a new directory for this snapshot')
     games = getter('/games', {'season': season, 'team': team}, key)
-    if len(games) >= 3000:
+    if len(games) >= GAMES_CAP:
         raise ValueError('Response reached provider cap; split request before proceeding')
     if not games:
         raise ValueError('No games returned; verify season and provider team name')
@@ -124,10 +132,11 @@ def collect(season, team, limit, output, key, getter=fetch):
                                retrieved_at=manifest['retrieved_at'])
     manifest['files']['games.json'] = write_json(output / 'games.json', games)
     write_json(output / 'manifest.json', manifest)
-    audits = []
+    audits, seconds_by_game = [], {}
     try:
         manifest['files']['integration.json'] = write_json(output / 'integration.json', integration)
-        for game in completed[:limit]:
+        sampled = completed[:limit]
+        for game in sampled:
             for family in ('lineups', 'substitutions', 'plays'):
                 route = f'/{family}/game/{game["id"]}'
                 rows = getter(route, {}, key)
@@ -135,7 +144,30 @@ def collect(season, team, limit, output, key, getter=fetch):
                 manifest['files'][name] = write_json(output / name, rows)
                 if family == 'lineups':
                     audits.append(audit_lineups(game, rows))
+                    seconds_by_game[game['id']] = lineup_seconds_by_team(rows)
+                else:
+                    issues = clock_ordering_issues(rows, family)
+                    audits[-1]['issues'].extend(issues[:5])
+                    audits[-1][f'{family}_clock_issues'] = len(issues)
+                    audits[-1][f'{family}_events'] = len(rows)
+                    if issues:
+                        audits[-1]['structural_checks_passed'] = False
         manifest['files']['audit.json'] = write_json(output / 'audit.json', audits)
+
+        # One extra request covers every sampled game's box score. Minutes from
+        # this feed and seconds from the lineup feed are independent measurements
+        # of the same floor time; B01 gates stint work on them agreeing.
+        boxes = getter('/games/players', {'season': season, 'team': team}, key)
+        if len({row.get('gameId') for row in boxes}) >= BOX_SCORE_GAMES_CAP:
+            raise ValueError('Box score response reached the provider cap; narrow the request')
+        manifest['files']['boxscores.json'] = write_json(output / 'boxscores.json', boxes)
+        manifest['box_score_games'] = len({row.get('gameId') for row in boxes})
+        only = {filtered_team_id(boxes)}
+        reconciliation = [reconcile_game(game, boxes, seconds_by_game.get(game['id']), only)
+                          for game in sampled]
+        manifest['files']['reconciliation.json'] = write_json(
+            output / 'reconciliation.json', reconciliation)
+        manifest['reconciled_games'] = sum(row['reconciled'] for row in reconciliation)
         manifest['status'] = 'collected; player-model validation pending'
     except Exception:
         manifest['status'] = 'incomplete; do not use for model fitting'
