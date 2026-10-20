@@ -20,9 +20,10 @@ from .coverage import render, summarize_season
 from .games import fetch_season
 from .http import CbbdAuthError, CbbdError, Quota, get_json
 from .people import (box_score_people, fetch_box_scores, fetch_rosters,
-                     roster_players)
+                     roster_players, roster_teams)
 from .store import (connect, load_season, record_snapshot, upsert_box_scores,
-                    upsert_player_team_seasons, upsert_players)
+                    upsert_player_team_seasons, upsert_players,
+                    upsert_roster_teams)
 
 RAW_ROOT = Path('data/ncaambb/raw')
 
@@ -123,12 +124,16 @@ def ingest_people(connection, season, *, raw_root=None, reuse_cache=True,
         rows_seen=len(boxes),
         notes='reused cached responses' if from_cache else 'fetched from provider')
     stored_people = upsert_players(connection, people, snapshot_id=snapshot_id)
+    roster_only_teams = upsert_roster_teams(connection, season,
+                                            roster_teams(rosters),
+                                            snapshot_id=snapshot_id)
     memberships, unknown_teams = upsert_player_team_seasons(
         connection, season, pairs, snapshot_id=snapshot_id)
     lines = upsert_box_scores(connection, boxes, snapshot_id=snapshot_id)
     return dict(season=season, from_cache=from_cache, snapshot_id=snapshot_id,
                 rosters=len(rosters), people=stored_people,
                 memberships=memberships,
+                roster_only_teams=roster_only_teams,
                 skipped_unknown_teams=unknown_teams, **lines)
 
 
@@ -213,6 +218,10 @@ def main(argv=None):
               f' {row["memberships"]} roster memberships,'
               f' {row["team_lines"]} team box scores,'
               f' {row["player_lines"]} player lines')
+        if row['roster_only_teams']:
+            print(f'    {row["roster_only_teams"]} teams were named only by the'
+                  " roster feed, not by the season's team list, and were"
+                  ' registered as non-Division I')
         if row['skipped_unknown_teams']:
             print(f'    {row["skipped_unknown_teams"]} roster memberships name'
                   ' a team the season\'s team list does not carry, so they'

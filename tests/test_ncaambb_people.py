@@ -247,6 +247,25 @@ def test_a_roster_with_no_players_does_not_fail():
     assert roster_players([roster(10, [])]) == []
 
 
+def test_roster_teams_are_distinct_and_carry_the_feeds_own_name():
+    from src.ncaambb.people import roster_teams
+    teams = roster_teams([roster(10), roster(10), roster(20)])
+    assert [(t['id'], t['school']) for t in teams] == [(10, 'Alpha'),
+                                                       (20, 'Alpha')]
+
+
+def test_a_roster_with_no_integer_team_id_names_no_team():
+    from src.ncaambb.people import roster_teams
+    assert roster_teams([dict(teamId=None, team='Alpha'),
+                         dict(teamId='10', team='Alpha')]) == []
+
+
+def test_a_roster_team_with_no_name_gets_its_id_and_nothing_invented():
+    from src.ncaambb.people import roster_teams
+    assert roster_teams([dict(teamId=777, team=None)]) == [
+        dict(id=777, school='Team 777')]
+
+
 def test_a_player_who_appears_only_in_a_box_score_still_gets_an_identity():
     """Rosters are a snapshot and a stat line is a fact. Taking identities from
     rosters alone would drop the line rather than the gap."""

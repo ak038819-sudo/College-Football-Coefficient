@@ -280,6 +280,30 @@ def upsert_players(connection, players, *, snapshot_id=None):
     return len(keys)
 
 
+def season_team_ids(connection, season):
+    """Provider ids that already have a team_season row for this season."""
+    return {row['provider_id'] for row in connection.execute(
+        'SELECT t.provider_id FROM team_season s JOIN team t USING (team_key)'
+        ' WHERE s.season = ?', (season,))}
+
+
+def upsert_roster_teams(connection, season, teams, *, snapshot_id=None):
+    """Register teams the roster feed names and the season's team list omits.
+
+    Only teams with no team_season row for this season are touched, because
+    writing `division_one = 0` over a team the provider DOES list for the
+    season would demote a real Division I team on the strength of a roster.
+    """
+    unseen = [team for team in teams
+              if team['id'] not in season_team_ids(connection, season)]
+    if not unseen:
+        return 0
+    upsert_teams(connection, unseen, snapshot_id=snapshot_id)
+    upsert_team_seasons(connection, season, unseen, division_one=False,
+                        snapshot_id=snapshot_id)
+    return len(unseen)
+
+
 def _known_teams(connection):
     return {row['team_key'] for row in
             connection.execute('SELECT team_key FROM team')}
@@ -288,10 +312,10 @@ def _known_teams(connection):
 def upsert_player_team_seasons(connection, season, pairs, *, snapshot_id=None):
     """Store roster membership. A transfer is two rows, never two players.
 
-    The roster feed names teams the season's `/teams` list does not carry. A
-    membership on such a team is counted and reported rather than stored,
-    because storing it would need a team row invented from a roster: the
-    schedule loader's placeholders at least come from a game that was played.
+    The roster feed names teams the season's `/teams` list does not carry;
+    `upsert_roster_teams` registers those first. This guard is what stops a
+    team that slipped through anyway from aborting a whole season of people on
+    a foreign key, and a non-zero skip count means that happened.
     Returns (stored, skipped_unknown_teams).
     """
     label = season_label(season)

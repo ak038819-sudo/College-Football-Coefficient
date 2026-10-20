@@ -636,3 +636,64 @@ def test_a_roster_membership_on_an_unlisted_team_is_counted_not_stored(loaded):
     assert (stored, skipped) == (1, 1)
     rows = loaded.execute('SELECT team_key FROM player_team_season').fetchall()
     assert [row['team_key'] for row in rows] == [entity_key('team', 10)]
+
+
+def test_a_roster_only_team_is_registered_so_order_cannot_change_the_result(db):
+    """Skipping such a membership made the load order-dependent: a later
+    season's placeholder created the team, and the SAME membership then
+    appeared on the second run. A second load must change nothing."""
+    from src.ncaambb.people import roster_teams
+    from src.ncaambb.store import upsert_roster_teams
+    rosters = [dict(teamId=777, team='Roster Only',
+                    players=[dict(id=101, name='A Guard')])]
+    load_season(db, 2026, [game()], [team(10), team(20, 'Beta')])
+    upsert_players(db, [player(101)])
+    assert upsert_roster_teams(db, 2026, roster_teams(rosters)) == 1
+    assert upsert_player_team_seasons(db, 2026, [(player(101), 777)]) == (1, 0)
+    row = db.execute('SELECT division_one FROM team_season t JOIN team'
+                     ' USING (team_key) WHERE provider_id = 777').fetchone()
+    assert row['division_one'] == 0
+    # Registering again changes nothing.
+    assert upsert_roster_teams(db, 2026, roster_teams(rosters)) == 0
+
+
+def test_registering_a_roster_team_never_demotes_a_division_one_team(db):
+    """`division_one = 0` written over a team the provider DOES list for the
+    season would make a real team ineligible to be rated."""
+    from src.ncaambb.store import upsert_roster_teams
+    load_season(db, 2026, [game()], [team(10), team(20, 'Beta')])
+    assert upsert_roster_teams(db, 2026, [dict(id=10, school='Alpha')]) == 0
+    row = db.execute('SELECT division_one FROM team_season t JOIN team'
+                     ' USING (team_key) WHERE provider_id = 10').fetchone()
+    assert row['division_one'] == 1
+
+
+def test_a_mixed_call_demotes_nobody(db):
+    """One roster-only team alongside a listed one in the same call. If the
+    whole list were written as non-Division I, the listed team would silently
+    stop being rateable."""
+    from src.ncaambb.store import upsert_roster_teams
+    load_season(db, 2026, [game()], [team(10), team(20, 'Beta')])
+    assert upsert_roster_teams(db, 2026, [dict(id=10, school='Alpha'),
+                                          dict(id=777, school='Roster Only')]) == 1
+    rows = db.execute('SELECT provider_id, division_one FROM team_season t'
+                      ' JOIN team USING (team_key) WHERE provider_id IN'
+                      ' (10, 777) ORDER BY provider_id').fetchall()
+    assert [(r['provider_id'], r['division_one']) for r in rows] == [(10, 1),
+                                                                     (777, 0)]
+
+
+def test_a_roster_team_the_season_omits_but_another_season_carries(db):
+    """team rows are season-agnostic, so a team can exist and still have no
+    team_season row for THIS season. That is the case the order dependence
+    hid: the team row alone was enough to pass the old guard."""
+    from src.ncaambb.store import upsert_roster_teams
+    load_season(db, 2026, [game()], [team(10), team(20, 'Beta')])
+    load_season(db, 2025, [game(2, season=2025, home=10, away=30)], [team(10)])
+    # Team 20 has a 2026 team_season row but none for 2025.
+    assert upsert_roster_teams(db, 2025, [dict(id=20, school='Beta')]) == 1
+    rows = db.execute('SELECT season, division_one FROM team_season t JOIN team'
+                      ' USING (team_key) WHERE provider_id = 20'
+                      ' ORDER BY season').fetchall()
+    assert [(r['season'], r['division_one']) for r in rows] == [(2025, 0),
+                                                                (2026, 1)]

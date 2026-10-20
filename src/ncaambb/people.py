@@ -99,6 +99,27 @@ def roster_players(rosters):
     return pairs
 
 
+def roster_teams(rosters):
+    """Teams the roster feed names, as rows `upsert_teams` can store.
+
+    The feed carries teams the season's `/teams` list does not, and a
+    membership cannot be stored against a team that has no row. Registering
+    them from the roster is what keeps the result independent of the order
+    seasons happen to be loaded in: skipping them meant a later season's
+    placeholder could make a membership appear on the second run.
+    """
+    teams = {}
+    for roster in rosters:
+        identifier = roster.get('teamId')
+        if type(identifier) is not int or identifier in teams:
+            continue
+        name = roster.get('team')
+        teams[identifier] = dict(id=identifier,
+                                 school=name if isinstance(name, str) and name
+                                 else f'Team {identifier}')
+    return list(teams.values())
+
+
 def box_score_people(boxes):
     """Players who appear in a box score, as identity rows.
 
