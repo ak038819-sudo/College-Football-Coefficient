@@ -31,43 +31,6 @@ jobs:
         run: python -m pip install 'pytest>=7,<10'
       - name: Validate prototype
         run: python -m pytest tests/test_cbb_player_impact.py tests/test_cbb_integration_contract.py tests/test_cbb_reconciliation.py -q
-      - name: TEMPORARY ingestion check (reverted before review)
-        env:
-          CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
-        run: |
-          python -m pytest tests/test_ncaambb_ingestion.py tests/test_ncaambb_store.py -q
-          python -m src.ncaambb.ingest --seasons 2026,2027
-          python - <<'PY2'
-          import sqlite3, subprocess, sys
-          def counts():
-              c = sqlite3.connect('db/ncaambb.db')
-              try:
-                  return {t: c.execute(f'SELECT COUNT(*) FROM {t}').fetchone()[0]
-                          for t in ('team', 'team_season', 'game')}
-              finally:
-                  c.close()
-          before = counts()
-          run = subprocess.run([sys.executable, '-m', 'src.ncaambb.ingest',
-                                '--seasons', '2026,2027'],
-                               capture_output=True, text=True)
-          print('second load rc', run.returncode)
-          print(run.stdout[-1500:])
-          after = counts()
-          print('BEFORE', before, 'AFTER', after)
-          assert before == after, 'NOT IDEMPOTENT'
-          c = sqlite3.connect('db/ncaambb.db')
-          c.row_factory = sqlite3.Row
-          for q in [
-            "SELECT season, COUNT(*) n, SUM(rateable) rateable, SUM(division_one) di, SUM(start_time_tbd) tbd FROM game GROUP BY season",
-            "SELECT season, COUNT(*) n, SUM(division_one) di FROM team_season GROUP BY season",
-            "SELECT COUNT(*) n FROM game WHERE status='final' AND (home_points IS NULL OR away_points IS NULL)",
-            "SELECT exclusions, COUNT(*) n FROM game GROUP BY exclusions ORDER BY n DESC LIMIT 5",
-          ]:
-              print('--', q)
-              for row in c.execute(q):
-                  print('  ', dict(row))
-          c.close()
-          PY2
       - name: Collect three BYU games
         env:
           CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
