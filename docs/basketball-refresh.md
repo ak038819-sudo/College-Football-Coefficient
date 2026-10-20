@@ -123,6 +123,12 @@ makes a cut-off run make progress instead of repeating itself; the job still
 fails, so the health light still lights. That makes the refresh resumable by
 construction, the same property `backfill-players.yml` has for football.
 
+The `publish` input does **not** govern the cache. "Do not replace what is
+published" and "throw away the quota this run already spent" are different
+decisions, and a dispatcher asking for the first does not want the second —
+which also makes `publish: false` the safe way to warm the cache for a season
+without touching the live export.
+
 **A rate limit is honoured rather than guessed at.** `src/ncaambb/http.py`
 backed off 2, 4, 8 and 16 seconds and gave up — thirty seconds against a
 window that was longer. It now reads `Retry-After` and waits as long as the

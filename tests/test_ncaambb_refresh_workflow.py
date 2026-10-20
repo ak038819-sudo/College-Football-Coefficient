@@ -101,10 +101,27 @@ def test_the_commit_adds_the_raw_cache_and_the_export_and_nothing_else():
     assert 'git add .' not in commit['run']
 
 
-def test_a_dispatch_with_publishing_off_commits_nothing():
+def test_publishing_off_still_banks_the_raw_cache():
+    """"Do not replace what is published" and "throw away the quota this run
+    already spent" are different decisions. Conflating them made `publish:
+    false` useless for warming the cache, which is the one thing it is good
+    for out of season."""
     commit = next(step for step in steps()
                   if step.get('name', '').startswith('Commit'))
-    assert '"$ALLOWED" != "true"' in commit['run']
+    body = commit['run']
+    # The cache path is set unconditionally; only the export is guarded.
+    assert 'PATHS="data/ncaambb/raw"' in body
+    guard = body.split('PATHS="data/ncaambb/raw"')[0]
+    assert 'exit 0' not in guard, 'the cache commit is short-circuited'
+    assert '$ALLOWED' in body.split('PATHS="data/ncaambb/raw"')[1]
+
+
+def test_the_export_is_published_only_when_allowed_and_the_gate_passed():
+    commit = next(step for step in steps()
+                  if step.get('name', '').startswith('Commit'))
+    export_guard = commit['run'].split('PATHS="$PATHS ui/data/ncaambb"')[0]
+    assert 'steps.publish.outputs.published' in export_guard
+    assert '"$ALLOWED" = "true"' in export_guard
 
 
 def test_the_ingestion_reuses_the_committed_cache():
