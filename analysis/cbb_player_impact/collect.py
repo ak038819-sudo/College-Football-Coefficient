@@ -11,6 +11,11 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+if __package__:
+    from .contract import pilot_export
+else:
+    from contract import pilot_export
+
 BASE = 'https://api.collegebasketballdata.com'
 
 
@@ -113,10 +118,15 @@ def collect(season, team, limit, output, key, getter=fetch):
                     season=season, team=team, scope='team sample; not national rankings',
                     schedule_games=len(games), completed_games=len(completed),
                     sampled_games=min(limit, len(completed)), files={}, status='collecting')
+    # Fail before writing if the schedule cannot satisfy the sport-specific
+    # contract. Never publish this team sample as national rankings.
+    integration = pilot_export(games, season=season, team=team,
+                               retrieved_at=manifest['retrieved_at'])
     manifest['files']['games.json'] = write_json(output / 'games.json', games)
     write_json(output / 'manifest.json', manifest)
     audits = []
     try:
+        manifest['files']['integration.json'] = write_json(output / 'integration.json', integration)
         for game in completed[:limit]:
             for family in ('lineups', 'substitutions', 'plays'):
                 route = f'/{family}/game/{game["id"]}'

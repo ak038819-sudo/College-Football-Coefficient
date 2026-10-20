@@ -119,7 +119,10 @@ def test_collection_manifest_and_failure_boundary(tmp_path):
     output = tmp_path / 'success'
     result = collect(2025, 'BYU', 1, output, 'secret-not-to-persist', getter)
     assert len(calls) == 4
-    assert len(result['files']) == 5
+    assert len(result['files']) == 6
+    integration = json.loads((output / 'integration.json').read_text())
+    assert integration['sport'] == 'ncaambb'
+    assert not any(integration['readiness'].values())
     assert 'secret-not-to-persist' not in (output / 'manifest.json').read_text()
     with pytest.raises(ValueError, match='already exists'):
         collect(2025, 'BYU', 1, output, 'unused', getter)
