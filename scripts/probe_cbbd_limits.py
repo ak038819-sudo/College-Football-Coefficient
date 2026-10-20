@@ -194,6 +194,11 @@ def main(argv=None):
                         help='How many paced requests to try')
     parser.add_argument('--cooldown', type=float, default=90.0,
                         help='Seconds to wait between the two measurements')
+    parser.add_argument('--usage-only', action='store_true',
+                        help='Report usage and stop. Three requests, and the'
+                             ' usage endpoint answered 200 while data'
+                             ' endpoints were being refused, so this is'
+                             ' diagnosable even when nothing else is.')
     args = parser.parse_args(argv)
     key = os.environ.get('CBBD_API_KEY')
     if not key:
@@ -201,6 +206,9 @@ def main(argv=None):
         return 2
     print('# What the provider will actually allow\n')
     spent = report_usage(key)
+    if args.usage_only:
+        print(f'---\n\nRoughly {spent} requests spent by this probe.')
+        return 0
     first = report_burst(key, args.burst)
     spent += first if first else args.burst
     if args.cooldown > 0:
