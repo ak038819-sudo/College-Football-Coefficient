@@ -1,0 +1,42 @@
+name: College basketball coverage probe
+
+# Measures what the provider holds per season. Fetches and reports; it writes
+# no data file, no database and no commit, so it cannot publish anything.
+
+on:
+  workflow_dispatch:
+    inputs:
+      seasons:
+        description: "Comma-separated ending years (2026 means 2025-26)"
+        type: string
+        default: "2024,2025,2026,2027"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: cbb-coverage-probe
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install test runner
+        run: python -m pip install 'pytest>=7,<10'
+      - name: Validate ingestion before spending quota
+        run: python -m pytest tests/test_ncaambb_ingestion.py -q
+      - name: Probe provider coverage
+        env:
+          CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
+          SEASONS: ${{ inputs.seasons }}
+        run: |
+          python -m src.ncaambb.probe_coverage --seasons "$SEASONS" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
