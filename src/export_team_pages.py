@@ -256,10 +256,14 @@ def load_coe2_rollups(conn: sqlite3.Connection) -> dict:
     if need - have:
         return {}
     out = {}
-    for tid, season, games, bonus, total in conn.execute(
-            "SELECT team_id, season_year, game_coe_total, bonus_total, season_coe2 FROM team_coe2_by_season"):
+    # games_counted comes along because the rollups carry a zero-game placeholder
+    # row for every pre-coverage season, and 0.0 there is not a measured zero --
+    # the same exclusion src/export_merits.py makes for the Merits boards.
+    for tid, season, games, bonus, total, counted in conn.execute(
+            "SELECT team_id, season_year, game_coe_total, bonus_total, season_coe2, games_counted "
+            "FROM team_coe2_by_season"):
         out[(tid, season)] = {"games": round(games, 3), "bonus": round(bonus, 3),
-                              "total": round(total, 3), "items": []}
+                              "total": round(total, 3), "counted": counted, "items": []}
     for tid, season, cat, n, pts in conn.execute(
             "SELECT team_id, season_year, category, count, points FROM team_coe2_bonuses ORDER BY category"):
         if (tid, season) in out:

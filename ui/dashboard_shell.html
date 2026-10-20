@@ -3884,9 +3884,12 @@ function meritConst(name) {
 // The season's Merits from games, which is Python's figure for exactly the
 // column above it -- not a sum taken in the browser. Null where the rollups
 // hold nothing for that team-season, so the footer dashes like its rows.
+// A season the awards never covered has a PLACEHOLDER rollup row reading 0.0
+// over zero games, which is not a season of no achievement: counting it as a
+// measured zero had the 1982 footer claim 0.000 under twelve dashed rows.
 function seasonMerits(tp, teamId, season) {
   const r = (tp.rollups || {})[teamId + '|' + season];
-  return r && r.games != null ? r.games : null;
+  return r && r.games != null && r.counted > 0 ? r.games : null;
 }
 
 let paintedLiveSignature = null;
@@ -6239,7 +6242,9 @@ const BONUS_LABELS = {
 };
 function coe2SeasonBreakdown(tp, team, season) {
   const r = (tp.rollups || {})[team.id + '|' + season];
-  if (!r) return '';
+  // A zero-game placeholder row is no measurement; showing its 0.000 here would
+  // contradict the schedule footer, which dashes the same season.
+  if (!r || !(r.counted > 0)) return '';
   const n3 = v => Number(v).toFixed(3);
   const items = (r.items || []).map(([cat, n, pts]) =>
     '<tr><td class="tl">' + esc(BONUS_LABELS[cat] || cat) + (n > 1 ? ' \u00d7' + n : '') + '</td>' +

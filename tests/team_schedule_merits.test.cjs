@@ -25,7 +25,7 @@ const OPP = { id: 9, name: 'Auburn' };
 // A season of three rated games: an upset win, a loss, and a game the hybrid
 // layer never valued. The three awards are deliberately different kinds of
 // value -- a number, a real zero, and nothing at all.
-function fixture({ awards = [3.418, 0, null], rollup = { games: 3.418, bonus: 0, total: 3.418, items: [] } } = {}) {
+function fixture({ awards = [3.418, 0, null], rollup = { games: 3.418, bonus: 0, total: 3.418, counted: 3, items: [] } } = {}) {
   const dates = ['2024-09-07', '2024-10-12', '2024-11-30'];
   const gamesById = new Map(dates.map((date, i) => [100 + i, {
     id: 100 + i, season: 2024, date, week: 2 + i, home: i === 1 ? OPP.id : TEAM.id,
@@ -134,10 +134,31 @@ test("the footer shows Python's own season total from games, not a browser sum",
   // 9.9 is not the sum of the rows: if the footer were adding the column up it
   // would print 3.418, and the point is that it prints the stored figure.
   const html = panelHtml(fixture({ awards: [3.418, 0, null],
-    rollup: { games: 9.9, bonus: 0, total: 9.9, items: [] } }));
+    rollup: { games: 9.9, bonus: 0, total: 9.9, counted: 3, items: [] } }));
   const foot = html.slice(html.indexOf('<tfoot>'), html.indexOf('</tfoot>'));
   const cells = foot.match(/<td[^>]*>[\s\S]*?<\/td>/g);
   assert.equal(cells[cells.length - 1], '<td>9.900</td>');
+});
+
+// The rollups carry a zero-game placeholder row for every season the awards
+// never covered. Reading its 0.0 as a measured zero had Ohio State's 1982
+// footer claim 0.000 Merits under twelve dashed rows, which is the one reading
+// this column must never produce.
+test('a placeholder rollup row over zero games is no measurement', () => {
+  const html = panelHtml(fixture({ awards: [null, null, null],
+    rollup: { games: 0, bonus: 0, total: 0, counted: 0, items: [] } }));
+  const foot = html.slice(html.indexOf('<tfoot>'), html.indexOf('</tfoot>'));
+  const cells = foot.match(/<td[^>]*>[\s\S]*?<\/td>/g);
+  assert.equal(cells[cells.length - 1], DASH);
+  assert.deepEqual(meritColumn(html), [DASH, DASH, DASH]);
+});
+
+test('a real zero-game count does not suppress a season that was measured', () => {
+  const html = panelHtml(fixture({ awards: [2.0, 0, 1.5],
+    rollup: { games: 3.5, bonus: 0, total: 3.5, counted: 3, items: [] } }));
+  const foot = html.slice(html.indexOf('<tfoot>'), html.indexOf('</tfoot>'));
+  const cells = foot.match(/<td[^>]*>[\s\S]*?<\/td>/g);
+  assert.equal(cells[cells.length - 1], '<td>3.500</td>');
 });
 
 test('a season with no rollup row dashes its footer rather than printing zero', () => {
@@ -249,4 +270,18 @@ test('the help text prints the configured award values, not typed ones', () => {
   // The award's difficulty is the hybrid expectation, not the Elo win
   // probability in the column beside it; saying so is the point of the line.
   assert.match(help, /not the <b>Win prob<\/b> beside it/);
+});
+
+// Analytics shows the same season decomposed, from the same rollup rows, so it
+// has to make the same judgement: a placeholder row is not a season total of
+// zero. Two tabs of one page contradicting each other is the bug here.
+test('the Analytics season breakdown ignores a placeholder row too', () => {
+  const ctx = { esc: x => String(x), BONUS_LABELS: {} };
+  vm.createContext(ctx);
+  vm.runInContext(sourceOf('coe2SeasonBreakdown') + '\nthis.fn = coe2SeasonBreakdown;', ctx);
+  const team = { id: 7 };
+  const placeholder = { rollups: { '7|1982': { games: 0, bonus: 0, total: 0, counted: 0, items: [] } } };
+  const measured = { rollups: { '7|1985': { games: 22.715, bonus: 0, total: 22.715, counted: 12, items: [] } } };
+  assert.equal(ctx.fn(placeholder, team, 1982), '', 'a zero-game season has nothing to decompose');
+  assert.match(ctx.fn(measured, team, 1985), /22\.715/);
 });

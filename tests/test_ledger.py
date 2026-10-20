@@ -59,9 +59,31 @@ def test_team_pages_carry_what_the_ledger_needs(db_path):
     conn = sqlite3.connect(str(db_path))
     data = build_team_pages(conn)
     row = data["elo"][0]
-    assert len(row) == 8                                                     # 7 original positions + mov_multiplier
+    # 7 original positions, then mov_multiplier, then the game's Merits award.
+    # Appended only, never reordered: the page indexes these by position.
+    assert len(row) == 9
     stored = dict(conn.execute("SELECT game_id || '-' || team_id, mov_multiplier FROM elo_game_history"))
     assert row[7] == round(stored[f"{row[0]}-{row[1]}"], 4)
+    # Every row's award is the one stored for THAT team in THAT game, against
+    # the real archive. A row the hybrid layer never valued -- a bootstrap
+    # season, or a tie -- carries None, which is not the 0.0 a loss earns.
+    awards = {(g, t_): c for g, t_, c in
+              conn.execute("SELECT game_id, team_id, game_coe FROM hybrid_game_ratings")}
+    valued = 0
+    for r in data["elo"]:
+        want = awards.get((r[0], r[1]))
+        assert r[8] == (None if want is None else round(want, 3)), (r[0], r[1], r[8], want)
+        valued += r[8] is not None
+    assert valued > 0, "no exported row carries an award, so the column would be empty everywhere"
+    # The rollups carry a zero-game placeholder row for every pre-coverage
+    # season; the page needs the count to tell that from a measured zero.
+    counted = {(tid, s_): n for tid, s_, n in
+               conn.execute("SELECT team_id, season_year, games_counted FROM team_coe2_by_season")}
+    assert counted, "no rollup rows at all"
+    assert any(n == 0 for n in counted.values()), "no placeholder row to distinguish"
+    for key, roll in ((k, v) for k, v in data["coe2_rollups"].items()):
+        tid, s_ = (int(x) for x in key.split("|"))
+        assert roll["counted"] == counted[(tid, s_)]
     per_season = defaultdict(float)
     for g, t, coe, season in conn.execute("SELECT h.game_id, h.team_id, h.game_coe, g.season_year FROM hybrid_game_ratings h JOIN games g USING(game_id)"):
         per_season[(t, season)] += coe
