@@ -313,13 +313,39 @@ test('the date strip centres Today and can move off it', async () => {
 
 // --- what the page must not do ---------------------------------------------
 
-test('the page is unlinked: nothing on the football page points at it', () => {
+test('the football header reaches basketball, and football itself is unmoved', () => {
+  // Gate 6: basketball is reachable. What must NOT change is football's own
+  // routes — the selector is a link to another page, not a new route, so
+  // every football link published to date opens the same page it always did.
   const shell = fs.readFileSync(path.join(UI, 'dashboard_shell.html'), 'utf8');
-  assert.ok(!shell.includes('basketball.html'),
-    'release gate 6 decides when a reader can reach the preview');
-  const built = path.join(UI, 'dashboard.html');
-  if (fs.existsSync(built)) {
-    assert.ok(!fs.readFileSync(built, 'utf8').includes('basketball.html'));
+  assert.match(shell, /href="basketball\.html"/);
+  assert.match(shell, /data-league="ncaambb"/);
+  assert.match(shell, /id="league-selector"/);
+  for (const football of ['#section=home', '#section=stats', '#section=rankings',
+    '#section=teams', '#section=people']) {
+    assert.ok(shell.includes(`href="${football}"`), `${football} still exists`);
+  }
+  assert.ok(!shell.includes('league=ncaambb'),
+    'football gains no league parameter of its own');
+});
+
+test('both pages agree on where the remembered league is kept', () => {
+  // Two files, one key. A drift here means tapping a league on one page and
+  // being sent somewhere else by the other.
+  const shell = fs.readFileSync(path.join(UI, 'dashboard_shell.html'), 'utf8');
+  const app = require('../ui/ncaambb_app.js');
+  assert.ok(shell.includes(app.LEAGUE_KEY));
+});
+
+test('the football page does not redirect a reader to basketball', () => {
+  // A redirect would open somebody else's sport from a shared link, and move
+  // the installed app's start URL on its own.
+  const shell = fs.readFileSync(path.join(UI, 'dashboard_shell.html'), 'utf8');
+  const selector = shell.slice(shell.indexOf('rememberLeagueChoice'));
+  const block = selector.slice(0, selector.indexOf('}());'));
+  for (const banned of ['location.href =', 'location.replace',
+    'location.assign']) {
+    assert.ok(!block.includes(banned), `${banned} must not appear`);
   }
 });
 

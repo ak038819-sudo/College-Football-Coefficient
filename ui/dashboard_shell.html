@@ -121,6 +121,26 @@
     line-height: 1;
   }
   .title-block h1 span { color: var(--amber); }
+  .leagues {
+    display: inline-flex;
+    margin-top: 8px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--panel);
+  }
+  .leagues a {
+    font-size: 13px;
+    padding: 6px 14px;
+    color: var(--ink-dim);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .leagues a[aria-current="page"] {
+    background: var(--amber);
+    color: #15110a;
+    font-weight: 600;
+  }
   /* The mark is decorative: the wordmark beside it already says the name, so
      it carries an empty alt and must not be announced twice. Sized off the
      heading so it tracks the clamp() above instead of fighting it. */
@@ -1441,6 +1461,14 @@
     <div class="title-block">
       <h1><img class="masthead-mark" src="brand/mark.svg" alt="" width="40" height="40">Elo<span>cast</span></h1>
       <p class="release-label">v0.1 · People and Places of the Game</p>
+      <!-- The league selector. A segmented control while there are two
+           choices; a dropdown or a sheet when NFL and NBA arrive. Basketball
+           is a link to its own page rather than a route here, so every
+           football deep link published to date keeps working untouched. -->
+      <nav class="leagues" id="league-selector" aria-label="League">
+        <a data-league="cfb" href="#section=home" aria-current="page">College Football</a>
+        <a data-league="ncaambb" href="basketball.html">Men's Basketball</a>
+      </nav>
     </div>
     <nav class="header-links" aria-label="About the data">
       <a href="#section=coverage">Data Coverage</a>
@@ -9986,6 +10014,22 @@ paintAppChrome();
 window.addEventListener('online', paintConnection);
 window.addEventListener('offline', paintConnection);
 paintConnection();
+
+// The league selector remembers where you were, for the basketball page to
+// read. It does NOT redirect: a football link must open football even for a
+// reader whose last visit was basketball, or a shared link opens somebody
+// else's sport, and the installed app's start URL would move on its own.
+(function rememberLeagueChoice() {
+  const selector = document.getElementById('league-selector');
+  if (!selector) return;
+  selector.addEventListener('click', (event) => {
+    const link = event.target.closest('a[data-league]');
+    if (!link) return;
+    // Storage can throw in a private window; the link still works.
+    try { localStorage.setItem('elocast.league.v1', link.dataset.league); }
+    catch (err) { /* the choice is not remembered, which is survivable */ }
+  });
+}());
 </script>
 </body>
 </html>

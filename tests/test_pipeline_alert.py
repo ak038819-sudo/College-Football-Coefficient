@@ -231,3 +231,65 @@ def test_an_unusable_live_feed_url_fails_the_build(monkeypatch, value, reason):
     with pytest.raises(SystemExit) as caught:
         build_dashboard.live_feed_url()
     assert reason in str(caught.value)
+
+
+# --- two pipelines, two independent lights ---------------------------------
+
+BASKETBALL = "cbb-refresh"
+BASKETBALL_MARKER = alert_pipeline_state.marker_for(BASKETBALL)
+
+
+def basketball_alert(number=11):
+    return {"number": number, "state": "open",
+            "body": f"{BASKETBALL_MARKER}\nthe basketball refresh failed"}
+
+
+def test_the_default_scope_is_the_marker_football_already_uses():
+    """Football's open alerts carry the old marker. Changing it would
+    orphan them and leave a red light nothing can close."""
+    assert alert_pipeline_state.marker_for(
+        alert_pipeline_state.DEFAULT_SCOPE) == MARKER
+
+
+def test_a_basketball_failure_does_not_comment_on_footballs_alert():
+    github = FakeGitHub([open_alert()])
+    result = alert(github.request, "failed", "Basketball refresh", "main",
+                   RUN, scope=BASKETBALL)
+    assert result.startswith("opened")
+    assert github.comments() == []
+
+
+def test_a_basketball_recovery_does_not_close_footballs_alert():
+    """The failure this prevents: basketball goes green, football's light
+    goes out, and nobody is told the site is still not publishing."""
+    football = open_alert()
+    github = FakeGitHub([football, basketball_alert()])
+    assert alert(github.request, "recovered", "Basketball refresh", "main",
+                 RUN, scope=BASKETBALL) == "closed #11"
+    assert football["state"] == "open"
+
+
+def test_a_basketball_failure_comments_on_its_own_open_alert():
+    github = FakeGitHub([open_alert(), basketball_alert()])
+    assert alert(github.request, "failed", "Basketball refresh", "main",
+                 LATER, scope=BASKETBALL) == "commented on #11"
+
+
+def test_recovery_closes_every_duplicate_alert_not_just_the_first():
+    """Two runs failing seconds apart opened #95 and #96 on 2026-10-18 and
+    the next green run closed one, leaving a red light over a working
+    pipeline."""
+    github = FakeGitHub([open_alert(95), open_alert(96)])
+    assert alert(github.request, "recovered", "W", "main", RUN) == (
+        "closed #95, #96")
+    assert [issue["state"] for issue in github.issues] == ["closed", "closed"]
+
+
+def test_a_scoped_alert_says_what_stops_while_it_is_red():
+    github = FakeGitHub()
+    alert(github.request, "failed", "Basketball refresh", "main", RUN,
+          scope=BASKETBALL, consequence="Basketball ratings stop refreshing.")
+    body = github.issues[0]["body"]
+    assert BASKETBALL_MARKER in body
+    assert "Basketball ratings stop refreshing." in body
+    assert "deploy job runs behind the test job" not in body
