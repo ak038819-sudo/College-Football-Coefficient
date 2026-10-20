@@ -19,14 +19,23 @@ from pathlib import Path
 from .coverage import render, summarize_season
 from .games import fetch_season
 from .http import CbbdAuthError, CbbdError, Quota, get_json
-from .store import connect, load_season, record_snapshot
+from .people import (box_score_people, fetch_box_scores, fetch_rosters,
+                     roster_players)
+from .store import (connect, load_season, record_snapshot, upsert_box_scores,
+                    upsert_player_team_seasons, upsert_players)
 
 RAW_ROOT = Path('data/ncaambb/raw')
 
 
+# One file per endpoint, so a season's schedule can be reloaded without
+# refetching its box scores and the other way round.
+CACHE_FILES = ('teams', 'games', 'rosters', 'box_scores')
+
+
 def cache_paths(season, root=None):
+    """Where each endpoint's raw response for a season is cached."""
     base = (Path(root) if root is not None else RAW_ROOT) / str(season)
-    return base / 'teams.json.gz', base / 'games.json.gz'
+    return {name: base / f'{name}.json.gz' for name in CACHE_FILES}
 
 
 def write_cache(path, payload):
@@ -60,15 +69,66 @@ def gather(season, *, raw_root=None, reuse_cache=True, getter=None, **kwargs):
     Returns (teams, games, from_cache). A cached season costs no requests,
     which is what makes a reload and a resume cheap.
     """
-    teams_path, games_path = cache_paths(season, raw_root)
-    if reuse_cache and teams_path.exists() and games_path.exists():
-        return read_cache(teams_path), read_cache(games_path), True
+    paths = cache_paths(season, raw_root)
+    if reuse_cache and paths['teams'].exists() and paths['games'].exists():
+        return read_cache(paths['teams']), read_cache(paths['games']), True
     fetch = getter if getter is not None else get_json
     teams = fetch('/teams', {'season': season}, **kwargs)
     games, _ = fetch_season(season, getter=fetch, **kwargs)
-    write_cache(teams_path, teams)
-    write_cache(games_path, games)
+    write_cache(paths['teams'], teams)
+    write_cache(paths['games'], games)
     return teams, games, False
+
+
+def gather_people(season, *, raw_root=None, reuse_cache=True, getter=None,
+                  **kwargs):
+    """Rosters and box scores for one season, cached the same way.
+
+    Returns (rosters, boxes, from_cache). Cached separately from the schedule
+    because the two have different costs: a season's rosters are one request,
+    while its box scores are two dozen windows and any split those need.
+    """
+    paths = cache_paths(season, raw_root)
+    if reuse_cache and paths['rosters'].exists() and paths['box_scores'].exists():
+        return read_cache(paths['rosters']), read_cache(paths['box_scores']), True
+    fetch = getter if getter is not None else get_json
+    rosters = fetch_rosters(season, getter=fetch, **kwargs)
+    boxes, _ = fetch_box_scores(season, getter=fetch, **kwargs)
+    write_cache(paths['rosters'], rosters)
+    write_cache(paths['box_scores'], boxes)
+    return rosters, boxes, False
+
+
+def ingest_people(connection, season, *, raw_root=None, reuse_cache=True,
+                  getter=None, quota=None, revision=None, **kwargs):
+    """Store one season's rosters, player identities and box score lines.
+
+    Identities come from the rosters AND from the box scores, because a player
+    can record a stat line without appearing in the roster snapshot and the
+    line must not be the thing that gets dropped.
+
+    Box score lines for games this database does not hold are counted, not
+    stored: that count is the signal that the schedule load was incomplete.
+    """
+    counter = quota if quota is not None else Quota()
+    rosters, boxes, from_cache = gather_people(
+        season, raw_root=raw_root, reuse_cache=reuse_cache, getter=getter,
+        quota=counter, **kwargs)
+    pairs = roster_players(rosters)
+    people = [player for player, _ in pairs] + box_score_people(boxes)
+    snapshot_id = record_snapshot(
+        connection, 'people', datetime.now(timezone.utc).isoformat(),
+        season=season, source_revision=revision,
+        requests=counter.requests, retries=counter.retries,
+        rows_seen=len(boxes),
+        notes='reused cached responses' if from_cache else 'fetched from provider')
+    stored_people = upsert_players(connection, people, snapshot_id=snapshot_id)
+    memberships = upsert_player_team_seasons(connection, season, pairs,
+                                             snapshot_id=snapshot_id)
+    lines = upsert_box_scores(connection, boxes, snapshot_id=snapshot_id)
+    return dict(season=season, from_cache=from_cache, snapshot_id=snapshot_id,
+                rosters=len(rosters), people=stored_people,
+                memberships=memberships, **lines)
 
 
 def ingest_season(connection, season, *, raw_root=None, reuse_cache=True,
@@ -104,6 +164,8 @@ def main(argv=None):
                         help=f'Defaults to {RAW_ROOT}')
     parser.add_argument('--refetch', action='store_true',
                         help='Ignore the raw cache and request everything again')
+    parser.add_argument('--schedule-only', action='store_true',
+                        help='Skip rosters and box scores')
     args = parser.parse_args(argv)
     try:
         seasons = [int(part) for part in args.seasons.split(',') if part.strip()]
@@ -115,7 +177,7 @@ def main(argv=None):
     revision = source_revision()
     quota = Quota()
     connection = connect(args.database)
-    summaries, failed = [], []
+    summaries, people, failed = [], [], []
     try:
         for season in seasons:
             try:
@@ -123,6 +185,11 @@ def main(argv=None):
                     connection, season, raw_root=args.raw_root,
                     reuse_cache=not args.refetch, quota=quota,
                     revision=revision))
+                if not args.schedule_only:
+                    people.append(ingest_people(
+                        connection, season, raw_root=args.raw_root,
+                        reuse_cache=not args.refetch, quota=quota,
+                        revision=revision))
             except CbbdAuthError as exc:
                 # Not a coverage result. Stop rather than report absent data.
                 print(f'Cannot reach the provider: {exc}', file=sys.stderr)
@@ -140,6 +207,18 @@ def main(argv=None):
         print(f'- season {row["season"]}: stored {row["stored_games"]} games,'
               f' {row["placeholder_teams"]} non-Division I placeholders,'
               f' {"reused cache" if row["from_cache"] else "fetched"}')
+    for row in people:
+        print(f'- season {row["season"]} people: {row["people"]} players,'
+              f' {row["memberships"]} roster memberships,'
+              f' {row["team_lines"]} team box scores,'
+              f' {row["player_lines"]} player lines')
+        if row['skipped_unknown_games']:
+            print(f'    {row["skipped_unknown_games"]} box score lines were for'
+                  ' games this database does not hold, so the schedule load for'
+                  ' this season is incomplete')
+        if row['points_mismatches']:
+            print(f'    {row["points_mismatches"]} box scores disagree with the'
+                  " game's own final score")
     return 1 if failed or not summaries else 0
 
 

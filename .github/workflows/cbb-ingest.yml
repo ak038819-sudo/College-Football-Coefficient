@@ -1,7 +1,7 @@
 name: College basketball national ingestion
 
-# Fetches a season's schedule, caches the raw responses, loads the basketball
-# database and prints a coverage report.
+# Fetches a season's schedule, rosters and box scores, caches the raw
+# responses, loads the basketball database and prints a coverage report.
 #
 # This does NOT commit and does NOT publish. The production export gate (B04)
 # does not exist yet, so the database and the raw cache stay inside the run and
@@ -20,6 +20,10 @@ on:
         description: "Ignore the raw cache and request everything again"
         type: boolean
         default: false
+      people:
+        description: "Also fetch rosters and box scores"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -43,35 +47,43 @@ jobs:
       - name: Validate ingestion before spending quota
         run: |
           python -m pytest tests/test_ncaambb_ingestion.py \
-            tests/test_ncaambb_store.py -q
+            tests/test_ncaambb_store.py tests/test_ncaambb_people.py -q
       - name: Ingest seasons
         env:
           CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
           SEASONS: ${{ inputs.seasons }}
           REFETCH: ${{ inputs.refetch }}
+          PEOPLE: ${{ inputs.people }}
         run: |
           args=""
-          if [ "$REFETCH" = "true" ]; then args="--refetch"; fi
+          if [ "$REFETCH" = "true" ]; then args="$args --refetch"; fi
+          if [ "$PEOPLE" != "true" ]; then args="$args --schedule-only"; fi
           python -m src.ncaambb.ingest --seasons "$SEASONS" $args \
             | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Prove a second load changes nothing
         env:
           CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
           SEASONS: ${{ inputs.seasons }}
+          PEOPLE: ${{ inputs.people }}
         run: |
           python - <<'PY'
           import os, sqlite3, subprocess, sys
           def counts():
               c = sqlite3.connect('db/ncaambb.db')
               try:
+                  tables = ['team', 'team_season', 'game']
+                  if os.environ.get('PEOPLE') == 'true':
+                      tables += ['player', 'player_team_season',
+                                 'team_game_stat', 'player_game_stat']
                   return {t: c.execute(f'SELECT COUNT(*) FROM {t}').fetchone()[0]
-                          for t in ('team', 'team_season', 'game')}
+                          for t in tables}
               finally:
                   c.close()
           before = counts()
           # Reuses the raw cache, so this costs no provider requests.
+          args = [] if os.environ.get('PEOPLE') == 'true' else ['--schedule-only']
           run = subprocess.run([sys.executable, '-m', 'src.ncaambb.ingest',
-                                '--seasons', os.environ['SEASONS']],
+                                '--seasons', os.environ['SEASONS'], *args],
                                capture_output=True, text=True)
           if run.returncode != 0:
               sys.exit(f'second load failed: {run.stderr[-2000:]}')

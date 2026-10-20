@@ -75,34 +75,54 @@ def game_day(game):
     return moment.astimezone(timezone.utc).date()
 
 
-def fetch_window(season, first, last, *, getter=None, **kwargs):
-    """Fetch one date window, splitting it if the provider returns the cap.
+def distinct_games(rows):
+    """How many distinct games a response covers, for a per-game cap."""
+    return len({row.get('gameId') for row in rows})
 
-    Returns (rows, windows_requested). Every row is checked to fall inside the
-    window actually requested, so a provider that ignores the filter is caught
-    rather than trusted.
+
+def fetch_windowed(path, season, first, last, *, cap, count=len, day_of=None,
+                   unit='records', getter=None, **kwargs):
+    """Fetch one date window from `path`, splitting it if it reaches `cap`.
+
+    `count` measures the quantity the cap applies to: `/games` caps at 3,000
+    RECORDS, while `/games/players` caps at 1,000 GAMES, which is a different
+    limit on a different quantity. Returns (rows, windows_requested).
+
+    Every row is checked to fall inside the window actually requested, so a
+    provider that ignores the date filter is caught rather than trusted.
     """
     fetch = getter if getter is not None else get_json
-    rows = fetch('/games', {'season': season,
-                            'startDateRange': _stamp(first, False),
-                            'endDateRange': _stamp(last, True)}, **kwargs)
-    if len(rows) >= GAMES_RECORD_CAP:
+    locate = day_of if day_of is not None else game_day
+    rows = fetch(path, {'season': season,
+                        'startDateRange': _stamp(first, False),
+                        'endDateRange': _stamp(last, True)}, **kwargs)
+    measured = count(rows)
+    if measured >= cap:
         try:
             left, right = halve(first, last)
         except ValueError:
             raise CbbdError(
-                f'{first} returned {len(rows)} games, at or above the '
-                f'{GAMES_RECORD_CAP} record cap, and a single day cannot be '
-                'split further; partition by conference instead') from None
-        first_rows, first_count = fetch_window(season, *left, getter=fetch, **kwargs)
-        second_rows, second_count = fetch_window(season, *right, getter=fetch, **kwargs)
+                f'{first} returned {measured} {unit} from {path}, at or above '
+                f'the {cap} {unit} cap, and a single day cannot be split '
+                'further; partition by conference instead') from None
+        shared = dict(cap=cap, count=count, day_of=locate, unit=unit,
+                      getter=fetch, **kwargs)
+        first_rows, first_count = fetch_windowed(path, season, *left, **shared)
+        second_rows, second_count = fetch_windowed(path, season, *right, **shared)
         return first_rows + second_rows, first_count + second_count
-    outside = [row['id'] for row in rows
-               if (day := game_day(row)) is None or not first <= day <= last]
+    outside = sum(1 for row in rows
+                  if (day := locate(row)) is None or not first <= day <= last)
     if outside:
-        raise CbbdError(f'{len(outside)} games fell outside the requested window '
-                        f'{first}..{last}; the date filter cannot be trusted')
+        raise CbbdError(f'{outside} rows from {path} fell outside the requested '
+                        f'window {first}..{last}; the date filter cannot be '
+                        'trusted')
     return rows, 1
+
+
+def fetch_window(season, first, last, *, getter=None, **kwargs):
+    """One date window of `/games`, under the 3,000-record cap."""
+    return fetch_windowed('/games', season, first, last, cap=GAMES_RECORD_CAP,
+                          unit='records', getter=getter, **kwargs)
 
 
 def merge(rows):
