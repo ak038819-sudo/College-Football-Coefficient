@@ -27,6 +27,7 @@ import json
 import os
 import sys
 import time
+from datetime import datetime
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -76,26 +77,65 @@ def interesting(headers):
 
 
 def report_usage(key):
-    print('## What the usage endpoint reports\n')
+    """What the account has actually spent, and over what window.
+
+    Only the FOOTBALL host serves this: the basketball host answers
+    `Cannot GET /info/usage` with a 404. Measured 2026-10-20 -- asking the
+    basketball host is four wasted requests, so it is not asked.
+    """
+    print('## What the account has spent\n')
     asked = 0
-    for base, label in ((FOOTBALL, 'football host'),
-                        (BASKETBALL, 'basketball host')):
-        for api in (None, 'all', 'cbb', 'cfb'):
-            params = {'api': api} if api else None
-            status, headers, body, _ = call(base, '/info/usage', params,
-                                            key=key)
-            asked += 1
-            where = f'{label} /info/usage' + (f'?api={api}' if api else '')
-            if status == 200:
-                print(f'- `{where}` -> {body.strip()[:600]}')
-            else:
-                print(f'- `{where}` -> HTTP {status}'
-                      + (f' {body.strip()[:200]}' if body else ''))
-            limits = interesting(headers)
-            if limits:
-                print(f'    limit headers: {json.dumps(limits)}')
+    headline = None
+    for api in ('all', 'cbb', 'cfb'):
+        status, headers, body, _ = call(FOOTBALL, '/info/usage', {'api': api},
+                                        key=key)
+        asked += 1
+        if status != 200:
+            print(f'- `?api={api}` -> HTTP {status}'
+                  + (f' {body.strip()[:200]}' if body else ''))
+            continue
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            print(f'- `?api={api}` -> unparseable: {body.strip()[:200]}')
+            continue
+        window, totals = payload.get('window', {}), payload.get('totals', {})
+        span = window_days(window)
+        print(f'- **{api}**: {totals.get("requests")} requests'
+              f' ({totals.get("cfbRequests")} football,'
+              f' {totals.get("cbbRequests")} basketball)'
+              f' over {span} from {window.get("start")} to'
+              f' {window.get("end")}')
+        for row in (payload.get('topEndpoints') or [])[:6]:
+            print(f'    - {row.get("api")} `{row.get("endpoint")}`:'
+                  f' {row.get("requests")}, last {row.get("lastUsedAt")}')
+        if api == 'all':
+            headline = totals
+        limits = interesting(headers)
+        if limits:
+            print(f'    limit headers: {json.dumps(limits)}')
+    if headline:
+        print(f'\nThe window is what matters: a rolling count means capacity'
+              ' returns as the oldest requests age out of it, not at a monthly'
+              ' reset.')
     print(f'\n{asked} requests spent here.\n')
     return asked
+
+
+def window_days(window):
+    """How long the reported window is, in words."""
+    start, end = window.get('start'), window.get('end')
+    if not start or not end:
+        return 'an unstated window'
+    try:
+        began = datetime.fromisoformat(start.replace('Z', '+00:00'))
+        ended = datetime.fromisoformat(end.replace('Z', '+00:00'))
+    except ValueError:
+        return 'an unparseable window'
+    hours = (ended - began).total_seconds() / 3600
+    if hours >= 48:
+        return f'{hours / 24:.0f} days'
+    return f'{hours:.0f} hours' 
 
 
 def report_burst(key, count):
