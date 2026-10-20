@@ -371,8 +371,8 @@ def test_loading_the_same_roster_twice_leaves_the_same_rows(loaded):
 
 def test_a_transfer_is_two_memberships_of_one_player(loaded):
     upsert_players(loaded, [player(101)])
-    upsert_player_team_seasons(loaded, 2026, [(player(101), 10)])
-    upsert_player_team_seasons(loaded, 2025, [(player(101), 20)])
+    assert upsert_player_team_seasons(loaded, 2026, [(player(101), 10)]) == (1, 0)
+    assert upsert_player_team_seasons(loaded, 2025, [(player(101), 20)]) == (1, 0)
     rows = loaded.execute('SELECT team_key, season, season_label FROM'
                           ' player_team_season ORDER BY season').fetchall()
     assert [(r['team_key'], r['season_label']) for r in rows] == [
@@ -624,3 +624,15 @@ def test_a_player_counted_once_even_when_rosters_and_box_scores_both_carry_them(
                                            player(202, 'B Forward')]) == 2
     finally:
         connection.close()
+
+
+def test_a_roster_membership_on_an_unlisted_team_is_counted_not_stored(loaded):
+    """The roster feed names teams the season's own team list does not carry.
+    Storing the membership would need a team row invented from a roster, and a
+    foreign key failure would abort a whole season's people over it."""
+    upsert_players(loaded, [player(101), player(202, 'B Forward')])
+    stored, skipped = upsert_player_team_seasons(
+        loaded, 2026, [(player(101), 10), (player(202, 'B Forward'), 777)])
+    assert (stored, skipped) == (1, 1)
+    rows = loaded.execute('SELECT team_key FROM player_team_season').fetchall()
+    assert [row['team_key'] for row in rows] == [entity_key('team', 10)]

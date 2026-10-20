@@ -38,5 +38,8 @@ jobs:
           CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
           SEASONS: ${{ inputs.seasons }}
         run: |
+          # `cmd | tee` reports tee's status, so without pipefail a crash in
+          # the probe would pass this step.
+          set -o pipefail
           python -m src.ncaambb.probe_coverage --seasons "$SEASONS" \
             | tee -a "$GITHUB_STEP_SUMMARY"

@@ -280,10 +280,28 @@ def upsert_players(connection, players, *, snapshot_id=None):
     return len(keys)
 
 
+def _known_teams(connection):
+    return {row['team_key'] for row in
+            connection.execute('SELECT team_key FROM team')}
+
+
 def upsert_player_team_seasons(connection, season, pairs, *, snapshot_id=None):
-    """Store roster membership. A transfer is two rows, never two players."""
+    """Store roster membership. A transfer is two rows, never two players.
+
+    The roster feed names teams the season's `/teams` list does not carry. A
+    membership on such a team is counted and reported rather than stored,
+    because storing it would need a team row invented from a roster: the
+    schedule loader's placeholders at least come from a game that was played.
+    Returns (stored, skipped_unknown_teams).
+    """
     label = season_label(season)
+    known = _known_teams(connection)
+    stored, skipped = 0, 0
     for player, team_id in pairs:
+        if entity_key('team', team_id) not in known:
+            skipped += 1
+            continue
+        stored += 1
         connection.execute(
             'INSERT INTO player_team_season (player_key, team_key, season,'
             ' season_label, jersey, position, height, weight, snapshot_id)'
@@ -297,7 +315,7 @@ def upsert_player_team_seasons(connection, season, pairs, *, snapshot_id=None):
              _text(player.get('position')), player.get('height'),
              player.get('weight'), snapshot_id))
     connection.commit()
-    return len(pairs)
+    return stored, skipped
 
 
 def _known_games(connection):

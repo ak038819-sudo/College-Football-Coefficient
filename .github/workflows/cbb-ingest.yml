@@ -56,6 +56,9 @@ jobs:
           REFETCH: ${{ inputs.refetch }}
           PEOPLE: ${{ inputs.people }}
         run: |
+          # `cmd | tee` reports tee's status, so without pipefail a crash in
+          # the ingestion passes this step. It did exactly that once.
+          set -o pipefail
           args=""
           if [ "$REFETCH" = "true" ]; then args="$args --refetch"; fi
           if [ "$PEOPLE" != "true" ]; then args="$args --schedule-only"; fi
@@ -63,6 +66,7 @@ jobs:
             | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Audit people coverage
         run: |
+          set -o pipefail
           python -m src.ncaambb.audit_people | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Prove a second load changes nothing
         env:

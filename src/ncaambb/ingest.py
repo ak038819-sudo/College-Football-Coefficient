@@ -123,12 +123,13 @@ def ingest_people(connection, season, *, raw_root=None, reuse_cache=True,
         rows_seen=len(boxes),
         notes='reused cached responses' if from_cache else 'fetched from provider')
     stored_people = upsert_players(connection, people, snapshot_id=snapshot_id)
-    memberships = upsert_player_team_seasons(connection, season, pairs,
-                                             snapshot_id=snapshot_id)
+    memberships, unknown_teams = upsert_player_team_seasons(
+        connection, season, pairs, snapshot_id=snapshot_id)
     lines = upsert_box_scores(connection, boxes, snapshot_id=snapshot_id)
     return dict(season=season, from_cache=from_cache, snapshot_id=snapshot_id,
                 rosters=len(rosters), people=stored_people,
-                memberships=memberships, **lines)
+                memberships=memberships,
+                skipped_unknown_teams=unknown_teams, **lines)
 
 
 def ingest_season(connection, season, *, raw_root=None, reuse_cache=True,
@@ -212,6 +213,10 @@ def main(argv=None):
               f' {row["memberships"]} roster memberships,'
               f' {row["team_lines"]} team box scores,'
               f' {row["player_lines"]} player lines')
+        if row['skipped_unknown_teams']:
+            print(f'    {row["skipped_unknown_teams"]} roster memberships name'
+                  ' a team the season\'s team list does not carry, so they'
+                  ' were counted and not stored')
         if row['skipped_unknown_games']:
             print(f'    {row["skipped_unknown_games"]} box score lines were for'
                   ' games this database does not hold, so the schedule load for'
