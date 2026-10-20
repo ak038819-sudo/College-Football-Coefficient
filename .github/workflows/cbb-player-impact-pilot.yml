@@ -159,15 +159,20 @@ jobs:
         env:
           ALLOWED: ${{ inputs.publish == null && 'true' || inputs.publish }}
         run: |
-          if [ "$ALLOWED" != "true" ]; then
-            echo "Dispatched with publishing off; committing nothing."
-            exit 0
-          fi
-          # The raw cache always; the export only when the gate passed, since
-          # a refused export is not in the tree at all.
+          # The raw cache is banked whatever else happened, and the `publish`
+          # input does NOT govern it. "Do not replace what is published" and
+          # "throw away the quota this run already spent" are different
+          # decisions, and a dispatcher asking for the first does not want the
+          # second. It also makes `publish: false` the safe way to warm the
+          # cache for a season without touching the live export.
           PATHS="data/ncaambb/raw"
-          if [ "${{ steps.publish.outputs.published }}" = "true" ]; then
+          # The export only when the gate passed -- a refused export is not in
+          # the tree at all -- and only when this run is allowed to publish.
+          if [ "${{ steps.publish.outputs.published }}" = "true" ] \
+              && [ "$ALLOWED" = "true" ]; then
             PATHS="$PATHS ui/data/ncaambb"
+          else
+            echo "Committing the raw cache only; the export is not being published."
           fi
           if [ -z "$(git status --porcelain $PATHS)" ]; then
             echo "Nothing changed under $PATHS; nothing to commit."
