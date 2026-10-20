@@ -129,6 +129,21 @@ def test_a_box_score_with_no_measured_points_is_not_a_disagreement(db):
     assert score_disagreements(db, 2026) == []
 
 
+def test_coverage_counts_the_same_games_the_denominator_counts(db):
+    """A box score for a cancelled game over a denominator of finals printed
+    100.3% coverage, which is not a percentage of anything."""
+    seeded(db, [game(1, status='final'),
+                game(2, status='cancelled', home_points=None,
+                     away_points=None, day='2025-11-08T19:00:00Z')],
+           [team(10), team(20, 'Beta')], people=[player(101)],
+           boxes=[box_score(1, 10, [box_line(101, points=70)]),
+                  box_score(1, 20, [box_line(101, points=60)], isHome=False),
+                  box_score(2, 10, [box_line(101, points=5)])])
+    text = '\n'.join(report(db, 2026))
+    assert '- finals: 1; with a box score: 1 (100.0%)' in text
+    assert '- box scores for games that are not final: 1' in text
+
+
 def test_the_report_runs_and_names_the_season(db):
     seeded(db, [game(1)], [team(10), team(20, 'Beta')])
     text = '\n'.join(report(db, 2026))

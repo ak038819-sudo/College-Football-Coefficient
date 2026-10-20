@@ -113,13 +113,20 @@ def report(connection, season):
     finals = connection.execute(
         'SELECT COUNT(*) AS n FROM game WHERE season = ? AND status = ?',
         (season, 'final')).fetchone()['n']
+    # Counted against the same games the denominator counts. Counting every
+    # game with a box score over a denominator of finals reported 100.3%.
     covered = connection.execute(
         'SELECT COUNT(DISTINCT game_key) AS n FROM team_game_stat WHERE'
-        ' game_key IN (SELECT game_key FROM game WHERE season = ?)',
-        (season,)).fetchone()['n']
+        ' game_key IN (SELECT game_key FROM game WHERE season = ?'
+        '              AND status = ?)', (season, 'final')).fetchone()['n']
+    unplayed = connection.execute(
+        'SELECT COUNT(DISTINCT game_key) AS n FROM team_game_stat WHERE'
+        ' game_key IN (SELECT game_key FROM game WHERE season = ?'
+        '              AND status != ?)', (season, 'final')).fetchone()['n']
     missing, both_di = box_score_gap(connection, season)
     lines.append(f'- finals: {finals}; with a box score: {covered}'
                  f' ({covered / finals:.1%})' if finals else '- no finals')
+    lines.append(f'- box scores for games that are not final: {unplayed}')
     lines.append(f'- finals with no box score: {len(missing)}, of which'
                  f' {len(both_di)} are Division I against Division I')
     partial = partial_games(connection, season)

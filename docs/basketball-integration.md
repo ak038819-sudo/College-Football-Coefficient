@@ -68,11 +68,14 @@ conference/playoff rules, week selectors or person-ID lookup tables.
    lineups cannot be rebuilt from the aggregate lineup rows alone.
 3. Build national ingestion independently: season membership, stable identities,
    request-cap handling, duplicate detection, and explicit non-D-I treatment.
-   Schedule layer DONE 2026-10-20: separate database, namespaced keys, date
-   partitioning around the 3,000-record cap, idempotent loads proven on 12,333
-   real games. See [`basketball-ingestion.md`](basketball-ingestion.md) and
-   [`basketball-coverage.md`](basketball-coverage.md). Rosters, player
-   identities and box scores at national scale are still to do.
+   DONE 2026-10-20: separate database, namespaced keys, date partitioning
+   around both record caps, idempotent loads proven on 12,617 real games with
+   20,576 players, 20,853 roster memberships and 254,821 player box score
+   lines. `/games/players` caps at 1,000 ROWS, which was measured rather than
+   assumed after a cap stated in the wrong quantity lost 1,535 Division I box
+   scores in silence. Coverage of finals is complete for both seasons measured.
+   See [`basketball-ingestion.md`](basketball-ingestion.md) and
+   [`basketball-coverage.md`](basketball-coverage.md).
 4. Validate team Elo and export a national manifest with schema version, as-of time,
    model version and coverage. A production loader must reject team samples and
    unsupported schemas rather than show them as national rankings.
