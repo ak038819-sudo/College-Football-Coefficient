@@ -404,3 +404,133 @@ def test_no_payload_carries_a_provider_rating(db):
     blob = json.dumps([manifest, payloads, teams])
     for banned in ('homeTeamElo', 'EloStart', 'EloEnd', 'provider_elo'):
         assert banned not in blob
+
+
+# --- a season still being played --------------------------------------------
+#
+# The gate's floors describe a finished season: 2,000 games and 90% of the
+# Division I list rated. On opening night a correct export has a handful of
+# games and almost nobody rated, so applying those floors to the season in
+# progress would refuse the whole archive for the only season a reader came
+# to look at. These are the tests that pin the distinction, and the ones that
+# prove the relaxation did not simply disable the check.
+
+def in_progress(connection, season=2027, teams=320, played=40):
+    """A season just underway: every team listed, only `played` with a result.
+
+    Built from the same national fixture so the team list is real; the games
+    are then cut back to what mid-November actually looks like.
+    """
+    names = national(connection, season=season, teams=teams, games_each=14,
+                     model=False)
+    # Unplay everything, then restore results for the first `played` teams.
+    connection.execute("UPDATE game SET status = 'scheduled',"
+                       ' home_points = NULL, away_points = NULL'
+                       ' WHERE season = ?', (season,))
+    keep = set(names[:played])
+    rows = connection.execute(
+        'SELECT game_key, home_team_key, away_team_key FROM game'
+        ' WHERE season = ?', (season,)).fetchall()
+    for row in rows:
+        if row['home_team_key'] in keep and row['away_team_key'] in keep:
+            connection.execute(
+                "UPDATE game SET status = 'final', home_points = 70,"
+                ' away_points = 61 WHERE game_key = ?', (row['game_key'],))
+    connection.commit()
+    from src.ncaambb.store import record_rating_model, upsert_team_ratings
+    model_id = record_rating_model(
+        connection, name='ncaambb_elo_v1',
+        config=dict(k=45, home_advantage=100, offseason_retention=0.8,
+                    margin_model='mov', reference_margin=11.95),
+        fitted_on=[season - 2], held_out=[season - 1],
+        holdout_brier=0.1866, holdout_games=5752)
+    # Only the teams that have played carry a rating, which is what the
+    # replay produces: a rating comes from a counted game.
+    upsert_team_ratings(connection, model_id,
+                        [(name, season, 1500.0 + index, 4)
+                         for index, name in enumerate(sorted(keep))])
+    connection.commit()
+    return model_id, keep
+
+
+def test_a_season_still_being_played_is_marked_incomplete(db):
+    in_progress(db)
+    manifest, _, _ = built(db)
+    row = manifest['coverage'][0]
+    assert row['season'] == 2027 and row['complete'] is False
+
+
+def test_a_finished_season_is_marked_complete(db):
+    national(db, season=2026)
+    manifest, _, _ = built(db)
+    assert manifest['coverage'][0]['complete'] is True
+
+
+def test_a_season_in_progress_passes_the_gate_with_most_teams_unrated(db,
+                                                                    tmp_path):
+    # Only 40 of 320 teams have finished a game, so the rated fraction is far
+    # under 90% of the Division I list. That is what mid-November looks like,
+    # not a defect. (The game count is not the thin number here: a season's
+    # whole schedule is published before it starts.)
+    in_progress(db)
+    manifest, payloads, teams = built(db)
+    row = manifest['coverage'][0]
+    assert row['rated_teams'] < row['division_one_teams'] * gate.MIN_RATED_FRACTION
+    written = exporter.write(manifest, payloads, teams, tmp_path / 'out')
+    assert gate.check(written, root=tmp_path / 'out') == []
+
+
+def test_the_same_numbers_are_refused_in_a_finished_season(db):
+    """The flag is what changes the verdict, not the numbers. Without this,
+    the test above would pass just as well if the floor had been removed."""
+    in_progress(db)
+    manifest, _, _ = built(db)
+    thin = dict(manifest['coverage'][0], complete=True)
+    reasons = gate.check_coverage(dict(coverage=[thin]))
+    assert any('Division I teams are rated' in reason for reason in reasons)
+
+
+def test_played_teams_counts_only_teams_with_a_finished_rateable_game(db):
+    _, keep = in_progress(db)
+    manifest, _, _ = built(db)
+    row = manifest['coverage'][0]
+    assert row['played_teams'] == len(keep)
+    assert row['division_one_teams'] > row['played_teams']
+
+
+def test_a_team_that_has_played_but_is_unrated_still_fails_the_gate(db):
+    """The relaxed check is still a check: every team that has finished a
+    game must carry a rating, so a replay that dropped teams is caught in a
+    season in progress exactly as it is in a finished one."""
+    model_id, keep = in_progress(db)
+    db.execute('DELETE FROM team_rating WHERE model_id = ? AND team_key IN'
+               ' (SELECT team_key FROM team_rating WHERE model_id = ?'
+               '  ORDER BY team_key LIMIT ?)',
+               (model_id, model_id, len(keep) // 4))
+    db.commit()
+    manifest, _, _ = built(db)
+    reasons = gate.check_coverage(manifest)
+    assert any('that have played are rated' in reason for reason in reasons)
+
+
+def test_a_season_in_progress_with_no_game_at_all_is_refused():
+    reasons = gate.check_coverage(dict(coverage=[dict(
+        season=2027, division_one_teams=364, rated_teams=0, games=0,
+        played_teams=0, complete=False)]))
+    assert any('nothing to' in reason for reason in reasons)
+
+
+def test_a_season_in_progress_that_hides_how_many_played_is_refused():
+    # Without played_teams there is no denominator, so the rated fraction
+    # cannot be judged at all. Omitting it must not be a way through.
+    reasons = gate.check_coverage(dict(coverage=[dict(
+        season=2027, division_one_teams=364, rated_teams=1, games=500,
+        complete=False)]))
+    assert any('how many teams have played' in reason for reason in reasons)
+
+
+def test_a_coverage_row_that_does_not_say_is_judged_as_a_finished_season():
+    # A missing flag must not be the way a thin export gets published.
+    reasons = gate.check_coverage(dict(coverage=[dict(
+        season=2027, division_one_teams=364, rated_teams=40, games=500)]))
+    assert any('games is below' in reason for reason in reasons)

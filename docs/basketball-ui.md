@@ -157,10 +157,13 @@ the same ceiling the moment it has a live feed at all.
 
 ## What was built, and what it does instead
 
-- **The league selector** is the segmented control beneath the wordmark. In the
-  preview the football option navigates to `dashboard.html` rather than
-  switching in place, because football still lives on its own page; the switch
-  logic that keeps a destination is in `switchLeague()` and is tested.
+- **The league selector** is the segmented control beneath the wordmark, on
+  both pages, and it is ON: the football header links to basketball and the
+  basketball header links back. It is a link rather than a route, because every
+  football deep link published to date must keep opening the same page. It does
+  not redirect; the switch logic that keeps a destination across leagues is in
+  `switchLeague()` and is tested, and comes into its own when the two leagues
+  share one page.
 - **My teams** is not in the preview. The favorites layer under it is:
   namespaced storage, no re-reading of football's key, and an offer that never
   acts. The card itself waits for the per-league home screen.

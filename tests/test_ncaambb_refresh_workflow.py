@@ -75,18 +75,58 @@ def test_a_refused_export_fails_the_run_rather_than_passing_quietly():
     assert "sys.exit(0 if decision['publish'] else 1)" in decide['run']
 
 
-def test_the_commit_step_only_runs_when_something_was_published():
+def test_the_commit_step_runs_even_when_the_run_failed():
+    """The raw cache is quota already spent. A run cut off by the provider's
+    rate limit must bank the seasons it did get, or the next run spends the
+    same quota on the same seasons and gets no further -- which is exactly how
+    the first rehearsal of this workflow lost five seasons."""
     commit = next(step for step in steps()
                   if step.get('name', '').startswith('Commit'))
-    assert commit['if'] == "steps.publish.outputs.published == 'true'"
+    assert commit['if'].startswith('always()')
 
 
-def test_the_commit_adds_only_the_export():
+def test_the_export_is_committed_only_when_the_gate_passed():
     commit = next(step for step in steps()
                   if step.get('name', '').startswith('Commit'))
-    assert 'git add ui/data/ncaambb' in commit['run']
+    assert "steps.publish.outputs.published }}\" = \"true\"" in commit['run']
+
+
+def test_the_commit_adds_the_raw_cache_and_the_export_and_nothing_else():
+    commit = next(step for step in steps()
+                  if step.get('name', '').startswith('Commit'))
+    assert 'data/ncaambb/raw' in commit['run']
+    assert 'ui/data/ncaambb' in commit['run']
+    assert 'git add $PATHS' in commit['run']
     assert 'git add -A' not in commit['run']
     assert 'git add .' not in commit['run']
+
+
+def test_a_dispatch_with_publishing_off_commits_nothing():
+    commit = next(step for step in steps()
+                  if step.get('name', '').startswith('Commit'))
+    assert '"$ALLOWED" != "true"' in commit['run']
+
+
+def test_the_ingestion_reuses_the_committed_cache():
+    """--refetch would ask the provider for twelve settled seasons every
+    morning, which is what the rate limit refused."""
+    ingest = next(step for step in steps()
+                  if step.get('name', '').startswith('Ingest'))
+    # The comments in that step mention the flag; the commands must not.
+    commands = '\n'.join(line for line in ingest['run'].splitlines()
+                         if not line.lstrip().startswith('#'))
+    assert 'src.ncaambb.ingest' in commands
+    assert '--refetch' not in commands
+
+
+def test_the_raw_cache_is_not_gitignored():
+    # Committing it is the whole mechanism; an ignore rule would silently
+    # turn every run back into a full refetch.
+    import subprocess
+    probe = 'data/ncaambb/raw/2025/games.json.gz'
+    result = subprocess.run(['git', 'check-ignore', probe], cwd=ROOT,
+                            capture_output=True, text=True)
+    assert result.returncode != 0, f'{probe} is ignored'
 
 
 def test_the_refresh_pushes_back_to_the_branch_it_ran_on():

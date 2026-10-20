@@ -157,3 +157,72 @@ test('nothing here reads or writes a football global', () => {
     assert.ok(!source.includes(banned), `${banned} must not appear`);
   }
 });
+
+// --- a season still being played --------------------------------------------
+//
+// These mirror the in-progress branch of check_coverage in
+// src/ncaambb/publish_gate.py. The two gates are deliberately independent, so
+// a rule relaxed on the build side and not here would refuse in the browser
+// exactly the season a reader came for.
+
+const inProgress = { season: 2027, division_one_teams: 364, rated_teams: 40,
+  games: 6300, played_teams: 42, complete: false };
+
+test('a season still being played is accepted with most teams unrated', () => {
+  const verdict = loader.accept(manifest({
+    latest_season: 2027,
+    coverage: [{ season: 2026, division_one_teams: 365, rated_teams: 364,
+      games: 6318, played_teams: 365, complete: true }, inProgress],
+    seasons: { 2026: 'seasons/2026.js?v=abc1234567',
+      2027: 'seasons/2027.js?v=abc1234568' }
+  }), NOW);
+  assert.equal(verdict.ok, true);
+  assert.deepEqual(verdict.reasons, []);
+});
+
+test('the same numbers are refused when the season says it is finished', () => {
+  // The flag is what changes the verdict, not the numbers. Without this the
+  // test above would pass just as well if the fraction check were removed.
+  const verdict = loader.accept(manifest({
+    coverage: [Object.assign({}, inProgress, { complete: true })]
+  }), NOW);
+  assert.equal(verdict.ok, false);
+  assert.ok(verdict.reasons.some((r) => /rates only 40 of 364/.test(r)));
+});
+
+test('a season in progress whose played teams are unrated is refused', () => {
+  // Still a real check: every team that has played must carry a rating.
+  const verdict = loader.accept(manifest({
+    coverage: [Object.assign({}, inProgress, { rated_teams: 10 })]
+  }), NOW);
+  assert.equal(verdict.ok, false);
+  assert.ok(verdict.reasons.some((r) => /that have played/.test(r)));
+});
+
+test('a season in progress that does not say how many played is refused', () => {
+  const row = Object.assign({}, inProgress);
+  delete row.played_teams;
+  const verdict = loader.accept(manifest({ coverage: [row] }), NOW);
+  assert.equal(verdict.ok, false);
+  assert.ok(verdict.reasons.some((r) => /how many teams have played/.test(r)));
+});
+
+test('a sample is still a sample in a season being played', () => {
+  // The Division I team list is published before tip-off, so the floor that
+  // catches a one-team pilot applies to an unfinished season unchanged.
+  const verdict = loader.accept(manifest({
+    coverage: [Object.assign({}, inProgress, { division_one_teams: 1,
+      rated_teams: 1, played_teams: 1 })]
+  }), NOW);
+  assert.equal(verdict.ok, false);
+  assert.ok(verdict.reasons.some((r) => /sample rather than the country/.test(r)));
+});
+
+test('a coverage row that does not say is read as a finished season', () => {
+  const row = Object.assign({}, inProgress);
+  delete row.complete;
+  delete row.played_teams;
+  const verdict = loader.accept(manifest({ coverage: [row] }), NOW);
+  assert.equal(verdict.ok, false);
+  assert.ok(verdict.reasons.some((r) => /rates only 40 of 364/.test(r)));
+});

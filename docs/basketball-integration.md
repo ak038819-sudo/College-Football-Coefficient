@@ -117,6 +117,14 @@ conference/playoff rules, week selectors or person-ID lookup tables.
 6. Validate publishing ownership, cache behavior and last-good snapshot rollback;
    then enable the sport selector. A basketball fetch failure must leave football
    refresh running and basketball's last valid snapshot visibly marked stale.
+   DONE 2026-10-20, on Austin's instruction to roll the whole thing out as one
+   visible update. `.github/workflows/cbb-refresh.yml` has its own concurrency
+   group, its own health light and its own credentials, and never refits the
+   model. `src/ncaambb/publish.py` refuses an export older than the live one and
+   swaps rather than empties, so a failed refresh leaves the last good snapshot
+   in place and the page badges it stale. The selector is a link in the football
+   header, not a new route, and does not redirect. See
+   [`basketball-refresh.md`](basketball-refresh.md).
 7. Player impact remains a separate experimental feature until paired-lineup
    coverage, uncertainty and held-out performance are established.
 

@@ -135,17 +135,43 @@ def check_coverage(manifest):
         teams = season.get('division_one_teams')
         rated = season.get('rated_teams')
         games = season.get('games')
+        # A season the export did not mark is judged as a finished one. The
+        # strict reading is the safe default: a missing flag must not be the
+        # way an incomplete export slips past the floors.
+        complete = season.get('complete', True) is not False
         if not isinstance(teams, int) or teams < MIN_DIVISION_ONE_TEAMS:
             reasons.append(f'season {label}: {teams!r} Division I teams is '
                            f'below {MIN_DIVISION_ONE_TEAMS}; this is a sample, '
                            'not a national export')
             continue
-        if not isinstance(games, int) or games < MIN_SEASON_GAMES:
-            reasons.append(f'season {label}: {games!r} games is below '
-                           f'{MIN_SEASON_GAMES}')
-        if not isinstance(rated, int) or rated < teams * MIN_RATED_FRACTION:
-            reasons.append(f'season {label}: {rated!r} of {teams} Division I '
-                           f'teams are rated, below {MIN_RATED_FRACTION:.0%}')
+        if complete:
+            if not isinstance(games, int) or games < MIN_SEASON_GAMES:
+                reasons.append(f'season {label}: {games!r} games is below '
+                               f'{MIN_SEASON_GAMES}')
+            if not isinstance(rated, int) or rated < teams * MIN_RATED_FRACTION:
+                reasons.append(f'season {label}: {rated!r} of {teams} Division '
+                               f'I teams are rated, below '
+                               f'{MIN_RATED_FRACTION:.0%}')
+            continue
+        # A season in progress. A full season's games cannot be demanded of
+        # it, and the rated fraction is measured against the teams that have
+        # actually finished a rateable game -- which is still a real check:
+        # every team that has played must carry a rating, so a replay that
+        # dropped teams is caught here exactly as it is in a finished season.
+        if not isinstance(games, int) or games < 1:
+            reasons.append(f'season {label}: {games!r} games; a season in '
+                           'progress with no game at all has nothing to '
+                           'publish and must be left out of the export')
+            continue
+        played = season.get('played_teams')
+        if not isinstance(played, int) or played < 0:
+            reasons.append(f'season {label}: in progress but does not report '
+                           'how many teams have played, so its rated fraction '
+                           'cannot be judged')
+        elif not isinstance(rated, int) or rated < played * MIN_RATED_FRACTION:
+            reasons.append(f'season {label}: {rated!r} of {played} Division I '
+                           f'teams that have played are rated, below '
+                           f'{MIN_RATED_FRACTION:.0%}')
     return reasons
 
 

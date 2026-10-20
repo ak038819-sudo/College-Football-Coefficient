@@ -356,3 +356,34 @@ test('the preview reads no football data file or global', () => {
     assert.ok(!page.includes(banned), `${banned} must not appear`);
   }
 });
+
+test("the selected league's colour outranks the site-wide link colour", () => {
+  // It did not, at first: the shell paints every link amber through
+  // `:root a:any-link:not(.active):not(.action-button)`, which is (0,3,1)
+  // and beat `.leagues a[aria-current="page"]` at (0,2,1). The selected
+  // league came out amber on amber -- a pill with no readable text, which no
+  // DOM assertion noticed and a browser showed immediately.
+  const shell = fs.readFileSync(path.join(UI, 'dashboard_shell.html'), 'utf8');
+  const specificity = selector => {
+    const ids = (selector.match(/#[\w-]+/g) || []).length;
+    const classes = (selector.match(/\.[\w-]+|\[[^\]]+\]|:[\w-]+/g) || [])
+      .length;
+    const elements = (selector.match(/(^|[\s>+~(])[a-z]+\b/g) || []).length;
+    return [ids, classes, elements];
+  };
+  const ruleFor = needle => {
+    // The last occurrence: the same selector is quoted in a comment above
+    // the rule it explains.
+    const at = shell.lastIndexOf(needle);
+    assert.ok(at > 0, `${needle} must still be in the shell`);
+    const start = shell.lastIndexOf('\n', at) + 1;
+    return shell.slice(start, shell.indexOf('{', at)).trim();
+  };
+  const global = specificity(
+    ruleFor(':root a:any-link:not(.active):not(.action-button) {'));
+  const selected = specificity(ruleFor('#league-selector a[aria-current'));
+  assert.ok(selected > global || String(selected) > String(global),
+    `${selected} must outrank ${global}`);
+  assert.ok(selected[0] > global[0],
+    'the id is what makes it win, not rule order');
+});

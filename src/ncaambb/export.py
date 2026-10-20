@@ -23,6 +23,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .identity import current_season
 from .publish_gate import SCHEMA_VERSION, check, render
 from .store import connect
 
@@ -201,7 +202,22 @@ def board(connection, season, model_id, games):
     return rows
 
 
-def coverage_row(connection, season, games, rows):
+def played_teams(games):
+    """Division I teams with at least one finished, rateable game.
+
+    The denominator for the rated fraction of a season still in progress. On
+    opening night almost every team has none, so measuring against the whole
+    Division I team list would call a correct export 0% rated.
+    """
+    seen = set()
+    for game in games:
+        if game['status'] != 'final' or not game['rateable']:
+            continue
+        seen.update((game['home'], game['away']))
+    return len(seen)
+
+
+def coverage_row(connection, season, games, rows, *, complete=True):
     division_one = connection.execute(
         'SELECT COUNT(*) FROM team_season'
         ' WHERE season = ? AND division_one = 1', (season,)).fetchone()[0]
@@ -216,6 +232,14 @@ def coverage_row(connection, season, games, rows):
         games=len(games),
         finals=finals,
         rateable=sum(1 for game in games if game['rateable']),
+        # The gate judges a finished season on a full season's worth of games
+        # and a rated fraction of the whole Division I list. Neither question
+        # can be asked of a season in progress: in November a correct export
+        # has a few hundred games and most teams unrated. Stated here, by the
+        # code that knows when the export was generated, rather than guessed
+        # by the gate from the numbers.
+        complete=bool(complete),
+        played_teams=played_teams(games),
     )
 
 
@@ -232,13 +256,15 @@ def build(connection, *, model_name=None, seasons=None, now=None):
     wanted = sorted(set(seasons) & set(available)) if seasons else available
     if not wanted:
         raise ValueError('No season has a stored rating for this model')
+    moment = (now or datetime.now(timezone.utc)).replace(microsecond=0)
+    in_progress = current_season(moment)
     payloads, coverage = {}, []
     for season in wanted:
         games = season_games(connection, season)
         rows = board(connection, season, model['model_id'], games)
         payloads[season] = dict(season=season, board=rows, games=games)
-        coverage.append(coverage_row(connection, season, games, rows))
-    moment = (now or datetime.now(timezone.utc)).replace(microsecond=0)
+        coverage.append(coverage_row(connection, season, games, rows,
+                                     complete=season < in_progress))
     manifest = dict(
         schema_version=SCHEMA_VERSION,
         sport='ncaambb',

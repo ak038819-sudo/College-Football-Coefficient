@@ -18,6 +18,12 @@ BASE = 'https://api.collegebasketballdata.com'
 ATTEMPTS = 5
 BACKOFF_SECONDS = 2.0
 TIMEOUT_SECONDS = 60
+# A rate limit is the one failure the server itself tells you how to handle.
+# Blind exponential backoff spends 2+4+8+16 = 30 seconds and then gives up,
+# which is what lost five seasons of a refresh to HTTP 429: the limit window
+# was longer than the retries. Honour the header and cap it, so a wrong or
+# hostile value cannot park a run for an hour.
+MAX_RETRY_AFTER_SECONDS = 120
 # Retrying an authorization or not-found error cannot help and burns quota.
 RETRYABLE_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504})
 
@@ -51,6 +57,27 @@ class Quota:
 AUTH_STATUS = frozenset({401, 403})
 
 
+def retry_after(headers, *, cap=MAX_RETRY_AFTER_SECONDS):
+    """The server's own wait in seconds, or None when it did not say.
+
+    Only the integer-seconds form is read. The HTTP-date form is allowed by
+    the specification but CBBD does not send it, and parsing a date here would
+    mean trusting a clock difference to decide how long to sleep.
+    """
+    if headers is None:
+        return None
+    raw = headers.get('Retry-After')
+    if raw is None:
+        return None
+    try:
+        seconds = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return None
+    if seconds < 0:
+        return None
+    return min(float(seconds), float(cap))
+
+
 def _api_key():
     key = os.environ.get('CBBD_API_KEY')
     if not key:
@@ -71,7 +98,7 @@ def get_json(path, params=None, *, key=None, quota=None, attempts=ATTEMPTS,
     fetch = opener if opener is not None else urlopen
     token = key if key is not None else _api_key()
     url = BASE + path + ('?' + urlencode(params) if params else '')
-    last = None
+    last, told = None, None
     for attempt in range(1, attempts + 1):
         try:
             request = Request(url, headers={'Authorization': f'Bearer {token}',
@@ -93,17 +120,21 @@ def get_json(path, params=None, *, key=None, quota=None, attempts=ATTEMPTS,
                 raise CbbdError(f'CBBD HTTP {exc.code} at {path}; '
                                 'check access or the path') from None
             last = f'HTTP {exc.code}'
+            told = retry_after(getattr(exc, 'headers', None))
         except URLError:
             if quota is not None:
                 quota.requests += 1
-            last = 'connection failed'
+            last, told = 'connection failed', None
         except json.JSONDecodeError:
             if quota is not None:
                 quota.requests += 1
-            last = 'malformed JSON'
+            last, told = 'malformed JSON', None
         if attempt == attempts:
             break
         if quota is not None:
             quota.retries += 1
-        rest(BACKOFF_SECONDS * 2 ** (attempt - 1))
+        # The server's wait wins when it gave one, because it knows when the
+        # window reopens and the curve below is only a guess.
+        rest(told if told is not None
+             else BACKOFF_SECONDS * 2 ** (attempt - 1))
     raise CbbdError(f'CBBD request to {path} failed after {attempts} attempts ({last})')

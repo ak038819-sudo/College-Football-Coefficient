@@ -78,13 +78,34 @@
     coverage.forEach(function (season) {
       var teams = season && season.division_one_teams;
       var rated = season && season.rated_teams;
+      /* A season still being played is judged against the teams that have
+       * finished a rateable game, not against the whole Division I list. In
+       * November most teams have played nobody, and demanding 90% of the
+       * country would make this page refuse a correct export for the only
+       * season a reader came to look at. Mirrors check_coverage in
+       * src/ncaambb/publish_gate.py; an unmarked season is read as finished,
+       * so a missing flag cannot be the way a thin export gets through. */
+      var complete = !season || season.complete !== false;
       if (!isNumber(teams) || teams < MIN_DIVISION_ONE_TEAMS) {
         reasons.push('season ' + (season && season.season) + ' covers ' +
                      teams + ' Division I teams, which is a sample rather ' +
                      'than the country');
-      } else if (!isNumber(rated) || rated < teams * MIN_RATED_FRACTION) {
+        return;
+      }
+      if (complete) {
+        if (!isNumber(rated) || rated < teams * MIN_RATED_FRACTION) {
+          reasons.push('season ' + season.season + ' rates only ' + rated +
+                       ' of ' + teams + ' Division I teams');
+        }
+        return;
+      }
+      var played = season.played_teams;
+      if (!isNumber(played) || played < 0) {
+        reasons.push('season ' + season.season + ' is still being played but ' +
+                     'does not say how many teams have played');
+      } else if (!isNumber(rated) || rated < played * MIN_RATED_FRACTION) {
         reasons.push('season ' + season.season + ' rates only ' + rated +
-                     ' of ' + teams + ' Division I teams');
+                     ' of the ' + played + ' Division I teams that have played');
       }
     });
     return reasons;

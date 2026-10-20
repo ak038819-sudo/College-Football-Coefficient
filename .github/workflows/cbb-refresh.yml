@@ -16,6 +16,18 @@ name: Refresh college basketball ratings
 # 3. The model is NOT refitted here. src/ncaambb/fit_elo.py chooses the
 #    parameters and a person commits them; a refresh that quietly refits would
 #    change the ratings' meaning on a schedule nobody is watching.
+#
+# It also commits `data/ncaambb/raw`, the gzipped provider responses. A settled
+# season cannot change, so refetching twelve of them every morning spends quota
+# on identical bytes -- and the first rehearsal of this workflow did exactly
+# that and was cut off by HTTP 429 five seasons from the end. With the cache in
+# the repository a run reloads the archive from disk and asks the provider only
+# about the season being played.
+#
+# The commit carries `[skip ci]`, and unlike football's backfill that is not a
+# trap here: ui/basketball.html fetches the committed export directly, so
+# GitHub Pages republishing the files is all it takes. Nothing needs the
+# football deploy to regenerate a dashboard.
 
 on:
   schedule:
@@ -93,6 +105,8 @@ jobs:
           # `cmd | tee` reports tee's status, so without pipefail a crash here
           # would pass this step. It did exactly that once.
           set -o pipefail
+          # No --refetch: a season already in the committed raw cache costs no
+          # request. That is what keeps this run under the provider's limit.
           python -m src.ncaambb.ingest --seasons "$SEASONS" --schedule-only \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
@@ -134,23 +148,43 @@ jobs:
           sys.exit(0 if decision['publish'] else 1)
           PY
 
-      - name: Commit the export
-        if: steps.publish.outputs.published == 'true'
+      # Runs even when the ingestion or the gate failed, which is the point.
+      # The raw cache is the provider data this run paid quota for; a season
+      # it managed to fetch before the rate limit must be banked, or the next
+      # run spends the same quota on the same seasons and gets no further. A
+      # rate-limited run therefore still makes progress, and the job still
+      # fails, so the health light below still lights.
+      - name: Commit the raw cache and, if the gate allowed it, the export
+        if: always() && steps.seasons.conclusion == 'success'
+        env:
+          ALLOWED: ${{ inputs.publish == null && 'true' || inputs.publish }}
         run: |
-          if [ -z "$(git status --porcelain ui/data/ncaambb)" ]; then
-            echo "The export is byte-identical to the published one; nothing to commit."
+          if [ "$ALLOWED" != "true" ]; then
+            echo "Dispatched with publishing off; committing nothing."
+            exit 0
+          fi
+          # The raw cache always; the export only when the gate passed, since
+          # a refused export is not in the tree at all.
+          PATHS="data/ncaambb/raw"
+          if [ "${{ steps.publish.outputs.published }}" = "true" ]; then
+            PATHS="$PATHS ui/data/ncaambb"
+          fi
+          if [ -z "$(git status --porcelain $PATHS)" ]; then
+            echo "Nothing changed under $PATHS; nothing to commit."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ui/data/ncaambb
-          # Only the export. A refresh must never carry a code change along
+          git add $PATHS
+          # Only these paths. A refresh must never carry a code change along
           # with it, whatever happens to be in the tree.
           git commit -m "Refresh the college basketball export
 
           Built by ${{ github.workflow }} run ${{ github.run_id }} from the
-          committed model in config/ncaambb_model.json. The publish gate
-          passed on the built export and again on the written directory."
+          committed model in config/ncaambb_model.json. Carries the raw
+          provider cache this run fetched, so a later run reloads those
+          seasons from the repository instead of spending quota on data that
+          cannot change. [skip ci]"
           # Push back to the branch this ran on. On main that is the
           # published site; on a branch it is that branch, which is how a
           # release can be prepared without a scheduled job writing to main

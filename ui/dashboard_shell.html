@@ -129,14 +129,19 @@
     overflow: hidden;
     background: var(--panel);
   }
-  .leagues a {
+  /* Addressed by id, not by `.leagues a`, deliberately. The global
+     `:root a:any-link:not(.active):not(.action-button)` rule below is
+     (0,3,1) and would otherwise win, painting the selected league amber on
+     amber -- a pill with no readable text, which is what it did until a
+     browser showed it. */
+  #league-selector a {
     font-size: 13px;
     padding: 6px 14px;
     color: var(--ink-dim);
     text-decoration: none;
     white-space: nowrap;
   }
-  .leagues a[aria-current="page"] {
+  #league-selector a[aria-current="page"] {
     background: var(--amber);
     color: #15110a;
     font-weight: 600;

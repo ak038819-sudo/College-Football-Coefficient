@@ -153,8 +153,9 @@ class FakeResponse:
         return False
 
 
-def http_error(code):
-    return HTTPError('https://example.invalid', code, 'boom', {}, None)
+def http_error(code, headers=None):
+    return HTTPError('https://example.invalid', code, 'boom',
+                     {} if headers is None else headers, None)
 
 
 def test_an_access_failure_aborts_the_probe_instead_of_reporting_no_coverage():
@@ -238,6 +239,68 @@ def test_rate_limiting_backs_off_and_then_succeeds():
     assert len(calls) == 3
     assert slept == [2.0, 4.0]
     assert quota.as_dict() == dict(requests=3, retries=2)
+
+
+def test_a_rate_limit_waits_as_long_as_the_server_asked():
+    # Blind backoff spends 2+4+8+16 seconds and gives up. A refresh lost five
+    # seasons to exactly that, because the provider's limit window was longer
+    # than the curve. When the server names the wait, it governs.
+    calls, slept = [], []
+
+    def opener(request, timeout=None):
+        calls.append(1)
+        if len(calls) < 3:
+            raise http_error(429, {'Retry-After': '45'})
+        return FakeResponse(b'[]')
+
+    assert get_json('/games', key='k', sleep=slept.append, opener=opener) == []
+    assert slept == [45.0, 45.0]
+
+
+def test_an_absurd_retry_after_is_capped_rather_than_obeyed():
+    slept = []
+
+    def opener(request, timeout=None):
+        raise http_error(429, {'Retry-After': '86400'})
+
+    with pytest.raises(CbbdError):
+        get_json('/games', key='k', attempts=2, sleep=slept.append,
+                 opener=opener)
+    assert slept == [float(http_module.MAX_RETRY_AFTER_SECONDS)]
+
+
+@pytest.mark.parametrize('value', ['', 'soon', 'Wed, 21 Oct 2026 07:28:00 GMT',
+                                   '-5', None])
+def test_a_retry_after_that_is_not_plain_seconds_falls_back_to_the_curve(value):
+    # The HTTP-date form is legal but CBBD does not send it, and reading it
+    # would mean trusting a clock difference to decide how long to sleep.
+    headers = {} if value is None else {'Retry-After': value}
+    slept = []
+
+    def opener(request, timeout=None):
+        raise http_error(429, headers)
+
+    with pytest.raises(CbbdError):
+        get_json('/games', key='k', attempts=3, sleep=slept.append,
+                 opener=opener)
+    assert slept == [2.0, 4.0]
+
+
+def test_one_attempts_header_does_not_govern_a_later_different_failure():
+    # Without resetting it, the 429's wait would still be in hand when the
+    # next attempt failed for an unrelated reason.
+    calls, slept = [], []
+
+    def opener(request, timeout=None):
+        calls.append(1)
+        if len(calls) == 1:
+            raise http_error(429, {'Retry-After': '90'})
+        raise URLError('down')
+
+    with pytest.raises(CbbdError):
+        get_json('/games', key='k', attempts=3, sleep=slept.append,
+                 opener=opener)
+    assert slept == [90.0, 4.0]
 
 
 def test_a_connection_failure_exhausts_attempts_and_reports_the_count():
