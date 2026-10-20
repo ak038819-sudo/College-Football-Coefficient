@@ -275,3 +275,80 @@ def test_a_database_with_no_such_table_exports_an_empty_set(rated_conn):
     data = build_team_pages(rated_conn)
     assert data["non_fbs"] == []
     assert data["non_fbs_records"] == {}
+
+
+# ---- The Merits award a game earned (the team page's Schedule column) ----
+# The award is Python's, computed by build_hybrid_coefficients.py, and the page
+# only formats it. What the export has to preserve is the difference between an
+# award of zero -- which is what a regulation loss really earns -- and no award
+# at all, which is what a bootstrap season and a tie have.
+MERIT = 8
+
+
+def _with_hybrid(tmp_path, awards):
+    games = [(1, 2015, "2015-09-01", 1, 1, 2, 30, 20, 0, "regular", 0),
+             (2, 2015, "2015-09-08", 2, 2, 1, 24, 10, 0, "regular", 0)]
+    elo = [(1, 1, 1500.0, 1450.0, 0.64, 12.0, 1512.0), (1, 2, 1450.0, 1500.0, 0.36, -12.0, 1438.0),
+           (2, 1, 1512.0, 1600.0, 0.40, -9.0, 1503.0), (2, 2, 1600.0, 1512.0, 0.60, 9.0, 1609.0)]
+    conn = _db(tmp_path, games, elo)
+    conn.execute("""CREATE TABLE hybrid_game_ratings (game_id INTEGER, team_id INTEGER, elo_z REAL,
+        coe_z REAL, hybrid_strength REAL, hybrid_rating REAL, hybrid_expectation REAL,
+        result_type TEXT, game_coe REAL, PRIMARY KEY (game_id, team_id))""")
+    conn.executemany("INSERT INTO hybrid_game_ratings (game_id, team_id, game_coe) VALUES (?,?,?)", awards)
+    conn.commit()
+    return conn
+
+
+def test_a_games_merits_award_rides_on_its_elo_row(tmp_path):
+    conn = _with_hybrid(tmp_path, [(1, 1, 2.7183), (1, 2, 0.0), (2, 1, 0.0), (2, 2, 3.5)])
+    try:
+        by = {(e[0], e[1]): e for e in build_team_pages(conn)["elo"]}
+    finally:
+        conn.close()
+    assert by[(1, 1)][MERIT] == pytest.approx(2.718)      # the win, rounded for the wire
+    assert by[(2, 2)][MERIT] == pytest.approx(3.5)
+
+
+def test_an_award_of_zero_is_exported_as_zero_and_not_as_absent(tmp_path):
+    """A regulation loss earns 0.0, which is a measurement; absent means unvalued."""
+    conn = _with_hybrid(tmp_path, [(1, 1, 2.0), (1, 2, 0.0), (2, 1, 0.0), (2, 2, 2.0)])
+    try:
+        by = {(e[0], e[1]): e for e in build_team_pages(conn)["elo"]}
+    finally:
+        conn.close()
+    assert by[(1, 2)][MERIT] == 0.0
+    assert by[(1, 2)][MERIT] is not None
+
+
+def test_a_rated_game_the_hybrid_layer_never_valued_carries_no_award(tmp_path):
+    """The bootstrap seasons have an Elo row and no hybrid row; that is a null."""
+    conn = _with_hybrid(tmp_path, [(1, 1, 2.0), (1, 2, 0.0)])
+    try:
+        by = {(e[0], e[1]): e for e in build_team_pages(conn)["elo"]}
+    finally:
+        conn.close()
+    assert by[(2, 1)][MERIT] is None
+    assert by[(2, 2)][MERIT] is None
+
+
+def test_a_database_with_no_hybrid_table_exports_every_award_as_null(tmp_path):
+    """Older snapshots have no hybrid_game_ratings at all and must still export."""
+    games = [(1, 2015, "2015-09-01", 1, 1, 2, 30, 20, 0, "regular", 0)]
+    elo = [(1, 1, 1500.0, 1450.0, 0.64, 12.0, 1512.0), (1, 2, 1450.0, 1500.0, 0.36, -12.0, 1438.0)]
+    conn = _db(tmp_path, games, elo)
+    try:
+        rows = build_team_pages(conn)["elo"]
+    finally:
+        conn.close()
+    assert rows and all(r[MERIT] is None for r in rows)
+
+
+def test_the_award_is_the_one_stored_for_that_team_not_its_opponents(tmp_path):
+    """Both sides of a game have a row; joining on game alone would mix them up."""
+    conn = _with_hybrid(tmp_path, [(1, 1, 3.9), (1, 2, 0.0), (2, 1, 0.0), (2, 2, 2.1)])
+    try:
+        by = {(e[0], e[1]): e for e in build_team_pages(conn)["elo"]}
+    finally:
+        conn.close()
+    assert (by[(1, 1)][MERIT], by[(1, 2)][MERIT]) == (3.9, 0.0)
+    assert (by[(2, 1)][MERIT], by[(2, 2)][MERIT]) == (0.0, 2.1)

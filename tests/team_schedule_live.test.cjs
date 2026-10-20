@@ -48,6 +48,10 @@ function panelHtml({ team = PITT, upcoming = [upcomingGame()], liveGames = [] } 
     UPCOMING_BY_ID: new Map(upcoming.map(g => [g.id, g])),
     TEAM_BY_ID: new Map([[String(VT.id), VT], [String(PITT.id), PITT]]),
     teamPageState: { schedSeason: 2026 },
+    // The real published shape: the build copies config/model_config.json's
+    // coe2 section into the manifest, and the panel's help text prints it.
+    STATIC_MANIFEST: { model_params: { coe2: { win_base: 2.0, ot_loss: 1.0,
+      regulation_loss: 0.0, difficulty_alpha: 2.0, tie_delta: 2.0 } } },
     esc: x => String(x),
     oppLink: name => `<a>${name}</a>`,
     panelHead: (title, control) => `<h2>${title}</h2>${control || ''}`,
@@ -75,6 +79,9 @@ function panelHtml({ team = PITT, upcoming = [upcomingGame()], liveGames = [] } 
     sourceOf('teamScheduleSeasons') + '\n' +
     sourceOf('nonFbsRecord') + '\n' +
     sourceOf('recWithUnrated') + '\n' +
+    sourceOf('meritCell') + '\n' +
+    sourceOf('meritConst') + '\n' +
+    sourceOf('seasonMerits') + '\n' +
     sourceOf('fillSchedulePanel') + '\n' +
     'this.setLiveResults = setLiveResults; this.fill = fillSchedulePanel;', ctx);
   ctx.setLiveResults(liveGames);
