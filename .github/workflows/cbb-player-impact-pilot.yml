@@ -10,15 +10,18 @@ on:
         default: "2026"
         required: true
 
+# TEMPORARY: standing in for cbb-ingest.yml, which is not dispatchable
+# until it reaches the default branch. Reverted in the next commit.
+
 permissions:
   contents: read
 
 jobs:
-  pilot:
+  ingest:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 90
     concurrency:
-      group: cbb-player-impact-pilot
+      group: cbb-ingest
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v5
@@ -29,27 +32,66 @@ jobs:
           python-version: "3.11"
       - name: Install test runner
         run: python -m pip install 'pytest>=7,<10'
-      - name: Validate prototype
-        run: python -m pytest tests/test_cbb_player_impact.py tests/test_cbb_integration_contract.py tests/test_cbb_reconciliation.py -q
-      - name: Collect three BYU games
+      - name: Validate ingestion before spending quota
+        run: |
+          python -m pytest tests/test_ncaambb_ingestion.py \
+            tests/test_ncaambb_store.py tests/test_ncaambb_people.py \
+            tests/test_ncaambb_audit.py -q
+      - name: Ingest seasons
         env:
           CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
-          PILOT_SEASON: ${{ inputs.season }}
+          SEASONS: 2025,2026
+          REFETCH: false
+          PEOPLE: true
         run: |
-          python analysis/cbb_player_impact/collect.py \
-            --season "$PILOT_SEASON" --team BYU --limit 3 \
-            --out analysis/cbb_player_impact/snapshots/pilot
-      - name: Summarize structural checks and minute reconciliation
-        if: always()
-        run: |
-          python analysis/cbb_player_impact/summarize.py \
-            --snapshot analysis/cbb_player_impact/snapshots/pilot \
+          args=""
+          if [ "$REFETCH" = "true" ]; then args="$args --refetch"; fi
+          if [ "$PEOPLE" != "true" ]; then args="$args --schedule-only"; fi
+          python -m src.ncaambb.ingest --seasons "$SEASONS" $args \
             | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: Preserve pilot snapshot and audit
+      - name: Audit people coverage
+        run: |
+          python -m src.ncaambb.audit_people | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Prove a second load changes nothing
+        env:
+          CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
+          SEASONS: 2025,2026
+          PEOPLE: true
+        run: |
+          python - <<'PY'
+          import os, sqlite3, subprocess, sys
+          def counts():
+              c = sqlite3.connect('db/ncaambb.db')
+              try:
+                  tables = ['team', 'team_season', 'game']
+                  if os.environ.get('PEOPLE') == 'true':
+                      tables += ['player', 'player_team_season',
+                                 'team_game_stat', 'player_game_stat']
+                  return {t: c.execute(f'SELECT COUNT(*) FROM {t}').fetchone()[0]
+                          for t in tables}
+              finally:
+                  c.close()
+          before = counts()
+          # Reuses the raw cache, so this costs no provider requests.
+          args = [] if os.environ.get('PEOPLE') == 'true' else ['--schedule-only']
+          run = subprocess.run([sys.executable, '-m', 'src.ncaambb.ingest',
+                                '--seasons', os.environ['SEASONS'], *args],
+                               capture_output=True, text=True)
+          if run.returncode != 0:
+              sys.exit(f'second load failed: {run.stderr[-2000:]}')
+          after = counts()
+          print(f'row counts before {before} and after {after}')
+          if before != after:
+              sys.exit('a second load changed the row counts; loading is not idempotent')
+          print('Idempotent: a second load of the same season changed no row count.')
+          PY
+      - name: Preserve the coverage report and database
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cbb-pilot-${{ inputs.season }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: analysis/cbb_player_impact/snapshots/pilot/
+          name: cbb-ingest-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            db/ncaambb.db
+            data/ncaambb/raw/
           if-no-files-found: warn
           retention-days: 30
