@@ -3350,7 +3350,8 @@ function indexTeamPages(raw) {
   const eloByTeam = new Map();   // already grouped by team and chronological in the export
   raw.elo.forEach(r => {
     if (!eloByTeam.has(r[1])) eloByTeam.set(r[1], []);
-    eloByTeam.get(r[1]).push({ gid: r[0], tid: r[1], pre: r[2], oppPre: r[3], exp: r[4], chg: r[5], post: r[6], mov: r[7] ?? null });
+    eloByTeam.get(r[1]).push({ gid: r[0], tid: r[1], pre: r[2], oppPre: r[3], exp: r[4], chg: r[5], post: r[6],
+      mov: r[7] ?? null, coe: r[8] ?? null });
   });
   // Games against opponents this project holds no rating for -- mostly FCS, and
   // a few 1980s programs CFBD still calls FBS that this project never carried.
@@ -3867,6 +3868,30 @@ function eloShade(chg) {
     pct + '%, transparent)"';
 }
 
+// A game's Merits, as build_hybrid_coefficients.py awarded it. Absent and zero
+// are different facts here and must not render alike: a regulation loss really
+// does earn 0, while a bootstrap season (one with fewer than five prior seasons
+// in the archive) and a tie carry no award at all.
+function meritCell(v) {
+  return v == null ? '<td class="dim">—</td>' : '<td>' + Number(v).toFixed(3) + '</td>';
+}
+// Printed, never typed: the build publishes config/model_config.json's own
+// values in the static manifest, which is where How It Works reads them too.
+function meritConst(name) {
+  const v = (STATIC_MANIFEST.model_params || {}).coe2?.[name];
+  return v == null ? '?' : String(v);
+}
+// The season's Merits from games, which is Python's figure for exactly the
+// column above it -- not a sum taken in the browser. Null where the rollups
+// hold nothing for that team-season, so the footer dashes like its rows.
+// A season the awards never covered has a PLACEHOLDER rollup row reading 0.0
+// over zero games, which is not a season of no achievement: counting it as a
+// measured zero had the 1982 footer claim 0.000 under twelve dashed rows.
+function seasonMerits(tp, teamId, season) {
+  const r = (tp.rollups || {})[teamId + '|' + season];
+  return r && r.games != null && r.counted > 0 ? r.games : null;
+}
+
 let paintedLiveSignature = null;
 function fillSchedulePanel(tp, team) {
   const el = document.getElementById('tp-schedule');
@@ -3900,7 +3925,7 @@ function fillSchedulePanel(tp, team) {
       '<td>' + r.pre.toFixed(0) + '</td><td>' + r.oppPre.toFixed(0) + '</td>' +
       '<td>' + Math.round(r.exp * 100) + '%</td>' +
       '<td class="' + (r.chg >= 0 ? 'pos' : 'neg') + '">' + signed(r.chg, 1) + '</td>' +
-      '<td>' + r.post.toFixed(0) + '</td></tr>'];
+      '<td>' + r.post.toFixed(0) + '</td>' + meritCell(r.coe) + '</tr>'];
   });
   // An unrated game has a real date, opponent and score, and nothing else: no
   // pregame Elo for either side, no expectation, no change and no post-game
@@ -3927,7 +3952,7 @@ function fillSchedulePanel(tp, team) {
         '<td class="' + (res === 'W' ? 'win' : res === 'L' ? 'loss' : '') + '">' +
           res + ' ' + u.mine + '–' + u.theirs + (u.ot ? ' OT' : '') + '</td>' +
         '<td class="dim">—</td><td class="dim">—</td><td class="dim">—</td>' +
-        '<td class="dim">—</td><td class="dim">—</td></tr>'];
+        '<td class="dim">—</td><td class="dim">—</td><td class="dim">—</td></tr>'];
     });
   const rows = playedRows.concat(unratedRows)
     .sort((x, y) => String(x[0]).localeCompare(String(y[0])) || x[1] - y[1])
@@ -3966,17 +3991,17 @@ function fillSchedulePanel(tp, team) {
       // Elo delta and post-game rating stay em-dashes.
       '<td>' + Number(myElo).toFixed(0) + '</td><td>' + Number(oppElo).toFixed(0) + '</td>' +
       '<td>' + (home ? pct.home : pct.away) + '%</td>' +
-      '<td class="dim">—</td><td class="dim">—</td></tr>';
+      '<td class="dim">—</td><td class="dim">—</td><td class="dim">—</td></tr>';
   };
   const scored = ahead.filter(g => liveResults.has(g.id));
   const unplayed = ahead.filter(g => !liveResults.has(g.id));
   if (scored.length) {
-    rows.push('<tr class="sched-post"><td colspan="9" class="sched-group">Live scoreboard · ' +
+    rows.push('<tr class="sched-post"><td colspan="10" class="sched-group">Live scoreboard · ' +
       'score is in, the ratings have not rebuilt yet</td></tr>');
     scored.forEach(g => rows.push(aheadRow(g, liveResults.get(g.id))));
   }
   if (unplayed.length) {
-    rows.push('<tr class="sched-post"><td colspan="9" class="sched-group">Scheduled · ' +
+    rows.push('<tr class="sched-post"><td colspan="10" class="sched-group">Scheduled · ' +
       'current ratings, not yet played</td></tr>');
     unplayed.forEach(g => rows.push(aheadRow(g, null)));
   }
@@ -3993,29 +4018,39 @@ function fillSchedulePanel(tp, team) {
       '<td>' + sRow.startElo.toFixed(0) + '</td><td>' + sRow.sos.toFixed(0) + '</td>' +
       '<td>' + Math.round(100 * sRow.expWins / sRow.games) + '%</td>' +
       '<td class="' + (sRow.eloChange >= 0 ? 'pos' : 'neg') + '">' + signed(sRow.eloChange, 1) + '</td>' +
-      '<td>' + sRow.endElo.toFixed(0) + '</td></tr></tfoot>'
+      '<td>' + sRow.endElo.toFixed(0) + '</td>' + meritCell(seasonMerits(tp, team.id, season)) + '</tr></tfoot>'
     // A season whose only games were against unrated opponents has no rated
     // row at all, and so no Elo of any kind -- just the record.
     : uRec
       ? '<tfoot><tr><td colspan="3">' + season + ' · ' +
           recStr(uRec[0], uRec[1], uRec[2]) + ' overall</td>' +
-        '<td colspan="6" class="dim">No rated games this season</td></tr></tfoot>'
+        '<td colspan="7" class="dim">No rated games this season</td></tr></tfoot>'
       : '';
   el.innerHTML = panelHead('Schedule', seasonSelect('tp-sched-season', seasons, season, false)) +
     (rows.length
       ? '<div class="table-scroll" tabindex="0" role="region" aria-label="' + season + ' schedule">' +
         '<table class="ledger"><caption>Footer row: season record, actual wins, opening Elo, ' +
-        'average opponent pregame Elo, average pregame win probability, net Elo change, closing Elo.</caption>' +
+        'average opponent pregame Elo, average pregame win probability, net Elo change, closing Elo, ' +
+        'the season\u2019s Merits from games.</caption>' +
         '<thead><tr><th scope="col">Date</th><th scope="col">Opponent</th>' +
         '<th scope="col">Round</th><th scope="col">Result</th><th scope="col">Elo</th>' +
         '<th scope="col">Opp Elo</th><th scope="col">Win prob</th><th scope="col">Elo &Delta;</th>' +
-        '<th scope="col">Elo after</th></tr></thead><tbody>' + rows.join('') + '</tbody>' + foot + '</table></div>'
+        '<th scope="col">Elo after</th><th scope="col">Merits</th></tr></thead><tbody>' + rows.join('') + '</tbody>' + foot + '</table></div>'
       : '<div class="empty-note">No games recorded for ' + season + '.</div>') +
     '<details class="help"><summary>What these columns mean</summary><ul>' +
       '<li><b>Elo</b> and <b>Opp Elo</b> are both teams’ ratings <i>entering</i> the game, and <b>Win prob</b> is the ' +
         'expectation the model made before kickoff (home field included). A completed row shows what was stored at the ' +
         'time, so a past prediction is never rewritten with what happened later.</li>' +
       '<li><b>Elo &Delta;</b> is K × (S − E) × M for that game; the Rating Ledger under <i>Analytics</i> shows the arithmetic.</li>' +
+      '<li><b>Merits</b> is what the result earned: a win is worth at least ' + meritConst('win_base') +
+        ', plus up to ' + meritConst('difficulty_alpha') + ' more the less likely the win was, and a loss earns ' +
+        meritConst('regulation_loss') + ' (' + meritConst('ot_loss') + ' in overtime). Beating a better team is ' +
+        'worth more than beating a worse one, which is the point of the measure. The difficulty uses the hybrid ' +
+        'expectation <i>How it works</i> describes, not the <b>Win prob</b> beside it, so the two do not reproduce ' +
+        'each other. The footer is the season\u2019s total from games alone; <i>Analytics</i> adds the explicit ' +
+        'bonuses to reach Season Merits. A season from before the archive holds five prior seasons has no award ' +
+        'at all, which is why an early row\u2019s Merits is an em-dash rather than a zero \u2014 and why a loss, ' +
+        'which really does earn ' + meritConst('regulation_loss') + ', shows a number.</li>' +
       '<li>Scheduled rows use current ratings from <code>src/predict_upcoming.py</code> and have no result, no Elo change ' +
         'and no post-game rating, because the game hasn’t been played.</li>' +
       '<li>A row under <b>Live scoreboard</b> has a score from the live feed. Its Elo, win probability and ' +
@@ -6207,7 +6242,9 @@ const BONUS_LABELS = {
 };
 function coe2SeasonBreakdown(tp, team, season) {
   const r = (tp.rollups || {})[team.id + '|' + season];
-  if (!r) return '';
+  // A zero-game placeholder row is no measurement; showing its 0.000 here would
+  // contradict the schedule footer, which dashes the same season.
+  if (!r || !(r.counted > 0)) return '';
   const n3 = v => Number(v).toFixed(3);
   const items = (r.items || []).map(([cat, n, pts]) =>
     '<tr><td class="tl">' + esc(BONUS_LABELS[cat] || cat) + (n > 1 ? ' \u00d7' + n : '') + '</td>' +

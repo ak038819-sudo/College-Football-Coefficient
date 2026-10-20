@@ -66,6 +66,10 @@ function panelHtml(tp, { team = TEAM, season = 2024 } = {}) {
     UPCOMING_GAMES: [],
     TEAM_BY_ID: new Map([[String(TEAM.id), TEAM], [String(OPP.id), OPP]]),
     teamPageState: { schedSeason: season },
+    // The real published shape: the build copies config/model_config.json's
+    // coe2 section into the manifest, and the panel's help text prints it.
+    STATIC_MANIFEST: { model_params: { coe2: { win_base: 2.0, ot_loss: 1.0,
+      regulation_loss: 0.0, difficulty_alpha: 2.0, tie_delta: 2.0 } } },
     esc: x => String(x),
     oppLink: name => `<a class="opp-link">${name}</a>`,
     panelHead: (title, control) => `<h2>${title}</h2>${control || ''}`,
@@ -104,6 +108,9 @@ function panelHtml(tp, { team = TEAM, season = 2024 } = {}) {
     sourceOf('recStr') + '\n' +
     sourceOf('gameFor') + '\n' +
     sourceOf('eloShade') + '\n' +
+    sourceOf('meritCell') + '\n' +
+    sourceOf('meritConst') + '\n' +
+    sourceOf('seasonMerits') + '\n' +
     sourceOf('teamScheduleSeasons') + '\n' +
     sourceOf('nonFbsRecord') + '\n' +
     sourceOf('recWithUnrated') + '\n' +
@@ -137,12 +144,12 @@ test('an unrated row leaves every rating column empty', () => {
   const html = panelHtml(withUnrated(ratedFixture(), [unratedGame()], [1, 0, 0]));
   const row = html.match(/<tr class="sched-unrated">[\s\S]*?<\/tr>/);
   assert.ok(row, 'no unrated row rendered');
-  // Nine columns: date, opponent, round, result, then the five rating columns,
-  // which must every one be a dash. Asserting on the tail rather than on the
-  // whole row, because the date legitimately contains a four-digit year.
+  // Ten columns: date, opponent, round, result, then the five rating columns and
+  // the game's Merits, which must every one be a dash. Asserting on the tail
+  // rather than the whole row, because the date contains a four-digit year.
   const cells = row[0].match(/<td[^>]*>[\s\S]*?<\/td>/g);
-  assert.equal(cells.length, 9);
-  assert.deepEqual(Array.from(cells.slice(4)), new Array(5).fill('<td class="dim">\u2014</td>'));
+  assert.equal(cells.length, 10);
+  assert.deepEqual(Array.from(cells.slice(4)), new Array(6).fill('<td class="dim">\u2014</td>'));
 });
 
 test('an unrated row carries no Elo tint, because there was no Elo change', () => {
