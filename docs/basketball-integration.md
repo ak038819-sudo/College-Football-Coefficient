@@ -81,6 +81,9 @@ conference/playoff rules, week selectors or person-ID lookup tables.
    unsupported schemas rather than show them as national rankings.
 5. Add a private/unlinked basketball preview. Test football URL parity, basketball
    search/favorites isolation, season navigation, failed/missing feeds and mobile UI.
+   The interface contract is [`basketball-ui.md`](basketball-ui.md), written to
+   Austin's direction of 2026-10-20: a league selector beneath the wordmark,
+   the existing bottom bar kept, and everything league-scoped behind it.
 6. Validate publishing ownership, cache behavior and last-good snapshot rollback;
    then enable the sport selector. A basketball fetch failure must leave football
    refresh running and basketball's last valid snapshot visibly marked stale.
