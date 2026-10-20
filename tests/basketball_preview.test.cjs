@@ -387,3 +387,34 @@ test("the selected league's colour outranks the site-wide link colour", () => {
   assert.ok(selected[0] > global[0],
     'the id is what makes it win, not rule order');
 });
+
+// --- November, when the newest season is nearly empty -----------------------
+//
+// The state a reader actually meets on opening night: the whole Division I
+// team list is known, the schedule is published, and almost nobody has played.
+// The page must draw the handful of rated teams rather than refuse, and the
+// flag on the coverage row is what makes the difference.
+
+const LIVE_SEASON = { season: 2026, division_one_teams: 365, rated_teams: 3,
+  games: 6318, finals: 1, played_teams: 3, complete: false };
+
+test('a season still being played draws its board, thin as it is', async () => {
+  const dom = await open({ coverage: [LIVE_SEASON] });
+  assert.equal(rows(dom).length, 3);
+  assert.equal(dom.window.document.querySelectorAll('#refusal-list li').length,
+    0);
+  dom.window.close();
+});
+
+test('the same coverage claiming to be a finished season draws no board',
+  async () => {
+    // Proves the test above is not passing because the fraction check was
+    // removed: 3 of 365 rated is a refusal in a season that says it is over.
+    const dom = await open({
+      coverage: [Object.assign({}, LIVE_SEASON, { complete: true })]
+    });
+    assert.equal(rows(dom).length, 0);
+    assert.ok(dom.window.document.querySelectorAll('#refusal-list li').length
+      > 0);
+    dom.window.close();
+  });
