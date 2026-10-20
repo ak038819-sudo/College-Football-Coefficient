@@ -103,6 +103,33 @@ calculation reads.
 not stored, and a test serialises the entire export and fails if any spelling of
 a provider rating appears in it.
 
+## Measured on the real archive
+
+Run 39382139599, 2026-10-20, over the twelve ingested seasons. The export
+passed the build gate, and the standalone gate passed again on the written
+directory.
+
+| season | D-I teams | rated | games | finals | rateable |
+| --- | --- | --- | --- | --- | --- |
+| 2014-15 | 351 | 351 | 5949 | 5932 | 5494 |
+| 2015-16 | 351 | 351 | 5991 | 5951 | 5514 |
+| 2016-17 | 351 | 351 | 5982 | 5964 | 5520 |
+| 2017-18 | 351 | 351 | 5987 | 5968 | 5501 |
+| 2018-19 | 353 | 353 | 6066 | 6049 | 5597 |
+| 2019-20 | 353 | 353 | 5856 | 5767 | 5328 |
+| 2020-21 | 356 | 347 | 5282 | 4285 | 3944 |
+| 2021-22 | 358 | 358 | 6387 | 5966 | 5475 |
+| 2022-23 | 363 | 363 | 6261 | 6222 | 5715 |
+| 2023-24 | 362 | 362 | 6249 | 6243 | 5726 |
+| 2024-25 | 364 | 364 | 6299 | 6292 | 5764 |
+| 2025-26 | 365 | 365 | 6318 | 6300 | 5752 |
+
+Every season but one rates every Division I team. 2020-21 rates 347 of 356,
+which is the covid season showing up in the coverage column rather than being
+smoothed over: nine teams played no rateable game the model could learn from.
+It clears the 90% floor at 97.5%, so it publishes, and its coverage row says
+what it is.
+
 ## Running it
 
 ```
