@@ -154,12 +154,28 @@ tripped**, which beats any amount of retrying. `scripts/probe_cbbd_limits.py`
 asks the provider's usage endpoint which one is in play rather than inferring
 it from a 429, and measures the spacing that avoids one.
 
-Public documentation also indicates the football and basketball APIs draw on
-**one shared allowance**. If so, a basketball backfill spends football's
-budget, and the plan's rule that a basketball provider failure must not disturb
-football does not hold automatically at the account level — only at the
-workflow level, which is where this file's separation works. The probe reports
-the per-sport split so the claim can be checked rather than assumed. Two reasons, both learned from that run. A season whose first
+**What the provider actually reports** (measured 2026-10-20, run
+39391823658, by `scripts/probe_cbbd_limits.py`):
+
+- `/info/usage` is served by the **football host only**; the basketball host
+  answers `Cannot GET /info/usage`.
+- The window is a **rolling seven days**, not a monthly reset, so capacity
+  returns as the oldest requests age out rather than at a reset date.
+- 1,061 requests in that window: 1,060 basketball and **one** football. The
+  allowance is shared at the account level, but football's pipeline uses its
+  own key, so a basketball backfill is not in practice spending football's
+  budget. Worth re-checking if that ever changes, because the plan's rule that
+  a basketball failure must not disturb football holds at the workflow level
+  by construction but not at the account level.
+- A single isolated request was refused in 0.07 seconds, and six requests two
+  seconds apart were refused identically. That is a **cap**, answered from an
+  edge counter before any work is done — not a "too fast" limit. **Pacing
+  cannot help, so no throttle exists.** 1,060 spent against a tier documented
+  at 1,000 explains it.
+
+The remedy is a higher tier or waiting for the rolling window, and the
+diagnosis comes from asking the usage endpoint rather than inferring it from a
+429. Two reasons, both learned from that run. A season whose first
 request never cleared the limit means the quota is spent, so every later season
 would burn its full backoff to fail identically — 35 requests where 5 told the
 whole story. And a plain failure gets reported per season as "not stored",
