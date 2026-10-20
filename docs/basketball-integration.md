@@ -60,7 +60,12 @@ conference/playoff rules, week selectors or person-ID lookup tables.
 
 1. Run the existing manual pilot on `main`, ending year 2026, with `CBBD_API_KEY`.
    Review access errors and artifact coverage; no successful collection assumed.
+   DONE 2026-10-20: access verified, measurements in
+   [`basketball-pilot-evidence.md`](basketball-pilot-evidence.md).
 2. Reconcile one game's player minutes and paired lineups against box scores.
+   Minute reconciliation DONE: one of three sampled games reconciles exactly and
+   two show the lineup feed missing 18.5% and 26.2% of floor time, so paired
+   lineups cannot be rebuilt from the aggregate lineup rows alone.
 3. Build national ingestion independently: season membership, stable identities,
    request-cap handling, duplicate detection, and explicit non-D-I treatment.
 4. Validate team Elo and export a national manifest with schema version, as-of time,

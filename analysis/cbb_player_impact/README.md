@@ -5,7 +5,9 @@ Research foundation, 2026-10-12. Scope: men's Division I basketball.
 ## Question and status
 
 Integration boundaries and staged release gates are in
-[`docs/basketball-integration.md`](../../docs/basketball-integration.md).
+[`docs/basketball-integration.md`](../../docs/basketball-integration.md). What the
+real pilot runs measured, including the lineup feed's missing floor time, is in
+[`docs/basketball-pilot-evidence.md`](../../docs/basketball-pilot-evidence.md).
 The collector now includes a versioned, basketball-namespaced `integration.json`
 schedule export in its artifact. It is always marked as a non-public team sample;
 it does not enable the basketball UI or publish ratings.
