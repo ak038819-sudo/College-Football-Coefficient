@@ -238,3 +238,11 @@ never from committed content, and no module prints it.
 
 Team Elo (B03), the export contract and publisher gate (B04), and the UI (B05).
 Every table in the schema is now populated by a loader.
+
+## What reads this
+
+`src/ncaambb/fit_elo.py` and `src/ncaambb/build_ratings.py` read the `game`
+table from here and nothing else: a rating needs the final score and the two
+team keys, which the schedule endpoint carries, so a fit run fetches no box
+scores. What they do with it is in
+[`basketball-elo.md`](basketball-elo.md).

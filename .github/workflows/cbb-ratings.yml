@@ -67,19 +67,43 @@ jobs:
           python -m src.ncaambb.fit_elo $args \
             --out data/ncaambb/processed/elo_fit.json \
             | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: Write the chosen configuration
+      - name: Write the chosen configuration and report any drift
         run: |
-          python - <<'PY'
+          set -o pipefail
+          python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
           import json
           from pathlib import Path
           report = json.loads(Path('data/ncaambb/processed/elo_fit.json')
                               .read_text(encoding='utf-8'))
           chosen = report['chosen']
           out = Path('config/ncaambb_model.json')
+          # The committed configuration is what every later run replays with.
+          # A fit that now prefers something else is not an error, but it must
+          # not be silent: the run would otherwise replay with the new choice
+          # and the repository would keep the old one.
+          before = (json.loads(out.read_text(encoding='utf-8')).get('elo')
+                    if out.exists() else None)
           out.parent.mkdir(parents=True, exist_ok=True)
           out.write_text(json.dumps({'elo': chosen}, indent=2, sort_keys=True)
                          + '\n', encoding='utf-8')
-          print(out.read_text(encoding='utf-8'))
+          print('## Configuration used by this replay\n')
+          print('```json')
+          print(out.read_text(encoding='utf-8').rstrip())
+          print('```\n')
+          if before is None:
+              print('No configuration was committed; this run wrote the first.')
+          elif before == chosen:
+              print('Unchanged from the committed `config/ncaambb_model.json`.')
+          else:
+              keys = sorted(set(before) | set(chosen))
+              print('DRIFT from the committed `config/ncaambb_model.json`.'
+                    ' Commit this if it is the model you want:\n')
+              print('| parameter | committed | this fit |')
+              print('| --- | --- | --- |')
+              for key in keys:
+                  was, now = before.get(key), chosen.get(key)
+                  if was != now:
+                      print(f'| {key} | {was} | {now} |')
           PY
       - name: Replay the archive and store the ratings
         run: |

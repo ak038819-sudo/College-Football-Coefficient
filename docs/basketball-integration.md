@@ -79,6 +79,15 @@ conference/playoff rules, week selectors or person-ID lookup tables.
 4. Validate team Elo and export a national manifest with schema version, as-of time,
    model version and coverage. A production loader must reject team samples and
    unsupported schemas rather than show them as national rankings.
+   Elo HALF DONE 2026-10-20: fitted on 59,578 basketball games from 2015-2025
+   and scored once on 2026's 5,752, which the search never saw. Held-out Brier
+   0.18656 against 0.19053 for football's parameters carried over unchanged,
+   0.23123 for the home team at its base rate and 0.25000 for a coin flip, so
+   nothing is inherited on football's word. k and offseason retention happen to
+   land on football's values; home advantage is twice it and the margin layer is
+   different. See [`basketball-elo.md`](basketball-elo.md). The export and the
+   loader's rejection rules are still to come, and no basketball rating reaches
+   `ui/` until they exist.
 5. Add a private/unlinked basketball preview. Test football URL parity, basketball
    search/favorites isolation, season navigation, failed/missing feeds and mobile UI.
    The interface contract is [`basketball-ui.md`](basketball-ui.md), written to

@@ -1,0 +1,15 @@
+{
+  "elo": {
+    "home_advantage": 100,
+    "initial_rating": 1500.0,
+    "k": 45,
+    "margin_exponent": 1.0,
+    "margin_max": 4.0,
+    "margin_min": 0.25,
+    "margin_model": "mov",
+    "offseason_retention": 0.8,
+    "points_per_elo": 0.06446980254679208,
+    "reference_margin": 11.94622175970996,
+    "scale": 400.0
+  }
+}

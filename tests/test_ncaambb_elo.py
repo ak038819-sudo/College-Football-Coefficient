@@ -525,6 +525,28 @@ def test_the_config_path_is_resolved_inside_the_call(tmp_path, monkeypatch):
     assert build_ratings.load_config()['elo']['k'] == 20
 
 
+def test_the_committed_config_is_a_complete_fitted_model():
+    """The file every replay reads. A config that fails its own loader would
+    only be noticed when a ratings run died, long after the commit."""
+    from src.ncaambb.build_ratings import CONFIG_PATH, load_config
+    elo = load_config(CONFIG_PATH)['elo']
+    # Measured on basketball, so neither is a round number anyone typed.
+    assert 8 < elo['reference_margin'] < 16
+    assert 0.02 < elo['points_per_elo'] < 0.2
+    from src.ncaambb.elo import MARGIN_MODELS
+    assert elo['margin_model'] in MARGIN_MODELS
+
+
+def test_the_committed_config_did_not_inherit_football_whole():
+    """The plan forbids inheriting football's Elo settings without basketball
+    validation. The fit landed on football's k and retention, so the proof that
+    nothing was copied is that something else differs."""
+    from src.ncaambb.build_ratings import CONFIG_PATH, load_config
+    from src.ncaambb.fit_elo import FOOTBALL
+    elo = load_config(CONFIG_PATH)['elo']
+    assert any(elo[key] != value for key, value in FOOTBALL.items())
+
+
 def test_building_stores_the_model_its_ratings_and_its_games(db):
     from src.ncaambb.build_ratings import build
     loaded(db, season_games(2025) + season_games(2026))
