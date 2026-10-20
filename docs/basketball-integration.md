@@ -88,6 +88,16 @@ conference/playoff rules, week selectors or person-ID lookup tables.
    different. See [`basketball-elo.md`](basketball-elo.md). The export and the
    loader's rejection rules are still to come, and no basketball rating reaches
    `ui/` until they exist.
+   Export DONE 2026-10-20: `manifest.json` carries the export schema version,
+   the as-of time, the model with a hash of its exact configuration and its
+   held-out score, and per-season coverage. Two gates refuse separately —
+   `src/ncaambb/publish_gate.py` before a byte is written, and
+   `ui/ncaambb_loader.js` in the reader's browser against whatever the network
+   returned. A season below 300 Division I teams, a model with no holdout, a
+   leaked holdout, and a manifest naming a missing, empty or altered file are
+   all refused. Staleness is marked, never refused, so the last good snapshot
+   stays publishable. See [`basketball-export.md`](basketball-export.md).
+   Nothing is served: release gate 6 decides that.
 5. Add a private/unlinked basketball preview. Test football URL parity, basketball
    search/favorites isolation, season navigation, failed/missing feeds and mobile UI.
    The interface contract is [`basketball-ui.md`](basketball-ui.md), written to

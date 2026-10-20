@@ -142,6 +142,34 @@ jobs:
                        'deterministic')
           print('Deterministic: a second replay produced identical ratings.')
           PY
+      - name: Export the archive, which only happens if the gate allows it
+        run: |
+          set -o pipefail
+          python -m src.ncaambb.export --out "$RUNNER_TEMP/ncaambb-export" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Run the publish gate again, standing alone, on what was written
+        run: |
+          # The export already refused to write a bad directory. This is the
+          # check a publishing workflow would make on a directory it did not
+          # build, which is a different check and must pass on its own.
+          set -o pipefail
+          python -m src.ncaambb.publish_gate "$RUNNER_TEMP/ncaambb-export" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Show what the export would publish
+        run: |
+          # The export goes to a temporary directory on purpose. Release gate 6
+          # decides whether these files are ever served; nothing here commits
+          # to ui/data/ncaambb or touches the football manifest.
+          {
+            echo '### Export contents'
+            echo
+            echo '```'
+            du -sh "$RUNNER_TEMP/ncaambb-export"
+            find "$RUNNER_TEMP/ncaambb-export" -type f -printf '%10s  %P\n' \
+              | sort -k2
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cp -r "$RUNNER_TEMP/ncaambb-export" ncaambb-export
       - name: Preserve the fit, the config and the database
         if: always()
         uses: actions/upload-artifact@v4
@@ -151,5 +179,6 @@ jobs:
             db/ncaambb.db
             config/ncaambb_model.json
             data/ncaambb/processed/elo_fit.json
+            ncaambb-export
           if-no-files-found: warn
           retention-days: 30
