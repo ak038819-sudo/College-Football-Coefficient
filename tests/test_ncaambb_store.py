@@ -613,3 +613,14 @@ def test_the_default_run_does_fetch_people(tmp_path, monkeypatch):
                                ).fetchone()['n'] == 1
     finally:
         written.close()
+
+
+def test_a_player_counted_once_even_when_rosters_and_box_scores_both_carry_them():
+    """Rosters and box scores both name the same person, so counting rows would
+    report twice the roll of a season nobody doubled."""
+    connection = connect(':memory:')
+    try:
+        assert upsert_players(connection, [player(101), player(101),
+                                           player(202, 'B Forward')]) == 2
+    finally:
+        connection.close()

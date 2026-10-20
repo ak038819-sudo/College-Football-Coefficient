@@ -248,9 +248,10 @@ def upsert_players(connection, players, *, snapshot_id=None):
     `provider_id` is, and a row with no usable id is refused rather than
     guessed at.
     """
-    stored = 0
+    keys = set()
     for player in players:
         key = entity_key('player', player['id'])
+        keys.add(key)
         city, state, country = _hometown(player)
         connection.execute(
             'INSERT INTO player (player_key, provider_id, name, first_name,'
@@ -273,9 +274,10 @@ def upsert_players(connection, players, *, snapshot_id=None):
              _text(player.get('firstName')), _text(player.get('lastName')),
              _text(player.get('dateOfBirth')), city, state, country,
              snapshot_id))
-        stored += 1
     connection.commit()
-    return stored
+    # Distinct people, not rows seen. Rosters and box scores both carry the
+    # same player, so counting rows would report twice the roll.
+    return len(keys)
 
 
 def upsert_player_team_seasons(connection, season, pairs, *, snapshot_id=None):

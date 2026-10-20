@@ -47,7 +47,8 @@ jobs:
       - name: Validate ingestion before spending quota
         run: |
           python -m pytest tests/test_ncaambb_ingestion.py \
-            tests/test_ncaambb_store.py tests/test_ncaambb_people.py -q
+            tests/test_ncaambb_store.py tests/test_ncaambb_people.py \
+            tests/test_ncaambb_audit.py -q
       - name: Ingest seasons
         env:
           CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
@@ -60,6 +61,9 @@ jobs:
           if [ "$PEOPLE" != "true" ]; then args="$args --schedule-only"; fi
           python -m src.ncaambb.ingest --seasons "$SEASONS" $args \
             | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Audit people coverage
+        run: |
+          python -m src.ncaambb.audit_people | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Prove a second load changes nothing
         env:
           CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
