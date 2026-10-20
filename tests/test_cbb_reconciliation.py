@@ -17,7 +17,8 @@ from analysis.cbb_player_impact.reconcile import (clock_ordering_issues,
                                                   filtered_team_id,
                                                   lineup_seconds_by_team,
                                                   period_count, reconcile_game,
-                                                  reconcile_team_box_score)
+                                                  reconcile_team_box_score,
+                                                  substitution_stint_issues)
 
 
 def game(periods=2, home=70, away=60):
@@ -169,10 +170,40 @@ def test_clock_must_count_down_within_a_period():
     assert len(clock_ordering_issues(missing, 'subs')) == 1
 
 
-def test_equal_clock_substitutions_are_allowed():
-    # Five players can enter at one dead ball; equal clocks are not an error.
+def test_equal_clock_plays_are_allowed():
+    # Several events can share one dead ball; equal clocks are not an error.
     same = [dict(period=1, secondsRemaining=600)] * 5
-    assert clock_ordering_issues(same, 'substitutions') == []
+    assert clock_ordering_issues(same, 'plays') == []
+
+
+def sub(athlete=1, in_period=1, in_clock=1200, out_period=1, out_clock=600):
+    return dict(athleteId=athlete,
+                subIn=dict(period=in_period, secondsRemaining=in_clock),
+                subOut=dict(period=out_period, secondsRemaining=out_clock))
+
+
+def test_substitution_timing_is_read_from_the_nested_sub_in_and_sub_out():
+    # A substitution row has NO top level clock; reading one finds nothing.
+    rows = [sub(), sub(athlete=2, in_period=1, in_clock=600, out_period=2, out_clock=900)]
+    assert substitution_stint_issues(rows) == []
+    assert len(clock_ordering_issues(rows, 'substitutions')) == 2
+
+
+def test_a_stint_may_not_end_before_it_starts():
+    assert len(substitution_stint_issues([sub(out_clock=1300)])) == 1
+    assert len(substitution_stint_issues([sub(in_period=2, out_period=1)])) == 1
+
+
+def test_substitution_rows_missing_timing_or_identity_are_reported():
+    assert substitution_stint_issues([dict(athleteId=1)]) == \
+        ['substitution 0: missing subIn/subOut']
+    row = sub()
+    row['subOut'] = dict(period=1)
+    assert any('subOut has no period or clock' in i
+               for i in substitution_stint_issues([row]))
+    row = sub()
+    row['athleteId'] = None
+    assert any('no athlete id' in i for i in substitution_stint_issues([row]))
 
 
 def test_summary_reports_missing_snapshot_rather_than_claiming_success(tmp_path):

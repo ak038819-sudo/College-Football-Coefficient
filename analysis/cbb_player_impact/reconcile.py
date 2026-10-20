@@ -166,7 +166,10 @@ def lineup_seconds_by_team(lineups):
 
 
 def clock_ordering_issues(events, kind):
-    """Count non-monotonic clocks within a period. Basketball clocks count down."""
+    """Count non-monotonic clocks within a period. Basketball clocks count down.
+
+    For plays, `period` and `secondsRemaining` are top level fields.
+    """
     issues, last = [], {}
     for index, event in enumerate(events):
         period, clock = event.get('period'), event.get('secondsRemaining')
@@ -177,4 +180,37 @@ def clock_ordering_issues(events, kind):
         if previous is not None and clock > previous:
             issues.append(f'{kind} {index}: clock moves backwards in period {period}')
         last[period] = clock
+    return issues
+
+
+def substitution_stint_issues(subs):
+    """Check each substitution row's own stint, not the order rows arrive in.
+
+    A substitution row carries one athlete's stint with the timing nested under
+    `subIn` and `subOut`, each with its own `period` and `secondsRemaining`.
+    There is no top level clock, so reading one finds nothing. A stint must not
+    end before it starts: a later period, or the same period with the clock at
+    or below where it started.
+    """
+    issues = []
+    for index, row in enumerate(subs):
+        entering, leaving = row.get('subIn'), row.get('subOut')
+        if not isinstance(entering, dict) or not isinstance(leaving, dict):
+            issues.append(f'substitution {index}: missing subIn/subOut')
+            continue
+        if type(row.get('athleteId')) is not int:
+            issues.append(f'substitution {index}: no athlete id')
+        times = []
+        for label, side in (('subIn', entering), ('subOut', leaving)):
+            period, clock = side.get('period'), side.get('secondsRemaining')
+            if type(period) is not int or not _is_number(clock):
+                issues.append(f'substitution {index}: {label} has no period or clock')
+                times = None
+                break
+            times.append((period, clock))
+        if not times:
+            continue
+        (in_period, in_clock), (out_period, out_clock) = times
+        if out_period < in_period or (out_period == in_period and out_clock > in_clock):
+            issues.append(f'substitution {index}: stint ends before it starts')
     return issues

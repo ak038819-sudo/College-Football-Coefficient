@@ -14,11 +14,13 @@ from urllib.request import Request, urlopen
 if __package__:
     from .contract import pilot_export
     from .reconcile import (clock_ordering_issues, lineup_seconds_by_team,
-                            filtered_team_id, reconcile_game)
+                            filtered_team_id, reconcile_game,
+                            substitution_stint_issues)
 else:
     from contract import pilot_export
     from reconcile import (clock_ordering_issues, lineup_seconds_by_team,
-                           filtered_team_id, reconcile_game)
+                           filtered_team_id, reconcile_game,
+                           substitution_stint_issues)
 
 BASE = 'https://api.collegebasketballdata.com'
 # /games returns at most 3,000 records and /games/players at most 1,000 games.
@@ -146,7 +148,8 @@ def collect(season, team, limit, output, key, getter=fetch):
                     audits.append(audit_lineups(game, rows))
                     seconds_by_game[game['id']] = lineup_seconds_by_team(rows)
                 else:
-                    issues = clock_ordering_issues(rows, family)
+                    issues = (clock_ordering_issues(rows, family) if family == 'plays'
+                              else substitution_stint_issues(rows))
                     audits[-1]['issues'].extend(issues[:5])
                     audits[-1][f'{family}_clock_issues'] = len(issues)
                     audits[-1][f'{family}_events'] = len(rows)
