@@ -1,27 +1,25 @@
-name: Basketball player impact pilot
-
-# TEMPORARILY borrowed. Restored byte-identically to 9dcd184 afterwards.
+name: College basketball player-impact pilot
 
 on:
   workflow_dispatch:
     inputs:
-      mode:
-        description: "usage-only, or a full measurement"
+      season:
+        description: "Ending year (2026 means 2025-26)"
         type: choice
-        options: ["usage-only", "full"]
-        default: "usage-only"
+        options: ["2024", "2025", "2026"]
+        default: "2026"
+        required: true
 
 permissions:
   contents: read
 
-concurrency:
-  group: cbb-limit-probe
-  cancel-in-progress: false
-
 jobs:
-  probe:
+  pilot:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
+    concurrency:
+      group: cbb-player-impact-pilot
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v5
         with:
@@ -29,13 +27,29 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Ask the provider what it allows
+      - name: Install test runner
+        run: python -m pip install 'pytest>=7,<10'
+      - name: Validate prototype
+        run: python -m pytest tests/test_cbb_player_impact.py tests/test_cbb_integration_contract.py tests/test_cbb_reconciliation.py -q
+      - name: Collect three BYU games
         env:
           CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
-          MODE: ${{ inputs.mode }}
+          PILOT_SEASON: ${{ inputs.season }}
         run: |
-          set -o pipefail
-          args=""
-          if [ "$MODE" = "usage-only" ]; then args="--usage-only"; fi
-          python scripts/probe_cbbd_limits.py $args \
+          python analysis/cbb_player_impact/collect.py \
+            --season "$PILOT_SEASON" --team BYU --limit 3 \
+            --out analysis/cbb_player_impact/snapshots/pilot
+      - name: Summarize structural checks and minute reconciliation
+        if: always()
+        run: |
+          python analysis/cbb_player_impact/summarize.py \
+            --snapshot analysis/cbb_player_impact/snapshots/pilot \
             | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Preserve pilot snapshot and audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cbb-pilot-${{ inputs.season }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: analysis/cbb_player_impact/snapshots/pilot/
+          if-no-files-found: warn
+          retention-days: 30

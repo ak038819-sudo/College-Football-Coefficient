@@ -173,9 +173,27 @@ it from a 429, and measures the spacing that avoids one.
   cannot help, so no throttle exists.** 1,060 spent against a tier documented
   at 1,000 explains it.
 
-The remedy is a higher tier or waiting for the rolling window, and the
-diagnosis comes from asking the usage endpoint rather than inferring it from a
-429. Two reasons, both learned from that run. A season whose first
+Two further things, measured four hours later (run 39421405972, which cost
+three requests because `--usage-only` skips the data calls):
+
+- **The usage endpoint answers 200 while data endpoints are being refused.**
+  The key authenticates; the cap applies to data paths. So usage is always
+  diagnosable, which is why `--usage-only` exists.
+- **A refused request still counts.** `/teams` went from 102 to 114 across one
+  failed run of five attempts plus the earlier probe. Retrying a 429 spends
+  allowance to learn nothing, which is the strongest argument for stopping on
+  one rather than grinding through the seasons.
+- The seven-day totals are **~1,064 basketball against 7 football**, and the
+  football 7 are this probe's own calls. But nearly all the basketball spend
+  carries **today's** timestamps (`/games` last 07:16, `/games/players` 05:00,
+  `/plays` 04:20). A seven-day window containing a single day's work points at
+  a **daily** cap rather than a weekly one — in which case capacity returns at
+  the next UTC midnight, not in seven days.
+
+That last point is a hypothesis, not a measurement, and it is free to test:
+retry after 00:00 UTC. The remedy is otherwise a higher tier, and the
+diagnosis always comes from asking the usage endpoint rather than inferring it
+from a 429. Two reasons, both learned from that run. A season whose first
 request never cleared the limit means the quota is spent, so every later season
 would burn its full backoff to fail identically — 35 requests where 5 told the
 whole story. And a plain failure gets reported per season as "not stored",
