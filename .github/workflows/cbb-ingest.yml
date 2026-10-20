@@ -48,7 +48,7 @@ jobs:
         run: |
           python -m pytest tests/test_ncaambb_ingestion.py \
             tests/test_ncaambb_store.py tests/test_ncaambb_people.py \
-            tests/test_ncaambb_audit.py -q
+            tests/test_ncaambb_audit.py tests/test_ncaambb_box_cap.py -q
       - name: Ingest seasons
         env:
           CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}

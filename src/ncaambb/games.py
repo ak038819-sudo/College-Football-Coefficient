@@ -75,18 +75,16 @@ def game_day(game):
     return moment.astimezone(timezone.utc).date()
 
 
-def distinct_games(rows):
-    """How many distinct games a response covers, for a per-game cap."""
-    return len({row.get('gameId') for row in rows})
-
-
 def fetch_windowed(path, season, first, last, *, cap, count=len, day_of=None,
                    unit='records', getter=None, **kwargs):
     """Fetch one date window from `path`, splitting it if it reaches `cap`.
 
-    `count` measures the quantity the cap applies to: `/games` caps at 3,000
-    RECORDS, while `/games/players` caps at 1,000 GAMES, which is a different
-    limit on a different quantity. Returns (rows, windows_requested).
+    `count` measures the quantity the cap applies to, which is a property of
+    the endpoint and must be MEASURED rather than assumed: `/games` caps at
+    3,000 records and `/games/players` at 1,000, both on rows. A cap stated in
+    the wrong quantity is worse than none, because the threshold is then one no
+    response reaches and every truncation passes as a complete answer.
+    Returns (rows, windows_requested).
 
     Every row is checked to fall inside the window actually requested, so a
     provider that ignores the date filter is caught rather than trusted.

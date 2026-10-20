@@ -20,7 +20,7 @@ from .coverage import render, summarize_season
 from .games import fetch_season
 from .http import CbbdAuthError, CbbdError, Quota, get_json
 from .people import (box_score_people, fetch_box_scores, fetch_rosters,
-                     roster_players, roster_teams)
+                     one_sided_games, roster_players, roster_teams)
 from .store import (connect, load_season, record_snapshot, upsert_box_scores,
                     upsert_player_team_seasons, upsert_players,
                     upsert_roster_teams)
@@ -134,6 +134,7 @@ def ingest_people(connection, season, *, raw_root=None, reuse_cache=True,
                 rosters=len(rosters), people=stored_people,
                 memberships=memberships,
                 roster_only_teams=roster_only_teams,
+                half_games=len(one_sided_games(boxes)),
                 skipped_unknown_teams=unknown_teams, **lines)
 
 
@@ -218,6 +219,10 @@ def main(argv=None):
               f' {row["memberships"]} roster memberships,'
               f' {row["team_lines"]} team box scores,'
               f' {row["player_lines"]} player lines')
+        if row['half_games']:
+            print(f'    {row["half_games"]} games arrived with only one side\'s'
+                  ' box score, which is what a response truncated at the row'
+                  ' cap looks like')
         if row['roster_only_teams']:
             print(f'    {row["roster_only_teams"]} teams were named only by the'
                   " roster feed, not by the season's team list, and were"

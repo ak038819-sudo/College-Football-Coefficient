@@ -1,25 +1,34 @@
 """Rosters and box scores: the people layer of national ingestion.
 
-Two caps apply and they are different quantities. `/games` caps at 3,000
-RECORDS; `/games/players` caps at 1,000 GAMES. A season holds roughly 6,300
-games, so box scores need date windows sized by distinct games, and a calendar
-month is too coarse: a busy month alone exceeds the game cap.
+`/games/players` caps at 1,000 RECORDS, which is MEASURED, not assumed: the
+15 days of 2025-11-13..27 hold 821 games and 1,642 team rows, and one request
+for the whole window returns exactly 1,000 rows covering 501 games. The cap is
+therefore on rows and it cuts the 501st game in half, which is why a one-sided
+box score is evidence of truncation rather than of a half-played game.
 
-A player is identified by the provider's athlete id, never by name. Two people
-with one name stay two people, and one person who transfers stays one person
-with two team-season rows.
+An earlier version of this module capped on distinct GAMES at 1,000. That was
+wrong twice: the wrong quantity, and a threshold no response ever reached, so
+every window above about 500 games was silently truncated and 1,535 Division I
+games of one season had no box score at all.
+
+Windows are therefore small enough that a busy stretch stays under 1,000 rows
+before any split is needed; the split path still covers a window busier than
+that. A player is identified by the provider's athlete id, never by name. Two
+people with one name stay two people, and one person who transfers stays one
+person with two team-season rows.
 """
 
 from datetime import timedelta
 
-from .games import distinct_games, fetch_windowed, game_day, season_window
+from .games import fetch_windowed, game_day, season_window
 from .http import get_json
 
-# `/games/players` returns box scores for at most 1,000 games.
-BOX_SCORE_GAMES_CAP = 1000
-# Half-month windows keep a busy stretch under the game cap before any split is
-# needed; the split path still covers a window that turns out busier than that.
-BOX_SCORE_WINDOW_DAYS = 15
+# `/games/players` returns at most 1,000 ROWS, one per team per game.
+# Measured: see this module's docstring.
+BOX_SCORE_RECORD_CAP = 1000
+# The busiest single day of a season runs to about 200 rows, so five days stay
+# under the cap; the split path still covers a window busier than that.
+BOX_SCORE_WINDOW_DAYS = 5
 
 
 def fetch_rosters(season, *, getter=None, **kwargs):
@@ -48,8 +57,21 @@ def box_score_day(row):
     return game_day(row)
 
 
+def one_sided_games(rows):
+    """Games with only one team's box score.
+
+    The row cap cuts a game in half, so this is the direct evidence that a
+    response was truncated and the split did not catch it. It is reported
+    rather than raised, because the provider could also simply hold one side.
+    """
+    sides = {}
+    for row in rows:
+        sides.setdefault(row.get('gameId'), set()).add(row.get('teamId'))
+    return sorted(game for game, teams in sides.items() if len(teams) != 2)
+
+
 def fetch_box_scores(season, *, getter=None, window_days=None, **kwargs):
-    """Every team-game box score of a season, under the 1,000-game cap.
+    """Every team-game box score of a season, under the 1,000-row cap.
 
     Returns (rows, windows_requested). Each row is one team's side of one game.
     """
@@ -57,9 +79,8 @@ def fetch_box_scores(season, *, getter=None, window_days=None, **kwargs):
     collected, windows = [], 0
     for start, end in box_score_windows(first, last, window_days):
         rows, count = fetch_windowed(
-            '/games/players', season, start, end, cap=BOX_SCORE_GAMES_CAP,
-            count=distinct_games, day_of=box_score_day, unit='games',
-            getter=getter, **kwargs)
+            '/games/players', season, start, end, cap=BOX_SCORE_RECORD_CAP,
+            day_of=box_score_day, unit='records', getter=getter, **kwargs)
         collected.extend(rows)
         windows += count
     return merge_box_scores(collected), windows

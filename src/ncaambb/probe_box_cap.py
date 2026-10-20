@@ -17,9 +17,18 @@ import argparse
 import sys
 from datetime import date, timedelta
 
-from .games import _stamp, distinct_games
+from .games import _stamp
 from .http import CbbdAuthError, CbbdError, Quota, get_json
 from .people import box_score_day
+
+
+def distinct_games(rows):
+    """How many distinct games a response covers.
+
+    The cap on `/games/players` is on rows, so the game count is what makes a
+    truncation legible: 1,000 rows is 501 games, with the last one halved.
+    """
+    return len({row.get('gameId') for row in rows})
 
 
 def request(path, season, first, last, *, getter=None, **kwargs):

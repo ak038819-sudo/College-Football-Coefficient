@@ -15,10 +15,12 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.ncaambb.http import CbbdError
-from src.ncaambb.people import (BOX_SCORE_GAMES_CAP, box_score_day,
+from src.ncaambb.people import (BOX_SCORE_RECORD_CAP,
+                                BOX_SCORE_WINDOW_DAYS, box_score_day,
                                 box_score_people, box_score_windows,
                                 fetch_box_scores, fetch_rosters,
-                                merge_box_scores, roster_players)
+                                merge_box_scores, one_sided_games,
+                                roster_players)
 from src.ncaambb.games import season_window
 
 
@@ -68,10 +70,13 @@ def test_a_season_of_rosters_is_one_request_because_team_is_optional():
 
 # --- the game cap, which is not the record cap ------------------------------
 
-def test_the_box_score_cap_counts_games_not_rows():
-    """Two rows per game means 1,000 games is 2,000 rows. Measuring rows
-    against a game cap would let a truncated window through."""
-    assert BOX_SCORE_GAMES_CAP == 1000
+def test_the_box_score_cap_counts_rows_because_that_is_what_was_measured():
+    """Measured on the provider: 2025-11-13..27 holds 821 games and 1,642
+    rows, and one request for the whole window returns exactly 1,000 rows
+    covering 501 games. An earlier version capped on distinct GAMES at 1,000,
+    a threshold no response ever reaches, so every busy window was truncated
+    in silence."""
+    assert BOX_SCORE_RECORD_CAP == 1000
 
 
 def test_a_window_at_the_game_cap_is_split_until_it_is_not():
@@ -98,7 +103,7 @@ def test_a_window_at_the_game_cap_is_split_until_it_is_not():
     used = [(date.fromisoformat(start), date.fromisoformat(end))
             for _, start, end in asked
             if len({row['gameId'] for row in rows_for(start, end)})
-            < BOX_SCORE_GAMES_CAP]
+            < BOX_SCORE_RECORD_CAP]
     assert windows == len(used)
     # A 15-day November window holds 2,250 games, so splitting had to happen.
     assert len(used) > len(box_score_windows(*season_window(2026), days=15))
@@ -115,26 +120,48 @@ def test_a_window_at_the_game_cap_is_split_until_it_is_not():
     assert len({row['gameId'] for row in rows}) == expected
 
 
-def test_more_rows_than_the_cap_is_not_over_the_cap_if_the_games_are_fewer():
-    """The cap is on GAMES. Every game yields two rows, one per team, so 900
-    games is 1,800 rows: measuring rows would split a window that was never
-    truncated, and the same mistake measured the other way round would miss a
-    truncation on `/games`, where the cap really is on records."""
+def test_a_window_over_the_row_cap_splits_though_its_games_are_fewer():
+    """900 games is 1,800 rows and well over a 1,000-ROW cap. Measuring games
+    against that cap is what let the real truncation through: 501 games was
+    never 1,000 of anything."""
     def rows_for(start, end):
         day = date.fromisoformat(start)
-        return [box(game=n, team=team, day=f'{day}T19:00:00Z')
-                for n in range(900) for team in (10, 20)]
+        span = (date.fromisoformat(end) - day).days + 1
+        per = max(1, 900 // 15)
+        return [box(game=f'{day}-{n}', team=team, day=f'{day}T19:00:00Z')
+                for n in range(per * span) for team in (10, 20)]
 
     getter, asked = recorder(rows_for)
-    rows, windows = fetch_box_scores(2026, getter=getter, window_days=400)
-    assert windows == 1 and len(asked) == 1
-    assert len(rows) == 1800
+    rows, windows = fetch_box_scores(2026, getter=getter, window_days=15)
+    assert windows > len(box_score_windows(*season_window(2026), days=15))
+    # Every request whose rows were kept came back under the cap.
+    kept = [(s, e) for _, s, e in asked
+            if len(rows_for(s, e)) < BOX_SCORE_RECORD_CAP]
+    assert kept, 'something must have been small enough to keep'
+    assert one_sided_games(rows) == [], 'a complete fetch has no half game'
+
+
+def test_the_default_window_is_small_enough_for_the_busiest_day():
+    """The busiest measured day runs to about 200 rows, so a window of five
+    days stays under 1,000 without needing a split at all."""
+    assert BOX_SCORE_WINDOW_DAYS * 200 <= BOX_SCORE_RECORD_CAP
+
+
+def test_a_game_with_one_side_is_reported_as_a_half_game():
+    """The row cap cuts a game in half. That half is the direct evidence a
+    response was truncated, so it must be visible rather than stored quietly."""
+    assert one_sided_games([box(game=1, team=10), box(game=1, team=20),
+                            box(game=2, team=10)]) == [2]
+
+
+def test_a_game_whose_two_rows_name_one_team_is_also_a_half_game():
+    assert one_sided_games([box(game=3, team=10), box(game=3, team=10)]) == [3]
 
 
 def test_a_single_day_over_the_cap_fails_rather_than_truncating():
     def rows_for(start, end):
         return [box(game=n, day=f'{start}T19:00:00Z')
-                for n in range(BOX_SCORE_GAMES_CAP + 5)]
+                for n in range(BOX_SCORE_RECORD_CAP + 5)]
 
     getter, _ = recorder(rows_for)
     with pytest.raises(CbbdError, match='cannot be split'):
