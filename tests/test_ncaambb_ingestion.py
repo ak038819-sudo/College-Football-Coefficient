@@ -19,7 +19,8 @@ from src.ncaambb.coverage import classify_game, render, summarize_season
 from src.ncaambb.games import (GAMES_RECORD_CAP, fetch_season, fetch_window,
                                game_day, halve, merge, month_windows,
                                season_window)
-from src.ncaambb.http import CbbdAuthError, CbbdError, Quota, get_json
+from src.ncaambb.http import (CbbdAuthError, CbbdError,
+                             CbbdRateLimitError, Quota, get_json)
 from src.ncaambb.probe_coverage import main as probe_main, probe
 
 
@@ -417,3 +418,68 @@ def test_the_rendered_report_names_the_exclusions():
     text = '\n'.join(render([summary]))
     assert 'non-Division I opponent: 1' in text
     assert '| 2026 | 1 | 1 | 0 |' in text
+
+
+# --- a rate limit is not a coverage result ----------------------------------
+
+def test_an_exhausted_rate_limit_raises_its_own_error():
+    # A plain CbbdError would be caught by the per-season handler and reported
+    # as "not stored", which reads as "the provider has no games for 2015".
+    def opener(request, timeout=None):
+        raise http_error(429)
+
+    with pytest.raises(CbbdRateLimitError, match='quota looks exhausted'):
+        get_json('/teams', key='k', attempts=2, sleep=lambda _: None,
+                 opener=opener)
+
+
+def test_a_rate_limit_error_is_still_a_cbbd_error():
+    # Callers that only know CbbdError must keep catching it.
+    assert issubclass(CbbdRateLimitError, CbbdError)
+
+
+def test_another_retryable_status_is_not_reported_as_a_rate_limit():
+    def opener(request, timeout=None):
+        raise http_error(503)
+
+    with pytest.raises(CbbdError) as caught:
+        get_json('/teams', key='k', attempts=2, sleep=lambda _: None,
+                 opener=opener)
+    assert not isinstance(caught.value, CbbdRateLimitError)
+
+
+def test_the_ingestion_stops_at_the_first_unclearable_rate_limit(tmp_path,
+                                                                 capsys,
+                                                                 monkeypatch):
+    """Seven seasons each burning their full backoff to fail identically is
+    what one rehearsal actually did: 35 requests where 5 told the whole story,
+    and seven seasons reported as "not stored" as though the data were absent.
+    """
+    from src.ncaambb.ingest import main
+    # Set here rather than relied on from the environment: without it the run
+    # aborts with the auth code instead, and the assertions below would be
+    # checking the wrong failure. CI runs these tests with no key.
+    monkeypatch.setenv('CBBD_API_KEY', 'test-key')
+    asked = []
+
+    def opener(request, timeout=None):
+        asked.append(request.full_url)
+        raise http_error(429)
+
+    import src.ncaambb.http as module
+    original = module.urlopen
+    module.urlopen = opener
+    try:
+        code = main(['--seasons', '2015,2016,2017', '--schedule-only',
+                     '--database', str(tmp_path / 'db.sqlite'),
+                     '--raw-root', str(tmp_path / 'raw')])
+    finally:
+        module.urlopen = original
+    out = capsys.readouterr().out
+    assert code == 1
+    # Only the first season was asked about.
+    assert all('season=2015' in url for url in asked), asked
+    assert 'Stopped at season 2015' in out
+    assert '2016' in out and '2017' in out
+    assert 'NOT a statement about coverage' in out
+    assert 'not stored' not in out

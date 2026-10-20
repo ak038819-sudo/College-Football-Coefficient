@@ -32,6 +32,20 @@ class CbbdError(RuntimeError):
     """A CBBD request failed. Never carries the key or a response body."""
 
 
+class CbbdRateLimitError(CbbdError):
+    """The provider's rate limit was not survivable by waiting.
+
+    Separated for the same reason as CbbdAuthError: it is not a data result.
+    Once a season's very first request has exhausted its retries on 429, every
+    later season will do the same, so a caller that tolerates a per-season gap
+    must stop rather than report seven seasons as "not stored" -- which reads
+    as "the provider has no games" and is the opposite of what happened. It
+    also stops the run spending thirty seconds of backoff per remaining season
+    to learn the same thing again: one rehearsal sent 35 requests where 5 would
+    have told the whole story.
+    """
+
+
 class CbbdAuthError(CbbdError):
     """The key is missing, rejected or not entitled.
 
@@ -137,4 +151,8 @@ def get_json(path, params=None, *, key=None, quota=None, attempts=ATTEMPTS,
         # window reopens and the curve below is only a guess.
         rest(told if told is not None
              else BACKOFF_SECONDS * 2 ** (attempt - 1))
+    if last == 'HTTP 429':
+        raise CbbdRateLimitError(
+            f'CBBD rate limit not cleared at {path} after {attempts}'
+            ' attempts; the quota looks exhausted rather than momentarily busy')
     raise CbbdError(f'CBBD request to {path} failed after {attempts} attempts ({last})')

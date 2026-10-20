@@ -129,13 +129,28 @@ decisions, and a dispatcher asking for the first does not want the second —
 which also makes `publish: false` the safe way to warm the cache for a season
 without touching the live export.
 
-**A rate limit is honoured rather than guessed at.** `src/ncaambb/http.py`
+**A rate limit is honoured rather than guessed at, and a spent quota stops the
+run.** `src/ncaambb/http.py`
 backed off 2, 4, 8 and 16 seconds and gave up — thirty seconds against a
 window that was longer. It now reads `Retry-After` and waits as long as the
 server asked, capped at two minutes so a wrong or hostile value cannot park a
 run. Only the integer-seconds form is read; the HTTP-date form is legal but
 CBBD does not send it, and parsing it would mean trusting a clock difference
 to decide how long to sleep.
+
+In practice CBBD's 429 carries no `Retry-After` at all, which the second
+rehearsal established the hard way: every one of seven seasons failed on its
+very first request, 35 requests and 28 retries over three and a half minutes,
+nothing stored. So a 429 that survives its retries now raises its own
+`CbbdRateLimitError` and the ingestion **stops** on it, as it already did for
+a rejected key. Two reasons, both learned from that run. A season whose first
+request never cleared the limit means the quota is spent, so every later season
+would burn its full backoff to fail identically — 35 requests where 5 told the
+whole story. And a plain failure gets reported per season as "not stored",
+which reads as *the provider has no games for 2015*: the exact
+access-failure-as-absent-coverage confusion the auth path was separated out to
+avoid. The run now names the seasons it never asked about and says plainly that
+this is not a statement about coverage.
 
 ## The season being played is not judged as a finished one
 

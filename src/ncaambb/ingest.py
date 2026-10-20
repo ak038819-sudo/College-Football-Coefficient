@@ -18,7 +18,8 @@ from pathlib import Path
 
 from .coverage import render, summarize_season
 from .games import fetch_season
-from .http import CbbdAuthError, CbbdError, Quota, get_json
+from .http import (CbbdAuthError, CbbdError, CbbdRateLimitError, Quota,
+                   get_json)
 from .people import (box_score_people, fetch_box_scores, fetch_rosters,
                      one_sided_games, roster_players, roster_teams)
 from .store import (connect, load_season, record_snapshot, upsert_box_scores,
@@ -185,6 +186,7 @@ def main(argv=None):
     quota = Quota()
     connection = connect(args.database)
     summaries, people, failed = [], [], []
+    rate_limited = None
     try:
         for season in seasons:
             try:
@@ -201,6 +203,15 @@ def main(argv=None):
                 # Not a coverage result. Stop rather than report absent data.
                 print(f'Cannot reach the provider: {exc}', file=sys.stderr)
                 return 2
+            except CbbdRateLimitError as exc:
+                # Also not a coverage result, and also not worth continuing.
+                # A season whose first request never cleared the limit means
+                # the quota is spent, so the seasons after it would each burn
+                # their full backoff and fail identically -- and would then be
+                # reported as "not stored", which reads as absent data.
+                print(f'Rate limited by the provider: {exc}', file=sys.stderr)
+                rate_limited = season
+                break
             except (CbbdError, ValueError) as exc:
                 failed.append(dict(season=season, error=str(exc)))
     finally:
@@ -209,6 +220,15 @@ def main(argv=None):
     print('\n'.join(render(summaries)))
     for problem in failed:
         print(f'\n- season {problem["season"]} was not stored: {problem["error"]}')
+    if rate_limited is not None:
+        remaining = [year for year in seasons if year >= rate_limited]
+        print(f'\nStopped at season {rate_limited}: the provider\'s rate'
+              ' limit did not clear. This is NOT a statement about coverage;'
+              f' {len(remaining)} season(s) were not asked for at all'
+              f' ({", ".join(str(year) for year in remaining)}). Whatever was'
+              ' fetched before this point is cached and a later run will reuse'
+              ' it, so re-running once the quota recovers resumes rather than'
+              ' starts over.')
     print(f'\nRequests sent: {quota.requests} ({quota.retries} retries)')
     for row in summaries:
         print(f'- season {row["season"]}: stored {row["stored_games"]} games,'
@@ -238,7 +258,7 @@ def main(argv=None):
         if row['points_mismatches']:
             print(f'    {row["points_mismatches"]} box scores disagree with the'
                   " game's own final score")
-    return 1 if failed or not summaries else 0
+    return 1 if failed or rate_limited is not None or not summaries else 0
 
 
 if __name__ == '__main__':
