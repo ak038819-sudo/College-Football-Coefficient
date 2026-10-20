@@ -103,6 +103,17 @@ conference/playoff rules, week selectors or person-ID lookup tables.
    The interface contract is [`basketball-ui.md`](basketball-ui.md), written to
    Austin's direction of 2026-10-20: a league selector beneath the wordmark,
    the existing bottom bar kept, and everything league-scoped behind it.
+   DONE 2026-10-20: `ui/basketball.html`, unlinked — no football file points
+   at it and a test asserts that. `ui/ncaambb_app.js` holds the league rules:
+   football keeps the bare route (`#section=rankings&view=top25`) and
+   basketball states `league=ncaambb`, with a test asserting football's own
+   router returns an identical route either way. Favorites are namespaced
+   (`elocast.favorites.ncaambb.v1`), the football key is never re-read, and
+   following in one league only offers the other. Season labels are the
+   `2025-26` form from the ending year. A missing feed, a sample and an
+   unknown schema all draw the refusal panel and no board; a stale export is
+   still drawn, badged. Verified at 430px in Chromium as well as in the
+   suite. 53 tests.
 6. Validate publishing ownership, cache behavior and last-good snapshot rollback;
    then enable the sport selector. A basketball fetch failure must leave football
    refresh running and basketball's last valid snapshot visibly marked stale.

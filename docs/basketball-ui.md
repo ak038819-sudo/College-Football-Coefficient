@@ -6,7 +6,10 @@ across sports without a redesign. This file is the contract B05 is built
 against, with the places it meets measured data called out, because three of
 the elements below have no data behind them yet.
 
-Nothing here is built. B05 ships **unlinked**, behind the B04 publisher gate.
+BUILT 2026-10-20, unlinked: `ui/basketball.html` and `ui/ncaambb_app.js`,
+behind the B04 publisher gate. Where this file says a thing is not built, read
+the note at the end of the section; three of the elements below still have no
+data behind them and the page says so rather than inventing it.
 The data behind it is in [`basketball-ingestion.md`](basketball-ingestion.md)
 and [`basketball-coverage.md`](basketball-coverage.md); the release gates are
 in [`basketball-integration.md`](basketball-integration.md).
@@ -151,3 +154,24 @@ the same ceiling the moment it has a live feed at all.
    published before it, and a production loader must refuse a team sample or an
    unsupported schema rather than render it as national rankings.
 3. Then B05 builds this, unlinked, and B06 turns the selector on.
+
+## What was built, and what it does instead
+
+- **The league selector** is the segmented control beneath the wordmark. In the
+  preview the football option navigates to `dashboard.html` rather than
+  switching in place, because football still lives on its own page; the switch
+  logic that keeps a destination is in `switchLeague()` and is tested.
+- **My teams** is not in the preview. The favorites layer under it is:
+  namespaced storage, no re-reading of football's key, and an offer that never
+  acts. The card itself waits for the per-league home screen.
+- **The scoreboard** has the date strip with Today centred, the four filters,
+  and the undecided bucket after the timed games. The `Live` filter returns
+  nothing, honestly, because there is no basketball live feed: it is kept so
+  the control matches football's.
+- **No card shows a clock**, and a test asserts no status line anywhere
+  contains one. A missing score renders as nothing, never as a zero.
+- **Stats is shown disabled** rather than hidden. A tab that vanishes between
+  leagues is more confusing than one that says it is not ready yet.
+- **Freshness** is a badge that reads `Stale · updated 26h ago` in red, or the
+  plain age in green. A stale export is still drawn, because it is the last
+  good snapshot.
