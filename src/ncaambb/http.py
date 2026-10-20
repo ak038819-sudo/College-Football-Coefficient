@@ -33,16 +33,21 @@ class CbbdError(RuntimeError):
 
 
 class CbbdRateLimitError(CbbdError):
-    """The provider's rate limit was not survivable by waiting.
+    """The provider refused with 429 and retrying did not clear it.
 
     Separated for the same reason as CbbdAuthError: it is not a data result.
-    Once a season's very first request has exhausted its retries on 429, every
-    later season will do the same, so a caller that tolerates a per-season gap
-    must stop rather than report seven seasons as "not stored" -- which reads
-    as "the provider has no games" and is the opposite of what happened. It
-    also stops the run spending thirty seconds of backoff per remaining season
-    to learn the same thing again: one rehearsal sent 35 requests where 5 would
-    have told the whole story.
+    A plain CbbdError is caught per season and printed as "not stored", which
+    reads as "the provider has no games for 2015" -- an access failure wearing
+    absent coverage's clothes. It also lets the caller stop instead of spending
+    a full backoff per remaining season to learn the same thing: one rehearsal
+    sent 35 requests where 5 told the whole story.
+
+    This says nothing about why. It deliberately does NOT claim the account's
+    allowance is spent: that reading was wrong once already, when the account
+    still had tens of thousands of calls left and the refusal was a
+    short-window rate limit instead. The two need different handling -- a spent
+    allowance can only be waited out, while a rate limit is avoided by pacing
+    requests -- so neither is asserted from a 429 alone.
     """
 
 
@@ -153,6 +158,8 @@ def get_json(path, params=None, *, key=None, quota=None, attempts=ATTEMPTS,
              else BACKOFF_SECONDS * 2 ** (attempt - 1))
     if last == 'HTTP 429':
         raise CbbdRateLimitError(
-            f'CBBD rate limit not cleared at {path} after {attempts}'
-            ' attempts; the quota looks exhausted rather than momentarily busy')
+            f'CBBD refused {path} with HTTP 429 on all {attempts} attempts.'
+            ' Either requests are going out faster than the limit allows or'
+            " the account's allowance is spent; check the usage endpoint"
+            ' (scripts/probe_cbbd_limits.py) rather than assuming either.')
     raise CbbdError(f'CBBD request to {path} failed after {attempts} attempts ({last})')

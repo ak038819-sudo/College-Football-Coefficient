@@ -143,7 +143,23 @@ rehearsal established the hard way: every one of seven seasons failed on its
 very first request, 35 requests and 28 retries over three and a half minutes,
 nothing stored. So a 429 that survives its retries now raises its own
 `CbbdRateLimitError` and the ingestion **stops** on it, as it already did for
-a rejected key. Two reasons, both learned from that run. A season whose first
+a rejected key.
+
+That error deliberately does not say *why*. The first reading of it here was
+that the account's allowance was spent — and that was wrong: the account still
+had more than 27,000 calls, and what refused the requests was a short-window
+rate limit. The two need opposite responses. A spent allowance can only be
+waited out; a rate limit is avoided by **pacing requests so it is never
+tripped**, which beats any amount of retrying. `scripts/probe_cbbd_limits.py`
+asks the provider's usage endpoint which one is in play rather than inferring
+it from a 429, and measures the spacing that avoids one.
+
+Public documentation also indicates the football and basketball APIs draw on
+**one shared allowance**. If so, a basketball backfill spends football's
+budget, and the plan's rule that a basketball provider failure must not disturb
+football does not hold automatically at the account level — only at the
+workflow level, which is where this file's separation works. The probe reports
+the per-sport split so the claim can be checked rather than assumed. Two reasons, both learned from that run. A season whose first
 request never cleared the limit means the quota is spent, so every later season
 would burn its full backoff to fail identically — 35 requests where 5 told the
 whole story. And a plain failure gets reported per season as "not stored",

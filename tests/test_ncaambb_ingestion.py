@@ -422,13 +422,29 @@ def test_the_rendered_report_names_the_exclusions():
 
 # --- a rate limit is not a coverage result ----------------------------------
 
-def test_an_exhausted_rate_limit_raises_its_own_error():
+def test_a_rate_limit_error_does_not_claim_the_allowance_is_spent():
+    """It was read that way once while the account had tens of thousands of
+    calls left. A 429 does not distinguish going too fast from being out of
+    budget, and the two are handled differently."""
+    def opener(request, timeout=None):
+        raise http_error(429)
+
+    with pytest.raises(CbbdRateLimitError) as caught:
+        get_json('/teams', key='k', attempts=2, sleep=lambda _: None,
+                 opener=opener)
+    message = str(caught.value)
+    assert 'faster than the limit allows' in message
+    assert "allowance is spent" in message  # named as a possibility, not a fact
+    assert 'Either' in message
+
+
+def test_an_unclearable_rate_limit_raises_its_own_error():
     # A plain CbbdError would be caught by the per-season handler and reported
     # as "not stored", which reads as "the provider has no games for 2015".
     def opener(request, timeout=None):
         raise http_error(429)
 
-    with pytest.raises(CbbdRateLimitError, match='quota looks exhausted'):
+    with pytest.raises(CbbdRateLimitError, match='HTTP 429 on all'):
         get_json('/teams', key='k', attempts=2, sleep=lambda _: None,
                  opener=opener)
 

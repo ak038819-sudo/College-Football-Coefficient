@@ -204,10 +204,10 @@ def main(argv=None):
                 print(f'Cannot reach the provider: {exc}', file=sys.stderr)
                 return 2
             except CbbdRateLimitError as exc:
-                # Also not a coverage result, and also not worth continuing.
-                # A season whose first request never cleared the limit means
-                # the quota is spent, so the seasons after it would each burn
-                # their full backoff and fail identically -- and would then be
+                # Also not a coverage result, and also not worth continuing:
+                # whatever is behind the 429, it held for every attempt on this
+                # season's first request, so the seasons after it would each
+                # burn a full backoff to fail the same way -- and would then be
                 # reported as "not stored", which reads as absent data.
                 print(f'Rate limited by the provider: {exc}', file=sys.stderr)
                 rate_limited = season
@@ -222,8 +222,9 @@ def main(argv=None):
         print(f'\n- season {problem["season"]} was not stored: {problem["error"]}')
     if rate_limited is not None:
         remaining = [year for year in seasons if year >= rate_limited]
-        print(f'\nStopped at season {rate_limited}: the provider\'s rate'
-              ' limit did not clear. This is NOT a statement about coverage;'
+        print(f'\nStopped at season {rate_limited}: the provider refused with'
+              ' HTTP 429 and retrying did not clear it. This is NOT a'
+              ' statement about coverage;'
               f' {len(remaining)} season(s) were not asked for at all'
               f' ({", ".join(str(year) for year in remaining)}). Whatever was'
               ' fetched before this point is cached and a later run will reuse'
