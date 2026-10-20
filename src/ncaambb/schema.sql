@@ -150,3 +150,53 @@ CREATE TABLE IF NOT EXISTS player_game_stat (
 
 CREATE INDEX IF NOT EXISTS player_game_by_player
     ON player_game_stat(player_key);
+
+-- OUR ratings, and only ours. The provider's per-game Elo is still absent
+-- from `game`, `team` and `team_season`, and a test asserts that; these tables
+-- hold what src/ncaambb/elo.py computed, stamped with the exact configuration
+-- it ran with, so a rating can never be read without knowing which model made
+-- it or what that model scored on a season it had not seen.
+CREATE TABLE IF NOT EXISTS rating_model (
+    model_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT    NOT NULL UNIQUE,
+    config          TEXT    NOT NULL,
+    fitted_on       TEXT,
+    held_out        TEXT,
+    holdout_brier   REAL,
+    holdout_games   INTEGER,
+    created_at      TEXT    NOT NULL,
+    snapshot_id     INTEGER REFERENCES snapshot(snapshot_id)
+);
+
+-- A team's rating at the END of a season. Keyed by model as well as season, so
+-- two models can be stored side by side and never averaged together.
+CREATE TABLE IF NOT EXISTS team_rating (
+    team_key      TEXT    NOT NULL REFERENCES team(team_key),
+    season        INTEGER NOT NULL,
+    model_id      INTEGER NOT NULL REFERENCES rating_model(model_id),
+    rating        REAL    NOT NULL,
+    games_counted INTEGER NOT NULL,
+    updated_at    TEXT    NOT NULL,
+    PRIMARY KEY (team_key, season, model_id)
+);
+
+CREATE INDEX IF NOT EXISTS rating_by_season
+    ON team_rating(season, model_id);
+
+-- The per-game chain. Each game's postgame rating is the next game's pregame
+-- rating for that team, which is what makes a replay auditable rather than a
+-- number to take on trust. `counted = 0` is a game the model declined to learn
+-- from (unplayed, cancelled or level) and its change is 0, never a half-win.
+CREATE TABLE IF NOT EXISTS rating_game (
+    game_key      TEXT    NOT NULL REFERENCES game(game_key),
+    model_id      INTEGER NOT NULL REFERENCES rating_model(model_id),
+    home_pregame  REAL    NOT NULL,
+    away_pregame  REAL    NOT NULL,
+    home_expected REAL    NOT NULL,
+    home_postgame REAL    NOT NULL,
+    away_postgame REAL    NOT NULL,
+    rating_change REAL    NOT NULL,
+    multiplier    REAL,
+    counted       INTEGER NOT NULL,
+    PRIMARY KEY (game_key, model_id)
+);

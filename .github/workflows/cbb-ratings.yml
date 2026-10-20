@@ -1,0 +1,131 @@
+name: College basketball ratings
+
+# Ingests a range of seasons' schedules, fits the Elo parameters on all but the
+# last, scores the last one, and replays the archive with what the fit chose.
+#
+# Box scores are not needed here and are not fetched: a rating reads the final
+# score, which the schedule endpoint already carries. That keeps a fit run to
+# about a dozen requests a season.
+#
+# This does NOT commit and does NOT publish. The B04 export gate does not exist
+# yet, so the database and the fit report stay inside the run and leave as an
+# artifact. Football refresh is untouched.
+
+on:
+  workflow_dispatch:
+    inputs:
+      seasons:
+        description: "Comma-separated ending years, oldest first"
+        type: string
+        default: "2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026"
+        required: true
+      holdout:
+        description: "Ending year to score; blank means the latest ingested"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  ratings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    concurrency:
+      group: cbb-ratings
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install test runner
+        run: python -m pip install 'pytest>=7,<10'
+      - name: Validate before spending quota
+        run: |
+          python -m pytest tests/test_ncaambb_elo.py tests/test_ncaambb_store.py \
+            tests/test_ncaambb_ingestion.py -q
+      - name: Ingest the schedules
+        env:
+          CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
+          SEASONS: ${{ inputs.seasons }}
+        run: |
+          # `cmd | tee` reports tee's status, so without pipefail a crash in
+          # the ingestion passes this step. It did exactly that once.
+          set -o pipefail
+          python -m src.ncaambb.ingest --seasons "$SEASONS" --schedule-only \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Fit the model and score the held-out season
+        env:
+          HOLDOUT: ${{ inputs.holdout }}
+        run: |
+          set -o pipefail
+          args=""
+          if [ -n "$HOLDOUT" ]; then args="--holdout $HOLDOUT"; fi
+          python -m src.ncaambb.fit_elo $args \
+            --out data/ncaambb/processed/elo_fit.json \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Write the chosen configuration
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path('data/ncaambb/processed/elo_fit.json')
+                              .read_text(encoding='utf-8'))
+          chosen = report['chosen']
+          out = Path('config/ncaambb_model.json')
+          out.parent.mkdir(parents=True, exist_ok=True)
+          out.write_text(json.dumps({'elo': chosen}, indent=2, sort_keys=True)
+                         + '\n', encoding='utf-8')
+          print(out.read_text(encoding='utf-8'))
+          PY
+      - name: Replay the archive and store the ratings
+        run: |
+          set -o pipefail
+          python -m src.ncaambb.build_ratings \
+            --report data/ncaambb/processed/elo_fit.json \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Prove a second replay changes nothing
+        run: |
+          python - <<'PY'
+          import sqlite3, subprocess, sys
+          TABLES = ('rating_model', 'team_rating', 'rating_game')
+          def snapshot():
+              c = sqlite3.connect('db/ncaambb.db')
+              try:
+                  counts = {t: c.execute(f'SELECT COUNT(*) FROM {t}').fetchone()[0]
+                            for t in TABLES}
+                  ratings = c.execute('SELECT team_key, season, rating FROM'
+                                      ' team_rating ORDER BY team_key, season'
+                                      ).fetchall()
+                  return counts, ratings
+              finally:
+                  c.close()
+          before = snapshot()
+          run = subprocess.run([sys.executable, '-m', 'src.ncaambb.build_ratings',
+                                '--report', 'data/ncaambb/processed/elo_fit.json'],
+                               capture_output=True, text=True)
+          if run.returncode != 0:
+              sys.exit(f'second replay failed: {run.stderr[-3000:]}')
+          after = snapshot()
+          print(f'row counts before {before[0]} and after {after[0]}')
+          if before[0] != after[0]:
+              sys.exit('a second replay changed the row counts')
+          if before[1] != after[1]:
+              sys.exit('a second replay changed a rating; the replay is not '
+                       'deterministic')
+          print('Deterministic: a second replay produced identical ratings.')
+          PY
+      - name: Preserve the fit, the config and the database
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cbb-ratings-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            db/ncaambb.db
+            config/ncaambb_model.json
+            data/ncaambb/processed/elo_fit.json
+          if-no-files-found: warn
+          retention-days: 30

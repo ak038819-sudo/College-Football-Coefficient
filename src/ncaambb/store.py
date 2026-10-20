@@ -11,13 +11,14 @@ an absence is not.
 
 import json
 import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .coverage import classify_game
 from .games import game_day
 from .identity import entity_key, season_label
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 DEFAULT_PATH = Path('db/ncaambb.db')
 SCHEMA_SQL = Path(__file__).with_name('schema.sql')
 
@@ -39,15 +40,24 @@ def connect(path=None):
 
 
 def migrate(connection):
-    """Apply the schema. Idempotent: every statement is CREATE IF NOT EXISTS."""
+    """Apply the schema. Idempotent: every statement is CREATE IF NOT EXISTS.
+
+    Every version so far has only ADDED tables, so running the script brings
+    an older database forward and the stored version is then stamped. A
+    database from a FUTURE version is refused rather than written to, because
+    this code cannot know what that version changed.
+    """
     connection.executescript(SCHEMA_SQL.read_text(encoding='utf-8'))
     row = connection.execute('SELECT version FROM schema_version').fetchone()
     if row is None:
         connection.execute('INSERT INTO schema_version (version) VALUES (?)',
                            (SCHEMA_VERSION,))
-    elif row['version'] != SCHEMA_VERSION:
+    elif row['version'] > SCHEMA_VERSION:
         raise RuntimeError(f'Database is at schema version {row["version"]}, '
                            f'this code expects {SCHEMA_VERSION}')
+    elif row['version'] < SCHEMA_VERSION:
+        connection.execute('UPDATE schema_version SET version = ?',
+                           (SCHEMA_VERSION,))
     connection.commit()
     return SCHEMA_VERSION
 
@@ -418,3 +428,79 @@ def upsert_box_scores(connection, boxes, *, snapshot_id=None):
     connection.commit()
     return dict(team_lines=len(boxes) - skipped, player_lines=players_stored,
                 skipped_unknown_games=skipped, points_mismatches=mismatches)
+
+
+def record_rating_model(connection, name, config, *, fitted_on=None,
+                        held_out=None, holdout_brier=None, holdout_games=None,
+                        created_at=None, snapshot_id=None):
+    """Register the model a set of ratings came from, and return its id.
+
+    The exact configuration is stored as JSON alongside what it scored on the
+    season it was held out from. A rating with no model behind it is a number
+    to take on trust, which is the thing this project does not do.
+    """
+    stamp = created_at or datetime.now(timezone.utc).isoformat()
+    connection.execute(
+        'INSERT INTO rating_model (name, config, fitted_on, held_out,'
+        ' holdout_brier, holdout_games, created_at, snapshot_id)'
+        ' VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        ' ON CONFLICT(name) DO UPDATE SET config = excluded.config,'
+        '   fitted_on = excluded.fitted_on, held_out = excluded.held_out,'
+        '   holdout_brier = excluded.holdout_brier,'
+        '   holdout_games = excluded.holdout_games,'
+        '   created_at = excluded.created_at,'
+        '   snapshot_id = excluded.snapshot_id',
+        (name, json.dumps(config, sort_keys=True),
+         json.dumps(fitted_on) if fitted_on is not None else None,
+         json.dumps(held_out) if held_out is not None else None,
+         holdout_brier, holdout_games, stamp, snapshot_id))
+    connection.commit()
+    return connection.execute('SELECT model_id FROM rating_model WHERE name = ?',
+                              (name,)).fetchone()['model_id']
+
+
+def upsert_team_ratings(connection, model_id, rows, *, updated_at=None):
+    """Store each team's rating at the end of each season.
+
+    `rows` is an iterable of (team_key, season, rating, games_counted).
+    """
+    stamp = updated_at or datetime.now(timezone.utc).isoformat()
+    stored = 0
+    for team_key, season, rating, counted in rows:
+        connection.execute(
+            'INSERT INTO team_rating (team_key, season, model_id, rating,'
+            ' games_counted, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+            ' ON CONFLICT(team_key, season, model_id) DO UPDATE SET'
+            '   rating = excluded.rating,'
+            '   games_counted = excluded.games_counted,'
+            '   updated_at = excluded.updated_at',
+            (team_key, season, model_id, rating, counted, stamp))
+        stored += 1
+    connection.commit()
+    return stored
+
+
+def upsert_rating_games(connection, model_id, rows):
+    """Store the per-game chain, so a rating can be audited back to its games."""
+    stored = 0
+    for row in rows:
+        connection.execute(
+            'INSERT INTO rating_game (game_key, model_id, home_pregame,'
+            ' away_pregame, home_expected, home_postgame, away_postgame,'
+            ' rating_change, multiplier, counted)'
+            ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            ' ON CONFLICT(game_key, model_id) DO UPDATE SET'
+            '   home_pregame = excluded.home_pregame,'
+            '   away_pregame = excluded.away_pregame,'
+            '   home_expected = excluded.home_expected,'
+            '   home_postgame = excluded.home_postgame,'
+            '   away_postgame = excluded.away_postgame,'
+            '   rating_change = excluded.rating_change,'
+            '   multiplier = excluded.multiplier, counted = excluded.counted',
+            (row['game_key'], model_id, row['home_pregame'],
+             row['away_pregame'], row['home_expected'], row['home_postgame'],
+             row['away_postgame'], row['rating_change'], row['multiplier'],
+             row['counted']))
+        stored += 1
+    connection.commit()
+    return stored

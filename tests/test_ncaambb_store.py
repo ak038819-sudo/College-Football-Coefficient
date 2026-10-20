@@ -83,6 +83,49 @@ def test_a_database_from_a_future_version_is_refused(db):
         migrate(db)
 
 
+def test_an_older_database_is_brought_forward_rather_than_refused(db):
+    """Every version so far only ADDED tables, so an older database can be
+    migrated in place. Refusing it would mean rebuilding from scratch on every
+    schema addition, and stamping it without running the script would leave a
+    version number that lies."""
+    db.execute('UPDATE schema_version SET version = 1')
+    db.commit()
+    assert migrate(db) == SCHEMA_VERSION
+    assert db.execute('SELECT version FROM schema_version').fetchone()[
+        'version'] == SCHEMA_VERSION
+    # And the tables the newer version added are really there.
+    names = {row['name'] for row in db.execute(
+        "SELECT name FROM sqlite_master WHERE type = 'table'")}
+    assert {'rating_model', 'team_rating', 'rating_game'} <= names
+
+
+def test_our_rating_tables_are_separate_from_the_provider_feed(db):
+    """Our ratings are stored, the provider's are not. Keeping them in their
+    own tables is what lets both statements stay true."""
+    for table in ('game', 'team', 'team_season'):
+        columns = [row[1].lower() for row in db.execute(f'PRAGMA table_info({table})')]
+        assert not any('elo' in name for name in columns), table
+    model = [row[1] for row in db.execute('PRAGMA table_info(rating_model)')]
+    assert 'config' in model and 'holdout_brier' in model
+
+
+def test_no_module_reads_the_providers_own_elo_fields():
+    """The real guard. A column check cannot see a loader that reads
+    `homeTeamEloStart` and writes it somewhere else; this can."""
+    root = Path(__file__).resolve().parents[1]
+    offenders = []
+    for path in sorted((root / 'src' / 'ncaambb').rglob('*.py')):
+        text = path.read_text(encoding='utf-8')
+        for field in ('homeTeamElo', 'awayTeamElo'):
+            # Quoted, because that is how a provider field is READ. Naming it
+            # in prose is how these modules explain why they do not read it,
+            # and this test is not here to forbid the explanation.
+            for quoted in (f"'{field}", f'"{field}'):
+                if quoted in text:
+                    offenders.append(f'{path.name}:{field}')
+    assert not offenders, offenders
+
+
 def test_the_database_path_is_resolved_inside_the_call(tmp_path, monkeypatch):
     # A def-time default would bind db/ncaambb.db and ignore this.
     target = tmp_path / 'nested' / 'moved.db'
