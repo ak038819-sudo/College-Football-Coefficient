@@ -1,0 +1,59 @@
+{
+  "elo": {
+    "home_advantage": 50,
+    "initial_rating": 1500.0,
+    "k": 48,
+    "margin_exponent": 0.75,
+    "margin_max": 4.0,
+    "margin_min": 0.25,
+    "margin_model": "mov",
+    "offseason_retention": 0.5,
+    "points_per_elo": 0.052700184486065026,
+    "reference_margin": 11.672487587741825,
+    "scale": 400.0
+  },
+  "validation": {
+    "fit_games": 5852,
+    "fit_seasons": [
+      1999,
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007,
+      2008,
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018,
+      2019,
+      2020
+    ],
+    "holdout": {
+      "accuracy": 0.63272,
+      "brier": 0.22372,
+      "calibration_error": 0.04191,
+      "games": 1424,
+      "log_loss": 0.63998
+    },
+    "holdout_seasons": [
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+    ],
+    "measured_by": "src/nfl/fit_elo.py against the nflverse archive of 2026-10-21; reproducible with `python -m src.nfl.ingest && python -m src.nfl.fit_elo`",
+    "measured_on_elo_sha256": "d014bc3047cf91a0046c1d1bee28f4fcdf98aa6150f72e88d58e613978d23c1d",
+    "note": "The held-out scores are what that fit reported, to five decimal places. Fitted on 1999-2020 and scored once on 2021-2025, which the search never saw; the 2026 season was in progress and is neither fitted nor scored. measured_on_elo_sha256 is sha256 of the canonical \"elo\" block above, so changing a parameter without re-fitting fails the build instead of publishing this claim over it. Both k and offseason_retention were chosen at the edge of the first grid and the grid was widened until they were not; the values here sit inside it."
+  }
+}

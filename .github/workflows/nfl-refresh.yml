@@ -1,0 +1,204 @@
+name: Refresh NFL ratings
+
+# Rebuilds the NFL ratings from the committed model and replaces the published
+# export, and does neither if what it built would not pass the publish gate.
+#
+# Three rules, the same three the basketball refresh follows:
+#
+# 1. An NFL failure must not stop any other league's refresh. This is a
+#    separate workflow with its own concurrency group and its own health
+#    light; it never runs, waits on, or cancels anything of football's.
+# 2. A failure must not replace valid data with empty files. The export is
+#    built in a temporary directory and swapped in only once the gate passes,
+#    so an outage leaves yesterday's ratings exactly where they are and the
+#    page marks them stale on its own.
+# 3. The model is NOT refitted here. src/nfl/fit_elo.py chooses the parameters
+#    and a person commits them; a refresh that quietly refits would change the
+#    ratings' meaning on a schedule nobody is watching.
+#
+# Two things differ from the basketball refresh, both because of the source:
+#
+# - The raw archive is NOT committed. There is no request allowance to husband
+#   here: the source is one public file with no key and no cap, so refetching
+#   it is free, while committing a 600 KB blob every morning is not.
+# - It therefore has no secret and no quota step. If the fetch fails, it is a
+#   network failure, and the retry curve in src/nfl/source.py covers it.
+#
+# The commit carries `[skip ci]`, which is safe here: ui/nfl.html fetches the
+# committed export directly, so GitHub Pages republishing the files is all it
+# takes. Nothing needs the football deploy to regenerate a dashboard.
+
+on:
+  schedule:
+    # Early morning US time through the NFL season, which runs September to
+    # February. Out of season this publishes the same export and commits
+    # nothing.
+    - cron: "50 10 * 9,10,11,12,1,2 *"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Commit the export to main when the gate passes"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  # The health light below. Scoped to this workflow, so it can never close
+  # another league's alert.
+  issues: write
+
+concurrency:
+  # Deliberately NOT the deploy's group. A refresh that shared it would sit
+  # behind a deploy and then be cancelled by the next one.
+  group: nfl-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install the test runner
+        run: python -m pip install 'pytest>=7,<10'
+
+      - name: Validate before touching anything published
+        run: |
+          python -m pytest tests/test_nfl_data.py tests/test_nfl_elo.py \
+            tests/test_nfl_export.py -q
+
+      - name: Ingest the archive
+        run: |
+          # `cmd | tee` reports tee's status, so without pipefail a crash here
+          # would pass this step. It has done exactly that in this repository.
+          set -o pipefail
+          python -m src.nfl.ingest | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Replay the archive with the committed model
+        run: |
+          set -o pipefail
+          python -m src.nfl.build_ratings | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Build the export, which refuses rather than writes
+        run: |
+          set -o pipefail
+          python -m src.nfl.export --out "$RUNNER_TEMP/nfl-export" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Decide whether it may replace what is published
+        id: publish
+        env:
+          BUILT: ${{ runner.temp }}/nfl-export
+          ALLOWED: ${{ inputs.publish == null && 'true' || inputs.publish }}
+        run: |
+          set -o pipefail
+          python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import os, sys
+          sys.path.insert(0, '.')
+          from src.nfl import publish
+          built, live = os.environ['BUILT'], 'ui/data/nfl'
+          decision = publish.plan(built, live)
+          print(publish.render(decision))
+          allowed = os.environ.get('ALLOWED', 'true') == 'true'
+          if decision['publish'] and allowed:
+              publish.apply(decision, built, live)
+          elif decision['publish']:
+              print('\nNot committed: this run was dispatched with publishing off.')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
+              out.write(f"published={'true' if decision['publish'] and allowed else 'false'}\n")
+          # A refusal is a failed run, not a quiet one: the health light below
+          # is the only thing that would otherwise notice.
+          sys.exit(0 if decision['publish'] else 1)
+          PY
+
+      - name: Commit the export
+        if: steps.publish.outputs.published == 'true'
+        run: |
+          # This path only. A refresh must never carry a code change along
+          # with it, whatever happens to be in the tree.
+          PATHS="ui/data/nfl"
+          if [ -z "$(git status --porcelain $PATHS)" ]; then
+            echo "Nothing changed under $PATHS; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add $PATHS
+          git commit -m "Refresh the NFL export
+
+          Built by ${{ github.workflow }} run ${{ github.run_id }} from the
+          committed model in config/nfl_model.json. [skip ci]"
+          # Push back to the branch this ran on. On main that is the published
+          # site; on a branch it is that branch, which is how a release can be
+          # rehearsed without a scheduled job writing to main first.
+          BRANCH="${GITHUB_REF_NAME}"
+          for attempt in 1 2 3 4; do
+            if ! git fetch origin "$BRANCH"; then
+              echo "::warning::fetch failed (attempt $attempt)"
+              sleep $((attempt * attempt * 2)); continue
+            fi
+            # Rebase, then push. NEVER chain a push behind a merge with &&:
+            # the push still runs when the merge fails and sends a conflicted
+            # tree.
+            if ! git rebase FETCH_HEAD; then
+              git rebase --abort || true
+              echo "::error::Could not rebase onto $BRANCH; leaving the published export alone."
+              exit 1
+            fi
+            if git push origin "HEAD:$BRANCH"; then
+              echo "Pushed."
+              exit 0
+            fi
+            echo "::warning::push failed (attempt $attempt)"
+            sleep $((attempt * attempt * 2))
+          done
+          echo "::error::Could not push the refreshed export."
+          exit 1
+
+  alert-failure:
+    needs: refresh
+    if: always() && needs.refresh.result == 'failure' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Light the NFL health light
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/alert_pipeline_state.py --state failed \
+            --scope nfl-refresh \
+            --workflow "${{ github.workflow }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --consequence "NFL ratings stop refreshing while this is red. The other leagues are unaffected: each has its own workflow and its own alert. The published NFL export stays as it is and the page marks it stale."
+
+  alert-recovery:
+    needs: refresh
+    if: always() && needs.refresh.result == 'success' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Put the NFL health light out
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/alert_pipeline_state.py --state recovered \
+            --scope nfl-refresh \
+            --workflow "${{ github.workflow }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

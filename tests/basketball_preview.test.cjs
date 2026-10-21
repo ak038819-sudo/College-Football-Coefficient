@@ -161,8 +161,12 @@ test('the board renders, ranked, with ratings as whole numbers', async () => {
 test('the league selector is there, with basketball selected', async () => {
   const dom = await open();
   const buttons = [...dom.window.document.querySelectorAll('#leagues button')];
+  // The registry gained the NFL, so the selector offers three leagues. The
+  // assertion is the full list rather than a membership check: a league
+  // appearing here that has no page behind it is exactly the kind of thing
+  // this file exists to catch.
   assert.deepEqual(buttons.map(b => b.textContent),
-    ['College Football', "Men's Basketball"]);
+    ['College Football', "Men's Basketball", 'NFL']);
   const pressed = buttons.filter(b => b.getAttribute('aria-pressed') === 'true');
   assert.equal(pressed.length, 1);
   assert.equal(pressed[0].textContent, "Men's Basketball");
