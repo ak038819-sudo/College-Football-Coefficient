@@ -1,4 +1,4 @@
-/* Two leagues in one Elocast: the state behind the interface contract.
+/* Several leagues in one Elocast: the state behind the interface contract.
  *
  * docs/basketball-ui.md is the contract. This is the part of it that is pure
  * logic — which league a route names, what a league switch keeps, which
@@ -19,6 +19,7 @@
 
   var FOOTBALL = 'cfb';
   var BASKETBALL = 'ncaambb';
+  var NFL = 'nfl';
 
   var LEAGUES = [
     { slug: FOOTBALL, label: 'College Football', short: 'Football',
@@ -26,7 +27,8 @@
     // "Men's Basketball" in the picker: the women's game is a different
     // competition and an unqualified label would claim something we are not.
     { slug: BASKETBALL, label: 'College Basketball', short: "Men's Basketball",
-      picker: "Men's Basketball" }
+      picker: "Men's Basketball" },
+    { slug: NFL, label: 'NFL', short: 'NFL', picker: 'NFL' }
   ];
 
   var LEAGUE_KEY = 'elocast.league.v1';
@@ -39,7 +41,11 @@
   var SECTIONS = {
     cfb: ['home', 'stats', 'standings', 'teams', 'people', 'games',
           'rankings'],
-    ncaambb: ['home', 'standings', 'teams', 'people', 'games']
+    ncaambb: ['home', 'standings', 'teams', 'people', 'games'],
+    // The NFL export carries games, ratings and franchise records, and no
+    // people at all: the archive behind it is schedules and scores. People
+    // appears when there is a person to show, not before.
+    nfl: ['home', 'standings', 'teams', 'games', 'rankings']
   };
 
   function league(slug) {
@@ -382,13 +388,15 @@
   }
 
   function searchPlaceholder(slug) {
-    return slug === BASKETBALL ? 'Search college basketball…'
-      : 'Search college football…';
+    if (slug === BASKETBALL) return 'Search college basketball…';
+    if (slug === NFL) return 'Search the NFL…';
+    return 'Search college football…';
   }
 
   var api = {
     FOOTBALL: FOOTBALL,
     BASKETBALL: BASKETBALL,
+    NFL: NFL,
     LEAGUES: LEAGUES,
     LEAGUE_KEY: LEAGUE_KEY,
     FOOTBALL_FAVORITES_KEY: FOOTBALL_FAVORITES_KEY,

@@ -221,3 +221,8 @@ db/*backup*
 repo-snapshot*.zip
 # UI test dependencies
 node_modules/
+
+# The NFL archive is refetched rather than committed: the source is one
+# public file with no key and no request allowance, so a fresh copy costs
+# nothing while a 600 KB blob committed every morning would not.
+data/nfl/raw/
