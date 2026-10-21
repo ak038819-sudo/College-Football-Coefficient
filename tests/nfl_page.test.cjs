@@ -102,7 +102,17 @@ function site(overrides, schedule) {
   return { root, manifest: payload };
 }
 
-function settle(dom, ready, tries = 80) {
+// A page that works renders in about 80ms; this budget is 5 SECONDS because
+// the number is not a claim about speed, it is only how long to wait before
+// saying "never". `node --test` runs every file in parallel, so a jsdom page
+// loading its scripts from disk competes with three other files doing the
+// same, and a CI runner that is briefly busy can push one past a sub-second
+// budget while the page is perfectly correct. That happened on main at
+// 8ebbb63: two subtests failed with "the page never rendered" at 661ms, and
+// a red test job means the deploy never runs, so the site cannot publish.
+// Waiting longer costs nothing when the page renders and weakens no
+// assertion when it does not -- a broken page still fails, just later.
+function settle(dom, ready, tries = 500) {
   return new Promise((resolve, reject) => {
     let left = tries;
     const tick = () => {
