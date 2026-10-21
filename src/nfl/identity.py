@@ -20,7 +20,11 @@ say `STL` and rewriting history to `LA` would be a different lie.
 
 SPORT = 'nfl'
 PROVIDER = 'nflverse'
-KINDS = frozenset({'team', 'franchise', 'game'})
+# `coach` is keyed by the source's name string, because the archive numbers
+# coaches nowhere. A name is a weak id and this one is load-bearing, so it is
+# normalised (collapsed whitespace) and never guessed at: two coaches sharing
+# a name would share a key and nothing in this data could separate them.
+KINDS = frozenset({'team', 'franchise', 'game', 'coach'})
 
 # code -> the franchise code it belongs to. Only moves that CHANGE THE CODE
 # appear here; a team that renames without the source renaming it needs no
@@ -76,6 +80,19 @@ def entity_key(kind, provider_id):
     return f'{SPORT}:{PROVIDER}:{kind}:{provider_id}'
 
 
+def coach_key(name):
+    """`nfl:nflverse:coach:Andy Reid`, with whitespace collapsed.
+
+    The archive writes a coach's name with the odd double space, and 'Andy
+    Reid' and 'Andy  Reid' must not become two coaches with half a career
+    each. An empty name raises rather than becoming a key nobody can read.
+    """
+    cleaned = ' '.join((name or '').split())
+    if not cleaned:
+        raise ValueError('A coach name cannot be empty')
+    return entity_key('coach', cleaned), cleaned
+
+
 def franchise_key(code):
     """The franchise key a team code belongs to, relocations resolved."""
     return entity_key('franchise', franchise_code(code))
@@ -120,6 +137,8 @@ def season_label(season):
 # rather than this one applied backwards, which would quietly rewrite three
 # seasons of standings.
 ALIGNMENT_FROM = 2002
+CONFERENCES = ('AFC', 'NFC')
+DIVISIONS = ('East', 'North', 'South', 'West')
 ALIGNMENT = {
     'BUF': ('AFC', 'East'), 'MIA': ('AFC', 'East'), 'NE': ('AFC', 'East'),
     'NYJ': ('AFC', 'East'),

@@ -215,6 +215,209 @@
     return 'Search the NFL…';
   }
 
+  /* ---- game context: the archive always carried this and schema 1 of the
+   * export threw it away. Every reader below treats ABSENT as absent: a dome
+   * game has no temperature and a 1999 game may have no posted line, and
+   * neither is a zero. `Number(null)` is 0 and `Number.isFinite(0)` is true,
+   * which is the trap that once read a missing clock as 0:00, so each of
+   * these checks for null BEFORE it coerces. */
+
+  function present(value) {
+    return value !== null && value !== undefined && value !== '';
+  }
+
+  function number(value) {
+    if (!present(value)) return null;
+    var parsed = Number(value);
+    return isFinite(parsed) ? parsed : null;
+  }
+
+  /* "KC -3", "BAL -3.5", "Pick'em", or null where no line was posted.
+   * `game.spread` is the HOME team's expected margin, positive when the home
+   * team is favoured — the convention measured against this archive, not
+   * assumed. */
+  function spreadText(game, nameFor) {
+    var spread = number(game && game.spread);
+    if (spread === null) return null;
+    var label = function (key) {
+      return typeof nameFor === 'function' ? nameFor(key) : gameCodeOf(key);
+    };
+    if (spread === 0) return 'Pick\u2019em';
+    var side = spread > 0 ? game.home : game.away;
+    return label(side) + ' \u2212' + Math.abs(spread);
+  }
+
+  function gameCodeOf(key) {
+    return typeof key === 'string' ? key.split(':').pop() : '';
+  }
+
+  /* American odds as a probability, overround removed proportionally. The
+   * same arithmetic as devig() in src/nfl/market.py, and for the same
+   * reason: a moneyline IS a probability and a spread is not. Returns null
+   * unless BOTH prices are there, because one price carries the vig with it
+   * and there is nothing to divide it out by. */
+  function impliedProbability(moneyline) {
+    var price = number(moneyline);
+    if (price === null) return null;
+    if (price > -100 && price < 100) return null;
+    return price < 0 ? -price / (-price + 100) : 100 / (price + 100);
+  }
+
+  function marketProbability(game) {
+    var home = impliedProbability(game && game.home_ml);
+    var away = impliedProbability(game && game.away_ml);
+    if (home === null || away === null) return null;
+    var total = home + away;
+    return total > 0 ? home / total : null;
+  }
+
+  var ROOF_LABELS = {
+    outdoors: 'Outdoors', dome: 'Dome', closed: 'Roof closed',
+    open: 'Roof open'
+  };
+
+  /* The weather line. A roof with no temperature says so; an outdoor game
+   * with no reading says nothing rather than implying a mild day. */
+  function weatherText(game) {
+    if (!game) return null;
+    var parts = [];
+    if (present(game.roof)) {
+      parts.push(ROOF_LABELS[game.roof] || game.roof);
+    }
+    var temp = number(game.temp);
+    if (temp !== null) parts.push(temp + '\u00b0F');
+    var wind = number(game.wind);
+    if (wind !== null) parts.push(wind + ' mph wind');
+    return parts.length ? parts.join(' \u00b7 ') : null;
+  }
+
+  /* "Rest 7 and 7", or the side with the advantage named. A bye shows as 14
+   * because that is what the archive counted, not as "bye". */
+  function restText(game) {
+    var home = number(game && game.home_rest);
+    var away = number(game && game.away_rest);
+    if (home === null || away === null) return null;
+    if (home === away) return 'Both on ' + home + " days' rest";
+    return 'Rest ' + away + ' away, ' + home + ' home';
+  }
+
+  function contextLines(game, nameFor) {
+    return [weatherText(game), restText(game), spreadText(game, nameFor),
+            present(game && game.total_line)
+              ? 'O/U ' + number(game.total_line) : null,
+            present(game && game.surface) ? game.surface : null]
+      .filter(Boolean);
+  }
+
+  /* ---- coaches. Wins above expectation is actual wins minus the sum of the
+   * model's PREGAME win probability over the same games, a tie counting half
+   * on both sides. It says the model was wrong in a team's favour. It does
+   * NOT say the coach is good, and the page prints that sentence. */
+
+  function signedWins(value) {
+    var parsed = number(value);
+    if (parsed === null) return '\u2014';
+    var rounded = Math.round(parsed * 10) / 10;
+    return (rounded > 0 ? '+' : rounded < 0 ? '\u2212' : '')
+      + Math.abs(rounded).toFixed(1);
+  }
+
+  function coachRecord(row) {
+    if (!row) return '';
+    var wins = Number(row.wins) || 0;
+    var losses = Number(row.losses) || 0;
+    var ties = Number(row.ties) || 0;
+    return ties > 0 ? wins + '-' + losses + '-' + ties : wins + '-' + losses;
+  }
+
+  function coachSpan(row) {
+    if (!row) return '';
+    var first = number(row.first_season);
+    var last = number(row.last_season);
+    if (first === null) return '';
+    return first === last ? String(first) : first + '\u2013' + last;
+  }
+
+  /* ---- the playoff field. The seeding is computed in src/nfl/playoff.py and
+   * exported; nothing here re-derives it, so the page and the data cannot
+   * disagree about who is the 7 seed. */
+
+  function playoffConference(field, conference) {
+    var groups = (field && field.conferences) || [];
+    for (var index = 0; index < groups.length; index += 1) {
+      if (groups[index].conference === conference) return groups[index];
+    }
+    return null;
+  }
+
+  /* "division winner · bye", or "division lead" while the season is still
+   * being played: a team in front of its division in week 6 has not won
+   * anything, and a field computed in October is the seeding as things
+   * stand. The numbers are the same either way; only the claim changes. */
+  function seedNote(seed, settled) {
+    if (!seed) return '';
+    var parts = [];
+    if (seed.division_winner) {
+      parts.push(settled === false ? 'division lead' : 'division winner');
+    }
+    if (seed.bye) parts.push('bye');
+    return parts.join(' \u00b7 ');
+  }
+
+  /* ---- the track record. A Brier is printed to five places because the
+   * differences that matter here are in the fourth: 0.21893 against the
+   * market's 0.21101 is the whole story and 0.22 against 0.21 is not. */
+  function brierText(value) {
+    var parsed = number(value);
+    return parsed === null ? '\u2014' : parsed.toFixed(5);
+  }
+
+  function percentText(value, digits) {
+    var parsed = number(value);
+    if (parsed === null) return '\u2014';
+    return (parsed * 100).toFixed(digits === undefined ? 1 : digits) + '%';
+  }
+
+  /* Who did better on the games BOTH were measured on, and by how much.
+   * Never the model's Brier over all its games against the market's over the
+   * priced subset: that comparison is between two different sets of games. */
+  function marketVerdict(row) {
+    var model = number(row && row.model_brier_priced);
+    var market = number(row && row.market_brier);
+    if (model === null || market === null) return null;
+    var gap = market - model;
+    return {
+      games: number(row.priced_games),
+      gap: gap,
+      better: gap > 0 ? 'model' : gap < 0 ? 'market' : 'level'
+    };
+  }
+
+  /* An against-the-spread record, and the fact that it is not an edge. A
+   * bettor needs about 52.4% to clear a standard \u2212110 vig, so a 51%
+   * record is a loss and the page must not let it read as a win. */
+  var ATS_BREAK_EVEN = 0.524;
+
+  function atsRate(row) {
+    var wins = Number(row && row.ats_wins) || 0;
+    var losses = Number(row && row.ats_losses) || 0;
+    var decided = wins + losses;
+    return decided ? wins / decided : null;
+  }
+
+  function atsText(row) {
+    var wins = Number(row && row.ats_wins) || 0;
+    var losses = Number(row && row.ats_losses) || 0;
+    var pushes = Number(row && row.ats_pushes) || 0;
+    if (!(wins + losses + pushes)) return '\u2014';
+    return wins + '-' + losses + (pushes ? '-' + pushes : '');
+  }
+
+  function atsBeatsVig(row) {
+    var rate = atsRate(row);
+    return rate === null ? null : rate > ATS_BREAK_EVEN;
+  }
+
   var api = {
     LEAGUE: LEAGUE,
     ALIGNMENT_FROM: ALIGNMENT_FROM,
@@ -236,7 +439,26 @@
     gamesInWeek: gamesInWeek,
     openingWeek: openingWeek,
     ratingText: ratingText,
-    searchPlaceholder: searchPlaceholder
+    searchPlaceholder: searchPlaceholder,
+    ATS_BREAK_EVEN: ATS_BREAK_EVEN,
+    ROOF_LABELS: ROOF_LABELS,
+    impliedProbability: impliedProbability,
+    marketProbability: marketProbability,
+    spreadText: spreadText,
+    weatherText: weatherText,
+    restText: restText,
+    contextLines: contextLines,
+    signedWins: signedWins,
+    coachRecord: coachRecord,
+    coachSpan: coachSpan,
+    playoffConference: playoffConference,
+    seedNote: seedNote,
+    brierText: brierText,
+    percentText: percentText,
+    marketVerdict: marketVerdict,
+    atsRate: atsRate,
+    atsText: atsText,
+    atsBeatsVig: atsBeatsVig
   };
 
   if (typeof module === 'object' && module.exports) {

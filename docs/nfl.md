@@ -155,8 +155,8 @@ snapshot and stays publishable, badged with its age.
 
 `.github/workflows/nfl-refresh.yml`, with its own concurrency group
 (`nfl-refresh`, never the deploy's) and its own health light scope. It runs
-the NFL tests before it touches anything published, ingests, replays, builds
-the export into a temporary directory, and swaps it in only if
+the NFL tests before it touches anything published, ingests, replays, measures the
+coaches and the market, builds the export into a temporary directory, and swaps it in only if
 `src/nfl/publish.py` agrees. That module refuses an export *older* than the
 live one — valid, and a step backwards — and stages-and-renames rather than
 emptying and refilling, so a publish that dies halfway leaves the previous
@@ -170,11 +170,85 @@ Note the repository's standing gotcha: a new `workflow_dispatch` file is not
 dispatchable until it is on the default branch, so the first export has to be
 produced by dispatching this workflow after the merge.
 
+## Phase 1 of parity: the context the archive already carried
+
+`games.csv` — the file the refresh has always fetched — carries far more than
+schema 1 of the loader stored. Everything in this section cost **no new
+ingestion at all**: the coaches, the quarterbacks, the betting lines, the
+referee, the rest days, the roof, the temperature and the wind were already
+being downloaded every morning and thrown away on the floor of `parse_row`.
+
+Schema 2 of the database keeps them. `store.GAME_COLUMNS` is the one list the
+INSERT, the conflict clause and the value tuple are all generated from, and a
+test asserts it matches `schema.sql` exactly and in order; three places used
+to list these and two of them drifted. `migrate()` ALTERs an existing table,
+because `CREATE TABLE IF NOT EXISTS` does nothing to a table that already
+exists and the symptom of that is an error on a column the schema plainly
+declares.
+
+**Coaches** (`src/nfl/coaches.py`). One row per coach per season per team,
+which is the shape that holds a midseason change and a coach who moves
+without averaging either away. Wins above expectation is actual wins minus
+the sum of the model's **pregame** probability that the team won each game, a
+tie counting half on both sides. It says the model was wrong in that team's
+favour; it is not a measure of coaching, and the page prints that sentence.
+The college side cannot do this cleanly — CFBD never says whose games were
+whose, so 361 of its 5,657 tenures are unmeasured — while every one of the
+7,548 games here names both coaches.
+
+Measured on the committed archive: 936 coach-season-team rows, 177 coaches.
+Belichick +21.3, Reid +16.9, Payton +14.8.
+
+**The model against the market** (`src/nfl/market.py`). The market's
+probability is a **de-vigged moneyline, never a spread**. A spread becomes a
+probability only by way of a model — ours, most likely — so a "market Brier"
+built that way would measure our curve against itself. The cost is coverage:
+moneylines are on 72% of the archive and 90%+ from 2007, so both Brier scores
+are accumulated on the same priced subset and `model_brier_priced` exists for
+exactly that reason.
+
+Measured 1999–2026: on the 5,388 priced games the model scores 0.21893 and
+the market 0.21101, so **the market is ahead**. Margin MAE 10.61 against the
+spread's 10.26. Against the spread the model is 3655-3513-201, which is
+51.0% — below the ~52.4% a bettor needs to clear a standard vig, and the page
+says so in those words rather than letting a 51% record read as an edge.
+
+**The real playoff field** (`src/nfl/playoff.py`). Not one format: seven per
+conference with one bye since 2020, six with two byes from 2002 to 2019, and
+**no field at all before 2002**, because the committed alignment begins at
+the realignment and a three-division conference is not a thing to guess. The
+tiebreak ladder is win percentage, then the league's own first three — head
+to head, division record, conference record — and past those our rating,
+which is labelled as ours because it is not a league tiebreaker.
+
+Verified against the real fields: 2024 (KC, BUF, BAL, HOU, LAC, PIT, DEN /
+DET, PHI, TB, LA, MIN, WAS, GB) and 2019 both come out exactly right.
+
+**Conference history and the track record.** Both from data already stored:
+conference and division mean ratings per season from `team_rating` and the
+stored alignment, champions from the games the archive calls a Super Bowl or
+a conference championship, and the per-season model-versus-market table from
+`market_season`. They live in `ui/data/nfl/history.js`, which the page
+fetches **lazily** on the first tab that needs it — 348 KB raw, 36 KB over
+the wire, and a reader who came for the scoreboard never downloads it.
+
+**On a game card**: the weather, the rest and the posted line. Absent is
+absent throughout — a dome game has no temperature rather than a zero, which
+is the `Number(null)` trap in another language.
+
+The export is **schema 2**, and both gates accept 1 and 2. Refusing 1 would
+fail the publish check against the version 1 export already on main and leave
+the site unable to update at all.
+
 ## What is not here
 
-- **No people.** The archive behind this is schedules and scores, so there are
-  no player or coach pages and the People tab is not offered for the NFL. A
-  tab with nothing behind it is worse than an absent one.
+- **No players.** The archive behind this is schedules and scores. Coaches
+  are there because every game names them; there are no player pages and the
+  People tab is not offered for the NFL. A tab with nothing behind it is
+  worse than an absent one.
+- **No routes of its own.** This page's tabs are buttons, not links, so a
+  coach opens in place rather than at a URL. Deep-linking the NFL and
+  basketball tabs is one change to both pages and is owned elsewhere.
 - **No live scores.** The export carries finals and schedules; there is no
   in-game clock, so a card says Final, Scheduled or Time TBD and never a zeroed
   clock. Live NFL data is a separate decision with a licensing cost attached,
@@ -191,3 +265,9 @@ The standings group by division and order by record, with the rating as the
 tiebreak. The league's own tiebreakers — head to head, then common games, then
 several more — are not applied, and the page says so rather than implying an
 official order.
+
+The **playoff field** above them is a stricter thing and applies three of the
+league's real tiebreakers before falling back on ours (see above). It is
+still not official: strength of victory and the rest of the ladder are not
+applied, and a field computed in October says "as things stand" and calls a
+team in front of its division a division *lead*, not a winner.

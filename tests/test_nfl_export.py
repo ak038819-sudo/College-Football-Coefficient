@@ -45,8 +45,16 @@ def season_games(season, *, finals=True, start_day=10):
                 home_team_key=franchise_key(home),
                 away_team_key=franchise_key(away),
                 home_points=points[0], away_points=points[1],
-                overtime=0, divisional_game=0, roof=None, surface=None,
-                stadium_id=None, stadium=None,
+                overtime=0, divisional_game=0, roof='outdoors',
+                surface='grass', stadium_id=None, stadium=None,
+                home_coach=f'{home} Coach', away_coach=f'{away} Coach',
+                # A posted line on every game, so the market comparison and
+                # the against-the-spread record have something to measure.
+                spread_line=3.0, total_line=44.5,
+                home_moneyline=-160, away_moneyline=140,
+                home_qb_id=None, away_qb_id=None,
+                home_qb_name=f'{home} QB', away_qb_name=f'{away} QB',
+                referee=None, home_rest=7, away_rest=7, temp=62, wind=5,
                 rateable=1 if finals else 0, exclusions=[]))
     return rows
 
@@ -71,15 +79,15 @@ def build(connection, **kwargs):
 
 class TestExport:
     def test_a_full_league_export_passes_the_gate(self, league, tmp_path):
-        manifest, payloads, teams = build(league)
-        written = export_module.write(manifest, payloads, teams,
+        manifest, payloads, teams, history = build(league)
+        written = export_module.write(manifest, payloads, teams, history,
                                       tmp_path / 'out')
         assert publish_gate.check(written, root=tmp_path / 'out') == []
         assert (tmp_path / 'out' / 'manifest.json').exists()
 
     def test_the_manifest_states_the_model_and_its_held_out_score(
             self, league, tmp_path):
-        manifest, _, _ = build(league)
+        manifest, _, _, _ = build(league)
         model = manifest['model']
         assert model['name'] == 'nfl_elo_v1'
         assert model['holdout_brier'] == 0.2237
@@ -88,8 +96,8 @@ class TestExport:
 
     def test_every_file_carries_a_hash_of_its_own_bytes(self, league,
                                                         tmp_path):
-        manifest, payloads, teams = build(league)
-        written = export_module.write(manifest, payloads, teams,
+        manifest, payloads, teams, history = build(league)
+        written = export_module.write(manifest, payloads, teams, history,
                                       tmp_path / 'out')
         for path, version in publish_gate.manifest_files(written):
             assert version == publish_gate.file_version(
@@ -97,10 +105,10 @@ class TestExport:
 
     def test_a_refused_export_writes_nothing(self, league, tmp_path):
         out = tmp_path / 'out'
-        manifest, payloads, teams = build(league)
+        manifest, payloads, teams, history = build(league)
         manifest['model']['holdout_brier'] = 0.3
         with pytest.raises(export_module.PublishRefused):
-            export_module.write(manifest, payloads, teams, out)
+            export_module.write(manifest, payloads, teams, history, out)
         assert not out.exists()
 
     def test_a_season_in_progress_is_marked_and_not_judged_as_finished(
@@ -111,7 +119,7 @@ class TestExport:
             ' rateable = 0 WHERE season = 2026 AND provider_id LIKE ?',
             ('%\\_W%', ))
         league.commit()
-        manifest, payloads, teams = build(
+        manifest, payloads, teams, history = build(
             league, now=datetime(2026, 10, 21, tzinfo=timezone.utc))
         rows = {row['season']: row for row in manifest['coverage']}
         assert rows[2026]['complete'] is False

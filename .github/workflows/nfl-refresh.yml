@@ -72,7 +72,7 @@ jobs:
       - name: Validate before touching anything published
         run: |
           python -m pytest tests/test_nfl_data.py tests/test_nfl_elo.py \
-            tests/test_nfl_export.py -q
+            tests/test_nfl_export.py tests/test_nfl_context.py -q
 
       - name: Ingest the archive
         run: |
@@ -85,6 +85,16 @@ jobs:
         run: |
           set -o pipefail
           python -m src.nfl.build_ratings | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Measure the coaches and the market
+        run: |
+          # Both read the stored rating chain, so they run AFTER the replay
+          # and BEFORE the export, which reads what they write. Neither
+          # fetches anything: the coaches, the betting lines and the weather
+          # are columns of the archive already ingested above.
+          set -o pipefail
+          python -m src.nfl.coaches | tee -a "$GITHUB_STEP_SUMMARY"
+          python -m src.nfl.market | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Build the export, which refuses rather than writes
         run: |

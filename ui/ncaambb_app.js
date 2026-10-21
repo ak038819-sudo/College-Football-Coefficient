@@ -57,10 +57,13 @@
     cfb: ['home', 'stats', 'standings', 'teams', 'people', 'games',
           'rankings'],
     ncaambb: ['home', 'standings', 'teams', 'people', 'games'],
-    // The NFL export carries games, ratings and franchise records, and no
-    // people at all: the archive behind it is schedules and scores. People
-    // appears when there is a person to show, not before.
-    nfl: ['home', 'standings', 'teams', 'games', 'rankings']
+    // The NFL export carries games, ratings, franchise records, head coaches
+    // and the model's own track record. There are no PLAYERS: the archive
+    // behind it is schedules and scores, so `people` stays absent and
+    // `coaches` is its own section rather than a corner of a people page
+    // that does not exist.
+    nfl: ['home', 'standings', 'teams', 'games', 'rankings', 'coaches',
+          'history']
   };
 
   function league(slug) {
