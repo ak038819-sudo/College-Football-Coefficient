@@ -74,6 +74,11 @@ def out(tmp_path):
     return tmp_path / 'live_scores.json'
 
 
+def scheduled(gid, start, **kwargs):
+    return dict(game(gid, status='scheduled', period=None, clock=None,
+                     away=None, home=None), start_date=start, **kwargs)
+
+
 def run(out, snapshots, publisher=None, duration=60, interval=360, **kwargs):
     clock = Clock()
     feed = Feed(snapshots, out)
@@ -195,6 +200,112 @@ def test_honours_the_duration_limit(out):
     assert feed.calls == 10
 
 
+# ---- how often it polls ------------------------------------------------------
+
+NOON = dt.datetime(2026, 10, 21, 12, 0, tzinfo=dt.timezone.utc)
+
+
+def test_a_live_game_is_polled_at_the_fast_interval():
+    assert session.next_interval(snapshot([game(1)]), NOON, 360, 1200) == 360
+
+
+def test_a_finished_slate_is_polled_at_the_idle_interval():
+    """A Tuesday in October: last week's finals and nothing else. Each tick is
+    three CFBD requests spent on bytes that cannot have changed."""
+    assert session.next_interval(snapshot([game(1, status='completed')]),
+                                 NOON, 360, 1200) == 1200
+
+
+def test_a_kickoff_inside_the_idle_window_pulls_the_cadence_back_up():
+    """The cadence has to speed up BEFORE the kickoff. Deciding on the next
+    tick would mean finding the game twenty minutes into the first quarter."""
+    soon = scheduled(1, '2026-10-21T12:10:00.000Z')
+    assert session.next_interval(snapshot([soon]), NOON, 360, 1200) == 360
+
+
+def test_a_kickoff_beyond_the_idle_window_is_still_idle():
+    later = scheduled(1, '2026-10-21T15:00:00.000Z')
+    assert session.next_interval(snapshot([later]), NOON, 360, 1200) == 1200
+
+
+def test_a_kickoff_time_that_cannot_be_read_counts_as_imminent():
+    """Being wrong this way polls at the normal rate; being wrong the other way
+    is a slate that silently never speeds up."""
+    for value in (None, 'tomorrow', '', 2026):
+        assert session.next_interval(snapshot([scheduled(1, value)]),
+                                     NOON, 360, 1200) == 360, value
+
+
+def test_a_naive_kickoff_is_read_as_utc_rather_than_crashing():
+    assert session.next_interval(snapshot([scheduled(1, '2026-10-21T12:10:00')]),
+                                 NOON, 360, 1200) == 360
+
+
+def test_an_idle_interval_no_longer_than_the_fast_one_changes_nothing():
+    assert session.next_interval(snapshot([game(1, status='completed')]),
+                                 NOON, 360, 360) == 360
+    assert session.next_interval(snapshot([game(1, status='completed')]),
+                                 NOON, 360, 10) == 360
+
+
+def test_a_malformed_snapshot_is_polled_at_the_fast_interval():
+    for value in ({}, {'games': None}, None, {'games': [None, 'x']}):
+        assert session.next_interval(value, NOON, 360, 1200) == 360, value
+
+
+def test_the_loop_slows_down_over_a_finished_slate_it_keeps_watching(out):
+    """Driven through the real loop, not the helper alone: a session told to
+    keep going over a final slate must spend the idle interval between polls,
+    which is what makes tiling an empty day affordable."""
+    summary, feed, _ = run(out, [snapshot([game(1, status='completed')])],
+                           duration=60, interval=360, idle_interval=1200,
+                           stop_when_idle=False)
+    assert feed.calls == 3, 'an hour at the idle interval is three polls, not ten'
+
+
+def test_the_loop_stays_fast_while_a_game_is_live(out):
+    summary, feed, _ = run(out, [snapshot([game(1, clock=f'{i:02d}:00')])
+                                 for i in range(30)],
+                           duration=60, interval=360, idle_interval=1200)
+    assert feed.calls == 10
+
+
+def test_a_failed_poll_is_retried_at_the_fast_interval(out):
+    """A tick with no snapshot cannot know whether anything is live, and the
+    thing to do about a failure is try again soon."""
+    summary, feed, _ = run(out, [OSError('CFBD reset the connection')],
+                           duration=60, interval=360, idle_interval=1200)
+    assert feed.calls == 10
+
+
+def test_the_defaults_pay_for_tiling_the_whole_season():
+    """The idle interval has to be slower than the fast one or it buys nothing,
+    and the fast one still has to respect the Pages build limit."""
+    assert session.DEFAULT_IDLE_INTERVAL > session.DEFAULT_INTERVAL
+    assert 3600 / session.DEFAULT_INTERVAL <= 10
+
+
+def test_an_idle_interval_shorter_than_the_interval_is_refused(out, monkeypatch):
+    """`run_session` is stubbed, and `--out` is given, for a reason measured
+    here: without both, a build that stopped refusing the pair reached the real
+    CFBD endpoint and the test HUNG for the length of the session instead of
+    failing. A test that catches a mutation by never finishing is a test whose
+    next reader deletes it."""
+    monkeypatch.setenv('CFBD_API_KEY', 'test-key')
+    started = []
+
+    def stub(*args, **kwargs):
+        started.append(kwargs)
+        return {'ticks': 1, 'publishes': 0, 'failures': 0, 'fetch_failures': 0}
+
+    monkeypatch.setattr(session, 'run_session', stub)
+    with pytest.raises(SystemExit):
+        session.main(['--out', str(out), '--interval', '600', '--idle-interval', '300'])
+    assert started == [], 'an inverted pair must not reach the loop'
+    session.main(['--out', str(out), '--interval', '600', '--idle-interval', '900'])
+    assert started[0]['idle_interval'] == 900, 'the value must reach the loop'
+
+
 # ---- failures ----------------------------------------------------------------
 
 def test_a_failed_poll_does_not_end_the_session(out):
@@ -304,17 +415,56 @@ def _session_workflow():
     return data, data.get('on', data.get(True))  # PyYAML reads the bare key `on` as True
 
 
-def test_the_session_is_started_by_a_once_a_day_cron():
-    """The whole point: a cron GitHub actually delivers. A firing more often
-    than hourly would put this workflow in the same throttled class as the
-    five-minute refresh it exists to replace."""
+def _session_starts():
+    """Every UTC hour:minute a scheduled session starts, and on which days."""
+    _, on = _session_workflow()
+    starts = []
+    for entry in on['schedule']:
+        minute, hours, dom, months, dow = entry['cron'].split()
+        assert '/' not in minute and minute != '*', entry['cron']
+        assert '/' not in hours, entry['cron']
+        for hour in hours.split(','):
+            starts.append((int(hour), int(minute), months, dom, dow))
+    return sorted(starts)
+
+
+def test_the_session_is_started_by_a_cron_github_delivers():
+    """A cron GitHub actually delivers. A firing more often than hourly would
+    put this workflow in the same throttled class as the five-minute refresh it
+    exists to replace -- but once a day was too rare in the other direction: a
+    dropped firing cost the whole day's coverage. Four hours apart is both."""
     _, on = _session_workflow()
     assert 'workflow_dispatch' in on
-    for entry in on['schedule']:
-        minute, hour = entry['cron'].split()[:2]
-        assert '/' not in minute and '*' != minute, entry['cron']
-        assert '/' not in hour, entry['cron']
-        assert len(hour.split(',')) <= 2, f'{entry["cron"]} starts more than twice a day'
+    minutes = [hour * 60 + minute for hour, minute, *_ in _session_starts()]
+    assert len(minutes) == len(set(minutes)), 'two sessions start at the same time'
+    gaps = [b - a for a, b in zip(minutes, minutes[1:])]
+    assert min(gaps) >= 60, 'starting more than hourly is the throttled class'
+
+
+def test_the_sessions_tile_the_day_with_no_gap_and_no_overlap():
+    """The defect this schedule replaced was a hole, not an error: games on a
+    day no cron covered simply never reached the site, while last week's finals
+    sat there looking correct. A session's duration is therefore exactly its
+    spacing -- shorter leaves a hole, longer queues a run that GitHub cancels
+    when the next one is already pending."""
+    starts = _session_starts()
+    minutes = [hour * 60 + minute for hour, minute, *_ in starts]
+    spacing = [b - a for a, b in zip(minutes, minutes[1:])]
+    spacing.append(24 * 60 - minutes[-1] + minutes[0])  # the wrap past midnight
+    assert set(spacing) == {session.DEFAULT_DURATION}, (
+        f'{sorted(set(spacing))} between starts, {session.DEFAULT_DURATION}-minute sessions')
+    assert sum(spacing) == 24 * 60, 'the starts do not add up to a whole day'
+
+
+def test_every_day_of_the_season_is_covered():
+    """54 of the 761 kickoffs in 2026 are on a Monday, Tuesday, Wednesday or a
+    Friday lunchtime, and the first version of this workflow ran Thursday
+    through Sunday. Bowl season then puts games on every weekday. No row here
+    may name days or hours of its own."""
+    for hour, minute, months, dom, dow in _session_starts():
+        assert dow == '*', f'{hour:02d}:{minute:02d} runs only on {dow}'
+        assert dom == '*', f'{hour:02d}:{minute:02d} runs only on day {dom}'
+        assert months == '8-12,1', f'{hour:02d}:{minute:02d} covers {months}'
 
 
 def test_the_job_timeout_leaves_room_after_the_polling_window():

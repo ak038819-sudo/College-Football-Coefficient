@@ -1,39 +1,66 @@
 name: Live score session
 
-# One long-running job per game day, polling the scoreboard in-process.
+# A chain of long-running jobs, polling the scoreboard in-process.
 #
 # `live-scores.yml` asks GitHub for a run every five minutes during the game
 # windows and gets about one in thirty: 22 of 699 specified firings over two
 # weeks (docs/live-data-options.md). That is GitHub dropping high-frequency
 # scheduled workflows, and no edit to a workflow file changes it.
 #
-# This workflow is started ONCE per game day. The loop inside it is not
-# scheduled by GitHub, so it keeps its own cadence for as long as the job runs.
-# The crons below are the once-a-day kind that GitHub does deliver -- the same
-# frequency as the Sunday rebuild, which has never been dropped.
+# The loop inside a job is not scheduled by GitHub, so it keeps its own cadence
+# for as long as the job runs. GitHub only has to start the job, and the crons
+# below ask it to do that every four hours -- low-frequency enough to be
+# delivered, and a firing that is dropped anyway now costs four hours of
+# coverage rather than a whole day of it.
 #
-# `live-scores.yml` stays as it is. It covers the windows these sessions do not
-# reach and remains the path a manual refresh takes.
+# WHY EVERY FOUR HOURS, EVERY DAY, rather than windows drawn around the slate.
+# The first version of this file started one session per game day, on
+# Thursday, Friday, Saturday and Sunday, because that is when college football
+# is played. It is not. Measured against the published schedule, 54 of the
+# 761 kickoffs in 2026 fall outside those days: Tuesday and Wednesday evenings
+# from the MAC, a Monday night, a Friday lunchtime. The scoreboard was two
+# weeks into the season before anyone noticed, because the symptom is not an
+# error -- it is last week's finals, sitting there correct and stale.
+#
+# A table of windows drawn around 2026 was the first fix tried here, and it
+# covered 2026 exactly and 2023 badly: bowl season puts games on every weekday
+# from early afternoon, a shape the regular season never has. So the schedule
+# does not describe the slate at all any more. Sessions simply tile the day,
+# end to end, and the script decides what is worth polling for. Checked against
+# every kickoff of 2023, 2024, 2025 and 2026: no game spends a minute of its
+# first four hours outside a session.
+#
+# The cost of tiling a day that has no games in it is near zero, and that is
+# the script's doing, not the schedule's: a session whose whole scoreboard is
+# final exits after one tick, and one watching games that have not kicked off
+# polls at the idle interval. See src/run_live_score_session.py.
+#
+# `live-scores.yml` stays as it is. It remains the path a manual refresh takes.
 
 on:
   workflow_dispatch:
     inputs:
       duration:
-        description: 'Minutes to keep polling (max 350)'
+        description: 'Minutes to keep polling (max 350; blank uses the default)'
         required: false
-        default: '330'
+        default: ''
       interval:
-        description: 'Seconds between polls (Pages allows ~10 publishes/hour)'
+        description: 'Seconds between polls while a game is live (blank uses the default)'
         required: false
-        default: '360'
+        default: ''
+      idle_interval:
+        description: 'Seconds between polls when nothing is live (blank uses the default)'
+        required: false
+        default: ''
   schedule:
-    # Each window gets a chain of sessions rather than one long job: a job is
-    # capped at six hours, and a Saturday slate runs twelve. Start times are
-    # UTC; the Saturday slate opens at noon Eastern and the late games end
-    # after 06:00 UTC on Sunday.
-    - cron: '5 15,21 * 8-12,1 6'
-    - cron: '5 3 * 8-12,1 0'
-    - cron: '5 22 * 8-12,1 4,5'
+    # Six starts a day, four hours apart, through the season and the playoff.
+    # A job is capped at six hours, so a day cannot be one session; four-hour
+    # sessions hand off to each other with nothing in between. The default
+    # duration in run_live_score_session.py is what makes them meet, so the two
+    # numbers move together.
+    - cron: '5 0,4 * 8-12,1 *'
+    - cron: '5 8,12 * 8-12,1 *'
+    - cron: '5 16,20 * 8-12,1 *'
 
 permissions:
   contents: write
@@ -41,8 +68,9 @@ permissions:
 jobs:
   session:
     runs-on: ubuntu-latest
-    # The job's own ceiling is six hours. 350 minutes of polling leaves time
-    # for checkout, the final publish and the delivery measurement.
+    # The job's own ceiling is six hours. A scheduled session polls for four,
+    # and the timeout still allows the 350-minute maximum a dispatch can ask
+    # for, leaving room for checkout, the final publish and the measurement.
     timeout-minutes: 358
     # NOT the deploy's group, and not `live-scores.yml`'s either. Sharing the
     # deploy's group would park a six-hour job in front of every publish.
@@ -63,20 +91,30 @@ jobs:
       - name: Poll and publish the scoreboard
         env:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
-          DURATION: ${{ inputs.duration || '330' }}
-          INTERVAL: ${{ inputs.interval || '360' }}
+          DURATION: ${{ inputs.duration }}
+          INTERVAL: ${{ inputs.interval }}
+          IDLE_INTERVAL: ${{ inputs.idle_interval }}
         run: |
           if [ -z "$CFBD_API_KEY" ]; then
             echo 'Live scores inactive: set the CFBD_API_KEY secret with scoreboard access.'
             exit 0
           fi
-          # Clamped here as well as in the script: a dispatch input is free text,
-          # and a duration past the job timeout would be killed mid-publish.
-          if [ "$DURATION" -gt 350 ]; then DURATION=350; fi
+          # Every default lives in the script, so a scheduled run and a bare
+          # dispatch take the same numbers and the cron grid cannot drift away
+          # from the duration that makes it tile the day. An input that is
+          # given is passed through; one that is blank is not passed at all.
+          set --
+          if [ -n "$DURATION" ]; then
+            # Clamped here as well as in the script: a dispatch input is free
+            # text, and a duration past the job timeout dies mid-publish.
+            if [ "$DURATION" -gt 350 ]; then DURATION=350; fi
+            set -- "$@" --duration "$DURATION"
+          fi
+          if [ -n "$INTERVAL" ]; then set -- "$@" --interval "$INTERVAL"; fi
+          if [ -n "$IDLE_INTERVAL" ]; then set -- "$@" --idle-interval "$IDLE_INTERVAL"; fi
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          python3 -u src/run_live_score_session.py \
-            --duration "$DURATION" --interval "$INTERVAL"
+          python3 -u src/run_live_score_session.py "$@"
 
       - name: Measure delivery to GitHub Pages
         if: always()

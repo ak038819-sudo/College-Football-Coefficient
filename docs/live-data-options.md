@@ -88,11 +88,20 @@ will not run a job often enough" when the real constraint is narrower:
 **GitHub will not *schedule* a job often enough.** It will happily run one job
 for six hours.
 
-`.github/workflows/live-score-session.yml` is started once per game day and
-polls the scoreboard from inside a single job (`src/run_live_score_session.py`).
-The loop keeps its own cadence, so none of the 3.1% delivery rate applies to
-it. The cron that starts the session fires once or twice a day, the same
-frequency as the Sunday rebuild, which has never been dropped.
+`.github/workflows/live-score-session.yml` polls the scoreboard from inside a
+single long-running job (`src/run_live_score_session.py`). The loop keeps its
+own cadence, so none of the 3.1% delivery rate applies to it; GitHub only has
+to start the job.
+
+The first version started one session per game day, on the four days of the
+week college football was assumed to be played. That assumption cost three
+days of a stale scoreboard in October 2026, and it does not survive the
+schedule: 54 of 761 kickoffs in 2026 fall on other days, and bowl season has
+games every weekday. Sessions now start every four hours, every day of the
+season, and poll for four hours each, so they tile the day end to end. A cron
+every four hours is still far below the frequency GitHub throttles, and a
+firing that is dropped anyway now costs four hours of coverage rather than a
+whole day of it. See docs/live-score-refresh.md for what keeps that affordable.
 
 What this does and does not buy:
 
