@@ -32,12 +32,15 @@ from pathlib import Path
 # season, per-season coach rows, and a `history` file holding conference
 # history, the track record and the coach leaderboard.
 #
+# 3 adds the people layer: a player index, sharded player careers, the
+# in-progress season's player statistics in a file of its own, and the draft.
+#
 # 1 is still ACCEPTED, not just understood. The published export on main is a
 # version 1 export, and this gate runs against it in CI before the refresh
 # that would rewrite it: refusing 1 here would fail the publish check on data
 # that is perfectly good and leave the site unable to update at all.
-SCHEMA_VERSION = 2
-SUPPORTED_SCHEMA_VERSIONS = (1, 2)
+SCHEMA_VERSION = 3
+SUPPORTED_SCHEMA_VERSIONS = (1, 2, 3)
 
 # Houston joined in 2002. Before that the league had 31 teams in this archive.
 EXPANSION_SEASON = 2002

@@ -235,3 +235,185 @@ CREATE TABLE IF NOT EXISTS market_season (
     market_margin_mae  REAL,
     PRIMARY KEY (season, model_id)
 );
+
+-- ---------------------------------------------------------------------------
+-- The people layer (schema 3).
+--
+-- A player is keyed by GSIS id: `nfl:nflverse:player:00-0019596`. That is the
+-- one id in this data that is both stable and nearly complete — all 24,856
+-- rows of the source's player file carry one and none of them repeats — and
+-- unlike the college side's athlete ids it is not split across two numbers for
+-- one career.
+--
+-- The archive is DEEPER than the college people archive: rosters and season
+-- statistics go back to 1999 here, against 2009 there.
+--
+-- NOT STORED: the `headshot` URL the player file carries. A portrait is a
+-- licensing question rather than a data one, and the college side's portraits
+-- are blocked for exactly that reason. Storing the URL would make it one
+-- commit away from being published.
+CREATE TABLE IF NOT EXISTS player (
+    player_key        TEXT PRIMARY KEY,
+    gsis_id           TEXT NOT NULL UNIQUE,
+    display_name      TEXT NOT NULL,
+    first_name        TEXT,
+    last_name         TEXT,
+    position          TEXT,
+    position_group    TEXT,
+    -- Inches and pounds, as the source gives them.
+    height            INTEGER,
+    weight            INTEGER,
+    birth_date        TEXT,
+    college           TEXT,
+    college_conference TEXT,
+    jersey_number     INTEGER,
+    rookie_season     INTEGER,
+    last_season       INTEGER,
+    latest_team       TEXT REFERENCES team(team_key),
+    -- The source's roster status AS OF THE SNAPSHOT (ACT, RES, CUT, DEV...).
+    -- It is not history: a player cut last week reads CUT for every season.
+    status            TEXT,
+    years_experience  INTEGER,
+    draft_season      INTEGER,
+    draft_round       INTEGER,
+    draft_pick        INTEGER,
+    draft_team        TEXT REFERENCES team(team_key),
+    -- 1 where this row was built from a roster or statistics row rather than
+    -- from the player file, because that file does not carry the id. 1,789 of
+    -- the 69,533 roster rows and 9 statistics rows are in that position;
+    -- dropping them would lose real seasons of real players, and pretending
+    -- the player file carried them would be a lie about where the name came
+    -- from.
+    stub              INTEGER NOT NULL DEFAULT 0,
+    snapshot_id       INTEGER REFERENCES snapshot(snapshot_id)
+);
+
+CREATE INDEX IF NOT EXISTS player_by_name ON player(display_name);
+CREATE INDEX IF NOT EXISTS player_by_span ON player(last_season, rookie_season);
+
+-- One row per player per season per team. A player who was traded in October
+-- has two rows for that season, which is what the source's two rows say and
+-- what a career table has to show; averaging them into one would put him on
+-- neither team.
+CREATE TABLE IF NOT EXISTS player_season (
+    player_key       TEXT    NOT NULL REFERENCES player(player_key),
+    season           INTEGER NOT NULL,
+    team_key         TEXT    NOT NULL REFERENCES team(team_key),
+    -- What the source called the team, before the alias and the relocation
+    -- were resolved: a 2015 row really does say SL.
+    code             TEXT    NOT NULL,
+    position         TEXT,
+    depth_position   TEXT,
+    jersey_number    INTEGER,
+    status           TEXT,
+    status_label     TEXT,
+    height           INTEGER,
+    weight           INTEGER,
+    years_experience INTEGER,
+    -- The last week this player was on the roster, and in which round. The
+    -- source's roster file is a snapshot of the end of the season, not a
+    -- week-by-week history, so this is the only time information in it.
+    last_week        INTEGER,
+    last_game_type   TEXT,
+    entry_season     INTEGER,
+    rookie_season    INTEGER,
+    snapshot_id      INTEGER REFERENCES snapshot(snapshot_id),
+    PRIMARY KEY (player_key, season, team_key)
+);
+
+CREATE INDEX IF NOT EXISTS player_season_by_team ON player_season(team_key, season);
+CREATE INDEX IF NOT EXISTS player_season_by_season ON player_season(season);
+
+-- The context of one statistics row: who, when, which half of the season, and
+-- the team the source attributes it to.
+--
+-- `season_type` is 'reg' or 'post' and they are NEVER summed together. A
+-- postseason line is four games against the best teams in the league; adding
+-- it to a sixteen-game regular season produces a number that is neither.
+CREATE TABLE IF NOT EXISTS player_stat_season (
+    player_key  TEXT    NOT NULL REFERENCES player(player_key),
+    season      INTEGER NOT NULL,
+    season_type TEXT    NOT NULL,
+    team_key    TEXT REFERENCES team(team_key),
+    code        TEXT,
+    position    TEXT,
+    games       INTEGER,
+    snapshot_id INTEGER REFERENCES snapshot(snapshot_id),
+    PRIMARY KEY (player_key, season, season_type)
+);
+
+CREATE INDEX IF NOT EXISTS player_stat_season_by_season
+    ON player_stat_season(season, season_type);
+
+-- Statistics in LONG form: one row per player per season per half per stat.
+--
+-- Long rather than a 148-column table because the source's column set GREW
+-- between the release this was first built against and the one it is built
+-- against now — explosive-play counts, punting and blocked-kick columns all
+-- appeared — and a wide table turns every such addition into a migration. A
+-- long table also lets a zero stay absent: 775,102 of the 9.3 million cells
+-- in the archive are non-zero, so storing the zeros would be twelve times the
+-- rows to say nothing.
+--
+-- A zero is therefore NOT STORED, and a missing row means "none", which for a
+-- counting stat is the same statement. It is not the same statement for a
+-- RATE (fg_pct, target_share, passing_cpoe), where a genuine zero is a
+-- measurement — but a rate of exactly zero arises only from components that
+-- are themselves zero, so the row it belongs to carries no components either
+-- and the page shows nothing rather than 0.0%.
+CREATE TABLE IF NOT EXISTS player_stat (
+    player_key  TEXT    NOT NULL REFERENCES player(player_key),
+    season      INTEGER NOT NULL,
+    season_type TEXT    NOT NULL,
+    stat        TEXT    NOT NULL,
+    value       REAL    NOT NULL,
+    PRIMARY KEY (player_key, season, season_type, stat)
+);
+
+CREATE INDEX IF NOT EXISTS player_stat_by_stat
+    ON player_stat(stat, season, season_type, value);
+
+-- The draft, which is this league's recruiting analogue: the college side
+-- stores 81,262 recruits with hometowns, and the NFL's equivalent question is
+-- who a team spent a pick on and what became of him.
+--
+-- 1999 onwards only, to match the rest of the archive. The source carries
+-- 1980-2026; a pick from 1983 cannot be joined to a game, a rating or a
+-- roster here, so storing it would add a table nothing else can reach.
+--
+-- `player_key` is NULL for the 313 of 7,154 modern picks the source gives no
+-- GSIS id for — almost all of them players who never appeared in a game.
+-- The pick is still real and still stored; it simply has no page.
+CREATE TABLE IF NOT EXISTS draft_pick (
+    season          INTEGER NOT NULL,
+    round           INTEGER NOT NULL,
+    pick            INTEGER NOT NULL,
+    team_key        TEXT    NOT NULL REFERENCES team(team_key),
+    code            TEXT    NOT NULL,
+    player_key      TEXT REFERENCES player(player_key),
+    name            TEXT    NOT NULL,
+    position        TEXT,
+    category        TEXT,
+    side            TEXT,
+    college         TEXT,
+    age             REAL,
+    -- The source's `to`: the last season this player played, from Pro
+    -- Football Reference rather than from this archive.
+    final_season    INTEGER,
+    hall_of_fame    INTEGER,
+    all_pro         INTEGER,
+    pro_bowls       INTEGER,
+    seasons_started INTEGER,
+    games           INTEGER,
+    -- Pro Football Reference's Approximate Value: weighted career, career
+    -- total, and the value earned for the team that drafted him.
+    weighted_av     INTEGER,
+    career_av       INTEGER,
+    draft_av        INTEGER,
+    snapshot_id     INTEGER REFERENCES snapshot(snapshot_id),
+    PRIMARY KEY (season, round, pick)
+);
+
+CREATE INDEX IF NOT EXISTS draft_by_season ON draft_pick(season, round, pick);
+CREATE INDEX IF NOT EXISTS draft_by_team ON draft_pick(team_key, season);
+CREATE INDEX IF NOT EXISTS draft_by_player ON draft_pick(player_key);
