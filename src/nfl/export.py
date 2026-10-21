@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import market as market_module
+from . import people_export
 from . import playoff as playoff_module
 from .coaches import careers
 from .identity import ALIGNMENT_FROM, CONFERENCES, current_season
@@ -466,6 +467,12 @@ def build(connection, *, model_name=None, seasons=None, now=None):
         field = playoff_module.field(rows, games, season)
         if field is not None:
             payload['playoff'] = field
+        # The season's statistical leaders, from the people layer. Absent,
+        # not empty, for a season the people archive does not cover, so the
+        # page can say so rather than draw an empty leaderboard.
+        season_leaders = people_export.leaders(connection, season)
+        if season_leaders:
+            payload['leaders'] = season_leaders
         payloads[season] = payload
         coverage.append(coverage_row(connection, season, games, rows,
                                      complete=season < in_progress))
@@ -494,11 +501,29 @@ def build(connection, *, model_name=None, seasons=None, now=None):
     return manifest, payloads, teams(connection), history
 
 
+def build_people(connection, manifest):
+    """The people files for this export, split at the season in progress.
+
+    The split is read from the manifest's own as-of time rather than from the
+    clock again, so the season the coverage rows call in progress and the
+    season the people files hold apart are decided by the same instant.
+    """
+    moment = datetime.fromisoformat(
+        manifest['generated_at'].replace('Z', '+00:00'))
+    has_people = connection.execute(
+        'SELECT 1 FROM player LIMIT 1').fetchone()
+    if has_people is None:
+        return None
+    return people_export.build(connection, now=moment)
+
+
 def write(manifest, payloads, team_index, history=None, out_dir=OUT_DIR, *,
-          gate=check):
+          gate=check, people=None):
     """Write the export, but only if the gate passes, then check the disk."""
     out_dir = Path(out_dir)
     staged = {}
+    for path, (variable, key, payload) in (people or {}).items():
+        staged[path] = people_export.render(variable, key, payload)
     for season, payload in payloads.items():
         body = json.dumps(payload, separators=(',', ':'), sort_keys=True)
         text = (f'window.NFL_SEASONS=(window.NFL_SEASONS||{{}});'
@@ -520,6 +545,19 @@ def write(manifest, payloads, team_index, history=None, out_dir=OUT_DIR, *,
     manifest['files'] = dict(
         teams=f'teams.js?v={stamp(staged["teams.js"])}',
         history=f'history.js?v={stamp(staged["history.js"])}')
+    if people:
+        def stamped(path):
+            return f'{path}?v={stamp(staged[path])}'
+        careers = sorted((path for path in people
+                          if path.startswith('people/careers/')),
+                         key=lambda path: int(path.rsplit('/', 1)[1][:-3]))
+        manifest['files']['people'] = dict(
+            index=stamped('people/index.js'),
+            current=stamped('people/current.js'),
+            draft=stamped('people/draft.js'),
+            season=people['people/current.js'][2]['season'],
+            shards=len(careers),
+            careers=[stamped(path) for path in careers])
     reasons = gate(manifest, root=None)
     if reasons:
         raise PublishRefused(reasons)
@@ -582,9 +620,14 @@ def main(argv=None):
             connection, seasons=seasons, model_name=args.model)
     finally:
         connection.close()
+    connection = connect(args.database)
+    try:
+        people = build_people(connection, manifest)
+    finally:
+        connection.close()
     try:
         manifest = write(manifest, payloads, team_index, history,
-                         Path(args.out))
+                         Path(args.out), people=people)
     except PublishRefused as refused:
         print(str(refused))
         return 1

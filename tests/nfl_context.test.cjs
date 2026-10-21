@@ -487,8 +487,8 @@ test('the new sections are registered for the NFL and not for the others',
     const leagues = require(path.join(UI, 'ncaambb_app.js'));
     assert.ok(leagues.hasSection('nfl', 'coaches'));
     assert.ok(leagues.hasSection('nfl', 'history'));
-    // There are no NFL players in this archive, so there is no people
-    // section to put coaches inside.
-    assert.ok(!leagues.hasSection('nfl', 'people'));
+    // The people layer (export schema 3) gives the NFL the same `people`
+    // section the other leagues use; coaches stay their own section.
+    assert.ok(leagues.hasSection('nfl', 'people'));
     assert.ok(!leagues.hasSection('ncaambb', 'coaches'));
   });

@@ -347,16 +347,17 @@ DRAFT_COLUMNS = (
 
 
 def _upsert(connection, table, columns, keys, rows, *, snapshot_id=None,
-            keep=()):
+            keep=(), prefer_existing=(), merged=None):
     """One generated upsert for every people table.
 
     The column list, the placeholders, the conflict clause and the value tuple
     all come from `columns`, because four hand-written copies of the same list
     is how a row gets stored with its fields shifted by one.
 
-    `keep` names columns an update must NOT overwrite with a NULL. That is
-    what keeps a stub from erasing a real biography when the player file is
-    loaded first and a roster row for the same player arrives after.
+    `keep` names columns an update fills only where the incoming value is
+    present: a NULL never erases a value. `prefer_existing` names columns an
+    update fills only where the STORED value is absent: the stored value
+    wins. `merged` maps a column to its own SQL expression.
     """
     names = ', '.join(columns + ('snapshot_id',))
     placeholders = ', '.join('?' * (len(columns) + 1))
@@ -364,7 +365,12 @@ def _upsert(connection, table, columns, keys, rows, *, snapshot_id=None,
     for column in columns:
         if column in keys:
             continue
-        if column in keep:
+        if merged and column in merged:
+            sets.append(f'{column} = {merged[column]}')
+        elif column in prefer_existing:
+            sets.append(f'{column} = COALESCE({table}.{column}, '
+                        f'excluded.{column})')
+        elif column in keep:
             sets.append(f'{column} = COALESCE(excluded.{column}, '
                         f'{table}.{column})')
         else:
@@ -387,18 +393,30 @@ def _upsert(connection, table, columns, keys, rows, *, snapshot_id=None,
 def upsert_players(connection, rows, *, snapshot_id=None):
     """Store players. A full biography never loses to a stub.
 
-    Every nullable column is in `keep`, so a stub built from a roster sheet
-    fills the gaps in a player row and overwrites none of it, whichever order
-    the two arrive in. `stub` itself is NOT in `keep`: the flag is computed
-    below, as the AND of the two rows, so a player the file does carry stops
-    being a stub the moment the file is read.
+    The two kinds of row merge in opposite directions, whichever order they
+    arrive in:
+
+    - a row from the PLAYER FILE is the authority, so its values replace what
+      is stored, and only a NULL in it leaves a stored value alone;
+    - a STUB, built from a roster sheet, fills gaps and overwrites nothing,
+      its name included.
+
+    `stub` is the AND of the two rows, so a player the file does carry stops
+    being a stub the moment the file is read and never becomes one again.
     """
-    stored = _upsert(
-        connection, 'player', PLAYER_COLUMNS, ('player_key',), rows,
-        snapshot_id=snapshot_id,
-        keep=tuple(name for name in PLAYER_COLUMNS
-                   if name not in ('player_key', 'gsis_id', 'display_name',
-                                   'stub')))
+    nullable = tuple(name for name in PLAYER_COLUMNS
+                     if name not in ('player_key', 'gsis_id', 'stub'))
+    stub_flag = {'stub': 'MIN(player.stub, excluded.stub)'}
+    full = [row for row in rows if not row['stub']]
+    stubs = [row for row in rows if row['stub']]
+    stored = _upsert(connection, 'player', PLAYER_COLUMNS, ('player_key',),
+                     full, snapshot_id=snapshot_id,
+                     keep=tuple(name for name in nullable
+                                if name != 'display_name'),
+                     merged=stub_flag)
+    stored += _upsert(connection, 'player', PLAYER_COLUMNS, ('player_key',),
+                      stubs, snapshot_id=snapshot_id,
+                      prefer_existing=nullable, merged=stub_flag)
     connection.commit()
     return stored
 

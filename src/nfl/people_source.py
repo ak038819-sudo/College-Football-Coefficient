@@ -151,13 +151,11 @@ def load(*, seasons=None, root=None, reuse_cache=False, opener=None,
         if got is not None:
             bundle['rosters'][season] = got
         for season_type in SEASON_TYPES:
-            # A postseason file for the season in progress is absent until the
-            # postseason is played, which is not a failure in January either:
-            # the file appears when the first playoff game is in it.
-            needed = not optional and not (season_type == 'post'
-                                           and season >= in_progress)
+            # The postseason file of the season in progress is absent until a
+            # playoff game has been played, which is not a failure in January
+            # either: `optional` already covers it.
             got = one(f'stats_{season_type}_{season}',
-                      stats_url(season, season_type), required=needed)
+                      stats_url(season, season_type), required=not optional)
             if got is not None:
                 bundle['stats'][(season, season_type)] = got
     return bundle, origins

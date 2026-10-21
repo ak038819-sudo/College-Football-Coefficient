@@ -57,13 +57,14 @@
     cfb: ['home', 'stats', 'standings', 'teams', 'people', 'games',
           'rankings'],
     ncaambb: ['home', 'standings', 'teams', 'people', 'games'],
-    // The NFL export carries games, ratings, franchise records, head coaches
-    // and the model's own track record. There are no PLAYERS: the archive
-    // behind it is schedules and scores, so `people` stays absent and
-    // `coaches` is its own section rather than a corner of a people page
-    // that does not exist.
-    nfl: ['home', 'standings', 'teams', 'games', 'rankings', 'coaches',
-          'history']
+    // The NFL export carries games, ratings, franchise records, head coaches,
+    // the model's own track record and, from export schema 3, the people
+    // layer: players 1999 onward and the draft. `people` is the same section
+    // name the other two leagues use for the same thing. `coaches` stays its
+    // own section, because the NFL's coach records come from the game
+    // archive rather than from a people feed.
+    nfl: ['home', 'standings', 'teams', 'people', 'games', 'rankings',
+          'coaches', 'history']
   };
 
   function league(slug) {

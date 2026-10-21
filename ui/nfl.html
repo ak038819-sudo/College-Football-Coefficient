@@ -194,6 +194,9 @@
           grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
   .better { color: var(--green-hl); }
   .worse { color: var(--red); }
+  .bio { color: var(--ink-dim); font-size: 13px; margin: 4px 0 0; }
+  .back { margin: 0 0 10px; }
+  tr.total td { font-weight: 600; border-top: 1px solid var(--line); }
   .expand {
     appearance: none; border: 0; background: transparent; color: var(--amber);
     font: inherit; font-size: 13px; padding: 0; cursor: pointer;
@@ -249,6 +252,11 @@
     </table>
   </section>
 
+  <section class="panel" id="people" hidden>
+    <div class="days" id="people-views"></div>
+    <div id="people-body"></div>
+  </section>
+
   <section class="panel" id="coaches" hidden>
     <div id="coach-career"></div>
     <p class="note">Wins above expectation is a coach's actual wins minus the
@@ -278,18 +286,21 @@
   var leagues = window.ncaambbApp;   // the shared league registry
   var app = window.nflApp;           // the NFL's own rules
   var BASE = 'data/nfl/';
-  var TABS = ['home', 'standings', 'rankings', 'coaches', 'history',
-              'teams', 'games'];
+  var TABS = ['home', 'standings', 'rankings', 'people', 'coaches',
+              'history', 'teams', 'games'];
   // A tab with no panel behind it would hide everything and leave an empty
   // page, so a tab is enabled only where this page can actually draw one.
   var PANELS = { home: 'scoreboard', games: 'scoreboard',
                  standings: 'standings', rankings: 'rankings',
-                 coaches: 'coaches', history: 'history' };
+                 people: 'people', coaches: 'coaches',
+                 history: 'history' };
   var LABELS = { home: 'Home', standings: 'Standings', rankings: 'Rankings',
-                 coaches: 'Coaches', history: 'History', teams: 'Teams',
+                 people: 'Players', coaches: 'Coaches',
+                 history: 'History', teams: 'Teams',
                  games: 'Games' };
   var state = { manifest: null, verdict: null, season: null, week: null,
-                tab: 'home', coach: null };
+                tab: 'home', coach: null, player: null,
+                peopleView: 'players', query: '' };
 
   function el(id) { return document.getElementById(id); }
 
@@ -318,6 +329,16 @@
       host.appendChild(button);
     });
     el('search').placeholder = leagues.searchPlaceholder(leagues.NFL);
+    // The header's search box searches players. It is the one search box on
+    // the page, so it takes the reader to the Players tab rather than a
+    // second box appearing inside it.
+    el('search').addEventListener('input', function () {
+      state.query = el('search').value;
+      state.player = null;
+      state.peopleView = 'players';
+      if (state.verdict && state.verdict.ok) state.tab = 'people';
+      render();
+    });
   }
 
   function tabButtons() {
@@ -938,6 +959,396 @@
     host.appendChild(node);
   }
 
+
+  /* ------------------------------------------------------------------
+   * The people layer: index, career shards, the season in progress and the
+   * draft, each fetched the first time something needs it. A schema 1 or 2
+   * manifest names none of them, and the panel says the export predates
+   * players rather than showing an empty search.
+   * ---------------------------------------------------------------- */
+  var peopleFiles = {};
+
+  function peopleFile(src, read) {
+    if (!src) return { missing: true };
+    var entry = peopleFiles[src];
+    if (!entry) {
+      entry = peopleFiles[src] = { loading: true, failed: null };
+      load(src).then(function () {
+        entry.loading = false;
+        render();
+      }).catch(function (error) {
+        entry.loading = false;
+        entry.failed = error.message;
+        render();
+      });
+    }
+    if (entry.loading) return { loading: true };
+    if (entry.failed) return { failed: entry.failed };
+    return { data: read() };
+  }
+
+  function peopleIndex() {
+    return peopleFile(loader.peopleSource(state.manifest, 'index', BASE),
+                      function () { return window.NFL_PEOPLE_INDEX || null; });
+  }
+
+  function peopleCurrent() {
+    return peopleFile(loader.peopleSource(state.manifest, 'current', BASE),
+                      function () { return window.NFL_PEOPLE_CURRENT || null; });
+  }
+
+  function peopleDraft() {
+    return peopleFile(loader.peopleSource(state.manifest, 'draft', BASE),
+                      function () { return window.NFL_DRAFT || null; });
+  }
+
+  function careerShard(shard) {
+    return peopleFile(loader.careerSource(state.manifest, shard, BASE),
+                      function () {
+                        return (window.NFL_PEOPLE_SHARDS || {})[shard] || null;
+                      });
+  }
+
+  /* The line a panel shows instead of content, or null when it has it. */
+  function fileStatus(got) {
+    if (got.missing) {
+      return 'This export does not carry the people layer; it was built '
+        + 'before players were added. The next refresh writes one.';
+    }
+    if (got.failed) return 'The player files could not be loaded: '
+      + got.failed;
+    if (got.loading || !got.data) return 'Loading…';
+    return null;
+  }
+
+  function emptyLine(host, message) {
+    var node = document.createElement('p');
+    node.className = 'empty';
+    node.textContent = message;
+    host.appendChild(node);
+  }
+
+  function playerButton(id, name) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'expand';
+    button.textContent = name;
+    button.addEventListener('click', function () {
+      state.player = id;
+      state.peopleView = 'players';
+      state.tab = 'people';
+      window.scrollTo(0, 0);
+      render();
+    });
+    return button;
+  }
+
+  function franchiseKey(code) { return 'nfl:nflverse:franchise:' + code; }
+
+  function renderPeopleViews() {
+    var host = el('people-views');
+    host.innerHTML = '';
+    [['players', 'Players'], ['draft', 'Draft']].forEach(function (pair) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = pair[1];
+      button.setAttribute('aria-pressed',
+        String(state.peopleView === pair[0] && !state.player));
+      button.addEventListener('click', function () {
+        state.peopleView = pair[0];
+        state.player = null;
+        render();
+      });
+      host.appendChild(button);
+    });
+  }
+
+  var LEADER_LABELS = {
+    passing_yards: 'Passing yards', passing_tds: 'Passing TDs',
+    rushing_yards: 'Rushing yards', rushing_tds: 'Rushing TDs',
+    receptions: 'Receptions', receiving_yards: 'Receiving yards',
+    receiving_tds: 'Receiving TDs', def_sacks: 'Sacks',
+    def_interceptions: 'Interceptions', def_tackles_solo: 'Solo tackles',
+    fg_made: 'Field goals made'
+  };
+
+  function renderPeople() {
+    var host = el('people-body');
+    host.innerHTML = '';
+    renderPeopleViews();
+    // Checked first, before any view: the leaderboard comes from the season
+    // payload rather than the people files, so without this an export that
+    // predates players would offer "search for a player above" and only say
+    // why nothing can be found after the reader typed a name.
+    if (!loader.peopleSource(state.manifest, 'index', BASE)) {
+      return emptyLine(host, fileStatus({ missing: true }));
+    }
+    if (state.player) return renderPlayer(host);
+    if (state.peopleView === 'draft') return renderDraft(host);
+    if (state.query && app.normalizeName(state.query)) {
+      return renderSearch(host);
+    }
+    renderLeaders(host);
+  }
+
+  function renderSearch(host) {
+    var index = peopleIndex();
+    var waiting = fileStatus(index);
+    if (waiting) return emptyLine(host, waiting);
+    var found = app.searchPlayers(index.data, state.query, 25);
+    if (!found.length) {
+      return emptyLine(host, 'No player in the archive matches “'
+        + state.query + '”.');
+    }
+    var node = table('<tr><th>Player</th><th>Pos</th><th>Team</th>'
+      + '<th>Seasons</th></tr>');
+    var body = node.querySelector('tbody');
+    found.forEach(function (row) {
+      var tr = document.createElement('tr');
+      var name = document.createElement('td');
+      name.appendChild(playerButton(row.id, row.name));
+      tr.appendChild(name);
+      cellInto(tr, row.position || '');
+      cellInto(tr, row.team || '');
+      cellInto(tr, app.playerSpan(row.first, row.last));
+      body.appendChild(tr);
+    });
+    host.appendChild(node);
+  }
+
+  function renderLeaders(host) {
+    var payload = seasonPayload();
+    var leaders = payload && payload.leaders;
+    if (!leaders) {
+      return emptyLine(host, 'Search for a player above. This season’s '
+        + 'statistical leaders are not in this export.');
+    }
+    host.appendChild(heading('h3', app.seasonLabel(state.season)
+      + ' regular-season leaders'));
+    Object.keys(LEADER_LABELS).forEach(function (stat) {
+      var rows = leaders[stat];
+      if (!rows || !rows.length) return;
+      var node = table('<tr><th class="rk">#</th><th>'
+        + LEADER_LABELS[stat] + '</th><th>Team</th>'
+        + '<th class="num"></th></tr>');
+      node.className = 'group';
+      var body = node.querySelector('tbody');
+      var rank = 0;
+      rows.forEach(function (row, at) {
+        // Equal values share a rank, so a two-way tie for tenth is two
+        // tenths rather than a tenth and an eleventh.
+        if (at === 0 || row.value !== rows[at - 1].value) rank = at + 1;
+        var tr = document.createElement('tr');
+        cellInto(tr, rank, 'rk');
+        var name = document.createElement('td');
+        name.appendChild(playerButton(row.id, row.name));
+        tr.appendChild(name);
+        cellInto(tr, row.team ? teamCode(franchiseKey(row.team)) : '');
+        cellInto(tr, app.statText(stat, row.value), 'num');
+        body.appendChild(tr);
+      });
+      host.appendChild(node);
+    });
+  }
+
+  function indexRow(index, id) {
+    var rows = (index && index.players) || [];
+    for (var at = 0; at < rows.length; at += 1) {
+      if (rows[at][0] === id) return rows[at];
+    }
+    return null;
+  }
+
+  function renderPlayer(host) {
+    var back = document.createElement('p');
+    back.className = 'back';
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'expand';
+    button.textContent = state.query ? '← Search results'
+      : '← All players';
+    button.addEventListener('click', function () {
+      state.player = null;
+      render();
+    });
+    back.appendChild(button);
+    host.appendChild(back);
+
+    var index = peopleIndex();
+    var waiting = fileStatus(index);
+    if (waiting) return emptyLine(host, waiting);
+    var entry = indexRow(index.data, state.player);
+    if (!entry) return emptyLine(host, 'This player is not in the index.');
+    var career = careerShard(entry[6]);
+    var current = peopleCurrent();
+    waiting = fileStatus(career) || fileStatus(current);
+    if (waiting) return emptyLine(host, waiting);
+    var bio = (career.data.players || {})[state.player] || { name: entry[1] };
+
+    host.appendChild(heading('h3', bio.name));
+    var facts = [];
+    if (bio.position) facts.push(bio.position);
+    if (bio.jersey !== undefined) facts.push('#' + bio.jersey);
+    var size = [app.heightText(bio.height),
+                bio.weight ? bio.weight + ' lb' : ''].filter(Boolean);
+    if (size.length) facts.push(size.join(', '));
+    if (bio.college) facts.push(bio.college);
+    if (bio.born) facts.push('born ' + bio.born);
+    var line = document.createElement('p');
+    line.className = 'bio';
+    line.textContent = facts.join(' · ');
+    host.appendChild(line);
+    if (bio.draft) {
+      var draft = document.createElement('p');
+      draft.className = 'bio';
+      draft.textContent = 'Drafted ' + bio.draft.season + ', round '
+        + bio.draft.round + ', pick ' + bio.draft.pick + ', by '
+        + teamName(franchiseKey(bio.draft.team));
+      host.appendChild(draft);
+    }
+    if (bio.stub) {
+      var stub = document.createElement('p');
+      stub.className = 'note';
+      stub.textContent = 'The source’s player file does not carry this '
+        + 'player, so this biography comes from a roster sheet and may be '
+        + 'thinner than most.';
+      host.appendChild(stub);
+    }
+
+    var seasons = app.unpackSeasons(career.data, state.player)
+      .concat(app.unpackSeasons(current.data, state.player));
+    var roster = app.unpackRoster(career.data, state.player)
+      .concat(app.unpackRoster(current.data, state.player));
+    var tables = index.data.tables || [];
+    [['reg', 'Regular season'], ['post', 'Postseason']].forEach(
+      function (pair) {
+        var rows = seasons.filter(function (row) {
+          return row.type === pair[0];
+        });
+        if (!rows.length) return;
+        app.statTablesFor(rows, tables).forEach(function (group) {
+          host.appendChild(statTable(group, pair[1], index.data));
+        });
+      });
+    if (!seasons.length) {
+      emptyLine(host, 'No statistics are recorded for this player. Linemen '
+        + 'have none in this archive: it counts what a player did with the '
+        + 'ball, and blocking is not in it.');
+    }
+    if (roster.length) host.appendChild(rosterTable(roster));
+  }
+
+  function statTable(group, typeLabel, index) {
+    var head = '<tr><th>Season</th><th>Team</th><th class="num">G</th>';
+    group.columns.forEach(function (name) {
+      head += '<th class="num">' + (app.STAT_LABELS[name] || name) + '</th>';
+    });
+    var node = table(head + '</tr>');
+    node.className = 'group';
+    node.insertBefore(heading('h3', group.label + ' · ' + typeLabel),
+                      node.firstChild);
+    var body = node.querySelector('tbody');
+    group.rows.forEach(function (row) {
+      var tr = document.createElement('tr');
+      cellInto(tr, row.season);
+      cellInto(tr, row.team ? teamCode(franchiseKey(row.team)) : '');
+      cellInto(tr, row.games === null ? '' : row.games, 'num');
+      group.columns.forEach(function (name) {
+        cellInto(tr, app.statText(name, row.stats[name]), 'num');
+      });
+      body.appendChild(tr);
+    });
+    if (group.rows.length > 1) {
+      var totals = app.careerTotals(group.rows, index.mean_stats,
+                                    index.max_stats);
+      var tr = document.createElement('tr');
+      tr.className = 'total';
+      cellInto(tr, 'Career');
+      cellInto(tr, '');
+      cellInto(tr, totals.games, 'num');
+      group.columns.forEach(function (name) {
+        cellInto(tr, app.statText(name, totals.stats[name]), 'num');
+      });
+      body.appendChild(tr);
+    }
+    return node;
+  }
+
+  function rosterTable(roster) {
+    var node = table('<tr><th>Season</th><th>Team</th><th>Pos</th>'
+      + '<th class="num">#</th></tr>');
+    node.className = 'group';
+    node.insertBefore(heading('h3', 'On a roster'), node.firstChild);
+    var body = node.querySelector('tbody');
+    roster.sort(function (a, b) { return a.season - b.season; });
+    roster.forEach(function (row) {
+      var tr = document.createElement('tr');
+      cellInto(tr, row.season);
+      cellInto(tr, teamName(franchiseKey(row.team)));
+      cellInto(tr, row.position || '');
+      cellInto(tr, row.jersey === null || row.jersey === undefined
+        ? '' : row.jersey, 'num');
+      body.appendChild(tr);
+    });
+    return node;
+  }
+
+  function renderDraft(host) {
+    var got = peopleDraft();
+    var waiting = fileStatus(got);
+    if (waiting) return emptyLine(host, waiting);
+    var rounds = app.draftRounds(got.data, state.season);
+    if (!rounds.length) {
+      return emptyLine(host, 'No draft is recorded for '
+        + app.seasonLabel(state.season) + '.');
+    }
+    var picks = rounds.reduce(function (sum, round) {
+      return sum + round.picks.length;
+    }, 0);
+    var linked = rounds.reduce(function (sum, round) {
+      return sum + round.picks.filter(function (pick) {
+        return pick.id;
+      }).length;
+    }, 0);
+    host.appendChild(heading('h3', app.seasonLabel(state.season)
+      + ' draft'));
+    var note = document.createElement('p');
+    note.className = 'legend';
+    note.textContent = picks + ' picks; ' + linked + ' open a player page. '
+      + 'The rest have no player record here: the source gives them no NFL '
+      + 'id, or they never made a roster from 1999 on. Approximate Value '
+      + '(AV) is Pro Football Reference\u2019s, as the source gives it.';
+    host.appendChild(note);
+    rounds.forEach(function (round) {
+      var node = table('<tr><th class="rk">Pick</th><th>Team</th>'
+        + '<th>Player</th><th>Pos</th><th>College</th>'
+        + '<th class="num">Pro Bowls</th><th class="num">AV</th></tr>');
+      node.className = 'group';
+      node.insertBefore(heading('h3', 'Round ' + round.round),
+                        node.firstChild);
+      var body = node.querySelector('tbody');
+      round.picks.forEach(function (pick) {
+        var tr = document.createElement('tr');
+        cellInto(tr, pick.pick, 'rk');
+        cellInto(tr, teamCode(franchiseKey(pick.team)));
+        var name = document.createElement('td');
+        if (pick.id) name.appendChild(playerButton(pick.id, pick.name));
+        else name.textContent = pick.name;
+        if (pick.hall_of_fame) {
+          name.appendChild(document.createTextNode(' · Hall of Fame'));
+        }
+        tr.appendChild(name);
+        cellInto(tr, pick.position || '');
+        cellInto(tr, pick.college || '');
+        cellInto(tr, pick.pro_bowls === null ? '' : pick.pro_bowls, 'num');
+        cellInto(tr, pick.weighted_av === null ? '' : pick.weighted_av,
+                 'num');
+        body.appendChild(tr);
+      });
+      host.appendChild(node);
+    });
+  }
+
   function render() {
     renderMeta();
     renderRefusal();
@@ -946,6 +1357,7 @@
                                        || state.tab === 'games');
     el('standings').hidden = !ok || state.tab !== 'standings';
     el('rankings').hidden = !ok || state.tab !== 'rankings';
+    el('people').hidden = !ok || state.tab !== 'people';
     el('coaches').hidden = !ok || state.tab !== 'coaches';
     el('history').hidden = !ok || state.tab !== 'history';
     tabButtons();
@@ -960,6 +1372,7 @@
       renderStandings();
     }
     if (!el('rankings').hidden) renderBoard();
+    if (!el('people').hidden) renderPeople();
     if (!el('coaches').hidden || !el('history').hidden) ensureHistory();
     if (!el('coaches').hidden) renderCoaches();
     if (!el('history').hidden) {

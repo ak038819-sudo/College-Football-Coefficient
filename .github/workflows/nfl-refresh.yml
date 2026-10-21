@@ -72,7 +72,8 @@ jobs:
       - name: Validate before touching anything published
         run: |
           python -m pytest tests/test_nfl_data.py tests/test_nfl_elo.py \
-            tests/test_nfl_export.py tests/test_nfl_context.py -q
+            tests/test_nfl_export.py tests/test_nfl_context.py \
+            tests/test_nfl_people.py -q
 
       - name: Ingest the archive
         run: |
@@ -80,6 +81,18 @@ jobs:
           # would pass this step. It has done exactly that in this repository.
           set -o pipefail
           python -m src.nfl.ingest | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Ingest the people archive
+        run: |
+          # Players, rosters, season statistics and the draft: 85 nflverse
+          # release assets, about 54 MB, no key and no cap. Fetched on every
+          # run like the game archive and never committed.
+          #
+          # A failure here FAILS THE RUN rather than publishing without the
+          # people layer, which would take every player page off the site.
+          # The published export stays as it is and the page marks it stale.
+          set -o pipefail
+          python -m src.nfl.people | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Replay the archive with the committed model
         run: |

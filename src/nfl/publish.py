@@ -77,6 +77,19 @@ def plan(new_dir, live_dir, *, now=None, gate=check):
         return dict(publish=True, first=True, incoming=incoming, live=None,
                     reason='nothing is published yet; this is the first '
                            'NFL export')
+    # A layer the live site has and the new export lacks is a REGRESSION, not
+    # an update. The people step fails its run when the fetch fails, so this
+    # should never be reached in the workflow; it is here so that a run
+    # changed later to tolerate that failure cannot publish an export with
+    # the player pages quietly missing.
+    live_files = live.get('files') or {}
+    new_files = incoming.get('files') or {}
+    dropped = sorted(name for name in live_files if name not in new_files)
+    if dropped:
+        return dict(publish=False, first=False, incoming=incoming, live=live,
+                    reason=f'the new export lacks {", ".join(dropped)}, which '
+                           'the published one carries; publishing it would '
+                           'remove that part of the site')
     new_moment, live_moment = generated_at(incoming), generated_at(live)
     if new_moment is None:
         return dict(publish=False, first=False, incoming=incoming, live=live,
