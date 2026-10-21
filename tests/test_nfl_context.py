@@ -10,8 +10,6 @@ readily as of a fix.
 """
 
 import json
-import sqlite3
-import subprocess
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -153,31 +151,40 @@ class TestTheWidenedGameRow:
         assert stored['temp'] == 67 and stored['wind'] == 8
         assert stored['home_moneyline'] == -148
 
-    def test_a_schema_1_database_gains_the_columns_rather_than_breaking(
+    def test_an_older_database_gains_the_columns_rather_than_breaking(
             self, tmp_path):
-        """`CREATE TABLE IF NOT EXISTS` does nothing to a table that exists,
-        so without an explicit ALTER an old database keeps its 26-column
-        `game` table and every INSERT fails on a column the schema declares.
-        This drives the real previous schema out of git."""
-        old = subprocess.run(
-            ['git', 'show', 'HEAD:src/nfl/schema.sql'],
-            capture_output=True, text=True, check=True).stdout
-        assert 'home_coach' not in old, (
-            'HEAD already carries the widened schema, so this test is no '
-            'longer exercising a migration')
+        """`CREATE TABLE IF NOT EXISTS` does nothing to a table that already
+        exists, so without an explicit ALTER an old database keeps its
+        26-column `game` table and every INSERT fails on a column the schema
+        file declares.
+
+        The "before" state is built by dropping exactly what `ADDED_COLUMNS`
+        says was added, rather than by reading the previous schema out of
+        git: a git-based fixture reads HEAD, and on a branch where the
+        widening IS the head commit it finds the new schema and tests
+        nothing. (It did. This test failed in CI for that reason and for no
+        other.) Built this way it also keeps working at schema 3.
+        """
         path = tmp_path / 'nfl.db'
-        legacy = sqlite3.connect(str(path))
-        legacy.executescript(old)
-        legacy.execute('INSERT INTO schema_version (version) VALUES (1)')
-        legacy.commit()
-        legacy.close()
+        connection = store.connect(path)
+        added = [name for name, _ in store.ADDED_COLUMNS['game']]
+        assert added, 'nothing is recorded as added, so nothing is migrated'
+        for name in added:
+            connection.execute(f'ALTER TABLE game DROP COLUMN {name}')
+        connection.execute('UPDATE schema_version SET version = 1')
+        connection.commit()
+        before = {r['name'] for r in
+                  connection.execute('PRAGMA table_info(game)')}
+        assert not (before & set(added)), 'the fixture is already migrated'
+        connection.close()
 
         connection = store.connect(path)
         present = {r['name'] for r in
                    connection.execute('PRAGMA table_info(game)')}
         assert present == set(store.GAME_COLUMNS)
         assert connection.execute(
-            'SELECT version FROM schema_version').fetchone()[0] == 2
+            'SELECT version FROM schema_version').fetchone()[0] \
+            == store.SCHEMA_VERSION
         # And the widened INSERT works against the migrated table.
         parsed = games_module.parse(archive(row(
             '2024_01_BAL_KC', 2024, 'REG', 1, '2024-09-05', 'BAL', 20,
