@@ -313,39 +313,62 @@ test('the date strip centres Today and can move off it', async () => {
 
 // --- what the page must not do ---------------------------------------------
 
-test('the football header reaches basketball, and football itself is unmoved', () => {
-  // Gate 6: basketball is reachable. What must NOT change is football's own
-  // routes — the selector is a link to another page, not a new route, so
-  // every football link published to date opens the same page it always did.
-  const shell = fs.readFileSync(path.join(UI, 'dashboard_shell.html'), 'utf8');
-  assert.match(shell, /href="basketball\.html"/);
-  assert.match(shell, /data-league="ncaambb"/);
-  assert.match(shell, /id="league-selector"/);
-  for (const football of ['#section=home', '#section=stats', '#section=rankings',
-    '#section=teams', '#section=people']) {
-    assert.ok(shell.includes(`href="${football}"`), `${football} still exists`);
-  }
-  assert.ok(!shell.includes('league=ncaambb'),
-    'football gains no league parameter of its own');
-});
+// The selector is STAGED OFF: the basketball side is finished and tested, but
+// its first export cannot be built until the provider's allowance recovers,
+// and a visible league tab with no data behind it is worse than no tab. These
+// three tests assert that staged-off state. Turning the selector on means
+// inverting them, and the parked markup they check is what gets re-added.
 
-test('both pages agree on where the remembered league is kept', () => {
-  // Two files, one key. A drift here means tapping a league on one page and
-  // being sent somewhere else by the other.
+const live = () => {
+  // What the browser actually runs: HTML comments and commented-out JS lines
+  // removed, so a parked block cannot satisfy an assertion about live code.
   const shell = fs.readFileSync(path.join(UI, 'dashboard_shell.html'), 'utf8');
+  return shell.replace(/<!--[\s\S]*?-->/g, '')
+    .split('\n').filter(line => !/^\s*\/\//.test(line)).join('\n');
+};
+
+test('the football header does not reach basketball, and football is unmoved',
+  () => {
+    const shell = fs.readFileSync(path.join(UI, 'dashboard_shell.html'), 'utf8');
+    const running = live();
+    for (const parked of ['href="basketball.html"', 'data-league="ncaambb"',
+      '<nav class="leagues" id="league-selector"']) {
+      assert.ok(!running.includes(parked), `${parked} must not be live`);
+      assert.ok(shell.includes(parked),
+        `${parked} must stay parked in a comment, so it can be re-added`);
+    }
+    // What must not change either way is football's own routes: the selector
+    // was a link to another page, not a new route, so every football link
+    // published to date opens the same page it always did.
+    for (const football of ['#section=home', '#section=stats',
+      '#section=rankings', '#section=teams', '#section=people']) {
+      assert.ok(running.includes(`href="${football}"`), `${football} exists`);
+    }
+    assert.ok(!shell.includes('league=ncaambb'),
+      'football gains no league parameter of its own');
+  });
+
+test('nothing on the football page remembers a league while it is off', () => {
   const app = require('../ui/ncaambb_app.js');
-  assert.ok(shell.includes(app.LEAGUE_KEY));
+  assert.ok(!live().includes(app.LEAGUE_KEY),
+    'no live code on the football page touches the remembered league');
+  // The parked listener still has to agree with the basketball page on the
+  // key, or re-enabling the selector reintroduces the drift this test was
+  // written to catch: tapping a league on one page, being sent elsewhere by
+  // the other.
+  const shell = fs.readFileSync(path.join(UI, 'dashboard_shell.html'), 'utf8');
+  assert.ok(shell.includes('rememberLeagueChoice'), 'the listener is parked');
+  assert.ok(shell.includes(app.LEAGUE_KEY), 'and parked with the same key');
 });
 
 test('the football page does not redirect a reader to basketball', () => {
   // A redirect would open somebody else's sport from a shared link, and move
-  // the installed app's start URL on its own.
+  // the installed app's start URL on its own. The whole file is searched,
+  // comments included: a parked redirect is still the wrong thing to re-add.
   const shell = fs.readFileSync(path.join(UI, 'dashboard_shell.html'), 'utf8');
-  const selector = shell.slice(shell.indexOf('rememberLeagueChoice'));
-  const block = selector.slice(0, selector.indexOf('}());'));
   for (const banned of ['location.href =', 'location.replace',
     'location.assign']) {
-    assert.ok(!block.includes(banned), `${banned} must not appear`);
+    assert.ok(!shell.includes(banned), `${banned} must not appear`);
   }
 });
 

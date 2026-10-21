@@ -157,9 +157,9 @@ the same ceiling the moment it has a live feed at all.
 
 ## What was built, and what it does instead
 
-- **The league selector** is the segmented control beneath the wordmark, on
-  both pages, and it is ON: the football header links to basketball and the
-  basketball header links back. It is a link rather than a route, because every
+- **The league selector** is the segmented control beneath the wordmark. It is
+  built on both pages, but on the football page it is **STAGED OFF**: see the
+  section below. The basketball header links back to football either way. It is a link rather than a route, because every
   football deep link published to date must keep opening the same page. It does
   not redirect; the switch logic that keeps a destination across leagues is in
   `switchLeague()` and is tested, and comes into its own when the two leagues
@@ -178,3 +178,38 @@ the same ceiling the moment it has a live feed at all.
 - **Freshness** is a badge that reads `Stale · updated 26h ago` in red, or the
   plain age in green. A stale export is still drawn, because it is the last
   good snapshot.
+
+## The selector is staged off in the first release
+
+Decided 2026-10-21, with Austin ("let's roll"): the basketball side is
+finished and tested, but its first export cannot be built, because the
+provider's rolling seven-day allowance is spent and does not recover until
+2026-10-27 (measured; see
+[`basketball-refresh.md`](basketball-refresh.md)). A visible league tab with
+no data behind it is worse than no tab, so the code lands with the tab absent
+and the tab goes on once the archive is exported.
+
+Nothing is deleted. Three things are parked, each with a comment saying so:
+
+1. `ui/dashboard_shell.html`, in the `.title-block` header — the
+   `<nav class="leagues" id="league-selector">` markup, inside an HTML
+   comment.
+2. `ui/dashboard_shell.html`, at the end of the inline script — the
+   `rememberLeagueChoice()` listener, commented out line by line. It must not
+   redirect when it returns: a football link has to open football even for a
+   reader whose last visit was basketball, or a shared link opens somebody
+   else's sport and the installed app's start URL moves on its own.
+3. The `#league-selector a` CSS stays **live**, styling nothing. It is
+   addressed by id deliberately, to beat the shell's global
+   `:root a:any-link:not(.active):not(.action-button)` rule at (0,3,1); that
+   specificity trap was the part that was hard to get right, and deleting the
+   rule would mean rediscovering it.
+
+`ui/basketball.html` is unchanged and still complete. It is simply not linked
+from anywhere, exactly as it was at the end of B05.
+
+**Turning it on** is: uncomment (1) and (2), then invert the three tests under
+`--- what the page must not do ---` in `tests/basketball_preview.test.cjs`,
+which currently assert the staged-off state and name the parked blocks. The
+tests fail loudly if a parked block is deleted rather than re-added, so there
+is no silent way to lose this.
