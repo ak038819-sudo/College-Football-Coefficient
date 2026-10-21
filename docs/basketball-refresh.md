@@ -183,17 +183,21 @@ three requests because `--usage-only` skips the data calls):
   failed run of five attempts plus the earlier probe. Retrying a 429 spends
   allowance to learn nothing, which is the strongest argument for stopping on
   one rather than grinding through the seasons.
-- The seven-day totals are **~1,064 basketball against 7 football**, and the
-  football 7 are this probe's own calls. But nearly all the basketball spend
-  carries **today's** timestamps (`/games` last 07:16, `/games/players` 05:00,
-  `/plays` 04:20). A seven-day window containing a single day's work points at
-  a **daily** cap rather than a weekly one — in which case capacity returns at
-  the next UTC midnight, not in seven days.
+- The seven-day totals on 2026-10-20 were **~1,064 basketball against 7
+  football**, and the football 7 were the probe's own calls.
 
-That last point is a hypothesis, not a measurement, and it is free to test:
-retry after 00:00 UTC. The remedy is otherwise a higher tier, and the
-diagnosis always comes from asking the usage endpoint rather than inferring it
-from a 429. Two reasons, both learned from that run. A season whose first
+A **daily** cap was then the obvious hypothesis, because nearly all of that
+spend carried one day's timestamps. **It is wrong.** Retried just after 00:00
+UTC on 2026-10-21 (run 39521046771): the counter had not reset — it had gone
+*up*, to 1,077 — and the first `/teams` call was refused again. The window is
+genuinely rolling and seven days long, so the 2026-10-20 spend does not age
+out until 2026-10-27.
+
+So the cap sits on a window of at least seven days, at roughly a thousand
+requests, and the only remedies are a larger allowance or waiting for the
+window to roll. The diagnosis always comes from asking the usage endpoint
+rather than inferring it from a 429 — three times now the inference has been
+wrong and the endpoint has been right. Two reasons, both learned from that run. A season whose first
 request never cleared the limit means the quota is spent, so every later season
 would burn its full backoff to fail identically — 35 requests where 5 told the
 whole story. And a plain failure gets reported per season as "not stored",
