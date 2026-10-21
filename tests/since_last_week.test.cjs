@@ -84,7 +84,24 @@ test('following a team, and what the last week did to it',async t=>{
     const last=tl.rows[tl.rows.length-1];
     const moved=last.filter(r=>r.stage_games>0&&r.d_elo!==null&&r.d_elo!==0);
     assert.ok(moved.length,'no team moved in the latest stage of '+season);
-    const pick=moved[0];
+    // The "Where it stands" panel exists only for a team the playoff field or
+    // the rest-of-season projection knows about, and removing it otherwise is
+    // correct: an empty box is worse than no box. So the mover is chosen to
+    // satisfy that precondition rather than taken from row zero -- which is
+    // what broke here, when a refresh made the biggest mover of the week a
+    // team in neither (Marshall, 2026). Keying an assertion to row zero has
+    // now cost this suite twice; search the data for a row that satisfies the
+    // precondition instead.
+    const standingNames=new Set([
+      ...(((DATA.playoff_by_year||{})[String(season)]||{}).field||[]).map(q=>q.team),
+      ...((DATA.projection&&DATA.projection.season===season
+        ? DATA.projection.teams||[] : [])).map(t=>t.team)]);
+    const named=r=>tl.teams[r.team].name;
+    // Falling back to row zero keeps the rest of the suite running when no
+    // mover has a standing at all; the standing assertions below then check
+    // that the panel is correctly ABSENT, so neither case passes vacuously.
+    const pick=moved.find(r=>standingNames.has(named(r)))||moved[0];
+    const hasStanding=standingNames.has(named(pick));
     const name=tl.teams[pick.team].name;
     const team=DATA.teams.find(x=>x.name===name);
     assert.ok(team,name+' is not in the team index');
@@ -143,9 +160,16 @@ test('following a team, and what the last week did to it',async t=>{
       // Seed and odds are shown as they stand, in their own panel, and said
       // to be exactly that rather than dressed up as a week-on-week move.
       const standing=d.querySelector('#tp-week-standing');
-      assert.ok(standing,'the playoff standing panel is missing');
-      assert.match(standing.textContent,/[Nn]o week-ago copy/);
-      assert.match(standing.textContent,/Playoff field/i);
+      if (hasStanding) {
+        assert.ok(standing,'the playoff standing panel is missing for '+name
+          +', which the field or the projection does carry');
+        assert.match(standing.textContent,/[Nn]o week-ago copy/);
+        assert.match(standing.textContent,/Playoff field/i);
+      } else {
+        assert.equal(standing,null,'the standing panel is drawn for '+name
+          +', which neither the playoff field nor the projection carries, so '
+          +'it would be an empty box');
+      }
     });
 
     await t.test('unfollowing removes the team from the home page again',async()=>{
