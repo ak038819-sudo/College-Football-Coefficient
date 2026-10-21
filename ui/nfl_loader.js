@@ -16,11 +16,12 @@
 (function (root) {
   'use strict';
 
-  /* Both versions, and in the same order as SUPPORTED_SCHEMA_VERSIONS in
-   * src/nfl/publish_gate.py. A reader that refused 1 would blank the page
-   * for anyone served this script before the next refresh rewrites the
-   * export, and a reader that refused 2 would blank it for everyone after. */
-  var SUPPORTED_SCHEMA_VERSIONS = [1, 2];
+  /* Every version this page can draw, in the same order as
+   * SUPPORTED_SCHEMA_VERSIONS in src/nfl/publish_gate.py. A reader that
+   * refused the older ones would blank the page for anyone served this
+   * script before the next refresh rewrites the export, and one that refused
+   * the newest would blank it for everyone after. */
+  var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3];
 
   /* The NFL is a fixed-size league, so this is an equality, not a floor: 32
    * franchises from the 2002 expansion and 31 before it. An export missing
@@ -184,6 +185,25 @@
     return (base || 'data/nfl/') + entry;
   }
 
+  /* The people layer's files. `files.people` is a section rather than a
+   * string, so `fileSource` cannot read it; a manifest without one (schema 1
+   * or 2) yields null and the page says the export predates it. */
+  function peopleSource(manifest, part, base) {
+    var people = manifest && manifest.files && manifest.files.people;
+    var entry = people && people[part];
+    if (typeof entry !== 'string' || !entry) return null;
+    return (base || 'data/nfl/') + entry;
+  }
+
+  function careerSource(manifest, shard, base) {
+    var people = manifest && manifest.files && manifest.files.people;
+    var careers = people && people.careers;
+    if (!Array.isArray(careers)) return null;
+    var entry = careers[shard];
+    if (typeof entry !== 'string' || !entry) return null;
+    return (base || 'data/nfl/') + entry;
+  }
+
   var api = {
     SUPPORTED_SCHEMA_VERSIONS: SUPPORTED_SCHEMA_VERSIONS,
     EXPANSION_SEASON: EXPANSION_SEASON,
@@ -195,7 +215,9 @@
     freshness: freshness,
     describeAge: describeAge,
     seasonSource: seasonSource,
-    fileSource: fileSource
+    fileSource: fileSource,
+    peopleSource: peopleSource,
+    careerSource: careerSource
   };
 
   if (typeof module === 'object' && module.exports) {

@@ -24,7 +24,12 @@ PROVIDER = 'nflverse'
 # coaches nowhere. A name is a weak id and this one is load-bearing, so it is
 # normalised (collapsed whitespace) and never guessed at: two coaches sharing
 # a name would share a key and nothing in this data could separate them.
-KINDS = frozenset({'team', 'franchise', 'game', 'coach'})
+# `player` is keyed by the GSIS id, which is the one id in this data that
+# is both stable and nearly complete: every one of the 24,856 rows in the
+# source's player file carries one and none of them repeats. It is still
+# namespaced — `nfl:nflverse:player:00-0019596` — because a bare provider
+# id is never a key here.
+KINDS = frozenset({'team', 'franchise', 'game', 'coach', 'player'})
 
 # code -> the franchise code it belongs to. Only moves that CHANGE THE CODE
 # appear here; a team that renames without the source renaming it needs no
@@ -52,6 +57,63 @@ TEAM_CODES = frozenset({
 })
 
 FRANCHISE_CODES = frozenset(TEAM_CODES - set(RELOCATIONS))
+
+# The people files spell five or nine franchises differently from the game
+# archive, and a code this module does not know is REFUSED, so without this
+# table the roster and draft loaders would simply reject those teams.
+#
+# MEASURED on 2026-10-21 against the whole archive rather than assumed:
+#
+# - The roster files use the GSIS spellings ARZ, BLT, CLV, HST and SL. Each
+#   appears in 2002-2015 ONLY, and in no season does one of them appear
+#   alongside the canonical code it stands for. That disjointness is the
+#   evidence that they are spellings of one team rather than two teams: 896
+#   ARZ rows and no ARI row in any season that has an ARZ row.
+# - The draft file uses the Pro-Football-Reference spellings, which are the
+#   three-letter ones: GNB, KAN, LAR, LVR, NOR, NWE, SDG, SFO, TAM.
+#
+# `SL` resolves to `STL`, which `franchise_code` then resolves to `LA`: the
+# Rams are one franchise whichever of the three spellings a file uses.
+TEAM_CODE_ALIASES = {
+    'ARZ': 'ARI', 'BLT': 'BAL', 'CLV': 'CLE', 'HST': 'HOU', 'SL': 'STL',
+    'GNB': 'GB', 'KAN': 'KC', 'LAR': 'LA', 'LVR': 'LV', 'NOR': 'NO',
+    'NWE': 'NE', 'SDG': 'SD', 'SFO': 'SF', 'TAM': 'TB',
+}
+
+
+def resolve_code(code):
+    """A people file's team code as the game archive spells it.
+
+    Used by the people loaders and NOT by the game loader, which must stay
+    strict: a code the game archive has never used is either an expansion
+    team or a relocation, and quietly aliasing one there is how a franchise
+    gets invented. Here the aliases are known and measured, so resolving them
+    is the correct reading.
+    """
+    cleaned = (code or '').strip().upper()
+    if not cleaned:
+        raise ValueError('A team code cannot be empty')
+    resolved = TEAM_CODE_ALIASES.get(cleaned, cleaned)
+    if resolved not in TEAM_CODES:
+        raise ValueError(f'Unknown NFL team code {code!r}')
+    return resolved
+
+
+def people_franchise_key(code):
+    """The franchise a people file's team code belongs to, aliases resolved."""
+    return franchise_key(resolve_code(code))
+
+
+def player_key(gsis_id):
+    """`nfl:nflverse:player:00-0019596`, with the id left exactly as given.
+
+    A GSIS id is not normalised beyond stripping whitespace: its shape is the
+    provider's and rewriting it would break the join back to the source.
+    """
+    cleaned = (gsis_id or '').strip()
+    if not cleaned:
+        raise ValueError('A player needs a GSIS id')
+    return entity_key('player', cleaned)
 
 
 def franchise_code(code):

@@ -32,12 +32,15 @@ from pathlib import Path
 # season, per-season coach rows, and a `history` file holding conference
 # history, the track record and the coach leaderboard.
 #
+# 3 adds the people layer: a player index, sharded player careers, the
+# in-progress season's player statistics in a file of its own, and the draft.
+#
 # 1 is still ACCEPTED, not just understood. The published export on main is a
 # version 1 export, and this gate runs against it in CI before the refresh
 # that would rewrite it: refusing 1 here would fail the publish check on data
 # that is perfectly good and leave the site unable to update at all.
-SCHEMA_VERSION = 2
-SUPPORTED_SCHEMA_VERSIONS = (1, 2)
+SCHEMA_VERSION = 3
+SUPPORTED_SCHEMA_VERSIONS = (1, 2, 3)
 
 # Houston joined in 2002. Before that the league had 31 teams in this archive.
 EXPANSION_SEASON = 2002
@@ -58,6 +61,11 @@ MAX_HOLDOUT_BRIER = 0.245
 MIN_HOLDOUT_GAMES = 500
 
 FUTURE_TOLERANCE = timedelta(minutes=5)
+
+# The people layer's career shards. A literal HERE, not an import of
+# people_export.PLAYER_SHARDS: a gate that reads the exporter's constant
+# agrees with whatever the exporter did, including a mistake.
+PEOPLE_SHARDS = 64
 
 
 def expected_teams(season):
@@ -189,6 +197,47 @@ def check_coverage(manifest):
     return reasons
 
 
+def check_people(manifest):
+    """An export that carries the people layer must carry all of it.
+
+    Absent is allowed: a schema 2 export has no people and is still a good
+    export. Present-but-partial is not, because a player whose shard is
+    missing has an index entry that opens onto nothing, and every player in
+    that shard is one of those.
+    """
+    people = (manifest.get('files') or {}).get('people')
+    if people is None:
+        return []
+    if not isinstance(people, dict):
+        return ['files.people is not a section; the people layer cannot be '
+                'read']
+    reasons = []
+    for name in ('index', 'current', 'draft'):
+        if not isinstance(people.get(name), str) or not people.get(name):
+            reasons.append(f'the people layer names no {name} file')
+    careers = people.get('careers')
+    if not isinstance(careers, list):
+        reasons.append('the people layer lists no career shards')
+    else:
+        if people.get('shards') != PEOPLE_SHARDS \
+                or len(careers) != PEOPLE_SHARDS:
+            reasons.append(f'the people layer has {len(careers)} career '
+                           f'shards and says {people.get("shards")!r}; it '
+                           f'must have exactly {PEOPLE_SHARDS}, or a player '
+                           'index entry opens onto a file that is not there')
+        for index, path in enumerate(careers):
+            if not isinstance(path, str) or not path.startswith(
+                    f'people/careers/{index}.js'):
+                reasons.append(f'career shard {index} is listed as '
+                               f'{path!r}; the shards must be listed in order')
+                break
+    season = people.get('season')
+    if not isinstance(season, int) or isinstance(season, bool):
+        reasons.append('the people layer does not say which season its '
+                       'current file holds')
+    return reasons
+
+
 def manifest_files(manifest):
     """Every path the manifest points at, with its stated version stamp."""
     found = []
@@ -245,7 +294,8 @@ def check(manifest, *, root=None, now=None):
         # later check would read fields whose meaning is not agreed.
         return reasons
     return (check_as_of(manifest, now=now) + check_model(manifest)
-            + check_coverage(manifest) + check_files(manifest, root))
+            + check_coverage(manifest) + check_people(manifest)
+            + check_files(manifest, root))
 
 
 def render(reasons):

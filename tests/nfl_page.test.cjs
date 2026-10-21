@@ -230,15 +230,25 @@ test('the league selector offers the launched leagues, with the NFL selected',
     dom.window.close();
   });
 
-test('a People tab is not offered for a league with no people', async () => {
-  const tabs = [...require(path.join(UI, 'ncaambb_app.js')).sections('nfl')];
-  assert.ok(!tabs.includes('people'));
-  const dom = await open();
-  const labels = [...dom.window.document.querySelectorAll('#tabs button')]
-    .map(node => node.textContent);
-  assert.ok(!labels.includes('People'));
-  dom.window.close();
-});
+test('an export without the people layer says so on the Players tab',
+  async () => {
+    // This fixture's manifest names no `files.people`, which is every export
+    // before schema 3 and the one on main until the first refresh after the
+    // people layer merges. The tab must explain that, not draw an empty
+    // search.
+    assert.ok(require(path.join(UI, 'ncaambb_app.js'))
+      .sections('nfl').includes('people'));
+    const dom = await open();
+    const document = dom.window.document;
+    const tab = [...document.querySelectorAll('#tabs button')]
+      .find(node => node.textContent === 'Players');
+    assert.ok(tab && !tab.disabled, 'the Players tab is offered');
+    tab.click();
+    assert.equal(document.getElementById('people').hidden, false);
+    assert.match(document.getElementById('people-body').textContent,
+                 /does not carry the people layer/);
+    dom.window.close();
+  });
 
 // --- the page refuses what must not be shown -------------------------------
 

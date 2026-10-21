@@ -792,17 +792,17 @@ class TestTheExport:
         # And the gate checks it like any other named file.
         assert publish_gate.check_files(written, out) == []
 
-    def test_the_schema_version_is_stated_and_both_are_accepted(self):
-        """The published export on main is a version 1 export and this gate
-        runs against it in CI before the refresh that rewrites it. Refusing 1
-        would fail the publish check on data that is perfectly good."""
-        assert publish_gate.SCHEMA_VERSION == 2
-        assert publish_gate.SUPPORTED_SCHEMA_VERSIONS == (1, 2)
-        for version in (1, 2):
+    def test_the_schema_version_is_stated_and_every_older_one_accepted(self):
+        """The published export on main is an older export and this gate
+        runs against it in CI before the refresh that rewrites it. Refusing
+        it would fail the publish check on data that is perfectly good."""
+        assert publish_gate.SCHEMA_VERSION == 3
+        assert publish_gate.SUPPORTED_SCHEMA_VERSIONS == (1, 2, 3)
+        for version in (1, 2, 3):
             assert publish_gate.check_schema(
                 dict(schema_version=version, sport='nfl')) == []
         assert publish_gate.check_schema(
-            dict(schema_version=3, sport='nfl')) != []
+            dict(schema_version=4, sport='nfl')) != []
 
     def test_the_browser_gate_accepts_exactly_the_versions_python_does(self):
         """Two gates, one answer. A reader that refused what the build writes

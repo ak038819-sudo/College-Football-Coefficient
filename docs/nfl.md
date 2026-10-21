@@ -254,12 +254,94 @@ The export is **schema 2**, and both gates accept 1 and 2. Refusing 1 would
 fail the publish check against the version 1 export already on main and leave
 the site unable to update at all.
 
+## Phase 2 of parity: the people layer
+
+Players, rosters, season statistics and the draft, 1999-2026, from four
+nflverse release assets: `players/players.csv`, `rosters/roster_<season>.csv`,
+`stats_player/stats_player_<reg|post>_<season>.csv` and
+`draft_picks/draft_picks.csv`. No key, no cap, about 54 MB a run, fetched by
+`src/nfl/people_source.py` and loaded by `src/nfl/people.py`. The raw files
+are gitignored like the game archive.
+
+**The release tag matters.** An older `player_stats` release still serves
+`stats_player_reg_2024.csv` and 404s from 2025 on, which reads as "not
+published yet". The live tag is `stats_player` (the one `nflreadr` builds its
+URLs from), and under it every season 1999-2026 is present. Its header is 148
+columns and wider than the old one, which is why statistics are stored long.
+
+**Identity.** A player is `nfl:nflverse:player:<gsis_id>`. Measured on
+2026-10-21:
+
+| | |
+| --- | --- |
+| players stored (career reaching 1999) | 18,109 |
+| of which stubs (an id the player file lacks) | 1,669 |
+| players with a roster or statistics row, so a page | 16,608 |
+| roster rows | 69,477 |
+| statistics rows (player, season, half) | 63,188 |
+| non-zero statistics stored | 711,914 |
+| draft picks 1999-2026 | 7,154, 6,840 linked to a player |
+
+1,789 roster rows and 9 statistics rows name a GSIS id the player file does
+not carry. They become **stubs** built from the row's own name, position and
+measurements and flagged `stub = 1`; the page says the biography came from a
+roster sheet. A stub fills gaps in a real biography and never overwrites one,
+whichever arrives first. 25 roster rows and 51 statistics rows carry no id at
+all and are counted and dropped.
+
+1,309 players have two roster rows in one season because they were traded;
+both are kept. 31 have two rows for the same team, and the later one wins.
+From 2016 the roster files include practice squads and reserve lists, which
+is why a season has about 3,000 roster rows from then on against 2,000
+before. The roster file is an end-of-season snapshot, not a week-by-week
+history.
+
+**Five teams are spelled the GSIS way in the roster files** (ARZ, BLT, CLV,
+HST, SL) **and nine the Pro-Football-Reference way in the draft file** (GNB,
+KAN, LAR, LVR, NOR, NWE, SDG, SFO, TAM). Each GSIS spelling appears in
+2002-2015 only and never in the same season as the code it stands for, which
+is the evidence that it is a spelling and not a second team.
+`identity.resolve_code` holds the table. The game loader does not use it and
+stays strict.
+
+**Statistics** are stored long, one row per stat, with zeros not stored. A
+regular season and a postseason are never summed together. A career total
+adds counting stats, takes the best `fg_long` and `pt_long`, and leaves
+averages and shares out (`passing_cpoe`, `target_share` and the like): a
+career target share is not a thing. Every non-zero value is stored, and an
+allowlist in `people_export.STAT_TABLES` decides what reaches the browser, in
+the page's order rather than alphabetical.
+
+**The export** adds `people/index.js` (16,608 players, 252 KB gzipped, loaded
+on the first search), 64 career shards in `people/careers/` (about 35 KB
+gzipped each, one loaded per player opened), `people/current.js` and
+`people/draft.js`. Settled seasons go in the shards and the season in progress
+goes in `current.js`, so a refresh during the season rewrites one file rather
+than all 64. Each season payload also carries `leaders`, the regular season's
+top ten in eleven categories, with ties at the cut all kept. Export schema 3;
+both gates still accept 1 and 2, and the build gate refuses a people layer
+that is missing a shard or its index. A publish that would REMOVE a layer the
+live site has is refused.
+
+**The page.** A Players tab: the season's leaders, the header's search box
+(which now searches players and takes the reader to the tab), a player page
+with a table per kind of statistic for the regular season and the postseason,
+a career row, and the seasons he was on a roster. The Draft view shows a
+season's board, linking each pick that has a page. Linemen have roster rows
+and no statistics: the archive counts what a player did with the ball.
+
 ## What is not here
 
-- **No players.** The archive behind this is schedules and scores. Coaches
-  are there because every game names them; there are no player pages and the
-  People tab is not offered for the NFL. A tab with nothing behind it is
-  worse than an absent one.
+- **No headshots.** The player file carries a `headshot` URL for 99.4% of
+  players. It is not stored, let alone shown: a portrait is a licensing
+  question rather than a data one, and the college side's portraits are
+  blocked for the same reason.
+- **No link to the college side.** The draft file's `cfb_player_id` is a
+  Sports-Reference slug (`billy-sims-1`), not a CFBD athlete id, so an NFL
+  career cannot be joined to the same player's college page from this data.
+- **No play-by-play, snap counts or injuries.** Those are phase 3 and later
+  in the parity plan; play-by-play alone is about 2.8 GB across 28 seasons
+  and has to be reduced in CI before anything is committed.
 - **No routes of its own.** This page's tabs are buttons, not links, so a
   coach opens in place rather than at a URL. Deep-linking the NFL and
   basketball tabs is one change to both pages and is owned elsewhere.

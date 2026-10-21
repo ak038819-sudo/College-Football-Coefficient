@@ -418,6 +418,231 @@
     return rate === null ? null : rate > ATS_BREAK_EVEN;
   }
 
+  /* ---------------------------------------------------------------------
+   * The people layer. Everything below reads the packed files
+   * src/nfl/people_export.py writes, so the two halves of each format live
+   * one file apart and a test drives both.
+   * ------------------------------------------------------------------- */
+
+  /* Labels in the order the export's STAT_TABLES lists the stats. A stat
+   * with no label here prints its own name rather than disappearing. */
+  var STAT_LABELS = {
+    completions: 'Cmp', attempts: 'Att', passing_yards: 'Yds',
+    passing_tds: 'TD', passing_interceptions: 'Int', sacks_suffered: 'Sk',
+    sack_yards_lost: 'Sk yds', passing_first_downs: '1st',
+    passing_epa: 'EPA', passing_cpoe: 'CPOE',
+    carries: 'Car', rushing_yards: 'Yds', rushing_tds: 'TD',
+    rushing_first_downs: '1st', rushing_fumbles_lost: 'Fum lost',
+    rushing_epa: 'EPA',
+    targets: 'Tgt', receptions: 'Rec', receiving_yards: 'Yds',
+    receiving_tds: 'TD', receiving_yards_after_catch: 'YAC',
+    receiving_first_downs: '1st', receiving_epa: 'EPA',
+    target_share: 'Tgt share',
+    def_tackles_solo: 'Solo', def_tackle_assists: 'Ast',
+    def_tackles_for_loss: 'TFL', def_sacks: 'Sacks', def_qb_hits: 'QB hits',
+    def_interceptions: 'Int', def_interception_yards: 'Int yds',
+    def_pass_defended: 'PD', def_fumbles_forced: 'FF',
+    fumble_recovery_opp: 'FR', def_tds: 'TD', def_safeties: 'Sfty',
+    fg_made: 'FGM', fg_att: 'FGA', fg_long: 'Long', fg_made_40_49: '40-49',
+    fg_made_50_59: '50-59', fg_made_60_: '60+', pat_made: 'XPM',
+    pat_att: 'XPA',
+    pt_att: 'Punts', pt_yards: 'Yds', pt_net_yards: 'Net', pt_inside_20: 'In 20',
+    pt_long: 'Long',
+    kickoff_returns: 'KR', kickoff_return_yards: 'KR yds',
+    punt_returns: 'PR', punt_return_yards: 'PR yds',
+    special_teams_tds: 'TD',
+    fantasy_points_ppr: 'PPR pts'
+  };
+
+  /* Lower case, accents gone, punctuation gone: "Ja'Marr" finds Ja'Marr from
+   * "jamarr" and "Kaʻimi" from "kaimi". */
+  function normalizeName(value) {
+    var textValue = String(value === null || value === undefined ? '' : value);
+    if (textValue.normalize) {
+      textValue = textValue.normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+    return textValue.toLowerCase().replace(/[^a-z0-9 ]+/g, '')
+      .replace(/\s+/g, ' ').trim();
+  }
+
+  /* Players matching a query, best first.
+   *
+   * A name that STARTS with the query beats one where any word does, which
+   * beats one that merely contains it; within a tier the more recent career
+   * comes first, because "Josh Allen" means the quarterback to nearly
+   * everybody who types it, and the linebacker of the same name is one row
+   * further down rather than gone. */
+  function searchPlayers(index, query, limit) {
+    var wanted = normalizeName(query);
+    var rows = (index && index.players) || [];
+    if (!wanted) return [];
+    var found = [];
+    rows.forEach(function (row) {
+      var name = normalizeName(row[1]);
+      var tier = null;
+      if (name.indexOf(wanted) === 0) tier = 0;
+      else if ((' ' + name).indexOf(' ' + wanted) >= 0) tier = 1;
+      else if (name.indexOf(wanted) >= 0) tier = 2;
+      if (tier !== null) found.push({ tier: tier, row: row });
+    });
+    found.sort(function (a, b) {
+      if (a.tier !== b.tier) return a.tier - b.tier;
+      var last = (Number(b.row[4]) || 0) - (Number(a.row[4]) || 0);
+      if (last) return last;
+      return String(a.row[1]).localeCompare(String(b.row[1]));
+    });
+    return found.slice(0, limit || 25).map(function (item) {
+      var row = item.row;
+      return { id: row[0], name: row[1], position: row[2], first: row[3],
+               last: row[4], team: row[5], shard: row[6] };
+    });
+  }
+
+  /* One player's packed season rows as objects, oldest first, the regular
+   * season before the postseason within a year. */
+  function unpackSeasons(file, gsis) {
+    var player = file && file.players && file.players[gsis];
+    var names = (file && file.stats) || [];
+    if (!player || !player.seasons) return [];
+    return player.seasons.map(function (line) {
+      var stats = {};
+      for (var at = 4; at + 1 < line.length; at += 2) {
+        var name = names[line[at]];
+        if (name !== undefined) stats[name] = line[at + 1];
+      }
+      return { season: line[0], type: line[1] === 1 ? 'post' : 'reg',
+               team: line[2], games: line[3], stats: stats };
+    }).sort(function (a, b) {
+      return a.season - b.season || (a.type === 'reg' ? -1 : 1);
+    });
+  }
+
+  function unpackRoster(file, gsis) {
+    var player = file && file.players && file.players[gsis];
+    if (!player || !player.roster) return [];
+    return player.roster.map(function (line) {
+      return { season: line[0], team: line[1], position: line[2],
+               jersey: line[3], status: line[4] };
+    });
+  }
+
+  /* Career totals over season rows of ONE type.
+   *
+   * Counting stats add up. A best (`fg_long`) is the largest season one. An
+   * average or a share (`passing_cpoe`, `target_share`) is LEFT OUT: a
+   * career target share is not a thing, and the mean of twelve season CPOEs
+   * weights a four-game season like a seventeen-game one. Rows of the other
+   * season type are refused rather than summed in, because a postseason
+   * line added to a regular season is neither. */
+  function careerTotals(rows, meanStats, maxStats) {
+    var means = {};
+    var maxes = {};
+    (meanStats || []).forEach(function (name) { means[name] = true; });
+    (maxStats || []).forEach(function (name) { maxes[name] = true; });
+    var type = null;
+    var totals = { games: 0, stats: {} };
+    (rows || []).forEach(function (row) {
+      if (type === null) type = row.type;
+      if (row.type !== type) {
+        throw new Error('career totals mix regular season and postseason');
+      }
+      totals.games += Number(row.games) || 0;
+      Object.keys(row.stats || {}).forEach(function (name) {
+        if (means[name]) return;
+        var value = Number(row.stats[name]);
+        if (!isFinite(value)) return;
+        if (maxes[name]) {
+          totals.stats[name] = Math.max(totals.stats[name] || 0, value);
+        } else {
+          totals.stats[name] = (totals.stats[name] || 0) + value;
+        }
+      });
+    });
+    totals.type = type;
+    return totals;
+  }
+
+  /* The tables a player's page draws: only the tables he has a number in,
+   * only the columns somebody in those rows has a number in, and only the
+   * seasons with at least one of them. A quarterback's page with an empty
+   * twelve-column defence table under it is noise. */
+  function statTablesFor(rows, tables) {
+    var out = [];
+    (tables || []).forEach(function (table) {
+      var columns = table.stats.filter(function (name) {
+        return (rows || []).some(function (row) {
+          return row.stats && row.stats[name] !== undefined;
+        });
+      });
+      if (!columns.length) return;
+      var seasons = rows.filter(function (row) {
+        return columns.some(function (name) {
+          return row.stats[name] !== undefined;
+        });
+      });
+      out.push({ key: table.key, label: table.label, columns: columns,
+                 rows: seasons });
+    });
+    return out;
+  }
+
+  /* A statistic for display. A missing value is a dash, never a zero: the
+   * export does not store zeros, so a missing counting stat IS zero, but
+   * printing 0 for a kicker's passing yards would claim a measurement. Half
+   * sacks are real, EPA and CPOE are signed to one place, a share is a
+   * percentage. */
+  function statText(name, value) {
+    if (value === null || value === undefined) return '—';
+    var number = Number(value);
+    if (!isFinite(number)) return '—';
+    if (name === 'target_share') return (number * 100).toFixed(1) + '%';
+    if (/_epa$/.test(name) || name === 'passing_cpoe') {
+      return (number > 0 ? '+' : number < 0 ? '−' : '')
+        + Math.abs(number).toFixed(1);
+    }
+    if (name === 'fantasy_points_ppr') return number.toFixed(1);
+    // A true minus rather than a hyphen, as every other signed number on
+    // the page: sack yardage is stored negative by the source.
+    var sign = number < 0 ? '\u2212' : '';
+    var size = Math.abs(number);
+    if (size !== Math.floor(size)) return sign + size.toFixed(1);
+    return sign + size.toLocaleString('en-US');
+  }
+
+  function heightText(inches) {
+    var number = Number(inches);
+    if (!isFinite(number) || number <= 0 || inches === null) return '';
+    return Math.floor(number / 12) + '-' + (number % 12);
+  }
+
+  /* "2012–2024", or one year for a one-season career. */
+  function playerSpan(first, last) {
+    if (first === null || first === undefined) return '';
+    if (last === null || last === undefined || last === first) {
+      return String(first);
+    }
+    return first + '–' + last;
+  }
+
+  /* A season's draft as rounds of pick objects. */
+  function draftRounds(file, season) {
+    var rows = (file && file.seasons && file.seasons[String(season)]) || [];
+    var fields = (file && file.fields) || [];
+    var rounds = [];
+    rows.forEach(function (line) {
+      var pick = {};
+      fields.forEach(function (field, at) { pick[field] = line[at]; });
+      var last = rounds[rounds.length - 1];
+      if (!last || last.round !== pick.round) {
+        last = { round: pick.round, picks: [] };
+        rounds.push(last);
+      }
+      last.picks.push(pick);
+    });
+    return rounds;
+  }
+
+
   var api = {
     LEAGUE: LEAGUE,
     ALIGNMENT_FROM: ALIGNMENT_FROM,
@@ -458,7 +683,18 @@
     marketVerdict: marketVerdict,
     atsRate: atsRate,
     atsText: atsText,
-    atsBeatsVig: atsBeatsVig
+    atsBeatsVig: atsBeatsVig,
+    STAT_LABELS: STAT_LABELS,
+    normalizeName: normalizeName,
+    searchPlayers: searchPlayers,
+    unpackSeasons: unpackSeasons,
+    unpackRoster: unpackRoster,
+    careerTotals: careerTotals,
+    statTablesFor: statTablesFor,
+    statText: statText,
+    heightText: heightText,
+    playerSpan: playerSpan,
+    draftRounds: draftRounds
   };
 
   if (typeof module === 'object' && module.exports) {
