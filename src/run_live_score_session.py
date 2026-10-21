@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keep the published scoreboard fresh for one game day from a single job.
+"""Keep the published scoreboard fresh from a chain of long-running jobs.
 
 Why this exists
 ---------------
@@ -9,10 +9,27 @@ crons specify -- 3.1% (docs/live-data-options.md). The workflow is correct and
 the job takes about 100 seconds; high-frequency scheduled workflows are simply
 dropped under load. Nothing inside a workflow file can raise that rate.
 
-A loop inside ONE job is not scheduled by GitHub at all. A single run started
-once per game day, polling in-process, publishes on its own clock. The cron
-that starts it fires once a day, which is the low-frequency kind GitHub does
-deliver.
+A loop inside ONE job is not scheduled by GitHub at all. A run polling
+in-process publishes on its own clock, and GitHub only has to start the job.
+`live-score-session.yml` asks it to every four hours, all season, so the
+sessions tile the day end to end.
+
+Why tile the day rather than draw windows around the slate
+----------------------------------------------------------
+Because the slate's shape is not what anyone assumes it is. The first version
+of this workflow ran on Thursday, Friday, Saturday and Sunday; 54 of the 761
+kickoffs in 2026 are on other days, and a hand-drawn table that covered 2026
+exactly covered 2023 badly, bowl season having games every weekday from early
+afternoon. A session that no longer has to know when football is played cannot
+be wrong about it.
+
+What makes tiling an empty day cheap
+------------------------------------
+Two things, both here rather than in the schedule. A session whose whole
+scoreboard is final exits after its first tick, which is most of a Tuesday in
+October. A session watching games that have not kicked off yet polls at
+`--idle-interval` instead of `--interval`: there is nothing to be fresh about
+until somebody kicks off, and each tick costs three CFBD requests.
 
 What this does NOT fix
 ----------------------
@@ -49,7 +66,16 @@ COMMIT_MESSAGE = 'Refresh live scoreboard [skip ci]'
 # Pages builds from a branch are soft-limited to roughly ten an hour, so a
 # shorter interval would spend publishes it cannot deliver.
 DEFAULT_INTERVAL = 360
-DEFAULT_DURATION = 330
+# Nothing on the scoreboard is moving, so this is not a staleness the page can
+# show: it is how long a kickoff can go unnoticed, and the kickoff itself is
+# anticipated rather than waited for (see `next_interval`). Three CFBD requests
+# a tick is what makes it worth slowing down at all.
+DEFAULT_IDLE_INTERVAL = 1200
+# Four hours, and `live-score-session.yml` starts a session every four hours.
+# The two numbers are one decision: sessions that do not meet leave a hole, and
+# sessions that overlap queue behind each other, where GitHub keeps only one
+# pending run per concurrency group and cancels the rest.
+DEFAULT_DURATION = 240
 # A game that has ended keeps its final score for the rest of the session; what
 # decides whether there is still anything to watch is an unfinished game.
 UNFINISHED = ('scheduled', 'in_progress')
@@ -87,6 +113,54 @@ def unfinished_games(snapshot):
     return sum(1 for g in games if isinstance(g, dict) and g.get('status') in UNFINISHED)
 
 
+def next_interval(snapshot, now, interval=DEFAULT_INTERVAL, idle_interval=DEFAULT_IDLE_INTERVAL):
+    """How long to wait before the next poll.
+
+    Fast while a game is in progress, because that is the only time a reader
+    would see the difference. Fast as well once a kickoff is close enough that
+    an idle wait would swallow it: a game that starts in eight minutes must not
+    be found twenty minutes into the first quarter, so a scheduled game whose
+    start is inside the idle window pulls the cadence back up before it kicks
+    off rather than after.
+
+    A scheduled game whose start time cannot be read counts as imminent. The
+    cost of being wrong that way is polling at the normal rate, which is what
+    this function existed to slow down and therefore no worse than before it;
+    the cost of the other way is a slate that silently never speeds up.
+    """
+    games = snapshot.get('games') if isinstance(snapshot, dict) else None
+    if not isinstance(games, list):
+        return interval
+    if idle_interval <= interval:
+        return interval
+    horizon = now + dt.timedelta(seconds=idle_interval)
+    for game in games:
+        # Anything unreadable is treated the way an unreadable kickoff is: as a
+        # reason to keep polling at the normal rate rather than to slow down on
+        # the strength of a snapshot this function could not understand.
+        if not isinstance(game, dict):
+            return interval
+        status = game.get('status')
+        if status == 'in_progress':
+            return interval
+        if status != 'scheduled':
+            continue
+        # A kickoff that is absent, blank or not a timestamp all land in the
+        # same place: `fromisoformat` refuses them and the except below treats
+        # the game as imminent. There is no separate guard for None, because a
+        # guard whose removal changes no answer is one no test can keep honest.
+        start = game.get('start_date')
+        try:
+            kickoff = dt.datetime.fromisoformat(str(start).replace('Z', '+00:00'))
+        except (TypeError, ValueError):
+            return interval
+        if kickoff.tzinfo is None:
+            kickoff = kickoff.replace(tzinfo=dt.timezone.utc)
+        if kickoff <= horizon:
+            return interval
+    return idle_interval
+
+
 def publish(message=COMMIT_MESSAGE, out=DEFAULT_OUT):
     """Commit and push the snapshot, returning True when it was published."""
     result = subprocess.run([str(PUBLISH_SCRIPT), message, str(out)], check=False)
@@ -102,7 +176,8 @@ def read_snapshot(out):
 
 def run_session(key, out=DEFAULT_OUT, interval=DEFAULT_INTERVAL,
                 duration=DEFAULT_DURATION, refresh=None, publisher=None,
-                sleep=None, now=None, stop_when_idle=True):
+                sleep=None, now=None, stop_when_idle=True,
+                idle_interval=DEFAULT_IDLE_INTERVAL):
     """Poll and publish until the slate is over or `duration` minutes elapse.
 
     `refresh`, `publisher`, `sleep` and `now` are injected so a test can drive
@@ -122,11 +197,18 @@ def run_session(key, out=DEFAULT_OUT, interval=DEFAULT_INTERVAL,
     signal.signal(signal.SIGTERM, lambda *_: stopping.append(True))
 
     ticks = publishes = failures = fetch_failures = 0
+    deadline_poll_due = False
     while not stopping:
         started = now()
         if started >= deadline:
-            print(f'Session reached its {duration}-minute limit.')
-            break
+            # One poll is owed exactly here, scheduled below. Anything else at
+            # or past the deadline is a tick slower than the time it had left,
+            # and the session stops rather than starting work the job may be
+            # killed in the middle of.
+            if not deadline_poll_due:
+                print(f'Session reached its {duration}-minute limit.')
+                break
+            deadline_poll_due = False
         ticks += 1
         try:
             snapshot = refresh(Path(out), key)
@@ -156,7 +238,33 @@ def run_session(key, out=DEFAULT_OUT, interval=DEFAULT_INTERVAL,
                 print('Every game on the scoreboard is final; ending the session.')
                 break
 
-        remaining = interval - (now() - started).total_seconds()
+        if started >= deadline:
+            print(f'Session reached its {duration}-minute limit.')
+            break
+
+        wait = next_interval(snapshot, started, interval, idle_interval) \
+            if snapshot is not None else interval
+        if wait != interval:
+            print(f'Nothing live and no kickoff within {idle_interval}s; '
+                  f'next poll in {wait}s.')
+        remaining = wait - (now() - started).total_seconds()
+        # The last wait a session's duration allows is cut short to land ON the
+        # deadline and poll once more there, rather than exiting on a snapshot
+        # up to a whole interval old. The successor cannot cover that tail: it
+        # waits out this job's concurrency slot, including the Pages delivery
+        # measurement, and then its own checkout, so its first poll is minutes
+        # after this job ends. Polling at the deadline is what keeps the handoff
+        # inside the normal cadence instead of adding the tail to it.
+        to_deadline = (deadline - now()).total_seconds()
+        # `to_deadline > 0` keeps this from arming itself again at the deadline
+        # poll, where it would re-owe a poll on every pass. The break above
+        # already ends the session first, so no test can observe the
+        # difference: it is here so that the loop cannot spin if that break is
+        # ever moved or removed, which is a structural guard and not a covered
+        # branch.
+        if to_deadline > 0 and remaining >= to_deadline:
+            deadline_poll_due = True
+            remaining = to_deadline
         if remaining > 0 and not stopping:
             sleep(remaining)
 
@@ -172,7 +280,11 @@ def main(argv=None):
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--out', type=Path, default=DEFAULT_OUT)
     parser.add_argument('--interval', type=int, default=DEFAULT_INTERVAL,
-                        help=f'seconds between polls (default {DEFAULT_INTERVAL})')
+                        help=f'seconds between polls while a game is live '
+                             f'(default {DEFAULT_INTERVAL})')
+    parser.add_argument('--idle-interval', type=int, default=DEFAULT_IDLE_INTERVAL,
+                        help=f'seconds between polls when no game is live or about '
+                             f'to start (default {DEFAULT_IDLE_INTERVAL})')
     parser.add_argument('--duration', type=int, default=DEFAULT_DURATION,
                         help=f'minutes to keep polling (default {DEFAULT_DURATION})')
     parser.add_argument('--keep-going-when-idle', action='store_true',
@@ -180,12 +292,15 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.interval < 1:
         parser.error('--interval must be at least 1 second')
+    if args.idle_interval < args.interval:
+        parser.error('--idle-interval cannot be shorter than --interval')
     if args.duration < 1:
         parser.error('--duration must be at least 1 minute')
     key = os.getenv('CFBD_API_KEY')
     if not key:
         parser.error('CFBD_API_KEY is required (live scoreboard requires a subscribed key)')
     summary = run_session(key, out=args.out, interval=args.interval, duration=args.duration,
+                          idle_interval=args.idle_interval,
                           stop_when_idle=not args.keep_going_when_idle)
     # A session that never published anything is not a failure -- a quiet
     # Sunday has nothing to publish -- but one whose every FETCH failed reached
