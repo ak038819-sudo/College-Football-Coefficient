@@ -247,7 +247,10 @@
   function leagueButtons() {
     var host = el('leagues');
     host.innerHTML = '';
-    leagues.LEAGUES.forEach(function (entry) {
+    // Only the launched leagues, plus this one. Rendering the whole registry
+    // meant a reader could tap through to basketball while its export did not
+    // exist -- the football header was gated and this page was not.
+    leagues.launchedLeagues(leagues.NFL).forEach(function (entry) {
       var button = document.createElement('button');
       button.type = 'button';
       button.textContent = entry.picker;

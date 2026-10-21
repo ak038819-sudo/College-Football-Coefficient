@@ -21,14 +21,29 @@
   var BASKETBALL = 'ncaambb';
   var NFL = 'nfl';
 
+  /* `launched` is whether a league's export is published yet, and it is the
+   * one thing that decides whether a league may appear in a picker. A league
+   * listed with no data behind it sends a reader to a page that can only say
+   * it has nothing, which is worse than not offering it at all.
+   *
+   * It lives here, in the shared registry, because every page draws its own
+   * picker: gating only the football header let a reader reach basketball
+   * from the NFL page instead, which is a hole a per-page check cannot see.
+   * One flag, read by every picker, is the only shape that holds.
+   */
   var LEAGUES = [
     { slug: FOOTBALL, label: 'College Football', short: 'Football',
-      picker: 'College Football' },
+      picker: 'College Football', launched: true },
     // "Men's Basketball" in the picker: the women's game is a different
     // competition and an unqualified label would claim something we are not.
+    //
+    // NOT launched: ui/data/ncaambb is not published yet, because the
+    // provider's rolling allowance does not recover until 2026-10-27. Flip
+    // this to true in the same commit that publishes the export, and not
+    // before. See docs/basketball-ui.md.
     { slug: BASKETBALL, label: 'College Basketball', short: "Men's Basketball",
-      picker: "Men's Basketball" },
-    { slug: NFL, label: 'NFL', short: 'NFL', picker: 'NFL' }
+      picker: "Men's Basketball", launched: false },
+    { slug: NFL, label: 'NFL', short: 'NFL', picker: 'NFL', launched: true }
   ];
 
   var LEAGUE_KEY = 'elocast.league.v1';
@@ -57,6 +72,24 @@
 
   function known(slug) {
     return league(slug) !== null;
+  }
+
+  /* The leagues a picker may offer: the launched ones, plus the league the
+   * reader is already on.
+   *
+   * `current` is included whatever its flag says, because the page drawing
+   * the picker is the page they are looking at -- hiding it would leave the
+   * control with nothing pressed. Everything else has to have shipped.
+   */
+  function launchedLeagues(current) {
+    return LEAGUES.filter(function (entry) {
+      return entry.launched === true || entry.slug === current;
+    });
+  }
+
+  function isLaunched(slug) {
+    var entry = league(slug);
+    return entry !== null && entry.launched === true;
   }
 
   /* The route, from a hash.
@@ -405,6 +438,8 @@
     readRoute: readRoute,
     writeRoute: writeRoute,
     sections: sections,
+    launchedLeagues: launchedLeagues,
+    isLaunched: isLaunched,
     hasSection: hasSection,
     switchLeague: switchLeague,
     rememberedLeague: rememberedLeague,

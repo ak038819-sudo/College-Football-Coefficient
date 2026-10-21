@@ -221,8 +221,22 @@ Nothing is deleted. Three things are parked, each with a comment saying so:
 `ui/basketball.html` is unchanged and still complete. It is simply not linked
 from anywhere, exactly as it was at the end of B05.
 
-**Turning it on** is: uncomment (1) and (2), then invert the three tests under
+**Turning it on** is: uncomment (1) and (2), then invert the tests under
 `--- what the page must not do ---` in `tests/basketball_preview.test.cjs`,
-which currently assert the staged-off state and name the parked blocks. The
-tests fail loudly if a parked block is deleted rather than re-added, so there
-is no silent way to lose this.
+which name the parked blocks. The tests fail loudly if a parked block is
+deleted rather than re-added, so there is no silent way to lose this.
+
+### Turning the nav on is not all-or-nothing
+
+Revised 2026-10-21, once the NFL landed its own export and Austin agreed to
+turn the selector on with it. The nav is shared, so the rule that matters is
+per league rather than per nav: **re-add the nav with the leagues that have an
+export, and leave the others parked.** A league listed there with nothing
+behind it is the single thing this staging exists to prevent.
+
+The tests were narrowed to match, and they now pass whether the nav is off or
+on, failing only if the *basketball* entry goes live before `ui/data/ncaambb`
+is published, if it is deleted rather than parked, or if the remembered-league
+key drifts from the one `ui/ncaambb_app.js` uses. That is deliberate: a guard
+that blocks another league's release gets deleted by whoever is trying to
+ship, and then protects nothing.
