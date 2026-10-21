@@ -39,9 +39,19 @@ import urllib.request
 
 API = "https://api.github.com"
 LABEL = "pipeline-alert"
+# One health light per pipeline, not one for the repository. Football's
+# deploy and the basketball refresh fail for unrelated reasons, and a
+# basketball failure that closed football's alert -- or the reverse --
+# would be worse than no alert at all. The scope goes in the marker, so
+# both lights share a label and a query while staying independent.
+DEFAULT_SCOPE = "ci-and-deploy"
 # The issue is found by this marker, not by its title, so the title stays
 # free to say something useful without breaking the lookup.
 MARKER = "<!-- pipeline-alert:ci-and-deploy -->"
+
+
+def marker_for(scope: str) -> str:
+    return f"<!-- pipeline-alert:{scope} -->"
 
 
 def http_request(repo: str, token: str):
@@ -63,34 +73,51 @@ def http_request(repo: str, token: str):
     return request
 
 
-def find_open_alert(request) -> dict | None:
-    """The one open alert issue, or None.
+def find_open_alerts(request, marker: str = MARKER) -> list:
+    """Every open alert issue for this scope, newest last.
 
-    Matches on MARKER in the body. A human may edit or retitle the issue;
-    they are unlikely to delete an HTML comment they cannot see.
+    Matches on the marker in the body. A human may edit or retitle the
+    issue; they are unlikely to delete an HTML comment they cannot see.
+
+    A list rather than one issue, because two runs failing seconds apart
+    have each opened one before (#95 and #96 on 2026-10-18) and the next
+    recovery closed only one, leaving a red light over a working
+    pipeline. Recovery now closes all of them.
     """
     issues = request("GET", f"/issues?state=open&labels={LABEL}&per_page=100") or []
-    for issue in issues:
-        if MARKER in (issue.get("body") or ""):
-            return issue
-    return None
+    return [issue for issue in issues if marker in (issue.get("body") or "")]
 
 
-def failure_body(workflow: str, branch: str, run_url: str) -> str:
+def find_open_alert(request, marker: str = MARKER) -> dict | None:
+    """The oldest open alert for this scope, or None."""
+    found = find_open_alerts(request, marker)
+    return found[0] if found else None
+
+
+def failure_body(workflow: str, branch: str, run_url: str,
+                 marker: str = MARKER, consequence: str = "") -> str:
     return (
-        f"{MARKER}\n"
+        f"{marker}\n"
         f"`{workflow}` is failing on `{branch}`.\n\n"
-        f"Nothing publishes while this is red: the deploy job runs behind the "
-        f"test job, so a failing test means the site keeps serving its last "
-        f"good build and fresh ratings never reach it.\n\n"
+        f"{consequence or DEFAULT_CONSEQUENCE}\n\n"
         f"First failing run: {run_url}\n\n"
         f"This issue closes itself when a run on `{branch}` succeeds. "
         f"Later failures are added as comments rather than new issues."
     )
 
 
-def alert(request, state: str, workflow: str, branch: str, run_url: str) -> str:
-    existing = find_open_alert(request)
+DEFAULT_CONSEQUENCE = (
+    "Nothing publishes while this is red: the deploy job runs behind the "
+    "test job, so a failing test means the site keeps serving its last "
+    "good build and fresh ratings never reach it."
+)
+
+
+def alert(request, state: str, workflow: str, branch: str, run_url: str,
+          scope: str = DEFAULT_SCOPE, consequence: str = "") -> str:
+    marker = marker_for(scope)
+    open_alerts = find_open_alerts(request, marker)
+    existing = open_alerts[0] if open_alerts else None
 
     if state == "failed":
         if existing:
@@ -105,22 +132,24 @@ def alert(request, state: str, workflow: str, branch: str, run_url: str) -> str:
             "/issues",
             {
                 "title": f"{workflow} is failing on {branch}",
-                "body": failure_body(workflow, branch, run_url),
+                "body": failure_body(workflow, branch, run_url, marker,
+                                     consequence),
                 "labels": [LABEL],
             },
         )
         return f"opened #{created['number']}"
 
-    if not existing:
+    if not open_alerts:
         return "nothing to close; the pipeline was not flagged as failing"
-    request(
-        "POST",
-        f"/issues/{existing['number']}/comments",
-        {"body": f"Recovered on `{branch}`: {run_url}"},
-    )
-    request("PATCH", f"/issues/{existing['number']}",
-            {"state": "closed", "state_reason": "completed"})
-    return f"closed #{existing['number']}"
+    for issue in open_alerts:
+        request(
+            "POST",
+            f"/issues/{issue['number']}/comments",
+            {"body": f"Recovered on `{branch}`: {run_url}"},
+        )
+        request("PATCH", f"/issues/{issue['number']}",
+                {"state": "closed", "state_reason": "completed"})
+    return "closed " + ", ".join(f"#{issue['number']}" for issue in open_alerts)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -130,6 +159,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--workflow", default=os.getenv("GITHUB_WORKFLOW", "workflow"))
     p.add_argument("--branch", default="main")
     p.add_argument("--run-url", default="")
+    p.add_argument("--scope", default=DEFAULT_SCOPE,
+                   help="which pipeline this light is for; football's deploy "
+                        "and the basketball refresh keep separate lights")
+    p.add_argument("--consequence", default="",
+                   help="one line on what stops while this is red")
     args = p.parse_args(argv)
 
     token = os.getenv("GITHUB_TOKEN", "")
@@ -142,7 +176,8 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         print(alert(http_request(args.repo, token), args.state,
-                    args.workflow, args.branch, args.run_url))
+                    args.workflow, args.branch, args.run_url,
+                    args.scope, args.consequence))
     except (urllib.error.URLError, urllib.error.HTTPError, KeyError, ValueError) as exc:
         print(f"::warning::Could not update the pipeline alert issue: {exc}")
         return 0

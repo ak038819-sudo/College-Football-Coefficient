@@ -1,0 +1,136 @@
+# Basketball integration: separate data, shared Elocast experience
+
+## Current change (research only)
+
+The pilot writes an `integration.json` beside its raw snapshots, containing a
+versioned basketball schedule contract. It uses `ncaambb:cbbd:<kind>:<id>` keys,
+explicit ending-year seasons and labels (2026 = 2025-26), timezone-aware timestamps,
+and missing scores preserved as null. Unknown statuses and inconsistent finals
+are rejected instead of silently mapped. Provider Elo is not imported.
+
+The scope is always `team_sample`. Public-release, national-ranking and
+player-impact readiness flags are always false. These are explicit metadata,
+not yet a production publication gate: no production consumer exists. A successful
+BYU pilot must not be presented as a national data feed or rating table.
+
+This change does not edit the football schema, Elo config, build/deploy workflow,
+dashboard, router, favorites, service worker or production exports. Existing
+football URLs and its installed-app start URL remain unchanged.
+
+## Recommended first integration, not implemented yet
+
+Keep one repository, one domain and one installed app. Do not rewrite the football
+engine into a generic multi-sport engine before the basketball data works.
+
+| Boundary | Football stays | Basketball proposal |
+| --- | --- | --- |
+| Database | `db/league.db` | `db/ncaambb.db`, independent schema |
+| Raw/derived files | Existing football paths | `data/ncaambb/raw/`, `data/ncaambb/processed/` |
+| Model config | `config/model_config.json` | `config/ncaambb_model.json` |
+| Published assets | Existing `ui/data/` files | `ui/data/ncaambb/` with versioned manifest |
+| Page | `ui/dashboard.html` and existing hashes | `ui/basketball.html` with its own page state |
+| Season | Existing football rules | Provider ending year; never calendar-year guessing |
+| Refresh | Existing football workflows | Separate basketball fetch/build/validation job |
+| Favorites/search | Existing football storage | Separate basketball storage or namespaced keys |
+
+At the first UI release, a small sport selector links the two pages. Share visual
+tokens and branding first; share rendering components only when their inputs have
+explicit, tested contracts. Do not pass basketball records through football search,
+conference/playoff rules, week selectors or person-ID lookup tables.
+
+## Risks found in the current architecture
+
+- Football navigation selects seasons from football configuration. A shared router
+  without sport-specific state would cross-load seasons and teams.
+- The site root currently redirects to football. Preserve it and existing deep links;
+  add basketball as an opt-in destination before considering default-sport changes.
+- The root service worker controls both pages. Its live-score network-first rule
+  names football's file; basketball freshness and offline fallback need explicit tests.
+  Versioned basketball assets must resolve to a consistent snapshot, not a mix of builds.
+- Football publication currently stages broad `ui/data/`, `data/raw/` and
+  `data/processed/` directories. Separate generators alone do NOT provide publication
+  isolation. Before basketball writes published files, tighten the publisher's path
+  ownership or use one serialized publication step with exact allowlists. Never have
+  two independent jobs resolving generated-file conflicts by taking their own copy.
+- Both sports use the same repository test suite. New research tests can block
+  football deployment if merged broken (as the original import-path issue showed).
+  Keep tests offline and validate both `pytest` and `python -m pytest` invocations.
+
+## Release gates
+
+1. Run the existing manual pilot on `main`, ending year 2026, with `CBBD_API_KEY`.
+   Review access errors and artifact coverage; no successful collection assumed.
+   DONE 2026-10-20: access verified, measurements in
+   [`basketball-pilot-evidence.md`](basketball-pilot-evidence.md).
+2. Reconcile one game's player minutes and paired lineups against box scores.
+   Minute reconciliation DONE: one of three sampled games reconciles exactly and
+   two show the lineup feed missing 18.5% and 26.2% of floor time, so paired
+   lineups cannot be rebuilt from the aggregate lineup rows alone.
+3. Build national ingestion independently: season membership, stable identities,
+   request-cap handling, duplicate detection, and explicit non-D-I treatment.
+   DONE 2026-10-20: separate database, namespaced keys, date partitioning
+   around both record caps, idempotent loads proven on 12,617 real games with
+   20,576 players, 20,853 roster memberships and 254,821 player box score
+   lines. `/games/players` caps at 1,000 ROWS, which was measured rather than
+   assumed after a cap stated in the wrong quantity lost 1,535 Division I box
+   scores in silence. Coverage of finals is complete for both seasons measured.
+   See [`basketball-ingestion.md`](basketball-ingestion.md) and
+   [`basketball-coverage.md`](basketball-coverage.md).
+4. Validate team Elo and export a national manifest with schema version, as-of time,
+   model version and coverage. A production loader must reject team samples and
+   unsupported schemas rather than show them as national rankings.
+   Elo HALF DONE 2026-10-20: fitted on 59,578 basketball games from 2015-2025
+   and scored once on 2026's 5,752, which the search never saw. Held-out Brier
+   0.18656 against 0.19053 for football's parameters carried over unchanged,
+   0.23123 for the home team at its base rate and 0.25000 for a coin flip, so
+   nothing is inherited on football's word. k and offseason retention happen to
+   land on football's values; home advantage is twice it and the margin layer is
+   different. See [`basketball-elo.md`](basketball-elo.md). The export and the
+   loader's rejection rules are still to come, and no basketball rating reaches
+   `ui/` until they exist.
+   Export DONE 2026-10-20: `manifest.json` carries the export schema version,
+   the as-of time, the model with a hash of its exact configuration and its
+   held-out score, and per-season coverage. Two gates refuse separately —
+   `src/ncaambb/publish_gate.py` before a byte is written, and
+   `ui/ncaambb_loader.js` in the reader's browser against whatever the network
+   returned. A season below 300 Division I teams, a model with no holdout, a
+   leaked holdout, and a manifest naming a missing, empty or altered file are
+   all refused. Staleness is marked, never refused, so the last good snapshot
+   stays publishable. See [`basketball-export.md`](basketball-export.md).
+   Nothing is served: release gate 6 decides that.
+5. Add a private/unlinked basketball preview. Test football URL parity, basketball
+   search/favorites isolation, season navigation, failed/missing feeds and mobile UI.
+   The interface contract is [`basketball-ui.md`](basketball-ui.md), written to
+   Austin's direction of 2026-10-20: a league selector beneath the wordmark,
+   the existing bottom bar kept, and everything league-scoped behind it.
+   DONE 2026-10-20: `ui/basketball.html`, unlinked — no football file points
+   at it and a test asserts that. `ui/ncaambb_app.js` holds the league rules:
+   football keeps the bare route (`#section=rankings&view=top25`) and
+   basketball states `league=ncaambb`, with a test asserting football's own
+   router returns an identical route either way. Favorites are namespaced
+   (`elocast.favorites.ncaambb.v1`), the football key is never re-read, and
+   following in one league only offers the other. Season labels are the
+   `2025-26` form from the ending year. A missing feed, a sample and an
+   unknown schema all draw the refusal panel and no board; a stale export is
+   still drawn, badged. Verified at 430px in Chromium as well as in the
+   suite. 53 tests.
+6. Validate publishing ownership, cache behavior and last-good snapshot rollback;
+   then enable the sport selector. A basketball fetch failure must leave football
+   refresh running and basketball's last valid snapshot visibly marked stale.
+   DONE 2026-10-20, on Austin's instruction to roll the whole thing out as one
+   visible update. `.github/workflows/cbb-refresh.yml` has its own concurrency
+   group, its own health light and its own credentials, and never refits the
+   model. `src/ncaambb/publish.py` refuses an export older than the live one and
+   swaps rather than empties, so a failed refresh leaves the last good snapshot
+   in place and the page badges it stale. The selector is a link in the football
+   header, not a new route, and does not redirect. See
+   [`basketball-refresh.md`](basketball-refresh.md).
+7. Player impact remains a separate experimental feature until paired-lineup
+   coverage, uncertainty and held-out performance are established.
+
+## Rollback
+
+The initial research changes can be removed without touching production files.
+For the later public release, disable the basketball link and retain the last good
+basketball snapshot. Do not undo football commits, migrate its database, clear its
+favorites, or reset the shared installed app to roll basketball back.

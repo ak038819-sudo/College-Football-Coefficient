@@ -134,7 +134,7 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    assert.doesNotMatch(d.querySelector('#gp-efficiency').textContent,/SRDiff/);
   });
   await t.test('player category, conference, minimum and numeric sort work together',async()=>{
-   await route('#section=stats&view=players&season=2026&category=rushing',()=>d.querySelector('.stats-table')&&d.querySelector('[aria-current="page"]')?.textContent==='Stats');
+   await route('#section=stats&view=players&season=2026&category=rushing',()=>d.querySelector('.stats-table')&&d.querySelector('#tabs a[aria-current="page"]')?.textContent==='Stats');
    assert.ok(d.querySelectorAll('.stats-table tbody tr').length<=50);
    d.getElementById('stats-conf').value='Big 12';d.getElementById('stats-minimum').value='10';
    const oldForm=d.getElementById('stats-filters');

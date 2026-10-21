@@ -121,6 +121,34 @@
     line-height: 1;
   }
   .title-block h1 span { color: var(--amber); }
+  .leagues {
+    display: inline-flex;
+    margin-top: 8px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--panel);
+  }
+  /* Addressed by id, not by `.leagues a`, deliberately. The global
+     `:root a:any-link:not(.active):not(.action-button)` rule below is
+     (0,3,1) and would otherwise win, painting the selected league amber on
+     amber -- a pill with no readable text, which is what it did until a
+     browser showed it. */
+  /* Kept while the selector is staged off: this rule is the one that was hard
+     to get right, and losing it would mean rediscovering the specificity trap
+     described above. It styles nothing until the nav returns. */
+  #league-selector a {
+    font-size: 13px;
+    padding: 6px 14px;
+    color: var(--ink-dim);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  #league-selector a[aria-current="page"] {
+    background: var(--amber);
+    color: #15110a;
+    font-weight: 600;
+  }
   /* The mark is decorative: the wordmark beside it already says the name, so
      it carries an empty alt and must not be announced twice. Sized off the
      heading so it tracks the clamp() above instead of fighting it. */
@@ -1441,6 +1469,18 @@
     <div class="title-block">
       <h1><img class="masthead-mark" src="brand/mark.svg" alt="" width="40" height="40">Elo<span>cast</span></h1>
       <p class="release-label">v0.1 · People and Places of the Game</p>
+      <!-- The league selector is STAGED OFF. The basketball side of the site
+           is complete and tested, but its first export cannot be built until
+           the provider's allowance recovers, and a visible league tab with no
+           data behind it is worse than no tab. Turning it on is re-adding the
+           nav below and the listener at the end of this file; the CSS for it
+           is kept, since the specificity trap it works around is the part
+           that was hard to get right. See docs/basketball-ui.md.
+
+           <nav class="leagues" id="league-selector" aria-label="League">
+             <a data-league="cfb" href="#section=home" aria-current="page">College Football</a>
+             <a data-league="ncaambb" href="basketball.html">Men's Basketball</a>
+           </nav> -->
     </div>
     <nav class="header-links" aria-label="About the data">
       <a href="#section=coverage">Data Coverage</a>
@@ -9986,6 +10026,24 @@ paintAppChrome();
 window.addEventListener('online', paintConnection);
 window.addEventListener('offline', paintConnection);
 paintConnection();
+
+// Nothing here reads or writes the remembered league while the selector is
+// staged off, so there is no key for the two pages to drift on. When the
+// selector returns, so does this, and it must NOT redirect: a football link
+// has to open football even for a reader whose last visit was basketball, or
+// a shared link opens somebody else's sport and the installed app's start URL
+// moves on its own.
+//
+// (function rememberLeagueChoice() {
+//   const selector = document.getElementById('league-selector');
+//   if (!selector) return;
+//   selector.addEventListener('click', (event) => {
+//     const link = event.target.closest('a[data-league]');
+//     if (!link) return;
+//     try { localStorage.setItem('elocast.league.v1', link.dataset.league); }
+//     catch (err) { /* the choice is not remembered, which is survivable */ }
+//   });
+// }());
 </script>
 </body>
 </html>

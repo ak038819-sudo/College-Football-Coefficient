@@ -1,0 +1,276 @@
+name: Refresh college basketball ratings
+
+# Release gate 6's refresh. Rebuilds the basketball ratings from the committed
+# model and replaces the published export, and does neither if what it built
+# would not pass the publish gate.
+#
+# Three rules shape this file, all from the plan:
+#
+# 1. A basketball provider failure must not stop the football refresh. This is
+#    a separate workflow with its own concurrency group and its own health
+#    light; it never runs, waits on, or cancels anything of football's.
+# 2. A failure must not replace valid data with empty files. The export is
+#    built in a temporary directory and only swapped in once the gate passes,
+#    so a provider outage leaves yesterday's ratings exactly where they are,
+#    and the page marks them stale on its own.
+# 3. The model is NOT refitted here. src/ncaambb/fit_elo.py chooses the
+#    parameters and a person commits them; a refresh that quietly refits would
+#    change the ratings' meaning on a schedule nobody is watching.
+#
+# It also commits `data/ncaambb/raw`, the gzipped provider responses. A settled
+# season cannot change, so refetching twelve of them every morning spends quota
+# on identical bytes -- and the first rehearsal of this workflow did exactly
+# that and was cut off by HTTP 429 five seasons from the end. With the cache in
+# the repository a run reloads the archive from disk and asks the provider only
+# about the season being played.
+#
+# The commit carries `[skip ci]`, and unlike football's backfill that is not a
+# trap here: ui/basketball.html fetches the committed export directly, so
+# GitHub Pages republishing the files is all it takes. Nothing needs the
+# football deploy to regenerate a dashboard.
+
+on:
+  schedule:
+    # Early morning US time, through the basketball season. Out of season this
+    # workflow simply publishes the same export and commits nothing.
+    - cron: "40 10 * 11,12,1,2,3,4 *"
+  workflow_dispatch:
+    inputs:
+      seasons:
+        description: "Comma-separated ending years; blank means 2015 to the current season"
+        type: string
+        default: ""
+      publish:
+        description: "Commit the export to main when the gate passes"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  # The health light below. Scoped to this workflow, so it can never close
+  # football's alert.
+  issues: write
+
+concurrency:
+  # Deliberately NOT the deploy's group. A refresh that shared it would sit
+  # behind a deploy and then be cancelled by the next one, which is exactly
+  # what happened to live-scores.yml before it got its own group.
+  group: cbb-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install the test runner
+        run: python -m pip install 'pytest>=7,<10'
+
+      - name: Validate before spending provider quota
+        run: |
+          python -m pytest tests/test_ncaambb_elo.py \
+            tests/test_ncaambb_store.py tests/test_ncaambb_ingestion.py \
+            tests/test_ncaambb_export.py tests/test_ncaambb_publish.py -q
+
+      - name: Work out which seasons to refresh
+        id: seasons
+        env:
+          REQUESTED: ${{ inputs.seasons }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import os
+          from datetime import datetime, timezone
+          from src.ncaambb.identity import current_season, seasons_through
+          requested = (os.environ.get('REQUESTED') or '').strip()
+          # The ending year comes from the shared helper, never from a copy
+          # of the rule written into a workflow where no test can reach it.
+          now = datetime.now(timezone.utc)
+          seasons = requested or ','.join(
+              str(year) for year in seasons_through(now))
+          print(f'list={seasons}')
+          # The season being played is the one whose games change. It is named
+          # separately so the ingestion can ask again about it while reusing
+          # the committed cache for every settled season -- and only if this
+          # run is actually fetching it, since a hand-dispatched run may ask
+          # for an older season alone.
+          active = current_season(now)
+          asked = {int(part) for part in seasons.split(',') if part.strip()}
+          print(f'active={active if active in asked else ""}')
+          PY
+
+      - name: Ingest the schedules
+        env:
+          CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
+          SEASONS: ${{ steps.seasons.outputs.list }}
+          ACTIVE: ${{ steps.seasons.outputs.active }}
+        run: |
+          # `cmd | tee` reports tee's status, so without pipefail a crash here
+          # would pass this step. It did exactly that once.
+          set -o pipefail
+          # No blanket --refetch: a settled season already in the committed raw
+          # cache costs no request, and that is what keeps this run under the
+          # provider's limit. The season being played is the exception, and it
+          # has to be: a cached season is never asked about again, so without
+          # --refetch-seasons the first run to cache it would freeze it, and
+          # every later export would carry a fresh generated_at over games
+          # that had stopped moving.
+          python -m src.ncaambb.ingest --seasons "$SEASONS" --schedule-only \
+            ${ACTIVE:+--refetch-seasons "$ACTIVE"} \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Replay the archive with the committed model
+        run: |
+          set -o pipefail
+          python -m src.ncaambb.build_ratings | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Build the export, which refuses rather than writes
+        run: |
+          set -o pipefail
+          python -m src.ncaambb.export --out "$RUNNER_TEMP/ncaambb-export" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Decide whether it may replace what is published
+        id: publish
+        env:
+          BUILT: ${{ runner.temp }}/ncaambb-export
+          ALLOWED: ${{ inputs.publish == null && 'true' || inputs.publish }}
+        run: |
+          set -o pipefail
+          python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import os, sys
+          from pathlib import Path
+          sys.path.insert(0, '.')
+          from src.ncaambb import publish
+          built, live = os.environ['BUILT'], 'ui/data/ncaambb'
+          decision = publish.plan(built, live)
+          print(publish.render(decision))
+          allowed = os.environ.get('ALLOWED', 'true') == 'true'
+          if decision['publish'] and allowed:
+              publish.apply(decision, built, live)
+          elif decision['publish']:
+              print('\nNot committed: this run was dispatched with publishing off.')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
+              out.write(f"published={'true' if decision['publish'] and allowed else 'false'}\n")
+          # A refusal is a failed run, not a quiet one: the health light below
+          # is the only thing that would otherwise notice.
+          sys.exit(0 if decision['publish'] else 1)
+          PY
+
+      # Runs even when the ingestion or the gate failed, which is the point.
+      # The raw cache is the provider data this run paid quota for; a season
+      # it managed to fetch before the rate limit must be banked, or the next
+      # run spends the same quota on the same seasons and gets no further. A
+      # rate-limited run therefore still makes progress, and the job still
+      # fails, so the health light below still lights.
+      - name: Commit the raw cache and, if the gate allowed it, the export
+        if: always() && steps.seasons.conclusion == 'success'
+        env:
+          ALLOWED: ${{ inputs.publish == null && 'true' || inputs.publish }}
+        run: |
+          # The raw cache is banked whatever else happened, and the `publish`
+          # input does NOT govern it. "Do not replace what is published" and
+          # "throw away the quota this run already spent" are different
+          # decisions, and a dispatcher asking for the first does not want the
+          # second. It also makes `publish: false` the safe way to warm the
+          # cache for a season without touching the live export.
+          PATHS="data/ncaambb/raw"
+          # The export only when the gate passed -- a refused export is not in
+          # the tree at all -- and only when this run is allowed to publish.
+          if [ "${{ steps.publish.outputs.published }}" = "true" ] \
+              && [ "$ALLOWED" = "true" ]; then
+            PATHS="$PATHS ui/data/ncaambb"
+          else
+            echo "Committing the raw cache only; the export is not being published."
+          fi
+          if [ -z "$(git status --porcelain $PATHS)" ]; then
+            echo "Nothing changed under $PATHS; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add $PATHS
+          # Only these paths. A refresh must never carry a code change along
+          # with it, whatever happens to be in the tree.
+          git commit -m "Refresh the college basketball export
+
+          Built by ${{ github.workflow }} run ${{ github.run_id }} from the
+          committed model in config/ncaambb_model.json. Carries the raw
+          provider cache this run fetched, so a later run reloads those
+          seasons from the repository instead of spending quota on data that
+          cannot change. [skip ci]"
+          # Push back to the branch this ran on. On main that is the
+          # published site; on a branch it is that branch, which is how a
+          # release can be prepared without a scheduled job writing to main
+          # before anybody has looked at it.
+          BRANCH="${GITHUB_REF_NAME}"
+          for attempt in 1 2 3 4; do
+            if ! git fetch origin "$BRANCH"; then
+              echo "::warning::fetch failed (attempt $attempt)"
+              sleep $((attempt * attempt * 2)); continue
+            fi
+            # Rebase, then push. NEVER chain a push behind a merge with &&:
+            # the push still runs when the merge fails and sends a conflicted
+            # tree.
+            if ! git rebase FETCH_HEAD; then
+              git rebase --abort || true
+              echo "::error::Could not rebase onto $BRANCH; leaving the published export alone."
+              exit 1
+            fi
+            if git push origin "HEAD:$BRANCH"; then
+              echo "Pushed."
+              exit 0
+            fi
+            echo "::warning::push failed (attempt $attempt)"
+            sleep $((attempt * attempt * 2))
+          done
+          echo "::error::Could not push the refreshed export."
+          exit 1
+
+  alert-failure:
+    needs: refresh
+    if: always() && needs.refresh.result == 'failure' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Light the basketball health light
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/alert_pipeline_state.py --state failed \
+            --scope cbb-refresh \
+            --workflow "${{ github.workflow }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --consequence "Basketball ratings stop refreshing while this is red. Football is unaffected: it has its own workflow and its own alert. The published basketball export stays as it is and the page marks it stale."
+
+  alert-recovery:
+    needs: refresh
+    if: always() && needs.refresh.result == 'success' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Put the basketball health light out
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/alert_pipeline_state.py --state recovered \
+            --scope cbb-refresh \
+            --workflow "${{ github.workflow }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

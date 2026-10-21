@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elocast — Men's Basketball preview</title>
+<!--
+  B05: the unlinked basketball preview.
+
+  Unlinked on purpose. Nothing on the football site points here, the football
+  page is not modified, and release gate 6 decides whether a reader can ever
+  reach it. It exists so the interface contract in docs/basketball-ui.md can be
+  looked at and argued with before anything is published.
+
+  It draws nothing until ui/ncaambb_loader.js accepts the manifest. A sample,
+  an unknown schema, a model with no held-out score or a manifest naming a
+  file that is not there produces the refusal panel and no board, which is the
+  behaviour release gate 4 asks for.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@600;700;800&family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  /* The same tokens as ui/dashboard_shell.html: the contract is that the look
+     carries across sports without a redesign. */
+  :root {
+    --bg: #0e1512;
+    --panel: #161f1a;
+    --panel-2: #1c2621;
+    --line: #2a352e;
+    --ink: #eef1ec;
+    --ink-dim: #a8b3ac;
+    --amber: #e8a33d;
+    --amber-dim: #7a5a26;
+    --red: #c4453c;
+    --green-hl: #6fae5a;
+    --font-display: 'Roboto Slab', Georgia, serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f2f0e8; --panel: #ffffff; --panel-2: #eae7dc; --line: #d8d4c6;
+      --ink: #1a1f1b; --ink-dim: #5c6259; --amber: #b5741a;
+      --amber-dim: #e8c68f; --red: #a3352c; --green-hl: #3f7a30;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f2f0e8; --panel: #ffffff; --panel-2: #eae7dc; --line: #d8d4c6;
+    --ink: #1a1f1b; --ink-dim: #5c6259; --amber: #b5741a;
+    --amber-dim: #e8c68f; --red: #a3352c; --green-hl: #3f7a30;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--font-body); -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 96px; }
+  h1 {
+    font-family: var(--font-display); font-weight: 800; margin: 0;
+    font-size: clamp(26px, 5vw, 40px); letter-spacing: 0.5px;
+  }
+  .preview-note {
+    font-size: 12px; color: var(--amber); text-transform: uppercase;
+    letter-spacing: 1.2px; margin: 6px 0 0;
+  }
+
+  /* 1. The league selector, directly beneath the wordmark. A segmented
+        control while there are two choices. */
+  .leagues {
+    display: inline-flex; margin: 14px 0 0; border: 1px solid var(--line);
+    border-radius: 999px; overflow: hidden; background: var(--panel);
+  }
+  .leagues button {
+    appearance: none; border: 0; background: transparent; color: var(--ink-dim);
+    font: inherit; font-size: 14px; padding: 8px 16px; cursor: pointer;
+  }
+  .leagues button[aria-pressed="true"] {
+    background: var(--amber); color: #15110a; font-weight: 600;
+  }
+  .search { margin: 12px 0 0; }
+  .search input {
+    width: 100%; max-width: 420px; padding: 9px 12px; font: inherit;
+    color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+
+  .meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+          margin: 14px 0 0; font-size: 13px; color: var(--ink-dim); }
+  .badge {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.6px;
+    text-transform: uppercase; padding: 3px 8px; border-radius: 4px;
+    border: 1px solid var(--line);
+  }
+  /* Stale is a badge that cannot be mistaken for a timestamp. */
+  .badge.stale { background: var(--red); border-color: var(--red);
+                 color: #fff; font-weight: 600; }
+  .badge.fresh { color: var(--green-hl); border-color: var(--green-hl); }
+
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px; margin: 18px 0 0;
+  }
+  .refusal { border-color: var(--red); }
+  .refusal h2 { margin: 0 0 8px; font-size: 16px; color: var(--red); }
+  .refusal ul { margin: 0; padding-left: 20px; font-size: 14px; }
+
+  .days { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+  .days button {
+    appearance: none; border: 1px solid var(--line); background: var(--panel-2);
+    color: var(--ink-dim); font: inherit; font-size: 12px; padding: 6px 10px;
+    border-radius: 8px; white-space: nowrap; cursor: pointer;
+  }
+  .days button[aria-pressed="true"] {
+    border-color: var(--amber); color: var(--ink); font-weight: 600;
+  }
+  .filters { display: flex; gap: 6px; margin: 10px 0 0; flex-wrap: wrap; }
+  .filters button {
+    appearance: none; border: 1px solid var(--line); background: transparent;
+    color: var(--ink-dim); font: inherit; font-size: 12px; padding: 5px 10px;
+    border-radius: 999px; cursor: pointer;
+  }
+  .filters button[aria-pressed="true"] { color: var(--ink);
+                                         border-color: var(--ink); }
+
+  .cards { display: grid; gap: 10px; margin: 12px 0 0;
+           grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+          background: var(--panel-2); }
+  .card .status { font-size: 11px; text-transform: uppercase;
+                  letter-spacing: 0.8px; color: var(--ink-dim); }
+  .card .side { display: flex; justify-content: space-between; gap: 10px;
+                font-size: 15px; margin-top: 4px; }
+  .card .side .pts { font-family: var(--font-mono); }
+  .card .foot { font-size: 11px; color: var(--ink-dim); margin-top: 6px; }
+  .undecided { color: var(--amber); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 8px;
+           border-bottom: 1px solid var(--line); }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
+       color: var(--ink-dim); }
+  td.num, th.num { text-align: right; font-family: var(--font-mono); }
+  td.rk { text-align: center; width: 44px; color: var(--ink-dim); }
+
+  /* 4. The bottom tabs keep their names and change their contents. */
+  nav.tabs {
+    position: fixed; left: 0; right: 0; bottom: 0; display: flex;
+    background: var(--panel); border-top: 1px solid var(--line);
+  }
+  nav.tabs button {
+    flex: 1; appearance: none; border: 0; background: transparent;
+    color: var(--ink-dim); font: inherit; font-size: 12px; padding: 10px 4px;
+    cursor: pointer;
+  }
+  nav.tabs button[aria-pressed="true"] { color: var(--amber);
+                                         font-weight: 600; }
+  nav.tabs button[disabled] { opacity: 0.35; cursor: default; }
+  .empty { color: var(--ink-dim); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Elocast</h1>
+    <p class="preview-note">Men's Basketball — unlinked preview</p>
+    <div class="leagues" id="leagues" role="group"
+         aria-label="League"></div>
+    <div class="search">
+      <input id="search" type="search" aria-label="Search">
+    </div>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <div class="panel refusal" id="refusal" hidden>
+    <h2>These ratings are not being shown</h2>
+    <ul id="refusal-list"></ul>
+  </div>
+
+  <section class="panel" id="scoreboard" hidden>
+    <div class="days" id="days"></div>
+    <div class="filters" id="filters"></div>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section class="panel" id="standings" hidden>
+    <table>
+      <thead>
+        <tr><th class="rk">#</th><th>Team</th><th>Conference</th>
+            <th class="num">Rating</th><th class="num">Record</th></tr>
+      </thead>
+      <tbody id="board"></tbody>
+    </table>
+  </section>
+</div>
+
+<nav class="tabs" id="tabs" aria-label="Sections"></nav>
+
+<script src="ncaambb_loader.js"></script>
+<script src="ncaambb_app.js"></script>
+<script>
+(function () {
+  'use strict';
+  var loader = window.ncaambbLoader;
+  var app = window.ncaambbApp;
+  var BASE = 'data/ncaambb/';
+  var TABS = ['home', 'standings', 'teams', 'people', 'games'];
+  // Which panel each tab shows. A league having a section is not the same as
+  // this page having a panel for it: basketball genuinely holds teams and
+  // people, and switchLeague is right to carry those sections, but the
+  // preview draws only the board and the scoreboard. A tab with no panel
+  // behind it hid both and left an empty page, which is the thing the Stats
+  // tab is deliberately disabled to avoid.
+  var PANELS = { home: 'scoreboard', games: 'scoreboard',
+                 standings: 'standings' };
+  var LABELS = { home: 'Home', stats: 'Stats', standings: 'Standings',
+                 teams: 'Teams', people: 'People', games: 'Games' };
+  var state = { manifest: null, verdict: null, season: null, day: null,
+                filter: 'all', sort: 'tipoff', tab: 'standings' };
+
+  function el(id) { return document.getElementById(id); }
+
+  function text(node, value) {
+    node.textContent = value === null || value === undefined ? '' : value;
+  }
+
+  function leagueButtons() {
+    var host = el('leagues');
+    host.innerHTML = '';
+    app.LEAGUES.forEach(function (entry) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = entry.picker;
+      button.dataset.league = entry.slug;
+      // Football lives on dashboard.html; this preview is basketball only, so
+      // the football option navigates rather than pretending to switch here.
+      button.setAttribute('aria-pressed',
+        entry.slug === app.BASKETBALL ? 'true' : 'false');
+      button.addEventListener('click', function () {
+        if (entry.slug === app.BASKETBALL) return;
+        window.location.href = 'dashboard.html';
+      });
+      host.appendChild(button);
+    });
+    el('search').placeholder = app.searchPlaceholder(app.BASKETBALL);
+  }
+
+  function tabButtons() {
+    var host = el('tabs');
+    host.innerHTML = '';
+    TABS.concat(['stats']).forEach(function (name) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = LABELS[name];
+      button.dataset.tab = name;
+      var ready = app.hasSection(app.BASKETBALL, name)
+        && Boolean(PANELS[name]);
+      // A feature appears only where it is ready. Stats carries nothing until
+      // Player Impact or Roster Scenarios exists, so it is shown disabled
+      // rather than opening an empty panel.
+      if (!ready) button.disabled = true;
+      button.setAttribute('aria-pressed',
+        String(name === state.tab && ready));
+      button.addEventListener('click', function () {
+        if (!ready) return;
+        state.tab = name;
+        render();
+      });
+      host.appendChild(button);
+    });
+  }
+
+  function describeModel(model) {
+    if (!model) return '';
+    return 'Elo ' + model.name + ', held out '
+      + (model.held_out || []).join(', ') + ' · Brier '
+      + Number(model.holdout_brier).toFixed(5);
+  }
+
+  function renderMeta() {
+    var host = el('meta');
+    host.innerHTML = '';
+    var verdict = state.verdict;
+    if (!verdict) return;
+    var badge = document.createElement('span');
+    badge.className = 'badge ' + (verdict.stale ? 'stale' : 'fresh');
+    badge.textContent = verdict.stale
+      ? 'Stale · ' + verdict.age.label : verdict.age.label;
+    host.appendChild(badge);
+    if (state.season) {
+      var season = document.createElement('span');
+      season.textContent = app.seasonLabel(state.season);
+      host.appendChild(season);
+    }
+    if (verdict.model) {
+      var model = document.createElement('span');
+      model.textContent = describeModel(verdict.model);
+      host.appendChild(model);
+    }
+  }
+
+  function renderRefusal() {
+    var host = el('refusal');
+    var list = el('refusal-list');
+    list.innerHTML = '';
+    var reasons = (state.verdict && state.verdict.reasons) || [];
+    host.hidden = reasons.length === 0;
+    reasons.forEach(function (reason) {
+      var item = document.createElement('li');
+      item.textContent = reason;
+      list.appendChild(item);
+    });
+  }
+
+  function teamName(key) {
+    var teams = window.NCAAMBB_TEAMS || {};
+    var team = teams[key];
+    return (team && (team.short || team.name)) || key;
+  }
+
+  function seasonPayload() {
+    var seasons = window.NCAAMBB_SEASONS || {};
+    return seasons[state.season] || null;
+  }
+
+  function renderBoard() {
+    var body = el('board');
+    body.innerHTML = '';
+    var payload = seasonPayload();
+    var rows = (payload && payload.board) || [];
+    rows.slice(0, 50).forEach(function (row) {
+      var tr = document.createElement('tr');
+      function cell(value, className) {
+        var td = document.createElement('td');
+        if (className) td.className = className;
+        text(td, value);
+        tr.appendChild(td);
+      }
+      cell(row.rank, 'rk');
+      cell(teamName(row.team));
+      cell(row.conference);
+      cell(app.ratingText(row.rating), 'num');
+      cell(row.wins + '-' + row.losses, 'num');
+      body.appendChild(tr);
+    });
+    if (!rows.length) {
+      var tr = document.createElement('tr');
+      var td = document.createElement('td');
+      td.colSpan = 5;
+      td.className = 'empty';
+      td.textContent = 'No ratings are loaded for this season.';
+      tr.appendChild(td);
+      body.appendChild(tr);
+    }
+  }
+
+  function renderDays() {
+    var host = el('days');
+    host.innerHTML = '';
+    // The strip centres on the selected day; only the real today is
+    // labelled Today, which is a different question from where the centre is.
+    app.dayStrip(state.day, 3, app.todayKey()).forEach(function (entry) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = entry.today ? 'Today' : entry.day.slice(5);
+      button.setAttribute('aria-pressed', String(entry.day === state.day));
+      button.addEventListener('click', function () {
+        state.day = entry.day;
+        render();
+      });
+      host.appendChild(button);
+    });
+  }
+
+  function renderFilters() {
+    var host = el('filters');
+    host.innerHTML = '';
+    [['all', 'All'], ['live', 'Live'], ['upcoming', 'Upcoming'],
+     ['final', 'Final']].forEach(function (pair) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = pair[1];
+      button.setAttribute('aria-pressed', String(state.filter === pair[0]));
+      button.addEventListener('click', function () {
+        state.filter = pair[0];
+        render();
+      });
+      host.appendChild(button);
+    });
+  }
+
+  function renderCards() {
+    var host = el('cards');
+    host.innerHTML = '';
+    var payload = seasonPayload();
+    var games = app.sortGames(
+      app.filterGames(app.gamesOn((payload && payload.games) || [],
+                                  state.day), state.filter),
+      state.sort);
+    if (!games.length) {
+      var empty = document.createElement('p');
+      empty.className = 'empty';
+      empty.textContent = 'No games on this day.';
+      host.appendChild(empty);
+      return;
+    }
+    games.forEach(function (game) {
+      var card = document.createElement('div');
+      card.className = 'card';
+      var status = document.createElement('div');
+      status.className = 'status';
+      if (!app.timeKnown(game)) status.classList.add('undecided');
+      status.textContent = app.statusLine(game);
+      card.appendChild(status);
+      [['away', game.away, game.away_points],
+       ['home', game.home, game.home_points]].forEach(function (side) {
+        var row = document.createElement('div');
+        row.className = 'side';
+        var name = document.createElement('span');
+        name.textContent = teamName(side[1]);
+        var points = document.createElement('span');
+        points.className = 'pts';
+        // A missing score is absent, never a zero and never a clock.
+        points.textContent = side[2] === null || side[2] === undefined
+          ? '' : side[2];
+        row.appendChild(name);
+        row.appendChild(points);
+        card.appendChild(row);
+      });
+      var foot = document.createElement('div');
+      foot.className = 'foot';
+      foot.textContent = [game.venue, game.city, game.state]
+        .filter(Boolean).join(' · ');
+      card.appendChild(foot);
+      host.appendChild(card);
+    });
+  }
+
+  function render() {
+    renderMeta();
+    renderRefusal();
+    var ok = state.verdict && state.verdict.ok;
+    el('standings').hidden = !ok || state.tab !== 'standings';
+    el('scoreboard').hidden = !ok || !(state.tab === 'home'
+                                       || state.tab === 'games');
+    tabButtons();
+    if (!ok) return;
+    if (!el('standings').hidden) renderBoard();
+    if (!el('scoreboard').hidden) {
+      renderDays();
+      renderFilters();
+      renderCards();
+    }
+  }
+
+  function load(src) {
+    return new Promise(function (resolve, reject) {
+      var script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = function () { reject(new Error('failed: ' + src)); };
+      document.head.appendChild(script);
+    });
+  }
+
+  function openingDay(payload) {
+    // Today, clamped into the loaded season. Not the last date in the
+    // payload: a published schedule runs to April, so that opened on the
+    // championship and the strip called it Today.
+    return app.openingDay(
+      ((payload && payload.games) || []).map(app.dayOf).filter(Boolean));
+  }
+
+  function start() {
+    leagueButtons();
+    fetch(BASE + 'manifest.json', { cache: 'no-store' })
+      .then(function (response) {
+        if (!response.ok) throw new Error('no manifest');
+        return response.json();
+      })
+      .then(function (manifest) {
+        state.manifest = manifest;
+        state.verdict = loader.accept(manifest);
+        if (!state.verdict.ok) {
+          render();
+          return null;
+        }
+        state.season = manifest.latest_season;
+        var sources = [loader.fileSource(manifest, 'teams', BASE),
+                       loader.seasonSource(manifest, state.season, BASE)]
+          .filter(Boolean);
+        return Promise.all(sources.map(load));
+      })
+      .then(function () {
+        if (!state.verdict || !state.verdict.ok) return;
+        state.day = openingDay(seasonPayload());
+        render();
+      })
+      .catch(function (error) {
+        state.verdict = {
+          ok: false,
+          reasons: ['The basketball export could not be loaded: '
+                    + error.message],
+          stale: true,
+          age: { label: 'last updated: unknown', known: false, minutes: null }
+        };
+        render();
+      });
+  }
+
+  start();
+}());
+</script>
+</body>
+</html>

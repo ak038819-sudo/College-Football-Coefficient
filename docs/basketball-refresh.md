@@ -1,0 +1,283 @@
+# Keeping basketball current without putting football at risk
+
+Release gate 6. Three things: a scheduled refresh, a decision about what may
+replace what is published, and a health light that says when the refresh has
+stopped working.
+
+The plan's rule is that a basketball provider failure must not stop the
+football refresh or replace valid data with empty files. Everything below is
+built around that one sentence.
+
+## The refresh is its own workflow
+
+`.github/workflows/cbb-refresh.yml`, scheduled through the season and
+dispatchable. It shares nothing with football:
+
+- **Its own concurrency group** (`cbb-refresh`). A refresh that shared the
+  deploy's group would queue behind a deploy and then be cancelled by the next
+  one, which is exactly what happened to `live-scores.yml` before it got a
+  group of its own.
+- **Its own health light** (below), so neither sport can put out the other's
+  alert.
+- **Its own credentials.** `CBBD_API_KEY` from the repository secret, never
+  echoed, never written anywhere. Football's key is not referenced and a test
+  fails if it appears in the file.
+
+It **never refits the model.** `src/ncaambb/fit_elo.py` chooses the parameters
+and a person commits them to `config/ncaambb_model.json`; a refresh that
+quietly refitted would change what the ratings mean on a schedule nobody is
+watching. A test asserts `fit_elo` is not in the workflow.
+
+It pushes back to **the branch it ran on**, not to `main` by name, which is how
+the whole thing was rehearsed on a branch before it was ever allowed to write
+to the published site.
+
+The season it refreshes comes from `identity.seasons_through()`, the same
+helper the rest of the code uses. A copy of the rule written into a workflow
+is a copy no test can reach, and this project has been bitten by a season rule
+that drifted.
+
+## What may replace what is published
+
+`src/ncaambb/publish.py`. The export gate asks whether an export is fit to
+publish at all; this asks whether it may replace the one already live, which
+goes wrong in different ways:
+
+| situation | what happens |
+| --- | --- |
+| the new export is refused by the gate | the live export stays exactly as it is |
+| the new export is older than the live one | refused: valid, national, and a step backwards |
+| the new export has no usable as-of time | refused |
+| the live export is missing or unreadable | published: there is nothing to protect |
+| the build directory is empty or truncated | refused |
+
+The swap stages the new export beside the live one and renames, rather than
+emptying the live directory and refilling it. A publish that dies halfway then
+leaves the previous export intact instead of a directory holding half of each.
+It is a swap and not a merge, so a season the new export dropped does not
+survive on the site pointed at by nothing.
+
+A refusal **fails the run**. It is not a quiet skip, because the health light
+is the only thing that would otherwise notice.
+
+## The health light
+
+`scripts/alert_pipeline_state.py` keeps one open issue per pipeline, labelled
+`pipeline-alert`, and closes it when a run succeeds. It now takes a `--scope`,
+because one light for the repository was wrong in both directions: a basketball
+failure that closed football's alert would hide a site that is not publishing,
+and the reverse would hide a basketball refresh that has been dead for days.
+Football's default scope keeps the exact marker its existing issues carry, so
+nothing already open is orphaned.
+
+Recovery now closes **every** open alert for its scope rather than the first.
+Two runs failing seconds apart opened #95 and #96 on 2026-10-18 and the next
+green run closed one, leaving a red light over a working pipeline.
+
+## Rolling back
+
+The published export is a directory of files in the repository, so the last
+good snapshot is the previous commit of `ui/data/ncaambb` and a revert of the
+refresh commit is the rollback. The refresh commits nothing but that
+directory and `data/ncaambb/raw` — a test asserts it never runs `git add -A` —
+so a revert can never take a code change with it.
+
+While a refresh is failing, the site keeps serving the last good export and the
+page badges it stale with its age. That is the intended behaviour, not a
+degraded one: refusing to draw an old-but-valid export would break "never
+replace valid data with empty files" from the other direction.
+
+## The selector
+
+The league selector sits under the wordmark in the football header, as the
+interface contract asks. It is **a link to another page, not a new route**, so
+every football deep link published to date opens exactly what it always did,
+and football's hash grammar gains nothing.
+
+It does not redirect. A reader whose last visit was basketball still gets
+football from a football link, because a redirect would open somebody else's
+sport from a shared link and would move the installed app's start URL on its
+own. The choice is remembered under `elocast.league.v1`, which is the key the
+basketball page reads; a test asserts both files agree on it.
+
+## Provider quota and the committed raw cache
+
+The first rehearsal of this workflow failed, and it is worth writing down why,
+because the cause was a design mistake rather than bad luck. It asked the
+provider for every season from 2015 to the one being played, on the grounds
+that the database is not committed and a fresh checkout has to rebuild it. That
+is 131 requests in three minutes; CBBD answered HTTP 429 and the run lost the
+last five seasons.
+
+Two things changed.
+
+**The gzipped provider responses are committed**, under `data/ncaambb/raw`,
+one file per endpoint per season. The ingestion already preferred that cache
+over a request — the only thing missing was for the cache to survive the run.
+A settled season cannot change, so the refresh now reloads eleven of the twelve
+from disk and asks the provider only about the season being played.
+
+**The season being played is the exception, and it has to be named as one.**
+A cached season is never asked about again — that is the whole point of the
+cache — so the first run to cache the active season would have frozen it.
+New finals, postponements and schedule changes would never have reached the
+database, while every export carried a fresh `generated_at` over games that
+had stopped moving: a refresh that looked like it was working. The `seasons`
+step now emits the active season separately, from the same
+`current_season()` helper, and the ingestion takes `--refetch-seasons`, which
+ignores the cache for exactly those seasons and reuses it for the rest. A
+hand-dispatched run for an older season alone names no active season, and
+naming a season `--seasons` does not include is refused outright, because
+"2027 is refreshed" while nothing fetches 2027 reads as a working refresh.
+
+The commit step therefore runs **even when the run failed**. A season fetched
+before the rate limit struck is quota already spent, and banking it is what
+makes a cut-off run make progress instead of repeating itself; the job still
+fails, so the health light still lights. That makes the refresh resumable by
+construction, the same property `backfill-players.yml` has for football.
+
+The `publish` input does **not** govern the cache. "Do not replace what is
+published" and "throw away the quota this run already spent" are different
+decisions, and a dispatcher asking for the first does not want the second —
+which also makes `publish: false` the safe way to warm the cache for a season
+without touching the live export.
+
+**A rate limit is honoured rather than guessed at, and a spent quota stops the
+run.** `src/ncaambb/http.py`
+backed off 2, 4, 8 and 16 seconds and gave up — thirty seconds against a
+window that was longer. It now reads `Retry-After` and waits as long as the
+server asked, capped at two minutes so a wrong or hostile value cannot park a
+run. Only the integer-seconds form is read; the HTTP-date form is legal but
+CBBD does not send it, and parsing it would mean trusting a clock difference
+to decide how long to sleep.
+
+In practice CBBD's 429 carries no `Retry-After` at all, which the second
+rehearsal established the hard way: every one of seven seasons failed on its
+very first request, 35 requests and 28 retries over three and a half minutes,
+nothing stored. So a 429 that survives its retries now raises its own
+`CbbdRateLimitError` and the ingestion **stops** on it, as it already did for
+a rejected key.
+
+That error deliberately does not say *why*. The first reading of it here was
+that the account's allowance was spent — and that was wrong: the account still
+had more than 27,000 calls, and what refused the requests was a short-window
+rate limit. The two need opposite responses. A spent allowance can only be
+waited out; a rate limit is avoided by **pacing requests so it is never
+tripped**, which beats any amount of retrying. `scripts/probe_cbbd_limits.py`
+asks the provider's usage endpoint which one is in play rather than inferring
+it from a 429, and measures the spacing that avoids one.
+
+**What the provider actually reports** (measured 2026-10-20, run
+39391823658, by `scripts/probe_cbbd_limits.py`):
+
+- `/info/usage` is served by the **football host only**; the basketball host
+  answers `Cannot GET /info/usage`.
+- The window is a **rolling seven days**, not a monthly reset, so capacity
+  returns as the oldest requests age out rather than at a reset date.
+- 1,061 requests in that window: 1,060 basketball and **one** football. The
+  allowance is shared at the account level, but football's pipeline uses its
+  own key, so a basketball backfill is not in practice spending football's
+  budget. Worth re-checking if that ever changes, because the plan's rule that
+  a basketball failure must not disturb football holds at the workflow level
+  by construction but not at the account level.
+- A single isolated request was refused in 0.07 seconds, and six requests two
+  seconds apart were refused identically. That is a **cap**, answered from an
+  edge counter before any work is done — not a "too fast" limit. **Pacing
+  cannot help, so no throttle exists.** 1,060 spent against a tier documented
+  at 1,000 explains it.
+
+Two further things, measured four hours later (run 39421405972, which cost
+three requests because `--usage-only` skips the data calls):
+
+- **The usage endpoint answers 200 while data endpoints are being refused.**
+  The key authenticates; the cap applies to data paths. So usage is always
+  diagnosable, which is why `--usage-only` exists.
+- **A refused request still counts.** `/teams` went from 102 to 114 across one
+  failed run of five attempts plus the earlier probe. Retrying a 429 spends
+  allowance to learn nothing, which is the strongest argument for stopping on
+  one rather than grinding through the seasons.
+- The seven-day totals on 2026-10-20 were **~1,064 basketball against 7
+  football**, and the football 7 were the probe's own calls.
+
+A **daily** cap was then the obvious hypothesis, because nearly all of that
+spend carried one day's timestamps. **It is wrong.** Retried just after 00:00
+UTC on 2026-10-21 (run 39521046771): the counter had not reset — it had gone
+*up*, to 1,077 — and the first `/teams` call was refused again. The window is
+genuinely rolling and seven days long, so the 2026-10-20 spend does not age
+out until 2026-10-27.
+
+So the cap sits on a window of at least seven days, at roughly a thousand
+requests, and the only remedies are a larger allowance or waiting for the
+window to roll. The diagnosis always comes from asking the usage endpoint
+rather than inferring it from a 429 — three times now the inference has been
+wrong and the endpoint has been right. Two reasons, both learned from that run. A season whose first
+request never cleared the limit means the quota is spent, so every later season
+would burn its full backoff to fail identically — 35 requests where 5 told the
+whole story. And a plain failure gets reported per season as "not stored",
+which reads as *the provider has no games for 2015*: the exact
+access-failure-as-absent-coverage confusion the auth path was separated out to
+avoid. The run now names the seasons it never asked about and says plainly that
+this is not a statement about coverage.
+
+## The season being played is not judged as a finished one
+
+The publish gate's floors describe a season that is over: two thousand games,
+and ninety per cent of the Division I list carrying a rating. Neither question
+can be asked of a season in progress. In mid-November a correct export has a
+few hundred results and most of the country unrated, and the gate as first
+written would have refused the entire twelve-season archive because of the one
+season a reader actually came to look at.
+
+So each coverage row now says whether its season is `complete`, and the
+in-progress branch asks a different question: every Division I team that has
+**finished a rateable game** must carry a rating. That is still a real check —
+a replay that silently dropped teams fails it exactly as it would in a finished
+season — and it is the check that catches the failure mode the relaxation could
+otherwise hide. The sample floor is untouched: a season in progress must still
+cover three hundred Division I teams, because the team list is published before
+tip-off, so a one-team pilot is caught whatever month it is.
+
+A row that does not say is read as finished. A missing flag must not be the way
+a thin export gets published. `ui/ncaambb_loader.js` carries the same rule
+independently, because a relaxation made on the build side and forgotten in the
+browser would refuse in the reader's page what the gate had just accepted.
+
+## What a refresh costs
+
+The export is about 21 MB across twelve seasons, and a season's games file is
+about 1.8 MB. Past seasons serialise byte-identically from one run to the next,
+so a refresh adds only the current season's file to the repository — roughly
+1.8 MB a day while the season is on, plus the current season's raw cache. If that proves too heavy, the next step is
+to intern the team keys inside each payload, which are 23 bytes each and appear
+twice per game; it is a shape change to the export, the loader and the page,
+which is why it is written down here rather than done pre-emptively.
+
+## The replay has no fit report, so the validation is committed
+
+A refresh does not fit anything. It replays the committed parameters in
+`config/ncaambb_model.json`, on a fresh runner where no fit report exists —
+and `build_ratings.py` stored `fitted_on`, `held_out`, `holdout_brier` and
+`holdout_games` only from a report. So every refresh stored a model with no
+held-out score, and the export gate — correctly, since a rating must say what
+it scored on games it never saw — refused the result. The refresh could never
+have published anything at all.
+
+The fix is that the held-out claim is committed beside the parameters it was
+measured on, in a `validation` block of the same file, and
+`report_from_config()` hands it to the replay when there is no report. A fit's
+own report still wins where there is one: it is the measurement that just
+happened.
+
+A committed claim can go stale, which would be worse than no claim — a
+published rating asserting a Brier the parameters never earned. So the block
+carries `measured_on_elo_sha256`, the hash of the `elo` section it was
+measured on, canonicalised the same way the export's `config_sha256` is.
+Editing a parameter without re-fitting now fails the replay by name instead of
+publishing yesterday's number over today's model. `cbb-ratings.yml` writes both
+halves together, so a real re-fit updates the claim and the hash in one step.
+
+The committed numbers are what run 39379853150 reported on 2026-10-20, to five
+decimal places: fitted on 2015-2025, held out on 2026, Brier 0.18656 over
+5,752 games. Five places is what the page displays and far more than the gate
+needs, which only asks that the Brier beat a coin flip; the exact floats are in
+that run's `elo_fit.json` artifact.
