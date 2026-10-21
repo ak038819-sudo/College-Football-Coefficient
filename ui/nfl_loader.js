@@ -16,7 +16,11 @@
 (function (root) {
   'use strict';
 
-  var SUPPORTED_SCHEMA_VERSIONS = [1];
+  /* Both versions, and in the same order as SUPPORTED_SCHEMA_VERSIONS in
+   * src/nfl/publish_gate.py. A reader that refused 1 would blank the page
+   * for anyone served this script before the next refresh rewrites the
+   * export, and a reader that refused 2 would blank it for everyone after. */
+  var SUPPORTED_SCHEMA_VERSIONS = [1, 2];
 
   /* The NFL is a fixed-size league, so this is an equality, not a floor: 32
    * franchises from the 2002 expansion and 31 before it. An export missing

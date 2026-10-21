@@ -13,19 +13,39 @@ import pytest
 from src.nfl import games as games_module
 from src.nfl import identity, store
 
-HEADER = ('game_id,season,game_type,week,gameday,weekday,gametime,away_team,'
-          'away_score,home_team,home_score,location,result,total,overtime,'
-          'div_game,roof,surface,stadium_id,stadium')
+# The real header, in the real order, including every column the loader
+# requires. A narrower header here would pass while the real file's columns
+# moved underneath it, which is the whole reason REQUIRED_COLUMNS exists.
+COLUMNS = ('game_id', 'season', 'game_type', 'week', 'gameday', 'weekday',
+           'gametime', 'away_team', 'away_score', 'home_team', 'home_score',
+           'location', 'result', 'total', 'overtime', 'away_rest',
+           'home_rest', 'away_moneyline', 'home_moneyline', 'spread_line',
+           'total_line', 'div_game', 'roof', 'surface', 'temp', 'wind',
+           'away_qb_id', 'home_qb_id', 'away_qb_name', 'home_qb_name',
+           'away_coach', 'home_coach', 'referee', 'stadium_id', 'stadium')
+HEADER = ','.join(COLUMNS)
+
+DEFAULTS = dict(weekday='Sunday', gametime='13:00', location='Home',
+                total='', overtime=0, away_rest=7, home_rest=7,
+                away_moneyline='', home_moneyline='', spread_line='',
+                total_line='', div_game=0, roof='outdoors', surface='grass',
+                temp='', wind='', away_qb_id='', home_qb_id='',
+                away_qb_name='', home_qb_name='', away_coach='',
+                home_coach='', referee='', stadium_id='ST01',
+                stadium='Some Field')
 
 
 def row(game_id, season, kind, week, day, away, away_score, home, home_score,
-        *, time='13:00', location='Home', result=None, overtime=0):
+        *, time='13:00', location='Home', result=None, overtime=0, **extra):
     if result is None and away_score != '' and home_score != '':
         result = int(home_score) - int(away_score)
-    return (f'{game_id},{season},{kind},{week},{day},Sunday,{time},{away},'
-            f'{away_score},{home},{home_score},{location},'
-            f'{"" if result is None else result},,{overtime},0,outdoors,'
-            f'grass,ST01,Some Field')
+    values = dict(DEFAULTS, game_id=game_id, season=season, game_type=kind,
+                  week=week, gameday=day, gametime=time, away_team=away,
+                  away_score=away_score, home_team=home,
+                  home_score=home_score, location=location,
+                  result='' if result is None else result,
+                  overtime=overtime, **extra)
+    return ','.join(str(values[name]) for name in COLUMNS)
 
 
 def archive(*rows):

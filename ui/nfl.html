@@ -17,6 +17,9 @@
   and a franchise is not a team code -- a 2015 game says STL and the team it
   belongs to is the Rams.
 -->
+<link rel="icon" href="brand/mark.svg" type="image/svg+xml">
+<link rel="icon" href="brand/icon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@600;700;800&family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -173,6 +176,36 @@
     border-radius: 8px;
   }
   .note { font-size: 12px; color: var(--ink-dim); margin: 8px 0 0; }
+
+  /* The game context line: three or four short facts under a card, which is
+     where weather, rest and the posted line belong. Dim, because the score is
+     still the thing being read. */
+  .card .ctx { font-size: 11px; color: var(--ink-dim); margin-top: 4px;
+               line-height: 1.5; }
+
+  /* The playoff field. A seed row is a table row and nothing more: a bracket
+     drawing would claim to know the matchups, and seeding is all this
+     computes. */
+  .seeds td.seed { width: 34px; text-align: center; font-family: var(--font-mono); }
+  .seeds tr.bye td.seed { color: var(--amber); font-weight: 600; }
+  .seeds td.tag { font-size: 11px; color: var(--ink-dim); }
+  .seeds tr.out td { color: var(--ink-dim); font-style: italic; }
+  .pair { display: grid; gap: 18px; margin: 12px 0 0;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .better { color: var(--green-hl); }
+  .worse { color: var(--red); }
+  .expand {
+    appearance: none; border: 0; background: transparent; color: var(--amber);
+    font: inherit; font-size: 13px; padding: 0; cursor: pointer;
+    text-align: left;
+  }
+  /* A nine-column track record does not fit a 430px phone, and a table that
+     does not fit pushes the whole PAGE sideways rather than scrolling
+     itself. The scroller is what keeps the horizontal scroll inside the
+     table where it belongs. */
+  .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .scroll table { min-width: 100%; }
+  .legend { font-size: 11px; color: var(--ink-dim); margin: 0 0 6px; }
 </style>
 </head>
 <body>
@@ -199,6 +232,7 @@
   </section>
 
   <section class="panel" id="standings" hidden>
+    <div id="playoff"></div>
     <div id="groups"></div>
     <p class="note">Ordered by record, with the rating as the tiebreak. The
       league's own tiebreakers (head to head, then common games, and several
@@ -214,6 +248,22 @@
       <tbody id="board"></tbody>
     </table>
   </section>
+
+  <section class="panel" id="coaches" hidden>
+    <div id="coach-career"></div>
+    <p class="note">Wins above expectation is a coach's actual wins minus the
+      sum of the model's pregame probability that his team won each of those
+      games, a tie counting half on both sides. It says the model was wrong in
+      that team's favour. It is not a measure of coaching: a team can beat its
+      rating by being lucky, healthy, or underrated. Every game in the archive
+      names the coach who coached it, so a midseason change splits a season
+      rather than being averaged across two people.</p>
+  </section>
+
+  <section class="panel" id="history" hidden>
+    <div id="track-record"></div>
+    <div id="conference-history"></div>
+  </section>
 </div>
 
 <nav class="tabs" id="tabs" aria-label="Sections"></nav>
@@ -228,15 +278,18 @@
   var leagues = window.ncaambbApp;   // the shared league registry
   var app = window.nflApp;           // the NFL's own rules
   var BASE = 'data/nfl/';
-  var TABS = ['home', 'standings', 'rankings', 'teams', 'games'];
+  var TABS = ['home', 'standings', 'rankings', 'coaches', 'history',
+              'teams', 'games'];
   // A tab with no panel behind it would hide everything and leave an empty
   // page, so a tab is enabled only where this page can actually draw one.
   var PANELS = { home: 'scoreboard', games: 'scoreboard',
-                 standings: 'standings', rankings: 'rankings' };
+                 standings: 'standings', rankings: 'rankings',
+                 coaches: 'coaches', history: 'history' };
   var LABELS = { home: 'Home', standings: 'Standings', rankings: 'Rankings',
-                 teams: 'Teams', games: 'Games' };
+                 coaches: 'Coaches', history: 'History', teams: 'Teams',
+                 games: 'Games' };
   var state = { manifest: null, verdict: null, season: null, week: null,
-                tab: 'home' };
+                tab: 'home', coach: null };
 
   function el(id) { return document.getElementById(id); }
 
@@ -330,6 +383,91 @@
   function teamName(key) {
     var team = teams()[key];
     return (team && team.name) || key;
+  }
+
+  /* The short code, for places where a full name would not fit — a spread,
+     a seed tag. The franchise's current code, which is what its key ends in. */
+  function teamCode(key) {
+    var team = teams()[key];
+    if (team && team.code) return team.code;
+    return typeof key === 'string' ? key.split(':').pop() : '';
+  }
+
+  function history() { return window.NFL_HISTORY || null; }
+
+  /* history.js is 348 KB (36 KB over the wire) and holds the coach careers,
+     the track record and the conference history. It is fetched on the first
+     tab that needs it rather than at startup, so a reader who came for the
+     scoreboard never downloads it. `history` is also absent from a schema 1
+     manifest — which this page still accepts — and a missing file is a
+     message, not a blank panel. */
+  var historyState = { loading: false, failed: null };
+
+  function ensureHistory() {
+    if (history() || historyState.loading) return;
+    var source = loader.fileSource(state.manifest, 'history', BASE);
+    if (!source) {
+      historyState.failed = 'This export does not carry the history file; it '
+        + 'was built before coach records and the track record existed. The '
+        + 'next refresh writes one.';
+      return;
+    }
+    historyState.loading = true;
+    load(source).then(function () {
+      historyState.loading = false;
+      render();
+    }).catch(function (error) {
+      historyState.loading = false;
+      historyState.failed = 'The history file could not be loaded: '
+        + error.message;
+      render();
+    });
+  }
+
+  /* The one line a panel shows while there is nothing to draw yet, or null
+     when there is. */
+  function historyStatus() {
+    if (history()) return null;
+    if (historyState.failed) return historyState.failed;
+    return 'Loading\u2026';
+  }
+
+  function cellInto(tr, value, className) {
+    var td = document.createElement('td');
+    if (className) td.className = className;
+    text(td, value);
+    tr.appendChild(td);
+    return td;
+  }
+
+  /* A table inside a horizontal scroller, with its legend OUTSIDE the
+     scroller so the explanatory sentence wraps instead of running off the
+     side with the columns. Returns the wrapper; `querySelector('tbody')`
+     and a className on it both still do what a caller means. */
+  function table(headingHtml, legendText) {
+    var wrapper = document.createElement('div');
+    if (legendText) {
+      var legend = document.createElement('p');
+      legend.className = 'legend';
+      legend.textContent = legendText;
+      wrapper.appendChild(legend);
+    }
+    var scroller = document.createElement('div');
+    scroller.className = 'scroll';
+    var node = document.createElement('table');
+    var head = document.createElement('thead');
+    head.innerHTML = headingHtml;
+    node.appendChild(head);
+    node.appendChild(document.createElement('tbody'));
+    scroller.appendChild(node);
+    wrapper.appendChild(scroller);
+    return wrapper;
+  }
+
+  function heading(level, value) {
+    var node = document.createElement(level);
+    node.textContent = value;
+    return node;
   }
 
   function seasonPayload() {
@@ -444,6 +582,15 @@
       foot.textContent = [game.neutral ? 'Neutral site' : null, game.venue]
         .filter(Boolean).join(' · ');
       card.appendChild(foot);
+      // Weather, rest, the posted line and the surface, where the archive
+      // has them. Absent is absent: a dome game shows no temperature.
+      var lines = app.contextLines(game, teamCode);
+      if (lines.length) {
+        var context = document.createElement('div');
+        context.className = 'ctx';
+        context.textContent = lines.join(' · ');
+        card.appendChild(context);
+      }
       host.appendChild(card);
     });
   }
@@ -521,6 +668,276 @@
     });
   }
 
+  /* The playoff field, in the format the season actually played. The seeding
+     is computed in src/nfl/playoff.py and read here; nothing on this page
+     re-derives it, so the page and the data cannot disagree about the 7
+     seed. A season the stored alignment cannot speak for (1999-2001, before
+     the realignment) shows a sentence saying so. */
+  function renderPlayoff() {
+    var host = el('playoff');
+    host.innerHTML = '';
+    var payload = seasonPayload();
+    var field = payload && payload.playoff;
+    if (!field) {
+      var none = document.createElement('p');
+      none.className = 'note';
+      none.textContent = 'The playoff field is not computed for this season: '
+        + 'the league had six divisions before the 2002 realignment and the '
+        + 'stored alignment does not cover them.';
+      host.appendChild(none);
+      return;
+    }
+    var settled = field.complete !== false;
+    host.appendChild(heading('h3', (settled ? 'Playoff field · '
+      : 'Playoff field as things stand · ') + field.format));
+    var pair = document.createElement('div');
+    pair.className = 'pair';
+    app.CONFERENCES.forEach(function (conference) {
+      var group = app.playoffConference(field, conference);
+      if (!group) return;
+      var block = document.createElement('div');
+      block.appendChild(heading('h3', conference));
+      var node = table('<tr><th class="seed">#</th><th>Team</th>'
+        + '<th class="num">Record</th><th>Note</th></tr>');
+      node.className = 'seeds';
+      var body = node.querySelector('tbody');
+      group.seeds.forEach(function (seed) {
+        var tr = document.createElement('tr');
+        if (seed.bye) tr.className = 'bye';
+        cellInto(tr, seed.seed, 'seed');
+        cellInto(tr, teamName(seed.team));
+        cellInto(tr, recordOf(seed), 'num');
+        cellInto(tr, app.seedNote(seed, settled), 'tag');
+        body.appendChild(tr);
+      });
+      (group.first_out || []).forEach(function (row) {
+        var tr = document.createElement('tr');
+        tr.className = 'out';
+        cellInto(tr, '', 'seed');
+        cellInto(tr, teamName(row.team));
+        cellInto(tr, recordOf(row), 'num');
+        cellInto(tr, 'first out', 'tag');
+        body.appendChild(tr);
+      });
+      block.appendChild(node);
+      pair.appendChild(block);
+    });
+    host.appendChild(pair);
+    var note = document.createElement('p');
+    note.className = 'note';
+    note.textContent = (settled ? '' : 'The regular season is '
+      + field.games_played + ' games into ' + field.games_scheduled
+      + ', so this is the seeding today and nobody has won anything yet. ')
+      + 'Seeded on win percentage, and each group of teams on the same '
+      + 'record broken by the league\u2019s own first terms: head to head, '
+      + 'then division record where the tied teams share a division, then '
+      + 'conference record. Past those this falls back on our rating, which '
+      + 'is not a league tiebreaker. Common games, strength of victory and '
+      + 'the rest of the ladder are not applied.';
+    host.appendChild(note);
+  }
+
+  /* A won-lost-tied from a playoff seed row, which carries wins and games
+     rather than three counts: a tie is half a win there, so a team on 9.5
+     wins in 17 games is 9-7-1 and must not print as 9.5. */
+  function recordOf(row) {
+    var wins = Number(row.wins);
+    var games = Number(row.games);
+    if (!isFinite(wins) || !isFinite(games)) return '';
+    var whole = Math.floor(wins);
+    var ties = (wins - whole) * 2;
+    var losses = games - whole - ties;
+    return ties > 0 ? whole + '-' + losses + '-' + ties
+      : whole + '-' + losses;
+  }
+
+  function renderCoaches() {
+    var host = el('coach-career');
+    host.innerHTML = '';
+    var waiting = historyStatus();
+    var payload = history();
+    var rows = (payload && payload.coaches) || [];
+    if (waiting || !rows.length) {
+      var empty = document.createElement('p');
+      empty.className = 'empty';
+      empty.textContent = waiting || 'No coach records are in this export.';
+      host.appendChild(empty);
+      return;
+    }
+    host.appendChild(heading('h3', 'Career, by wins above expectation'));
+    var node = table('<tr><th>Coach</th><th>Seasons</th>'
+      + '<th class="num">Record</th><th class="num">Expected</th>'
+      + '<th class="num">Above</th><th class="num">Playoffs</th></tr>');
+    var body = node.querySelector('tbody');
+    rows.forEach(function (row) {
+      var tr = document.createElement('tr');
+      var name = document.createElement('td');
+      // Each coach expands to his own seasons. The page has no routes of its
+      // own, so a row that opens in place is the honest alternative to a
+      // link that would go nowhere.
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'expand';
+      button.textContent = row.name;
+      button.setAttribute('aria-expanded', String(state.coach === row.coach));
+      button.addEventListener('click', function () {
+        state.coach = state.coach === row.coach ? null : row.coach;
+        renderCoaches();
+      });
+      name.appendChild(button);
+      tr.appendChild(name);
+      cellInto(tr, app.coachSpan(row));
+      cellInto(tr, app.coachRecord(row), 'num');
+      cellInto(tr, Number(row.expected_wins).toFixed(1), 'num');
+      var above = cellInto(tr, app.signedWins(row.wins_above), 'num');
+      above.classList.add(Number(row.wins_above) >= 0 ? 'better' : 'worse');
+      cellInto(tr, row.postseason_wins + '-'
+        + (row.postseason_games - row.postseason_wins), 'num');
+      body.appendChild(tr);
+      if (state.coach === row.coach) {
+        appendCoachSeasons(body, row.coach);
+      }
+    });
+    host.appendChild(node);
+  }
+
+  function appendCoachSeasons(body, coachKey) {
+    // From the history file, which carries every coach-season. Reading the
+    // loaded season payloads instead would show a career only for the
+    // seasons this reader happened to have opened, so Belichick's 24 years
+    // came out blank in October 2026.
+    var payload = history();
+    var found = ((payload && payload.coach_seasons) || []).filter(
+      function (row) { return row.coach_key === coachKey; });
+    found.sort(function (a, b) { return a.season - b.season; });
+    if (!found.length) {
+      var tr = document.createElement('tr');
+      var td = document.createElement('td');
+      td.colSpan = 6;
+      td.className = 'empty';
+      td.textContent = 'No season rows for this coach.';
+      tr.appendChild(td);
+      body.appendChild(tr);
+      return;
+    }
+    found.forEach(function (row) {
+      var tr = document.createElement('tr');
+      cellInto(tr, row.season + ' · ' + teamCode(row.team_key));
+      cellInto(tr, '');
+      cellInto(tr, app.coachRecord(row), 'num');
+      cellInto(tr, Number(row.expected_wins).toFixed(1), 'num');
+      var above = cellInto(tr, app.signedWins(row.wins_above), 'num');
+      above.classList.add(Number(row.wins_above) >= 0 ? 'better' : 'worse');
+      cellInto(tr, row.postseason_wins + '-'
+        + (row.postseason_games - row.postseason_wins), 'num');
+      body.appendChild(tr);
+    });
+  }
+
+  /* The track record: what the model scored, season by season, and how that
+     compares with the closing moneyline on the games where there was one.
+     The two Brier columns are measured on the SAME games — the model's
+     all-games score is a third column and is never set against the market's.
+  */
+  function renderTrackRecord() {
+    var host = el('track-record');
+    host.innerHTML = '';
+    var waiting = historyStatus();
+    var payload = history();
+    var record = payload && payload.track_record;
+    var rows = (record && record.seasons) || [];
+    if (waiting || !rows.length) {
+      var empty = document.createElement('p');
+      empty.className = 'empty';
+      empty.textContent = waiting || 'No track record is in this export.';
+      host.appendChild(empty);
+      return;
+    }
+    host.appendChild(heading('h3', 'Track record'));
+    var totals = record.totals;
+    if (totals) {
+      var verdict = app.marketVerdict(totals);
+      var summary = document.createElement('p');
+      summary.className = 'note';
+      summary.textContent = 'Across ' + totals.rated_games + ' games the '
+        + 'model\u2019s Brier is ' + app.brierText(totals.model_brier)
+        + ' and it called ' + app.percentText(totals.model_accuracy)
+        + ' of them. On the ' + totals.priced_games + ' games that carry a '
+        + 'closing moneyline the model scores '
+        + app.brierText(totals.model_brier_priced) + ' and the market '
+        + app.brierText(totals.market_brier) + ', so the '
+        + (verdict ? verdict.better : 'market') + ' is ahead. Against the '
+        + 'spread the model is ' + app.atsText(totals)
+        + ' (' + app.percentText(app.atsRate(totals)) + '), '
+        + (app.atsBeatsVig(totals) ? 'above' : 'below')
+        + ' the ' + app.percentText(app.ATS_BREAK_EVEN)
+        + ' a bettor needs to clear a standard vig.';
+      host.appendChild(summary);
+    }
+    var node = table('<tr><th>Season</th><th class="num">Games</th>'
+      + '<th class="num">Brier</th><th class="num">Called</th>'
+      + '<th class="num">Priced</th><th class="num">Model</th>'
+      + '<th class="num">Market</th><th class="num">ATS</th>'
+      + '<th class="num">Margin MAE</th></tr>',
+      'Model and Market are Brier scores on the priced games only, so they '
+      + 'may be compared with each other. Brier is every rated game.');
+    var body = node.querySelector('tbody');
+    rows.slice().reverse().forEach(function (row) {
+      var tr = document.createElement('tr');
+      cellInto(tr, row.season);
+      cellInto(tr, row.rated_games, 'num');
+      cellInto(tr, app.brierText(row.model_brier), 'num');
+      cellInto(tr, app.percentText(row.model_accuracy), 'num');
+      cellInto(tr, row.priced_games, 'num');
+      var model = cellInto(tr, app.brierText(row.model_brier_priced), 'num');
+      cellInto(tr, app.brierText(row.market_brier), 'num');
+      var beat = app.marketVerdict(row);
+      if (beat) model.classList.add(beat.better === 'model' ? 'better'
+        : beat.better === 'market' ? 'worse' : '');
+      cellInto(tr, app.atsText(row), 'num');
+      cellInto(tr, row.model_margin_mae === null
+        || row.model_margin_mae === undefined ? '—'
+        : Number(row.model_margin_mae).toFixed(2), 'num');
+      body.appendChild(tr);
+    });
+    host.appendChild(node);
+  }
+
+  /* Conference and division history. No new data: the same per-season ratings
+     the board shows, grouped by the alignment stored for that season, which
+     is why it begins in 2002 rather than 1999. */
+  function renderConferenceHistory() {
+    var host = el('conference-history');
+    host.innerHTML = '';
+    var payload = history();
+    var rows = (payload && payload.conferences) || [];
+    if (!rows.length) return;
+    host.appendChild(heading('h3', 'Conference history'));
+    var node = table('<tr><th>Season</th><th class="num">AFC mean</th>'
+      + '<th>AFC best</th><th class="num">NFC mean</th><th>NFC best</th>'
+      + '<th>Champion</th></tr>',
+      'Mean end-of-season rating by conference, 2002 on. The league had six '
+      + 'divisions before the 2002 realignment and the stored alignment does '
+      + 'not cover them, so those three seasons are left out rather than '
+      + 'having today\u2019s divisions applied backwards.');
+    var body = node.querySelector('tbody');
+    rows.slice().reverse().forEach(function (row) {
+      var tr = document.createElement('tr');
+      cellInto(tr, row.season);
+      app.CONFERENCES.forEach(function (conference) {
+        var group = null;
+        (row.conferences || []).forEach(function (entry) {
+          if (entry.conference === conference) group = entry;
+        });
+        cellInto(tr, group ? app.ratingText(group.mean_rating) : '—', 'num');
+        cellInto(tr, group ? teamName(group.best) : '—');
+      });
+      cellInto(tr, row.champion ? teamName(row.champion) : '—');
+      body.appendChild(tr);
+    });
+    host.appendChild(node);
+  }
+
   function render() {
     renderMeta();
     renderRefusal();
@@ -529,6 +946,8 @@
                                        || state.tab === 'games');
     el('standings').hidden = !ok || state.tab !== 'standings';
     el('rankings').hidden = !ok || state.tab !== 'rankings';
+    el('coaches').hidden = !ok || state.tab !== 'coaches';
+    el('history').hidden = !ok || state.tab !== 'history';
     tabButtons();
     if (!ok) return;
     renderSeasons();
@@ -536,8 +955,17 @@
       renderWeeks();
       renderCards();
     }
-    if (!el('standings').hidden) renderStandings();
+    if (!el('standings').hidden) {
+      renderPlayoff();
+      renderStandings();
+    }
     if (!el('rankings').hidden) renderBoard();
+    if (!el('coaches').hidden || !el('history').hidden) ensureHistory();
+    if (!el('coaches').hidden) renderCoaches();
+    if (!el('history').hidden) {
+      renderTrackRecord();
+      renderConferenceHistory();
+    }
   }
 
   function load(src) {

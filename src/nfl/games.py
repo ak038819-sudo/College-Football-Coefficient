@@ -29,7 +29,13 @@ from .identity import TEAM_CODES, entity_key, franchise_key, season_label
 # otherwise read as a column full of blanks, which is a silent half-import.
 REQUIRED_COLUMNS = ('game_id', 'season', 'game_type', 'week', 'gameday',
                     'gametime', 'away_team', 'away_score', 'home_team',
-                    'home_score', 'location', 'result', 'overtime')
+                    'home_score', 'location', 'result', 'total', 'overtime',
+                    'div_game', 'roof', 'surface', 'temp', 'wind',
+                    'away_rest', 'home_rest', 'spread_line', 'total_line',
+                    'away_moneyline', 'home_moneyline', 'away_qb_id',
+                    'home_qb_id', 'away_qb_name', 'home_qb_name',
+                    'away_coach', 'home_coach', 'referee', 'stadium_id',
+                    'stadium')
 
 SEASON_TYPES = {
     'REG': 'regular',
@@ -54,6 +60,33 @@ def _int(value):
     if value is None or value == '':
         return None
     return int(value)
+
+
+def _real(value):
+    """A number, or None for a blank. A blank is an absence, never a zero."""
+    if value is None or value == '':
+        return None
+    return float(value)
+
+
+def _str(row, name):
+    return (row.get(name) or '').strip() or None
+
+
+def _moneyline(game_id, value):
+    """American odds, or None.
+
+    Odds strictly inside (-100, 100) do not exist, and 0 is not a price. Over
+    the 10,832 moneylines in the archive the smallest magnitude is exactly
+    100, so a value inside that band is a corrupted field rather than a long
+    shot and is refused instead of stored as a probability.
+    """
+    price = _int(value)
+    if price is None:
+        return None
+    if -100 < price < 100:
+        raise ArchiveError(f'{game_id}: moneyline {price} is not a price')
+    return price
 
 
 def kickoff_utc(gameday, gametime):
@@ -120,6 +153,19 @@ def parse_row(row):
             and stated != home_score - away_score:
         raise ArchiveError(
             f'{game_id}: result {stated} contradicts {home_score}-{away_score}')
+    # The archive states the total separately as well. It agrees with the
+    # scores on all 7,369 games that carry both, so a disagreement is a real
+    # fault in one of three numbers and this loader cannot know which.
+    stated_total = _int(row.get('total'))
+    if home_score is not None and stated_total is not None \
+            and stated_total != home_score + away_score:
+        raise ArchiveError(
+            f'{game_id}: total {stated_total} contradicts '
+            f'{home_score}-{away_score}')
+    total_line = _real(row.get('total_line'))
+    if total_line is not None and total_line <= 0:
+        raise ArchiveError(f'{game_id}: a total line of {total_line} is not a '
+                           'line')
     location = (row.get('location') or '').strip()
     if location not in ('Home', 'Neutral'):
         raise ArchiveError(f'{game_id}: unknown location {location!r}')
@@ -149,7 +195,25 @@ def parse_row(row):
         roof=(row.get('roof') or '').strip() or None,
         surface=(row.get('surface') or '').strip() or None,
         stadium_id=(row.get('stadium_id') or '').strip() or None,
-        stadium=(row.get('stadium') or '').strip() or None,
+        stadium=_str(row, 'stadium'),
+        home_coach=_str(row, 'home_coach'),
+        away_coach=_str(row, 'away_coach'),
+        # Positive means the home team is favoured by that many points.
+        spread_line=_real(row.get('spread_line')),
+        total_line=total_line,
+        home_moneyline=_moneyline(game_id, row.get('home_moneyline')),
+        away_moneyline=_moneyline(game_id, row.get('away_moneyline')),
+        home_qb_id=_str(row, 'home_qb_id'),
+        away_qb_id=_str(row, 'away_qb_id'),
+        home_qb_name=_str(row, 'home_qb_name'),
+        away_qb_name=_str(row, 'away_qb_name'),
+        referee=_str(row, 'referee'),
+        home_rest=_int(row.get('home_rest')),
+        away_rest=_int(row.get('away_rest')),
+        # A missing temperature is a game played under a roof or one the
+        # source has no reading for. It is never 0 degrees.
+        temp=_int(row.get('temp')),
+        wind=_int(row.get('wind')),
         rateable=1 if rateable else 0,
         exclusions=exclusions,
     )

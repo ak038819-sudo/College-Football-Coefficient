@@ -15,9 +15,54 @@ from pathlib import Path
 
 from .identity import alignment, entity_key, franchise_code, franchise_key
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 DEFAULT_PATH = Path('db/nfl.db')
 SCHEMA_SQL = Path(__file__).with_name('schema.sql')
+
+# Columns added after schema version 1, by table.
+#
+# `CREATE TABLE IF NOT EXISTS` does NOTHING to a table that already exists, so
+# running the new schema file against an old database leaves its `game` table
+# at the 26 columns it was created with while every INSERT in this module now
+# names 41. The symptom is an sqlite3.OperationalError on a column the schema
+# file plainly declares, which reads as a typo rather than as a missing
+# migration. Adding them explicitly is what makes `migrate()` a migration.
+ADDED_COLUMNS = {
+    'game': (
+        ('home_coach', 'TEXT'),
+        ('away_coach', 'TEXT'),
+        ('spread_line', 'REAL'),
+        ('total_line', 'REAL'),
+        ('home_moneyline', 'INTEGER'),
+        ('away_moneyline', 'INTEGER'),
+        ('home_qb_id', 'TEXT'),
+        ('away_qb_id', 'TEXT'),
+        ('home_qb_name', 'TEXT'),
+        ('away_qb_name', 'TEXT'),
+        ('referee', 'TEXT'),
+        ('home_rest', 'INTEGER'),
+        ('away_rest', 'INTEGER'),
+        ('temp', 'INTEGER'),
+        ('wind', 'INTEGER'),
+    ),
+}
+
+# The columns the widened `game` row carries, in the order every INSERT and
+# the schema file list them. Written once because three places had drifted
+# apart by one column before this list existed.
+GAME_COLUMNS = (
+    'game_key', 'provider_id', 'season', 'season_label', 'season_type',
+    'postseason', 'week', 'game_date', 'kickoff_utc', 'kickoff_tbd',
+    'neutral_site', 'home_code', 'away_code', 'home_team_key',
+    'away_team_key', 'home_points', 'away_points', 'overtime',
+    'divisional_game', 'roof', 'surface', 'stadium_id', 'stadium',
+    'home_coach', 'away_coach', 'spread_line', 'total_line',
+    'home_moneyline', 'away_moneyline', 'home_qb_id', 'away_qb_id',
+    'home_qb_name', 'away_qb_name', 'referee', 'home_rest', 'away_rest',
+    'temp', 'wind', 'rateable', 'exclusions', 'snapshot_id',
+)
+# The key identifies the row; re-running an ingest must not rewrite it.
+GAME_IMMUTABLE = ('game_key', 'provider_id', 'season', 'season_label')
 
 
 def connect(path=None):
@@ -36,9 +81,35 @@ def connect(path=None):
     return connection
 
 
+def add_missing_columns(connection):
+    """Bring an existing table up to the current column list.
+
+    Returns what it added, so a caller can say so rather than migrating
+    silently.
+    """
+    added = []
+    for table, columns in ADDED_COLUMNS.items():
+        present = {row['name'] for row in
+                   connection.execute(f'PRAGMA table_info({table})')}
+        if not present:
+            # The table does not exist yet; the schema file will create it
+            # with every column already in place.
+            continue
+        for name, kind in columns:
+            if name in present:
+                continue
+            connection.execute(
+                f'ALTER TABLE {table} ADD COLUMN {name} {kind}')
+            added.append(f'{table}.{name}')
+    return added
+
+
 def migrate(connection):
     """Apply the schema. Idempotent. A future version is refused, not written."""
+    added = add_missing_columns(connection)
     connection.executescript(SCHEMA_SQL.read_text(encoding='utf-8'))
+    if added:
+        connection.commit()
     row = connection.execute('SELECT version FROM schema_version').fetchone()
     if row is None:
         connection.execute('INSERT INTO schema_version (version) VALUES (?)',
@@ -213,46 +284,33 @@ def upsert_team_stubs(connection, games, *, snapshot_id=None):
 
 
 def upsert_games(connection, games, *, snapshot_id=None):
-    """Store games. Re-running updates scores and leaves keys alone."""
+    """Store games. Re-running updates scores and leaves keys alone.
+
+    The column list comes from `GAME_COLUMNS` rather than being typed out
+    three times — once in the INSERT, once in the ON CONFLICT clause and once
+    in the parameter tuple. Those three had to be edited in step, and a row
+    whose value tuple is one short of its column list is not a syntax error,
+    it is a game stored with its fields shifted by one.
+    """
+    columns = ', '.join(GAME_COLUMNS)
+    placeholders = ', '.join('?' * len(GAME_COLUMNS))
+    updates = ', '.join(f'{name} = excluded.{name}' for name in GAME_COLUMNS
+                        if name not in GAME_IMMUTABLE)
+    statement = (f'INSERT INTO game ({columns}) VALUES ({placeholders})'
+                 f' ON CONFLICT(game_key) DO UPDATE SET {updates}')
     for game in games:
-        connection.execute(
-            'INSERT INTO game (game_key, provider_id, season, season_label,'
-            ' season_type, postseason, week, game_date, kickoff_utc,'
-            ' kickoff_tbd, neutral_site, home_code, away_code, home_team_key,'
-            ' away_team_key, home_points, away_points, overtime,'
-            ' divisional_game, roof, surface, stadium_id, stadium, rateable,'
-            ' exclusions, snapshot_id)'
-            ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
-            ' ?, ?, ?, ?, ?, ?, ?, ?)'
-            ' ON CONFLICT(game_key) DO UPDATE SET'
-            '   season_type = excluded.season_type,'
-            '   postseason = excluded.postseason, week = excluded.week,'
-            '   game_date = excluded.game_date,'
-            '   kickoff_utc = excluded.kickoff_utc,'
-            '   kickoff_tbd = excluded.kickoff_tbd,'
-            '   neutral_site = excluded.neutral_site,'
-            '   home_code = excluded.home_code,'
-            '   away_code = excluded.away_code,'
-            '   home_team_key = excluded.home_team_key,'
-            '   away_team_key = excluded.away_team_key,'
-            '   home_points = excluded.home_points,'
-            '   away_points = excluded.away_points,'
-            '   overtime = excluded.overtime,'
-            '   divisional_game = excluded.divisional_game,'
-            '   roof = excluded.roof, surface = excluded.surface,'
-            '   stadium_id = excluded.stadium_id, stadium = excluded.stadium,'
-            '   rateable = excluded.rateable,'
-            '   exclusions = excluded.exclusions,'
-            '   snapshot_id = excluded.snapshot_id',
-            (game['game_key'], game['provider_id'], game['season'],
-             game['season_label'], game['season_type'], game['postseason'],
-             game['week'], game['game_date'], game['kickoff_utc'],
-             game['kickoff_tbd'], game['neutral_site'], game['home_code'],
-             game['away_code'], game['home_team_key'], game['away_team_key'],
-             game['home_points'], game['away_points'], game['overtime'],
-             game['divisional_game'], game['roof'], game['surface'],
-             game['stadium_id'], game['stadium'], game['rateable'],
-             json.dumps(game['exclusions']), snapshot_id))
+        row = dict(game, exclusions=json.dumps(game['exclusions']),
+                   snapshot_id=snapshot_id)
+        # A missing key is raised, not defaulted to NULL. `games.parse_row`
+        # emits every one of these, so a row that is short of one came from
+        # somewhere else and silently storing it with blanks is how a
+        # half-imported game stops looking half-imported.
+        missing = [name for name in GAME_COLUMNS if name not in row]
+        if missing:
+            raise KeyError(f'{row.get("provider_id", "a game row")} is '
+                           f'missing {", ".join(missing)}')
+        connection.execute(statement,
+                           tuple(row[name] for name in GAME_COLUMNS))
     connection.commit()
     return len(games)
 
