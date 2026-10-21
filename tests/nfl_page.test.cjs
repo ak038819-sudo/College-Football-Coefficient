@@ -206,13 +206,23 @@ test('standings group by division and are ordered by record', async () => {
   dom.window.close();
 });
 
-test('the league selector offers three leagues with the NFL selected',
+test('the league selector offers the launched leagues, with the NFL selected',
   async () => {
+    // This asserted a fixed list of three, basketball included. Codex found
+    // that a reader could then tap through from here to a basketball page
+    // with no export behind it, so the picker now renders only the launched
+    // leagues (shared registry: `launchedLeagues`), plus the page's own. The
+    // list is read from the registry rather than written out again, so
+    // basketball reappears here on its own when its export ships.
+    const leagues = require(path.join(UI, 'ncaambb_app.js'));
+    const expected = leagues.launchedLeagues(leagues.NFL)
+      .map(entry => entry.picker);
     const dom = await open();
     const buttons = [
       ...dom.window.document.querySelectorAll('#leagues button')];
-    assert.deepEqual(buttons.map(b => b.textContent),
-      ['College Football', "Men's Basketball", 'NFL']);
+    assert.deepEqual(buttons.map(b => b.textContent), expected);
+    assert.ok(expected.includes('NFL') && expected.includes('College Football'),
+      'football and the NFL are both launched, so both are offered');
     const pressed = buttons.filter(
       b => b.getAttribute('aria-pressed') === 'true');
     assert.equal(pressed.length, 1);

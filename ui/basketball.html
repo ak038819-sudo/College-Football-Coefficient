@@ -227,7 +227,9 @@
   function leagueButtons() {
     var host = el('leagues');
     host.innerHTML = '';
-    app.LEAGUES.forEach(function (entry) {
+    // Only the launched leagues, plus this one, which is always included so
+    // the control has something pressed on the page drawing it.
+    app.launchedLeagues(app.BASKETBALL).forEach(function (entry) {
       var button = document.createElement('button');
       button.type = 'button';
       button.textContent = entry.picker;

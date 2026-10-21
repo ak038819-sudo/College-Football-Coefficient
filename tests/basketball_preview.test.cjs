@@ -457,6 +457,87 @@ test('wherever the remembered league is kept, both pages agree on the key',
       'and uses the same key as the basketball page');
   });
 
+/* Every page that draws a league picker, driven for real.
+ *
+ * The source-level check above reads the football shell, and a check that
+ * reads one file cannot see a second page offering the same league: the NFL
+ * page builds its picker in JavaScript from the shared registry, so gating
+ * the football header left a reader able to tap through to basketball from
+ * there instead. Codex caught that on this very PR. This drives each page and
+ * asks the DOM, which is the only version of the question a reader asks.
+ */
+async function picker(page, extras) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cbb-picker-'));
+  for (const name of [page, 'ncaambb_app.js', 'ncaambb_loader.js']
+    .concat(extras || [])) {
+    const from = path.join(UI, name);
+    if (fs.existsSync(from)) fs.copyFileSync(from, path.join(root, name));
+  }
+  const file = path.join(root, page);
+  const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
+    url: 'file://' + file,
+    runScripts: 'dangerously',
+    resources: 'usable',
+    pretendToBeVisual: true,
+    beforeParse(window) {
+      // No data is staged on purpose: the picker is drawn before the manifest
+      // is fetched, so a page with nothing behind it still has to answer this
+      // question honestly.
+      window.fetch = () => Promise.resolve({ ok: false, json: () =>
+        Promise.reject(new Error('no manifest')) });
+    }
+  });
+  await settle(dom, () => dom.window.document
+    .querySelectorAll('#leagues button, #league-selector a').length > 0);
+  return dom;
+}
+
+const PICKER_PAGES = ['basketball.html', 'nfl.html'];
+
+for (const page of PICKER_PAGES) {
+  test(`${page}'s picker offers no league without an export`, async () => {
+    const app = require('../ui/ncaambb_app.js');
+    const dom = await picker(page);
+    const document = dom.window.document;
+    const buttons = [...document.querySelectorAll('#leagues button')];
+    assert.ok(buttons.length > 0, 'the picker drew something');
+    const offered = buttons.map(button => button.dataset.league);
+    for (const slug of offered) {
+      // The page you are on is always offered, launched or not, so the
+      // control has something pressed.
+      if (slug === app.BASKETBALL && page === 'basketball.html') continue;
+      assert.ok(app.isLaunched(slug),
+        `${page} offers ${slug}, which has no published export`);
+    }
+    if (page !== 'basketball.html') {
+      assert.ok(!offered.includes(app.BASKETBALL),
+        `${page} must not offer basketball until its export is published`);
+      const hrefs = buttons.map(b => b.getAttribute('data-href') || '');
+      assert.ok(!hrefs.some(href => href.includes('basketball.html')),
+        `${page} must not link to basketball.html either`);
+    }
+    dom.window.close();
+  });
+}
+
+test('basketball is flagged unlaunched exactly while its export is absent',
+  () => {
+    // The flag and the files have to agree, or the gate is decoration. When
+    // ui/data/ncaambb lands, this test is what fails until the flag is
+    // flipped in the same commit.
+    const app = require('../ui/ncaambb_app.js');
+    const published = fs.existsSync(path.join(UI, 'data', 'ncaambb',
+      'manifest.json'));
+    assert.equal(app.isLaunched(app.BASKETBALL), published,
+      published
+        ? 'the export is published, so basketball must be flagged launched'
+        : 'there is no published export, so basketball must not be launched');
+    // Football and the NFL are launched, and nothing here may quietly unship
+    // them to make the rule above easier to satisfy.
+    assert.equal(app.isLaunched('cfb'), true);
+    assert.equal(app.isLaunched('nfl'), true);
+  });
+
 test('the football page does not redirect a reader to basketball', () => {
   // A redirect would open somebody else's sport from a shared link, and move
   // the installed app's start URL on its own. The whole file is searched,
