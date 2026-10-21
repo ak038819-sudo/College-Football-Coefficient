@@ -197,11 +197,18 @@ def run_session(key, out=DEFAULT_OUT, interval=DEFAULT_INTERVAL,
     signal.signal(signal.SIGTERM, lambda *_: stopping.append(True))
 
     ticks = publishes = failures = fetch_failures = 0
+    deadline_poll_due = False
     while not stopping:
         started = now()
         if started >= deadline:
-            print(f'Session reached its {duration}-minute limit.')
-            break
+            # One poll is owed exactly here, scheduled below. Anything else at
+            # or past the deadline is a tick slower than the time it had left,
+            # and the session stops rather than starting work the job may be
+            # killed in the middle of.
+            if not deadline_poll_due:
+                print(f'Session reached its {duration}-minute limit.')
+                break
+            deadline_poll_due = False
         ticks += 1
         try:
             snapshot = refresh(Path(out), key)
@@ -231,12 +238,33 @@ def run_session(key, out=DEFAULT_OUT, interval=DEFAULT_INTERVAL,
                 print('Every game on the scoreboard is final; ending the session.')
                 break
 
+        if started >= deadline:
+            print(f'Session reached its {duration}-minute limit.')
+            break
+
         wait = next_interval(snapshot, started, interval, idle_interval) \
             if snapshot is not None else interval
         if wait != interval:
             print(f'Nothing live and no kickoff within {idle_interval}s; '
                   f'next poll in {wait}s.')
         remaining = wait - (now() - started).total_seconds()
+        # The last wait a session's duration allows is cut short to land ON the
+        # deadline and poll once more there, rather than exiting on a snapshot
+        # up to a whole interval old. The successor cannot cover that tail: it
+        # waits out this job's concurrency slot, including the Pages delivery
+        # measurement, and then its own checkout, so its first poll is minutes
+        # after this job ends. Polling at the deadline is what keeps the handoff
+        # inside the normal cadence instead of adding the tail to it.
+        to_deadline = (deadline - now()).total_seconds()
+        # `to_deadline > 0` keeps this from arming itself again at the deadline
+        # poll, where it would re-owe a poll on every pass. The break above
+        # already ends the session first, so no test can observe the
+        # difference: it is here so that the loop cannot spin if that break is
+        # ever moved or removed, which is a structural guard and not a covered
+        # branch.
+        if to_deadline > 0 and remaining >= to_deadline:
+            deadline_poll_due = True
+            remaining = to_deadline
         if remaining > 0 and not stopping:
             sleep(remaining)
 

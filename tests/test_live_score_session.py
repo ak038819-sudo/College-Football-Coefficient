@@ -44,13 +44,16 @@ class Clock:
 class Feed:
     """Returns each queued snapshot in turn, then repeats the last one."""
 
-    def __init__(self, snapshots, out):
+    def __init__(self, snapshots, out, clock=None):
         self.snapshots = list(snapshots)
         self.out = out
         self.calls = 0
+        self.clock = clock
+        self.polled_at = []
 
     def __call__(self, path, key):
         self.calls += 1
+        self.polled_at.append(self.clock.at if self.clock else None)
         value = self.snapshots[min(self.calls - 1, len(self.snapshots) - 1)]
         if isinstance(value, Exception):
             raise value
@@ -81,7 +84,7 @@ def scheduled(gid, start, **kwargs):
 
 def run(out, snapshots, publisher=None, duration=60, interval=360, **kwargs):
     clock = Clock()
-    feed = Feed(snapshots, out)
+    feed = Feed(snapshots, out, clock)
     publisher = publisher or Publisher()
     summary = session.run_session('key', out=out, interval=interval, duration=duration,
                                   refresh=feed, publisher=publisher, sleep=clock.sleep,
@@ -193,11 +196,46 @@ def test_does_not_stop_on_a_final_slate_it_failed_to_publish(out):
 
 
 def test_honours_the_duration_limit(out):
-    """60 minutes at a 360-second interval is ten ticks, not eleven: the
-    eleventh starts exactly at the deadline."""
+    """60 minutes at a 360-second interval is ten ticks plus the one at the
+    deadline: minute 0 through 54, then minute 60, and nothing after it."""
     summary, feed, publisher = run(out, [snapshot([game(1, clock=f'{i:02d}:00')])
                                          for i in range(30)], duration=60, interval=360)
-    assert feed.calls == 10
+    assert feed.calls == 11
+
+
+def test_the_last_poll_lands_on_the_deadline(out):
+    """The session that follows this one cannot cover the tail: it waits out
+    this job's concurrency slot and its own checkout before its first poll. So
+    a session must not exit holding a snapshot a whole interval old -- it cuts
+    its last wait short and polls again as it finishes. Measured by the clock
+    rather than by counting ticks, because the count is what a changed interval
+    would alter and the deadline is what matters."""
+    clock = Clock()
+    feed = Feed([snapshot([game(1, clock=f'{i:02d}:00')]) for i in range(30)], out, clock)
+    start = clock.at
+    session.run_session('key', out=out, interval=360, duration=60, refresh=feed,
+                        publisher=Publisher(), sleep=clock.sleep, now=clock.now)
+    assert (clock.at - start).total_seconds() == 60 * 60, 'the session must run its full duration'
+    assert feed.polled_at[-1] == start + dt.timedelta(minutes=60)
+    assert feed.polled_at[-2] == start + dt.timedelta(minutes=54), 'the normal cadence before it'
+
+
+def test_a_tick_slower_than_the_window_ends_the_session(out):
+    """The deadline poll must not become a licence to over-run. A tick that
+    takes longer than the time left has already passed the deadline, and the
+    session stops rather than starting work the job may be killed inside."""
+    clock = Clock()
+    start = clock.at
+
+    def slow(path, key):
+        clock.at += dt.timedelta(minutes=70)
+        Path(path).write_text(json.dumps(snapshot([game(1)])), encoding='utf-8')
+        return snapshot([game(1)])
+
+    summary = session.run_session('key', out=out, interval=360, duration=60, refresh=slow,
+                                  publisher=Publisher(), sleep=clock.sleep, now=clock.now)
+    assert summary['ticks'] == 1, 'the over-running tick is the last one'
+    assert (clock.at - start).total_seconds() == 70 * 60, 'no sleep, and no second poll'
 
 
 # ---- how often it polls ------------------------------------------------------
@@ -260,14 +298,14 @@ def test_the_loop_slows_down_over_a_finished_slate_it_keeps_watching(out):
     summary, feed, _ = run(out, [snapshot([game(1, status='completed')])],
                            duration=60, interval=360, idle_interval=1200,
                            stop_when_idle=False)
-    assert feed.calls == 3, 'an hour at the idle interval is three polls, not ten'
+    assert feed.calls == 4, 'an hour at the idle interval is three polls plus the deadline'
 
 
 def test_the_loop_stays_fast_while_a_game_is_live(out):
     summary, feed, _ = run(out, [snapshot([game(1, clock=f'{i:02d}:00')])
                                  for i in range(30)],
                            duration=60, interval=360, idle_interval=1200)
-    assert feed.calls == 10
+    assert feed.calls == 11
 
 
 def test_a_failed_poll_is_retried_at_the_fast_interval(out):
@@ -275,7 +313,7 @@ def test_a_failed_poll_is_retried_at_the_fast_interval(out):
     thing to do about a failure is try again soon."""
     summary, feed, _ = run(out, [OSError('CFBD reset the connection')],
                            duration=60, interval=360, idle_interval=1200)
-    assert feed.calls == 10
+    assert feed.calls == 11
 
 
 def test_the_defaults_pay_for_tiling_the_whole_season():
