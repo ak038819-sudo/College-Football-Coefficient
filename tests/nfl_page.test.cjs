@@ -329,18 +329,22 @@ test('a game with no score is never final and never scores zero', () => {
   assert.equal(app.statusLine(game), 'Time TBD');
 });
 
-// --- the page is not linked yet --------------------------------------------
+// --- the page is linked from the football shell ----------------------------
 
-test('no running football code links to the NFL page yet', () => {
-  // The NFL page is complete and unlinked while Austin decides whether it
-  // appears before basketball does. This asserts the staged-off state AND
-  // that the parked markup is still present, so turning it on is a deliberate
-  // edit and deleting it by accident fails rather than silently losing it.
+test('the football header offers the NFL, as running markup', () => {
+  // The selector went live once ui/data/nfl existed; before that the entry
+  // was parked in a comment. The comments are stripped first because a parked
+  // anchor reads identically to a live one in a plain text search, which is
+  // how this test passed in both states before it was inverted.
   const shell = fs.readFileSync(
     path.join(UI, 'dashboard_shell.html'), 'utf8');
   const live = shell.replace(/<!--[\s\S]*?-->/g, '');
-  assert.ok(!live.includes('nfl.html'),
-    'the football shell links to nfl.html; if that is intended, invert this '
-    + 'test rather than deleting it');
-  assert.match(shell, /<a data-league="nfl" href="nfl\.html">NFL<\/a>/);
+  assert.match(live, /<a data-league="nfl" href="nfl\.html">NFL<\/a>/,
+    'the NFL entry must be live markup, not parked in a comment');
+  // It belongs to the selector, not loose in the header: a link the nav does
+  // not contain is not reached by the listener that remembers the choice.
+  const nav = live.match(
+    /<nav class="leagues" id="league-selector"[\s\S]*?<\/nav>/);
+  assert.ok(nav, 'the league selector is live');
+  assert.ok(nav[0].includes('href="nfl.html"'), 'and contains the NFL');
 });

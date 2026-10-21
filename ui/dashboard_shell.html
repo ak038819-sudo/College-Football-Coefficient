@@ -1469,32 +1469,32 @@
     <div class="title-block">
       <h1><img class="masthead-mark" src="brand/mark.svg" alt="" width="40" height="40">Elo<span>cast</span></h1>
       <p class="release-label">v0.1 · People and Places of the Game</p>
-      <!-- The league selector is STAGED OFF. The basketball side of the site
+      <!-- The selector is ON, carrying the leagues that have an export behind
+           them. Turning it on is not all-or-nothing, and that is the rule
+           this nav is governed by: a league listed here with no data behind
+           it is the one thing the staging exists to prevent.
+
+           Basketball is therefore still parked, below. Its side of the site
            is complete and tested, but its first export cannot be built until
-           the provider's allowance recovers, and a visible league tab with no
-           data behind it is worse than no tab. Turning it on is re-adding the
-           nav below and the listener at the end of this file; the CSS for it
-           is kept, since the specificity trap it works around is the part
-           that was hard to get right. See docs/basketball-ui.md.
+           the provider's rolling allowance recovers on 2026-10-27, and a
+           visible league tab with no data behind it is worse than no tab.
+           The basketball thread re-adds its own entry with that export.
 
-           The NFL entry is parked here with the others, but for a different
-           reason: the NFL has its data in hand and is waiting only on
-           Austin's call about whether to appear before basketball does.
-           See docs/nfl.md.
+           The #league-selector CSS is addressed by id on purpose: the shell's
+           global link rule is (0,3,1) and wins otherwise, which painted the
+           selected league amber on amber. See docs/basketball-ui.md and
+           docs/nfl.md. -->
+      <nav class="leagues" id="league-selector" aria-label="League">
+        <a data-league="cfb" href="#section=home" aria-current="page">College Football</a>
+        <a data-league="nfl" href="nfl.html">NFL</a>
+      </nav>
+      <!-- Parked until ui/data/ncaambb is published. Re-adding it is this one
+           line, inside the nav above, between College Football and the NFL;
+           tests in tests/basketball_preview.test.cjs fail if it goes live
+           before then, or if it is deleted rather than left parked here:
 
-           SO TURNING THIS ON IS NOT ALL-OR-NOTHING. Re-add the nav with the
-           leagues that have an export, and leave the others parked: a league
-           in this nav with no data behind it is the one thing the staging is
-           for. The basketball entry in particular stays commented until
-           ui/data/ncaambb is published, and three tests in
-           tests/basketball_preview.test.cjs fail if it goes live before
-           then -- or if it is deleted instead of parked.
-
-           <nav class="leagues" id="league-selector" aria-label="League">
-             <a data-league="cfb" href="#section=home" aria-current="page">College Football</a>
              <a data-league="ncaambb" href="basketball.html">Men's Basketball</a>
-             <a data-league="nfl" href="nfl.html">NFL</a>
-           </nav> -->
+      -->
     </div>
     <nav class="header-links" aria-label="About the data">
       <a href="#section=coverage">Data Coverage</a>
@@ -10041,23 +10041,22 @@ window.addEventListener('online', paintConnection);
 window.addEventListener('offline', paintConnection);
 paintConnection();
 
-// Nothing here reads or writes the remembered league while the selector is
-// staged off, so there is no key for the two pages to drift on. When the
-// selector returns, so does this, and it must NOT redirect: a football link
-// has to open football even for a reader whose last visit was basketball, or
-// a shared link opens somebody else's sport and the installed app's start URL
-// moves on its own.
-//
-// (function rememberLeagueChoice() {
-//   const selector = document.getElementById('league-selector');
-//   if (!selector) return;
-//   selector.addEventListener('click', (event) => {
-//     const link = event.target.closest('a[data-league]');
-//     if (!link) return;
-//     try { localStorage.setItem('elocast.league.v1', link.dataset.league); }
-//     catch (err) { /* the choice is not remembered, which is survivable */ }
-//   });
-// }());
+// Remember which league the reader picked, so the other league's page can open
+// on it. This must NOT redirect: a football link has to open football even for
+// a reader whose last visit was the NFL, or a shared link opens somebody
+// else's sport and the installed app's start URL moves on its own. The key is
+// the one ui/ncaambb_app.js reads, and a test holds the two together, because
+// drifting on it means tapping a league here and being sent elsewhere there.
+(function rememberLeagueChoice() {
+  const selector = document.getElementById('league-selector');
+  if (!selector) return;
+  selector.addEventListener('click', (event) => {
+    const link = event.target.closest('a[data-league]');
+    if (!link) return;
+    try { localStorage.setItem('elocast.league.v1', link.dataset.league); }
+    catch (err) { /* the choice is not remembered, which is survivable */ }
+  });
+}());
 </script>
 </body>
 </html>
