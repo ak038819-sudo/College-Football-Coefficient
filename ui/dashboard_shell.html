@@ -1482,6 +1482,14 @@
            Austin's call about whether to appear before basketball does.
            See docs/nfl.md.
 
+           SO TURNING THIS ON IS NOT ALL-OR-NOTHING. Re-add the nav with the
+           leagues that have an export, and leave the others parked: a league
+           in this nav with no data behind it is the one thing the staging is
+           for. The basketball entry in particular stays commented until
+           ui/data/ncaambb is published, and three tests in
+           tests/basketball_preview.test.cjs fail if it goes live before
+           then -- or if it is deleted instead of parked.
+
            <nav class="leagues" id="league-selector" aria-label="League">
              <a data-league="cfb" href="#section=home" aria-current="page">College Football</a>
              <a data-league="ncaambb" href="basketball.html">Men's Basketball</a>

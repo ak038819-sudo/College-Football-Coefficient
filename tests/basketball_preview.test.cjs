@@ -398,11 +398,18 @@ test('a season whose schedule runs months ahead still opens on today',
 
 // --- what the page must not do ---------------------------------------------
 
-// The selector is STAGED OFF: the basketball side is finished and tested, but
-// its first export cannot be built until the provider's allowance recovers,
-// and a visible league tab with no data behind it is worse than no tab. These
-// three tests assert that staged-off state. Turning the selector on means
-// inverting them, and the parked markup they check is what gets re-added.
+// The selector is STAGED OFF FOR BASKETBALL. The basketball side is finished
+// and tested, but its first export cannot be built until the provider's
+// allowance recovers, and a visible league tab with no data behind it is worse
+// than no tab.
+//
+// What these tests do NOT assert is that the selector itself is off. Football
+// and the NFL both have data, so the nav can go live for them at any time, and
+// the NFL thread owns that. The invariant that has to survive that change is
+// narrower and is the only one worth guarding: **no live markup sends a reader
+// to basketball until basketball has an export**. These tests therefore pass
+// both before and after the nav is turned on, and fail the moment the
+// basketball entry goes live. When the export lands, invert them.
 
 const live = () => {
   // What the browser actually runs: HTML comments and commented-out JS lines
@@ -412,39 +419,43 @@ const live = () => {
     .split('\n').filter(line => !/^\s*\/\//.test(line)).join('\n');
 };
 
-test('the football header does not reach basketball, and football is unmoved',
+test('no live markup on the football page sends a reader to basketball',
   () => {
     const shell = fs.readFileSync(path.join(UI, 'dashboard_shell.html'), 'utf8');
     const running = live();
-    for (const parked of ['href="basketball.html"', 'data-league="ncaambb"',
-      '<nav class="leagues" id="league-selector"']) {
-      assert.ok(!running.includes(parked), `${parked} must not be live`);
+    for (const parked of ['href="basketball.html"', 'data-league="ncaambb"']) {
+      assert.ok(!running.includes(parked),
+        `${parked} must not be live until the basketball export is published`);
       assert.ok(shell.includes(parked),
         `${parked} must stay parked in a comment, so it can be re-added`);
-    }
-    // What must not change either way is football's own routes: the selector
-    // was a link to another page, not a new route, so every football link
-    // published to date opens the same page it always did.
-    for (const football of ['#section=home', '#section=stats',
-      '#section=rankings', '#section=teams', '#section=people']) {
-      assert.ok(running.includes(`href="${football}"`), `${football} exists`);
     }
     assert.ok(!shell.includes('league=ncaambb'),
       'football gains no league parameter of its own');
   });
 
-test('nothing on the football page remembers a league while it is off', () => {
-  const app = require('../ui/ncaambb_app.js');
-  assert.ok(!live().includes(app.LEAGUE_KEY),
-    'no live code on the football page touches the remembered league');
-  // The parked listener still has to agree with the basketball page on the
-  // key, or re-enabling the selector reintroduces the drift this test was
-  // written to catch: tapping a league on one page, being sent elsewhere by
-  // the other.
-  const shell = fs.readFileSync(path.join(UI, 'dashboard_shell.html'), 'utf8');
-  assert.ok(shell.includes('rememberLeagueChoice'), 'the listener is parked');
-  assert.ok(shell.includes(app.LEAGUE_KEY), 'and parked with the same key');
+test("football's own routes are unmoved, selector on or off", () => {
+  // The selector is a link to another page, not a new route, so every
+  // football link published to date opens the same page it always did.
+  const running = live();
+  for (const football of ['#section=home', '#section=stats',
+    '#section=rankings', '#section=teams', '#section=people']) {
+    assert.ok(running.includes(`href="${football}"`), `${football} exists`);
+  }
 });
+
+test('wherever the remembered league is kept, both pages agree on the key',
+  () => {
+    // Not "no code touches the key": once a selector exists for the leagues
+    // that do have data, remembering the choice is correct. What must not
+    // drift is WHICH key, or tapping a league on one page sends a reader
+    // somewhere else from the other.
+    const shell = fs.readFileSync(path.join(UI, 'dashboard_shell.html'), 'utf8');
+    const app = require('../ui/ncaambb_app.js');
+    assert.ok(shell.includes('rememberLeagueChoice'),
+      'the listener is present, parked or live');
+    assert.ok(shell.includes(app.LEAGUE_KEY),
+      'and uses the same key as the basketball page');
+  });
 
 test('the football page does not redirect a reader to basketball', () => {
   // A redirect would open somebody else's sport from a shared link, and move
