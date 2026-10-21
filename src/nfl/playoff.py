@@ -117,50 +117,90 @@ def _rate(wins, games):
 
 
 def _head_to_head(team, group, tally):
-    """The team's win rate against the rest of the tied group, or None.
+    """A SWEEP of the tied group, a reverse sweep, or "not applicable".
 
-    None where the group never met, which is the case the league's own rule
-    calls "not applicable" rather than 0.000 — treating an unplayed matchup as
-    a loss would decide a tie on a game nobody played.
+    Returns 1.0 where the team played every other club in the group and beat
+    them all, 0.0 where it played them all and lost to them all, and None
+    otherwise. That is the league's own rule rather than a win rate: among
+    three or more tied clubs head to head applies only when one club swept
+    the others or was swept by them, and a 1-1 split is explicitly not a
+    tiebreak. For two clubs it reduces to "who won the game", which is what
+    everyone means by head to head.
+
+    None is also what an unplayed matchup gives, which the procedure calls
+    not applicable: treating a game nobody played as a loss would decide a
+    tie on it.
     """
-    played = won = 0
+    others = [other for other in group if other != team]
+    if not others:
+        return None
     row = tally[team]
-    for other in group:
-        if other == team:
-            continue
-        if other in row['beat']:
-            played += 1
-            won += 1
-        elif other in row['lost_to']:
-            played += 1
-    return won / played if played else None
+    if all(other in row['beat'] for other in others):
+        return 1.0
+    if all(other in row['lost_to'] for other in others):
+        return 0.0
+    return None
 
 
-def _order(teams, tally, ratings):
-    """The tied-group ladder: head-to-head, division, conference, then ours.
+def _tie_group_key(team, group, tally, ratings, *, same_division):
+    """The ladder applied WITHIN one group of clubs on the same record.
 
-    Applied to the whole candidate list at once rather than only to exact
-    ties, which gives the same order — every term after win percentage is a
-    tiebreak and cannot reorder teams that win percentage already separates,
-    because win percentage is compared first.
+    Two things the first version of this got wrong, both caught in review:
+
+    - Head to head is computed over the TIED clubs only. Computing it over
+      every candidate let games against clubs with other records decide a
+      tie between two that never played those clubs.
+    - Division record applies only where every tied club is in the SAME
+      division. For a wild-card tie between clubs of different divisions the
+      league goes head to head, then CONFERENCE record; ranking Miami above
+      Pittsburgh on their respective division records would compare two
+      different sets of opponents and call it a tiebreak.
+
+    Past the league's terms this falls back on our rating, which is not a
+    league tiebreaker and is labelled as ours wherever this is shown. The
+    league would go on to common games, strength of victory and further; it
+    also re-starts the whole procedure each time a club is eliminated from a
+    group of three or more, which this single pass does not do.
     """
-    group = set(teams)
+    row = tally[team]
+    head = _head_to_head(team, group, tally)
+    return (
+        # A matchup that is not applicable sorts between a sweep and a
+        # reverse sweep rather than below both.
+        -(head if head is not None else 0.5),
+        -(_rate(row['division_wins'], row['division_games'])
+          if same_division else 0.0),
+        -_rate(row['conference_wins'], row['conference_games']),
+        -ratings.get(team, 0.0),
+        str(team),
+    )
 
-    def key(team):
-        row = tally[team]
-        head = _head_to_head(team, group, tally)
-        return (
-            -win_pct(row),
-            # A matchup nobody played sorts between a sweep and a loss rather
-            # than below both.
-            -(head if head is not None else 0.5),
-            -_rate(row['division_wins'], row['division_games']),
-            -_rate(row['conference_wins'], row['conference_games']),
-            -ratings.get(team, 0.0),
-            str(team),
-        )
 
-    return sorted(teams, key=key)
+def _order(teams, tally, ratings, alignment=None):
+    """Candidates by record, with each equal-record group broken in turn.
+
+    Win percentage separates the groups; everything after it is applied only
+    INSIDE a group, because a tiebreaker is a comparison between clubs that
+    are level and means nothing between clubs that are not.
+    """
+    align = alignment or {}
+    ordered = sorted(teams, key=lambda team: (-win_pct(tally[team]),
+                                              str(team)))
+    out, index = [], 0
+    while index < len(ordered):
+        stop = index + 1
+        rate = win_pct(tally[ordered[index]])
+        while stop < len(ordered) and win_pct(tally[ordered[stop]]) == rate:
+            stop += 1
+        group = ordered[index:stop]
+        if len(group) > 1:
+            divisions = {align.get(team, (None, None))[1] for team in group}
+            same_division = len(divisions) == 1 and None not in divisions
+            group = sorted(group, key=lambda team: _tie_group_key(
+                team, group, tally, ratings, same_division=same_division))
+        out.extend(group)
+        index = stop
+    return out
 
 
 def field(board, games, season, *, alignment=None):
@@ -201,11 +241,13 @@ def field(board, games, season, *, alignment=None):
         divisions = defaultdict(list)
         for key in members:
             divisions[align[key][1]].append(key)
-        winners = [_order(group, tally, ratings)[0]
+        winners = [_order(group, tally, ratings, align)[0]
                    for group in divisions.values()]
-        winners = _order(winners, tally, ratings)[:era['division_winners']]
+        winners = _order(winners, tally, ratings,
+                         align)[:era['division_winners']]
         rest = [key for key in members if key not in set(winners)]
-        wild = _order(rest, tally, ratings)[:era['seeds'] - len(winners)]
+        wild = _order(rest, tally, ratings,
+                      align)[:era['seeds'] - len(winners)]
         seeded = []
         for index, key in enumerate(winners + wild, start=1):
             row = tally[key]
@@ -222,7 +264,8 @@ def field(board, games, season, *, alignment=None):
                                          row['conference_games']),
             ))
         # The first team out, which is the number every fan actually wants.
-        outside = _order(rest, tally, ratings)[len(wild):len(wild) + 2]
+        outside = _order(rest, tally, ratings,
+                         align)[len(wild):len(wild) + 2]
         out['conferences'].append(dict(
             conference=conference,
             seeds=seeded,

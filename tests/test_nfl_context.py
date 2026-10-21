@@ -537,7 +537,143 @@ class TestPlayoffField:
             assert tally[pit][field_] == tally[mia][field_], field_
         assert mia < pit, 'the key fallback must point the other way'
         ratings = {pit: 1500.0, mia: 1500.0}
-        assert playoff._order([mia, pit], tally, ratings) == [pit, mia]
+        assert playoff._order([mia, pit], tally, ratings,
+                              align) == [pit, mia]
+
+    def test_head_to_head_is_a_sweep_and_not_a_win_rate(self):
+        """Among three or more tied clubs the league applies head to head
+        only when one swept the others or was swept by them; a 1-1 split is
+        explicitly not a tiebreak."""
+        align = {franchise_key(code): identity.alignment(code, 2024)
+                 for code in identity.ALIGNMENT}
+        mia, pit, cle = (franchise_key('MIA'), franchise_key('PIT'),
+                         franchise_key('CLE'))
+        swept = playoff.records([
+            dict(id='a', season=2024, postseason=0, home=mia, away=pit,
+                 home_points=24, away_points=10),
+            dict(id='b', season=2024, postseason=0, home=mia, away=cle,
+                 home_points=24, away_points=10),
+        ], align)
+        assert playoff._head_to_head(mia, {mia, pit, cle}, swept) == 1.0
+        assert playoff._head_to_head(pit, {mia, pit, cle}, swept) is None
+        split = playoff.records([
+            dict(id='a', season=2024, postseason=0, home=mia, away=pit,
+                 home_points=24, away_points=10),
+            dict(id='b', season=2024, postseason=0, home=cle, away=mia,
+                 home_points=24, away_points=10),
+        ], align)
+        # Miami is 1-1 inside the group: not applicable, not 0.500.
+        assert playoff._head_to_head(mia, {mia, pit, cle}, split) is None
+
+    def test_head_to_head_counts_only_games_against_the_tied_clubs(self):
+        """Raised in review on this PR. Computing head to head over every
+        candidate let games against clubs on OTHER records decide a tie
+        between two clubs that never played them.
+
+        Miami and Pittsburgh are both 1-1 and never met; Cleveland is 2-1, a
+        different record, and Miami beat it. Over the whole candidate list
+        that win reads as a Miami sweep and puts Miami ahead. Within the
+        tied pair there is no head to head at all, conference records are
+        level, and the rating decides — which here favours Pittsburgh.
+        """
+        align = {franchise_key(code): identity.alignment(code, 2024)
+                 for code in identity.ALIGNMENT}
+        mia, pit, cle = (franchise_key('MIA'), franchise_key('PIT'),
+                         franchise_key('CLE'))
+        buf, nyj = franchise_key('BUF'), franchise_key('NYJ')
+        den, kc = franchise_key('DEN'), franchise_key('KC')
+        tally = playoff.records([
+            dict(id='1', season=2024, postseason=0, home=mia, away=cle,
+                 home_points=24, away_points=10),
+            dict(id='2', season=2024, postseason=0, home=den, away=mia,
+                 home_points=24, away_points=10),
+            dict(id='3', season=2024, postseason=0, home=pit, away=kc,
+                 home_points=24, away_points=10),
+            dict(id='4', season=2024, postseason=0, home=den, away=pit,
+                 home_points=24, away_points=10),
+            dict(id='5', season=2024, postseason=0, home=cle, away=buf,
+                 home_points=24, away_points=10),
+            dict(id='6', season=2024, postseason=0, home=cle, away=nyj,
+                 home_points=24, away_points=10),
+        ], align)
+        # The precondition the finding turns on: the pair is level and
+        # Cleveland is not.
+        assert playoff.win_pct(tally[mia]) == playoff.win_pct(tally[pit])
+        assert playoff.win_pct(tally[cle]) > playoff.win_pct(tally[mia])
+        ratings = {mia: 1500.0, pit: 1600.0, cle: 1500.0}
+        assert playoff._order([mia, pit, cle], tally, ratings, align) \
+            == [cle, pit, mia]
+
+    def test_division_record_is_not_compared_across_divisions(self):
+        """Raised in review on this PR. For a wild-card tie between clubs of
+        different divisions the league goes head to head, then CONFERENCE
+        record; two clubs' division records are records against two
+        different sets of opponents and comparing them is not a tiebreak.
+
+        Miami is 2-0 in the AFC East and 2-2 in the conference; Pittsburgh
+        has played no division game and is 2-0 in the conference. They never
+        met and are both 2-2 overall. On division record Miami leads; on the
+        term that actually applies, Pittsburgh does.
+        """
+        align = {franchise_key(code): identity.alignment(code, 2024)
+                 for code in identity.ALIGNMENT}
+        mia, pit = franchise_key('MIA'), franchise_key('PIT')
+        buf, nyj = franchise_key('BUF'), franchise_key('NYJ')
+        den, kc = franchise_key('DEN'), franchise_key('KC')
+        dal, phi = franchise_key('DAL'), franchise_key('PHI')
+        tally = playoff.records([
+            dict(id='1', season=2024, postseason=0, home=mia, away=buf,
+                 home_points=24, away_points=10),
+            dict(id='2', season=2024, postseason=0, home=mia, away=nyj,
+                 home_points=24, away_points=10),
+            dict(id='3', season=2024, postseason=0, home=den, away=mia,
+                 home_points=24, away_points=10),
+            dict(id='4', season=2024, postseason=0, home=kc, away=mia,
+                 home_points=24, away_points=10),
+            dict(id='5', season=2024, postseason=0, home=pit, away=den,
+                 home_points=24, away_points=10),
+            dict(id='6', season=2024, postseason=0, home=pit, away=kc,
+                 home_points=24, away_points=10),
+            dict(id='7', season=2024, postseason=0, home=dal, away=pit,
+                 home_points=24, away_points=10),
+            dict(id='8', season=2024, postseason=0, home=phi, away=pit,
+                 home_points=24, away_points=10),
+        ], align)
+        assert playoff.win_pct(tally[mia]) == playoff.win_pct(tally[pit])
+        # Miami leads on division record, Pittsburgh on conference record.
+        assert tally[mia]['division_games'] == 2
+        assert tally[pit]['division_games'] == 0
+        assert (tally[pit]['conference_wins'] / tally[pit]['conference_games']
+                > tally[mia]['conference_wins']
+                / tally[mia]['conference_games'])
+        ratings = {mia: 1600.0, pit: 1500.0}   # and the rating favours Miami
+        assert playoff._order([mia, pit], tally, ratings, align) == [pit, mia]
+
+    def test_division_record_still_applies_inside_one_division(self):
+        """The same term is correct between clubs of one division, which is
+        the only place the league uses it."""
+        align = {franchise_key(code): identity.alignment(code, 2024)
+                 for code in identity.ALIGNMENT}
+        mia, nyj = franchise_key('MIA'), franchise_key('NYJ')
+        buf, ne = franchise_key('BUF'), franchise_key('NE')
+        den = franchise_key('DEN')
+        tally = playoff.records([
+            # Both 1-1 and they never met; Miami's win is a division win and
+            # the Jets' is not.
+            dict(id='1', season=2024, postseason=0, home=mia, away=buf,
+                 home_points=24, away_points=10),
+            dict(id='2', season=2024, postseason=0, home=ne, away=mia,
+                 home_points=24, away_points=10),
+            dict(id='3', season=2024, postseason=0, home=nyj, away=den,
+                 home_points=24, away_points=10),
+            dict(id='4', season=2024, postseason=0, home=ne, away=nyj,
+                 home_points=24, away_points=10),
+        ], align)
+        assert playoff.win_pct(tally[mia]) == playoff.win_pct(tally[nyj])
+        assert tally[mia]['division_wins'] == 1
+        assert tally[nyj]['division_wins'] == 0
+        ratings = {mia: 1500.0, nyj: 1600.0}   # the rating favours the Jets
+        assert playoff._order([mia, nyj], tally, ratings, align) == [mia, nyj]
 
     def test_a_matchup_nobody_played_does_not_decide_a_tie(self):
         """The league calls an unplayed head to head "not applicable". Scoring

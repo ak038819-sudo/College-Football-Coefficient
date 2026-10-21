@@ -728,11 +728,12 @@
     note.textContent = (settled ? '' : 'The regular season is '
       + field.games_played + ' games into ' + field.games_scheduled
       + ', so this is the seeding today and nobody has won anything yet. ')
-      + 'Seeded on win percentage, then the league\u2019s own '
-      + 'first tiebreakers \u2014 head to head, division record, conference '
-      + 'record \u2014 and past those on our rating, which is not a league '
-      + 'tiebreaker. Strength of victory and the rest of the ladder are not '
-      + 'applied.';
+      + 'Seeded on win percentage, and each group of teams on the same '
+      + 'record broken by the league\u2019s own first terms: head to head, '
+      + 'then division record where the tied teams share a division, then '
+      + 'conference record. Past those this falls back on our rating, which '
+      + 'is not a league tiebreaker. Common games, strength of victory and '
+      + 'the rest of the ladder are not applied.';
     host.appendChild(note);
   }
 

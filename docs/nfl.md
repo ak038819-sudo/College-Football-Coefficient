@@ -216,13 +216,27 @@ says so in those words rather than letting a 51% record read as an edge.
 **The real playoff field** (`src/nfl/playoff.py`). Not one format: seven per
 conference with one bye since 2020, six with two byes from 2002 to 2019, and
 **no field at all before 2002**, because the committed alignment begins at
-the realignment and a three-division conference is not a thing to guess. The
-tiebreak ladder is win percentage, then the league's own first three — head
-to head, division record, conference record — and past those our rating,
-which is labelled as ours because it is not a league tiebreaker.
+the realignment and a three-division conference is not a thing to guess.
+
+Win percentage separates the groups, and **each group of clubs on the same
+record is broken on its own**, by the league's own first terms: head to head
+among the tied clubs only (a sweep or a reverse sweep — a 1-1 split is
+explicitly not a tiebreak), then division record **only where the tied clubs
+share a division**, then conference record. Past those it falls back on our
+rating, labelled as ours because it is not a league tiebreaker. Common games,
+strength of victory and the rest of the ladder are not applied, and neither
+is the league's re-start of the whole procedure each time a club is
+eliminated from a group of three or more.
+
+Both of those scoping rules came out of review on this PR, and the first
+version had both wrong: head to head was computed over every candidate, so
+games against clubs on other records could decide a tie between two clubs
+that never played them, and division record was compared across divisions,
+which sets two records against two different sets of opponents.
 
 Verified against the real fields: 2024 (KC, BUF, BAL, HOU, LAC, PIT, DEN /
-DET, PHI, TB, LA, MIN, WAS, GB) and 2019 both come out exactly right.
+DET, PHI, TB, LA, MIN, WAS, GB), 2023, 2019 and 2015 all come out exactly
+right.
 
 **Conference history and the track record.** Both from data already stored:
 conference and division mean ratings per season from `team_rating` and the
