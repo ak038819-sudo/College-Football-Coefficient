@@ -205,6 +205,14 @@
   var app = window.ncaambbApp;
   var BASE = 'data/ncaambb/';
   var TABS = ['home', 'standings', 'teams', 'people', 'games'];
+  // Which panel each tab shows. A league having a section is not the same as
+  // this page having a panel for it: basketball genuinely holds teams and
+  // people, and switchLeague is right to carry those sections, but the
+  // preview draws only the board and the scoreboard. A tab with no panel
+  // behind it hid both and left an empty page, which is the thing the Stats
+  // tab is deliberately disabled to avoid.
+  var PANELS = { home: 'scoreboard', games: 'scoreboard',
+                 standings: 'standings' };
   var LABELS = { home: 'Home', stats: 'Stats', standings: 'Standings',
                  teams: 'Teams', people: 'People', games: 'Games' };
   var state = { manifest: null, verdict: null, season: null, day: null,
@@ -245,7 +253,8 @@
       button.type = 'button';
       button.textContent = LABELS[name];
       button.dataset.tab = name;
-      var ready = app.hasSection(app.BASKETBALL, name);
+      var ready = app.hasSection(app.BASKETBALL, name)
+        && Boolean(PANELS[name]);
       // A feature appears only where it is ready. Stats carries nothing until
       // Player Impact or Roster Scenarios exists, so it is shown disabled
       // rather than opening an empty panel.
@@ -348,7 +357,9 @@
   function renderDays() {
     var host = el('days');
     host.innerHTML = '';
-    app.dayStrip(state.day, 3).forEach(function (entry) {
+    // The strip centres on the selected day; only the real today is
+    // labelled Today, which is a different question from where the centre is.
+    app.dayStrip(state.day, 3, app.todayKey()).forEach(function (entry) {
       var button = document.createElement('button');
       button.type = 'button';
       button.textContent = entry.today ? 'Today' : entry.day.slice(5);
@@ -452,10 +463,12 @@
     });
   }
 
-  function latestDay(payload) {
-    var days = ((payload && payload.games) || [])
-      .map(app.dayOf).filter(Boolean).sort();
-    return days.length ? days[days.length - 1] : null;
+  function openingDay(payload) {
+    // Today, clamped into the loaded season. Not the last date in the
+    // payload: a published schedule runs to April, so that opened on the
+    // championship and the strip called it Today.
+    return app.openingDay(
+      ((payload && payload.games) || []).map(app.dayOf).filter(Boolean));
   }
 
   function start() {
@@ -480,7 +493,7 @@
       })
       .then(function () {
         if (!state.verdict || !state.verdict.ok) return;
-        state.day = latestDay(seasonPayload());
+        state.day = openingDay(seasonPayload());
         render();
       })
       .catch(function (error) {

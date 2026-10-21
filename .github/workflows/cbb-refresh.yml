@@ -88,26 +88,42 @@ jobs:
           python - <<'PY' >> "$GITHUB_OUTPUT"
           import os
           from datetime import datetime, timezone
-          from src.ncaambb.identity import seasons_through
+          from src.ncaambb.identity import current_season, seasons_through
           requested = (os.environ.get('REQUESTED') or '').strip()
           # The ending year comes from the shared helper, never from a copy
           # of the rule written into a workflow where no test can reach it.
+          now = datetime.now(timezone.utc)
           seasons = requested or ','.join(
-              str(year) for year in seasons_through(datetime.now(timezone.utc)))
+              str(year) for year in seasons_through(now))
           print(f'list={seasons}')
+          # The season being played is the one whose games change. It is named
+          # separately so the ingestion can ask again about it while reusing
+          # the committed cache for every settled season -- and only if this
+          # run is actually fetching it, since a hand-dispatched run may ask
+          # for an older season alone.
+          active = current_season(now)
+          asked = {int(part) for part in seasons.split(',') if part.strip()}
+          print(f'active={active if active in asked else ""}')
           PY
 
       - name: Ingest the schedules
         env:
           CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
           SEASONS: ${{ steps.seasons.outputs.list }}
+          ACTIVE: ${{ steps.seasons.outputs.active }}
         run: |
           # `cmd | tee` reports tee's status, so without pipefail a crash here
           # would pass this step. It did exactly that once.
           set -o pipefail
-          # No --refetch: a season already in the committed raw cache costs no
-          # request. That is what keeps this run under the provider's limit.
+          # No blanket --refetch: a settled season already in the committed raw
+          # cache costs no request, and that is what keeps this run under the
+          # provider's limit. The season being played is the exception, and it
+          # has to be: a cached season is never asked about again, so without
+          # --refetch-seasons the first run to cache it would freeze it, and
+          # every later export would carry a fresh generated_at over games
+          # that had stopped moving.
           python -m src.ncaambb.ingest --seasons "$SEASONS" --schedule-only \
+            ${ACTIVE:+--refetch-seasons "$ACTIVE"} \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Replay the archive with the committed model

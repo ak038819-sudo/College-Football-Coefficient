@@ -16,7 +16,15 @@ const path = require('node:path');
 const { JSDOM } = require('jsdom');
 
 const UI = path.join(__dirname, '..', 'ui');
-const DAY = '2026-11-07';
+// The fixture's games are TODAY's, because the page opens on today and the
+// strip labels only the real today. A fixed past date would make every
+// scoreboard assertion here test the out-of-season fallback instead of the
+// case a reader meets. Out of season is tested on its own, below.
+const DAY = new Date().toISOString().slice(0, 10);
+
+function daysFromToday(count) {
+  return new Date(Date.now() + count * 86400000).toISOString().slice(0, 10);
+}
 
 function teams() {
   return {
@@ -73,13 +81,14 @@ function stamp(text) {
 }
 
 /* A whole export on disk, next to a copy of the page and its scripts. */
-function site(overrides) {
+function site(overrides, schedule) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cbb-preview-'));
   const data = path.join(root, 'data', 'ncaambb', 'seasons');
   fs.mkdirSync(data, { recursive: true });
   const seasonText = 'window.NCAAMBB_SEASONS=(window.NCAAMBB_SEASONS||{});'
     + 'window.NCAAMBB_SEASONS[2026]='
-    + JSON.stringify({ season: 2026, board: board(), games: games() }) + ';\n';
+    + JSON.stringify({ season: 2026, board: board(),
+      games: schedule || games() }) + ';\n';
   const teamsText = 'window.NCAAMBB_TEAMS=' + JSON.stringify(teams()) + ';\n';
   fs.writeFileSync(path.join(data, '2026.js'), seasonText);
   fs.writeFileSync(path.join(root, 'data', 'ncaambb', 'teams.js'), teamsText);
@@ -95,8 +104,8 @@ function site(overrides) {
   return { root, manifest: payload };
 }
 
-async function open(overrides) {
-  const built = site(overrides);
+async function open(overrides, schedule) {
+  const built = site(overrides, schedule);
   const file = path.join(built.root, 'basketball.html');
   const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
     url: 'file://' + file,
@@ -171,6 +180,41 @@ test('the Stats tab is present and disabled, not silently missing', async () => 
   assert.equal(tabs.find(b => b.textContent === 'Standings').disabled, false);
   dom.window.close();
 });
+
+test('every enabled tab has a panel, and clicking one never empties the page',
+  async () => {
+    // Teams and People are real basketball sections -- the league holds both,
+    // and switchLeague is right to carry them -- but this page draws only the
+    // board and the scoreboard. They were enabled anyway, so clicking either
+    // hid both panels and left a blank page: the exact thing Stats is
+    // disabled to avoid.
+    const dom = await open();
+    const document = dom.window.document;
+    const tabs = [...document.querySelectorAll('#tabs button')];
+    const drawn = () => !document.getElementById('standings').hidden
+      || !document.getElementById('scoreboard').hidden;
+    assert.ok(drawn(), 'something is drawn to begin with');
+    for (const button of tabs) {
+      if (button.disabled) continue;
+      button.click();
+      assert.ok(drawn(), `${button.textContent} leaves the page empty`);
+    }
+    for (const name of ['Teams', 'People']) {
+      const button = tabs.find(b => b.textContent === name);
+      assert.ok(button, `${name} is still listed rather than vanishing`);
+      assert.equal(button.disabled, true,
+        `${name} has no panel on this page, so it must not be clickable`);
+    }
+    // The league itself still claims those sections: the page lacking a panel
+    // is not a statement about the data, and a league switch must still carry
+    // a reader on Teams to basketball's Teams once one exists.
+    const app = require('../ui/ncaambb_app.js');
+    for (const section of ['teams', 'people']) {
+      assert.ok(app.hasSection(app.BASKETBALL, section),
+        `${section} stays a basketball section`);
+    }
+    dom.window.close();
+  });
 
 test('search names the league it searches', async () => {
   const dom = await open();
@@ -308,8 +352,35 @@ test('the date strip centres Today and can move off it', async () => {
   await settle(dom, () => document.getElementById('cards')
     .textContent.includes('No games'));
   assert.equal(document.querySelectorAll('#cards .card').length, 0);
+  // Moving off today must not rename the day it moved to. The strip used to
+  // mark its own centre as today, so the reader saw tomorrow labelled Today.
+  const moved = [...document.querySelectorAll('#days button')];
+  assert.equal(moved[3].textContent, daysFromToday(1).slice(5),
+    'the new centre is labelled by its date');
+  assert.deepEqual(moved.filter(button => button.textContent === 'Today')
+    .map(button => button.getAttribute('aria-pressed')), ['false'],
+    'exactly one day is still Today, and it is no longer the selected one');
   dom.window.close();
 });
+
+test('a season whose schedule runs months ahead still opens on today',
+  async () => {
+    // The whole published schedule is in the payload, so the last date in it
+    // is the championship. Opening there -- and labelling it Today -- is what
+    // this replaces.
+    const far = games().map((entry, index) => Object.assign({}, entry, {
+      at: index === 0 ? DAY + 'T19:00:00Z'
+        : daysFromToday(120) + 'T19:00:00Z'
+    }));
+    const dom = await open({}, far);
+    const document = await scoreboard(dom);
+    const days = [...document.querySelectorAll('#days button')];
+    assert.equal(days[3].textContent, 'Today');
+    assert.equal(days[3].getAttribute('aria-pressed'), 'true');
+    assert.equal(document.querySelectorAll('#cards .card').length, 1,
+      "today's one game is drawn, not the ones in four months");
+    dom.window.close();
+  });
 
 // --- what the page must not do ---------------------------------------------
 

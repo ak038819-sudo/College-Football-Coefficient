@@ -250,23 +250,53 @@
     });
   }
 
-  /* A compact date strip, Today centred. A week is both too coarse to
-   * navigate 6,300 games and too fine to summarise them.
+  /* Today's date, as the strip and the labels mean it.
+   *
+   * Resolved on every call rather than once at load, so a page left open
+   * overnight does not keep calling yesterday Today.
    */
-  function dayStrip(today, radius) {
+  function todayKey(now) {
+    return (now instanceof Date ? now : new Date()).toISOString().slice(0, 10);
+  }
+
+  /* A compact date strip around `centre`. A week is both too coarse to
+   * navigate 6,300 games and too fine to summarise them.
+   *
+   * `today` is a separate argument from the centre because they are different
+   * things, and conflating them was a real bug: the strip marked its own
+   * centre as today, so opening on any other day -- or simply moving off
+   * today -- relabelled that day "Today".
+   */
+  function dayStrip(centre, radius, today) {
     var span = typeof radius === 'number' ? radius : 3;
-    var base = Date.parse(today + 'T12:00:00Z');
+    var base = Date.parse(centre + 'T12:00:00Z');
     if (isNaN(base)) return [];
+    var now = typeof today === 'string' ? today : todayKey();
     var days = [];
     for (var offset = -span; offset <= span; offset += 1) {
       var moment = new Date(base + offset * 86400000);
-      days.push({
-        day: moment.toISOString().slice(0, 10),
-        offset: offset,
-        today: offset === 0
-      });
+      var day = moment.toISOString().slice(0, 10);
+      days.push({ day: day, offset: offset, today: day === now });
     }
     return days;
+  }
+
+  /* Which day a scoreboard opens on.
+   *
+   * Today, whenever today is inside the season the payload describes. Outside
+   * it -- in July, say, when the only loaded season is next November's
+   * schedule -- the nearest end of the season, which is opening night rather
+   * than the final. Never simply the last date in the payload: a published
+   * schedule runs months ahead, so that put the reader on the championship
+   * and called it Today.
+   */
+  function openingDay(days, today) {
+    var sorted = (days || []).filter(Boolean).slice().sort();
+    if (!sorted.length) return null;
+    var now = typeof today === 'string' ? today : todayKey();
+    if (now < sorted[0]) return sorted[0];
+    if (now > sorted[sorted.length - 1]) return sorted[sorted.length - 1];
+    return now;
   }
 
   /* Whether a game's tip-off time is known.
@@ -381,6 +411,8 @@
     dayOf: dayOf,
     gamesOn: gamesOn,
     dayStrip: dayStrip,
+    todayKey: todayKey,
+    openingDay: openingDay,
     timeKnown: timeKnown,
     sortGames: sortGames,
     filterGames: filterGames,

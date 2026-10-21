@@ -499,3 +499,140 @@ def test_the_ingestion_stops_at_the_first_unclearable_rate_limit(tmp_path,
     assert '2016' in out and '2017' in out
     assert 'NOT a statement about coverage' in out
     assert 'not stored' not in out
+
+
+# --- the season being played is asked about again --------------------------
+#
+# A cached season costs no request, which is the whole reason the raw cache is
+# committed. Applied to the season being played it is a different thing: that
+# season's games change every night, so the first run to cache it would freeze
+# it, and every later export would carry a fresh generated_at over games that
+# had stopped moving. Measured by counting requests, not by reading the code.
+
+D1_TEAMS = [dict(id=10, school='Michigan', classification='fbs'),
+            dict(id=20, school='Duke', classification='fbs')]
+
+
+def provider_game(season, day, **overrides):
+    """A game shaped the way the provider sends it, `season` included: the
+    loader reads that field rather than trusting the window it asked for."""
+    row = dict(game(1, day=day), season=season)
+    row.update(overrides)
+    return row
+
+
+def cached_season(root, season, teams=None, games=None):
+    """Write a season's schedule cache the way a previous run would have."""
+    from src.ncaambb.ingest import cache_paths, write_cache
+    paths = cache_paths(season, root)
+    day = f'{season - 1}-11-07T19:00:00Z'
+    write_cache(paths['teams'], teams if teams is not None else D1_TEAMS)
+    write_cache(paths['games'], games if games is not None
+                else [provider_game(season, day)])
+    return paths
+
+
+def windowed(rows):
+    """A provider that honours the date filter, so a row only comes back from
+    the window it belongs to. Returning everything for every window instead
+    trips the ingestion's own out-of-window guard."""
+    def getter(path, params=None, **kwargs):
+        params = dict(params or {})
+        if path == '/teams':
+            return D1_TEAMS
+        first = str(params.get('startDateRange', ''))[:10]
+        last = str(params.get('endDateRange', ''))[:10]
+        return [row for row in rows
+                if first <= row['startDate'][:10] <= last
+                and row['season'] == params.get('season')]
+    return getter
+
+
+def count_requests(monkeypatch, tmp_path, argv, seasons):
+    """Run main() against a provider that records what it was asked for."""
+    from src.ncaambb.ingest import main
+    monkeypatch.setenv('CBBD_API_KEY', 'test-key')
+    asked = []
+
+    inner = windowed([provider_game(season, f'{season - 1}-11-07T19:00:00Z')
+                      for season in seasons])
+
+    def getter(path, params=None, **kwargs):
+        asked.append((path, dict(params or {})))
+        return inner(path, params, **kwargs)
+
+    import src.ncaambb.ingest as module
+    monkeypatch.setattr(module, 'get_json', getter)
+    code = main(argv + ['--seasons', ','.join(str(s) for s in seasons),
+                        '--schedule-only',
+                        '--database', str(tmp_path / 'db.sqlite'),
+                        '--raw-root', str(tmp_path / 'raw')])
+    return code, asked
+
+
+def test_a_cached_season_is_not_asked_about_again(tmp_path, monkeypatch):
+    raw = tmp_path / 'raw'
+    cached_season(raw, 2015)
+    cached_season(raw, 2016)
+    code, asked = count_requests(monkeypatch, tmp_path, [], [2015, 2016])
+    assert code == 0
+    assert asked == [], 'a cached season must cost no request'
+
+
+def test_the_named_season_is_refetched_while_the_rest_are_reused(tmp_path,
+                                                                 monkeypatch):
+    raw = tmp_path / 'raw'
+    for season in (2015, 2016, 2017):
+        cached_season(raw, season)
+    code, asked = count_requests(monkeypatch, tmp_path,
+                                 ['--refetch-seasons', '2017'],
+                                 [2015, 2016, 2017])
+    assert code == 0
+    assert asked, 'the named season must be asked about despite its cache'
+    seasons = {params.get('season') for _, params in asked}
+    assert seasons == {2017}, seasons
+
+
+def test_refetching_the_active_season_rewrites_its_cache(tmp_path,
+                                                         monkeypatch):
+    """Not just "it asked again": what it fetched has to replace what was
+    cached, or the next run reads the stale copy back."""
+    from src.ncaambb.ingest import cache_paths, read_cache
+    raw = tmp_path / 'raw'
+    day = '2025-11-07T19:00:00Z'
+    cached_season(raw, 2026, games=[provider_game(
+        2026, day, status='scheduled', homePoints=None, awayPoints=None)])
+    monkeypatch.setenv('CBBD_API_KEY', 'test-key')
+    import src.ncaambb.ingest as module
+    monkeypatch.setattr(module, 'get_json',
+                        windowed([provider_game(2026, day)]))
+    from src.ncaambb.ingest import main
+    code = main(['--seasons', '2026', '--refetch-seasons', '2026',
+                 '--schedule-only', '--database', str(tmp_path / 'db.sqlite'),
+                 '--raw-root', str(raw)])
+    assert code == 0
+    stored = read_cache(cache_paths(2026, raw)['games'])
+    assert [row['status'] for row in stored] == ['final']
+
+
+def test_refetching_a_season_the_run_never_asks_for_is_refused(tmp_path,
+                                                               capsys):
+    """"2027 is refreshed" while nothing fetches 2027 is worse than an error:
+    it reads as a working refresh."""
+    from src.ncaambb.ingest import main
+    with pytest.raises(SystemExit) as raised:
+        main(['--seasons', '2015,2016', '--refetch-seasons', '2027',
+              '--schedule-only', '--database', str(tmp_path / 'db.sqlite'),
+              '--raw-root', str(tmp_path / 'raw')])
+    assert raised.value.code == 2
+    assert '2027' in capsys.readouterr().err
+
+
+def test_refetch_seasons_must_be_years(tmp_path, capsys):
+    from src.ncaambb.ingest import main
+    with pytest.raises(SystemExit) as raised:
+        main(['--seasons', '2015', '--refetch-seasons', 'latest',
+              '--schedule-only', '--database', str(tmp_path / 'db.sqlite'),
+              '--raw-root', str(tmp_path / 'raw')])
+    assert raised.value.code == 2
+    assert 'integer ending years' in capsys.readouterr().err

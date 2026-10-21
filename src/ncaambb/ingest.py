@@ -172,6 +172,16 @@ def main(argv=None):
                         help=f'Defaults to {RAW_ROOT}')
     parser.add_argument('--refetch', action='store_true',
                         help='Ignore the raw cache and request everything again')
+    parser.add_argument('--refetch-seasons', default=None,
+                        help='Comma-separated seasons whose cache is ignored '
+                             'while the rest are reused. This is how a '
+                             'scheduled refresh asks again about the season '
+                             'being played without paying for the settled '
+                             'archive: a cached season is never asked about '
+                             'again, so without this the active season would '
+                             'be frozen at the first run that cached it, and '
+                             'every later export would carry a new '
+                             'generated_at over unchanged games.')
     parser.add_argument('--schedule-only', action='store_true',
                         help='Skip rosters and box scores')
     args = parser.parse_args(argv)
@@ -181,6 +191,18 @@ def main(argv=None):
         parser.error('Seasons must be integer ending years')
     if not seasons:
         parser.error('Give at least one season')
+    try:
+        refetch = {int(part) for part in
+                   (args.refetch_seasons or '').split(',') if part.strip()}
+    except ValueError:
+        parser.error('--refetch-seasons must be integer ending years')
+    unasked = sorted(refetch - set(seasons))
+    if unasked:
+        # Naming a season here that --seasons does not include is a mistake
+        # worth refusing: it reads as "this season is refreshed" while nothing
+        # fetches it at all.
+        parser.error(f'--refetch-seasons names {unasked}, which --seasons does '
+                     'not include')
 
     revision = source_revision()
     quota = Quota()
@@ -190,14 +212,15 @@ def main(argv=None):
     try:
         for season in seasons:
             try:
+                reuse = not (args.refetch or season in refetch)
                 summaries.append(ingest_season(
                     connection, season, raw_root=args.raw_root,
-                    reuse_cache=not args.refetch, quota=quota,
+                    reuse_cache=reuse, quota=quota,
                     revision=revision))
                 if not args.schedule_only:
                     people.append(ingest_people(
                         connection, season, raw_root=args.raw_root,
-                        reuse_cache=not args.refetch, quota=quota,
+                        reuse_cache=reuse, quota=quota,
                         revision=revision))
             except CbbdAuthError as exc:
                 # Not a coverage result. Stop rather than report absent data.

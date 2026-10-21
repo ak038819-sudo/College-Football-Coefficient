@@ -11,5 +11,34 @@
     "points_per_elo": 0.06446980254679208,
     "reference_margin": 11.94622175970996,
     "scale": 400.0
+  },
+  "validation": {
+    "fit_games": 59578,
+    "fit_seasons": [
+      2015,
+      2016,
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+    ],
+    "holdout": {
+      "accuracy": 0.7121,
+      "brier": 0.18656,
+      "calibration_error": 0.02908,
+      "games": 5752,
+      "log_loss": 0.54848
+    },
+    "holdout_seasons": [
+      2026
+    ],
+    "measured_by": "cbb-ratings.yml run 39379853150, 2026-10-20",
+    "measured_on_elo_sha256": "190c7188e0b196bac6fc9a9c748145819a38de636cb473db6be8df6fe954cf3d",
+    "note": "The held-out scores are the values that run reported, to five decimal places; the exact floats live in its elo_fit.json artifact. Five places is what the page shows and far more than the publish gate needs, which only asks that the Brier beat a coin flip. measured_on_elo_sha256 is sha256 of the canonical \"elo\" block above, so changing a parameter without re-fitting fails the build instead of publishing this claim over it."
   }
 }

@@ -167,14 +167,27 @@ the same ceiling the moment it has a live feed at all.
 - **My teams** is not in the preview. The favorites layer under it is:
   namespaced storage, no re-reading of football's key, and an offer that never
   acts. The card itself waits for the per-league home screen.
-- **The scoreboard** has the date strip with Today centred, the four filters,
+- **The scoreboard** opens on today, clamped into the loaded season: before
+  the season starts that is opening night, not the final. It used to open on
+  the last date in the payload, which — since the export carries the whole
+  published schedule — was the national championship, months away, and the
+  strip labelled it "Today" because it marked its own centre rather than the
+  real date. Both are fixed, and `dayStrip` now takes today as its own
+  argument. It has the date strip, the four filters,
   and the undecided bucket after the timed games. The `Live` filter returns
   nothing, honestly, because there is no basketball live feed: it is kept so
   the control matches football's.
 - **No card shows a clock**, and a test asserts no status line anywhere
   contains one. A missing score renders as nothing, never as a zero.
 - **Stats is shown disabled** rather than hidden. A tab that vanishes between
-  leagues is more confusing than one that says it is not ready yet.
+  leagues is more confusing than one that says it is not ready yet. **Teams
+  and People are disabled on the same grounds**, and for a reason worth
+  separating: both are real basketball sections — the league holds the data
+  and `switchLeague` is right to carry a reader from football's Teams to
+  basketball's — but this page draws only the board and the scoreboard. A tab
+  enabled with no panel behind it hid both and left an empty page, which is
+  the exact thing disabling Stats was meant to avoid. The page now gates a tab
+  on having a panel as well as on the league having the section.
 - **Freshness** is a badge that reads `Stale · updated 26h ago` in red, or the
   plain age in green. A stale export is still drawn, because it is the last
   good snapshot.

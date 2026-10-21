@@ -117,6 +117,19 @@ over a request — the only thing missing was for the cache to survive the run.
 A settled season cannot change, so the refresh now reloads eleven of the twelve
 from disk and asks the provider only about the season being played.
 
+**The season being played is the exception, and it has to be named as one.**
+A cached season is never asked about again — that is the whole point of the
+cache — so the first run to cache the active season would have frozen it.
+New finals, postponements and schedule changes would never have reached the
+database, while every export carried a fresh `generated_at` over games that
+had stopped moving: a refresh that looked like it was working. The `seasons`
+step now emits the active season separately, from the same
+`current_season()` helper, and the ingestion takes `--refetch-seasons`, which
+ignores the cache for exactly those seasons and reuses it for the rest. A
+hand-dispatched run for an older season alone names no active season, and
+naming a season `--seasons` does not include is refused outright, because
+"2027 is refreshed" while nothing fetches 2027 reads as a working refresh.
+
 The commit step therefore runs **even when the run failed**. A season fetched
 before the rate limit struck is quota already spent, and banking it is what
 makes a cut-off run make progress instead of repeating itself; the job still
@@ -238,3 +251,33 @@ so a refresh adds only the current season's file to the repository — roughly
 to intern the team keys inside each payload, which are 23 bytes each and appear
 twice per game; it is a shape change to the export, the loader and the page,
 which is why it is written down here rather than done pre-emptively.
+
+## The replay has no fit report, so the validation is committed
+
+A refresh does not fit anything. It replays the committed parameters in
+`config/ncaambb_model.json`, on a fresh runner where no fit report exists —
+and `build_ratings.py` stored `fitted_on`, `held_out`, `holdout_brier` and
+`holdout_games` only from a report. So every refresh stored a model with no
+held-out score, and the export gate — correctly, since a rating must say what
+it scored on games it never saw — refused the result. The refresh could never
+have published anything at all.
+
+The fix is that the held-out claim is committed beside the parameters it was
+measured on, in a `validation` block of the same file, and
+`report_from_config()` hands it to the replay when there is no report. A fit's
+own report still wins where there is one: it is the measurement that just
+happened.
+
+A committed claim can go stale, which would be worse than no claim — a
+published rating asserting a Brier the parameters never earned. So the block
+carries `measured_on_elo_sha256`, the hash of the `elo` section it was
+measured on, canonicalised the same way the export's `config_sha256` is.
+Editing a parameter without re-fitting now fails the replay by name instead of
+publishing yesterday's number over today's model. `cbb-ratings.yml` writes both
+halves together, so a real re-fit updates the claim and the hash in one step.
+
+The committed numbers are what run 39379853150 reported on 2026-10-20, to five
+decimal places: fitted on 2015-2025, held out on 2026, Brier 0.18656 over
+5,752 games. Five places is what the page displays and far more than the gate
+needs, which only asks that the Brier beat a coin flip; the exact floats are in
+that run's `elo_fit.json` artifact.

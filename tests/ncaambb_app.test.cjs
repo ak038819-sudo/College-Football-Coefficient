@@ -194,14 +194,50 @@ function game(overrides) {
   }, overrides || {});
 }
 
-test('the date strip centres today', () => {
-  const strip = app.dayStrip(DAY, 2);
+test('the date strip centres the day it is given', () => {
+  const strip = app.dayStrip(DAY, 2, DAY);
   assert.equal(strip.length, 5);
   assert.equal(strip[2].day, DAY);
   assert.equal(strip[2].today, true);
   assert.equal(strip[0].day, '2026-11-05');
   assert.equal(strip[4].day, '2026-11-09');
 });
+
+test('only the real today is marked today, wherever the strip is centred',
+  () => {
+    // The centre used to be marked today by its offset, so moving off today
+    // -- or opening on any other day -- relabelled that day "Today".
+    const strip = app.dayStrip(DAY, 2, '2026-11-09');
+    assert.deepEqual(strip.filter(entry => entry.today).map(e => e.day),
+      ['2026-11-09']);
+    const away = app.dayStrip(DAY, 1, '2027-03-01');
+    assert.deepEqual(away.filter(entry => entry.today), [],
+      'a strip nowhere near today marks no day as today');
+  });
+
+test('the strip falls back to the real date when none is given', () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const strip = app.dayStrip(today, 1);
+  assert.deepEqual(strip.filter(entry => entry.today).map(e => e.day),
+    [today]);
+  assert.equal(app.todayKey(), today);
+});
+
+test('a scoreboard opens on today, or on the nearest end of the season',
+  () => {
+    // Not on the last date in the payload: a published schedule runs to
+    // April, so that opened on the championship -- months away -- and the
+    // strip called it Today.
+    const days = ['2026-11-03', '2027-01-15', '2027-04-06'];
+    assert.equal(app.openingDay(days, '2027-01-20'), '2027-01-20',
+      'a day inside the season with no games is still today');
+    assert.equal(app.openingDay(days, '2027-01-15'), '2027-01-15');
+    assert.equal(app.openingDay(days, '2026-07-04'), '2026-11-03',
+      'before the season: opening night, not the final');
+    assert.equal(app.openingDay(days, '2027-09-01'), '2027-04-06');
+    assert.equal(app.openingDay([], '2027-01-20'), null);
+    assert.equal(app.openingDay(null, '2027-01-20'), null);
+  });
 
 test('the strip crosses a month boundary correctly', () => {
   const strip = app.dayStrip('2026-12-31', 1).map(entry => entry.day);

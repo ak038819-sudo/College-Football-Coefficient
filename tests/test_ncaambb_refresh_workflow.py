@@ -9,6 +9,7 @@ whether it could ever refit the model on a schedule.
 
 from pathlib import Path
 import sys
+import textwrap
 
 import pytest
 import yaml
@@ -234,5 +235,88 @@ def test_the_refresh_reads_the_season_rule_from_the_shared_helper():
     """A copy of the rule written into the workflow is a copy no test can
     reach, and this project has been bitten by a season rule that drifted."""
     step = next(s for s in steps() if s.get('id') == 'seasons')
-    assert 'from src.ncaambb.identity import seasons_through' in step['run']
+    assert 'seasons_through' in step['run']
     assert 'now.month' not in step['run']
+
+
+# --- the season being played is refreshed, the settled archive is reused ---
+
+def ingest_step():
+    return next(step for step in steps()
+                if 'src.ncaambb.ingest' in step.get('run', ''))
+
+
+def uncommented(text):
+    return '\n'.join(line for line in text.splitlines()
+                      if not line.strip().startswith('#'))
+
+
+def test_the_ingestion_reuses_the_committed_cache():
+    """A blanket refetch is ~130 requests, which is what the provider refused.
+    Comment lines are stripped first: my own comment about --refetch once
+    satisfied this assertion while the command did the opposite."""
+    assert '--refetch ' not in uncommented(ingest_step()['run'])
+    assert '--refetch\n' not in uncommented(ingest_step()['run'])
+
+
+def test_the_ingestion_asks_again_about_the_season_being_played():
+    """A cached season is never asked about again, so without this the first
+    run to cache the active season would freeze it: every later export would
+    carry a fresh generated_at over games that had stopped moving."""
+    step = ingest_step()
+    assert '--refetch-seasons' in uncommented(step['run'])
+    assert step['env'].get('ACTIVE') == '${{ steps.seasons.outputs.active }}'
+
+
+def test_the_active_season_comes_from_the_shared_helper_too():
+    step = next(s for s in steps() if s.get('id') == 'seasons')
+    assert 'current_season' in step['run']
+    assert 'active=' in step['run']
+
+
+def test_the_active_season_is_named_only_when_the_run_fetches_it():
+    """A hand-dispatched run for 2015 alone must not claim to refresh the
+    season being played, and must not ask for a season it never ingests --
+    the ingestion refuses that outright."""
+    step = next(s for s in steps() if s.get('id') == 'seasons')
+    # The heredoc body, dedented: the step is `python - <<'PY' >> $FILE`, so
+    # the first line after the marker is the redirection, not Python.
+    body = step['run'].split("<<'PY'")[1].rsplit('PY', 1)[0]
+    code = textwrap.dedent(body.split('\n', 1)[1])
+    import os
+    from datetime import datetime, timezone
+    from src.ncaambb.identity import current_season
+    now = datetime.now(timezone.utc)
+
+    def run(requested):
+        os.environ['REQUESTED'] = requested
+        import io, contextlib
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            exec(compile(code, 'seasons-step', 'exec'), {'__name__': 'step'})
+        return dict(line.split('=', 1) for line in
+                    buffer.getvalue().strip().splitlines())
+
+    try:
+        every = run('')
+        assert every['active'] == str(current_season(now))
+        one = run('2015')
+        assert one['list'] == '2015'
+        assert one['active'] == '', 'no active season is claimed'
+        pair = run(f'2015,{current_season(now)}')
+        assert pair['active'] == str(current_season(now))
+    finally:
+        os.environ.pop('REQUESTED', None)
+
+
+def test_the_replay_needs_no_fit_report_on_a_fresh_runner():
+    """The replay step passes no --report, which is correct: there is no fit
+    on a refresh. It only works because the held-out claim is committed beside
+    the parameters -- without that the stored model carried no holdout and the
+    export gate refused every single refresh."""
+    step = next(s for s in steps()
+                if 'src.ncaambb.build_ratings' in s.get('run', ''))
+    assert '--report' not in step['run']
+    from src.ncaambb.build_ratings import load_config, report_from_config
+    report = report_from_config(load_config())
+    assert report['holdout_seasons'] and report['holdout']['games'] > 0

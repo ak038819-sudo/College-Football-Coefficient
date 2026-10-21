@@ -14,6 +14,7 @@ B04 export gate does not exist yet.
 """
 
 import argparse
+import hashlib
 import json
 import sys
 from collections import Counter
@@ -48,7 +49,74 @@ def load_config(path=None):
     if elo['margin_model'] != 'result_only' and elo['reference_margin'] <= 0:
         raise ValueError('reference_margin must be the measured mean winning '
                          'margin, not a placeholder')
+    # The validation block is NOT required here: a fit run has its own fresh
+    # report and does not need one. It is required where it actually matters,
+    # in `build()`, when there is no report to take the held-out score from.
     return payload
+
+
+def elo_digest(elo):
+    """The hash of the exact parameters, canonically.
+
+    The same canonicalisation the export's `config_sha256` uses, so the
+    validation block's claim and the manifest's hash are about one thing.
+    """
+    canonical = json.dumps(elo, sort_keys=True, separators=(',', ':'))
+    return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+
+
+def check_validation(payload, target='the configuration'):
+    """Refuse a configuration whose held-out claim is missing or stale.
+
+    The published rating has to say what it scored on games it never saw, and
+    a fresh runner has no fit report: it replays the committed parameters. So
+    the claim is committed beside them -- and pinned to them by hash, because
+    a claim that outlives the parameters it was measured on is worse than no
+    claim. Editing k without re-fitting now fails here rather than publishing
+    yesterday's Brier over today's model.
+    """
+    validation = payload.get('validation')
+    if not isinstance(validation, dict):
+        raise ValueError(
+            f'{target} has no "validation" section. A published rating must '
+            'say what the model scored on a held-out season, and a replay has '
+            'no fit report to take it from.')
+    fitted = list(validation.get('fit_seasons') or [])
+    held = list(validation.get('holdout_seasons') or [])
+    if not held:
+        raise ValueError(f'{target} names no held-out season')
+    leaked = sorted(set(fitted) & set(held))
+    if leaked:
+        raise ValueError(f'{target} both fits on and holds out {leaked}; '
+                         'the holdout leaked')
+    holdout = validation.get('holdout')
+    if not isinstance(holdout, dict):
+        raise ValueError(f'{target} has no held-out measurement')
+    brier, games = holdout.get('brier'), holdout.get('games')
+    if not isinstance(brier, (int, float)) or isinstance(brier, bool) \
+            or not 0 < brier < 0.25:
+        raise ValueError(f'{target} reports a held-out Brier of {brier!r}, '
+                         'which is missing or no better than a coin flip')
+    if not isinstance(games, int) or isinstance(games, bool) or games <= 0:
+        raise ValueError(f'{target} reports {games!r} held-out games')
+    measured = validation.get('measured_on_elo_sha256')
+    actual = elo_digest(payload['elo'])
+    if measured != actual:
+        raise ValueError(
+            f'{target} carries a validation measured on parameters whose hash '
+            f'is {measured!r}, but its "elo" section hashes to {actual}. '
+            'Re-fit and re-score, or the published rating would claim a score '
+            'the committed parameters never earned.')
+    return validation
+
+
+def report_from_config(payload):
+    """The committed validation in the shape `build()` wants a fit report in,
+    so one code path stores the provenance whichever the caller had."""
+    validation = check_validation(payload)
+    return dict(fit_seasons=list(validation.get('fit_seasons') or []),
+                holdout_seasons=list(validation['holdout_seasons']),
+                holdout=dict(validation['holdout']))
 
 
 def season_ratings(rows, final_ratings):
@@ -76,6 +144,11 @@ def build(connection, config, *, model_name=MODEL_NAME, report=None,
     if not games:
         raise ValueError('No rateable game is loaded; run the ingestion first')
     elo = config['elo']
+    # A fit's own report wins when there is one -- it is the measurement that
+    # just happened. Without one this is a replay, and the committed
+    # validation is the only honest source for what the model scored.
+    if report is None:
+        report = report_from_config(config)
     rows, final = replay(games, elo)
     model_id = record_rating_model(
         connection, model_name, elo,

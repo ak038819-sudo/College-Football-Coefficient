@@ -71,8 +71,10 @@ jobs:
         run: |
           set -o pipefail
           python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
-          import json
+          import json, os, sys
           from pathlib import Path
+          sys.path.insert(0, '.')
+          from src.ncaambb.build_ratings import elo_digest
           report = json.loads(Path('data/ncaambb/processed/elo_fit.json')
                               .read_text(encoding='utf-8'))
           chosen = report['chosen']
@@ -83,8 +85,24 @@ jobs:
           # and the repository would keep the old one.
           before = (json.loads(out.read_text(encoding='utf-8')).get('elo')
                     if out.exists() else None)
+          run = os.environ.get('GITHUB_RUN_ID', 'unknown')
           out.parent.mkdir(parents=True, exist_ok=True)
-          out.write_text(json.dumps({'elo': chosen}, indent=2, sort_keys=True)
+          # The validation is written WITH the parameters, pinned to them by
+          # hash. A replay on a fresh runner has no fit report, so if this
+          # block were dropped the stored model would carry no held-out score
+          # and the export gate would refuse every refresh -- which is exactly
+          # what it did until this step started writing it.
+          holdout = dict(report.get('holdout') or {})
+          validation = {
+              'fit_seasons': report.get('fit_seasons'),
+              'fit_games': (report.get('measured') or {}).get('fit_games'),
+              'holdout_seasons': report.get('holdout_seasons'),
+              'holdout': holdout,
+              'measured_on_elo_sha256': elo_digest(chosen),
+              'measured_by': f'cbb-ratings.yml run {run}',
+          }
+          out.write_text(json.dumps({'elo': chosen, 'validation': validation},
+                                    indent=2, sort_keys=True)
                          + '\n', encoding='utf-8')
           print('## Configuration used by this replay\n')
           print('```json')

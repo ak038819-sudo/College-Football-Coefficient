@@ -471,11 +471,29 @@ def test_a_run_holds_out_the_latest_season_by_default(db):
 
 # --- storing what the model produced ---------------------------------------
 
-FITTED = dict(elo=dict(initial_rating=1500.0, scale=400.0, k=20,
-                       home_advantage=60, offseason_retention=0.8,
-                       margin_model='mov', margin_exponent=1.0,
-                       margin_min=0.25, margin_max=4.0,
-                       reference_margin=11.0, points_per_elo=0.04))
+ELO = dict(initial_rating=1500.0, scale=400.0, k=20,
+           home_advantage=60, offseason_retention=0.8,
+           margin_model='mov', margin_exponent=1.0,
+           margin_min=0.25, margin_max=4.0,
+           reference_margin=11.0, points_per_elo=0.04)
+
+
+def validation(elo=None, **overrides):
+    """A held-out claim pinned to the parameters it was measured on.
+
+    The hash is computed from the parameters rather than written down, so a
+    test that changes a parameter cannot accidentally be asserting against a
+    stale claim -- which is the very thing the rule exists to catch.
+    """
+    from src.ncaambb.build_ratings import elo_digest
+    block = dict(fit_seasons=[2024, 2025], holdout_seasons=[2026],
+                 holdout=dict(brier=0.19, games=5752),
+                 measured_on_elo_sha256=elo_digest(elo or ELO))
+    block.update(overrides)
+    return block
+
+
+FITTED = dict(elo=ELO, validation=validation())
 
 
 def write_config(tmp_path, payload):
@@ -666,7 +684,8 @@ def test_refitting_the_model_overwrites_what_was_stored(db):
     build(db, FITTED)
     before = db.execute('SELECT rating FROM team_rating WHERE team_key = ?'
                         ' AND season = 2026', ('A',)).fetchone()['rating']
-    build(db, dict(elo=dict(FITTED['elo'], k=45)))
+    changed = dict(FITTED['elo'], k=45)
+    build(db, dict(elo=changed, validation=validation(changed)))
     row = db.execute('SELECT config FROM rating_model').fetchone()
     assert json.loads(row['config'])['k'] == 45
     after = db.execute('SELECT rating FROM team_rating WHERE team_key = ?'
@@ -691,3 +710,94 @@ def test_a_rebuild_after_more_games_updates_the_game_count(db):
                        ' WHERE team_key = ? AND season = 2026',
                        ('A',)).fetchone()['games_counted']
     assert after == before + 1
+
+
+# --- the replay carries the validation with it -----------------------------
+#
+# A scheduled refresh does not fit anything: it replays the committed
+# parameters on a fresh runner, with no fit report anywhere on disk. Until
+# this, that stored the model with no held-out score at all, and the export
+# gate -- correctly -- refused every such export. The refresh could never have
+# published. So the held-out claim is committed beside the parameters, and
+# pinned to them, because a claim that outlives what it measured is worse than
+# no claim.
+
+def test_a_replay_with_no_report_takes_the_held_out_score_from_the_config(db):
+    from src.ncaambb.build_ratings import build
+    loaded(db, season_games(2026))
+    build(db, FITTED)
+    row = db.execute('SELECT fitted_on, held_out, holdout_brier, holdout_games'
+                     ' FROM rating_model ORDER BY model_id DESC'
+                     ' LIMIT 1').fetchone()
+    assert json.loads(row['held_out']) == [2026]
+    assert json.loads(row['fitted_on']) == [2024, 2025]
+    assert row['holdout_brier'] == 0.19
+    assert row['holdout_games'] == 5752
+
+
+def test_a_fit_report_still_wins_over_the_committed_claim(db):
+    """The report is the measurement that just happened; the config's block is
+    the record of the last one."""
+    from src.ncaambb.build_ratings import build
+    loaded(db, season_games(2026))
+    build(db, FITTED, report=dict(fit_seasons=[2015], holdout_seasons=[2025],
+                                  holdout=dict(brier=0.11, games=4000)))
+    row = db.execute('SELECT held_out, holdout_brier FROM rating_model'
+                     ' ORDER BY model_id DESC LIMIT 1').fetchone()
+    assert json.loads(row['held_out']) == [2025]
+    assert row['holdout_brier'] == 0.11
+
+
+def test_a_replay_of_a_config_with_no_validation_is_refused(db):
+    """This is the state the refresh was actually in: it would have replayed
+    happily and produced an export the gate then refused, every run."""
+    from src.ncaambb.build_ratings import build
+    loaded(db, season_games(2026))
+    with pytest.raises(ValueError, match='no "validation" section'):
+        build(db, dict(elo=ELO))
+
+
+def test_a_validation_measured_on_other_parameters_is_refused(db):
+    """Editing k without re-fitting must fail here rather than publish the old
+    Brier over the new model."""
+    from src.ncaambb.build_ratings import build
+    loaded(db, season_games(2026))
+    stale = dict(elo=dict(ELO, k=45), validation=validation(ELO))
+    with pytest.raises(ValueError, match='never earned'):
+        build(db, stale)
+
+
+@pytest.mark.parametrize('block, reason', [
+    (dict(holdout_seasons=[]), 'no held-out season'),
+    (dict(fit_seasons=[2024, 2026]), 'holdout leaked'),
+    (dict(holdout=dict(brier=0.25, games=5752)), 'coin flip'),
+    (dict(holdout=dict(brier=None, games=5752)), 'coin flip'),
+    (dict(holdout=dict(brier=True, games=5752)), 'coin flip'),
+    (dict(holdout=dict(brier=0.19, games=0)), 'held-out games'),
+    (dict(holdout=dict(brier=0.19, games=None)), 'held-out games'),
+])
+def test_an_unusable_validation_block_is_refused(db, block, reason):
+    from src.ncaambb.build_ratings import build
+    loaded(db, season_games(2026))
+    with pytest.raises(ValueError, match=reason):
+        build(db, dict(elo=ELO, validation=validation(**block)))
+
+
+def test_the_committed_configuration_passes_its_own_rule():
+    """The config in the repository is the one every refresh replays. A rule
+    nothing in the repository satisfies is a rule that gets deleted."""
+    from src.ncaambb.build_ratings import (check_validation, load_config,
+                                           report_from_config)
+    config = load_config()
+    checked = check_validation(config)
+    assert checked['holdout_seasons']
+    report = report_from_config(config)
+    # And what it yields must satisfy the publish gate, which is the thing
+    # that was refusing every refresh.
+    from src.ncaambb import publish_gate
+    manifest = dict(model=dict(
+        name='ncaambb_elo_v1', config_sha256='a' * 64,
+        fitted_on=report['fit_seasons'], held_out=report['holdout_seasons'],
+        holdout_brier=report['holdout']['brier'],
+        holdout_games=report['holdout']['games']))
+    assert publish_gate.check_model(manifest) == []
