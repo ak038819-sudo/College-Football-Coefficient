@@ -167,7 +167,8 @@ def scored_by(row, kind, before):
         now = (_int(row.get('total_home_score')),
                _int(row.get('total_away_score')))
         if now[0] is not None and now[1] is not None:
-            moved = (now[0] - before[0] == points, now[1] - before[1] == points)
+            moved = (now[0] - before[0] == points,
+                     now[1] - before[1] == points)
             if moved[0] and not moved[1]:
                 return home
             if moved[1] and not moved[0]:
@@ -193,11 +194,9 @@ def strip_clock(description):
     close = text.find(') ')
     if close <= 0:
         return text
-    inside = text[1:close]
-    if inside.count(':') != 1:
-        return text
-    minutes, _, seconds = inside.partition(':')
-    if not seconds.isdigit() or (minutes and not minutes.isdigit()):
+    minutes, colon, seconds = text[1:close].partition(':')
+    if not colon or not seconds.isdigit() \
+            or (minutes and not minutes.isdigit()):
         return text
     return text[close + 2:].strip() or None
 
@@ -367,7 +366,7 @@ def replace_season(connection, season, drives, scoring, *, snapshot_id=None):
 
 def ingest(connection, seasons=None, *, snapshot_id=None, opener=None,
            sleep=None, now=None, root=None, source=pbp_source):
-    """Fetch, reduce and store each season in turn, keeping none of the plays."""
+    """Fetch, reduce and store each season, keeping none of the plays."""
     report = dict(seasons=0, plays=0, drives=0, scoring=0, dropped=0,
                   bytes=0, absent=[], per_season=[])
     wanted = source.seasons_for(seasons, now=now)

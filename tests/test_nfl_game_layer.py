@@ -1,4 +1,4 @@
-"""The NFL game layer: the fitted win-probability curve, and the files it goes into.
+"""The NFL game layer: the fitted curve, and the files it goes into.
 
 What is checked here is the reasoning, not the numbers: a fit is re-run when
 the archive moves, so a test that pinned sigma to four decimals would fail
@@ -10,6 +10,7 @@ refuses an export whose week files are not where the manifest says.
 
 import json
 import math
+import pathlib
 
 import pytest
 
@@ -121,9 +122,14 @@ def test_a_game_that_went_to_overtime_had_a_regulation_margin_of_zero(db):
 
 
 def test_an_overtime_drive_is_not_a_state_this_model_can_speak_for(db):
+    # Two separate rules, and the second is not covered by the first: the
+    # reducer pins overtime to 0 regulation seconds, but a stored row that
+    # disagrees must still not be fitted on, because the model's answer at
+    # any positive clock is about regulation and overtime has none left.
     rows = [drive(1, quarter_start=4, seconds_left=120),
-            drive(2, quarter_start=5, seconds_left=0),
-            drive(3, quarter_start=4, seconds_left=0)]
+            drive(2, quarter_start=5, seconds_left=600),
+            drive(3, quarter_start=5, seconds_left=0),
+            drive(4, quarter_start=4, seconds_left=0)]
     store_drives(db, rows)
     loaded = fit_win_probability.load_games(db)
     states = fit_win_probability.load_states(db, loaded)
@@ -315,3 +321,28 @@ def test_the_build_gate_and_the_page_accept_the_same_schema_versions():
     page = tuple(int(part) for part in stated.split(','))
     assert page == publish_gate.SUPPORTED_SCHEMA_VERSIONS
     assert publish_gate.SCHEMA_VERSION in page
+
+
+# --- the one rule no in-suite test can see ---------------------------------
+
+def test_an_element_hidden_by_attribute_is_not_overruled_by_its_own_display():
+    """A guard on the stylesheet, because neither suite can measure it.
+
+    `hidden` is an attribute and any rule that sets `display` beats it.
+    `.cards` is `display: grid` and `.days` is `display: flex`, so hiding the
+    week strip and the card grid to show one game left a full week of cards
+    on screen under the open game. jsdom does no layout and its
+    getComputedStyle does not apply this rule, so the browser check caught it
+    and nothing in the suite could; this is what stops it coming back.
+
+    It is a source-text assertion, which is a weak kind, so it is written to
+    fail for the right reason: the second half checks that something toggled
+    by `hidden` really does set a display of its own, so the rule is still
+    earning its place rather than being kept by a test nobody can retire.
+    """
+    page = pathlib.Path(__file__).resolve().parents[1] / 'ui' / 'nfl.html'
+    text = page.read_text(encoding='utf-8')
+    assert '[hidden] { display: none !important; }' in text
+    assert '.cards { display: grid' in text
+    assert ".hidden = open" in text or "hidden = !open" in text
+

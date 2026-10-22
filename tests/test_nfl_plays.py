@@ -208,7 +208,7 @@ def test_a_drive_that_has_stopped_existing_stops_existing_here(db):
     assert rows_for(db, 'game_drive') == 1
 
 
-def test_a_drive_for_a_game_the_archive_does_not_have_is_dropped_and_counted(db):
+def test_a_drive_for_an_unknown_game_is_dropped_and_counted(db):
     drive = dict(game_key='nfl:nflverse:game:nope', drive=1, team_key=None,
                  code=None, quarter_start=1, quarter_end=1, clock_start=None,
                  clock_end=None, seconds_left=3600, start_yard_line=None,

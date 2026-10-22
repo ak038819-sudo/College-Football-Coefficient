@@ -1,4 +1,4 @@
-"""The per-game layer of the export: scoring summaries, drives, win probability.
+"""The game layer of the export: scoring, drives and win probability.
 
 ONE FILE A WEEK, `games/<season>/<week>.js`, fetched lazily when a reader
 opens a game. A season in one file measured 0.75 MB — 190 KB gzipped — to
@@ -137,7 +137,7 @@ def _intern(vocabulary, value):
 
 
 def build(connection, season, *, params=None):
-    """A season's game detail as {week key: payload}, or None where it has none."""
+    """A season's detail as {week key: payload}, or None where it has none."""
     if params is None:
         params = load_params()
     games = {}

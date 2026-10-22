@@ -1,4 +1,4 @@
-"""Fetching the nflverse play-by-play, one season at a time, without keeping it.
+"""Fetching the nflverse play-by-play one season at a time, keeping none.
 
 **NOTHING FROM THIS FILE IS EVER STORED OR COMMITTED.** The play-by-play is
 the largest thing in this project by two orders of magnitude: 99 MB of CSV for

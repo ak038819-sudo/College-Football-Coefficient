@@ -82,7 +82,7 @@ def elo_diff_from_expectation(expected, *, scale=400.0):
 
 
 def load_games(connection, *, first=FIRST_SEASON, through=None):
-    """One row per finished game: the rating gap, the margins and the result."""
+    """One row per finished game: the gap, the margins and the result."""
     games = {}
     sql = """
         SELECT g.game_key, g.season, g.home_points, g.away_points, g.overtime,
@@ -157,7 +157,7 @@ def overtime_home_share(rows):
 
 
 def solve_tie_half_width(rows, points_per_elo, sigma, observed):
-    """The band around zero whose kickoff tie mass matches how often it happens.
+    """The band whose kickoff tie mass matches how often it happens.
 
     Bisection rather than a formula: the mass depends on the rating gap of
     every game, so it is averaged over the real fixtures rather than taken at
@@ -193,7 +193,7 @@ def brier(states, params):
 
 def search_time_exponent(states, points_per_elo, sigma, overtime, tie_width,
                          *, low=GRID_LOW, high=GRID_HIGH, step=GRID_STEP):
-    """The exponent that scores best on the fitting states. Returns the grid too."""
+    """The exponent that scores best on the fit states, and the grid."""
     best, curve = None, []
     steps = int(round((high - low) / step))
     for index in range(steps + 1):
@@ -210,7 +210,7 @@ def search_time_exponent(states, points_per_elo, sigma, overtime, tie_width,
 
 
 def calibration_error(states, params, buckets=10):
-    """Mean absolute gap between predicted and observed, over equal-width bins."""
+    """Mean absolute gap between predicted and observed, by bin."""
     sums = [[0.0, 0.0, 0] for _ in range(buckets)]
     for state in states:
         probability = home_win_probability(
