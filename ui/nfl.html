@@ -101,6 +101,14 @@
                  color: #fff; font-weight: 600; }
   .badge.fresh { color: var(--green-hl); border-color: var(--green-hl); }
 
+  /* `hidden` is an attribute, and any rule that sets `display` beats it.
+     `.cards` is `display: grid` and `.days` is `display: flex`, so hiding
+     the week strip and the card grid to show one game left both of them on
+     screen -- the panel was drawn below a full week of cards. One rule
+     rather than a class on each, so the next element with a display of its
+     own does not reopen the same hole. */
+  [hidden] { display: none !important; }
+
   .panel {
     background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
     padding: 16px; margin: 18px 0 0;
@@ -138,6 +146,30 @@
   .card .side .pts { font-family: var(--font-mono); }
   .card .foot { font-size: 11px; color: var(--ink-dim); margin-top: 6px; }
   .undecided { color: var(--amber); }
+
+  .card.open { cursor: pointer; width: 100%; text-align: left; font: inherit;
+               color: inherit; }
+  .card.open:hover { border-color: var(--ink-dim); }
+  .gamehead { display: flex; justify-content: space-between; gap: 12px;
+              align-items: baseline; margin: 10px 0 4px; }
+  .gamehead .score { font-family: var(--font-mono); font-size: 20px; }
+  .wpchart { width: 100%; height: 110px; display: block;
+             border: 1px solid var(--line); border-radius: 8px;
+             background: var(--panel-2); }
+  .wpchart .line { fill: none; stroke: var(--accent, currentColor);
+                   stroke-width: 2; }
+  .wpchart .mid { stroke: var(--line); stroke-width: 1; }
+  .wpchart .tick { fill: var(--ink-dim); font-size: 11px;
+                   font-family: var(--font-mono); }
+  .wpkey { font-size: 11px; color: var(--ink-dim); margin: 4px 0 0; }
+  /* A scroller only scrolls what is wider than it. `table { width: 100% }`
+     shrinks instead, so a seven-column drive table squeezed every cell to
+     four wrapped lines rather than overflowing; `wide` gives it a floor to
+     overflow past. The scoring table is deliberately NOT wide: its play
+     descriptions are prose and should wrap. */
+  .scroller { overflow-x: auto; }
+  .scroller.wide table { min-width: 560px; }
+  .scroller.wide td, .scroller th, .scroller td.num { white-space: nowrap; }
 
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th, td { text-align: left; padding: 6px 8px;
@@ -232,6 +264,7 @@
   <section class="panel" id="scoreboard" hidden>
     <div class="days" id="weeks"></div>
     <div class="cards" id="cards"></div>
+    <div id="game"></div>
   </section>
 
   <section class="panel" id="standings" hidden>
@@ -299,7 +332,7 @@
                  history: 'History', teams: 'Teams',
                  games: 'Games' };
   var state = { manifest: null, verdict: null, season: null, week: null,
-                tab: 'home', coach: null, player: null,
+                tab: 'home', coach: null, player: null, game: null,
                 peopleView: 'players', query: '' };
 
   function el(id) { return document.getElementById(id); }
@@ -536,6 +569,7 @@
       button.setAttribute('aria-pressed', String(week === state.week));
       button.addEventListener('click', function () {
         state.week = week;
+        state.game = null;
         render();
       });
       host.appendChild(button);
@@ -548,6 +582,7 @@
       button.setAttribute('aria-pressed', String(state.week === 'post'));
       button.addEventListener('click', function () {
         state.week = 'post';
+        state.game = null;
         render();
       });
       host.appendChild(button);
@@ -574,9 +609,23 @@
       host.appendChild(empty);
       return;
     }
+    var openable = Boolean(loader.gameWeekSource(
+      state.manifest, state.season, loader.gameWeekKey(games[0]), BASE));
     games.forEach(function (game) {
-      var card = document.createElement('div');
-      card.className = 'card';
+      // A card is a button only where there is something behind it. An
+      // export built before the game layer, or a game not yet played, keeps
+      // a plain card rather than offering a tap that opens onto nothing.
+      var clickable = openable && app.isFinal(game);
+      var card = document.createElement(clickable ? 'button' : 'div');
+      card.className = clickable ? 'card open' : 'card';
+      if (clickable) {
+        card.type = 'button';
+        card.addEventListener('click', function () {
+          state.game = game.id;
+          window.scrollTo(0, 0);
+          render();
+        });
+      }
       var status = document.createElement('div');
       status.className = 'status';
       if (!app.timeKnown(game)) status.classList.add('undecided');
@@ -1349,6 +1398,221 @@
     });
   }
 
+  /* ------------------------------------------------------------------
+   * One game: the scoring summary, the drives and how the win probability
+   * moved. The week file behind it is fetched on the first tap and cached,
+   * so a reader browsing a week downloads it once for every game in it.
+   * ---------------------------------------------------------------- */
+
+  function gameWeekData(game) {
+    var week = loader.gameWeekKey(game);
+    var src = loader.gameWeekSource(state.manifest, state.season, week, BASE);
+    return peopleFile(src, function () {
+      return (window.NFL_GAMEWEEKS || {})[state.season + '/' + week] || null;
+    });
+  }
+
+  function currentGame() {
+    var games = (seasonPayload() || {}).games || [];
+    for (var i = 0; i < games.length; i += 1) {
+      if (games[i].id === state.game) return games[i];
+    }
+    return null;
+  }
+
+  function backButton(host, label, onClick) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'expand';
+    button.textContent = label;
+    button.addEventListener('click', onClick);
+    host.appendChild(button);
+  }
+
+  function svg(name, attributes) {
+    var node = document.createElementNS('http://www.w3.org/2000/svg', name);
+    Object.keys(attributes || {}).forEach(function (key) {
+      node.setAttribute(key, attributes[key]);
+    });
+    return node;
+  }
+
+  function renderWinProbability(host, entry, game) {
+    var points = app.winProbabilityTrace(entry, game);
+    if (points.length < 2) return;
+    var width = 600;
+    var height = 110;
+    var chart = svg('svg', {
+      'class': 'wpchart', viewBox: '0 0 ' + width + ' ' + height,
+      preserveAspectRatio: 'none', role: 'img',
+      'aria-label': 'Home win probability through the game'
+    });
+    chart.appendChild(svg('line', {
+      'class': 'mid', x1: 0, y1: height / 2, x2: width, y2: height / 2
+    }));
+    chart.appendChild(svg('path', {
+      'class': 'line', d: app.tracePath(points, width, height)
+    }));
+    // A line with no scale on it is a shape, not a measurement. Three ticks
+    // are enough to read it: the home code at the top, an even chance on the
+    // midline, the away code at the bottom.
+    [[14, 'tick-top', teamCode(game.home)],
+     [height / 2 - 4, 'tick-mid', '50%'],
+     [height - 6, 'tick-low', teamCode(game.away)]]
+      .forEach(function (tick) {
+        var label = svg('text', { x: 6, y: tick[0], 'class': 'tick' });
+        label.textContent = tick[2];
+        chart.appendChild(label);
+      });
+    host.appendChild(chart);
+    var key = document.createElement('p');
+    key.className = 'wpkey';
+    // Said on the page, not only in the docs: the curve knows the score, the
+    // clock and the pregame rating, and nothing about possession, field
+    // position, down or timeouts.
+    key.textContent = teamName(game.home) + ' win probability at the start of '
+      + 'each drive, from the pregame rating, the score and the clock. It '
+      + 'does not know possession, field position, down or timeouts.';
+    host.appendChild(key);
+  }
+
+  function scoringTable(host, entry, payload, game) {
+    var plays = app.unpackScoring(entry, payload.kinds);
+    if (!plays.length) return;
+    var heading = document.createElement('h3');
+    heading.textContent = 'Scoring';
+    host.appendChild(heading);
+    if (!app.scoringReconciles(entry)) {
+      emptyLine(host, 'The source\u2019s play log for this game does not add '
+        + 'up to the final score above, so the summary below is incomplete. '
+        + 'It is shown as the archive has it rather than corrected.');
+    }
+    var wrap = document.createElement('div');
+    wrap.className = 'scroller';
+    var table = document.createElement('table');
+    var head = document.createElement('tr');
+    ['Qtr', 'Clock', 'Team', 'Play', 'Score'].forEach(function (label) {
+      var th = document.createElement('th');
+      th.textContent = label;
+      head.appendChild(th);
+    });
+    table.appendChild(head);
+    plays.forEach(function (play) {
+      var tr = document.createElement('tr');
+      function cell(value, className) {
+        var td = document.createElement('td');
+        if (className) td.className = className;
+        text(td, value);
+        tr.appendChild(td);
+      }
+      cell(play.quarter);
+      cell(play.clock, 'num');
+      // The code, not the full name: the header above already names both
+      // teams, and "Kansas City Chiefs" in a five-column table at phone
+      // width wraps every row to three lines.
+      cell(teamCode(app.sideTeam(game, play.side)));
+      cell(play.description || play.label);
+      cell(play.awayScore === null || play.homeScore === null ? ''
+        : play.awayScore + '-' + play.homeScore, 'num');
+      table.appendChild(tr);
+    });
+    wrap.appendChild(table);
+    host.appendChild(wrap);
+  }
+
+  function drivesTable(host, entry, payload, game) {
+    var drives = app.unpackDrives(entry, payload.results);
+    if (!drives.length) return;
+    var heading = document.createElement('h3');
+    heading.textContent = 'Drives';
+    host.appendChild(heading);
+    var wrap = document.createElement('div');
+    wrap.className = 'scroller wide';
+    var table = document.createElement('table');
+    var head = document.createElement('tr');
+    // The last column is the HOME team's win probability on every row, not
+    // the possessing team's. Naming the column after the home team is the
+    // whole fix: a bare "Win prob" beside a row that names Baltimore reads
+    // as Baltimore's chance, and it is Kansas City's.
+    ['#', 'Team', 'Start', 'Drive', 'Result', 'Score',
+     teamCode(game.home) + ' win']
+      .forEach(function (label) {
+        var th = document.createElement('th');
+        th.textContent = label;
+        head.appendChild(th);
+      });
+    table.appendChild(head);
+    drives.forEach(function (drive) {
+      var tr = document.createElement('tr');
+      function cell(value, className) {
+        var td = document.createElement('td');
+        if (className) td.className = className;
+        text(td, value);
+        tr.appendChild(td);
+      }
+      cell(drive.drive, 'num');
+      cell(teamCode(app.sideTeam(game, drive.side)));
+      cell(drive.start);
+      cell(app.driveSummary(drive));
+      cell(drive.result);
+      cell(drive.awayScore === null || drive.homeScore === null ? ''
+        : drive.awayScore + '-' + drive.homeScore, 'num');
+      cell(app.probabilityText(drive.wp), 'num');
+      table.appendChild(tr);
+    });
+    wrap.appendChild(table);
+    host.appendChild(wrap);
+  }
+
+  function renderGame() {
+    var host = el('game');
+    host.innerHTML = '';
+    var game = currentGame();
+    if (!game) {
+      state.game = null;
+      return;
+    }
+    backButton(host, '\u2190 Back to the week', function () {
+      state.game = null;
+      render();
+    });
+    var head = document.createElement('div');
+    head.className = 'gamehead';
+    var who = document.createElement('div');
+    who.textContent = teamName(game.away) + ' at ' + teamName(game.home);
+    var score = document.createElement('div');
+    score.className = 'score';
+    score.textContent = app.isFinal(game)
+      ? game.away_points + ' \u2013 ' + game.home_points : '';
+    head.appendChild(who);
+    head.appendChild(score);
+    host.appendChild(head);
+    var status = document.createElement('p');
+    status.className = 'wpkey';
+    status.textContent = [app.weekLabel(game), app.statusLine(game),
+                          game.venue].filter(Boolean).join(' \u00b7 ');
+    host.appendChild(status);
+
+    var got = gameWeekData(game);
+    if (got.missing) {
+      return emptyLine(host, 'This export does not carry drives or scoring '
+        + 'summaries; it was built before the game layer was added. The next '
+        + 'refresh writes one.');
+    }
+    if (got.failed) {
+      return emptyLine(host, 'This game\u2019s detail could not be loaded: '
+        + got.failed);
+    }
+    if (got.loading || !got.data) return emptyLine(host, 'Loading\u2026');
+    var entry = (got.data.games || {})[game.id];
+    if (!entry) {
+      return emptyLine(host, 'The archive has no play-by-play for this game.');
+    }
+    renderWinProbability(host, entry, game);
+    scoringTable(host, entry, got.data, game);
+    drivesTable(host, entry, got.data, game);
+  }
+
   function render() {
     renderMeta();
     renderRefusal();
@@ -1364,8 +1628,13 @@
     if (!ok) return;
     renderSeasons();
     if (!el('scoreboard').hidden) {
+      var open = Boolean(state.game);
+      el('weeks').hidden = open;
+      el('cards').hidden = open;
+      el('game').hidden = !open;
       renderWeeks();
       renderCards();
+      if (open) renderGame();
     }
     if (!el('standings').hidden) {
       renderPlayoff();
@@ -1393,6 +1662,9 @@
 
   function selectSeason(season) {
     state.season = season;
+    // A game id belongs to one season. Keeping it across a season change
+    // would leave the panel looking for a game the new payload does not have.
+    state.game = null;
     var payload = seasonPayload();
     if (payload) {
       state.week = app.openingWeek(payload.games);

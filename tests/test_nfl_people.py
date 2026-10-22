@@ -226,12 +226,12 @@ class TestStoring:
             ('nfl:nflverse:player:00-1',)))
         assert stats == dict(receiving_yards=12.0)
 
-    def test_schema_3_creates_the_people_tables_on_an_old_database(self,
-                                                                   tmp_path):
+    def test_opening_an_old_database_creates_every_table_added_since(
+            self, tmp_path):
         path = tmp_path / 'old.db'
         connection = store.connect(path)
         for table in ('player_stat', 'player_stat_season', 'player_season',
-                      'draft_pick', 'player'):
+                      'draft_pick', 'player', 'game_drive', 'scoring_play'):
             connection.execute(f'DROP TABLE {table}')
         connection.execute('UPDATE schema_version SET version = 2')
         connection.commit()
@@ -240,9 +240,10 @@ class TestStoring:
         tables = {row[0] for row in connection.execute(
             "SELECT name FROM sqlite_master WHERE type = 'table'")}
         assert {'player', 'player_season', 'player_stat',
-                'player_stat_season', 'draft_pick'} <= tables
+                'player_stat_season', 'draft_pick', 'game_drive',
+                'scoring_play'} <= tables
         assert connection.execute(
-            'SELECT version FROM schema_version').fetchone()[0] == 3
+            'SELECT version FROM schema_version').fetchone()[0] == 4
         connection.close()
 
 

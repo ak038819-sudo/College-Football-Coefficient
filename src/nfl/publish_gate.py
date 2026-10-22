@@ -39,8 +39,10 @@ from pathlib import Path
 # version 1 export, and this gate runs against it in CI before the refresh
 # that would rewrite it: refusing 1 here would fail the publish check on data
 # that is perfectly good and leave the site unable to update at all.
-SCHEMA_VERSION = 3
-SUPPORTED_SCHEMA_VERSIONS = (1, 2, 3)
+# 4 adds the game layer: per-week drives, scoring summaries and the fitted
+# win-probability trace, under `games/<season>/<week>.js`.
+SCHEMA_VERSION = 4
+SUPPORTED_SCHEMA_VERSIONS = (1, 2, 3, 4)
 
 # Houston joined in 2002. Before that the league had 31 teams in this archive.
 EXPANSION_SEASON = 2002
@@ -238,6 +240,77 @@ def check_people(manifest):
     return reasons
 
 
+# A season's week files are keyed 1, 2, ... and `post`. Written out here
+# rather than imported from the exporter, exactly as PEOPLE_SHARDS is: a gate
+# that imports the thing it is checking agrees with it by construction.
+POSTSEASON_WEEK = 'post'
+
+
+def week_order(weeks):
+    return sorted(weeks, key=lambda week: (week == POSTSEASON_WEEK,
+                                           int(week) if week.isdigit() else 0))
+
+
+def check_games(manifest, root=None):
+    """An export that carries the game layer must carry all of it.
+
+    Absent is allowed: a schema 3 export has no game detail and is still a
+    good export. Present-but-partial is not. A season states one cache token
+    covering all of its week files, so the check is that every week it lists
+    is on disk and that the token is the hash of those files in playing
+    order — which is the only thing standing between a reader and a cached
+    week file from a previous export.
+    """
+    games = (manifest.get('files') or {}).get('games')
+    if games is None:
+        return []
+    if not isinstance(games, dict) or not isinstance(games.get('seasons'),
+                                                     dict):
+        return ['files.games is not a section; the game layer cannot be read']
+    seasons = games['seasons']
+    if not seasons:
+        return ['the game layer lists no seasons']
+    reasons = []
+    for season in sorted(seasons):
+        entry = seasons[season]
+        if not isinstance(entry, dict):
+            reasons.append(f'the game layer\u2019s {season} is not a section')
+            continue
+        weeks = entry.get('weeks')
+        token = entry.get('v')
+        if not isinstance(weeks, list) or not weeks \
+                or not all(isinstance(week, str) and week for week in weeks):
+            reasons.append(f'the game layer names no weeks for {season}')
+            continue
+        if weeks != week_order(weeks):
+            reasons.append(f'the game layer lists {season}\u2019s weeks out '
+                           'of playing order, so its cache token cannot be '
+                           'reproduced')
+            continue
+        if not isinstance(token, str) or not token:
+            reasons.append(f'the game layer gives {season} no version stamp')
+            continue
+        if root is None:
+            continue
+        bodies, missing = [], []
+        for week in weeks:
+            target = Path(root) / 'games' / season / f'{week}.js'
+            if not target.exists():
+                missing.append(f'games/{season}/{week}.js')
+                continue
+            bodies.append(target.read_text(encoding='utf-8'))
+        if missing:
+            reasons.append('the game layer names files that are not there: '
+                           + ', '.join(missing))
+            continue
+        stamp = hashlib.sha256(
+            ''.join(bodies).encode('utf-8')).hexdigest()[:10]
+        if stamp != token:
+            reasons.append(f'games/{season} hashes to {stamp} but the '
+                           f'manifest says {token}')
+    return reasons
+
+
 def manifest_files(manifest):
     """Every path the manifest points at, with its stated version stamp."""
     found = []
@@ -254,7 +327,12 @@ def manifest_files(manifest):
             for item in value:
                 walk(item)
 
-    walk(manifest.get('files'))
+    files = dict(manifest.get('files') or {})
+    # The game layer states one token per season rather than one path per
+    # file, so `check_games` verifies it instead; walking it here would read
+    # its week keys as paths.
+    files.pop('games', None)
+    walk(files)
     walk(manifest.get('seasons'))
     return found
 
@@ -295,7 +373,7 @@ def check(manifest, *, root=None, now=None):
         return reasons
     return (check_as_of(manifest, now=now) + check_model(manifest)
             + check_coverage(manifest) + check_people(manifest)
-            + check_files(manifest, root))
+            + check_games(manifest, root) + check_files(manifest, root))
 
 
 def render(reasons):

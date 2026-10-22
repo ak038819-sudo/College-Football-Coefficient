@@ -1,0 +1,376 @@
+// The NFL game layer in the browser: the pure helpers that unpack the packed
+// week files, and the page that draws one game from them, loaded in jsdom
+// against a site with a real manifest naming a game layer.
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { JSDOM } = require('jsdom');
+
+const UI = path.join(__dirname, '..', 'ui');
+const app = require(path.join(UI, 'nfl_app.js'));
+const loader = require(path.join(UI, 'nfl_loader.js'));
+
+const KC = 'nfl:nflverse:franchise:KC';
+const BUF = 'nfl:nflverse:franchise:BUF';
+const KINDS = ['TD', 'FG', 'XP', '2PT', 'SAFETY', 'D2PT'];
+const RESULTS = ['Punt', 'Touchdown'];
+
+// One drive, packed as src/nfl/game_export.py writes it. The Python test
+// test_a_drive_is_packed_in_the_order_the_page_unpacks_it pins the other end.
+function drive(over) {
+  const row = [1, 1, 1, 3600, 'KC 25', 5, 20, '3:00', 0, 0, 0, 540];
+  (over || []).forEach((pair) => { row[pair[0]] = pair[1]; });
+  return row;
+}
+
+function score(over) {
+  const row = [1, 1, '08:18', 0, 6, 'P.Mahomes', null, 6, 0, 'TOUCHDOWN.'];
+  (over || []).forEach((pair) => { row[pair[0]] = pair[1]; });
+  return row;
+}
+
+// --- unpacking -------------------------------------------------------------
+
+test('a packed drive row is read back into the fields the page draws', () => {
+  const got = app.unpackDrives({ d: [drive()] }, RESULTS)[0];
+  assert.equal(got.drive, 1);
+  assert.equal(got.side, 1);
+  assert.equal(got.quarter, 1);
+  assert.equal(got.seconds, 3600);
+  assert.equal(got.start, 'KC 25');
+  assert.equal(got.plays, 5);
+  assert.equal(got.yards, 20);
+  assert.equal(got.top, '3:00');
+  assert.equal(got.result, 'Punt');
+  assert.equal(got.homeScore, 0);
+  assert.equal(got.awayScore, 0);
+  assert.equal(got.wp, 540);
+});
+
+test('an interned result with no word behind it is left empty, not printed '
+  + 'as a number', () => {
+    const got = app.unpackDrives({ d: [drive([[8, 9]])] }, RESULTS)[0];
+    assert.equal(got.result, null);
+  });
+
+test('a packed scoring row carries its kind and a readable label', () => {
+  const got = app.unpackScoring({ s: [score()] }, KINDS)[0];
+  assert.equal(got.side, 1);
+  assert.equal(got.quarter, 1);
+  assert.equal(got.clock, '08:18');
+  assert.equal(got.kind, 'TD');
+  assert.equal(got.label, 'Touchdown');
+  assert.equal(got.points, 6);
+  assert.equal(got.scorer, 'P.Mahomes');
+  assert.equal(got.description, 'TOUCHDOWN.');
+});
+
+test('a safety is labelled as one rather than as a generic score', () => {
+  const got = app.unpackScoring({ s: [score([[3, 4], [4, 2]])] }, KINDS)[0];
+  assert.equal(got.kind, 'SAFETY');
+  assert.equal(got.label, 'Safety');
+});
+
+// --- the probability a page prints -----------------------------------------
+
+test('a chance the model did not call impossible is never printed as none',
+  () => {
+    // A model that has given a team one in a thousand has not given it none,
+    // and 0% is a claim it did not make.
+    assert.equal(app.probabilityText(1), '<1%');
+    assert.equal(app.probabilityText(999), '>99%');
+    assert.equal(app.probabilityText(0), '0%');
+    assert.equal(app.probabilityText(1000), '100%');
+    assert.equal(app.probabilityText(540), '54%');
+  });
+
+test('a drive the export could not price prints nothing', () => {
+  assert.equal(app.probabilityText(null), null);
+  assert.equal(app.probabilityText(undefined), null);
+});
+
+// --- the trace -------------------------------------------------------------
+
+const FINAL = { id: 'g1', home: KC, away: BUF, home_points: 27,
+                away_points: 20, week: 1 };
+
+test('the trace runs from kickoff through every priced drive to the result',
+  () => {
+    const entry = { wp: 580, d: [drive(), drive([[0, 2], [3, 1800],
+      [11, 700]])] };
+    const points = app.winProbabilityTrace(entry, FINAL);
+    assert.equal(points.length, 4);
+    assert.equal(points[0].at, 0);
+    assert.equal(points[0].value, 0.58);
+    assert.equal(points[2].at, 0.5);
+    assert.equal(points[2].value, 0.7);
+    // The line ends where the game did, not where the last drive started.
+    assert.equal(points[3].at, 1);
+    assert.equal(points[3].value, 1);
+  });
+
+test('a home loss ends the trace at zero and a tie at a half', () => {
+  const lost = Object.assign({}, FINAL, { home_points: 20, away_points: 27 });
+  const tied = Object.assign({}, FINAL, { home_points: 20, away_points: 20 });
+  assert.equal(app.winProbabilityTrace({ wp: 500 }, lost).pop().value, 0);
+  assert.equal(app.winProbabilityTrace({ wp: 500 }, tied).pop().value, 0.5);
+});
+
+test('an unpriced drive is dropped rather than drawn at an even chance',
+  () => {
+    const entry = { wp: 500, d: [drive([[11, null]]), drive([[0, 2]])] };
+    const points = app.winProbabilityTrace(entry, null);
+    assert.equal(points.length, 2);
+    assert.equal(points[1].label, 'Drive 2');
+  });
+
+test('an unfinished game has no closing point', () => {
+  const scheduled = { id: 'g2', home: KC, away: BUF, home_points: null,
+                      away_points: null };
+  const points = app.winProbabilityTrace({ wp: 500, d: [drive()] },
+                                         scheduled);
+  assert.equal(points[points.length - 1].label, 'Drive 1');
+});
+
+test('the path is straight segments through the points, in a box the caller '
+  + 'scales', () => {
+    const points = [{ at: 0, value: 1 }, { at: 0.5, value: 0.5 },
+                    { at: 1, value: 0 }];
+    assert.equal(app.tracePath(points, 100, 10), 'M0.00 0.00 L50.00 5.00 '
+      + 'L100.00 10.00');
+    // One point is not a line.
+    assert.equal(app.tracePath([points[0]], 100, 10), '');
+  });
+
+// --- which file a game's detail is in --------------------------------------
+
+test('a postseason game is in the post file whatever week it is numbered',
+  () => {
+    assert.equal(loader.gameWeekKey({ week: 19, postseason: 1 }), 'post');
+    assert.equal(loader.gameWeekKey({ week: 5 }), '5');
+    assert.equal(loader.gameWeekKey({ week: null }), 'post');
+  });
+
+test('a week the manifest does not list has no source, so no fetch is made',
+  () => {
+    const manifest = { files: { games: { seasons: {
+      2024: { v: 'abc1234567', weeks: ['1', 'post'] } } } } };
+    assert.equal(loader.gameWeekSource(manifest, 2024, '1', 'data/nfl/'),
+      'data/nfl/games/2024/1.js?v=abc1234567');
+    assert.equal(loader.gameWeekSource(manifest, 2024, '7', 'data/nfl/'),
+      null);
+    assert.equal(loader.gameWeekSource(manifest, 2023, '1', 'data/nfl/'),
+      null);
+    assert.equal(loader.gameWeekSource({ files: {} }, 2024, '1'), null);
+  });
+
+test('a season with no cache token has no source, because a url with no '
+  + 'version stamp can be served from a cache of a previous export', () => {
+    const manifest = { files: { games: { seasons: {
+      2024: { weeks: ['1'] } } } } };
+    assert.equal(loader.gameWeekSource(manifest, 2024, '1'), null);
+  });
+
+// --- the page --------------------------------------------------------------
+
+function stamp(text) {
+  return crypto.createHash('sha256').update(text).digest('hex').slice(0, 10);
+}
+
+function teams() {
+  return {
+    [KC]: { code: 'KC', name: 'Kansas City Chiefs', conference: 'AFC',
+            division: 'West' },
+    [BUF]: { code: 'BUF', name: 'Buffalo Bills', conference: 'AFC',
+             division: 'East' }
+  };
+}
+
+function board() {
+  return [
+    { team: KC, code: 'KC', conference: 'AFC', division: 'West',
+      rating: 1648.4, rank: 1, wins: 1, losses: 0, ties: 0, rated_games: 1 },
+    { team: BUF, code: 'BUF', conference: 'AFC', division: 'East',
+      rating: 1591.6, rank: 2, wins: 0, losses: 1, ties: 0, rated_games: 1 }
+  ];
+}
+
+function schedule() {
+  return [{ id: 'g1', date: '2026-09-13', at: '2026-09-13T17:00:00Z',
+            week: 1, type: 'regular', home: KC, away: BUF, home_points: 27,
+            away_points: 20, rateable: 1, venue: 'Arrowhead Stadium' }];
+}
+
+function weekPayload(over) {
+  return Object.assign({
+    season: 2026, week: '1', kinds: KINDS, results: RESULTS,
+    games: { g1: { wp: 580, ok: 1,
+      d: [drive(), drive([[0, 2], [1, 0], [3, 1800], [8, 1], [11, 700]])],
+      s: [score(), score([[0, 0], [3, 1], [4, 3], [9, 'FIELD GOAL.']])] } }
+  }, over || {});
+}
+
+function site(withGames, payloadOver) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nfl-game-'));
+  const base = path.join(root, 'data', 'nfl');
+  fs.mkdirSync(path.join(base, 'seasons'), { recursive: true });
+  const seasonText = 'window.NFL_SEASONS=(window.NFL_SEASONS||{});'
+    + 'window.NFL_SEASONS[2026]='
+    + JSON.stringify({ season: 2026, board: board(), games: schedule() })
+    + ';\n';
+  const teamsText = 'window.NFL_TEAMS=' + JSON.stringify(teams()) + ';\n';
+  fs.writeFileSync(path.join(base, 'seasons', '2026.js'), seasonText);
+  fs.writeFileSync(path.join(base, 'teams.js'), teamsText);
+  const payload = {
+    schema_version: withGames ? 4 : 3,
+    sport: 'nfl',
+    generated_at: new Date(Date.now() - 20 * 60000).toISOString(),
+    latest_season: 2026,
+    model: { name: 'nfl_elo_v1', fitted_on: [1999, 2020],
+      held_out: [2021, 2025], holdout_brier: 0.22372, holdout_games: 1424 },
+    coverage: [{ season: 2026, teams: 32, rated_teams: 2, games: 1,
+      finals: 1, complete: false, played_teams: 2 }],
+    seasons: { 2026: 'seasons/2026.js?v=' + stamp(seasonText) },
+    files: { teams: 'teams.js?v=' + stamp(teamsText) }
+  };
+  if (withGames) {
+    const text = 'window.NFL_GAMEWEEKS=(window.NFL_GAMEWEEKS||{});'
+      + 'window.NFL_GAMEWEEKS["2026/1"]='
+      + JSON.stringify(weekPayload(payloadOver)) + ';\n';
+    fs.mkdirSync(path.join(base, 'games', '2026'), { recursive: true });
+    fs.writeFileSync(path.join(base, 'games', '2026', '1.js'), text);
+    payload.files.games = { seasons: { 2026: { v: stamp(text),
+      weeks: ['1'] } } };
+  }
+  fs.writeFileSync(path.join(base, 'manifest.json'), JSON.stringify(payload));
+  for (const name of ['nfl.html', 'nfl_loader.js', 'nfl_app.js',
+    'ncaambb_app.js']) {
+    fs.copyFileSync(path.join(UI, name), path.join(root, name));
+  }
+  return root;
+}
+
+function settle(ready, tries = 500) {
+  return new Promise((resolve, reject) => {
+    let left = tries;
+    const tick = () => {
+      if (ready()) return resolve();
+      if (left-- <= 0) return reject(new Error('the page never rendered'));
+      setTimeout(tick, 10);
+    };
+    tick();
+  });
+}
+
+async function open(withGames, payloadOver) {
+  const root = site(withGames, payloadOver);
+  const file = path.join(root, 'nfl.html');
+  const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
+    url: 'file://' + file,
+    runScripts: 'dangerously',
+    resources: 'usable',
+    pretendToBeVisual: true,
+    beforeParse(window) {
+      window.fetch = function (url) {
+        const target = path.join(root, String(url));
+        return Promise.resolve({
+          ok: fs.existsSync(target),
+          json: () => Promise.resolve(
+            JSON.parse(fs.readFileSync(target, 'utf8')))
+        });
+      };
+    }
+  });
+  await settle(() => dom.window.document.querySelector(
+    '#cards .card, #refusal-list li'));
+  return dom;
+}
+
+function click(dom, selector) {
+  const node = dom.window.document.querySelector(selector);
+  assert.ok(node, 'no node for ' + selector);
+  node.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+}
+
+test('a card opens a game page with its scoring summary and its drives',
+  async () => {
+    const dom = await open(true);
+    click(dom, 'button[data-tab="games"]');
+    click(dom, '#cards .card.open');
+    await settle(() => dom.window.document.querySelector('#game table'));
+    const panel = dom.window.document.getElementById('game');
+    assert.match(panel.textContent, /Buffalo Bills at Kansas City Chiefs/);
+    assert.match(panel.textContent, /TOUCHDOWN\./);
+    assert.match(panel.textContent, /FIELD GOAL\./);
+    assert.match(panel.textContent, /Drives/);
+    // The week strip and the card grid give way to the game.
+    assert.equal(dom.window.document.getElementById('cards').hidden, true);
+    assert.equal(dom.window.document.getElementById('weeks').hidden, true);
+    dom.window.close();
+  });
+
+test('the drive table names the home team over the win-probability column, '
+  + 'because every row of it is the home team’s', async () => {
+    const dom = await open(true);
+    click(dom, 'button[data-tab="games"]');
+    click(dom, '#cards .card.open');
+    await settle(() => dom.window.document.querySelector('#game table'));
+    const tables = dom.window.document.querySelectorAll('#game table');
+    const header = tables[tables.length - 1].querySelector('tr').textContent;
+    assert.match(header, /KC win/);
+    assert.doesNotMatch(header, /BUF win/);
+    dom.window.close();
+  });
+
+test('the win-probability line is drawn with a scale to read it by',
+  async () => {
+    const dom = await open(true);
+    click(dom, 'button[data-tab="games"]');
+    click(dom, '#cards .card.open');
+    await settle(() => dom.window.document.querySelector('#game svg'));
+    const svg = dom.window.document.querySelector('#game svg');
+    assert.ok(svg.querySelector('path.line').getAttribute('d').length > 10);
+    const ticks = Array.from(svg.querySelectorAll('text'))
+      .map((node) => node.textContent);
+    assert.deepEqual(ticks, ['KC', '50%', 'BUF']);
+    dom.window.close();
+  });
+
+test('a game whose scoring does not add up says so above the summary',
+  async () => {
+    const payload = weekPayload();
+    payload.games.g1.ok = 0;
+    const dom = await open(true, payload);
+    click(dom, 'button[data-tab="games"]');
+    click(dom, '#cards .card.open');
+    await settle(() => dom.window.document.querySelector('#game table'));
+    assert.match(dom.window.document.getElementById('game').textContent,
+      /does not add up to the final score/);
+    dom.window.close();
+  });
+
+test('an export built before the game layer offers no tap that opens onto '
+  + 'nothing', async () => {
+    const dom = await open(false);
+    click(dom, 'button[data-tab="games"]');
+    assert.equal(
+      dom.window.document.querySelector('#cards .card.open'), null);
+    assert.ok(dom.window.document.querySelector('#cards .card'));
+    dom.window.close();
+  });
+
+test('going back to the week restores the cards', async () => {
+  const dom = await open(true);
+  click(dom, 'button[data-tab="games"]');
+  click(dom, '#cards .card.open');
+  await settle(() => dom.window.document.querySelector('#game table'));
+  click(dom, '#game button.expand');
+  assert.equal(dom.window.document.getElementById('cards').hidden, false);
+  assert.equal(dom.window.document.getElementById('game').hidden, true);
+  dom.window.close();
+});

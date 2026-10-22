@@ -21,7 +21,7 @@
    * refused the older ones would blank the page for anyone served this
    * script before the next refresh rewrites the export, and one that refused
    * the newest would blank it for everyone after. */
-  var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3];
+  var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4];
 
   /* The NFL is a fixed-size league, so this is an equality, not a floor: 32
    * franchises from the 2002 expansion and 31 before it. An export missing
@@ -204,8 +204,38 @@
     return (base || 'data/nfl/') + entry;
   }
 
+  /* The file holding one game's drives and scoring summary.
+   *
+   * The path is DERIVED, not looked up: `games/<season>/<week>.js`, with the
+   * week taken from the game the reader just clicked. The manifest states
+   * only a cache token per season, because naming all 497 week files in a
+   * manifest every reader fetches would cost more than the one week file a
+   * reader who opens a game fetches. The token still has to be there: a URL
+   * with no version stamp is one a reader can be served from a cache written
+   * by a previous export. */
+  function gameWeekKey(game) {
+    if (!game) return null;
+    if (game.postseason) return 'post';
+    var week = Number(game.week);
+    return isFinite(week) && week > 0 ? String(week) : 'post';
+  }
+
+  function gameWeekSource(manifest, season, week, base) {
+    var games = manifest && manifest.files && manifest.files.games;
+    var seasons = games && games.seasons;
+    var entry = seasons && seasons[String(season)];
+    if (!entry || typeof entry.v !== 'string' || !entry.v) return null;
+    if (!Array.isArray(entry.weeks) || entry.weeks.indexOf(week) < 0) {
+      return null;
+    }
+    return (base || 'data/nfl/') + 'games/' + season + '/' + week +
+      '.js?v=' + entry.v;
+  }
+
   var api = {
     SUPPORTED_SCHEMA_VERSIONS: SUPPORTED_SCHEMA_VERSIONS,
+    gameWeekKey: gameWeekKey,
+    gameWeekSource: gameWeekSource,
     EXPANSION_SEASON: EXPANSION_SEASON,
     MAX_HOLDOUT_BRIER: MAX_HOLDOUT_BRIER,
     STALE_AFTER_MINUTES: STALE_AFTER_MINUTES,
