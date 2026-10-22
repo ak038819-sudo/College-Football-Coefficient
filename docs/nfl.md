@@ -350,6 +350,13 @@ Three games — two in 1999, one in 2000 — have a final score and no plays at
 all. They are the source's gaps, not dropped rows: a drive whose game the
 archive does not carry is counted and reported rather than discarded quietly.
 
+**Only a confirmed 404 counts as "not published yet."** The season in
+progress may have no file in September, and tolerating that is how the
+refresh keeps working; tolerating a timeout or a 503 the same way would let
+a run succeed while the published export quietly lost the current season's
+game detail. `NflNotPublished` is a separate exception for exactly that
+difference.
+
 `src/nfl/pbp_source.py` streams one season to a temporary file, and
 `src/nfl/plays.py` reduces it and deletes it before the next one is fetched,
 so the peak disk cost is one season rather than 2.4 GB. A download that is
@@ -460,6 +467,14 @@ heavier than the week file only a reader opening a game fetches. The gate
 recomputes the token from the files on disk, in playing order, and refuses an
 export whose weeks are listed out of that order — a token nobody can
 reproduce is not a cache stamp.
+
+**An overtime drive carries no number.** The model's walk runs to the end of
+regulation and hands a tie to one measured overtime share, so `seconds_left`
+is 0 inside overtime and the model would answer 1 or 0 by the score alone —
+the drive after the first overtime field goal drawn as a certainty while the
+opponent still has a possession coming. Those drives are left unpriced, the
+same rule the fit applies to the same states, and the page says so under the
+chart.
 
 The win probability is computed **in Python at export time**, one number per
 drive start. Every NFL game in this archive is finished, so there is nothing

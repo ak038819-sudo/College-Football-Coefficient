@@ -1437,7 +1437,7 @@
     return node;
   }
 
-  function renderWinProbability(host, entry, game) {
+  function renderWinProbability(host, entry, payload, game) {
     var points = app.winProbabilityTrace(entry, game);
     if (points.length < 2) return;
     var width = 600;
@@ -1466,13 +1466,22 @@
       });
     host.appendChild(chart);
     var key = document.createElement('p');
-    key.className = 'wpkey';
+    // Its own class, not just `wpkey`: the status line above the chart has
+    // that class too, and a test reading "the first .wpkey" was reading the
+    // venue instead of the legend and passing on it.
+    key.className = 'wpkey wplegend';
     // Said on the page, not only in the docs: the curve knows the score, the
     // clock and the pregame rating, and nothing about possession, field
     // position, down or timeouts.
     key.textContent = teamName(game.home) + ' win probability at the start of '
       + 'each drive, from the pregame rating, the score and the clock. It '
-      + 'does not know possession, field position, down or timeouts.';
+      + 'does not know possession, field position, down or timeouts.'
+      // Said where the gap is, not only in the docs: the model's clock runs
+      // to the end of regulation, so a state inside overtime is one it
+      // cannot speak for and carries no number at all.
+      + (app.hasUnpricedDrives(entry, payload)
+        ? ' Overtime drives carry no number: the model runs to the end of '
+          + 'regulation and has nothing to say inside overtime.' : '');
     host.appendChild(key);
   }
 
@@ -1608,7 +1617,7 @@
     if (!entry) {
       return emptyLine(host, 'The archive has no play-by-play for this game.');
     }
-    renderWinProbability(host, entry, game);
+    renderWinProbability(host, entry, got.data, game);
     scoringTable(host, entry, got.data, game);
     drivesTable(host, entry, got.data, game);
   }

@@ -149,7 +149,16 @@ jobs:
         id: publish
         env:
           BUILT: ${{ runner.temp }}/nfl-export
-          ALLOWED: ${{ inputs.publish == null && 'true' || inputs.publish }}
+          # A PARTIAL REDUCTION MAY NEVER PUBLISH. `pbp_seasons` reduces
+          # only the seasons named, and the database is built from scratch
+          # on every run, so `build_games` then emits a game layer covering
+          # only those seasons. The gate checks the seasons that ARE there
+          # and `publish.plan` only checks that the `games` key survives, so
+          # nothing downstream would notice a one-season layer replacing
+          # twenty-eight. The input is for rehearsing a reduction, and this
+          # is what keeps it to that.
+          ALLOWED: ${{ (inputs.publish == null && 'true' || inputs.publish)
+            && (inputs.pbp_seasons == null || inputs.pbp_seasons == '') }}
         run: |
           set -o pipefail
           python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
@@ -163,7 +172,9 @@ jobs:
           if decision['publish'] and allowed:
               publish.apply(decision, built, live)
           elif decision['publish']:
-              print('\nNot committed: this run was dispatched with publishing off.')
+              print('\nNot committed: this run was dispatched with '
+                    'publishing off, or with only some play-by-play seasons '
+                    'reduced, which may not replace the full game layer.')
           with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
               out.write(f"published={'true' if decision['publish'] and allowed else 'false'}\n")
           # A refusal is a failed run, not a quiet one: the health light below

@@ -5,9 +5,8 @@ measured against the whole archive, 1999-2026, and the measurement is written
 down where the code applies it.
 """
 
-import gzip
-import io
 import urllib.error
+from datetime import datetime, timezone
 
 import pytest
 
@@ -262,6 +261,49 @@ def test_a_download_larger_than_the_cap_is_refused(tmp_path):
                             opener=opener, sleep=lambda _: None,
                             max_bytes=16)
     assert not (tmp_path / 'out.csv').exists()
+
+
+def test_only_a_confirmed_404_means_not_published_yet(tmp_path):
+    """Every other failure on the season in progress must fail the run.
+
+    Tolerating all of them would let a timeout or a 503 read as "no file
+    yet": the run would succeed and the published export would lose the
+    current season's game detail, which is the season anyone is looking at.
+    """
+    calls = []
+
+    def opener_for(code):
+        def opener(request, timeout=None):
+            calls.append(code)
+            raise urllib.error.HTTPError(
+                request.full_url, code, 'error', {}, None)
+        return opener
+
+    # 2030 is well past the season in progress at `now`, so it is the
+    # "not published yet" case if anything is.
+    now = datetime(2026, 10, 22, tzinfo=timezone.utc)
+    got = list(pbp_source.each_season(
+        [2030], opener=opener_for(404), sleep=lambda _: None, now=now,
+        root=tmp_path))
+    assert got == [(2030, None, 0)]
+
+    for code in (500, 503, 403):
+        with pytest.raises(pbp_source.NflSourceError) as raised:
+            list(pbp_source.each_season(
+                [2030], opener=opener_for(code), sleep=lambda _: None,
+                now=now, root=tmp_path))
+        assert not isinstance(raised.value, pbp_source.NflNotPublished)
+
+
+def test_a_settled_season_with_no_file_is_a_failure_not_a_gap(tmp_path):
+    def opener(request, timeout=None):
+        raise urllib.error.HTTPError(request.full_url, 404, 'x', {}, None)
+
+    now = datetime(2026, 10, 22, tzinfo=timezone.utc)
+    with pytest.raises(pbp_source.NflNotPublished):
+        list(pbp_source.each_season([2015], opener=opener,
+                                    sleep=lambda _: None, now=now,
+                                    root=tmp_path))
 
 
 # --- the week a game's detail lives in -------------------------------------

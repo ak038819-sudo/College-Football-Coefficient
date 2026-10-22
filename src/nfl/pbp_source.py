@@ -43,6 +43,19 @@ MAX_BYTES = 512 * 1024 * 1024
 CHUNK = 1024 * 1024
 
 
+class NflNotPublished(NflSourceError):
+    """The file is not there: the server said 404 and nothing else.
+
+    A SEPARATE EXCEPTION BECAUSE THE DIFFERENCE MATTERS. The season in
+    progress may have no play-by-play file yet, and tolerating that is how a
+    refresh keeps working in September. Tolerating every failure is a
+    different thing: a timeout, a 503 or the size cap would then read as
+    "not published yet", the run would succeed, and the published export
+    would lose the current season's game detail — the season anyone is
+    actually looking at.
+    """
+
+
 def play_by_play_url(season):
     return f'{RELEASE}/pbp/play_by_play_{season}.csv'
 
@@ -95,6 +108,9 @@ def download(url, target, *, opener=None, sleep=None, attempts=ATTEMPTS,
             return written
         except HTTPError as error:
             last = error
+            if error.code == 404:
+                raise NflNotPublished(
+                    f'{url} is not there (HTTP 404)') from error
             if error.code not in RETRYABLE_STATUS:
                 raise NflSourceError(
                     f'{url} failed with HTTP {error.code}') from error
@@ -162,9 +178,10 @@ def each_season(seasons, *, opener=None, sleep=None, now=None, root=None):
             try:
                 size = download(play_by_play_url(season), target,
                                 opener=opener, sleep=sleep)
-            except NflSourceError:
+            except NflNotPublished:
                 # The season in progress may have no file yet; a settled
-                # season missing one is a real failure.
+                # season missing one is a real failure, and so is any other
+                # kind of failure on either — see NflNotPublished.
                 if moment_season is not None and season >= moment_season:
                     yield season, None, 0
                     continue

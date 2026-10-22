@@ -702,14 +702,18 @@
 
   /* A per-mille integer as the percentage a page prints.
    *
-   * Never rounded to a bare 0% or 100%: a model that has given a team a
-   * one-in-a-thousand chance has not given it none, and printing none is a
-   * claim the model did not make. */
+   * NEVER 0% OR 100%, AND THE ENDPOINTS ARE INCLUDED. A model that has given
+   * a team one chance in a thousand has not given it none, and printing none
+   * is a claim it did not make — but the exporter rounds to per-mille, so a
+   * real 0.0004 arrives here as exactly 0 and an excluded endpoint would
+   * print it as certainty. Every state that reaches this function has time
+   * left on the clock: an overtime state, where the model really does answer
+   * 1 or 0 by the score alone, carries no probability and never gets here. */
   function probabilityText(perMille) {
     if (typeof perMille !== 'number' || !isFinite(perMille)) return null;
     var pct = perMille / 10;
-    if (pct > 0 && pct < 0.5) return '<1%';
-    if (pct < 100 && pct > 99.5) return '>99%';
+    if (pct < 0.5) return '<1%';
+    if (pct > 99.5) return '>99%';
     return Math.round(pct) + '%';
   }
 
@@ -772,6 +776,16 @@
     return parts.join(', ');
   }
 
+  /* Whether any drive of this game went unpriced, so the page can say why.
+   *
+   * It is always an overtime drive: the exporter prices every drive that has
+   * a score, a clock and a rated game, and leaves out only the states the
+   * model's regulation clock cannot speak for. */
+  function hasUnpricedDrives(entry, payload) {
+    return unpackDrives(entry, payload && payload.results)
+      .some(function (drive) { return typeof drive.wp !== 'number'; });
+  }
+
   /* Whether this game's scoring summary may be drawn as a scoreboard.
    *
    * 18 of 7,366 games in the archive have a play log whose points do not add
@@ -793,6 +807,7 @@
     tracePath: tracePath,
     sideTeam: sideTeam,
     driveSummary: driveSummary,
+    hasUnpricedDrives: hasUnpricedDrives,
     scoringReconciles: scoringReconciles,
     ALIGNMENT_FROM: ALIGNMENT_FROM,
     CONFERENCES: CONFERENCES,

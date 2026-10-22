@@ -84,8 +84,11 @@ test('a chance the model did not call impossible is never printed as none',
     // and 0% is a claim it did not make.
     assert.equal(app.probabilityText(1), '<1%');
     assert.equal(app.probabilityText(999), '>99%');
-    assert.equal(app.probabilityText(0), '0%');
-    assert.equal(app.probabilityText(1000), '100%');
+    // The endpoints are included: the exporter rounds to per-mille, so a
+    // real 0.0004 arrives here as exactly 0, and an excluded endpoint would
+    // print it as certainty.
+    assert.equal(app.probabilityText(0), '<1%');
+    assert.equal(app.probabilityText(1000), '>99%');
     assert.equal(app.probabilityText(540), '54%');
   });
 
@@ -351,6 +354,33 @@ test('a game whose scoring does not add up says so above the summary',
     await settle(() => dom.window.document.querySelector('#game table'));
     assert.match(dom.window.document.getElementById('game').textContent,
       /does not add up to the final score/);
+    dom.window.close();
+  });
+
+test('a game with an unpriced drive says why it carries no number',
+  async () => {
+    const payload = weekPayload();
+    // An overtime drive: no probability at all, because the model's clock
+    // runs to the end of regulation.
+    payload.games.g1.d.push(drive([[0, 3], [2, 5], [3, 0], [11, null]]));
+    const dom = await open(true, payload);
+    click(dom, 'button[data-tab="games"]');
+    click(dom, '#cards .card.open');
+    await settle(() => dom.window.document.querySelector('#game table'));
+    assert.match(dom.window.document.querySelector('#game .wplegend').textContent,
+      /Overtime drives carry no number/);
+    dom.window.close();
+  });
+
+test('a game with every drive priced says nothing about overtime',
+  async () => {
+    const dom = await open(true);
+    click(dom, 'button[data-tab="games"]');
+    click(dom, '#cards .card.open');
+    await settle(() => dom.window.document.querySelector('#game table'));
+    assert.doesNotMatch(
+      dom.window.document.querySelector('#game .wplegend').textContent,
+      /Overtime/);
     dom.window.close();
   });
 

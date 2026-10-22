@@ -24,6 +24,15 @@ The college side computes its live number in the browser because it has a
 live feed; when the NFL gets one, this is the number the feed would replace,
 not a second model.
 
+AN OVERTIME DRIVE IS NOT PRICED. The model's walk runs to the end of
+regulation and hands a tie to one measured overtime share, so it has nothing
+to say about a state inside overtime: `seconds_left` is 0 there and
+`home_win_probability` then answers 1 or 0 by the score alone. The drive
+after the first overtime field goal would be drawn as a certainty while the
+opponent still has a possession coming. Those drives carry no probability —
+the same rule the fit applies to the same states — and the page leaves the
+cell empty and says why rather than printing a number the model did not make.
+
 RECONCILIATION IS STATED, NOT ASSUMED. 18 of 7,366 games have a play-by-play
 scoring log that does not add up to the final the archive states — sixteen of
 them Jacksonville home games of 2001 and 2002, where the source's own running
@@ -34,8 +43,8 @@ it.
 
 from collections import defaultdict
 
-from .win_probability import (REGULATION_SECONDS, home_win_probability,
-                              load_params)
+from .win_probability import (REGULATION_PERIODS, REGULATION_SECONDS,
+                              home_win_probability, load_params)
 
 # The order a page prints them in, and the index the packed rows carry.
 KINDS = ('TD', 'FG', 'XP', '2PT', 'SAFETY', 'D2PT')
@@ -156,7 +165,10 @@ def build(connection, season, *, params=None):
         secs = row['seconds_left']
         home_score, away_score = row['home_score'], row['away_score']
         probability = None
-        if (secs is not None and home_score is not None
+        if (secs is not None and secs > 0
+                and (row['quarter_start'] is None
+                     or row['quarter_start'] <= REGULATION_PERIODS)
+                and home_score is not None
                 and away_score is not None and game['expected'] is not None):
             probability = _per_mille(home_win_probability(
                 _elo_diff(game['expected']), home_score - away_score, secs,

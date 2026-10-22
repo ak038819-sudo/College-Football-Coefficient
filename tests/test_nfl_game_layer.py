@@ -244,6 +244,34 @@ def test_the_away_team_is_side_zero_and_a_team_in_neither_is_nobody(db):
     assert rows[0][1] == 0 and rows[1][1] is None
 
 
+def test_an_overtime_drive_carries_no_probability(db):
+    """The model's clock runs to the end of regulation.
+
+    `seconds_left` is 0 throughout overtime, and the model then answers 1 or
+    0 by the score alone — so the drive after the first overtime field goal
+    would be drawn as a certainty while the opponent still has a possession
+    coming. The fit excludes these states; so does the export.
+    """
+    store_all(db, [drive(1, quarter_start=4, seconds_left=120,
+                         home_score=20, away_score=20),
+                   drive(2, quarter_start=5, seconds_left=0,
+                         home_score=23, away_score=20),
+                   drive(3, quarter_start=5, seconds_left=600,
+                         home_score=23, away_score=20)], [])
+    rows = game_export.build(db, SEASON, params=params())['1']['games'][GAME]
+    assert isinstance(rows['d'][0][11], int)
+    assert rows['d'][1][11] is None
+    # ...and not even one that claims a clock, which would still be a state
+    # the model has nothing to say about.
+    assert rows['d'][2][11] is None
+
+
+def test_the_last_second_of_regulation_is_not_priced_either(db):
+    store_all(db, [drive(1, quarter_start=4, seconds_left=0)], [])
+    rows = game_export.build(db, SEASON, params=params())['1']['games'][GAME]
+    assert rows['d'][0][11] is None
+
+
 def test_a_game_whose_scoring_does_not_add_up_is_marked_not_corrected(db):
     # Sixteen Jacksonville home games of 2001-2002 have a play log whose
     # points contradict the final the archive states.
@@ -310,6 +338,26 @@ def test_weeks_listed_out_of_playing_order_are_refused(tmp_path):
 def test_a_season_with_no_version_stamp_is_refused():
     reasons = publish_gate.check_games(manifest_with_games(dict(weeks=['1'])))
     assert reasons and 'no version stamp' in reasons[0]
+
+
+def test_a_partial_play_by_play_dispatch_may_not_publish():
+    """A `pbp_seasons` run reduces only what it names, on a database built
+    from scratch, so its export carries a game layer covering only those
+    seasons. Nothing downstream would notice: the gate checks the seasons
+    that are there, and publish.plan only checks the `games` key survives.
+    """
+    import yaml
+    root = pathlib.Path(__file__).resolve().parents[1]
+    flow = yaml.safe_load(
+        (root / '.github' / 'workflows' / 'nfl-refresh.yml')
+        .read_text(encoding='utf-8'))
+    step = [item for item in flow['jobs']['refresh']['steps']
+            if item.get('id') == 'publish'][0]
+    allowed = step['env']['ALLOWED']
+    assert 'pbp_seasons' in allowed
+    # The input exists and defaults to reducing everything.
+    inputs = flow[True]['workflow_dispatch']['inputs']
+    assert inputs['pbp_seasons']['default'] == ''
 
 
 def test_the_build_gate_and_the_page_accept_the_same_schema_versions():
