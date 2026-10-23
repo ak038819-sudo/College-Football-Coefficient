@@ -643,8 +643,172 @@
   }
 
 
+
+  /* ------------------------------------------------------------------
+   * The game layer: drives, the scoring summary and the win-probability
+   * trace, unpacked from the positional rows `src/nfl/game_export.py`
+   * writes. The rows are positional for size — 170,528 drives with named
+   * keys would be several megabytes of repeated field names — so this is
+   * the one place that knows what each slot means, and nothing downstream
+   * reads an index.
+   * ---------------------------------------------------------------- */
+
+  /* Field order of a packed drive row. Must match DRIVE row order in
+   * src/nfl/game_export.py. */
+  var DRIVE_FIELDS = ['drive', 'side', 'quarter', 'seconds', 'start', 'plays',
+                      'yards', 'top', 'result', 'homeScore', 'awayScore',
+                      'wp'];
+  var SCORE_FIELDS = ['side', 'quarter', 'clock', 'kind', 'points', 'scorer',
+                      'distance', 'homeScore', 'awayScore', 'description'];
+
+  var KIND_LABELS = {
+    TD: 'Touchdown', FG: 'Field goal', XP: 'Extra point',
+    '2PT': 'Two-point conversion', SAFETY: 'Safety',
+    D2PT: 'Defensive two-point conversion'
+  };
+
+  function unpackRow(fields, row) {
+    var out = {};
+    for (var i = 0; i < fields.length; i += 1) {
+      out[fields[i]] = row && i < row.length ? row[i] : null;
+    }
+    return out;
+  }
+
+  function unpackDrives(entry, results) {
+    var rows = (entry && entry.d) || [];
+    var vocabulary = results || [];
+    return rows.map(function (row) {
+      var drive = unpackRow(DRIVE_FIELDS, row);
+      /* The result is interned to an index, and an index with no word behind
+       * it is left null rather than printed as a number. */
+      drive.result = typeof drive.result === 'number'
+        ? (vocabulary[drive.result] || null) : null;
+      return drive;
+    });
+  }
+
+  function unpackScoring(entry, kinds) {
+    var rows = (entry && entry.s) || [];
+    var vocabulary = kinds || [];
+    return rows.map(function (row) {
+      var play = unpackRow(SCORE_FIELDS, row);
+      play.kind = typeof play.kind === 'number'
+        ? (vocabulary[play.kind] || null) : null;
+      play.label = KIND_LABELS[play.kind] || play.kind || 'Score';
+      return play;
+    });
+  }
+
+  /* A per-mille integer as the percentage a page prints.
+   *
+   * NEVER 0% OR 100%, AND THE ENDPOINTS ARE INCLUDED. A model that has given
+   * a team one chance in a thousand has not given it none, and printing none
+   * is a claim it did not make — but the exporter rounds to per-mille, so a
+   * real 0.0004 arrives here as exactly 0 and an excluded endpoint would
+   * print it as certainty. Every state that reaches this function has time
+   * left on the clock: an overtime state, where the model really does answer
+   * 1 or 0 by the score alone, carries no probability and never gets here. */
+  function probabilityText(perMille) {
+    if (typeof perMille !== 'number' || !isFinite(perMille)) return null;
+    var pct = perMille / 10;
+    if (pct < 0.5) return '<1%';
+    if (pct > 99.5) return '>99%';
+    return Math.round(pct) + '%';
+  }
+
+  /* The win-probability trace as points on a 0-1 line, in clock order.
+   *
+   * Drive starts only, which is what the archive states, plus the final
+   * outcome as the closing point so the line ends where the game did. A
+   * drive the export could not price is dropped rather than drawn at 0.5. */
+  function winProbabilityTrace(entry, game) {
+    var points = [];
+    if (entry && typeof entry.wp === 'number') {
+      points.push({ at: 0, value: entry.wp / 1000, label: 'Kickoff' });
+    }
+    unpackDrives(entry).forEach(function (drive) {
+      if (typeof drive.wp !== 'number'
+          || typeof drive.seconds !== 'number') return;
+      points.push({
+        at: 1 - drive.seconds / 3600,
+        value: drive.wp / 1000,
+        label: 'Drive ' + drive.drive
+      });
+    });
+    if (game && isFinal(game)) {
+      var margin = game.home_points - game.away_points;
+      points.push({
+        at: 1,
+        value: margin > 0 ? 1 : (margin < 0 ? 0 : 0.5),
+        label: 'Final'
+      });
+    }
+    return points;
+  }
+
+  /* An SVG path through the trace, drawn in a unit box the caller scales.
+   * Straight segments, not a curve: the model says nothing about what
+   * happened between two drive starts, and a smoothed line would say it did. */
+  function tracePath(points, width, height) {
+    if (!points || points.length < 2) return '';
+    return points.map(function (point, index) {
+      var x = (point.at * width).toFixed(2);
+      var y = ((1 - point.value) * height).toFixed(2);
+      return (index ? 'L' : 'M') + x + ' ' + y;
+    }).join(' ');
+  }
+
+  /* Which side a packed row belongs to, as the game's own team key. */
+  function sideTeam(game, side) {
+    if (side === 1) return game ? game.home : null;
+    if (side === 0) return game ? game.away : null;
+    return null;
+  }
+
+  function driveSummary(drive) {
+    var parts = [];
+    if (typeof drive.plays === 'number') {
+      parts.push(drive.plays + (drive.plays === 1 ? ' play' : ' plays'));
+    }
+    if (typeof drive.yards === 'number') parts.push(drive.yards + ' yds');
+    if (drive.top) parts.push(drive.top);
+    return parts.join(', ');
+  }
+
+  /* Whether any drive of this game went unpriced, so the page can say why.
+   *
+   * It is always an overtime drive: the exporter prices every drive that has
+   * a score, a clock and a rated game, and leaves out only the states the
+   * model's regulation clock cannot speak for. */
+  function hasUnpricedDrives(entry, payload) {
+    return unpackDrives(entry, payload && payload.results)
+      .some(function (drive) { return typeof drive.wp !== 'number'; });
+  }
+
+  /* Whether this game's scoring summary may be drawn as a scoreboard.
+   *
+   * 18 of 7,366 games in the archive have a play log whose points do not add
+   * up to the final — sixteen of them Jacksonville home games of 2001 and
+   * 2002, where the source's own running score is wrong. The exporter marks
+   * them and the page says so rather than drawing a summary that contradicts
+   * the score beside it. */
+  function scoringReconciles(entry) {
+    return !entry || !entry.s ? true : entry.ok === 1;
+  }
+
   var api = {
     LEAGUE: LEAGUE,
+    KIND_LABELS: KIND_LABELS,
+    unpackDrives: unpackDrives,
+    unpackScoring: unpackScoring,
+    probabilityText: probabilityText,
+    winProbabilityTrace: winProbabilityTrace,
+    tracePath: tracePath,
+    sideTeam: sideTeam,
+    driveSummary: driveSummary,
+    hasUnpricedDrives: hasUnpricedDrives,
+    scoringReconciles: scoringReconciles,
     ALIGNMENT_FROM: ALIGNMENT_FROM,
     CONFERENCES: CONFERENCES,
     DIVISIONS: DIVISIONS,

@@ -40,6 +40,12 @@ on:
         description: "Commit the export to main when the gate passes"
         type: boolean
         default: true
+      pbp_seasons:
+        description: "Only reduce these play-by-play seasons (e.g. 2026).
+          Leave empty for every season; a partial run writes an export whose
+          game layer covers only what it reduced."
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -73,7 +79,8 @@ jobs:
         run: |
           python -m pytest tests/test_nfl_data.py tests/test_nfl_elo.py \
             tests/test_nfl_export.py tests/test_nfl_context.py \
-            tests/test_nfl_people.py -q
+            tests/test_nfl_people.py tests/test_nfl_plays.py \
+            tests/test_nfl_game_layer.py -q
 
       - name: Ingest the archive
         run: |
@@ -93,6 +100,29 @@ jobs:
           # The published export stays as it is and the page marks it stale.
           set -o pipefail
           python -m src.nfl.people | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Reduce the play-by-play to drives and scoring plays
+        run: |
+          # 2.4 GB of CSV across 28 seasons, fetched one season at a time,
+          # reduced, and DELETED before the next one is fetched. Not one play
+          # is stored or committed: what comes out is 170,000 drives and
+          # 95,000 scoring plays, which is what a game page draws.
+          #
+          # The whole archive is re-reduced on every run rather than only the
+          # season in progress, because nothing here is stateful: the
+          # database is built from scratch each time, exactly as the game and
+          # people archives are refetched each time. The alternative is
+          # committing derived data and keeping it in step with the source,
+          # which is the failure this pipeline is shaped to avoid.
+          #
+          # A failure here FAILS THE RUN. An export built without the game
+          # layer would be refused by src/nfl/publish.py anyway -- it may not
+          # drop a files key the published manifest has -- so failing here is
+          # the same outcome said earlier and more clearly.
+          set -o pipefail
+          python -m src.nfl.plays --work-dir "$RUNNER_TEMP/nfl-pbp" \
+            ${{ inputs.pbp_seasons && format('--seasons {0}', inputs.pbp_seasons) || '' }} \
+            | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Replay the archive with the committed model
         run: |
@@ -119,7 +149,16 @@ jobs:
         id: publish
         env:
           BUILT: ${{ runner.temp }}/nfl-export
-          ALLOWED: ${{ inputs.publish == null && 'true' || inputs.publish }}
+          # A PARTIAL REDUCTION MAY NEVER PUBLISH. `pbp_seasons` reduces
+          # only the seasons named, and the database is built from scratch
+          # on every run, so `build_games` then emits a game layer covering
+          # only those seasons. The gate checks the seasons that ARE there
+          # and `publish.plan` only checks that the `games` key survives, so
+          # nothing downstream would notice a one-season layer replacing
+          # twenty-eight. The input is for rehearsing a reduction, and this
+          # is what keeps it to that.
+          ALLOWED: ${{ (inputs.publish == null && 'true' || inputs.publish)
+            && (inputs.pbp_seasons == null || inputs.pbp_seasons == '') }}
         run: |
           set -o pipefail
           python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
@@ -133,7 +172,9 @@ jobs:
           if decision['publish'] and allowed:
               publish.apply(decision, built, live)
           elif decision['publish']:
-              print('\nNot committed: this run was dispatched with publishing off.')
+              print('\nNot committed: this run was dispatched with '
+                    'publishing off, or with only some play-by-play seasons '
+                    'reduced, which may not replace the full game layer.')
           with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
               out.write(f"published={'true' if decision['publish'] and allowed else 'false'}\n")
           # A refusal is a failed run, not a quiet one: the health light below

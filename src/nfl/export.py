@@ -19,12 +19,14 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+from . import game_export
 from . import market as market_module
 from . import people_export
 from . import playoff as playoff_module
 from .coaches import careers
 from .identity import ALIGNMENT_FROM, CONFERENCES, current_season
 from .publish_gate import SCHEMA_VERSION, check, render
+from . import win_probability
 from .store import connect
 
 OUT_DIR = Path('ui/data/nfl')
@@ -517,8 +519,26 @@ def build_people(connection, manifest):
     return people_export.build(connection, now=moment)
 
 
+def build_games(connection, manifest, seasons):
+    """The per-week game detail for this export, or None where there is none.
+
+    Absent, not empty, for a database the play-by-play reduction has never
+    run against: the page then says the export predates game detail rather
+    than drawing a game page with no drives in it.
+    """
+    if not game_export.has_plays(connection):
+        return None
+    params = win_probability.load_params()
+    built = {}
+    for season in seasons:
+        weeks = game_export.build(connection, season, params=params)
+        if weeks:
+            built[season] = weeks
+    return built or None
+
+
 def write(manifest, payloads, team_index, history=None, out_dir=OUT_DIR, *,
-          gate=check, people=None):
+          gate=check, people=None, games=None):
     """Write the export, but only if the gate passes, then check the disk."""
     out_dir = Path(out_dir)
     staged = {}
@@ -533,6 +553,12 @@ def write(manifest, payloads, team_index, history=None, out_dir=OUT_DIR, *,
         team_index, separators=(',', ':'), sort_keys=True) + ';\n')
     staged['history.js'] = ('window.NFL_HISTORY=' + json.dumps(
         history or {}, separators=(',', ':'), sort_keys=True) + ';\n')
+    for season, weeks in (games or {}).items():
+        for week, payload in weeks.items():
+            body = json.dumps(payload, separators=(',', ':'), sort_keys=True)
+            staged[f'games/{season}/{week}.js'] = (
+                'window.NFL_GAMEWEEKS=(window.NFL_GAMEWEEKS||{});'
+                f'window.NFL_GAMEWEEKS["{season}/{week}"]={body};\n')
 
     def stamp(text):
         return hashlib.sha256(text.encode('utf-8')).hexdigest()[:10]
@@ -545,6 +571,19 @@ def write(manifest, payloads, team_index, history=None, out_dir=OUT_DIR, *,
     manifest['files'] = dict(
         teams=f'teams.js?v={stamp(staged["teams.js"])}',
         history=f'history.js?v={stamp(staged["history.js"])}')
+    if games:
+        # ONE cache token per season, not one per file. A week file's path is
+        # derived by the page from the game's own week, so the manifest does
+        # not have to name 560 of them; naming them all would make the
+        # manifest, which every reader fetches, heavier than the week file
+        # that only a reader opening a game fetches.
+        manifest['files']['games'] = dict(seasons={
+            str(season): dict(
+                v=stamp(''.join(
+                    staged[f'games/{season}/{week}.js']
+                    for week in game_export.week_order(list(weeks)))),
+                weeks=game_export.week_order(list(weeks)))
+            for season, weeks in games.items()})
     if people:
         def stamped(path):
             return f'{path}?v={stamp(staged[path])}'
@@ -623,11 +662,12 @@ def main(argv=None):
     connection = connect(args.database)
     try:
         people = build_people(connection, manifest)
+        games = build_games(connection, manifest, sorted(payloads))
     finally:
         connection.close()
     try:
         manifest = write(manifest, payloads, team_index, history,
-                         Path(args.out), people=people)
+                         Path(args.out), people=people, games=games)
     except PublishRefused as refused:
         print(str(refused))
         return 1
