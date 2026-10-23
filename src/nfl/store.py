@@ -15,16 +15,16 @@ from pathlib import Path
 
 from .identity import alignment, entity_key, franchise_code, franchise_key
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 DEFAULT_PATH = Path('db/nfl.db')
 SCHEMA_SQL = Path(__file__).with_name('schema.sql')
 
 # Columns added after schema version 1, by table.
 #
-# Schema 3 adds TABLES rather than columns (`player`, `player_season`,
-# `player_stat_season`, `player_stat`, `draft_pick`), and `CREATE TABLE IF NOT
-# EXISTS` does create a table that is absent, so there is nothing for this
-# table to carry on its behalf. It is only an existing table gaining a column
+# Schemas 3 and 4 add TABLES rather than columns (`player`, `player_season`,
+# `player_stat_season`, `player_stat`, `draft_pick`, then `game_drive` and
+# `scoring_play`), and `CREATE TABLE IF NOT EXISTS` does create a table that
+# is absent, so there is nothing for this table to carry on their behalf. It is only an existing table gaining a column
 # that the schema file cannot do by itself.
 #
 # `CREATE TABLE IF NOT EXISTS` does NOTHING to a table that already exists, so

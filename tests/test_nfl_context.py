@@ -796,13 +796,13 @@ class TestTheExport:
         """The published export on main is an older export and this gate
         runs against it in CI before the refresh that rewrites it. Refusing
         it would fail the publish check on data that is perfectly good."""
-        assert publish_gate.SCHEMA_VERSION == 3
-        assert publish_gate.SUPPORTED_SCHEMA_VERSIONS == (1, 2, 3)
-        for version in (1, 2, 3):
+        assert publish_gate.SCHEMA_VERSION == 4
+        assert publish_gate.SUPPORTED_SCHEMA_VERSIONS == (1, 2, 3, 4)
+        for version in (1, 2, 3, 4):
             assert publish_gate.check_schema(
                 dict(schema_version=version, sport='nfl')) == []
         assert publish_gate.check_schema(
-            dict(schema_version=4, sport='nfl')) != []
+            dict(schema_version=5, sport='nfl')) != []
 
     def test_the_browser_gate_accepts_exactly_the_versions_python_does(self):
         """Two gates, one answer. A reader that refused what the build writes
