@@ -11,28 +11,28 @@ game_id,season_year,week,kickoff_utc,start_time_tbd,season_type,home_team,away_t
 401908561,2026,8,2026-10-24T15:00:00.000Z,0,regular,Maine Maritime,New England College,0,regular,,Ritchie Field,5929,Commonwealth Coast,,iii,
 401907621,2026,8,2026-10-24T16:00:00.000Z,0,regular,West Virginia State,Monroe,0,regular,,Dickerson Stadium,5785,Mountain East,,ii,
 401907627,2026,8,2026-10-24T17:00:00.000Z,0,regular,Lackawanna,Shippensburg,0,regular,,PENFED Field at Scranton Memorial Stadium,11955,,Pennsylvania State Athletic,,ii
-401908989,2026,8,2026-10-24T18:00:00.000Z,0,regular,Roanoke College,Averett,0,regular,,,,,Old Dominion,,iii
 401908288,2026,8,2026-10-24T18:00:00.000Z,0,regular,Nelson (TX),Hardin Simmons,0,regular,,Lumpkins Stadium,6222,,American Southwest,,iii
+401908989,2026,8,2026-10-24T18:00:00.000Z,0,regular,Roanoke College,Averett,0,regular,,,,,Old Dominion,,iii
 401907459,2026,8,2026-10-24T22:00:00.000Z,0,regular,Newberry,Virginia Lynchburg,0,regular,,Setzler Field,3926,South Atlantic,,ii,
 401908522,2026,9,2026-10-31T16:00:00.000Z,0,regular,New England College,Western New England,0,regular,,,,,Commonwealth Coast,,iii
-401907628,2026,9,2026-10-31T17:00:00.000Z,0,regular,Lackawanna,Millersville,0,regular,,PENFED Field at Scranton Memorial Stadium,11955,,Pennsylvania State Athletic,,ii
 401906615,2026,9,2026-10-31T17:00:00.000Z,0,regular,Keystone,Monroe,0,regular,,Athletic Field Complex,7082,Independent DIII,,iii,
+401907628,2026,9,2026-10-31T17:00:00.000Z,0,regular,Lackawanna,Millersville,0,regular,,PENFED Field at Scranton Memorial Stadium,11955,,Pennsylvania State Athletic,,ii
 401906165,2026,9,2026-10-31T18:00:00.000Z,0,regular,Livingstone,Virginia Lynchburg,0,regular,,Alumni Memorial Stadium (NC),3612,CIAA,,ii,
-401867690,2026,9,2026-10-31T18:00:00.000Z,0,regular,Chicago State,UFTL,0,regular,,SeatGeek Stadium,3453,FCS Independents,,fcs,
 401908997,2026,9,2026-10-31T18:00:00.000Z,0,regular,Roanoke College,Bridgewater,0,regular,,,,,Old Dominion,,iii
-401915933,2026,9,2026-10-31T19:00:00.000Z,0,regular,Langston,Northeastern State,0,regular,,,,,Independent DII,,ii
+401867690,2026,9,2026-10-31T18:00:00.000Z,0,regular,Chicago State,UFTL,0,regular,,SeatGeek Stadium,3453,FCS Independents,,fcs,
 401908323,2026,9,2026-10-31T19:00:00.000Z,0,regular,Mary Hardin Baylor,Schreiner,0,regular,,Crusader Stadium,4463,American Southwest,,iii,
+401915933,2026,9,2026-10-31T19:00:00.000Z,0,regular,Langston,Northeastern State,0,regular,,,,,Independent DII,,ii
 401858290,2026,10,2026-11-07T05:00:00.000Z,1,regular,Wake Forest,Merrimack,0,regular,,Allegacy Federal Credit Union Stadium,3630,ACC,FCS Independents,fbs,fcs
-401908490,2026,10,2026-11-07T17:00:00.000Z,0,regular,Endicott,New England College,0,regular,,Hempstead Stadium,3709,Commonwealth Coast,,iii,
 401907629,2026,10,2026-11-07T17:00:00.000Z,0,regular,Shepherd,Lackawanna,0,regular,,Ram Stadium (WV),5133,Pennsylvania State Athletic,,ii,
+401908490,2026,10,2026-11-07T17:00:00.000Z,0,regular,Endicott,New England College,0,regular,,Hempstead Stadium,3709,Commonwealth Coast,,iii,
 401909012,2026,10,2026-11-07T18:00:00.000Z,0,regular,Randolph Macon,Roanoke College,0,regular,,Day Field,6105,Old Dominion,,iii,
 401906601,2026,10,2026-11-07T19:00:00.000Z,0,regular,West Alabama,Monroe,0,regular,,Tiger Stadium (AL),3957,Gulf South,,ii,
-401908290,2026,10,2026-11-07T20:00:00.000Z,0,regular,Hardin Simmons,Schreiner,0,regular,,Shelton Stadium,5114,American Southwest,,iii,
 401907355,2026,10,2026-11-07T20:00:00.000Z,0,regular,Savannah State,Virginia Lynchburg,0,regular,,Ted Wright Stadium,3952,SIAC,,ii,
+401908290,2026,10,2026-11-07T20:00:00.000Z,0,regular,Hardin Simmons,Schreiner,0,regular,,Shelton Stadium,5114,American Southwest,,iii,
 401908536,2026,11,2026-11-14T17:00:00.000Z,0,regular,New England College,New England,0,regular,,,,,Commonwealth Coast,,iii
 401915931,2026,11,2026-11-14T18:00:00.000Z,0,regular,Chicago State,Virginia Lynchburg,0,regular,,SeatGeek Stadium,3453,FCS Independents,,fcs,
-401907630,2026,11,2026-11-14T18:00:00.000Z,0,regular,Slippery Rock,Lackawanna,0,regular,,Mihalik-Thompson Stadium,4430,Pennsylvania State Athletic,,ii,
 401906617,2026,11,2026-11-14T18:00:00.000Z,0,regular,Monroe,Keystone,0,regular,,,,,Independent DIII,,iii
+401907630,2026,11,2026-11-14T18:00:00.000Z,0,regular,Slippery Rock,Lackawanna,0,regular,,Mihalik-Thompson Stadium,4430,Pennsylvania State Athletic,,ii,
 401909017,2026,11,2026-11-14T19:00:00.000Z,0,regular,Roanoke College,Washington and Lee,0,regular,,,,,Old Dominion,,iii
 401908330,2026,11,2026-11-14T21:00:00.000Z,0,regular,Schreiner,McMurry,0,regular,,Antler Stadium,11956,,American Southwest,,iii
 401856749,2026,12,2026-11-21T17:00:00.000Z,0,regular,Ole Miss,Wofford,0,regular,,Vaught-Hemingway Stadium,3974,SEC,Southern,fbs,fcs
