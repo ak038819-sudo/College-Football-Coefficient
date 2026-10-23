@@ -417,3 +417,88 @@ CREATE TABLE IF NOT EXISTS draft_pick (
 CREATE INDEX IF NOT EXISTS draft_by_season ON draft_pick(season, round, pick);
 CREATE INDEX IF NOT EXISTS draft_by_team ON draft_pick(team_key, season);
 CREATE INDEX IF NOT EXISTS draft_by_player ON draft_pick(player_key);
+
+-- ---------------------------------------------------------------------------
+-- The game layer (schema 4): what happened inside a game.
+--
+-- Reduced from the play-by-play and never the play-by-play itself. 2024's
+-- 49,492 plays become 6,148 drives and 3,767 scoring plays, which is the same
+-- bargain the college side struck in storing 441,307 drives rather than the
+-- plays behind them. `src/nfl/pbp_source.py` says why at length.
+--
+-- A drive is keyed by the source's `fixed_drive`, which is its corrected
+-- drive number, not the raw `drive` column.
+CREATE TABLE IF NOT EXISTS game_drive (
+    game_key        TEXT    NOT NULL REFERENCES game(game_key),
+    drive           INTEGER NOT NULL,
+    -- The franchise with the ball. NULL for the handful of drives the source
+    -- records with no possessing team (2 of 6,148 in 2024, both artefacts at
+    -- the end of a half); the drive is kept because dropping it would leave a
+    -- gap in a numbered sequence the page reads in order.
+    team_key        TEXT REFERENCES team(team_key),
+    code            TEXT,
+    quarter_start   INTEGER,
+    quarter_end     INTEGER,
+    -- Game clock as the source writes it, "07:47". Kept as text because it is
+    -- what the page prints; `seconds_left` is the number anything computes on.
+    clock_start     TEXT,
+    clock_end       TEXT,
+    -- Regulation seconds left when the drive began. Overtime is 0.
+    seconds_left    INTEGER,
+    start_yard_line TEXT,
+    end_yard_line   TEXT,
+    plays           INTEGER,
+    yards           INTEGER,
+    time_of_possession TEXT,
+    first_downs     INTEGER,
+    inside_twenty   INTEGER,
+    yards_penalized INTEGER,
+    -- 'Touchdown', 'Punt', 'Field goal', 'Turnover', 'Turnover on downs',
+    -- 'End of half', 'Missed field goal', 'Opp touchdown', 'Safety'. The
+    -- source's own words, not ours.
+    result          TEXT,
+    start_transition TEXT,
+    end_transition  TEXT,
+    ended_with_score INTEGER,
+    -- The score BEFORE the drive, which is what a win-probability curve needs
+    -- at each point and what a drive chart shows beside it.
+    home_score      INTEGER,
+    away_score      INTEGER,
+    snapshot_id     INTEGER REFERENCES snapshot(snapshot_id),
+    PRIMARY KEY (game_key, drive)
+);
+
+CREATE INDEX IF NOT EXISTS drive_by_game ON game_drive(game_key, drive);
+CREATE INDEX IF NOT EXISTS drive_by_team ON game_drive(team_key);
+
+-- Every play that put points on the board, which is what a scoring summary
+-- is. The source marks them with `sp = 1`, and all 3,767 of 2024's classify
+-- into exactly six kinds with none left over.
+CREATE TABLE IF NOT EXISTS scoring_play (
+    game_key      TEXT    NOT NULL REFERENCES game(game_key),
+    play_id       INTEGER NOT NULL,
+    quarter       INTEGER,
+    clock         TEXT,
+    seconds_left  INTEGER,
+    -- The team that SCORED, which is not always the team with the ball: a
+    -- pick six is scored by the defence, and `Opp touchdown` is the drive
+    -- result that goes with it.
+    team_key      TEXT REFERENCES team(team_key),
+    code          TEXT,
+    -- 'TD', 'FG', 'XP', '2PT', 'SAFETY', 'D2PT'.
+    kind          TEXT    NOT NULL,
+    points        INTEGER NOT NULL,
+    scorer        TEXT,
+    scorer_id     TEXT,
+    kick_distance INTEGER,
+    -- The source's own description of the play, with its leading clock
+    -- duplicate stripped. Not rewritten: a summary that paraphrases a play is
+    -- a summary that can be wrong about it.
+    description   TEXT,
+    home_score    INTEGER,
+    away_score    INTEGER,
+    snapshot_id   INTEGER REFERENCES snapshot(snapshot_id),
+    PRIMARY KEY (game_key, play_id)
+);
+
+CREATE INDEX IF NOT EXISTS scoring_by_game ON scoring_play(game_key, play_id);

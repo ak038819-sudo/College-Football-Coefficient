@@ -330,6 +330,178 @@ a career row, and the seasons he was on a roster. The Draft view shows a
 season's board, linking each pick that has a page. Linemen have roster rows
 and no statistics: the archive counts what a player did with the ball.
 
+## Phase 3 of parity: play-by-play, and what it buys
+
+The expensive phase, and the one with the most thrown away. nflverse
+publishes a play-by-play file per season: 372 columns, about 46,000 plays, 65
+to 99 MB of CSV, **2.4 GB across 1999-2026**. Not one play of it is stored or
+committed.
+
+What is kept is what a game page draws:
+
+| | |
+| --- | --- |
+| drives | 170,528 |
+| scoring plays | 94,574 |
+| games covered | 7,366 of the 7,369 the archive has finals for |
+| seasons | 1999-2026 |
+
+Three games — two in 1999, one in 2000 — have a final score and no plays at
+all. They are the source's gaps, not dropped rows: a drive whose game the
+archive does not carry is counted and reported rather than discarded quietly.
+
+**Only a confirmed 404 counts as "not published yet."** The season in
+progress may have no file in September, and tolerating that is how the
+refresh keeps working; tolerating a timeout or a 503 the same way would let
+a run succeed while the published export quietly lost the current season's
+game detail. `NflNotPublished` is a separate exception for exactly that
+difference.
+
+`src/nfl/pbp_source.py` streams one season to a temporary file, and
+`src/nfl/plays.py` reduces it and deletes it before the next one is fetched,
+so the peak disk cost is one season rather than 2.4 GB. A download that is
+cut short leaves no file: a truncated CSV is the one thing the reader
+refuses, and a retry that found one would read a season short.
+
+### The scoreboard decides who scored
+
+The obvious reading of a scoring play is its `posteam`, and it is wrong 438
+times. Reducing the whole archive that way left **463 of 7,366 games whose
+scoring plays did not add up to the final**, and 438 of those were out by
+exactly two points in both directions: every safety in the archive, credited
+to the team that conceded it.
+
+`defteam` fixes most of them and breaks eleven others. A safety conceded
+*after possession changed on the play* — a punt returner downed in his own
+end zone, a tackle at the end of an interception return — is scored by the
+team that was on offence, and nothing in the row separates that case from an
+ordinary sack in the end zone.
+
+So the scoreboard itself is the authority. A row carries the score after the
+play, so the side whose total rose by exactly this play's points is the side
+that scored, and the team columns are only the fallback. That leaves **18
+games of 7,366** that still do not reconcile:
+
+- sixteen are **Jacksonville home games of 2001 and 2002**, where the
+  source's own running score is wrong — it credits Mark Brunell's touchdown
+  passes to Pittsburgh and adds extra points to the wrong column;
+- two are isolated (1999 week 9 at Carolina, 2011 week 13 at New Orleans).
+
+Those games are **marked, not corrected**. The export sets `ok: 0` and the
+page says the play log does not add up to the final above it, rather than
+drawing a scoreboard that contradicts the score beside it.
+
+### The drive fields are not on the drive's first play
+
+`drive_start_yard_line` and its fourteen companions are blank on the opening
+row of a drive and populated a play or two later. A reduction that reads the
+first row gets a drive with a result and no start — which is what the first
+version of this module produced. Every field is taken as the first non-blank
+value anywhere in the drive. The SCORE is the opposite case: it is read from
+the first play with a possessing team, because the score before the drive is
+exactly what the drive started from.
+
+### A measured win-probability curve
+
+The college side's live model (`src/win_probability.py`) is pure
+mathematics — remaining margin as a random walk the pregame rating tilts,
+with an exact-tie term — and the NFL's clock is the same shape, so it is
+imported rather than copied. The parameters are the NFL's own and are fitted
+in `src/nfl/fit_win_probability.py` on **real in-game states**: the score,
+the clock and the pregame rating at the start of every drive since 1999.
+
+That is the parameter the college side could not measure. Its config records
+`time_exponent` as an assumption of 0.5, the random walk's value, because
+that database holds final scores only. Here there are 166,897 drive states,
+so it is searched.
+
+| | |
+| --- | --- |
+| `points_per_elo` | 0.0527 — **not fitted here**, read from `config/nfl_model.json` |
+| `sigma` | 13.60 points |
+| `time_exponent` | **0.34**, searched on 136,234 states over 1999-2020 |
+| `overtime_home_win` | 0.5507, counted over 355 games level after four quarters |
+| `tie_half_width` | 1.19 points, solved against how often games end level |
+
+Scored once on 30,663 states over 2021-2025, which the search never saw:
+
+| | Brier |
+| --- | --- |
+| this curve | **0.15658** |
+| the pregame number, held constant | 0.22508 |
+| the same curve with the random walk's 0.5 | 0.15751 |
+
+The gain over the pregame number is large and is the point of the layer: a
+scoreboard showing a 21-point favourite's kickoff chance while it trails by
+ten in the fourth quarter is showing the one number the moment is no longer
+about. The gain over 0.5 is small, and saying so is more useful than
+overselling it — what 0.34 buys is a spread that shrinks faster early and
+slower late than a pure walk does.
+
+`points_per_elo` is deliberately not refitted: it is the Elo model's own
+answer to what a rating point is worth in points, and a second estimate here
+would be a second answer to one question.
+
+**What the curve does not know:** possession, field position, down, distance
+and timeouts. A tie game with two minutes left reads the same whether the
+home team has the ball on the opponent's 20 or has just punted. That is
+stated on the page under the chart, not only here.
+
+### The game layer in the export
+
+Export schema **4**, and all of 1, 2, 3 and 4 are still accepted by both
+gates — refusing an older one would fail the publish check against the export
+already on main.
+
+One file a week, `games/<season>/<week>.js`, fetched lazily when a reader
+opens a game. A season in one file measured 0.75 MB (190 KB gzipped) to read
+one game of it; a week is about sixteen games, 44 KB, **13 KB gzipped**, and
+it is the unit a reader is already looking at. The postseason is one file
+however many rounds it ran to.
+
+The page **derives** that path from the game's own week, which the season
+payload already carries, so no index is downloaded to find a game. The
+manifest therefore states one cache token per season rather than one per
+file: 497 hashes would make the manifest, which every reader fetches,
+heavier than the week file only a reader opening a game fetches. The gate
+recomputes the token from the files on disk, in playing order, and refuses an
+export whose weeks are listed out of that order — a token nobody can
+reproduce is not a cache stamp.
+
+**An overtime drive carries no number.** The model's walk runs to the end of
+regulation and hands a tie to one measured overtime share, so `seconds_left`
+is 0 inside overtime and the model would answer 1 or 0 by the score alone —
+the drive after the first overtime field goal drawn as a certainty while the
+opponent still has a possession coming. Those drives are left unpriced, the
+same rule the fit applies to the same states, and the page says so under the
+chart.
+
+The win probability is computed **in Python at export time**, one number per
+drive start. Every NFL game in this archive is finished, so there is nothing
+for a page to recompute, and one implementation of a fitted curve is better
+than two. When the NFL gets a live feed, that is the number the feed
+replaces, not a second model.
+
+### The page
+
+A game card in the Games tab is a button where there is something behind it —
+a finished game, in an export that carries the layer — and opens in place,
+like a coach. It shows:
+
+- the **win-probability trace**, as straight segments between drive starts
+  and a closing point at the result. Straight, not smoothed: the model says
+  nothing about what happened between two drive starts. The home code, 50%
+  and the away code label the scale, because a line with no scale is a shape
+  rather than a measurement.
+- the **scoring summary**: quarter, clock, team, the play's own words and the
+  running score. The clock is stripped from the description, which already
+  states it — and only a clock, after a first version ate the "(Shotgun) "
+  off every description that carried no clock in front of it.
+- the **drives**: start, plays, yards, time of possession, result, the score
+  the drive began from and the home team's win probability. The column is
+  named after the home team, because a bare "Win prob" beside a row naming
+  Baltimore reads as Baltimore's chance and it is Kansas City's.
+
 ## What is not here
 
 - **No headshots.** The player file carries a `headshot` URL for 99.4% of
@@ -339,9 +511,12 @@ and no statistics: the archive counts what a player did with the ball.
 - **No link to the college side.** The draft file's `cfb_player_id` is a
   Sports-Reference slug (`billy-sims-1`), not a CFBD athlete id, so an NFL
   career cannot be joined to the same player's college page from this data.
-- **No play-by-play, snap counts or injuries.** Those are phase 3 and later
-  in the parity plan; play-by-play alone is about 2.8 GB across 28 seasons
-  and has to be reduced in CI before anything is committed.
+- **No snap counts or injuries.** Those are later in the parity plan. The
+  play-by-play is in (phase 3 above); the plays themselves are not, and never
+  will be — only the drives and scores they reduce to.
+- **No possession, field position or down in the win probability.** The curve
+  knows the score, the clock and the pregame rating. A drive-level model
+  would need the plays this layer deliberately throws away.
 - **No routes of its own.** This page's tabs are buttons, not links, so a
   coach opens in place rather than at a URL. Deep-linking the NFL and
   basketball tabs is one change to both pages and is owned elsewhere.

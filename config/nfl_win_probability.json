@@ -1,0 +1,53 @@
+{
+  "validation": {
+    "fit_games": 5852,
+    "fit_seasons": [
+      1999,
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007,
+      2008,
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018,
+      2019,
+      2020
+    ],
+    "fit_states": 136234,
+    "holdout": {
+      "brier": 0.15658,
+      "calibration_error": 0.02522,
+      "pregame_brier": 0.22508,
+      "random_walk_brier": 0.15751
+    },
+    "holdout_seasons": [
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+    ],
+    "holdout_states": 30663,
+    "measured_by": "src/nfl/fit_win_probability.py against the drive states src/nfl/plays.py reduces from the nflverse play-by-play; reproducible with `python -m src.nfl.plays && python -m src.nfl.fit_win_probability`",
+    "note": "points_per_elo is NOT fitted here: it is read from config/nfl_model.json, because it is the Elo model\u2019s own answer to what a rating point is worth. sigma is the spread of the regulation margin about that call; overtime_home_win is counted, not fitted; tie_half_width is solved so the model\u2019s kickoff tie mass matches how often games really end regulation level. Only time_exponent is searched, and it is searched on real drive-start states rather than assumed to be the random walk\u2019s 0.5. The held-out numbers are what that run reported; pregame_brier is the same model with the clock stopped at kickoff, which is the number a scoreboard shows today."
+  },
+  "win_probability": {
+    "overtime_home_win": 0.5507,
+    "points_per_elo": 0.052700184,
+    "sigma": 13.6045,
+    "tie_half_width": 1.1872,
+    "time_exponent": 0.34
+  }
+}
