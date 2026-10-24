@@ -340,24 +340,42 @@ def test_a_season_with_no_version_stamp_is_refused():
     assert reasons and 'no version stamp' in reasons[0]
 
 
+def indented_block(text, header):
+    """The lines under `header`, by indentation. A hand-rolled reader rather
+    than PyYAML, because the refresh installs pytest and nothing else: every
+    module it runs is standard library only, and a test needing a parser the
+    job does not have fails the refresh rather than the code (run
+    40041563461 did exactly that).
+    """
+    lines = text.split('\n')
+    start = lines.index(header)
+    depth = len(header) - len(header.lstrip())
+    out = []
+    for line in lines[start + 1:]:
+        if line.strip() and len(line) - len(line.lstrip()) <= depth:
+            break
+        out.append(line)
+    return '\n'.join(out)
+
+
 def test_a_partial_play_by_play_dispatch_may_not_publish():
     """A `pbp_seasons` run reduces only what it names, on a database built
     from scratch, so its export carries a game layer covering only those
     seasons. Nothing downstream would notice: the gate checks the seasons
     that are there, and publish.plan only checks the `games` key survives.
     """
-    import yaml
     root = pathlib.Path(__file__).resolve().parents[1]
-    flow = yaml.safe_load(
-        (root / '.github' / 'workflows' / 'nfl-refresh.yml')
-        .read_text(encoding='utf-8'))
-    step = [item for item in flow['jobs']['refresh']['steps']
-            if item.get('id') == 'publish'][0]
-    allowed = step['env']['ALLOWED']
-    assert 'pbp_seasons' in allowed
+    text = (root / '.github' / 'workflows' / 'nfl-refresh.yml').read_text(
+        encoding='utf-8')
+    allowed = [line for line in text.split('\n')
+               if line.strip().startswith('ALLOWED:')]
+    assert len(allowed) == 1
+    guard = allowed[0] + '\n' + indented_block(text, allowed[0])
+    assert 'inputs.publish' in guard
+    assert "inputs.pbp_seasons == ''" in guard
     # The input exists and defaults to reducing everything.
-    inputs = flow[True]['workflow_dispatch']['inputs']
-    assert inputs['pbp_seasons']['default'] == ''
+    block = indented_block(text, '      pbp_seasons:')
+    assert 'default: ""' in block
 
 
 def test_the_build_gate_and_the_page_accept_the_same_schema_versions():
