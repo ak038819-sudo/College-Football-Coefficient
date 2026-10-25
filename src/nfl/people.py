@@ -139,6 +139,7 @@ def parse_players(rows):
         out.append(dict(
             player_key=player_key(gsis),
             gsis_id=gsis,
+            pfr_id=_str(row.get('pfr_id')),
             display_name=(_str(row.get('display_name'))
                           or ' '.join(part for part in
                                       (_str(row.get('first_name')),
@@ -177,7 +178,7 @@ def _stub(gsis, *, name, position=None, height=None, weight=None,
     roster sheet rather than from the player file.
     """
     return dict(
-        player_key=player_key(gsis), gsis_id=gsis,
+        player_key=player_key(gsis), gsis_id=gsis, pfr_id=None,
         display_name=name or gsis, first_name=None, last_name=None,
         position=position, position_group=None, height=height, weight=weight,
         birth_date=birth_date, college=college, college_conference=None,
@@ -324,7 +325,7 @@ def parse_draft(rows, *, first_season=FIRST_SEASON):
 
 
 PLAYER_COLUMNS = (
-    'player_key', 'gsis_id', 'display_name', 'first_name', 'last_name',
+    'player_key', 'gsis_id', 'pfr_id', 'display_name', 'first_name', 'last_name',
     'position', 'position_group', 'height', 'weight', 'birth_date', 'college',
     'college_conference', 'jersey_number', 'rookie_season', 'last_season',
     'latest_team', 'status', 'years_experience', 'draft_season',

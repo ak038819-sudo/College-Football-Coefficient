@@ -70,6 +70,20 @@ GAME_SQL = """
      WHERE g.season = ?
 """
 
+INJURY_SQL = """
+    SELECT i.game_key, i.team_key, i.report_status, i.report_primary,
+           i.position, p.display_name
+      FROM injury_report i
+      JOIN player p ON p.player_key = i.player_key
+      JOIN game g ON g.game_key = i.game_key
+     WHERE g.season = ? AND i.report_status IS NOT NULL
+     ORDER BY i.game_key, i.team_key, p.display_name
+"""
+
+# The game-status words, in the order of how likely a player was to miss the
+# game. "Probable" ends after 2015, when the league abolished it.
+STATUSES = ('Out', 'Doubtful', 'Questionable', 'Probable')
+
 # The postseason is one file however many rounds it ran to, because its weeks
 # are small and a reader who opens the Super Bowl has usually just looked at
 # the divisional round.
@@ -193,9 +207,26 @@ def build(connection, season, *, params=None):
             KINDS.index(row['kind']) if row['kind'] in KINDS else None,
             row['points'], row['scorer'], row['kick_distance'],
             row['home_score'], row['away_score'], row['description']])
+    # The week's injury report, DESIGNATED PLAYERS ONLY. Two thirds of the
+    # rows after 2015 carry a practice line and no game status, because the
+    # league abolished "Probable" and clubs stopped designating anyone they
+    # expected to play; listing three thousand of those a season would bury
+    # the handful who were actually doubtful. The blank rows are stored and
+    # are counted on the player's own page, where the question is how often
+    # he was on the report at all.
+    injuries = defaultdict(list)
+    for row in connection.execute(INJURY_SQL, (season,)):
+        game = games.get(row['game_key'])
+        if game is None:
+            continue
+        injuries[row['game_key']].append([
+            _side(row['team_key'], game['home'], game['away']),
+            STATUSES.index(row['report_status'])
+            if row['report_status'] in STATUSES else None,
+            row['display_name'], row['position'], row['report_primary']])
     weeks = defaultdict(dict)
     for key, game in games.items():
-        if key not in drives and key not in scoring:
+        if key not in drives and key not in scoring and key not in injuries:
             continue
         entry = {}
         if game['expected'] is not None:
@@ -206,6 +237,8 @@ def build(connection, season, *, params=None):
         if key in scoring:
             entry['s'] = scoring[key]
             entry['ok'] = 1 if _reconciles(game, points[key]) else 0
+        if key in injuries:
+            entry['i'] = injuries[key]
         weeks[week_key(game)][key] = entry
     if not weeks:
         return None
@@ -213,7 +246,8 @@ def build(connection, season, *, params=None):
     for value, index in results.items():
         vocabulary[index] = value
     return {week: dict(season=season, week=week, kinds=list(KINDS),
-                       results=vocabulary, games=entries)
+                       results=vocabulary, statuses=list(STATUSES),
+                       games=entries)
             for week, entries in weeks.items()}
 
 

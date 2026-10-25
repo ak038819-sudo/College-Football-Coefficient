@@ -231,7 +231,8 @@ class TestStoring:
         path = tmp_path / 'old.db'
         connection = store.connect(path)
         for table in ('player_stat', 'player_stat_season', 'player_season',
-                      'draft_pick', 'player', 'game_drive', 'scoring_play'):
+                      'draft_pick', 'player', 'game_drive', 'scoring_play',
+                      'player_snap', 'injury_report'):
             connection.execute(f'DROP TABLE {table}')
         connection.execute('UPDATE schema_version SET version = 2')
         connection.commit()
@@ -241,9 +242,30 @@ class TestStoring:
             "SELECT name FROM sqlite_master WHERE type = 'table'")}
         assert {'player', 'player_season', 'player_stat',
                 'player_stat_season', 'draft_pick', 'game_drive',
-                'scoring_play'} <= tables
+                'scoring_play', 'player_snap', 'injury_report'} <= tables
         assert connection.execute(
-            'SELECT version FROM schema_version').fetchone()[0] == 4
+            'SELECT version FROM schema_version').fetchone()[0] \
+            == store.SCHEMA_VERSION
+        connection.close()
+
+    def test_an_old_player_table_gains_the_column_the_snap_join_needs(
+            self, tmp_path):
+        """`CREATE TABLE IF NOT EXISTS` leaves an existing table alone.
+
+        A database built at schema 4 has a `player` table with no `pfr_id`,
+        and the schema file cannot add it. Without the migration every snap
+        row would fail to resolve and the page would simply be empty.
+        """
+        path = tmp_path / 'four.db'
+        connection = store.connect(path)
+        connection.execute('ALTER TABLE player DROP COLUMN pfr_id')
+        connection.execute('UPDATE schema_version SET version = 4')
+        connection.commit()
+        connection.close()
+        connection = store.connect(path)
+        columns = {row[1] for row in
+                   connection.execute('PRAGMA table_info(player)')}
+        assert 'pfr_id' in columns
         connection.close()
 
 

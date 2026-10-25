@@ -23,7 +23,7 @@ repeating a name like `def_tackles_with_assist` would be most of the bytes.
 
 import json
 import zlib
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 from .identity import current_season
 from .people import MAX_STATS, MEAN_STATS
@@ -115,12 +115,18 @@ def _number(value):
 
 
 def players(connection):
-    """Every player who has a page: anybody with a roster or statistics row.
+    """Every player who has a page: anybody with a row this archive can show.
 
-    18,109 player rows are stored; 16,608 of them have a row of either kind.
-    The other 1,501 are in the player file with a career that reaches 1999 and
-    nothing else this archive can show, and a page with a biography and no
-    season on it is not worth an index entry.
+    18,109 player rows are stored; 16,608 of them have a roster or statistics
+    row. The rest are in the player file with a career that reaches 1999 and
+    nothing else here, and a page with a biography and no season on it is not
+    worth an index entry.
+
+    A SNAP COUNT OR AN INJURY REPORT IS ALSO SOMETHING TO SHOW. Only one
+    player of the 7,352 with snaps has neither of the other two — Phil Bates,
+    one game at wide receiver for Seattle in 2014 — so this clause is worth
+    one page. It is here because the alternative is a player the export holds
+    data for and will not draw, which is a hole that only ever grows.
     """
     rows = connection.execute(
         'SELECT p.* FROM player p'
@@ -128,6 +134,10 @@ def players(connection):
         '                WHERE s.player_key = p.player_key)'
         '    OR EXISTS (SELECT 1 FROM player_stat_season s'
         '                WHERE s.player_key = p.player_key)'
+        '    OR EXISTS (SELECT 1 FROM player_snap s'
+        '                WHERE s.player_key = p.player_key)'
+        '    OR EXISTS (SELECT 1 FROM injury_report i'
+        '                WHERE i.player_key = p.player_key)'
         ' ORDER BY p.player_key').fetchall()
     return [dict(row) for row in rows]
 
@@ -198,6 +208,110 @@ def _stat_rows(connection, where, params):
     return out
 
 
+USAGE_FIELDS = ('season', 'type', 'games', 'off', 'offShare', 'def',
+                'defShare', 'st', 'stShare')
+AVAILABILITY_FIELDS = ('season', 'out', 'doubtful', 'questionable',
+                       'probable', 'listed', 'injuries')
+
+
+def _share(values):
+    """The mean of the per-game shares, rounded to a thousandth, or None.
+
+    THE SEASON'S SHARE IS NOT HIS SNAPS OVER THE TEAM'S SNAPS, because this
+    archive does not hold the team's snap total: the source gives a share per
+    game and nothing to add up. So this is the average of the games he was on
+    that unit for, which is a different quantity and is labelled on the page
+    as a per-game average. A game he spent entirely on the bench is not in it
+    and would drag it towards a number he never played at.
+    """
+    kept = [value for value in values if value is not None]
+    if not kept:
+        return None
+    return round(sum(kept) / len(kept), 3)
+
+
+def _usage_rows(connection, where, params):
+    """(player -> [season row]) of snap counts, regular season and post.
+
+    One row per player per season per half, like the statistics beside it,
+    because a player traded in October played both halves for whoever he
+    played them for and the snaps are the team's, not his alone.
+    """
+    rows = connection.execute(
+        'SELECT s.player_key, g.season AS season, g.season_type AS type,'
+        '       s.offense_snaps, s.offense_pct, s.defense_snaps,'
+        '       s.defense_pct, s.st_snaps, s.st_pct'
+        '  FROM player_snap s JOIN game g ON g.game_key = s.game_key'
+        ' WHERE ' + where, params).fetchall()
+    bucket = defaultdict(lambda: defaultdict(list))
+    for row in rows:
+        half = 'reg' if row['type'] == 'regular' else 'post'
+        bucket[row['player_key']][(row['season'], half)].append(row)
+    out = defaultdict(list)
+    for player, seasons in bucket.items():
+        # Ordered by season and then REGULAR SEASON FIRST. Sorting the halves
+        # by their own names puts 'post' before 'reg' and a player's January
+        # above his September.
+        for (season, half), games in sorted(
+                seasons.items(),
+                key=lambda item: (item[0][0], SEASON_TYPES.index(item[0][1]))):
+            entry = dict(season=season, type=half, games=len(games))
+            for key, snaps, pct in (('off', 'offense_snaps', 'offense_pct'),
+                                    ('def', 'defense_snaps', 'defense_pct'),
+                                    ('st', 'st_snaps', 'st_pct')):
+                total = sum(game[snaps] or 0 for game in games)
+                if not total:
+                    # No snaps on this unit all season. A zero here would
+                    # print a row of noughts beside the unit he did play.
+                    continue
+                entry[key] = total
+                entry[key + 'Share'] = _share(
+                    [game[pct] for game in games if game[snaps]])
+            if any(key in entry for key in ('off', 'def', 'st')):
+                out[player].append(entry)
+    return out
+
+
+# The report's game-status words, in the order a page should read them.
+# "Probable" is here because the archive has 17,400 of them and stops: the
+# league abolished the designation after the 2015 season. A season with none
+# after 2015 is the rule changing, not a fitter squad.
+INJURY_STATUSES = ('Out', 'Doubtful', 'Questionable', 'Probable')
+
+
+def _availability_rows(connection, where, params):
+    """(player -> [season row]) of how often he was on the injury report.
+
+    `listed` counts the weeks he appeared with NO game status, which after
+    2015 is the commonest way to appear at all: the practice line is filed
+    and the status line is left blank. Counting appearances across 2015
+    compares two different reports, so the two are counted apart.
+    """
+    rows = connection.execute(
+        'SELECT player_key, season, report_status, report_primary'
+        '  FROM injury_report WHERE ' + where, params).fetchall()
+    bucket = defaultdict(lambda: defaultdict(
+        lambda: dict(counts=Counter(), injuries=set())))
+    for row in rows:
+        entry = bucket[row['player_key']][row['season']]
+        status = row['report_status']
+        entry['counts'][status if status in INJURY_STATUSES else ''] += 1
+        if row['report_primary']:
+            entry['injuries'].add(row['report_primary'])
+    out = defaultdict(list)
+    for player, seasons in bucket.items():
+        for season, entry in sorted(seasons.items()):
+            out[player].append(dict(
+                season=season,
+                out=entry['counts']['Out'],
+                doubtful=entry['counts']['Doubtful'],
+                questionable=entry['counts']['Questionable'],
+                probable=entry['counts']['Probable'],
+                listed=entry['counts'][''],
+                injuries=sorted(entry['injuries'])))
+    return out
+
+
 def _draft_of(connection):
     return {row['player_key']: dict(season=row['season'], round=row['round'],
                                     pick=row['pick'],
@@ -240,6 +354,13 @@ def _interned(players_out):
                                  item.get('position'), item.get('jersey'),
                                  item.get('status')]
                                 for item in player['roster']]
+        for key, fields in (('usage', USAGE_FIELDS),
+                            ('availability', AVAILABILITY_FIELDS)):
+            if player.get(key):
+                player[key] = [
+                    [SEASON_TYPES.index(item[name]) if name == 'type'
+                     else item.get(name) for name in fields]
+                    for item in player[key]]
     return names
 
 
@@ -259,6 +380,12 @@ def build(connection, *, now=None, settled_before=None):
     settled_stats = _stat_rows(connection, 'season < ?', (in_progress,))
     live_rosters = _roster_rows(connection, 's.season >= ?', (in_progress,))
     live_stats = _stat_rows(connection, 'season >= ?', (in_progress,))
+    settled_usage = _usage_rows(connection, 'g.season < ?', (in_progress,))
+    live_usage = _usage_rows(connection, 'g.season >= ?', (in_progress,))
+    settled_avail = _availability_rows(connection, 'season < ?',
+                                       (in_progress,))
+    live_avail = _availability_rows(connection, 'season >= ?',
+                                    (in_progress,))
 
     shards = defaultdict(dict)
     index = []
@@ -272,6 +399,10 @@ def build(connection, *, now=None, settled_before=None):
             entry['roster'] = settled_rosters[row['player_key']]
         if settled_stats.get(row['player_key']):
             entry['seasons'] = settled_stats[row['player_key']]
+        if settled_usage.get(row['player_key']):
+            entry['usage'] = settled_usage[row['player_key']]
+        if settled_avail.get(row['player_key']):
+            entry['availability'] = settled_avail[row['player_key']]
         shards[shard][gsis] = entry
         spans = [item['season'] for item in
                  settled_rosters.get(row['player_key'], [])
@@ -284,12 +415,17 @@ def build(connection, *, now=None, settled_before=None):
                       _code(row['latest_team']), shard])
 
     current = {}
-    for key in sorted(set(live_rosters) | set(live_stats)):
+    for key in sorted(set(live_rosters) | set(live_stats)
+                      | set(live_usage) | set(live_avail)):
         entry = {}
         if live_rosters.get(key):
             entry['roster'] = live_rosters[key]
         if live_stats.get(key):
             entry['seasons'] = live_stats[key]
+        if live_usage.get(key):
+            entry['usage'] = live_usage[key]
+        if live_avail.get(key):
+            entry['availability'] = live_avail[key]
         current[_gsis(key)] = entry
 
     files = {}
@@ -301,12 +437,16 @@ def build(connection, *, now=None, settled_before=None):
                 stats=names, players=body,
                 season_fields=['season', 'type', 'team', 'games'],
                 roster_fields=['season', 'team', 'position', 'jersey',
-                               'status']))
+                               'status'],
+                usage_fields=list(USAGE_FIELDS),
+                availability_fields=list(AVAILABILITY_FIELDS)))
     current_names = _interned(current)
     files['people/current.js'] = ('NFL_PEOPLE_CURRENT', None, dict(
         season=in_progress, stats=current_names, players=current,
         season_fields=['season', 'type', 'team', 'games'],
-        roster_fields=['season', 'team', 'position', 'jersey', 'status']))
+        roster_fields=['season', 'team', 'position', 'jersey', 'status'],
+        usage_fields=list(USAGE_FIELDS),
+        availability_fields=list(AVAILABILITY_FIELDS)))
     files['people/index.js'] = ('NFL_PEOPLE_INDEX', None, dict(
         shards=PLAYER_SHARDS,
         fields=['id', 'name', 'position', 'first', 'last', 'team', 'shard'],

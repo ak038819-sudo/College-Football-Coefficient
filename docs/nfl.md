@@ -502,6 +502,106 @@ like a coach. It shows:
   named after the home team, because a bare "Win prob" beside a row naming
   Baltimore reads as Baltimore's chance and it is Kansas City's.
 
+## Phase 4 of parity: who was on the field, and who was fit to be
+
+Two more nflverse release files, both small, both free, both stored whole
+rather than reduced: they are already one row per player per game or per
+week, which is what the pages show.
+
+| what | asset | seasons | rows |
+| --- | --- | --- | ---: |
+| snap counts | `snap_counts/snap_counts_<season>.csv` | 2013-2026 | 333,375 |
+| the injury report | `injuries/injuries_<season>.csv` | 2009-2026 | 92,890 |
+
+### The snap file has no GSIS id
+
+Its person id is Pro-Football-Reference's (`BrowSp00`), not the id every
+other people file here uses, so a snap row reaches a player page only through
+`player.pfr_id` — a column the player file carries for 91.3% of players and
+that schema 5 adds. It resolves 99.93% of snap rows: 333,129 of 333,375. The
+246 it does not, across 29 people, are dropped rather than stored, because a
+snap count with nobody to attribute it to has no page to be shown on. The
+count is reported by the ingest, so the day the crosswalk breaks is a number
+on the run summary rather than a page that quietly empties.
+
+Adding the column is a real migration. `CREATE TABLE IF NOT EXISTS` does
+nothing to a table that exists, so a database built at schema 4 keeps a
+`player` table with no `pfr_id`, every snap row fails to resolve, and the
+page is simply blank. `store.ADDED_COLUMNS` carries it.
+
+### Snap counts begin in 2013, and 2012 is the reason to be careful
+
+The release has a `snap_counts_2012.csv`. It holds a header and nothing else.
+**Published and empty is not the same as absent**, and neither of them is a
+failure: an empty file yields no rows and says so. The fetcher asks for no
+season before 2013 at all, so a 404 inside the measured range stays what it
+should be — a real failure for every season but the one in progress.
+
+### The injury report is not a game
+
+It is filed before one, and one of the weeks here never produced a game.
+Buffalo and Cincinnati both filed for week 17 of 2022; the game was abandoned
+after Damar Hamlin's cardiac arrest and never played. Those 17 rows are the
+only 17 of 92,890 that reach no game in this archive, and they are real
+reports, so a report is keyed on its week and `game_key` is allowed to be
+NULL rather than the report being thrown away for the game's absence.
+
+The source also **repeats a player when a club updates its report**. Two
+players in week 15 of 2024 appear twice, Questionable on the Saturday and Out
+on the Sunday morning. The latest `date_modified` wins: the last thing the
+club said before kickoff is what the report said.
+
+### The report changed in 2016, and a count across that line is two reports
+
+The league abolished the "Probable" designation after the 2015 season. The
+archive has 17,400 of them and then none, and blank game statuses go from
+about 150 a season to about 3,000: a player a club expects to play now
+carries a practice line and no designation at all.
+
+| | 2015 | 2016 |
+| --- | ---: | ---: |
+| Probable | 2,702 | 0 |
+| no game status | 153 | 2,036 |
+
+So the two are counted apart everywhere. A player page has a **Listed**
+column for the weeks he appeared with no designation, and the game page lists
+only the players a club designated — three thousand practice lines a season
+would bury the handful who were doubtful — and says so under the table.
+
+The column is headed **Reason**, not Injury: 4.8% of the archive's reasons
+are not an injury, 1,861 of them illness and the rest a personal matter, a
+rested starter or a coach's decision.
+
+### A season's snap share is an average, not a ratio
+
+The source gives a share per game and no team total, and this archive stores
+no team snap total either, so **his snaps over the team's is not a number
+that can be computed here**. The season figure is the mean of his per-game
+shares over the games he was on that unit for, and the page says "per game"
+rather than leaving a reader to assume a ratio. A game he spent on the bench
+is not in the mean, because it would drag it towards a share he never played
+at.
+
+A unit he never played carries no row of noughts: a column of zeros beside
+the unit he did play reads as a measurement rather than an absence.
+
+### One player gained a page
+
+`people_export.players` draws anybody with a roster or statistics row, and
+now anybody with snaps or a report too. That clause is worth exactly one page
+across the whole archive — Phil Bates, one game at wide receiver for Seattle
+in 2014, the only one of 7,352 snapped players with neither of the other two.
+It is here because the alternative is data the export holds and will not
+draw, which is a hole that only ever grows.
+
+### The refresh
+
+A step between the people ingest and the play-by-play reduction, and **after
+the people ingest, never before**: the snap join reads `player.pfr_id` out of
+the database, so the player file has to be loaded first. A failure fails the
+run rather than publishing without the layer, which is how the people layer
+is handled for the same reason.
+
 ## What is not here
 
 - **No headshots.** The player file carries a `headshot` URL for 99.4% of
@@ -511,9 +611,13 @@ like a coach. It shows:
 - **No link to the college side.** The draft file's `cfb_player_id` is a
   Sports-Reference slug (`billy-sims-1`), not a CFBD athlete id, so an NFL
   career cannot be joined to the same player's college page from this data.
-- **No snap counts or injuries.** Those are later in the parity plan. The
-  play-by-play is in (phase 3 above); the plays themselves are not, and never
-  will be — only the drives and scores they reduce to.
+- **No plays.** The play-by-play is reduced to drives and scoring (phase 3
+  above) and not one play is stored or published.
+- **No awards.** nflverse has none, and every source that does — Pro Football
+  Reference, ESPN — is a scraping-terms question rather than a data one. See
+  `docs/nfl-awards-and-headshots.md`.
+- **No depth charts, and no snap counts before 2013.** The depth-chart
+  release exists and is not read; the snap archive starts where it starts.
 - **No possession, field position or down in the win probability.** The curve
   knows the score, the clock and the pregame rating. A drive-level model
   would need the plays this layer deliberately throws away.

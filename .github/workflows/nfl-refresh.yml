@@ -80,7 +80,7 @@ jobs:
           python -m pytest tests/test_nfl_data.py tests/test_nfl_elo.py \
             tests/test_nfl_export.py tests/test_nfl_context.py \
             tests/test_nfl_people.py tests/test_nfl_plays.py \
-            tests/test_nfl_game_layer.py -q
+            tests/test_nfl_game_layer.py tests/test_nfl_usage.py -q
 
       - name: Ingest the archive
         run: |
@@ -100,6 +100,20 @@ jobs:
           # The published export stays as it is and the page marks it stale.
           set -o pipefail
           python -m src.nfl.people | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Ingest the snap counts and the injury report
+        run: |
+          # Two more release files, 32 seasons between them and about 41 MB:
+          # snap counts from 2013 and the weekly injury report from 2009.
+          # Both are stored whole rather than reduced — they are already one
+          # row per player per game or per week, which is what the pages
+          # show.
+          #
+          # AFTER the people ingest, never before: a snap row reaches a
+          # player only through `player.pfr_id`, which the player file
+          # carries and this step reads out of the database.
+          set -o pipefail
+          python -m src.nfl.usage | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Reduce the play-by-play to drives and scoring plays
         run: |

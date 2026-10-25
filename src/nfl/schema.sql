@@ -255,6 +255,9 @@ CREATE TABLE IF NOT EXISTS market_season (
 CREATE TABLE IF NOT EXISTS player (
     player_key        TEXT PRIMARY KEY,
     gsis_id           TEXT NOT NULL UNIQUE,
+    -- Pro-Football-Reference's id, and the ONLY way a snap-count row reaches
+    -- a player: that file carries no GSIS id. Present for 91.3% of players.
+    pfr_id            TEXT,
     display_name      TEXT NOT NULL,
     first_name        TEXT,
     last_name         TEXT,
@@ -502,3 +505,83 @@ CREATE TABLE IF NOT EXISTS scoring_play (
 );
 
 CREATE INDEX IF NOT EXISTS scoring_by_game ON scoring_play(game_key, play_id);
+
+-- Schema 5: how much a player was on the field, and whether he was fit to be.
+--
+-- One row per player per game, from the `snap_counts` release.
+--
+-- **THE SNAP FILE CARRIES NO GSIS ID.** Its only person id is
+-- `pfr_player_id`, Pro-Football-Reference's (`BrowSp00`), so a snap row
+-- reaches a player page only through `player.pfr_id`, which the player file
+-- gives for 91.3% of players and which resolves 99.93% of snap rows. The 246
+-- rows it does not resolve, across 29 people, are not stored: a snap count
+-- with no player is a number with nobody to show it to.
+--
+-- 2013 ONWARDS. The release has a `snap_counts_2012.csv` and it holds a
+-- header and nothing else — published and empty, which is not the same as
+-- absent and must not read as a fetch failure.
+CREATE TABLE IF NOT EXISTS player_snap (
+    player_key     TEXT    NOT NULL REFERENCES player(player_key),
+    game_key       TEXT    NOT NULL REFERENCES game(game_key),
+    team_key       TEXT REFERENCES team(team_key),
+    -- The position he played THAT WEEK, which is not always the one on his
+    -- player row: a fullback asked to play tight end is listed as he played.
+    position       TEXT,
+    offense_snaps  INTEGER,
+    -- The source's share of the team's snaps, 0-1. Stored as it is given
+    -- rather than recomputed: the denominator is the team's snap total for
+    -- that game, which this archive does not hold.
+    offense_pct    REAL,
+    defense_snaps  INTEGER,
+    defense_pct    REAL,
+    st_snaps       INTEGER,
+    st_pct         REAL,
+    snapshot_id    INTEGER REFERENCES snapshot(snapshot_id),
+    PRIMARY KEY (player_key, game_key)
+);
+
+CREATE INDEX IF NOT EXISTS snap_by_game ON player_snap(game_key);
+CREATE INDEX IF NOT EXISTS snap_by_player ON player_snap(player_key);
+
+-- The weekly injury report, 2009 onwards, from the `injuries` release.
+--
+-- Keyed on the WEEK and not on the game, and `game_key` is nullable, because
+-- a report is filed before a game and a game can fail to happen: both Buffalo
+-- and Cincinnati filed for week 17 of 2022, the game was abandoned after
+-- Damar Hamlin's cardiac arrest and never played, and those 17 rows are the
+-- only 17 of 92,890 that reach no game. They are real reports and they are
+-- kept.
+--
+-- **THE SOURCE REPEATS A PLAYER WHEN THE REPORT IS UPDATED.** Two players in
+-- week 15 of 2024 appear twice, Questionable on the Saturday and Out on the
+-- Sunday morning. The LATEST `date_modified` wins, because the last thing the
+-- club said before kickoff is what the report said.
+--
+-- `report_status` is BLANK for a third of the archive and the blank means
+-- different things either side of 2016: the league abolished "Probable" after
+-- the 2015 season, so a player who would have been listed Probable now
+-- carries a practice line and no game status at all. Blanks run about 150 a
+-- season through 2015 and about 3,000 a season after. Counting "listed on the
+-- report" across that boundary compares two different reports.
+CREATE TABLE IF NOT EXISTS injury_report (
+    season          INTEGER NOT NULL,
+    season_type     TEXT    NOT NULL,
+    week            INTEGER NOT NULL,
+    team_key        TEXT    NOT NULL REFERENCES team(team_key),
+    player_key      TEXT    NOT NULL REFERENCES player(player_key),
+    game_key        TEXT REFERENCES game(game_key),
+    position        TEXT,
+    report_primary   TEXT,
+    report_secondary TEXT,
+    -- Out, Doubtful, Questionable, Probable (to 2015) or NULL.
+    report_status    TEXT,
+    practice_primary   TEXT,
+    practice_secondary TEXT,
+    practice_status    TEXT,
+    reported_at     TEXT,
+    snapshot_id     INTEGER REFERENCES snapshot(snapshot_id),
+    PRIMARY KEY (season, season_type, week, team_key, player_key)
+);
+
+CREATE INDEX IF NOT EXISTS injury_by_game ON injury_report(game_key);
+CREATE INDEX IF NOT EXISTS injury_by_player ON injury_report(player_key, season);

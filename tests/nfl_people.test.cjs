@@ -62,7 +62,13 @@ const SHARD = {
         [2018, 0, 'BUF', 12, 0, 300, 1, 170, 4, -6.5, 5, 2000],
         [2019, 0, 'BUF', 16, 0, 400, 1, 260, 4, 1.5, 5, 3000, 3, 20]
       ],
-      roster: [[2018, 'BUF', 'QB', 17, 'ACT']]
+      roster: [[2018, 'BUF', 'QB', 17, 'ACT']],
+      // [season, type, games, off, offShare, def, defShare, st, stShare]
+      usage: [[2018, 0, 12, 740, 0.92, null, null, null, null],
+              [2019, 0, 16, 1030, 0.998, null, null, 4, 0.02]],
+      // [season, out, doubtful, questionable, probable, listed, injuries]
+      availability: [[2018, 0, 0, 2, 1, 0, ['Elbow']],
+                     [2019, 1, 0, 0, 0, 3, ['Ankle', 'Shoulder']]]
     }
   }
 };
@@ -305,5 +311,66 @@ test('the header search finds a player and the draft links what it can',
     assert.equal(button(document, '#people-body', 'No Page'), undefined,
                  'a pick with no page is plain text');
     assert.match(body.textContent, /No Page/);
+    dom.window.close();
+  });
+
+// --- snaps and the injury report on a player page --------------------------
+
+test('packed usage rows unpack in order, the regular season first', () => {
+  const rows = app.unpackUsage(SHARD, '00-1');
+  assert.deepEqual(rows.map(row => [row.season, row.type]),
+                   [[2018, 'reg'], [2019, 'reg']]);
+  assert.equal(rows[0].off, 740);
+  assert.equal(rows[0].offShare, 0.92);
+  assert.equal(rows[0].def, null);
+  assert.equal(rows[1].st, 4);
+});
+
+test('packed availability rows unpack with their injuries', () => {
+  const rows = app.unpackAvailability(SHARD, '00-1');
+  assert.equal(rows.length, 2);
+  assert.equal(rows[1].out, 1);
+  assert.equal(rows[1].listed, 3);
+  assert.deepEqual(Array.from(rows[1].injuries), ['Ankle', 'Shoulder']);
+});
+
+test('a player with neither layer unpacks to nothing', () => {
+  assert.deepEqual(Array.from(app.unpackUsage(SHARD, '00-9')), []);
+  assert.deepEqual(Array.from(app.unpackAvailability(SHARD, '00-9')), []);
+});
+
+test('a player page draws his snaps and says what the share is an average '
+  + 'of', async () => {
+    const dom = await open();
+    const document = dom.window.document;
+    button(document, '#tabs', 'Players').click();
+    const body = document.getElementById('people-body');
+    button(document, '#people-body', 'Josh Allen').click();
+    await settle(() => /Snaps/.test(body.textContent));
+    assert.match(body.textContent, /Snaps/);
+    assert.match(body.textContent, /92%/);
+    // The share is the mean of the games he played on that unit, not his
+    // snaps over the team's, and the page has to say so: the archive holds
+    // no team snap total to divide by.
+    assert.match(body.textContent, /not his snaps over the team’s/);
+    assert.match(body.textContent, /Snap counts begin in 2013/);
+    dom.window.close();
+  });
+
+test('a player page draws his injury report and names the 2015 boundary',
+  async () => {
+    const dom = await open();
+    const document = dom.window.document;
+    button(document, '#tabs', 'Players').click();
+    const body = document.getElementById('people-body');
+    button(document, '#people-body', 'Josh Allen').click();
+    await settle(() => /Injury report/.test(body.textContent));
+    assert.match(body.textContent, /Ankle, Shoulder/);
+    // "Reasons", not "Injuries": 4.8% of the archive's reasons are not an
+    // injury — 1,861 of them illness, the rest personal or a rested starter.
+    assert.match(body.textContent, /Reasons/);
+    // A blank status after 2015 is the league dropping "Probable", not a
+    // fitter player, and a reader comparing two seasons needs to know.
+    assert.match(body.textContent, /dropped “Probable” after 2015/);
     dom.window.close();
   });

@@ -169,6 +169,12 @@
      descriptions are prose and should wrap. */
   .scroller { overflow-x: auto; }
   .scroller.wide table { min-width: 560px; }
+  /* The injury table's reason is prose, not a number: everything else in
+     the row stays on one line and the reason wraps, so a name is never
+     broken across two lines to make room for "gameday concussion protocol
+     evaluation". */
+  .scroller.injury table { min-width: 460px; }
+  .scroller.injury td.reason { white-space: normal; min-width: 10em; }
   .scroller.wide td, .scroller th, .scroller td.num { white-space: nowrap; }
 
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -1284,7 +1290,91 @@
         + 'have none in this archive: it counts what a player did with the '
         + 'ball, and blocking is not in it.');
     }
+    var usage = app.unpackUsage(career.data, state.player)
+      .concat(app.unpackUsage(current.data, state.player));
+    if (usage.length) host.appendChild(usageTable(usage));
+    var availability = app.unpackAvailability(career.data, state.player)
+      .concat(app.unpackAvailability(current.data, state.player));
+    if (availability.length) {
+      host.appendChild(availabilityTable(availability));
+    }
     if (roster.length) host.appendChild(rosterTable(roster));
+  }
+
+  /* Snap counts by season. 2013 onwards: the source's snap file starts
+   * there, and a 2009 season with no row here is the archive's edge, not a
+   * player who never took the field.
+   *
+   * The share is the mean of his per-game shares on that unit, over the
+   * games he was on it for, which is why the header says "per game". The
+   * team's snap total is not in this archive, so his snaps over the team's
+   * is not a number that can be computed here. */
+  function usageTable(rows) {
+    var node = table('<tr><th>Season</th><th></th><th class="num">G</th>'
+      + '<th class="num">Off</th><th class="num">Off %</th>'
+      + '<th class="num">Def</th><th class="num">Def %</th>'
+      + '<th class="num">ST</th><th class="num">ST %</th></tr>');
+    node.className = 'group';
+    node.insertBefore(heading('h3', 'Snaps'), node.firstChild);
+    var body = node.querySelector('tbody');
+    rows.forEach(function (row) {
+      var tr = document.createElement('tr');
+      cellInto(tr, row.season);
+      cellInto(tr, row.type === 'post' ? 'Post' : '');
+      cellInto(tr, row.games, 'num');
+      cellInto(tr, row.off === null || row.off === undefined ? '' : row.off,
+               'num');
+      cellInto(tr, app.shareText(row.offShare), 'num');
+      cellInto(tr, row.def === null || row.def === undefined ? '' : row.def,
+               'num');
+      cellInto(tr, app.shareText(row.defShare), 'num');
+      cellInto(tr, row.st === null || row.st === undefined ? '' : row.st,
+               'num');
+      cellInto(tr, app.shareText(row.stShare), 'num');
+      body.appendChild(tr);
+    });
+    var note = document.createElement('p');
+    note.className = 'note';
+    note.textContent = 'Snap counts begin in 2013, and the shares are his '
+      + 'average share of the games he played on that unit, not his snaps '
+      + 'over the team’s: the archive holds no team snap total.';
+    node.appendChild(note);
+    return node;
+  }
+
+  /* How often he was on the weekly injury report.
+   *
+   * "Listed" is the weeks he appeared with no game status at all, which is
+   * the commonest way to appear since 2016: the league abolished "Probable"
+   * after 2015 and the practice line is filed on its own. The Probable
+   * column is kept because 17,400 of those designations are in the archive
+   * and vanishing after 2015 is the rule changing, not a fitter player. */
+  function availabilityTable(rows) {
+    var node = table('<tr><th>Season</th><th class="num">Out</th>'
+      + '<th class="num">Dbt</th><th class="num">Qst</th>'
+      + '<th class="num">Prb</th><th class="num">Listed</th>'
+      + '<th>Reasons</th></tr>');
+    node.className = 'group';
+    node.insertBefore(heading('h3', 'Injury report'), node.firstChild);
+    var body = node.querySelector('tbody');
+    rows.forEach(function (row) {
+      var tr = document.createElement('tr');
+      cellInto(tr, row.season);
+      ['out', 'doubtful', 'questionable', 'probable', 'listed'].forEach(
+        function (name) {
+          cellInto(tr, row[name] || '', 'num');
+        });
+      cellInto(tr, row.injuries.join(', '));
+      body.appendChild(tr);
+    });
+    var note = document.createElement('p');
+    note.className = 'note';
+    note.textContent = 'Weeks the club put him on the report, 2009 onwards. '
+      + '“Listed” is a week with a practice line and no game status, which '
+      + 'is how most appearances read since the league dropped “Probable” '
+      + 'after 2015.';
+    node.appendChild(note);
+    return node;
   }
 
   function statTable(group, typeLabel, index) {
@@ -1573,6 +1663,55 @@
     host.appendChild(wrap);
   }
 
+  /* The week's injury report, the two teams side by side in one table.
+   *
+   * ONLY THE DESIGNATED PLAYERS ARE HERE, and the note says so, because the
+   * report itself changed: the league abolished "Probable" after 2015 and
+   * clubs stopped designating anyone they expected to play, so two thirds of
+   * the rows since carry a practice line and no game status. A reader
+   * comparing a 2024 game with a 2012 one would otherwise read a shorter
+   * list as a healthier squad. */
+  function injuryTable(host, entry, payload, game) {
+    var rows = app.unpackInjuries(entry, payload.statuses);
+    if (!rows.length) return;
+    var heading = document.createElement('h3');
+    heading.textContent = 'Injury report';
+    host.appendChild(heading);
+    var wrap = document.createElement('div');
+    wrap.className = 'scroller wide injury';
+    var table = document.createElement('table');
+    var head = document.createElement('tr');
+    // "Reason", not "Injury": 4.8% of the archive's reasons are not an
+    // injury at all — 1,861 of them illness, the rest a personal matter, a
+    // rested starter or a coach's decision.
+    ['Team', 'Player', 'Pos', 'Status', 'Reason'].forEach(function (label) {
+      var th = document.createElement('th');
+      th.textContent = label;
+      head.appendChild(th);
+    });
+    table.appendChild(head);
+    rows.forEach(function (row) {
+      var tr = document.createElement('tr');
+      [[teamCode(app.sideTeam(game, row.side)), ''], [row.name, ''],
+       [row.position, ''], [row.status, ''],
+       [row.injury, 'reason']].forEach(function (pair) {
+        var td = document.createElement('td');
+        if (pair[1]) td.className = pair[1];
+        text(td, pair[0]);
+        tr.appendChild(td);
+      });
+      table.appendChild(tr);
+    });
+    wrap.appendChild(table);
+    host.appendChild(wrap);
+    var note = document.createElement('p');
+    note.className = 'wpkey';
+    note.textContent = 'Players the clubs designated before kickoff. From '
+      + '2016 the league stopped using “Probable”, so a player expected to '
+      + 'play carries no designation and is not listed here.';
+    host.appendChild(note);
+  }
+
   function renderGame() {
     var host = el('game');
     host.innerHTML = '';
@@ -1620,6 +1759,7 @@
     renderWinProbability(host, entry, got.data, game);
     scoringTable(host, entry, got.data, game);
     drivesTable(host, entry, got.data, game);
+    injuryTable(host, entry, got.data, game);
   }
 
   function render() {

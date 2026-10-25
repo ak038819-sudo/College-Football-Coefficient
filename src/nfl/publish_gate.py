@@ -41,8 +41,8 @@ from pathlib import Path
 # that is perfectly good and leave the site unable to update at all.
 # 4 adds the game layer: per-week drives, scoring summaries and the fitted
 # win-probability trace, under `games/<season>/<week>.js`.
-SCHEMA_VERSION = 4
-SUPPORTED_SCHEMA_VERSIONS = (1, 2, 3, 4)
+SCHEMA_VERSION = 5
+SUPPORTED_SCHEMA_VERSIONS = (1, 2, 3, 4, 5)
 
 # Houston joined in 2002. Before that the league had 31 teams in this archive.
 EXPANSION_SEASON = 2002
