@@ -59,7 +59,10 @@
     margin: 0; background: var(--bg); color: var(--ink);
     font-family: var(--font-body); -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 96px; }
+  /* The foot of the page only needs clearing where the tab bar is fixed
+     over it, which is phone width alone. */
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
+  @media (max-width: 719px) { .wrap { padding-bottom: 96px; } }
   h1 {
     font-family: var(--font-display); font-weight: 800; margin: 0;
     font-size: clamp(26px, 5vw, 40px); letter-spacing: 0.5px;
@@ -82,7 +85,19 @@
   .leagues button[aria-pressed="true"] {
     background: var(--amber); color: #15110a; font-weight: 600;
   }
-  .search { margin: 12px 0 0; }
+  /* The wordmark and the league selector on one side, the controls that
+     change what is shown on the other. Stacked, these six elements ate
+     nearly 300px before the first game card. */
+  header { display: grid; gap: 14px 24px; align-items: start;
+           grid-template-columns: auto minmax(0, 1fr); }
+  header .meta { grid-column: 1 / -1; margin: 0; }
+  .head-controls { display: flex; flex-direction: column; gap: 10px;
+                   align-items: flex-end; }
+  @media (max-width: 719px) {
+    header { grid-template-columns: minmax(0, 1fr); }
+    .head-controls { align-items: stretch; }
+  }
+  .search { margin: 0; }
   .search input {
     width: 100%; max-width: 420px; padding: 9px 12px; font: inherit;
     color: var(--ink); background: var(--panel); border: 1px solid var(--line);
@@ -141,9 +156,26 @@
           background: var(--panel-2); }
   .card .status { font-size: 11px; text-transform: uppercase;
                   letter-spacing: 0.8px; color: var(--ink-dim); }
-  .card .side { display: flex; justify-content: space-between; gap: 10px;
-                font-size: 15px; margin-top: 4px; }
-  .card .side .pts { font-family: var(--font-mono); }
+  .card .side { display: grid; grid-template-columns: minmax(0, 1fr) auto auto;
+                align-items: baseline; column-gap: 10px; font-size: 15px;
+                margin-top: 6px; }
+  .card .side .pts { font-family: var(--font-mono); min-width: 2ch;
+                     text-align: right; }
+  /* The win probability sits in its own column so the percentages line up
+     down the card whatever the team names are. */
+  .card .side .wp { font-family: var(--font-mono); font-size: 13px;
+                    color: var(--ink-dim); min-width: 4ch; text-align: right; }
+  .card .side .wp.lead { color: var(--amber); }
+  .card .side .nm { display: flex; flex-direction: column; min-width: 0; }
+  .card .side .nm b { font-weight: 600; overflow: hidden;
+                      text-overflow: ellipsis; white-space: nowrap; }
+  /* The second line under a team name: seed in the ratings, record, rating.
+     It is deliberately quiet — it is context for the matchup, not the
+     matchup. */
+  .card .side .sub { font-size: 11px; color: var(--ink-dim);
+                     font-family: var(--font-mono); }
+  .card .side.lost .nm b { color: var(--ink-dim); font-weight: 400; }
+  .card .side.lost .pts { color: var(--ink-dim); }
   .card .foot { font-size: 11px; color: var(--ink-dim); margin-top: 6px; }
   .undecided { color: var(--amber); }
 
@@ -185,19 +217,41 @@
   td.num, th.num { text-align: right; font-family: var(--font-mono); }
   td.rk { text-align: center; width: 44px; color: var(--ink-dim); }
 
-  /* 4. The bottom tabs keep their names and change their contents. */
+  /* 4. The tabs keep their names and change their contents.
+     They are a row under the wordmark on a screen with room for one, and a
+     fixed bar at the foot of a phone, which is where a thumb is. The page
+     was built phone-first and shipped with the fixed bar at EVERY width:
+     on a desktop that strands eight items edge to edge across the bottom of
+     the window, a long way from the content they switch. */
   nav.tabs {
-    position: fixed; left: 0; right: 0; bottom: 0; display: flex;
-    background: var(--panel); border-top: 1px solid var(--line);
+    display: flex; gap: 2px; margin: 14px 0 0;
+    border-bottom: 1px solid var(--line);
   }
   nav.tabs button {
-    flex: 1; appearance: none; border: 0; background: transparent;
-    color: var(--ink-dim); font: inherit; font-size: 12px; padding: 10px 4px;
-    cursor: pointer;
+    appearance: none; border: 0; background: transparent;
+    color: var(--ink-dim); font: inherit; font-size: 14px;
+    padding: 8px 12px; cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
   }
+  nav.tabs button:hover:not([disabled]) { color: var(--ink); }
   nav.tabs button[aria-pressed="true"] { color: var(--amber);
-                                         font-weight: 600; }
+                                         font-weight: 600;
+                                         border-bottom-color: var(--amber); }
   nav.tabs button[disabled] { opacity: 0.35; cursor: default; }
+
+  @media (max-width: 719px) {
+    nav.tabs {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+      margin: 0; gap: 0; border-bottom: 0;
+      background: var(--panel); border-top: 1px solid var(--line);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    nav.tabs button {
+      flex: 1; font-size: 12px; padding: 10px 4px;
+      border-bottom: 0; margin-bottom: 0;
+    }
+    nav.tabs button[aria-pressed="true"] { border-bottom-color: transparent; }
+  }
   .empty { color: var(--ink-dim); font-size: 14px; }
 
   /* NFL additions. The week strip reuses the day strip's shape: an NFL
@@ -207,7 +261,7 @@
     font-family: var(--font-display); font-size: 14px; margin: 0 0 6px;
     letter-spacing: 0.6px; color: var(--ink-dim); text-transform: uppercase;
   }
-  .seasons { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0 0; }
+  .seasons { display: flex; gap: 6px; flex-wrap: wrap; margin: 0; }
   .seasons select {
     font: inherit; font-size: 13px; padding: 6px 10px; color: var(--ink);
     background: var(--panel); border: 1px solid var(--line);
@@ -252,15 +306,25 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>Elocast</h1>
-    <p class="preview-note">NFL</p>
-    <div class="leagues" id="leagues" role="group" aria-label="League"></div>
-    <div class="search">
-      <input id="search" type="search" aria-label="Search">
+    <div class="brand">
+      <h1>Elocast</h1>
+      <!-- The tagline says what this archive is. It used to read "NFL",
+           which the league selector directly beneath it already says. -->
+      <p class="preview-note">v0.1 · Every NFL game since 1999</p>
+      <div class="leagues" id="leagues" role="group" aria-label="League"></div>
+    </div>
+    <div class="head-controls">
+      <div class="search">
+        <input id="search" type="search" aria-label="Search">
+      </div>
+      <div class="seasons">
+        <select id="season" aria-label="Season"></select>
+      </div>
     </div>
     <div class="meta" id="meta"></div>
-    <div class="seasons"><select id="season" aria-label="Season"></select></div>
   </header>
+
+  <nav class="tabs" id="tabs" aria-label="Sections"></nav>
 
   <div class="panel refusal" id="refusal" hidden>
     <h2>These ratings are not being shown</h2>
@@ -313,7 +377,6 @@
   </section>
 </div>
 
-<nav class="tabs" id="tabs" aria-label="Sections"></nav>
 
 <script src="nfl_loader.js"></script>
 <script src="ncaambb_app.js"></script>
@@ -604,6 +667,26 @@
     return app.gamesInWeek(games, state.week);
   }
 
+  /* The season's board, keyed by franchise, so a card can show a team's
+   * rank, record and rating without searching the board for every side of
+   * every game. Built once a render, not once a card. */
+  function boardSeeds() {
+    var out = {};
+    boardRows().forEach(function (row) { out[row.team] = row; });
+    return out;
+  }
+
+  /* One side's pregame win probability, as text, or '' where the export
+   * carries none. The home side's is stored; the away side's is its
+   * complement, which is exact rather than a second rounding. */
+  function sideWinProbability(game, side) {
+    var home = game && game.home_wp;
+    if (home === null || home === undefined) return '';
+    var number = Number(home);
+    if (!isFinite(number)) return '';
+    return app.winProbabilityText(side === 'home' ? number : 1 - number) || '';
+  }
+
   function renderCards() {
     var host = el('cards');
     host.innerHTML = '';
@@ -638,19 +721,52 @@
       status.textContent = [app.weekLabel(game), app.statusLine(game)]
         .filter(Boolean).join(' · ');
       card.appendChild(status);
-      [['away', game.away, game.away_points],
-       ['home', game.home, game.home_points]].forEach(function (side) {
+      var seeds = boardSeeds();
+      var final = app.isFinal(game);
+      [['away', game.away, game.away_points, game.away_elo],
+       ['home', game.home, game.home_points, game.home_elo]].forEach(
+        function (side) {
         var row = document.createElement('div');
         row.className = 'side';
-        var name = document.createElement('span');
-        name.textContent = teamName(side[1]);
+        // A finished game dims the loser, so a glance at a slate reads as
+        // results rather than as a list of pairs. A tie dims neither.
+        if (final && app.loserOf(game) === side[0]) row.classList.add('lost');
+        var name = document.createElement('div');
+        name.className = 'nm';
+        var strong = document.createElement('b');
+        strong.textContent = teamName(side[1]);
+        name.appendChild(strong);
+        // Rank, record and the pregame rating. Each piece is dropped where
+        // this season has no answer for it, so a 1999 card is quieter rather
+        // than full of dashes.
+        var seed = seeds[side[1]];
+        var sub = [
+          seed && seed.rank ? '#' + seed.rank : null,
+          seed ? app.recordText(seed) : null,
+          side[3] === null || side[3] === undefined
+            ? null : 'Elo ' + app.ratingText(side[3])
+        ].filter(Boolean).join(' · ');
+        if (sub) {
+          var line = document.createElement('div');
+          line.className = 'sub';
+          line.textContent = sub;
+          name.appendChild(line);
+        }
+        row.appendChild(name);
         var points = document.createElement('span');
         points.className = 'pts';
         // A missing score is absent, never a zero.
         points.textContent = side[2] === null || side[2] === undefined
           ? '' : side[2];
-        row.appendChild(name);
         row.appendChild(points);
+        var wp = document.createElement('span');
+        wp.className = 'wp';
+        var text = sideWinProbability(game, side[0]);
+        if (text) {
+          wp.textContent = text;
+          if (app.sideFavoured(game) === side[0]) wp.classList.add('lead');
+        }
+        row.appendChild(wp);
         card.appendChild(row);
       });
       var foot = document.createElement('div');

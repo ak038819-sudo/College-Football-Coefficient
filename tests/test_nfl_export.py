@@ -231,3 +231,94 @@ class TestGate:
         (tmp_path / 'seasons' / '2025.js').write_text('')
         reasons = publish_gate.check(self._manifest(), root=tmp_path)
         assert any('empty' in reason for reason in reasons)
+
+
+class TestPregameNumbersOnAGame:
+    """The pregame rating and win probability the card draws.
+
+    These numbers already existed in `rating_game`; nothing but the export
+    carried them, so every card on the site was a pair of names and a score.
+    """
+
+    def test_a_played_game_carries_the_stored_chain_not_a_fresh_sum(
+            self, league):
+        model = export_module.model_row(league)
+        games = export_module.season_games(league, 2025, model['model_id'])
+        rated = [game for game in games if 'home_wp' in game]
+        assert len(rated) == len(games)
+        stored = {row['game_key']: row for row in league.execute(
+            'SELECT game_key, home_pregame, away_pregame, home_expected'
+            '  FROM rating_game WHERE model_id = ?', (model['model_id'],))}
+        for game in rated:
+            row = stored[game['id']]
+            assert game['home_elo'] == round(row['home_pregame'], 1)
+            assert game['away_elo'] == round(row['away_pregame'], 1)
+            assert game['home_wp'] == round(row['home_expected'], 4)
+
+    def test_without_a_model_a_game_carries_no_pregame_numbers(self, league):
+        games = export_module.season_games(league, 2025)
+        assert games
+        assert not any('home_wp' in game for game in games)
+
+    def test_an_unplayed_game_is_priced_off_the_board(self, league):
+        """The one card a reader most wants a number on.
+
+        The replay only rates games that have been played, so without this
+        an upcoming game reaches the page with no probability at all.
+        """
+        model = export_module.model_row(league)
+        rows = [dict(team=f'nfl:nflverse:franchise:{CODES[0]}', rating=1700.0),
+                dict(team=f'nfl:nflverse:franchise:{CODES[1]}', rating=1500.0)]
+        games = [dict(home=rows[0]['team'], away=rows[1]['team'],
+                      home_points=None, away_points=None)]
+        export_module.expect_upcoming(games, rows, json.loads(model['config']))
+        game = games[0]
+        assert game['wp_estimated'] == 1
+        assert game['home_elo'] == 1700.0
+        assert game['away_elo'] == 1500.0
+        # 1700 + 50 against 1500 is a 250-point edge on a 400-point scale.
+        assert game['home_wp'] == round(
+            1.0 / (1.0 + 10 ** (-250.0 / 400.0)), 4)
+
+    def test_the_home_advantage_is_actually_applied(self, league):
+        """`rating_model.config` IS the elo block.
+
+        Reaching for a nested 'elo' key here finds nothing, and the silent
+        result is every upcoming game played at a home advantage of zero —
+        two equal teams at 50% instead of the league's measured 57%.
+        """
+        model = export_module.model_row(league)
+        rows = [dict(team='a', rating=1500.0), dict(team='b', rating=1500.0)]
+        games = [dict(home='a', away='b', home_points=None, away_points=None)]
+        export_module.expect_upcoming(games, rows, json.loads(model['config']))
+        assert games[0]['home_wp'] > 0.5
+
+    def test_a_neutral_game_gets_no_home_edge(self, league):
+        model = export_module.model_row(league)
+        rows = [dict(team='a', rating=1500.0), dict(team='b', rating=1500.0)]
+        games = [dict(home='a', away='b', home_points=None, away_points=None,
+                      neutral=1)]
+        export_module.expect_upcoming(games, rows, json.loads(model['config']))
+        assert games[0]['home_wp'] == 0.5
+
+    def test_a_stored_probability_is_never_overwritten(self, league):
+        model = export_module.model_row(league)
+        rows = [dict(team='a', rating=1900.0), dict(team='b', rating=1100.0)]
+        games = [dict(home='a', away='b', home_points=None, away_points=None,
+                      home_wp=0.25, home_elo=1.0, away_elo=2.0)]
+        export_module.expect_upcoming(games, rows, json.loads(model['config']))
+        assert games[0]['home_wp'] == 0.25
+        assert 'wp_estimated' not in games[0]
+
+    def test_a_played_game_the_model_declined_is_not_priced_after_the_fact(
+            self, league):
+        """A final score is a result, not a forecast.
+
+        Pricing a game that has already been played off today's ratings would
+        put a confident number on a card next to the score that refutes it.
+        """
+        model = export_module.model_row(league)
+        rows = [dict(team='a', rating=1900.0), dict(team='b', rating=1100.0)]
+        games = [dict(home='a', away='b', home_points=3, away_points=31)]
+        export_module.expect_upcoming(games, rows, json.loads(model['config']))
+        assert 'home_wp' not in games[0]

@@ -768,6 +768,45 @@
    * print it as certainty. Every state that reaches this function has time
    * left on the clock: an overtime state, where the model really does answer
    * 1 or 0 by the score alone, carries no probability and never gets here. */
+  /* A 0-1 probability as a percentage, for the pregame number on a card.
+   *
+   * `probabilityText` takes per-mille, so this scales rather than repeating
+   * its rounding and its <1%/>99% ends. The null check comes FIRST because
+   * Number(null) is 0, which would turn "no probability" into a confident 0%.
+   */
+  /* Which side lost, or null while the game is undecided or tied.
+   *
+   * A tie returns null deliberately: 16 games since 1999 ended level and
+   * neither side lost one of them.
+   */
+  function loserOf(game) {
+    if (!game) return null;
+    var home = game.home_points;
+    var away = game.away_points;
+    if (home === null || home === undefined) return null;
+    if (away === null || away === undefined) return null;
+    if (home === away) return null;
+    return home > away ? 'away' : 'home';
+  }
+
+  /* Which side the model made the favourite before kickoff, or null where
+   * there is no stored probability or the game is a pick'em to the rounding
+   * the card shows. */
+  function sideFavoured(game) {
+    var wp = game && game.home_wp;
+    if (wp === null || wp === undefined) return null;
+    var number = Number(wp);
+    if (!isFinite(number) || number === 0.5) return null;
+    return number > 0.5 ? 'home' : 'away';
+  }
+
+  function winProbabilityText(fraction) {
+    if (fraction === null || fraction === undefined) return null;
+    var number = Number(fraction);
+    if (!isFinite(number)) return null;
+    return probabilityText(number * 1000);
+  }
+
   function probabilityText(perMille) {
     if (typeof perMille !== 'number' || !isFinite(perMille)) return null;
     var pct = perMille / 10;
@@ -863,6 +902,9 @@
     unpackScoring: unpackScoring,
     unpackInjuries: unpackInjuries,
     probabilityText: probabilityText,
+    winProbabilityText: winProbabilityText,
+    loserOf: loserOf,
+    sideFavoured: sideFavoured,
     winProbabilityTrace: winProbabilityTrace,
     tracePath: tracePath,
     sideTeam: sideTeam,
