@@ -114,3 +114,22 @@ def test_the_root_and_the_dashboard_agree():
     """Whichever URL gets pasted, the preview says the same thing."""
     for key in SHARED:
         assert meta(INDEX, key) == meta(SHELL, key), f'{key} differs'
+
+
+@pytest.mark.parametrize('name', ['apple-touch-icon.png', 'icon-32.png',
+                                  'icon-192.png', 'icon-512.png',
+                                  'icon-maskable-512.png'])
+def test_all_three_logo_bars_are_complete(name):
+    """Dimensions alone missed PNGs whose lower bars were cut off."""
+    from PIL import Image
+    image = Image.open(ROOT / 'ui' / 'brand' / name).convert('RGB')
+    size = image.width
+    inner = round(size * 0.6) if 'maskable' in name else size
+    offset = (size - inner) / 2
+    for y, color in [(19.5, (232, 163, 61)), (32, (238, 241, 236)),
+                     (44.5, (107, 122, 112))]:
+        # Probe each bar's center and lower interior, catching half-clipping.
+        for dy in (0, 1):
+            point = (round(offset + 23 * inner / 64),
+                     int(offset + (y + dy) * inner / 64))
+            assert image.getpixel(point) == color, (name, point)
