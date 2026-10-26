@@ -118,14 +118,24 @@
     const opponent = finder && /^[a-z0-9-]{1,60}$/.test(p.get('opponent') || '') ? p.get('opponent') : null;
     const c = (p.get('conf') || '').trim();
     const isConfStandings = section === 'rankings' && subview === 'conference-standings';
-    const conf = (isGames || isConfStandings) && c.length <= 60 && /^[A-Za-z0-9 &().'-]+$/.test(c) ? c : null;
+    const isWeekly = section === 'rankings' && subview === 'elo-weekly';
+    const conf = (isGames || isConfStandings || isWeekly) && c.length <= 60 && /^[A-Za-z0-9 &().'-]+$/.test(c) ? c : null;
     // Which point in a season the week-by-week Elo table is showing (P1-05):
     // 'pre', 'w<week>' or 'post', the keys src/elo_timeline.py writes. Only the
     // shape is checked here; the page checks it against the season's real stages
     // and says so when one doesn't apply, exactly as the week filter does.
     const st = p.get('stage') || '';
-    const stage = (section === 'rankings' && subview === 'elo-weekly' &&
-      (st === 'pre' || st === 'post' || /^w\d{1,2}$/.test(st))) ? st : null;
+    const stage = isWeekly && (st === 'pre' || st === 'post' || /^w\d{1,2}$/.test(st)) ? st : null;
+    // The Week by Week view shows every week at once by default (one row per
+    // team, one column per week). `span=week` is the single-week snapshot it
+    // used to be, and naming a stage asks for that snapshot too, so every
+    // `stage=` link published before the grid existed still opens what it meant.
+    const span = isWeekly && (p.get('span') === 'week' || stage) ? 'week' : 'season';
+    // Which ranking the grid follows. The poll tracks carry their own columns
+    // (a poll release is not an Elo week), so this is a choice of table, not a
+    // column added to one. Checked for shape here; the page checks it against
+    // the season's real tracks and says so when one is missing.
+    const track = isWeekly && ['ap', 'cfp'].includes(p.get('track')) ? p.get('track') : 'elo';
     const matchupId = key => /^\d{1,10}$/.test(p.get(key) || '') ? Number(p.get(key)) : null;
     const venue = ['home', 'away', 'neutral'].includes(p.get('venue')) ? p.get('venue') : 'home';
     const route = { section, subview, year, status,
@@ -138,7 +148,7 @@
       dir: p.get('dir') === 'asc' ? 'asc' : 'desc', page: Math.max(1, Math.min(10000, Number(p.get('page')) || 1)),
       peopleKind: section === 'people' && ['player','coach'].includes(p.get('kind')) ? p.get('kind') : '',
       query: (section === 'people' || section === 'teams' && subview !== 'stadiums') ? (p.get('q') || '').trim().slice(0, 150) : '',
-      game, week, team: teamFilter, opponent, finder, findSeason, conf, stage,
+      game, week, team: teamFilter, opponent, finder, findSeason, conf, stage, span, track,
       stadium: section === 'teams' && subview === 'stadiums' && /^\d{1,10}$/.test(p.get('stadium') || '') ? Number(p.get('stadium')) : null,
       matchupHome: section === 'matchups' ? matchupId('home') : null,
       matchupAway: section === 'matchups' ? matchupId('away') : null,
@@ -151,6 +161,7 @@
       route.game = null;
       route.week = null; route.team = null; route.opponent = null; route.finder = false;
       route.findSeason = null; route.conf = null; route.stage = null;
+      route.span = 'season'; route.track = 'elo';
       route[kind === 'game' ? 'gameParam' : kind + 'Param'] = param;
       const wanted = p.get('tab') || '';
       route.tab = pageTabs[kind].includes(wanted) ? wanted : (pageTabs[kind][0] || '');
@@ -262,7 +273,14 @@
         if (route.game != null) p.set('game', route.game);
       }
       if (route.section === 'rankings' && route.subview === 'conference-standings' && route.conf) p.set('conf', route.conf);
-      if (route.section === 'rankings' && route.subview === 'elo-weekly' && route.stage) p.set('stage', route.stage);
+      if (route.section === 'rankings' && route.subview === 'elo-weekly') {
+        if (route.stage) p.set('stage', route.stage);
+        // `stage` already means the snapshot, so `span=week` beside it would be
+        // a second way to say the same thing in the canonical URL.
+        else if (route.span === 'week') p.set('span', 'week');
+        if (route.track && route.track !== 'elo') p.set('track', route.track);
+        if (route.conf) p.set('conf', route.conf);
+      }
       if (route.section === 'matchups') {
         if (route.matchupAway != null) p.set('away', route.matchupAway);
         if (route.matchupHome != null) p.set('home', route.matchupHome);

@@ -306,6 +306,29 @@
   .hfa-search { width: min(100%, 360px); padding: 9px; margin: 0 0 12px; background: var(--panel-2);
     color: var(--ink); border: 1px solid var(--line); border-radius: 3px; font: inherit; }
   .rank-table td.flat, .rank-table td.bye { color: var(--ink-dim); }
+  /* ---- Week-by-week rank grid ---- */
+  /* One row per team, one column per week, so the cells have to be narrow and the
+     team column has to stay put while the weeks scroll under the reader's eye. */
+  .rank-grid { font-size: 13px; }
+  .rank-grid th, .rank-grid td { padding: 5px 6px; }
+  .rank-grid thead th { white-space: nowrap; }
+  .rank-grid td:first-child, .rank-grid th:first-child {
+    position: sticky; left: 0; z-index: 1; background: var(--panel); min-width: 150px; }
+  .rank-grid td.grid-rank { font-family: var(--font-mono); text-align: right; width: 34px; }
+  .rank-grid .grid-blank { color: var(--line); }
+  /* Movement reads UNDER the number: a bar down the side of a cell is the one
+     place a reader already expects a column divider, and 138 rows of them turned
+     the grid into a grid of lines rather than of ranks. */
+  .rank-grid td.up { box-shadow: inset 0 -2px 0 var(--green-hl); }
+  .rank-grid td.down { box-shadow: inset 0 -2px 0 var(--red); }
+  /* The bands are a reading aid, not ink: they have to stay quiet enough that the
+     rank numbers are still the thing you read, in either theme. */
+  .band-bye { background: color-mix(in srgb, var(--amber) 34%, transparent); }
+  .band-field { background: color-mix(in srgb, var(--amber) 19%, transparent); }
+  .band-ranked { background: color-mix(in srgb, var(--amber) 9%, transparent); }
+  .grid-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+    margin: 0 0 10px; font: 11px var(--font-mono); color: var(--ink-dim); }
+  .grid-key { padding: 2px 6px; border-radius: 2px; color: var(--ink); }
   .ledger tfoot td { font-weight: 600; border-top: 1px solid var(--line); }
   .ledger a, #tp-ledger .section-note a { color: var(--amber); }
   .method h3 { font-family: var(--font-display); font-size: 17px; margin: 18px 0 6px; }
@@ -1641,9 +1664,10 @@ function loadSeasonGames(season) {
 }
 
 const _eloTimeline = new Map();
-// P1-05/06. Resolves to {season, teams: [{id, name}], stages: [objects, oldest first],
-// rows: [[row objects] per stage]}. One file per season (src/export_static_data.py),
-// loaded only when the week-by-week view opens.
+// P1-05/06. Resolves to {season, teams: [{id, name, conference}], stages: [objects,
+// oldest first], rows: [[row objects] per stage], polls: {ap|cfp: {releases, rows}}}.
+// One file per season (src/export_static_data.py), loaded only when the
+// week-by-week view opens. `polls` is {} for a season with no poll release.
 function loadEloTimeline(season) {
   season = Number(season);
   if (_eloTimeline.has(season)) return Promise.resolve(_eloTimeline.get(season));
@@ -1654,9 +1678,15 @@ function loadEloTimeline(season) {
     if (!raw) throw new Error('Elo timeline for ' + season + ' was empty');
     const unpack = (fields, row) => Object.fromEntries(fields.map((f, i) => [f, row[i]]));
     const data = { season,
-      teams: raw.teams.map(([id, name]) => ({ id, name })),
+      teams: raw.teams.map(([id, name, conference]) => ({ id, name, conference: conference || null })),
       stages: raw.stages.map(r => unpack(raw.stage_fields, r)),
-      rows: raw.rows.map(stage => stage.map(r => unpack(raw.row_fields, r))) };
+      rows: raw.rows.map(stage => stage.map(r => unpack(raw.row_fields, r))),
+      // Appended by src/elo_timeline.py after this view shipped, so a payload
+      // exported before it has none and the poll tracks are simply absent.
+      polls: Object.fromEntries(Object.entries(raw.polls || {}).map(([poll, track]) => [poll, {
+        releases: track.releases.map(r => unpack(raw.poll_release_fields, r)),
+        rows: track.rows.map(release => release.map(r => unpack(raw.poll_row_fields, r)))
+      }])) };
     _eloTimeline.set(season, data);
     return data;
   });
@@ -2547,17 +2577,31 @@ function conferenceHistoryTip(conference, p) {
 }
 
 // ---------------- Week by week (P1-05, P1-06) ----------------
-// A point-in-time Elo table plus how far each team moved to reach it. The stage
-// keys and every number come from src/elo_timeline.py; this view picks a stage
-// and formats it.
+// Two readings of one payload. The season grid is every team's rank after every
+// week at once, one row per team; the week snapshot is where the table stood at
+// a chosen point and how far each team moved to reach it. The stage keys and
+// every number come from src/elo_timeline.py; this view only formats them.
+const WEEKLY_TRACKS = [['elo', 'Elo'], ['ap', 'AP Poll'], ['cfp', 'CFP']];
+
+function weeklyTrackLabel(track) {
+  const found = WEEKLY_TRACKS.find(([key]) => key === track);
+  return found ? found[1] : track;
+}
+
 function renderEloWeekly() {
   if (!(STATIC_MANIFEST.elo_timeline || {})[String(state.year)]) {
     return '<div class="empty-note">No week-by-week Elo for ' + state.year + '.</div>';
   }
+  const grid = state.span !== 'week';
+  const note = grid
+    ? 'Every team\'s rank after every week of ' + state.year + ', one row per team and one column per week. ' +
+      'Each number is the team\'s place in the table at that point in the season \u2014 not a re-ranking of the ' +
+      'finished season, but the standing as it was. Sort by any week, or follow a row across to see a climb.'
+    : 'Where the table stood at a chosen point in the season, and how far each team moved to get there. ' +
+      'Every rating is the engine\'s own postgame number after the games up to that point \u2014 nothing is ' +
+      'recomputed here.';
   return '<div class="panel"><h2 class="section-title">Week by Week \u00b7 ' + state.year + '</h2>' +
-    '<p class="section-note">Where the Elo table stood at a chosen point in the season, and how far each team ' +
-    'moved to get there. Every rating is the engine\'s own postgame number after the games up to that point \u2014 ' +
-    'nothing is recomputed here.</p>' +
+    '<p class="section-note">' + note + '</p>' +
     '<div id="ew-filters" class="filter-row"></div><div id="ew-results"><div class="empty-note">Loading&hellip;</div></div></div>';
 }
 
@@ -2593,6 +2637,198 @@ function moversPanel(title, rows, teams) {
     '</tbody></table></div>';
 }
 
+// The bands a reader of this site already thinks in: the top four seeds take a
+// first-round bye, the top twelve are the playoff field, the top 25 is "ranked".
+// Tinting the grid by band is what makes a climb visible across a row of numbers.
+function rankBand(rank) {
+  if (rank == null) return '';
+  return rank <= 4 ? 'band-bye' : rank <= 12 ? 'band-field' : rank <= 25 ? 'band-ranked' : '';
+}
+
+// A track's own columns. The Elo stages and a poll's releases are NOT the same
+// moments -- a poll released in week N is voted on games through week N-1 -- so
+// each track brings its own column set rather than being squeezed into one.
+function weeklyColumns(data, track) {
+  if (track === 'elo') {
+    return data.stages.map(st => ({
+      key: st.key,
+      label: st.key === 'pre' ? 'Pre' : st.key === 'post' ? 'Post' : 'W' + st.week,
+      title: st.label
+    }));
+  }
+  const chosen = (data.polls || {})[track];
+  if (!chosen) return [];
+  return chosen.releases.map(r => ({
+    key: r.key,
+    label: r.season_type === 'postseason' ? 'Final' : 'W' + r.week,
+    title: weeklyTrackLabel(track) + ' · ' + r.label
+  }));
+}
+
+// One row per team, columns oldest first. A cell is null where the team has no
+// rank in that column: no rating yet that early in an Elo season, or unranked in
+// that poll release -- which for a poll is most of the table and not a gap.
+function weeklyGridRows(data, track) {
+  const columns = weeklyColumns(data, track);
+  const byTeam = new Map();
+  const teamAt = index => data.teams[index] || null;
+  const rowFor = (key, name, index, conference) => {
+    if (!byTeam.has(key)) {
+      byTeam.set(key, { key, name, team: index, conference: conference || null,
+        cells: columns.map(() => null) });
+    }
+    return byTeam.get(key);
+  };
+  if (track === 'elo') {
+    data.rows.forEach((stageRows, column) => {
+      for (const r of stageRows) {
+        const team = teamAt(r.team);
+        if (!team) continue;
+        rowFor(String(r.team), team.name, r.team, team.conference).cells[column] =
+          { rank: r.rank, elo: r.elo, d_rank: r.d_rank, stage_games: r.stage_games };
+      }
+    });
+  } else {
+    const chosen = (data.polls || {})[track];
+    ((chosen && chosen.rows) || []).forEach((release, column) => {
+      for (const r of release) {
+        // A school CFBD never matched to a canonical team has no index, so it is
+        // kept under its own name rather than collapsing with every other one.
+        const team = r.team == null ? null : teamAt(r.team);
+        const key = team ? String(r.team) : 'school:' + r.school;
+        rowFor(key, team ? team.name : r.school, team ? r.team : null,
+          team && team.conference).cells[column] = { rank: r.rank, d_rank: r.d_rank };
+      }
+    });
+  }
+  const rows = [...byTeam.values()];
+  for (const row of rows) {
+    const ranks = row.cells.filter(Boolean).map(cell => cell.rank);
+    row.best = ranks.length ? Math.min(...ranks) : null;
+    row.worst = ranks.length ? Math.max(...ranks) : null;
+    // The last column the team actually HAS, not the last column: a poll row
+    // drops out of the ballot and an Elo row never does, and both should sort by
+    // where the team last stood rather than by an empty cell.
+    const last = [...row.cells].reverse().find(Boolean);
+    row.latest = last ? last.rank : null;
+    row.weeks = ranks.length;
+  }
+  rows.sort((a, b) => (a.latest == null ? 1e9 : a.latest) - (b.latest == null ? 1e9 : b.latest) ||
+    (a.best == null ? 1e9 : a.best) - (b.best == null ? 1e9 : b.best) || a.name.localeCompare(b.name));
+  return { columns, rows };
+}
+
+function weeklyGridCell(cell, column, teamName) {
+  // An empty cell carries an empty sort key, which is what keeps the whole
+  // column on a numeric sort (see ui/stats.js) instead of a text one.
+  if (!cell) return '<td class="grid-rank" data-sort=""><span class="grid-blank">·</span></td>';
+  const moved = cell.d_rank == null ? '' : cell.d_rank > 0 ? ' up' : cell.d_rank < 0 ? ' down' : '';
+  const title = teamName + ' · ' + column.title + ': #' + cell.rank +
+    (cell.elo == null ? '' : ', ' + eloValue(cell.elo) + ' Elo') +
+    (cell.d_rank == null ? '' : cell.d_rank === 0 ? ', no move' : ', ' + signed(cell.d_rank, 0) + ' places');
+  return '<td class="grid-rank ' + rankBand(cell.rank) + moved + '" data-sort="' + cell.rank +
+    '" title="' + esc(title) + '">' + cell.rank + '</td>';
+}
+
+function weeklyGridTable(grid) {
+  const head = '<thead><tr><th scope="col">Team</th>' +
+    grid.columns.map(c => '<th scope="col" class="num" title="' + esc(c.title) + '">' +
+      esc(c.label) + '</th>').join('') +
+    '<th scope="col" class="num">Best</th><th scope="col" class="num">Worst</th></tr></thead>';
+  const body = grid.rows.map(row => '<tr><td><div class="name-cell">' +
+    // 'xs', not the snapshot's 'sm': 138 rows of a larger mark is a page nobody
+    // scrolls to the bottom of, and the grid is read across, not down.
+    (row.team == null ? esc(row.name) : teamLink(row.name, 'xs')) + '</div></td>' +
+    row.cells.map((cell, i) => weeklyGridCell(cell, grid.columns[i], row.name)).join('') +
+    '<td class="num" data-sort="' + (row.best == null ? '' : row.best) + '">' +
+      (row.best == null ? '—' : row.best) + '</td>' +
+    '<td class="num" data-sort="' + (row.worst == null ? '' : row.worst) + '">' +
+      (row.worst == null ? '—' : row.worst) + '</td></tr>').join('');
+  return '<table class="rank-table rank-grid">' + head + '<tbody>' + body + '</tbody></table>';
+}
+
+function weeklyGridNote(track, season, rows, columns) {
+  if (track === 'elo') {
+    return 'Rank in this model’s Elo table after every game played up to that column. ' +
+      'Preseason is the rating carried into ' + season + ' before a game was played. ' +
+      rows + ' teams across ' + columns + ' points in the season.';
+  }
+  return 'Rank in the ' + weeklyTrackLabel(track) + ' as each ballot was released. A release ranks 25 ' +
+    'teams, so an empty cell means unranked in that ballot, not missing data. Columns are the poll’s ' +
+    'OWN releases, which are not the Elo weeks beside them — a poll released in week N is voted on ' +
+    'games through week N−1. ' + rows + ' teams appeared in ' + columns + ' release' +
+    (columns === 1 ? '' : 's') + '.';
+}
+
+function weeklySpanControl(data, current) {
+  const choose = (value, label) => '<option value="' + value + '"' +
+    (value === current ? ' selected' : '') + '>' + label + '</option>';
+  return '<label>Show<select id="ew-span" data-filter="span">' +
+    choose('season', 'Every week') + choose('week', 'One week') + '</select></label>';
+}
+
+function weeklyGridLegend(track) {
+  // The Elo bands ARE the bracket on this site, so they are named for what they
+  // mean there. A poll is not the bracket -- only the CFP release decides seeds,
+  // and the AP decides nothing -- so a poll track names the bands by their size.
+  const labels = track === 'elo'
+    ? ['first-round bye', 'playoff field', 'ranked']
+    : ['top 4', 'top 12', 'top 25'];
+  const swatches = [['band-bye', '1–4'], ['band-field', '5–12'], ['band-ranked', '13–25']];
+  return '<p class="grid-legend">' + swatches.map(([cls, range], i) =>
+    '<span class="grid-key ' + cls + '">' + range + '</span> ' + labels[i]).join('') + '</p>';
+}
+
+function paintWeeklyGrid(data, season) {
+  const notes = [];
+  // A season with no poll release has no track to offer, and the same check
+  // decides both the selector and whether a requested track can be honoured.
+  const available = WEEKLY_TRACKS.filter(([key]) => key === 'elo' || (data.polls || {})[key]);
+  let track = state.track;
+  if (!available.some(([key]) => key === track)) {
+    notes.push('No ' + weeklyTrackLabel(track) + ' release is stored for ' + season +
+      '. Showing Elo instead.');
+    track = 'elo';
+  }
+  const grid = weeklyGridRows(data, track);
+  const conferences = [...new Set(data.teams.map(t => t.conference).filter(Boolean))].sort();
+  let conf = state.conf;
+  if (conf && !conferences.includes(conf)) {
+    notes.push('No conference called ' + conf + ' in ' + season + '. Showing every team.');
+    conf = null;
+  }
+  const rows = conf ? grid.rows.filter(row => row.conference === conf) : grid.rows;
+
+  const choose = (value, label, selected) => '<option value="' + esc(value) + '"' +
+    (selected ? ' selected' : '') + '>' + esc(label) + '</option>';
+  document.getElementById('ew-filters').innerHTML =
+    '<form id="ew-filter-form" aria-label="Choose what the grid shows">' +
+    weeklySpanControl(data, 'season') +
+    // One option is not a choice: the selector appears only once a season has a
+    // poll release to switch to.
+    (available.length > 1
+      ? '<label>Ranking<select id="ew-track" data-filter="track">' +
+        available.map(([key, label]) => choose(key, label, key === track)).join('') +
+        '</select></label>' : '') +
+    (conferences.length
+      ? '<label>Conference<select id="ew-conf" data-filter="conf">' +
+        choose('', 'All conferences', !conf) +
+        conferences.map(name => choose(name, name, name === conf)).join('') +
+        '</select></label>' : '') +
+    '</form>';
+
+  document.getElementById('ew-results').innerHTML =
+    notes.map(n => '<p class="empty-note">' + esc(n) + '</p>').join('') +
+    '<p class="section-note">' + esc(weeklyGridNote(track, season, rows.length, grid.columns.length)) +
+      (conf ? ' Conference is the team’s membership in ' + season + ', not today’s.' : '') +
+      '</p>' + weeklyGridLegend(track) +
+    (rows.length ? weeklyGridTable({ columns: grid.columns, rows })
+      : '<p class="empty-note">No team to show.</p>');
+  // These tables arrive after render() ran, so they need the same scroll wrapper
+  // and sort buttons it gives every other table on the page.
+  wrapWideTables();
+}
+
 function hydrateEloWeekly(version) {
   const season = state.year;
   // renderEloWeekly() draws a plain note instead of the panel when a season has
@@ -2600,6 +2836,7 @@ function hydrateEloWeekly(version) {
   if (!document.getElementById('ew-results')) return;
   loadEloTimeline(season).then(data => {
     if (version !== renderVersion) return;
+    if (state.span !== 'week') { paintWeeklyGrid(data, season); return; }
     const notes = [];
     // Validate the requested stage against THIS season, like the games filters do.
     let index = data.stages.findIndex(st => st.key === state.stage);
@@ -2616,10 +2853,11 @@ function hydrateEloWeekly(version) {
       '>' + esc(label) + '</option>';
     document.getElementById('ew-filters').innerHTML =
       '<form id="ew-filter-form" aria-label="Choose a point in the season">' +
+      weeklySpanControl(data, 'week') +
       '<label>As of<select id="ew-stage" data-filter="stage">' +
       data.stages.map(st => opt(st.key, st.label, st.key === stage.key)).join('') + '</select></label>' +
       (index < data.stages.length - 1
-        ? '<a class="side-link" href="' + esc(routeHref({ stage: null })) + '">Latest</a>' : '') +
+        ? '<a class="side-link" href="' + esc(routeHref({ stage: null, span: 'week' })) + '">Latest</a>' : '') +
       '</form>';
 
     const hasMovement = rows.some(r => r.d_elo !== null);
@@ -6079,8 +6317,17 @@ document.getElementById('content').addEventListener('change', e => {
         : { opponent: team?.slug || null }); return;
     }
   }
-  const stageSel = e.target.closest('#ew-filters select');
-  if (stageSel) { navigate({ stage: stageSel.value || null }); return; }
+  const weeklySel = e.target.closest('#ew-filters select');
+  if (weeklySel) {
+    const key = weeklySel.dataset.filter || 'stage';
+    const changes = { [key]: weeklySel.value || null };
+    // Naming a week IS asking for the one-week snapshot, and going back to every
+    // week has to drop the stage or readRoute would send the view straight back.
+    if (key === 'stage') changes.span = 'week';
+    if (key === 'span' && weeklySel.value === 'season') changes.stage = null;
+    navigate(changes);
+    return;
+  }
   const sel = e.target.closest('#games-filters select');
   if (!sel || state.section !== 'games') return;
   gamesFocusAfterLoad = sel.id;                      // keep keyboard focus on the control just used

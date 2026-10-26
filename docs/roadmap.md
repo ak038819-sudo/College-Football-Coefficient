@@ -25,10 +25,24 @@ boards in one row. The full Elo view behind "All ratings" is still only a team,
 a rating and a change arrow for all 138 teams, which is thin for the page the
 model is named after.
 
+Week by Week shows every team's rank after every week of a season at once as of
+2026-10-26: one row per team, one column per week, sorted by any of them and cut
+by conference, with the one-week snapshot still behind "One week" and behind
+every `stage=` link ever published. The AP and CFP ballots are a second and
+third track on the same grid, drawn on the poll's OWN release columns rather
+than the Elo weeks, because a poll released in week N is voted on games through
+week N-1.
+
 - Add detail to the Elo page: record, conference, movement over a window rather
   than one game, strength of schedule, and the best and worst results that
   built the rating. Decide what belongs there versus on a team page, since a
   team page already carries the rating ledger.
+- Widen the poll archive. `data/raw/rankings_<year>.csv` is fetched for the
+  current season only, so the AP and CFP tracks are empty for every earlier one.
+  The loader, the schema and the grid already take any season; what is missing
+  is a backfill run of `fetch_cfbd_games.py` across the archive (it writes
+  `rankings_<year>.csv` beside the games), which has to happen in a workflow
+  because this container cannot reach the CFBD API.
 
 ## Distant future: an installable app
 

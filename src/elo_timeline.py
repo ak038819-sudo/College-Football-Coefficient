@@ -58,6 +58,21 @@ than left to infer that a game came out exactly even.
 Ranks are shared on a tie (two teams at the same rating are both 4th, and the
 next team is 6th), the same convention build_coe2_rollups.conference_coe2_rank
 uses.
+
+## Poll tracks
+
+`payload["polls"]` carries the same shape for the AP and CFP polls, so a reader
+can follow a team through the human ballots beside the model. Their columns are
+the poll's OWN releases, never the Elo stages above: a poll released in week N
+is voted on games through week N-1, and the two are not the same moment. Lining
+them up in one row of columns would assert an alignment the data does not have,
+so each track keeps its own column set and says what it is.
+
+A poll ranks 25 teams, so most cells are empty by design. `d_rank` compares a
+team against the previous RELEASE of that same poll and is None when the team
+was unranked in it -- a team entering the poll at 23 did not climb from 26.
+Poll rows carry both the team index (null when CFBD's school name never matched
+a canonical team) and the raw school name, so a track never shows a gap.
 """
 from __future__ import annotations
 
@@ -68,6 +83,9 @@ from collections import defaultdict
 # matching every other payload the site loads (see src/export_static_data.py).
 STAGE_FIELDS = ["key", "label", "phase", "week", "first_date", "last_date", "games"]
 ROW_FIELDS = ["team", "elo", "rank", "d_elo", "d_rank", "played", "stage_games"]
+POLLS = ("ap", "cfp")
+POLL_RELEASE_FIELDS = ["key", "label", "season_type", "week"]
+POLL_ROW_FIELDS = ["team", "school", "rank", "d_rank"]
 
 PRESEASON_KEY = "pre"
 POSTSEASON_KEY = "post"
@@ -90,6 +108,64 @@ def stage_label(key: str) -> str:
     if key == POSTSEASON_KEY:
         return "Postseason"
     return f"Week {key[1:]}"
+
+
+def poll_release_key(season_type: str, week) -> str:
+    """Which release a poll row belongs to. The only place that mapping lives."""
+    return ("p" if season_type == "postseason" else "r") + str(int(week))
+
+
+def poll_release_label(season_type: str, week) -> str:
+    # The postseason release IS the final poll, whatever week number CFBD gave
+    # it, so it is named for what it is rather than for its number.
+    return "Final" if season_type == "postseason" else f"Week {int(week)}"
+
+
+def poll_timeline(conn: sqlite3.Connection, season: int, index_of: dict[int, int]) -> dict:
+    """
+    {poll: {"releases": [...], "rows": [[...], ...]}} for the polls that have a
+    release in `season`. A poll with none is absent rather than present and
+    empty, so the page can tell "never released" from "released and empty".
+    """
+    if not _table_exists(conn, "poll_rankings"):
+        return {}
+    tracks: dict[str, dict] = {}
+    for poll in POLLS:
+        # Postseason sorts after every regular-season week, the ordering
+        # export_dashboard_data.build_polls already uses to find "the latest".
+        releases = conn.execute(
+            """SELECT season_type, week FROM poll_rankings
+               WHERE season_year = ? AND poll = ?
+               GROUP BY season_type, week
+               ORDER BY (season_type = 'postseason'), week""",
+            (season, poll),
+        ).fetchall()
+        if not releases:
+            continue
+        meta, snapshots = [], []
+        previous: dict = {}
+        for season_type, week in releases:
+            rows = conn.execute(
+                """SELECT rank, team_id, school FROM poll_rankings
+                   WHERE season_year = ? AND poll = ? AND season_type = ? AND week = ?
+                   ORDER BY rank, school""",
+                (season, poll, season_type, week),
+            ).fetchall()
+            rows_out, now = [], {}
+            for rank, team_id, school in rows:
+                # An unmatched school is still a row, keyed by its raw name so
+                # its own movement is still measured across releases.
+                identity = team_id if team_id is not None else f"school:{school}"
+                before = previous.get(identity)
+                rows_out.append([index_of.get(team_id), school, rank,
+                                 None if before is None else before - rank])
+                now[identity] = rank
+            previous = now
+            meta.append([poll_release_key(season_type, week),
+                         poll_release_label(season_type, week), season_type, int(week)])
+            snapshots.append(rows_out)
+        tracks[poll] = {"releases": meta, "rows": snapshots}
+    return tracks
 
 
 def ranks_for(values: list[float]) -> list[int]:
@@ -141,15 +217,35 @@ def build_timeline(conn: sqlite3.Connection, season: int | None = None) -> dict:
         return {}
 
     names = {tid: name for tid, name in conn.execute("SELECT team_id, team_name FROM teams")}
+    conferences = _memberships(conn)
 
     by_season: dict[int, list[sqlite3.Row]] = defaultdict(list)
     for row in _fetch_games(conn, season):
         by_season[row["season_year"]].append(row)
 
-    return {year: _season_payload(year, rows, names) for year, rows in sorted(by_season.items())}
+    return {year: _season_payload(year, rows, names, conn, conferences.get(year, {}))
+            for year, rows in sorted(by_season.items())}
 
 
-def _season_payload(season: int, rows: list[sqlite3.Row], names: dict) -> dict:
+def _memberships(conn: sqlite3.Connection) -> dict[int, dict[int, str]]:
+    """
+    {season: {team_id: conference}} from THAT season's membership, never today's,
+    the same rule build_conference_elo_by_year follows. Empty when the table is
+    not built: a conference filter is worth having and not worth failing over.
+    """
+    if not _table_exists(conn, "team_membership_by_season"):
+        return {}
+    out: dict[int, dict[int, str]] = defaultdict(dict)
+    for year, tid, conference in conn.execute(
+            """SELECT season_year, team_id, conference_real FROM team_membership_by_season
+               WHERE conference_real IS NOT NULL"""):
+        out[int(year)][tid] = conference
+    return out
+
+
+def _season_payload(season: int, rows: list[sqlite3.Row], names: dict,
+                    conn: sqlite3.Connection | None = None,
+                    conferences: dict[int, str] | None = None) -> dict:
     # Stage order: the regular-season weeks the season actually has, by week
     # number, then the postseason if it has one. Never a fixed 1..15 list -- a
     # season that played 14 weeks should not show an empty 15th.
@@ -215,11 +311,23 @@ def _season_payload(season: int, rows: list[sqlite3.Row], names: dict) -> dict:
                        len(info.get("games", ()))])
         snapshots.append(rows_out)
 
-    return {
+    payload = {
         "season": season,
-        "teams": [[tid, names.get(tid, str(tid))] for tid in teams],
+        # Third element appended last, and None where the season has no
+        # membership row for the team: a reader that destructures [id, name]
+        # ignores it (see loadEloTimeline in ui/dashboard_shell.html).
+        "teams": [[tid, names.get(tid, str(tid)), (conferences or {}).get(tid)] for tid in teams],
         "stage_fields": STAGE_FIELDS,
         "stages": stages,
         "row_fields": ROW_FIELDS,
         "rows": snapshots,
     }
+    # Appended last, and absent when no poll ever released in this season: the
+    # payload is positional rows plus a field list, so a reader built before the
+    # poll tracks existed keeps working (see src/export_static_data.py).
+    tracks = poll_timeline(conn, season, index_of) if conn is not None else {}
+    if tracks:
+        payload["poll_release_fields"] = POLL_RELEASE_FIELDS
+        payload["poll_row_fields"] = POLL_ROW_FIELDS
+        payload["polls"] = tracks
+    return payload

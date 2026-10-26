@@ -744,6 +744,48 @@ test('the week-by-week view keeps every other rankings URL unchanged', () => {
   assert.equal(read('#section=rankings').subview, 'top25');
 });
 
+// ---- Week by week: the season grid and its tracks ----
+
+test('the week-by-week view shows every week unless asked for one', () => {
+  assert.equal(read('#section=rankings&view=elo-weekly&season=2025').span, 'season');
+  assert.equal(read('#section=rankings&view=elo-weekly&season=2025&span=week').span, 'week');
+  // Naming a stage IS asking for the one-week snapshot, so every stage= link
+  // published before the grid existed still opens what it meant.
+  assert.equal(read('#section=rankings&view=elo-weekly&season=2025&stage=w8').span, 'week');
+});
+
+test('span and track survive a URL round trip and keep one spelling each', () => {
+  for (const hash of ['#section=rankings&view=elo-weekly&season=2025&span=week',
+    '#section=rankings&view=elo-weekly&season=2025&track=ap',
+    '#section=rankings&view=elo-weekly&season=2025&track=cfp',
+    '#section=rankings&view=elo-weekly&season=2025&conf=SEC',
+    '#section=rankings&view=elo-weekly&season=2025&stage=w8&track=ap']) {
+    assert.deepEqual(read(hashFor(read(hash))), read(hash), hash);
+    assert.equal(hashFor(read(hash)), hash, hash);
+  }
+  // stage already means the snapshot, so span=week beside it would be a second
+  // way to say the same thing in the canonical URL.
+  assert.equal(hashFor(read('#section=rankings&view=elo-weekly&season=2025&stage=w8&span=week')),
+    '#section=rankings&view=elo-weekly&season=2025&stage=w8');
+});
+
+test('an unknown track falls back to Elo and leaves the URL clean', () => {
+  for (const bad of ['', 'AP', 'poll', 'coaches', '__proto__', 'elo']) {
+    const r = read('#section=rankings&view=elo-weekly&season=2025&track=' + encodeURIComponent(bad));
+    assert.equal(r.track, 'elo', bad);
+    assert.equal(hashFor(r), '#section=rankings&view=elo-weekly&season=2025', bad);
+  }
+});
+
+test('span, track and conf belong to the week-by-week view alone', () => {
+  assert.equal(read('#section=rankings&view=elo&season=2025&track=ap').track, 'elo');
+  assert.equal(read('#section=rankings&view=elo&season=2025&conf=SEC').conf, null);
+  assert.equal(read('#team=byu&track=ap').track, 'elo');
+  assert.equal(read('#team=byu&conf=SEC').conf, null);
+  // The conference standings view keeps its own conf filter, unchanged.
+  assert.equal(read('#section=rankings&view=conference-standings&season=2025&conf=SEC').conf, 'SEC');
+});
+
 test('live scoreboard has a stable section URL with no season selector', () => {
   const route = read('#section=live');
   assert.equal(route.section, 'live');
