@@ -376,3 +376,54 @@ def test_the_payload_names_the_fields_the_page_unpacks_by():
             if name == 'type':
                 continue
             assert name + ':' in section, (marker, name)
+
+
+# --- the command the refresh actually runs ---------------------------------
+
+def test_the_command_line_entry_point_runs_end_to_end(tmp_path, monkeypatch,
+                                                      capsys):
+    """DRIVES `main`, because nothing else did and that is how this layer
+    first reached main broken: `record_snapshot` takes a kind and a timestamp
+    positionally, the call passed `origin=` and `detail=`, every test here
+    exercised the functions under it, and the refresh died on the first run
+    after the merge with a TypeError.
+    """
+    captured = {}
+
+    def fake_load_usage(*, seasons=None, root=None, reuse_cache=False,
+                        **rest):
+        captured['seasons'] = seasons
+        return (dict(snaps={SEASON: [snap_row()]},
+                     injuries={SEASON: [injury_row()]}, seasons=[SEASON]),
+                dict(snaps_2012='absent'))
+
+    monkeypatch.setattr(people_source, 'load_usage', fake_load_usage)
+    path = tmp_path / 'usage.db'
+    connection = store.connect(path)
+    store.upsert_teams(connection, [
+        dict(season=SEASON, team=code, full=code, location=None,
+             nickname=None) for code in ('KC', 'BAL')])
+    store.upsert_games(connection, [games.parse_row(game_row())])
+    parsed, _ = people.parse_players([player_row()])
+    people.upsert_players(connection, parsed)
+    connection.close()
+
+    assert usage.main(['--database', str(path), '--seasons', '2024']) == 0
+    out = capsys.readouterr().out
+    assert '1 snap rows, 1 injury rows' in out
+    assert 'not published yet: snaps_2012' in out
+    assert captured['seasons'] == [SEASON]
+
+    connection = store.connect(path)
+    assert connection.execute(
+        'SELECT COUNT(*) FROM player_snap').fetchone()[0] == 1
+    # The snapshot is a real row with the kind and time the column expects.
+    row = connection.execute(
+        'SELECT kind, retrieved_at, source, rows_seen FROM snapshot'
+        " WHERE kind = 'usage'").fetchone()
+    assert row is not None and row[1] and row[3] == 2
+    assert connection.execute(
+        'SELECT COUNT(*) FROM player_snap WHERE snapshot_id ='
+        ' (SELECT snapshot_id FROM snapshot WHERE kind = ?)',
+        ('usage',)).fetchone()[0] == 1
+    connection.close()
