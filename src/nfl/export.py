@@ -19,6 +19,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+from . import elo
 from . import game_export
 from . import market as market_module
 from . import people_export
@@ -91,7 +92,7 @@ def teams(connection):
     ) for row in rows}
 
 
-def season_games(connection, season):
+def season_games(connection, season, model_id=None):
     rows = connection.execute(
         'SELECT game_key, provider_id, season_type, postseason, week,'
         '       game_date, kickoff_utc, kickoff_tbd, neutral_site, home_code,'
@@ -103,6 +104,19 @@ def season_games(connection, season):
         '  FROM game WHERE season = ?'
         "  ORDER BY game_date, COALESCE(kickoff_utc, ''), provider_id",
         (season,)).fetchall()
+    # The model's own pregame numbers for these games, where the
+    # replay stored them. A game the model declined to rate, and every
+    # game of a season exported without a model, simply has none: the
+    # card then shows what it always showed.
+    chain = {}
+    if model_id is not None:
+        chain = {row['game_key']: row for row in connection.execute(
+            'SELECT r.game_key, r.home_pregame, r.away_pregame,'
+            '       r.home_expected'
+            '  FROM rating_game r JOIN game g'
+            '    ON g.game_key = r.game_key'
+            ' WHERE g.season = ? AND r.model_id = ?',
+            (season, model_id))}
     out = []
     for row in rows:
         game = dict(
@@ -156,6 +170,16 @@ def season_games(connection, season):
                               ('referee', 'referee')):
             if row[column] is not None and row[column] != '':
                 game[field] = row[column]
+        # What the model thought before kickoff: each side's rating and
+        # the home side's win probability. This is the stored chain, not
+        # a number recomputed from today's ratings, so a 2015 card shows
+        # what the model believed in 2015 rather than what it believes
+        # now.
+        stored = chain.get(row['game_key'])
+        if stored is not None:
+            game['home_elo'] = round(stored['home_pregame'], 1)
+            game['away_elo'] = round(stored['away_pregame'], 1)
+            game['home_wp'] = round(stored['home_expected'], 4)
         out.append(game)
     return out
 
@@ -185,6 +209,39 @@ def records(games):
         tally[winner]['w'] += 1
         tally[loser]['l'] += 1
     return tally
+
+
+def expect_upcoming(games, rows, config):
+    """Fill in the pregame numbers for games the replay has not rated.
+
+    The chain in `rating_game` only covers games that have been played, so an
+    UPCOMING game reaches the page with no probability at all — which is the
+    one card a reader most wants a number on. Here each side is played at its
+    current rating, which for a team's very next game IS its pregame rating:
+    the chain's own rule is that a game's postgame rating is the next game's
+    pregame one.
+
+    For a game further out it is an estimate rather than a stored fact,
+    because both sides play in between. That is true of every pregame number
+    anywhere, and it is why this never overwrites a stored one.
+    """
+    ratings = {row['team']: row['rating'] for row in rows or []}
+    advantage = float(config.get('home_advantage') or 0.0)
+    scale = float(config.get('scale') or elo.SCALE)
+    for game in games:
+        if 'home_wp' in game:
+            continue
+        if game['home_points'] is not None or game['away_points'] is not None:
+            continue
+        home, away = ratings.get(game['home']), ratings.get(game['away'])
+        if home is None or away is None:
+            continue
+        game['home_elo'] = round(home, 1)
+        game['away_elo'] = round(away, 1)
+        game['home_wp'] = round(elo.expected_home(
+            home, away, neutral=bool(game.get('neutral')),
+            home_advantage=advantage, scale=scale), 4)
+        game['wp_estimated'] = 1
 
 
 def board(connection, season, model_id, games):
@@ -458,8 +515,14 @@ def build(connection, *, model_name=None, seasons=None, now=None):
     in_progress = current_season(moment)
     payloads, coverage = {}, []
     for season in wanted:
-        games = season_games(connection, season)
+        games = season_games(connection, season,
+                             model['model_id'])
         rows = board(connection, season, model['model_id'], games)
+        # `rating_model.config` IS the elo block, not the whole file:
+        # build_ratings stores `config['elo']`. Reaching for an 'elo'
+        # key here would find nothing and quietly play every game at a
+        # home advantage of zero.
+        expect_upcoming(games, rows, json.loads(model['config']))
         payload = dict(season=season, board=rows, games=games,
                        coaches=coach_rows(connection, model['model_id'],
                                           season=season))

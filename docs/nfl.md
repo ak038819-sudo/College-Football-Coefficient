@@ -602,6 +602,49 @@ the database, so the player file has to be loaded first. A failure fails the
 run rather than publishing without the layer, which is how the people layer
 is handled for the same reason.
 
+## The page, and what a card says
+
+The NFL page was built phone-first and every check of it was made at 430px.
+That is why it shipped with `nav.tabs` fixed to the foot of the window at
+EVERY width: on a desktop screen it stranded eight items edge to edge across
+the bottom, a long way from the content they switch. The bar is now a row of
+tabs under the wordmark, and the fixed bar is a `max-width: 719px` rule — the
+phone layout is unchanged.
+
+A card used to be two names and a score. It now carries, for each side, its
+rank on the season's board, its record, its pregame rating and its pregame
+win probability, and it dims the side that lost. None of that is new data:
+
+- **The pregame numbers are the stored chain**, `rating_game.home_pregame`,
+  `away_pregame` and `home_expected`, carried into the exported game row.
+  They are what the model believed BEFORE that game, so a 2015 card shows
+  the 2015 view rather than today's.
+- **An upcoming game has no chain row**, because the replay only rates games
+  that have been played — and an upcoming game is the one card a reader most
+  wants a number on. `export.expect_upcoming` prices those off the board's
+  current ratings, which for a team's very next game IS its pregame rating,
+  by the chain's own rule. It never overwrites a stored number and never
+  prices a game that has already been played.
+- The away side's probability is the home side's complement, computed once
+  rather than rounded twice.
+
+The three `<script src>` tags carry a `?v=sha256(file)[:12]` stamp, written
+by `scripts/stamp_page_scripts.py` and pinned by a test. This is not
+decoration. The service worker serves documents network-first and everything
+else stale-while-revalidate, so without a stamp a returning reader can be
+handed a FRESH `nfl.html` beside a CACHED `nfl_app.js` from before the
+deploy — and a page calling a helper the cached module does not have throws
+a TypeError and draws nothing until they reload. `ui/dashboard.html` never
+had the problem because `build_dashboard.py` has always stamped its modules;
+the NFL page had no generator and so had no stamps. `ui/basketball.html`
+still has none.
+
+One trap worth naming: `rating_model.config` **is** the elo block, not the
+whole configuration file — `build_ratings` stores `config['elo']`. Reaching
+for a nested `'elo'` key finds nothing and silently plays every upcoming game
+at a home advantage of zero, which puts two equal teams at 50% instead of the
+league's measured 57%. A test pins it.
+
 ## What is not here
 
 - **No headshots.** The player file carries a `headshot` URL for 99.4% of
@@ -624,6 +667,11 @@ is handled for the same reason.
 - **No routes of its own.** This page's tabs are buttons, not links, so a
   coach opens in place rather than at a URL. Deep-linking the NFL and
   basketball tabs is one change to both pages and is owned elsewhere.
+- **No logos.** nflverse's logo file points at Wikipedia uploads; the
+  sportsdataverse mark archive the college side fetches from does carry all
+  32, so this is a fetch to write rather than a question to answer.
+- **No favourites on this page.** The football shell's "My teams" has no
+  counterpart here yet.
 - **No live scores.** The export carries finals and schedules; there is no
   in-game clock, so a card says Final, Scheduled or Time TBD and never a zeroed
   clock. Live NFL data is a separate decision with a licensing cost attached,

@@ -358,3 +358,97 @@ test('the football header offers the NFL, as running markup', () => {
   assert.ok(nav, 'the league selector is live');
   assert.ok(nav[0].includes('href="nfl.html"'), 'and contains the NFL');
 });
+
+// --- the game card carries the model's own numbers -------------------------
+
+test('a card shows each side\'s rank, record, rating and win probability',
+  async () => {
+    // The data for all four was already exported or stored; a card drew two
+    // names and a score, which is what made the NFL page read as a stub
+    // beside the college one.
+    const schedule = games();
+    schedule[0].home_elo = 1596.5;
+    schedule[0].away_elo = 1621.9;
+    schedule[0].home_wp = 0.5353;
+    const dom = await open(null, schedule);
+    // The page opens on the latest week with games, so step back to the one
+    // this game is in rather than assuming the first card is it.
+    click(dom, '#weeks button');            // week 1
+    const card = dom.window.document.querySelector('#cards .card');
+    const sides = card.querySelectorAll('.side');
+    assert.equal(sides.length, 2);
+    // Away first, as the card has always listed them.
+    assert.match(sides[0].querySelector('b').textContent, /Buffalo Bills/);
+    assert.equal(sides[0].querySelector('.sub').textContent,
+      '#2 · 0-1 · Elo 1622');
+    assert.equal(sides[1].querySelector('.sub').textContent,
+      '#1 · 1-0 · Elo 1597');
+    // The home side's probability is stored; the away side's is its exact
+    // complement rather than a second rounding of the same number.
+    assert.equal(sides[1].querySelector('.wp').textContent, '54%');
+    assert.equal(sides[0].querySelector('.wp').textContent, '46%');
+  });
+
+test('the favourite is marked and the beaten side is dimmed', async () => {
+  const schedule = games();
+  schedule[0].home_wp = 0.5353;
+  const dom = await open(null, schedule);
+  click(dom, '#weeks button');              // week 1
+  const sides = dom.window.document
+    .querySelectorAll('#cards .card .side');
+  // KC won 24-20 and was the favourite, so the home row carries the mark and
+  // the away row is the dimmed one.
+  assert.ok(sides[1].querySelector('.wp').classList.contains('lead'));
+  assert.ok(!sides[0].querySelector('.wp').classList.contains('lead'));
+  assert.ok(sides[0].classList.contains('lost'));
+  assert.ok(!sides[1].classList.contains('lost'));
+});
+
+test('a card with no stored probability shows none, never a zero', async () => {
+  // Number(null) is 0, and a card reading "0%" beside a team that went on to
+  // win would be a confident lie rather than a missing number.
+  const dom = await open();
+  click(dom, '#weeks button');              // week 1
+  const card = dom.window.document.querySelector('#cards .card');
+  for (const side of card.querySelectorAll('.side')) {
+    assert.equal(side.querySelector('.wp').textContent, '');
+  }
+});
+
+test('the tabs sit under the header rather than after every panel',
+  async () => {
+    // The bar is fixed to the foot of the window at phone width and a row of
+    // tabs above the content everywhere else, which only works if the nav is
+    // inside the wrap and ahead of the panels in the document.
+    const dom = await open();
+    const doc = dom.window.document;
+    const nav = doc.querySelector('nav.tabs');
+    const header = doc.querySelector('header');
+    const panel = doc.querySelector('#scoreboard');
+    assert.equal(nav.parentElement, doc.querySelector('.wrap'));
+    assert.ok(header.compareDocumentPosition(nav)
+      & dom.window.Node.DOCUMENT_POSITION_FOLLOWING, 'nav follows the header');
+    assert.ok(nav.compareDocumentPosition(panel)
+      & dom.window.Node.DOCUMENT_POSITION_FOLLOWING, 'panels follow the nav');
+  });
+
+// --- the helpers behind those numbers --------------------------------------
+
+test('a win probability of null is absent, not zero per cent', () => {
+  assert.equal(app.winProbabilityText(null), null);
+  assert.equal(app.winProbabilityText(undefined), null);
+  assert.equal(app.winProbabilityText(0), '<1%');
+  assert.equal(app.winProbabilityText(0.5), '50%');
+  assert.equal(app.winProbabilityText(1), '>99%');
+});
+
+test('a tie has no loser and no favourite', () => {
+  assert.equal(app.loserOf({ home_points: 20, away_points: 20 }), null);
+  assert.equal(app.loserOf({ home_points: 24, away_points: 20 }), 'away');
+  assert.equal(app.loserOf({ home_points: 20, away_points: 24 }), 'home');
+  assert.equal(app.loserOf({ home_points: null, away_points: null }), null);
+  assert.equal(app.sideFavoured({ home_wp: 0.5 }), null);
+  assert.equal(app.sideFavoured({ home_wp: 0.51 }), 'home');
+  assert.equal(app.sideFavoured({ home_wp: 0.49 }), 'away');
+  assert.equal(app.sideFavoured({}), null);
+});
