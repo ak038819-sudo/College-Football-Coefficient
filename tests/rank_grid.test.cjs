@@ -178,15 +178,61 @@ test('the bands are the top four, the playoff field and the top 25', () => {
      'band-ranked', 'band-ranked', '', '']);
 });
 
-test('a rank cell carries its own numeric sort key and an empty one is empty', () => {
+test('a rank cell carries its own numeric sort key', () => {
   const column = ctx.weeklyColumns(DATA, 'elo')[1];
-  const filled = ctx.weeklyGridCell({rank: 7, elo: 1600, d_rank: 2}, column, 'Rising');
-  assert.match(filled, /data-sort="7"/);
-  // An empty string is what keeps the WHOLE column on a numeric sort: a dash or
-  // a zero there sends it to a text sort, or claims a rank the team never had.
-  const empty = ctx.weeklyGridCell(null, column, 'Rising');
-  assert.match(empty, /data-sort=""/);
-  assert.doesNotMatch(empty, /data-sort="0"/);
+  assert.match(ctx.weeklyGridCell({rank: 7, elo: 1600, d_rank: 2}, column, 'Rising'), /data-sort="7"/);
+  // Never 0: that is a rank no team ever held, and it would sort as the best.
+  assert.doesNotMatch(ctx.weeklyGridCell(null, column, 'Rising'), /data-sort="0"/);
+});
+
+// A poll ranks 25 teams out of every team that has been ranked all season, so
+// most of a poll column is empty -- below the density at which CfbStats keeps a
+// column on a numeric sort. The whole path matters here, not the attribute:
+// enhanceTable falls back to the cell's own TEXT when data-sort is empty, so an
+// empty key reads as "no value" to the eye and as the character '\u00b7' to the
+// sorter, and sorting the column descending put every unranked team on top.
+const SPARSE = {
+  season: 2026,
+  teams: [0, 1, 2, 3, 4, 5].map(i => ({id: i + 1, name: 'Team ' + i, conference: 'Big Ten'})),
+  stages: [], rows: [],
+  polls: {
+    ap: {
+      releases: [{key: 'r1', label: 'Week 1', season_type: 'regular', week: 1},
+        {key: 'r2', label: 'Week 2', season_type: 'regular', week: 2}],
+      rows: [
+        [{team: 0, school: 'Team 0', rank: 9, d_rank: null},
+         {team: 1, school: 'Team 1', rank: 14, d_rank: null}],
+        [{team: 2, school: 'Team 2', rank: 1, d_rank: null},
+         {team: 3, school: 'Team 3', rank: 2, d_rank: null},
+         {team: 4, school: 'Team 4', rank: 3, d_rank: null},
+         {team: 5, school: 'Team 5', rank: 4, d_rank: null}],
+      ],
+    },
+  },
+};
+
+function sortedColumn(columnIndex, clicks) {
+  const { JSDOM } = require('jsdom');
+  const stats = require('../ui/stats.js');
+  const grid = ctx.weeklyGridRows(SPARSE, 'ap');
+  const dom = new JSDOM('<main>' + ctx.weeklyGridTable(grid) + '</main>');
+  const table = dom.window.document.querySelector('table');
+  stats.enhanceTable(table);          // the real sort wiring, not a stand-in
+  const button = table.tHead.rows[0].cells[columnIndex].querySelector('.sort-button');
+  assert.ok(button, 'the column must be sortable at all');
+  for (let i = 0; i < clicks; i++) button.click();
+  return [...table.tBodies[0].rows].map(row => row.cells[columnIndex].textContent.trim());
+}
+
+test('a sparse poll column sorts its ranked teams above the unranked, either way', () => {
+  // One click is descending, two is ascending (ui/stats.js starts at ascending
+  // and flips on each click).
+  assert.deepEqual(Array.from(sortedColumn(1, 1)).slice(0, 2), ['14', '9']);
+  assert.deepEqual(Array.from(sortedColumn(1, 2)).slice(0, 2), ['9', '14']);
+  for (const clicks of [1, 2]) {
+    assert.deepEqual(Array.from(sortedColumn(1, clicks)).slice(2), ['\u00b7', '\u00b7', '\u00b7', '\u00b7'],
+      'four unranked teams, last, after ' + clicks + ' click(s)');
+  }
 });
 
 test('a cell marks which way the team moved, and says nothing when it cannot', () => {

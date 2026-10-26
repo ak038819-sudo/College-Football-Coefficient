@@ -2719,9 +2719,14 @@ function weeklyGridRows(data, track) {
 }
 
 function weeklyGridCell(cell, column, teamName) {
-  // An empty cell carries an empty sort key, which is what keeps the whole
-  // column on a numeric sort (see ui/stats.js) instead of a text one.
-  if (!cell) return '<td class="grid-rank" data-sort=""><span class="grid-blank">·</span></td>';
+  // An empty cell sorts as NO VALUE, in either direction. Its sort key is an em
+  // dash because that is one of the markers CfbStats.cellKey reads as missing
+  // (ui/stats.js); an EMPTY data-sort is not, and falls back to the cell's own
+  // text. A poll column is mostly empty -- 25 ranked teams against every team
+  // that has ever been ranked that season -- so below the sorter's numeric
+  // density threshold those text keys survive, and sorting a column descending
+  // would put every unranked team ABOVE the ranked ones.
+  if (!cell) return '<td class="grid-rank" data-sort="—"><span class="grid-blank">·</span></td>';
   const moved = cell.d_rank == null ? '' : cell.d_rank > 0 ? ' up' : cell.d_rank < 0 ? ' down' : '';
   const title = teamName + ' · ' + column.title + ': #' + cell.rank +
     (cell.elo == null ? '' : ', ' + eloValue(cell.elo) + ' Elo') +
