@@ -20,8 +20,13 @@ Regenerate the PNGs after any edit to the mark, and commit what it writes:
 python3 scripts/build_brand_assets.py
 ```
 
-It needs a Chromium and writes nothing if it cannot find one, rather than
-leaving a half-rendered asset that looks fine in git and broken on the site.
+Install `requirements-dev.txt` first. Icons are rasterized directly from SVG with
+CairoSVG so small browser windows cannot clip the bars. Run
+`python3 scripts/build_brand_assets.py --icons-only` to rebuild only the icons.
+The preview card still requires Chromium; a full build checks for it before writing.
+
+After deployment, existing iPhone shortcuts may retain the old icon. Remove the
+shortcut and add the site to the Home Screen again to refresh it.
 
 **To change the logo**, replace `ui/brand/mark.svg` and re-run that script.
 Nothing else needs touching: the masthead, both favicons, the touch icon, the

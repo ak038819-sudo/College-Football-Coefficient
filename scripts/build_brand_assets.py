@@ -10,7 +10,8 @@ Re-run this after editing the mark, and commit what it writes:
 
     python3 scripts/build_brand_assets.py
 
-It needs a Chromium. It looks for one on PATH and in the usual Playwright
+Icons use CairoSVG (pip install cairosvg), without browser window cropping.
+Use --icons-only to rebuild icons without Chromium. The preview card needs a Chromium. It looks for one on PATH and in the usual Playwright
 location; pass --chromium to point it somewhere else. If no browser is
 available the script says so and writes nothing -- it never leaves a
 half-rendered asset behind, because a truncated PNG published to the site
@@ -39,23 +40,6 @@ CANDIDATES = [
 BG = "#0e1512"
 INK = "#eef1ec"
 AMBER = "#e8a33d"
-
-# (filename, width, height, body-builder). One page per asset, each sized
-# exactly so the screenshot needs no cropping.
-SQUARE = """
-<div style="width:{size}px;height:{size}px">{mark}</div>
-"""
-
-# A maskable icon is cropped to whatever shape the launcher wants, and the
-# platforms only guarantee the middle 80% of the width (a circle inscribed in
-# it). The mark already carries its own rounded-rectangle background, so here it
-# is inset to 60% on a full-bleed field: the bars survive a circular crop, and
-# the corners that get cut are background.
-MASKABLE = """
-<div style="width:{size}px;height:{size}px;display:flex;align-items:center;justify-content:center">
-  <div style="width:{inner}px;height:{inner}px">{mark}</div>
-</div>
-"""
 
 OG = """
 <div class="card">
@@ -114,37 +98,43 @@ def shoot(chromium, html, out, width, height, scale=1):
         raise RuntimeError(f"{chromium} wrote no bytes for {out.name}")
 
 
+def render_icons(mark):
+    """Rasterize the SVG directly; browser window chrome can clip small icons."""
+    import cairosvg
+
+    for name, size in (("apple-touch-icon.png", 180), ("icon-32.png", 32),
+                       ("icon-192.png", 192), ("icon-512.png", 512),
+                       ("icon-maskable-512.png", 512)):
+        source = mark
+        if "maskable" in name:
+            # Keep the existing 60% inset on an opaque full-bleed background.
+            inner = round(size * 0.6)
+            offset = (size - inner) / 2
+            source = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {size} {size}">'
+                      f'<rect width="{size}" height="{size}" fill="{BG}"/>'
+                      f'<svg x="{offset}" y="{offset}" width="{inner}" height="{inner}" '
+                      f'viewBox="0 0 64 64">{mark}</svg></svg>')
+        cairosvg.svg2png(bytestring=source.encode(), write_to=str(BRAND / name),
+                        output_width=size, output_height=size, background_color=BG)
+        print(f"Wrote ui/brand/{name}")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--chromium", help="path to a Chromium binary")
+    parser.add_argument("--icons-only", action="store_true", help="render SVG icons without Chromium")
     args = parser.parse_args(argv)
 
     chromium = find_chromium(args.chromium)
-    if not chromium:
+    if not chromium and not args.icons_only:
         print("ERROR: no Chromium found. Pass --chromium /path/to/chrome.")
         return 2
     mark = MARK.read_text(encoding="utf-8")
 
-    page = PAGE.format(bg=BG, ink=INK, amber=AMBER,
-                       body=SQUARE.format(size=180, mark=mark))
-    shoot(chromium, page, BRAND / "apple-touch-icon.png", 180, 180)
-
-    page = PAGE.format(bg=BG, ink=INK, amber=AMBER,
-                       body=SQUARE.format(size=32, mark=mark))
-    shoot(chromium, page, BRAND / "icon-32.png", 32, 32)
-
-    # The home-screen install icons. 192 and 512 are the two sizes Android
-    # asks for by name, and the maskable one is what keeps the mark intact
-    # inside a launcher's own silhouette.
-    for size in (192, 512):
-        page = PAGE.format(bg=BG, ink=INK, amber=AMBER,
-                           body=SQUARE.format(size=size, mark=mark))
-        shoot(chromium, page, BRAND / f"icon-{size}.png", size, size)
-
-    page = PAGE.format(bg=BG, ink=INK, amber=AMBER,
-                       body=MASKABLE.format(size=512, inner=round(512 * 0.6), mark=mark))
-    shoot(chromium, page, BRAND / "icon-maskable-512.png", 512, 512)
+    render_icons(mark)
+    if args.icons_only:
+        return 0
 
     page = PAGE.format(bg=BG, ink=INK, amber=AMBER, body=OG.format(mark=mark))
     shoot(chromium, page, BRAND / "og-image.png", 1200, 630)
