@@ -37,6 +37,7 @@ club said before kickoff is what the report said.
 
 import argparse
 import sys
+from datetime import datetime, timezone
 
 from .identity import people_franchise_key
 from .store import connect, record_snapshot
@@ -292,9 +293,12 @@ def main(argv=None):
         seasons=seasons, root=args.raw_root, reuse_cache=args.reuse_cache)
     connection = connect(args.database)
     snapshot_id = record_snapshot(
-        connection, source='nflverse', origin='usage',
-        detail=f'{len(bundle["snaps"])} snap seasons, '
-               f'{len(bundle["injuries"])} injury seasons')
+        connection, 'usage', datetime.now(timezone.utc).isoformat(),
+        source=people_source.RELEASE,
+        rows_seen=sum(len(rows) for rows in bundle['snaps'].values())
+        + sum(len(rows) for rows in bundle['injuries'].values()),
+        notes=f'{len(bundle["snaps"])} snap seasons, '
+              f'{len(bundle["injuries"])} injury seasons')
     result = ingest(connection, bundle, snapshot_id=snapshot_id)
     print(f'{result["counts"]["snaps"]} snap rows, '
           f'{result["counts"]["injuries"]} injury rows')
