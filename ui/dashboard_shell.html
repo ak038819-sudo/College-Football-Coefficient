@@ -2202,19 +2202,372 @@ function renderElo() {
       '<td class="num sos" data-sort="">…</td>' +
       '<td class="num vsexp" data-sort="">…</td></tr>';
   }).join('');
+  const asOf = !!state.stage;
   return '<div class="panel"><h2 class="section-title">Elo Rating · ' + state.year + '</h2>' +
-    '<p class="section-note">Published rating' + (state.year === UPCOMING.season && UPCOMING.ratings_as_of
-      ? ' through ' + esc(UPCOMING.ratings_as_of) : ' within the selected season') +
-      '. SOS is the average pregame Elo of the opponents faced; vs Exp is wins above the pregame expectation. ' +
-      'Arrows show each team’s most recent game in that export, not a change in rank.</p>' +
-    (state.year === UPCOMING.season ? '<p class="rating-freshness" id="rating-freshness" role="status"></p>' : '') +
-    '<div class="table-scroll"><table class="rank-table elo-table">' + eloHead() +
-    '<tbody>' + body + '</tbody></table></div></div>';
+    '<p class="section-note">' + (asOf
+      ? 'The table as it stood at a point in the season. Every column counts only the games played by then — ' +
+        'the record, the last five, the schedule faced and the wins above expectation are all to date, not the ' +
+        'season’s totals shown back.'
+      : 'Published rating' + (state.year === UPCOMING.season && UPCOMING.ratings_as_of
+          ? ' through ' + esc(UPCOMING.ratings_as_of) : ' within the selected season') +
+        '. SOS is the average pregame Elo of the opponents faced; vs Exp is wins above the pregame expectation. ' +
+        'Arrows show each team’s most recent game in that export, not a change in rank.') + '</p>' +
+    (state.year === UPCOMING.season && !asOf ? '<p class="rating-freshness" id="rating-freshness" role="status"></p>' : '') +
+    rankingStageMount() +
+    (asOf
+      ? '<div id="elo-asof"><div class="empty-note">Loading&hellip;</div></div>'
+      : '<div class="table-scroll"><table class="rank-table elo-table">' + eloHead() +
+        '<tbody>' + body + '</tbody></table></div>') + '</div>';
+}
+
+// Which Standings views can be rewound to a point in the season, and so carry
+// the "As of" control. The rest are not about a week at all (Home-Field,
+// Conference History) or are built per team-SEASON by the exporter (the Merits
+// boards, Conference Standings, Schedule Strength): a control on those would
+// either do nothing or need a second ranking built in the browser, which is how
+// two numbers for one thing start to disagree.
+const STAGED_RANKINGS = ['elo', 'top25', 'conference-elo'];
+
+function rankingStageMount() { return '<div id="rk-stage-filters" class="filter-row"></div>'; }
+
+// The "As of" control, drawn once the season's stages are known. A season with
+// no timeline simply has no control, rather than one that cannot be used.
+function hydrateRankingStages(version) {
+  const target = document.getElementById('rk-stage-filters');
+  if (!target) return;
+  const season = state.year;
+  if (!(STATIC_MANIFEST.elo_timeline || {})[String(season)]) return;
+  loadEloTimeline(season).then(data => {
+    if (version !== renderVersion || !document.getElementById('rk-stage-filters')) return;
+    const option = (value, label, selected) => '<option value="' + esc(value) + '"' +
+      (selected ? ' selected' : '') + '>' + esc(label) + '</option>';
+    document.getElementById('rk-stage-filters').innerHTML =
+      '<form id="rk-stage-form" aria-label="Choose a point in the season">' +
+      '<label>As of<select id="rk-stage" data-filter="stage">' +
+      option('', 'Latest', !state.stage) +
+      data.stages.map(st => option(st.key, st.label, state.stage === st.key)).join('') +
+      '</select></label>' +
+      (state.stage
+        ? '<a class="side-link" href="' + esc(routeHref({ stage: null })) + '">Back to latest</a>' +
+          '<a class="side-link" href="' + esc(routeHref({ subview: 'elo-weekly', stage: null })) +
+            '">Every week at once →</a>'
+        : '<a class="side-link" href="' + esc(routeHref({ subview: 'elo-weekly', stage: null })) +
+            '">Every week at once →</a>') +
+      '</form>';
+  }).catch(() => {});
+}
+
+
+
+// ---------------- The Elo table as of a week ----------------
+// Every column here is recomputed from the per-game chain team_pages.js already
+// carries, counting only the games played by the chosen point. Nothing is a
+// season total trimmed down -- SOS, vs Exp and the record each mean "so far".
+// The rating and the rank come from the timeline, which is the engine's own
+// audit trail, so this table and Week by Week can never disagree.
+// team_pages.js stores the phase as PHASE_CODE from src/export_team_pages.py,
+// an INTEGER and not the name the database holds: 0 regular, 1 bowl, 2 cfp.
+const POSTSEASON_PHASES = [1, 2];
+
+// Which stage a game belongs to. Mirrors stage_key() in src/elo_timeline.py --
+// the postseason is ONE stage because bowl and playoff games overlap in time,
+// so "after the bowls" is not a moment. It cannot go by week: CFBD RESTARTS the
+// week count for the postseason, so every bowl and playoff game is week 1 and
+// reading the week alone drops them all into the opening Saturday.
+// tests/elo_as_of.test.cjs checks this rule against the per-stage game counts
+// the exporter itself wrote.
+function gameStageKey(game) {
+  return POSTSEASON_PHASES.includes(game.phase) ? 'post' : 'w' + Number(game.week);
+}
+
+// A team's season to date: the rated games that feed Elo, and the games against
+// opponents this project holds no rating for, which count toward a record and
+// nothing else -- the same split the team header record makes.
+function eloAsOfTeamGames(tp, tid, season, order, limit) {
+  const within = key => order.has(key) && order.get(key) <= limit;
+  const rated = (tp.eloByTeam.get(tid) || []).filter(r => {
+    const game = tp.gamesById.get(r.gid);
+    return game && game.season === season && within(gameStageKey(game));
+  });
+  const unrated = (tp.nonFbsByTeam.get(tid) || [])
+    .filter(g => g.season === season && g.mine != null && g.theirs != null && within(gameStageKey(g)));
+  return { rated, unrated };
+}
+
+function eloAsOfRecord(tp, tid, played) {
+  let w = 0, l = 0, t = 0;
+  const count = (mine, theirs) => { if (mine > theirs) w++; else if (mine < theirs) l++; else t++; };
+  for (const r of played.rated) {
+    const game = tp.gamesById.get(r.gid);
+    if (game.hs == null || game.as == null) continue;
+    const home = game.home === tid;
+    count(home ? game.hs : game.as, home ? game.as : game.hs);
+  }
+  // The rated part on its own, which is what the exporter's season record
+  // counts; tests/elo_as_of.test.cjs measures the recomputation against it.
+  const rated = { w, l, t };
+  for (const g of played.unrated) count(g.mine, g.theirs);
+  return { w, l, t, rated,
+    text: (w + l + t) ? w + '\u2013' + l + (t ? '\u2013' + t : '') : '' };
+}
+
+// Mean pregame Elo of the opponents faced so far, and wins above the pregame
+// expectation so far. Both read ONLY the rated games: an unrated opponent has no
+// rating to average and no expectation to beat, which is why the exporter's own
+// season numbers leave them out too.
+//
+// The result comes from the SCORE, never from the sign of the Elo change. A
+// change is K x multiplier x (result - expectation), so its sign tracks whether
+// the team beat its expectation, not whether it won: a tie carries whichever
+// sign the expectation had.
+function eloAsOfStrength(tp, tid, rated) {
+  if (!rated.length) return { sos: null, aboveExp: null };
+  let sos = 0, above = 0;
+  for (const r of rated) {
+    const game = tp.gamesById.get(r.gid);
+    const home = game.home === tid;
+    const mine = home ? game.hs : game.as, theirs = home ? game.as : game.hs;
+    sos += r.oppPre;
+    above += (mine > theirs ? 1 : mine < theirs ? 0 : 0.5) - r.exp;
+  }
+  return { sos: sos / rated.length, aboveExp: above };
+}
+
+function eloAsOfRows(tp, timeline, stageIndex) {
+  const season = timeline.season;
+  const order = new Map(timeline.stages.map((stage, i) => [stage.key, i]));
+  const rows = (timeline.rows[stageIndex] || []).map(row => {
+    const team = timeline.teams[row.team];
+    const tid = team.id;
+    const played = eloAsOfTeamGames(tp, tid, season, order, stageIndex);
+    const strength = eloAsOfStrength(tp, tid, played.rated);
+    return {
+      tid, name: team.name, conference: team.conference,
+      rank: row.rank, elo: row.elo, dElo: row.d_elo, dRank: row.d_rank,
+      record: eloAsOfRecord(tp, tid, played),
+      // Last 5 is the five most recent games BY THAT POINT, not the five before
+      // the season ended, which is the whole reason it is recomputed here.
+      last5: played.rated.length ? played.rated.slice(-5).reduce((sum, r) => sum + r.chg, 0) : null,
+      last5Games: Math.min(played.rated.length, 5),
+      sos: strength.sos, aboveExp: strength.aboveExp
+    };
+  });
+  // 1 = toughest. Ranked among the teams that have played a rated game, so a
+  // team yet to play is unranked rather than ranked last on a number it lacks.
+  const ranked = rows.filter(r => r.sos != null).sort((a, b) => b.sos - a.sos);
+  ranked.forEach((row, i) => { row.sosRank = i && row.sos === ranked[i - 1].sos ? ranked[i - 1].sosRank : i + 1; });
+  return rows;
 }
 
 // Conference, schedule strength, recent movement and wins-above-expectation all
 // live in team_pages.js, the same export a team page opens. It is fetched once
 // and cached, so the table paints from the inline data first and fills in.
+function eloAsOfBody(rows, season) {
+  const cell = (value, digits, signedValue) => {
+    if (value == null) return '<td class="num flat" data-sort="">\u2014</td>';
+    const klass = signedValue ? (value > 0 ? ' pos' : value < 0 ? ' neg' : ' flat') : '';
+    return '<td class="num' + klass + '" data-sort="' + Number(value) + '">' +
+      (signedValue ? signed(value, digits) : eloValue(value)) + '</td>';
+  };
+  return rows.map(row =>
+    '<tr><td class="rk">' + row.rank + '</td>' +
+    '<td><div class="name-cell">' + teamLink(row.name, 'xs') + '</div></td>' +
+    '<td class="conf-cell" data-sort="">' +
+      (row.conference ? conferenceLink(row.conference, null, season) : '\u2014') + '</td>' +
+    '<td class="num" data-sort="' + (row.record.text ? row.record.w : '') + '">' +
+      (row.record.text || '\u2014') + '</td>' +
+    '<td class="num coe-val" data-sort="' + Number(row.elo) + '">' + eloValue(row.elo) + '</td>' +
+    cell(row.last5, 1, true) +
+    (row.sos == null ? '<td class="num flat" data-sort="">\u2014</td>'
+      : '<td class="num" data-sort="' + Number(row.sos) + '">' + eloValue(row.sos) +
+        ' <small class="fpv">#' + row.sosRank + '</small></td>') +
+    cell(row.aboveExp, 1, true) +
+    '</tr>').join('');
+}
+
+function hydrateEloAsOf(version) {
+  const season = state.year;
+  const target = document.getElementById('elo-asof');
+  if (!target) return;
+  Promise.all([loadEloTimeline(season), loadTeamPages()]).then(([timeline, tp]) => {
+    if (version !== renderVersion) return;
+    const holder = document.getElementById('elo-asof');
+    if (!holder) return;
+    let index = timeline.stages.findIndex(st => st.key === state.stage);
+    if (index < 0) index = timeline.stages.length - 1;
+    const stage = timeline.stages[index];
+    const rows = eloAsOfRows(tp, timeline, index);
+    const rated = rows.filter(r => r.sos != null).length;
+    // Validated against THIS season's stages, like the games filters: a week the
+    // season never played is said out loud rather than silently ignored.
+    const missing = state.stage && state.stage !== stage.key
+      ? '<p class="empty-note">There is no ' + (state.stage === 'post' ? 'postseason'
+          : state.stage === 'pre' ? 'preseason' : 'week ' + esc(state.stage.slice(1))) +
+        ' in ' + season + '. Showing ' + esc(stage.label.toLowerCase()) + ' instead.</p>'
+      : '';
+    holder.innerHTML = missing +
+      '<p class="section-note">' + esc(stage.label) + (stage.key === 'pre'
+        ? ': the ratings carried into ' + season + ' before a game was played, so no team has a record or a ' +
+          'schedule faced yet.'
+        : ': after every game played up to and including ' + esc(stage.label.toLowerCase()) + '. ' +
+          rated + ' of ' + rows.length + ' teams have played a rated game by then.') + '</p>' +
+      '<table class="rank-table elo-table">' + eloHead() +
+      '<tbody>' + eloAsOfBody(rows, season) + '</tbody></table>';
+    wrapWideTables();
+  }).catch(() => {
+    if (version !== renderVersion) return;
+    const holder = document.getElementById('elo-asof');
+    if (holder) holder.innerHTML = '<p class="empty-note">Could not load the ' + season + ' table for that week.</p>';
+  });
+}
+
+// ---------------- Which ballot answers "as of week N" ----------------
+// A poll released in week N is voted on the games through week N-1, so the
+// ballot that answers "where did the table stand after week 6" is the week-7
+// release. MEASURED, not assumed: across the 2026 AP releases, a team's rank
+// movement agrees with its result the previous week 88% of the time and with
+// its result that same week 52% -- which is no better than a coin.
+function pollReleaseIndexForStage(track, stage) {
+  if (!track || !track.releases.length) return -1;
+  if (stage.key === 'post') {
+    const final = track.releases.findIndex(r => r.season_type === 'postseason');
+    return final >= 0 ? final : track.releases.length - 1;
+  }
+  // The preseason ballot is the first release of the season, voted before a
+  // game was played -- exactly what the preseason stage is.
+  const wanted = stage.key === 'pre' ? 1 : Number(stage.week) + 1;
+  return track.releases.findIndex(r => r.season_type === 'regular' && r.week === wanted);
+}
+
+function top25AsOfEloBoard(rows, stage, season) {
+  const body = rows.length
+    ? '<ol class="mini-board">' + rows.slice(0, 25).map(row =>
+        teamPanelRow(row.name) + '<span class="rk">' + row.rank + '</span><span class="nm">' +
+        boardTeamLink(row.name, 'xs') +
+        (row.record.text ? '<span class="rec">' + esc(row.record.text) + '</span>' : '') +
+        '</span><span class="v">' + eloValue(row.elo) + '</span></li>').join('') + '</ol>'
+    : '<div class="empty-note">No Elo ratings for ' + season + '.</div>';
+  return '<div class="panel board-col">' +
+    panelHead('Elo Top 25', '<a class="side-link" href="' +
+      esc(routeHref({ subview: 'elo' })) + '">All ratings &rarr;</a>') +
+    body + '<p class="side-note">This model’s rating after ' + esc(stage.label.toLowerCase()) +
+    ', and each team’s record by then.</p></div>';
+}
+
+function top25AsOfPollBoard(poll, timeline, stage, eloRank) {
+  const track = (timeline.polls || {})[poll];
+  const title = pollTitle(poll);
+  if (!track) return '';
+  const index = pollReleaseIndexForStage(track, stage);
+  if (index < 0) {
+    return '<div class="panel board-col"><h2 class="section-title">' + title + '</h2>' +
+      '<p class="empty-note">No ' + title + ' ballot had been released by then.</p></div>';
+  }
+  const release = track.releases[index];
+  const body = '<ol class="mini-board">' + track.rows[index].map(row => {
+    const team = row.team == null ? null : timeline.teams[row.team];
+    const mine = team ? eloRank.get(team.name) : null;
+    return teamPanelRow(team?.name) + '<span class="rk">' + row.rank + '</span><span class="nm">' +
+      (team ? boardTeamLink(team.name, 'xs') : '<span>' + esc(row.school) + '</span>') + '</span>' +
+      '<span class="elo-rk">' + (mine ? 'Elo #' + mine : '') + '</span></li>';
+  }).join('') + '</ol>';
+  return '<div class="panel board-col"><h2 class="section-title">' + title + '</h2>' + body +
+    '<p class="side-note">The ' + esc(release.season_type === 'postseason' ? 'final ballot'
+      : 'week ' + release.week + ' ballot') + ', which is the one voted on the games up to ' +
+    esc(stage.label.toLowerCase()) + '. Elo # = this model’s rank then. Polls do not affect ' +
+    'model ratings.</p></div>';
+}
+
+function hydrateTop25AsOf(version) {
+  const season = state.year;
+  const holder = document.getElementById('top25-asof');
+  if (!holder) return;
+  Promise.all([loadEloTimeline(season), loadTeamPages()]).then(([timeline, tp]) => {
+    if (version !== renderVersion) return;
+    const target = document.getElementById('top25-asof');
+    if (!target) return;
+    let index = timeline.stages.findIndex(st => st.key === state.stage);
+    if (index < 0) index = timeline.stages.length - 1;
+    const stage = timeline.stages[index];
+    const rows = eloAsOfRows(tp, timeline, index);
+    const eloRank = new Map(rows.map(row => [row.name, row.rank]));
+    const boards = ['ap', 'cfp'].map(poll => top25AsOfPollBoard(poll, timeline, stage, eloRank))
+      .filter(Boolean);
+    target.innerHTML = '<div class="rank-boards" data-boards="' + (boards.length + 1) + '">' +
+      top25AsOfEloBoard(rows, stage, season) + boards.join('') + '</div>' +
+      (timeline.polls && Object.keys(timeline.polls).length ? ''
+        : '<p class="section-note">No AP or CFP ballot is stored for ' + season +
+          ', so only this model’s board can be rewound.</p>');
+  }).catch(() => {
+    if (version !== renderVersion) return;
+    const target = document.getElementById('top25-asof');
+    if (target) target.innerHTML = '<p class="empty-note">Could not load the ' + season +
+      ' boards for that week.</p>';
+  });
+}
+
+// ---------------- Conference Elo as of a week ----------------
+// The same measurement the season view makes -- the mean Elo of a conference's
+// rated members, by THAT season's membership -- taken at a point in the season
+// instead of at the end. A team that has not played yet is not rated yet and is
+// left out of the mean, exactly as the exporter leaves it out of the season one.
+function conferenceEloAsOf(timeline, stageIndex) {
+  const groups = new Map();
+  // Preseason is the one stage where nobody has played, and the carried-in
+  // rating IS the measurement -- excluding unplayed teams there would empty the
+  // table rather than describe it.
+  const preseason = stageIndex === 0;
+  for (const row of timeline.rows[stageIndex] || []) {
+    const team = timeline.teams[row.team];
+    // Independents are not a conference and cannot form a conference rating.
+    if (!team || !team.conference || team.conference === 'FBS Independents') continue;
+    if (!groups.has(team.conference)) groups.set(team.conference, { members: 0, rated: [] });
+    const group = groups.get(team.conference);
+    group.members++;
+    if (preseason || row.played > 0) group.rated.push(row.elo);
+  }
+  return [...groups].filter(([, g]) => g.rated.length)
+    .map(([conference, g]) => ({ conference, members: g.members, rated: g.rated.length,
+      elo: g.rated.reduce((sum, v) => sum + v, 0) / g.rated.length }))
+    .sort((a, b) => b.elo - a.elo || a.conference.localeCompare(b.conference));
+}
+
+function hydrateConferenceEloAsOf(version) {
+  const season = state.year;
+  if (!document.getElementById('conf-elo-asof')) return;
+  loadEloTimeline(season).then(timeline => {
+    if (version !== renderVersion) return;
+    const target = document.getElementById('conf-elo-asof');
+    if (!target) return;
+    let index = timeline.stages.findIndex(st => st.key === state.stage);
+    if (index < 0) index = timeline.stages.length - 1;
+    const stage = timeline.stages[index];
+    const rows = conferenceEloAsOf(timeline, index);
+    target.innerHTML = '<p class="section-note">' + (index === 0
+      ? 'Average of the ratings each conference’s members carried into ' + season +
+        ', before a game was played.'
+      : 'Average Elo of rated member teams after ' + esc(stage.label.toLowerCase()) + '.') +
+      ' Membership is from ' + season + ', not today. Each count shows rated teams / all members ' +
+      'in the ratings' + (index === 0 ? '.' : '; a team that has not played by then is not rated ' +
+      'yet and is left out of the average.') + ' Independents are excluded.</p>' +
+      (rows.length
+        ? '<table class="rank-table"><thead><tr><th></th><th>Conference</th>' +
+          '<th class="num">Avg Elo</th><th class="num">Rated / members</th></tr></thead><tbody>' +
+          rows.map((r, i) => '<tr><td class="rk">' + (i + 1) + '</td><td><div class="name-cell">' +
+            conferenceLink(r.conference, 'sm', season) + '</div></td><td class="num coe-val">' +
+            eloValue(r.elo) + '</td><td class="num">' + r.rated + ' / ' + r.members +
+            '</td></tr>').join('') + '</tbody></table>'
+        : '<p class="empty-note">No team had played by ' + esc(stage.label.toLowerCase()) +
+          ', so no conference has an average yet.</p>');
+    wrapWideTables();
+  }).catch(() => {
+    if (version !== renderVersion) return;
+    const target = document.getElementById('conf-elo-asof');
+    if (target) target.innerHTML = '<p class="empty-note">Could not load ' + season +
+      ' conference Elo for that week.</p>';
+  });
+}
+
 function hydrateEloDetail(version) {
   const table = document.querySelector('.elo-table');
   if (!table) return;
@@ -2301,10 +2654,16 @@ function hfaEvidence(r) {
 }
 
 function renderConferenceElo() {
+  if (state.stage) {
+    return '<div class="panel"><h2 class="section-title">Conference Elo · ' + state.year + '</h2>' +
+      rankingStageMount() +
+      '<div id="conf-elo-asof"><div class="empty-note">Loading&hellip;</div></div></div>';
+  }
   const rows = (DATA.conference_elo_by_year || {})[state.year] || [];
   if (!rows.length) return '<div class="panel"><h2 class="section-title">Conference Elo · ' + state.year +
     '</h2><p class="empty-note">Season-specific conference membership and Elo are unavailable for this year.</p></div>';
   return '<div class="panel"><h2 class="section-title">Conference Elo · ' + state.year + '</h2>' +
+    rankingStageMount() +
     '<p class="section-note">Average end-of-season Elo of rated member teams. Membership is from ' + state.year +
     ', not today. Each count shows rated teams / all members; teams without a completed game are excluded. ' +
     'Independents are excluded. This is a strength comparison, not Conference Merits.' +
@@ -6322,6 +6681,8 @@ document.getElementById('content').addEventListener('change', e => {
         : { opponent: team?.slug || null }); return;
     }
   }
+  const stageSel = e.target.closest('#rk-stage-filters select');
+  if (stageSel) { navigate({ stage: stageSel.value || null }); return; }
   const weeklySel = e.target.closest('#ew-filters select');
   if (weeklySel) {
     const key = weeklySel.dataset.filter || 'stage';
@@ -6412,6 +6773,10 @@ function top25PollBoard(key) {
 // The one line below the row says which poll is missing, so its absence reads
 // as a fact about the season rather than as something gone wrong.
 function renderTop25Boards() {
+  if (state.stage) {
+    return rankingStageMount() +
+      '<div id="top25-asof"><div class="empty-note">Loading&hellip;</div></div>';
+  }
   const polls = ['ap', 'cfp'];
   const boards = polls.map(key => top25PollBoard(key)).filter(Boolean);
   const missing = polls.filter(key => !pollRelease(key)?.rows?.length).map(pollTitle);
@@ -6420,7 +6785,7 @@ function renderTop25Boards() {
     '<p class="section-note">' + missing.join(' and ') +
     (current ? (missing.length > 1 ? ' have' : ' has') + ' not been released for ' + state.year + '.'
              : ' for ' + state.year + (missing.length > 1 ? ' are' : ' is') + ' not in this export.') + '</p>';
-  return '<div class="rank-boards" data-boards="' + (boards.length + 1) + '">' +
+  return rankingStageMount() + '<div class="rank-boards" data-boards="' + (boards.length + 1) + '">' +
     top25EloBoard() + boards.join('') + '</div>' + note;
 }
 
@@ -10227,7 +10592,13 @@ function render() {
     if (state.subview === 'conference-history') hydrateConferenceHistory(version);
     if (state.subview === 'conference-standings') hydrateConferenceStandings(version);
     if (state.subview === 'elo-weekly') hydrateEloWeekly(version);
-    if (state.subview === 'elo') { hydrateRatingFreshness(version); hydrateEloDetail(version); }
+    if (state.subview === 'elo') {
+      if (state.stage) hydrateEloAsOf(version);
+      else { hydrateRatingFreshness(version); hydrateEloDetail(version); }
+    }
+    if (STAGED_RANKINGS.includes(state.subview)) hydrateRankingStages(version);
+    if (state.subview === 'top25' && state.stage) hydrateTop25AsOf(version);
+    if (state.subview === 'conference-elo' && state.stage) hydrateConferenceEloAsOf(version);
   } else if (state.section === 'playoff') {
     const views = { field: renderField, projection: renderProjection, bracket: renderBracket, odds: renderOdds, history: renderHistory };
     content.innerHTML = views[state.subview]() + playoffDisclaimer();

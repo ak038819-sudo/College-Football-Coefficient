@@ -40,6 +40,7 @@
     field: ['playoff', 'field'], bracket: ['playoff', 'bracket'],
     odds: ['playoff', 'odds'], history: ['playoff', 'history']
   };
+  const STAGED_RANKINGS = ['elo', 'top25', 'conference-elo'];
   const has = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
   const latest = years => years.length ? Math.max(...years) : null;
 
@@ -119,13 +120,19 @@
     const c = (p.get('conf') || '').trim();
     const isConfStandings = section === 'rankings' && subview === 'conference-standings';
     const isWeekly = section === 'rankings' && subview === 'elo-weekly';
+    // The Elo table rewinds to a point in the season too, by the same stage keys.
+    // The Standings views that can be rewound to a point in the season. Kept
+    // beside the route because readRoute is what decides a stage is valid at
+    // all; ui/dashboard_shell.html's STAGED_RANKINGS must name the same views,
+    // and tests/navigation.test.cjs checks the two lists agree.
+    const isElo = section === 'rankings' && STAGED_RANKINGS.includes(subview);
     const conf = (isGames || isConfStandings || isWeekly) && c.length <= 60 && /^[A-Za-z0-9 &().'-]+$/.test(c) ? c : null;
     // Which point in a season the week-by-week Elo table is showing (P1-05):
     // 'pre', 'w<week>' or 'post', the keys src/elo_timeline.py writes. Only the
     // shape is checked here; the page checks it against the season's real stages
     // and says so when one doesn't apply, exactly as the week filter does.
     const st = p.get('stage') || '';
-    const stage = isWeekly && (st === 'pre' || st === 'post' || /^w\d{1,2}$/.test(st)) ? st : null;
+    const stage = (isWeekly || isElo) && (st === 'pre' || st === 'post' || /^w\d{1,2}$/.test(st)) ? st : null;
     // The Week by Week view shows every week at once by default (one row per
     // team, one column per week). `span=week` is the single-week snapshot it
     // used to be, and naming a stage asks for that snapshot too, so every
@@ -273,6 +280,8 @@
         if (route.game != null) p.set('game', route.game);
       }
       if (route.section === 'rankings' && route.subview === 'conference-standings' && route.conf) p.set('conf', route.conf);
+      if (route.section === 'rankings' && STAGED_RANKINGS.includes(route.subview) && route.stage)
+        p.set('stage', route.stage);
       if (route.section === 'rankings' && route.subview === 'elo-weekly') {
         if (route.stage) p.set('stage', route.stage);
         // `stage` already means the snapshot, so `span=week` beside it would be
@@ -302,5 +311,5 @@
   // that the page can be held to labelling all of them -- a section with a
   // route and no label renders the word "undefined" as its browser title.
   return { readRoute, hashFor, seasonsFor, seasonless, normalizeSearch, pageTabs,
-    sections: Object.keys(views), views };
+    sections: Object.keys(views), views, stagedRankings: STAGED_RANKINGS };
 });

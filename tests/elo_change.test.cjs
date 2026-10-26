@@ -43,7 +43,7 @@ test('Elo rankings pass each audited change to the table', () => {
   // the row is what renders a rating, its audited change and the record, so a
   // stub here would stop proving any of the three.
   vm.runInNewContext([sourceOf('eloValue'), sourceOf('eloChangeMarkup'), sourceOf('seasonRecord'),
-    sourceOf('eloHead'), sourceOf('renderElo'),
+    sourceOf('eloHead'), sourceOf('rankingStageMount'), sourceOf('renderElo'),
     "const ELO_COLUMNS = ['Team', 'Conf', 'Record', 'Elo', 'Last 5', 'SOS', 'vs Exp'];",
     'this.render = renderElo;'].join('\n'), ctx);
   const html = ctx.render();

@@ -724,9 +724,11 @@ test('a malformed stage is dropped rather than carried into the page', () => {
   }
 });
 
-test('stage belongs to the week-by-week view alone', () => {
-  // Another rankings view, another section, and a detail page must all ignore it.
-  assert.equal(read('#section=rankings&view=elo&season=2025&stage=w8').stage, null);
+test('stage belongs to the boards that can be rewound, and nothing else', () => {
+  // Another section, a detail page and a board built per team-season must all
+  // ignore it. The Elo table USED to be in this list and now carries the
+  // control itself, which is what the staged-views check above pins.
+  assert.equal(read('#section=rankings&view=team-coe&season=2025&stage=w8').stage, null);
   assert.equal(read('#section=games&season=2025&stage=w8').stage, null);
   assert.equal(read('#team=byu&stage=w8').stage, null);
   assert.equal(read('#section=rankings&view=elo-weekly&season=2025&stage=w8&week=3').week, null);
@@ -742,6 +744,40 @@ test('the week-by-week view keeps every other rankings URL unchanged', () => {
   // It is reachable, and it is not the default.
   assert.equal(read('#section=rankings&view=elo-weekly').subview, 'elo-weekly');
   assert.equal(read('#section=rankings').subview, 'top25');
+});
+
+// ---- The "as of" stage on the rankings boards ----
+
+test('the staged rankings views are the same list the page draws the control on', () => {
+  // Two places decide this: readRoute, which says a stage is valid at all, and
+  // STAGED_RANKINGS in the shell, which says where the control is drawn. A view
+  // in one and not the other is either a dead control or a URL that works and
+  // shows nothing.
+  const shell = require('node:fs').readFileSync('ui/dashboard_shell.html', 'utf8');
+  const listed = shell.match(/const STAGED_RANKINGS = \[([^\]]*)\]/);
+  assert.ok(listed, 'the shell must name the staged views');
+  const fromShell = listed[1].split(',').map(s => s.trim().replace(/^'|'$/g, '')).filter(Boolean);
+  assert.deepEqual(Array.from(fromShell).sort(), Array.from(CfbNav.stagedRankings).sort());
+  // And every one of them is a real view of the section.
+  for (const view of fromShell) assert.ok(CfbNav.views.rankings.includes(view), view);
+});
+
+test('a stage survives a URL round trip on every board that can be rewound', () => {
+  for (const view of CfbNav.stagedRankings) {
+    const hash = '#section=rankings&view=' + view + '&season=2025&stage=w8';
+    assert.equal(read(hash).stage, 'w8', view);
+    assert.equal(hashFor(read(hash)), hash, view);
+  }
+});
+
+test('a board that cannot be rewound drops the stage instead of pretending', () => {
+  // Built per team-season by the exporter, or not about one season at all.
+  for (const view of ['team-coe', 'conference-coe', 'conference-standings', 'schedule',
+    'home-field', 'conference-history']) {
+    const r = read('#section=rankings&view=' + view + '&season=2025&stage=w8');
+    assert.equal(r.stage, null, view);
+    assert.ok(!hashFor(r).includes('stage='), view);
+  }
 });
 
 // ---- Week by week: the season grid and its tracks ----
