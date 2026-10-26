@@ -412,3 +412,67 @@ def test_an_element_hidden_by_attribute_is_not_overruled_by_its_own_display():
     assert '.cards { display: grid' in text
     assert ".hidden = open" in text or "hidden = !open" in text
 
+
+
+# --- the week's injury report on a game ------------------------------------
+
+def injury(player='nfl:nflverse:player:00-1', status='Questionable',
+           **extra):
+    row = dict(season=SEASON, season_type='regular', week=1, team_key=KC,
+               player_key=player, game_key=GAME, position='QB',
+               report_primary='Ankle', report_secondary=None,
+               report_status=status, practice_primary='Ankle',
+               practice_secondary=None, practice_status='Limited',
+               reported_at='2024-09-06T19:05:30Z')
+    row.update(extra)
+    return row
+
+
+def with_injuries(db, rows, people=(('00-1', 'P.Mahomes'),)):
+    for gsis, name in people:
+        db.execute('INSERT INTO player (player_key, gsis_id, display_name)'
+                   ' VALUES (?, ?, ?)',
+                   (f'nfl:nflverse:player:{gsis}', gsis, name))
+    columns = ', '.join(rows[0])
+    marks = ', '.join('?' for _ in rows[0])
+    db.executemany(f'INSERT INTO injury_report ({columns}) VALUES ({marks})',
+                   [tuple(row.values()) for row in rows])
+    db.commit()
+
+
+def test_the_game_payload_carries_the_week_s_designated_players(db):
+    db.executemany(
+        'INSERT INTO game_drive (game_key, drive, team_key, quarter_start,'
+        ' seconds_left, start_yard_line, plays, yards, time_of_possession,'
+        ' result, home_score, away_score)'
+        ' VALUES (:game_key, :drive, :team_key, :quarter_start,'
+        ' :seconds_left, :start_yard_line, :plays, :yards,'
+        ' :time_of_possession, :result, :home_score, :away_score)',
+        [{key: value for key, value in drive(1).items()
+          if key in ('game_key', 'drive', 'team_key', 'quarter_start',
+                     'seconds_left', 'start_yard_line', 'plays', 'yards',
+                     'time_of_possession', 'result', 'home_score',
+                     'away_score')}])
+    with_injuries(db, [injury()])
+    weeks = game_export.build(db, SEASON, params=params())
+    entry = weeks['1']['games'][GAME]
+    assert entry['i'] == [[1, 2, 'P.Mahomes', 'QB', 'Ankle']]
+    assert weeks['1']['statuses'] == list(game_export.STATUSES)
+
+
+def test_a_player_with_no_designation_is_not_on_the_game_page(db):
+    """Two thirds of the rows after 2015 carry a practice line and no game
+    status, because the league abolished "Probable". Listing three thousand
+    of those a season would bury the handful who were doubtful."""
+    with_injuries(db, [injury(status=None)])
+    assert game_export.build(db, SEASON, params=params()) is None
+
+
+def test_a_game_with_only_an_injury_report_still_has_a_payload(db):
+    """A game whose play-by-play the source never published still has a
+    report, and a page that could show it must be given the chance."""
+    with_injuries(db, [injury()])
+    weeks = game_export.build(db, SEASON, params=params())
+    assert weeks is not None
+    assert 'i' in weeks['1']['games'][GAME]
+    assert 'd' not in weeks['1']['games'][GAME]

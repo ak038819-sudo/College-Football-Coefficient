@@ -15,7 +15,7 @@ from pathlib import Path
 
 from .identity import alignment, entity_key, franchise_code, franchise_key
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 DEFAULT_PATH = Path('db/nfl.db')
 SCHEMA_SQL = Path(__file__).with_name('schema.sql')
 
@@ -34,6 +34,11 @@ SCHEMA_SQL = Path(__file__).with_name('schema.sql')
 # file plainly declares, which reads as a typo rather than as a missing
 # migration. Adding them explicitly is what makes `migrate()` a migration.
 ADDED_COLUMNS = {
+    # Schema 5 adds `player_snap` and `injury_report`, which the schema file
+    # creates by itself, and one column on an existing table, which it cannot.
+    'player': (
+        ('pfr_id', 'TEXT'),
+    ),
     'game': (
         ('home_coach', 'TEXT'),
         ('away_coach', 'TEXT'),

@@ -45,6 +45,18 @@ SEASON_TYPES = ('reg', 'post')
 DEFAULT_RAW_ROOT = Path('data/nfl/raw/people')
 
 
+SNAP_FIRST_SEASON = 2013
+INJURY_FIRST_SEASON = 2009
+
+
+def snap_url(season):
+    return f'{RELEASE}/snap_counts/snap_counts_{season}.csv'
+
+
+def injury_url(season):
+    return f'{RELEASE}/injuries/injuries_{season}.csv'
+
+
 def roster_url(season):
     return f'{RELEASE}/rosters/roster_{season}.csv'
 
@@ -158,6 +170,42 @@ def load(*, seasons=None, root=None, reuse_cache=False, opener=None,
                       stats_url(season, season_type), required=not optional)
             if got is not None:
                 bundle['stats'][(season, season_type)] = got
+    return bundle, origins
+
+
+def load_usage(*, seasons=None, root=None, reuse_cache=False, opener=None,
+               sleep=None, now=None):
+    """Snap counts and injury reports, by season.
+
+    Kept apart from `load` because these two files start LATER than the rest
+    of the archive — snap counts in 2013, injuries in 2009 — and asking for a
+    season before that is not a fetch that failed but a file that was never
+    published. The ranges are measured, so a 404 inside one is still a real
+    failure for every season but the one in progress.
+
+    Returns `(bundle, origins)` with `snaps` and `injuries`, each season to
+    rows. An empty file yields an empty list, which is what 2012's snap file
+    is: a header and nothing else.
+    """
+    moment = now or datetime.now(timezone.utc)
+    wanted = sorted(seasons) if seasons else seasons_through(moment,
+                                                             FIRST_SEASON)
+    in_progress = current_season(moment)
+    origins = {}
+    bundle = dict(snaps={}, injuries={}, seasons=wanted)
+    kinds = (('snaps', snap_url, SNAP_FIRST_SEASON),
+             ('injuries', injury_url, INJURY_FIRST_SEASON))
+    for key, url_for, first in kinds:
+        for season in wanted:
+            if season < first:
+                continue
+            name = f'{key}_{season}'
+            got, origin = fetch(name, url_for(season), root=root,
+                                reuse_cache=reuse_cache, opener=opener,
+                                sleep=sleep, required=season < in_progress)
+            origins[name] = origin
+            if got is not None:
+                bundle[key][season] = got
     return bundle, origins
 
 

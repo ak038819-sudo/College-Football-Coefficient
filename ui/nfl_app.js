@@ -517,6 +517,44 @@
     });
   }
 
+  /* Snap counts by season, regular season then postseason.
+   *
+   * The share is the MEAN OF THE PER-GAME SHARES over the games he was on
+   * that unit for, not his snaps over the team's: the archive stores no team
+   * snap total, because the source gives a share per game and nothing to add
+   * up. The page says "per game" beside it for that reason. */
+  function unpackUsage(file, gsis) {
+    var player = file && file.players && file.players[gsis];
+    if (!player || !player.usage) return [];
+    return player.usage.map(function (line) {
+      return { season: line[0], type: line[1] === 1 ? 'post' : 'reg',
+               games: line[2], off: line[3], offShare: line[4],
+               def: line[5], defShare: line[6], st: line[7],
+               stShare: line[8] };
+    }).sort(function (a, b) {
+      return a.season - b.season || (a.type === 'reg' ? -1 : 1);
+    });
+  }
+
+  /* Injury-report appearances by season. */
+  function unpackAvailability(file, gsis) {
+    var player = file && file.players && file.players[gsis];
+    if (!player || !player.availability) return [];
+    return player.availability.map(function (line) {
+      return { season: line[0], out: line[1], doubtful: line[2],
+               questionable: line[3], probable: line[4], listed: line[5],
+               injuries: line[6] || [] };
+    }).sort(function (a, b) { return a.season - b.season; });
+  }
+
+  /* A share, 0-1, as a whole percentage. Null and undefined print nothing;
+   * a share the source gives as 0 is a real measurement and prints 0%. */
+  function shareText(share) {
+    if (share === null || share === undefined) return '';
+    if (typeof share !== 'number' || !isFinite(share)) return '';
+    return Math.round(share * 100) + '%';
+  }
+
   function unpackRoster(file, gsis) {
     var player = file && file.players && file.players[gsis];
     if (!player || !player.roster) return [];
@@ -688,6 +726,27 @@
     });
   }
 
+  var INJURY_FIELDS = ['side', 'status', 'name', 'position', 'injury'];
+
+  /* The week's injury report for one game, DESIGNATED PLAYERS ONLY.
+   *
+   * Ordered by how likely the player was to miss it, Out first, because that
+   * is the order the question is asked in. Within a status the export's own
+   * order, which is by team and then by name, is kept. */
+  function unpackInjuries(entry, statuses) {
+    var rows = (entry && entry.i) || [];
+    var vocabulary = statuses || [];
+    return rows.map(function (row, at) {
+      var item = unpackRow(INJURY_FIELDS, row);
+      item.rank = typeof item.status === 'number' ? item.status
+        : vocabulary.length;
+      item.status = typeof item.status === 'number'
+        ? (vocabulary[item.status] || null) : null;
+      item.at = at;
+      return item;
+    }).sort(function (a, b) { return a.rank - b.rank || a.at - b.at; });
+  }
+
   function unpackScoring(entry, kinds) {
     var rows = (entry && entry.s) || [];
     var vocabulary = kinds || [];
@@ -802,6 +861,7 @@
     KIND_LABELS: KIND_LABELS,
     unpackDrives: unpackDrives,
     unpackScoring: unpackScoring,
+    unpackInjuries: unpackInjuries,
     probabilityText: probabilityText,
     winProbabilityTrace: winProbabilityTrace,
     tracePath: tracePath,
@@ -853,6 +913,9 @@
     searchPlayers: searchPlayers,
     unpackSeasons: unpackSeasons,
     unpackRoster: unpackRoster,
+    unpackUsage: unpackUsage,
+    unpackAvailability: unpackAvailability,
+    shareText: shareText,
     careerTotals: careerTotals,
     statTablesFor: statTablesFor,
     statText: statText,

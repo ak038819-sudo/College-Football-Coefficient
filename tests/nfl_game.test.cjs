@@ -404,3 +404,76 @@ test('going back to the week restores the cards', async () => {
   assert.equal(dom.window.document.getElementById('game').hidden, true);
   dom.window.close();
 });
+
+// --- the week's injury report ----------------------------------------------
+
+const STATUSES = ['Out', 'Doubtful', 'Questionable', 'Probable'];
+
+test('injury rows are read back and ordered by how likely he was to miss it',
+  () => {
+    const rows = app.unpackInjuries({ i: [
+      [1, 2, 'T.Kelce', 'TE', 'Knee'],
+      [0, 0, 'J.Allen', 'QB', 'Elbow'],
+      [1, 1, 'I.Pacheco', 'RB', 'Ankle']
+    ] }, STATUSES);
+    assert.deepEqual(Array.from(rows.map((row) => row.name)),
+      ['J.Allen', 'I.Pacheco', 'T.Kelce']);
+    assert.equal(rows[0].status, 'Out');
+    assert.equal(rows[0].side, 0);
+    assert.equal(rows[0].position, 'QB');
+    assert.equal(rows[0].injury, 'Elbow');
+  });
+
+test('a status index with no word behind it sorts last rather than first',
+  () => {
+    // Number(null) is 0, so a missing status read as a number would outrank
+    // every player the club actually ruled out.
+    const rows = app.unpackInjuries({ i: [
+      [1, null, 'Nobody', 'TE', 'Knee'],
+      [1, 0, 'T.Kelce', 'TE', 'Knee']
+    ] }, STATUSES);
+    assert.deepEqual(Array.from(rows.map((row) => row.name)),
+      ['T.Kelce', 'Nobody']);
+    assert.equal(rows[1].status, null);
+  });
+
+test('a game with no injury report unpacks to nothing', () => {
+  assert.deepEqual(Array.from(app.unpackInjuries({}, STATUSES)), []);
+});
+
+test('a share prints as a whole percentage, and a measured zero prints', () => {
+  assert.equal(app.shareText(0.8394), '84%');
+  assert.equal(app.shareText(0), '0%');
+  assert.equal(app.shareText(null), '');
+  assert.equal(app.shareText(undefined), '');
+});
+
+test('the game page lists the week’s designated players and says who is '
+  + 'missing from the list', async () => {
+    const payload = weekPayload();
+    payload.statuses = STATUSES;
+    payload.games.g1.i = [[1, 0, 'T.Kelce', 'TE', 'Knee'],
+                          [0, 2, 'J.Allen', 'QB', 'Elbow']];
+    const dom = await open(true, payload);
+    click(dom, 'button[data-tab="games"]');
+    click(dom, '#cards .card.open');
+    await settle(() => dom.window.document.querySelector('#game table'));
+    const panel = dom.window.document.getElementById('game');
+    assert.match(panel.textContent, /Injury report/);
+    assert.match(panel.textContent, /T\.Kelce/);
+    assert.match(panel.textContent, /Elbow/);
+    // The note is the point: the report itself changed in 2016, and a
+    // shorter list is not a healthier squad.
+    assert.match(panel.textContent, /stopped using “Probable”/);
+    dom.window.close();
+  });
+
+test('a game with no injury report draws no empty table', async () => {
+  const dom = await open(true);
+  click(dom, 'button[data-tab="games"]');
+  click(dom, '#cards .card.open');
+  await settle(() => dom.window.document.querySelector('#game table'));
+  const panel = dom.window.document.getElementById('game');
+  assert.doesNotMatch(panel.textContent, /Injury report/);
+  dom.window.close();
+});

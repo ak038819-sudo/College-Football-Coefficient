@@ -21,7 +21,7 @@
    * refused the older ones would blank the page for anyone served this
    * script before the next refresh rewrites the export, and one that refused
    * the newest would blank it for everyone after. */
-  var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4];
+  var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5];
 
   /* The NFL is a fixed-size league, so this is an equality, not a floor: 32
    * franchises from the 2002 expansion and 31 before it. An export missing
