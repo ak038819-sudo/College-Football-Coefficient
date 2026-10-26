@@ -724,6 +724,19 @@
       ? 'light' : 'dark';
   }
 
+  /* The CSS repaints itself when the OS theme flips; the marks do not,
+   * because their src was chosen at render time. A reader who switches to
+   * light mode with the page open would be left with the light-ink cut on a
+   * light background, which is an invisible logo rather than a dim one.
+   * Wired once, and only where a mark could be drawn at all. */
+  function watchTheme() {
+    if (!window.matchMedia) return;
+    var query = window.matchMedia('(prefers-color-scheme: light)');
+    var onChange = function () { if (logoState.marks) render(); };
+    if (query.addEventListener) query.addEventListener('change', onChange);
+    else if (query.addListener) query.addListener(onChange);  // Safari < 14
+  }
+
   /* An <img> for a club, or null where there is no mark for it.
    * Null rather than a placeholder: a blank square in a row of logos reads
    * as a broken image, and an absent one reads as nothing at all. */
@@ -2037,6 +2050,7 @@
 
   function start() {
     leagueButtons();
+    watchTheme();
     fetch(BASE + 'manifest.json', { cache: 'no-store' })
       .then(function (response) {
         if (!response.ok) throw new Error('no manifest');

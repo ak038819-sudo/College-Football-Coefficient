@@ -14,13 +14,15 @@ import pytest
 
 from src.nfl import logos
 
-HEADER = ('level,league,entity_id,entity_name,variant,mark_type,archive_url\n')
+HEADER = ('level,league,entity_id,entity_name,variant,mark_type,ext,'
+          'last_seen,archive_url\n')
 
 
 def manifest(rows):
     body = ''.join(
         f"{r.get('level', 'team')},{r.get('league', 'nfl')},{r.get('id', '1')},"
         f"{r['name']},{r['variant']},{r.get('mark_type', 'logo')},"
+        f"{r.get('ext', 'png')},{r.get('last_seen', '2026-10-01')},"
         f"{r.get('url', 'https://example.invalid/' + r['variant'] + '.png')}\n"
         for r in rows)
     return HEADER + body
@@ -45,6 +47,47 @@ class TestResolving:
         placed = logos.resolve(rows, {'Buffalo Bills'})
         assert placed['Buffalo Bills']['dark'].endswith('default.png')
         assert placed['Buffalo Bills']['light'].endswith('default.png')
+
+    def test_a_redrawn_mark_takes_the_newest_capture_not_the_last_row(self):
+        """The archive keeps a row per set of bytes, so a club that has
+        redrawn its logo appears twice under one variant. Three NFL
+        name/variant pairs are doubled today. Last-row-wins would publish
+        whichever the file happens to list second."""
+        rows = logos.manifest_rows(manifest([
+            dict(name='Green Bay Packers', variant='dark',
+                 last_seen='2026-10-01', url='https://example.invalid/new.png'),
+            dict(name='Green Bay Packers', variant='dark',
+                 last_seen='2026-09-30', url='https://example.invalid/old.png'),
+            dict(name='Green Bay Packers', variant='default'),
+        ]))
+        placed = logos.resolve(rows, {'Green Bay Packers'})
+        assert placed['Green Bay Packers']['dark'].endswith('new.png')
+
+    def test_the_newest_capture_wins_whichever_order_the_file_lists_them(self):
+        """The same two rows the other way round. A rule that only works on
+        one ordering is the bug, said differently."""
+        rows = logos.manifest_rows(manifest([
+            dict(name='Green Bay Packers', variant='dark',
+                 last_seen='2026-09-30', url='https://example.invalid/old.png'),
+            dict(name='Green Bay Packers', variant='dark',
+                 last_seen='2026-10-01', url='https://example.invalid/new.png'),
+            dict(name='Green Bay Packers', variant='default'),
+        ]))
+        placed = logos.resolve(rows, {'Green Bay Packers'})
+        assert placed['Green Bay Packers']['dark'].endswith('new.png')
+
+    def test_an_svg_row_is_not_offered_to_pillow(self):
+        """Every NFL logo row is a PNG today. A club whose only dark row were
+        an SVG must fall back to its colour mark, not hand Pillow a file it
+        cannot open."""
+        rows = logos.manifest_rows(manifest([
+            dict(name='Buffalo Bills', variant='default'),
+            dict(name='Buffalo Bills', variant='dark', ext='svg',
+                 url='https://example.invalid/vector.svg'),
+        ]))
+        assert all(row['ext'] == 'png' for row in rows)
+        placed = logos.resolve(rows, {'Buffalo Bills'})
+        assert placed['Buffalo Bills']['dark'].endswith('default.png')
 
     def test_a_club_the_archive_does_not_carry_fails_the_run(self):
         """A bare lookup with `continue` on a miss is how six conference gaps

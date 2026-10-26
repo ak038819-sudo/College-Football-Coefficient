@@ -58,10 +58,16 @@ def fetch(url, *, opener=None):
 
 
 def manifest_rows(text):
-    """The NFL team logo rows, as the manifest states them."""
+    """The NFL team logo rows, as the manifest states them.
+
+    PNG only. Pillow cannot open the handful of SVGs the archive carries,
+    and `src/fetch_non_fbs_logos.py` has skipped them on the college side
+    since it was written. Every NFL logo row is a PNG today; this is what
+    keeps a future SVG from failing the run rather than being ignored.
+    """
     return [row for row in csv.DictReader(io.StringIO(text))
             if row.get('league') == 'nfl' and row.get('level') == 'team'
-            and row.get('mark_type') == 'logo']
+            and row.get('mark_type') == 'logo' and row.get('ext') == 'png']
 
 
 def resolve(rows, names):
@@ -69,10 +75,21 @@ def resolve(rows, names):
 
     `names` is the set of franchise names to place. Rows for anything else —
     the OAK, SD and STL predecessors among them — are simply not asked for.
+
+    THE NEWEST CAPTURE WINS, not the last row. The archive keeps one row per
+    mark per set of bytes, so a club that has redrawn its logo appears more
+    than once under the same variant and `last_seen` is the only thing that
+    says which one the provider is serving now. Three NFL name/variant pairs
+    are doubled today and the Packers' dark cut is one of them, so taking
+    the last row would publish a mark the archive stopped seeing. This is
+    the rule `sdv_marks()` in src/fetch_non_fbs_logos.py already follows.
     """
     by_variant = {}
     for row in rows:
-        by_variant.setdefault(row['variant'], {})[row['entity_name']] = row
+        marks = by_variant.setdefault(row['variant'], {})
+        current = marks.get(row['entity_name'])
+        if current is None or row.get('last_seen', '') > current.get('last_seen', ''):
+            marks[row['entity_name']] = row
     found, missing = {}, []
     for name in sorted(names):
         marks = {}

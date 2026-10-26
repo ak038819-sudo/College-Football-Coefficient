@@ -671,7 +671,12 @@ league's measured 57%. A test pins it.
   `src/nfl/logos.py` resolves all 32 clubs against
   `sportsdataverse/sdv-assets` by exact name and raises on a miss rather
   than skipping it. Each club gets TWO cuts, because this page has two
-  themes: the colour mark for light, the light-ink cut for dark. The file is
+  themes: the colour mark for light, the light-ink cut for dark, and the page
+  swaps the cut when the OS theme flips while it is open rather than leaving
+  a light-ink mark on a light background. Where the archive holds more than
+  one capture of a club's mark — three NFL name/variant pairs today — the
+  newest `last_seen` wins, which is the rule `sdv_marks()` in
+  `src/fetch_non_fbs_logos.py` already follows. The file is
   `ui/nfl_logo_assets.json`, deliberately OUTSIDE `ui/data/nfl/`, which the
   refresh replaces wholesale and would delete it with. It is fetched by
   `.github/workflows/fetch-nfl-logos.yml`, which runs by hand and apart from
