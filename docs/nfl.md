@@ -628,6 +628,17 @@ win probability, and it dims the side that lost. None of that is new data:
 - The away side's probability is the home side's complement, computed once
   rather than rounded twice.
 
+The three `<script src>` tags carry a `?v=sha256(file)[:12]` stamp, written
+by `scripts/stamp_page_scripts.py` and pinned by a test. This is not
+decoration. The service worker serves documents network-first and everything
+else stale-while-revalidate, so without a stamp a returning reader can be
+handed a FRESH `nfl.html` beside a CACHED `nfl_app.js` from before the
+deploy — and a page calling a helper the cached module does not have throws
+a TypeError and draws nothing until they reload. `ui/dashboard.html` never
+had the problem because `build_dashboard.py` has always stamped its modules;
+the NFL page had no generator and so had no stamps. `ui/basketball.html`
+still has none.
+
 One trap worth naming: `rating_model.config` **is** the elo block, not the
 whole configuration file — `build_ratings` stores `config['elo']`. Reaching
 for a nested `'elo'` key finds nothing and silently plays every upcoming game
