@@ -667,9 +667,18 @@ league's measured 57%. A test pins it.
 - **No routes of its own.** This page's tabs are buttons, not links, so a
   coach opens in place rather than at a URL. Deep-linking the NFL and
   basketball tabs is one change to both pages and is owned elsewhere.
-- **No logos.** nflverse's logo file points at Wikipedia uploads; the
-  sportsdataverse mark archive the college side fetches from does carry all
-  32, so this is a fetch to write rather than a question to answer.
+- **Logos now, from the archive the college side already uses.**
+  `src/nfl/logos.py` resolves all 32 clubs against
+  `sportsdataverse/sdv-assets` by exact name and raises on a miss rather
+  than skipping it. Each club gets TWO cuts, because this page has two
+  themes: the colour mark for light, the light-ink cut for dark. The file is
+  `ui/nfl_logo_assets.json`, deliberately OUTSIDE `ui/data/nfl/`, which the
+  refresh replaces wholesale and would delete it with. It is fetched by
+  `.github/workflows/fetch-nfl-logos.yml`, which runs by hand and apart from
+  both the deploy and the refresh: it is the only NFL job that reaches the
+  archive, it needs Pillow (which the refresh deliberately does not install),
+  and a club redraws its mark about once a decade. The archive grants no
+  licence; the marks belong to their clubs and are used nominatively.
 - **No favourites on this page.** The football shell's "My teams" has no
   counterpart here yet.
 - **No live scores.** The export carries finals and schedules; there is no

@@ -79,7 +79,7 @@ function stamp(text) {
     .update(text).digest('hex').slice(0, 10);
 }
 
-function site(overrides, schedule) {
+function site(overrides, schedule, logos) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nfl-page-'));
   const data = path.join(root, 'data', 'nfl', 'seasons');
   fs.mkdirSync(data, { recursive: true });
@@ -98,6 +98,12 @@ function site(overrides, schedule) {
   for (const name of ['nfl.html', 'nfl_loader.js', 'nfl_app.js',
     'ncaambb_app.js']) {
     fs.copyFileSync(path.join(UI, name), path.join(root, name));
+  }
+  // The club marks live beside the page, not under data/nfl, because the
+  // refresh replaces that directory wholesale.
+  if (logos) {
+    fs.writeFileSync(path.join(root, 'nfl_logo_assets.json'),
+      JSON.stringify(logos));
   }
   return { root, manifest: payload };
 }
@@ -124,8 +130,8 @@ function settle(dom, ready, tries = 500) {
   });
 }
 
-async function open(overrides, schedule) {
-  const built = site(overrides, schedule);
+async function open(overrides, schedule, logos) {
+  const built = site(overrides, schedule, logos);
   const file = path.join(built.root, 'nfl.html');
   const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
     url: 'file://' + file,
@@ -451,4 +457,73 @@ test('a tie has no loser and no favourite', () => {
   assert.equal(app.sideFavoured({ home_wp: 0.51 }), 'home');
   assert.equal(app.sideFavoured({ home_wp: 0.49 }), 'away');
   assert.equal(app.sideFavoured({}), null);
+});
+
+// --- the club marks --------------------------------------------------------
+
+const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAf'
+  + 'FcSJAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+function logoFile() {
+  return {
+    [KC]: { light: PIXEL + '#kc-light', dark: PIXEL + '#kc-dark' },
+    [BUF]: { light: PIXEL + '#buf-light', dark: PIXEL + '#buf-dark' }
+  };
+}
+
+async function withLogos(schedule) {
+  const dom = await open(null, schedule, logoFile());
+  // The file is fetched after the first render, so wait for the re-render
+  // that puts the marks on the page.
+  await settle(dom, () => dom.window.document.querySelector('#cards img.mark'));
+  return dom;
+}
+
+test('a card draws each club\'s mark, and keeps its column without one',
+  async () => {
+    const dom = await withLogos();
+    click(dom, '#weeks button');                 // week 1: KC v BUF, both known
+    const sides = dom.window.document
+      .querySelectorAll('#cards .card .side');
+    assert.equal(sides[0].querySelector('img.mark').getAttribute('src'),
+      PIXEL + '#buf-dark');
+    assert.equal(sides[1].querySelector('img.mark').getAttribute('src'),
+      PIXEL + '#kc-dark');
+    // LA has no entry in the file; its row keeps the grid rather than
+    // sliding its name under the logo column.
+    const second = dom.window.document.querySelectorAll('#cards .card')[0];
+    assert.ok(second);
+    click(dom, '#tabs button[data-tab="rankings"]');
+    const marked = dom.window.document.querySelectorAll('#board img.mark');
+    assert.equal(marked.length, 2, 'KC and BUF are marked, LA is not');
+  });
+
+test('a club with no mark gets no broken image', async () => {
+  const dom = await withLogos();
+  const rows = [...dom.window.document.querySelectorAll('#cards .card .side')];
+  const la = rows.find(r => /Rams/.test(r.textContent));
+  assert.ok(la, 'the Rams are on this week\'s slate');
+  assert.equal(la.querySelector('img.mark'), null);
+  assert.ok(la.classList.contains('nomark'));
+});
+
+test('the rank cell keeps the table layout when a mark is beside the name',
+  async () => {
+    // `td.rk { display: inline-block }` once took every rank cell out of the
+    // table layout on the college side. The flex box here is the wrapper.
+    const dom = await withLogos();
+    click(dom, '#tabs button[data-tab="rankings"]');
+    const cell = dom.window.document.querySelector('#board td.teamcell');
+    assert.ok(cell.querySelector('span.with-mark'),
+      'the mark and the name share a wrapper inside the cell');
+  });
+
+test('the page works with no logo file at all', async () => {
+  // The fetch 404s; nothing says so, because nothing the reader asked for is
+  // missing.
+  const dom = await open();
+  click(dom, '#weeks button');
+  const card = dom.window.document.querySelector('#cards .card');
+  assert.ok(card, 'the scoreboard still draws');
+  assert.equal(card.querySelector('img.mark'), null);
 });

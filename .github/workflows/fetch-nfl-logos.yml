@@ -1,0 +1,93 @@
+# The 32 club marks, which this site cannot draw for itself.
+#
+# Run by hand, and apart from both the deploy and the NFL refresh, for three
+# reasons:
+#
+# 1. It is the only NFL job that reaches the sportsdataverse mark archive.
+#    `a.espncdn.com` is refused by the build container's egress proxy and
+#    nflverse's own logos.csv points at Wikipedia uploads, so this archive —
+#    the one the college side has fetched from since 2026-10 — is the source.
+# 2. It needs Pillow. nfl-refresh.yml installs pytest and nothing else on
+#    purpose, because every module it runs is standard-library only, and
+#    adding an image library to the daily job to serve a yearly one would
+#    give that up for nothing.
+# 3. It has no schedule to keep. A club redraws its mark about once a decade.
+#
+# The images are committed rather than fetched at page load for the reason the
+# college marks are: a deploy must not depend on somebody else's CDN, and the
+# archive grants no service. The archive grants no LICENCE either — the marks
+# belong to their clubs and are used nominatively, to identify the club that
+# played the game.
+name: Fetch NFL club marks
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Resolve the 32 clubs and report, without fetching or committing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Its own lock, NOT the deploy's and NOT the refresh's. A job queued
+    # behind another in someone else's group is cancelled outright by the next
+    # run to enter it, which is how a dispatched backfill was lost once.
+    concurrency:
+      group: fetch-nfl-logos-${{ github.ref_name }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      # The marks are keyed by franchise, and the franchise names come from
+      # the archive, so the database has to exist before they can be resolved.
+      # The raw files are not committed and refetching them is free.
+      - name: Ingest the games archive
+        run: |
+          set -o pipefail
+          python -m src.nfl.ingest | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Resolve the clubs and report
+        run: |
+          set -euo pipefail
+          python -m src.nfl.logos --dry-run | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Fetch the marks
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -o pipefail
+          python -m src.nfl.logos | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish
+        if: ${{ !inputs.dry_run }}
+        env:
+          PUBLISH_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # publish_to_main.sh ends in `git push origin HEAD:main`. Dispatched
+          # from a feature branch, that would carry every unmerged commit on
+          # it straight onto main, past the pull request. This has nearly
+          # happened once in this repository.
+          if [ "$PUBLISH_BRANCH" != "main" ]; then
+            echo "Refusing to publish from $PUBLISH_BRANCH: this job pushes to main." >&2
+            exit 1
+          fi
+          scripts/publish_to_main.sh "Fetch the NFL club marks [skip ci]" \
+            ui/nfl_logo_assets.json
+
+      # The commit carries [skip ci], so nothing republishes on its own.
+      - name: Say what has to happen next
+        if: ${{ !inputs.dry_run }}
+        run: echo "::notice::Committed with [skip ci]. The marks reach the site on the next Pages publish; dispatch ci-and-deploy.yml if one is not due."
