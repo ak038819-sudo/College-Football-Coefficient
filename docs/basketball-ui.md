@@ -118,6 +118,18 @@ players only. So basketball's People tab is player pages and nothing else, and
 the football tools must not be wired to a basketball league that has no rows
 for them.
 
+**A tab is a route** (2026-10-27). It was a button and nothing else, so only
+the tab the page opened on could be linked to, reloaded into or reached with
+the back button. The hash is the shared one — `#league=ncaambb&section=home`,
+with home stating no section, which is exactly what `switchLeague` writes —
+and a `hashchange` moves the page. Three rules, each with a test:
+
+- a section this page has no panel for, such as the disabled Stats, leaves
+  the tab alone rather than hiding every panel;
+- a hash naming another league is not read as a basketball section;
+- every other parameter survives a tab press, because the day a reader is
+  looking at belongs to them and not to the tab they pressed.
+
 ## 5. The game panel design carries over
 
 Team colours, logos, ratings, probabilities and the venue footer translate as
@@ -196,11 +208,26 @@ the same ceiling the moment it has a live feed at all.
 
 Decided 2026-10-21, with Austin ("let's roll"): the basketball side is
 finished and tested, but its first export cannot be built, because the
-provider's rolling seven-day allowance is spent and does not recover until
-2026-10-27 (measured; see
+provider's allowance is spent. That allowance turned out to be **monthly**,
+measured on 2026-10-27 from the refusal's own body — the seven-day figure the
+usage endpoint prints is a reporting window, not the cap (see
 [`basketball-refresh.md`](basketball-refresh.md)). A visible league tab with
 no data behind it is worse than no tab, so the code lands with the tab absent
 and the tab goes on once the archive is exported.
+
+**Since 2026-10-21 the nav itself is live**, with College Football and the
+NFL: staging is per league, not per nav. Each entry in `ui/ncaambb_app.js`
+carries `launched`, `launchedLeagues(current)` is what every JavaScript
+picker draws from, and basketball's flag is `false`. So only basketball's
+static `<a>` is parked, not the nav around it.
+
+The gate test that pairs the flag with the files is **one-directional** on
+purpose: a league flagged launched with no published export fails, and an
+export sitting on disk with the flag still false does not. `cbb-refresh.yml`
+can commit an export to main on its own schedule, and a test that failed on
+that would redden the test job, which stops the deploy and so stops
+*football* publishing. Flipping the flag is a person's job; nothing will
+remind them.
 
 Nothing is deleted. Three things are parked, each with a comment saying so:
 
