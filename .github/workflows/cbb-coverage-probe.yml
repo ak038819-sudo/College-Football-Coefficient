@@ -33,13 +33,14 @@ jobs:
         run: python -m pip install 'pytest>=7,<10'
       - name: Validate ingestion before spending quota
         run: python -m pytest tests/test_ncaambb_ingestion.py -q
-      - name: Probe provider coverage
+      - name: Report what the account has spent
         env:
           CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
-          SEASONS: ${{ inputs.seasons }}
         run: |
-          # `cmd | tee` reports tee's status, so without pipefail a crash in
-          # the probe would pass this step.
+          # TEMPORARY, reverted in the next commit on this branch: this slot is
+          # borrowed to ask the usage endpoint how much of the rolling window
+          # has aged out, because a workflow_dispatch can only reach a workflow
+          # already on the default branch. Three requests, no data written.
           set -o pipefail
-          python -m src.ncaambb.probe_coverage --seasons "$SEASONS" \
+          python scripts/probe_cbbd_limits.py --usage-only \
             | tee -a "$GITHUB_STEP_SUMMARY"
