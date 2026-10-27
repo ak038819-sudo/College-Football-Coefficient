@@ -150,6 +150,51 @@
   .filters button[aria-pressed="true"] { color: var(--ink);
                                          border-color: var(--ink); }
 
+  /* The slate and the Elo rail. One column on a phone, where the rail
+     follows the games; two from 980px, where there is room for both. The
+     rail is a fixed 240px rather than a fraction, so the cards keep their
+     own auto-fill grid instead of being squeezed a little at every width. */
+  .slate { display: grid; gap: 18px; align-items: start; }
+  @media (min-width: 980px) {
+    .slate { grid-template-columns: minmax(0, 1fr) 240px; }
+  }
+  .rail h3 { margin: 12px 0 8px; font-size: 11px; text-transform: uppercase;
+             letter-spacing: 0.8px; color: var(--ink-dim); font-weight: 600; }
+  .rail ol { list-style: none; margin: 0; padding: 0; }
+  .rail li { display: grid; grid-template-columns: 1.6em 20px minmax(0, 1fr) auto auto;
+             align-items: center; gap: 8px; padding: 5px 0;
+             border-bottom: 1px dotted var(--line); font-size: 13px; }
+  .rail li:last-child { border-bottom: 0; }
+  .rail .rk { font-family: var(--font-mono); color: var(--ink-dim);
+              font-size: 12px; text-align: right; }
+  .rail .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rail .num { font-family: var(--font-mono); font-size: 12px; }
+  .rail .empty { color: var(--ink-dim); font-size: 13px; margin: 0; }
+
+  /* Following a team. A button, never a bare glyph: it is a control, and a
+     reader on a keyboard or a screen reader has to be able to reach it and
+     be told what it does. `aria-pressed` carries the state, so the star is
+     decoration and the label does the talking. */
+  .star {
+    appearance: none; background: none; border: 0; cursor: pointer;
+    color: var(--ink-dim); font-size: 14px; line-height: 1; padding: 2px 4px;
+    border-radius: 6px;
+  }
+  .star:hover { color: var(--ink); }
+  /* A heading the column needs for a screen reader and the eye does not. */
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
+  }
+  td.fav-cell, th.fav-cell { width: 1%; text-align: right; }
+  .star[aria-pressed="true"] { color: var(--amber); }
+  .star:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+  /* On a card the star is NOT a control: a card can itself be a <button>
+     that opens the game, and a button inside a button is invalid markup
+     whose clicks would fire both. The slate shows that a team is followed
+     and the rail and the full board are where following happens. */
+  .card .side .fav { color: var(--amber); font-size: 11px; }
+
   .cards { display: grid; gap: 10px; margin: 12px 0 0;
            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
   .card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
@@ -197,6 +242,8 @@
                     color: var(--ink-dim); min-width: 4ch; text-align: right; }
   .card .side .wp.lead { color: var(--amber); }
   .card .side .nm { display: flex; flex-direction: column; min-width: 0; }
+  .card .side .nm-line { display: flex; align-items: baseline; gap: 4px;
+                         min-width: 0; }
   .card .side .nm b { font-weight: 600; overflow: hidden;
                       text-overflow: ellipsis; white-space: nowrap; }
   /* The second line under a team name: seed in the ratings, record, rating.
@@ -369,7 +416,17 @@
 
   <section class="panel" id="scoreboard" hidden>
     <div class="days" id="weeks"></div>
-    <div class="cards" id="cards"></div>
+    <div class="filters" id="slate-filters"></div>
+    <!-- The slate and the rail sit side by side on a wide screen and stack on
+         a narrow one. The rail is SECOND in the markup so that reading order
+         and tab order both reach the games first; the grid puts it to the
+         right without moving it in the document. -->
+    <div class="slate">
+      <div>
+        <div class="cards" id="cards"></div>
+      </div>
+      <aside class="rail" id="rail" aria-label="Elo top 10"></aside>
+    </div>
     <div id="game"></div>
   </section>
 
@@ -385,7 +442,8 @@
     <table>
       <thead>
         <tr><th class="rk">#</th><th>Team</th><th>Division</th>
-            <th class="num">Rating</th><th class="num">Record</th></tr>
+            <th class="num">Rating</th><th class="num">Record</th>
+            <th class="fav-cell"><span class="sr-only">Following</span></th></tr>
       </thead>
       <tbody id="board"></tbody>
     </table>
@@ -438,9 +496,60 @@
                  games: 'Games' };
   var state = { manifest: null, verdict: null, season: null, week: null,
                 tab: 'home', coach: null, player: null, game: null,
-                peopleView: 'players', query: '' };
+                peopleView: 'players', query: '', mine: false };
 
   function el(id) { return document.getElementById(id); }
+
+  /* Following a team, on this device and nowhere else.
+   *
+   * The storage rule is NOT reinvented here: ncaambb_app.js already owns the
+   * per-league key, because the leagues must never read each other's list --
+   * an NFL franchise key in football's key would be drawn as a football team
+   * that does not exist. The NFL's is `elocast.favorites.nfl.v1`.
+   *
+   * Reaching for localStorage can throw outright, not just fail: Safari in
+   * private browsing, a blocked third-party context, a page opened from
+   * file://. So the accessor is guarded and every failure reads as "nobody
+   * is followed" rather than taking the page down with it. */
+  function storage() {
+    try {
+      return (typeof localStorage !== 'undefined' && localStorage) || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function favorites() {
+    return leagues.readFavorites(storage(), 'nfl');
+  }
+
+  function following(team) {
+    return favorites().indexOf(team) >= 0;
+  }
+
+  function toggleFollow(team) {
+    leagues.toggleFavorite(storage(), 'nfl', team);
+    render();
+  }
+
+  /* A star that follows a team. `label` names the team, because "Follow" on
+   * its own tells a screen-reader user nothing about which row they are on.
+   */
+  function starButton(team, label) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'star';
+    var on = following(team);
+    button.setAttribute('aria-pressed', on ? 'true' : 'false');
+    button.setAttribute('aria-label',
+      (on ? 'Unfollow ' : 'Follow ') + label);
+    button.textContent = on ? '★' : '☆';
+    button.addEventListener('click', function (event) {
+      event.stopPropagation();
+      toggleFollow(team);
+    });
+    return button;
+  }
 
   function text(node, value) {
     node.textContent = value === null || value === undefined ? '' : value;
@@ -800,6 +909,86 @@
     return app.winProbabilityText(side === 'home' ? number : 1 - number) || '';
   }
 
+  /* Followed teams' games first, everything else exactly as it was.
+   *
+   * A STABLE partition, not a sort. ncaambb_app.sortGames would also do this
+   * but orders the rest by kickoff time, and this page has never sorted its
+   * slate at all -- it draws the export's order. Turning a toggle on should
+   * lift the games you care about to the top, not quietly reorder the other
+   * thirteen as well. */
+  function myTeamsFirst(games, teams) {
+    if (!teams.length) return games;
+    var mine = [], rest = [];
+    games.forEach(function (game) {
+      var followed = teams.indexOf(game.home) >= 0
+                  || teams.indexOf(game.away) >= 0;
+      (followed ? mine : rest).push(game);
+    });
+    return mine.concat(rest);
+  }
+
+  function renderSlateFilters() {
+    var host = el('slate-filters');
+    host.innerHTML = '';
+    var teams = favorites();
+    // Nothing to filter by and nothing to explain: a control that can only
+    // be pressed to no effect is worse than no control.
+    if (!teams.length) return;
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.setAttribute('aria-pressed', state.mine ? 'true' : 'false');
+    button.textContent = 'My teams first';
+    button.addEventListener('click', function () {
+      state.mine = !state.mine;
+      render();
+    });
+    host.appendChild(button);
+  }
+
+  /* The Elo top ten, beside the slate.
+   *
+   * Ten rather than twenty-five: it is a rail next to the games, not the
+   * rankings page, and a third of the league is a standings table. The full
+   * board is one tap away under Rankings.
+   */
+  function renderRail() {
+    var host = el('rail');
+    host.innerHTML = '';
+    var rows = boardRows().slice(0, 10);
+    var heading = document.createElement('h3');
+    heading.textContent = 'Elo top 10';
+    host.appendChild(heading);
+    if (!rows.length) {
+      var empty = document.createElement('p');
+      empty.className = 'empty';
+      empty.textContent = 'No ratings for this season.';
+      host.appendChild(empty);
+      return;
+    }
+    var list = document.createElement('ol');
+    rows.forEach(function (row) {
+      var item = document.createElement('li');
+      var rank = document.createElement('span');
+      rank.className = 'rk';
+      text(rank, row.rank);
+      item.appendChild(rank);
+      var mark = teamMark(row.team, 20);
+      if (mark) item.appendChild(mark);
+      else item.appendChild(document.createElement('span'));
+      var name = document.createElement('span');
+      name.className = 'nm';
+      name.textContent = teamName(row.team);
+      item.appendChild(name);
+      var rating = document.createElement('span');
+      rating.className = 'num';
+      text(rating, app.ratingText(row.rating));
+      item.appendChild(rating);
+      item.appendChild(starButton(row.team, teamName(row.team)));
+      list.appendChild(item);
+    });
+    host.appendChild(list);
+  }
+
   function renderCards() {
     var host = el('cards');
     host.innerHTML = '';
@@ -813,6 +1002,8 @@
     }
     var openable = Boolean(loader.gameWeekSource(
       state.manifest, state.season, loader.gameWeekKey(games[0]), BASE));
+    var mine = favorites();
+    if (state.mine) games = myTeamsFirst(games, mine);
     games.forEach(function (game) {
       // A card is a button only where there is something behind it. An
       // export built before the game layer, or a game not yet played, keeps
@@ -849,9 +1040,23 @@
         else row.classList.add('nomark');
         var name = document.createElement('div');
         name.className = 'nm';
+        // The name and the follow mark share a ROW. `.nm` is a flex column,
+        // so appending the mark straight to it puts the star on a line of
+        // its own above the record.
+        var line = document.createElement('div');
+        line.className = 'nm-line';
         var strong = document.createElement('b');
         strong.textContent = teamName(side[1]);
-        name.appendChild(strong);
+        line.appendChild(strong);
+        // Shown, not operated -- see the .fav rule in the stylesheet.
+        if (mine.indexOf(side[1]) >= 0) {
+          var followed = document.createElement('span');
+          followed.className = 'fav';
+          followed.textContent = '\u2605';
+          followed.title = 'You follow ' + teamName(side[1]);
+          line.appendChild(followed);
+        }
+        name.appendChild(line);
         // Rank, record and the pregame rating. Each piece is dropped where
         // this season has no answer for it, so a 1999 card is quieter rather
         // than full of dashes.
@@ -935,12 +1140,16 @@
       cell([row.conference, row.division].filter(Boolean).join(' '));
       cell(app.ratingText(row.rating), 'num');
       cell(app.recordText(row), 'num');
+      var favCell = document.createElement('td');
+      favCell.className = 'fav-cell';
+      favCell.appendChild(starButton(row.team, teamName(row.team)));
+      tr.appendChild(favCell);
       body.appendChild(tr);
     });
     if (!rows.length) {
       var tr = document.createElement('tr');
       var td = document.createElement('td');
-      td.colSpan = 5;
+      td.colSpan = 6;                      // the follow column counts
       td.className = 'empty';
       td.textContent = 'No ratings are loaded for this season.';
       tr.appendChild(td);
@@ -2028,7 +2237,9 @@
       el('cards').hidden = open;
       el('game').hidden = !open;
       renderWeeks();
+      renderSlateFilters();
       renderCards();
+      renderRail();
       if (open) renderGame();
     }
     if (!el('standings').hidden) {

@@ -48,6 +48,21 @@ function games() {
   ];
 }
 
+/* The team directory the page looks names up in. Derived from the board, so
+   a test that supplies its own standings does not also have to restate every
+   team; the three-team default is unchanged. */
+function teamsFor(rows) {
+  const base = teams();
+  const out = {};
+  for (const row of rows) {
+    out[row.team] = base[row.team] || {
+      code: row.code, name: row.code + ' Club',
+      conference: row.conference, division: row.division
+    };
+  }
+  return Object.keys(out).length ? out : base;
+}
+
 function board() {
   return [
     { team: KC, code: 'KC', conference: 'AFC', division: 'West',
@@ -79,15 +94,16 @@ function stamp(text) {
     .update(text).digest('hex').slice(0, 10);
 }
 
-function site(overrides, schedule, logos) {
+function site(overrides, schedule, logos, standings) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nfl-page-'));
   const data = path.join(root, 'data', 'nfl', 'seasons');
   fs.mkdirSync(data, { recursive: true });
   const seasonText = 'window.NFL_SEASONS=(window.NFL_SEASONS||{});'
     + 'window.NFL_SEASONS[2026]='
-    + JSON.stringify({ season: 2026, board: board(),
+    + JSON.stringify({ season: 2026, board: standings || board(),
       games: schedule || games() }) + ';\n';
-  const teamsText = 'window.NFL_TEAMS=' + JSON.stringify(teams()) + ';\n';
+  const teamsText = 'window.NFL_TEAMS='
+    + JSON.stringify(teamsFor(standings || board())) + ';\n';
   fs.writeFileSync(path.join(data, '2026.js'), seasonText);
   fs.writeFileSync(path.join(root, 'data', 'nfl', 'teams.js'), teamsText);
   const payload = manifest(overrides);
@@ -166,8 +182,8 @@ function fakeMatchMedia(window, state, api) {
   };
 }
 
-async function open(overrides, schedule, logos, media) {
-  const built = site(overrides, schedule, logos);
+async function open(overrides, schedule, logos, media, standings) {
+  const built = site(overrides, schedule, logos, standings);
   const file = path.join(built.root, 'nfl.html');
   let setLight = null;
   const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
@@ -176,6 +192,20 @@ async function open(overrides, schedule, logos, media) {
     resources: 'usable',
     pretendToBeVisual: true,
     beforeParse(window) {
+      // jsdom serves this page from file://, which is an opaque origin, so
+      // window.localStorage is undefined -- the very case the page guards
+      // against. Tests of what following a team DOES need a real store, so
+      // one is installed here; the guard itself is tested by taking it away.
+      const cells = new Map();
+      Object.defineProperty(window, 'localStorage', {
+        configurable: true,
+        value: {
+          getItem: key => (cells.has(key) ? cells.get(key) : null),
+          setItem: (key, value) => { cells.set(key, String(value)); },
+          removeItem: key => { cells.delete(key); },
+          clear: () => cells.clear()
+        }
+      });
       if (media) {
         setLight = fakeMatchMedia(window, { light: !!media.light }, media.api);
       }
@@ -236,8 +266,12 @@ test('a game with no kickoff time says so rather than showing midnight',
 test('the rankings tab ranks teams with whole-number ratings', async () => {
   const dom = await open();
   click(dom, '#tabs button[data-tab="rankings"]');
+  // The data cells only. The last cell is the follow control, which has its
+  // own tests; reading it here would make this one fail for a reason that
+  // has nothing to do with ranks or ratings.
   const rows = [...dom.window.document.querySelectorAll('#board tr')]
-    .map(tr => [...tr.children].map(td => td.textContent));
+    .map(tr => [...tr.querySelectorAll('td:not(.fav-cell)')]
+      .map(td => td.textContent));
   assert.equal(rows.length, 3);
   assert.deepEqual(rows[0],
     ['1', 'Kansas City Chiefs', 'AFC West', '1648', '1-0']);
@@ -656,3 +690,172 @@ test('the page works with no logo file at all', async () => {
   assert.ok(card, 'the scoreboard still draws');
   assert.equal(card.querySelector('img.mark'), null);
 });
+
+// --- following a team -------------------------------------------------------
+
+const NFL_KEY = 'elocast.favorites.nfl.v1';
+
+test('the NFL writes its own favorites key, never football\'s', async () => {
+  // A franchise key in football's list would be drawn as a football team
+  // that does not exist. ncaambb_app owns this rule; the page must use it.
+  const dom = await open();
+  click(dom, '#tabs button[data-tab="rankings"]');
+  click(dom, '#board tr .star');
+  assert.deepEqual(JSON.parse(dom.window.localStorage.getItem(NFL_KEY)), [KC]);
+  assert.equal(dom.window.localStorage.getItem('elocast.favorites.v1'), null,
+    'football\'s key is untouched');
+  dom.window.close();
+});
+
+test('the star toggles, and says which team it is for', async () => {
+  const dom = await open();
+  click(dom, '#tabs button[data-tab="rankings"]');
+  const star = () => dom.window.document.querySelector('#board tr .star');
+  assert.equal(star().getAttribute('aria-pressed'), 'false');
+  assert.match(star().getAttribute('aria-label'), /^Follow Kansas City/);
+  click(dom, '#board tr .star');
+  assert.equal(star().getAttribute('aria-pressed'), 'true');
+  assert.match(star().getAttribute('aria-label'), /^Unfollow Kansas City/);
+  click(dom, '#board tr .star');
+  assert.equal(star().getAttribute('aria-pressed'), 'false');
+  assert.deepEqual(JSON.parse(dom.window.localStorage.getItem(NFL_KEY)), []);
+  dom.window.close();
+});
+
+test('a saved follow is read back on the next visit', async () => {
+  const dom = await open();
+  dom.window.localStorage.setItem(NFL_KEY, JSON.stringify([BUF]));
+  click(dom, '#tabs button[data-tab="rankings"]');
+  const pressed = [...dom.window.document.querySelectorAll('#board .star')]
+    .filter(b => b.getAttribute('aria-pressed') === 'true')
+    .map(b => b.getAttribute('aria-label'));
+  assert.deepEqual(pressed, ['Unfollow Buffalo Bills']);
+  dom.window.close();
+});
+
+test('the Elo rail lists the top ten with their ratings', async () => {
+  const dom = await open();
+  const items = [...dom.window.document.querySelectorAll('#rail li')];
+  assert.equal(items.length, 3, 'this fixture has three rated teams');
+  assert.match(items[0].textContent, /1.*Kansas City Chiefs.*1648/s);
+  assert.ok(items[0].querySelector('.star'), 'the rail is where you follow');
+  dom.window.close();
+});
+
+test('the rail says so rather than drawing an empty list', async () => {
+  const dom = await open({ coverage: [] }, []);
+  const rail = dom.window.document.querySelector('#rail');
+  assert.ok(rail, 'the rail is present even with nothing to put in it');
+  dom.window.close();
+});
+
+test('My teams first appears only once something is followed', async () => {
+  const dom = await open();
+  assert.equal(dom.window.document.querySelector('#slate-filters button'), null,
+    'a control that can only be pressed to no effect is worse than none');
+  click(dom, '#tabs button[data-tab="rankings"]');
+  click(dom, '#board tr .star');
+  click(dom, '#tabs button[data-tab="games"]');
+  assert.ok(dom.window.document.querySelector('#slate-filters button'));
+  dom.window.close();
+});
+
+test('My teams first lifts followed games and leaves the rest in order',
+  async () => {
+    // Week 2 holds LA v KC then BUF v LA. Following Buffalo must raise the
+    // second game and must NOT reorder anything else: this page draws the
+    // export's order, and a toggle should not quietly re-sort the slate.
+    const dom = await open();
+    const names = () => [...dom.window.document.querySelectorAll('#cards .card')]
+      .map(c => c.textContent.replace(/\s+/g, ' ').trim().slice(0, 60));
+    const before = names();
+    assert.match(before[0], /Rams/);
+    dom.window.localStorage.setItem(NFL_KEY, JSON.stringify([BUF]));
+    click(dom, '#tabs button[data-tab="rankings"]');
+    click(dom, '#tabs button[data-tab="games"]');
+    click(dom, '#slate-filters button');
+    const after = names();
+    assert.match(after[0], /Bills/, 'the followed game comes first');
+    assert.deepEqual(after.slice(1), before.filter(c => !/Bills/.test(c)),
+      'the others keep the order they had');
+    dom.window.close();
+  });
+
+test('a followed side is marked on the card but is not a control', async () => {
+  // A card can itself be a <button>; a button inside a button is invalid
+  // markup whose clicks fire both.
+  const dom = await open();
+  dom.window.localStorage.setItem(NFL_KEY, JSON.stringify([KC]));
+  click(dom, '#tabs button[data-tab="rankings"]');
+  click(dom, '#tabs button[data-tab="games"]');
+  click(dom, '#weeks button');                   // week 1: KC v BUF
+  const card = dom.window.document.querySelector('#cards .card');
+  assert.ok(card.querySelector('.fav'), 'the followed side is marked');
+  assert.equal(card.querySelector('button'), null,
+    'and there is no button nested inside the card');
+  dom.window.close();
+});
+
+test('a page whose storage throws still draws', async () => {
+  // Safari private browsing, a blocked third-party context, file://.
+  const dom = await open();
+  Object.defineProperty(dom.window, 'localStorage', {
+    configurable: true,
+    get() { throw new Error('SecurityError'); }
+  });
+  click(dom, '#tabs button[data-tab="rankings"]');
+  assert.ok(dom.window.document.querySelector('#board tr'),
+    'the board still draws with no favorites at all');
+  assert.equal(
+    dom.window.document.querySelector('#board .star')
+      .getAttribute('aria-pressed'), 'false');
+  dom.window.close();
+});
+
+test('the rail stops at ten however many teams are rated', async () => {
+  // The default fixture has three teams, so a missing cap is invisible in it.
+  const many = Array.from({ length: 18 }, (_, i) => ({
+    team: 'nfl:nflverse:franchise:T' + i, code: 'T' + i,
+    conference: 'AFC', division: 'East', rating: 1700 - i,
+    rank: i + 1, wins: 1, losses: 0, ties: 0, rated_games: 1
+  }));
+  const dom = await open(null, null, null, null, many);
+  assert.equal(dom.window.document.querySelectorAll('#rail li').length, 10);
+  click(dom, '#tabs button[data-tab="rankings"]');
+  assert.equal(dom.window.document.querySelectorAll('#board tr').length, 18,
+    'the full board is not capped; only the rail is');
+  dom.window.close();
+});
+
+test('My teams first leaves three unfollowed games in the order they had',
+  async () => {
+    // With one game left over, reversing the remainder is invisible. Four
+    // games in the week means the tail has three and an order to keep.
+    // Each game carries a DISTINCT venue. Two games between the same pair
+    // render identical text, and swapping two identical cards is invisible
+    // -- which is how the first version of this test passed while the code
+    // reversed the tail.
+    const slate = ['One', 'Two', 'Three', 'Four'].map((venue, i) => ({
+      id: 'abcd'[i], date: '2026-09-20',
+      at: '2026-09-20T1' + (7 + i) + ':00:00Z', week: 2, type: 'regular',
+      // The followed club is the AWAY side here; the test above has it at
+      // home. A partition keyed on only one of the two passes otherwise.
+      home: 'abcd'[i] === 'c' ? LA : KC,
+      away: 'abcd'[i] === 'c' ? BUF : LA,
+      home_points: null, away_points: null, rateable: 0, venue: 'Field ' + venue
+    }));
+    const dom = await open(null, slate);
+    const order = () => [...dom.window.document.querySelectorAll('#cards .card')]
+      .map(c => c.textContent.replace(/\s+/g, ' ').trim());
+    const before = order();
+    assert.equal(before.length, 4);
+    dom.window.localStorage.setItem(NFL_KEY, JSON.stringify([BUF]));
+    click(dom, '#tabs button[data-tab="rankings"]');
+    click(dom, '#tabs button[data-tab="games"]');
+    click(dom, '#slate-filters button');
+    const after = order();
+    assert.match(after[0], /Bills/, 'the followed game is lifted');
+    assert.deepEqual(after.slice(1), before.filter(c => !/Bills/.test(c)),
+      'and the other three keep the order they had');
+    dom.window.close();
+  });
