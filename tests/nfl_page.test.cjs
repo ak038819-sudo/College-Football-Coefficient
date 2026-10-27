@@ -79,7 +79,7 @@ function stamp(text) {
     .update(text).digest('hex').slice(0, 10);
 }
 
-function site(overrides, schedule) {
+function site(overrides, schedule, logos) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nfl-page-'));
   const data = path.join(root, 'data', 'nfl', 'seasons');
   fs.mkdirSync(data, { recursive: true });
@@ -98,6 +98,12 @@ function site(overrides, schedule) {
   for (const name of ['nfl.html', 'nfl_loader.js', 'nfl_app.js',
     'ncaambb_app.js']) {
     fs.copyFileSync(path.join(UI, name), path.join(root, name));
+  }
+  // The club marks live beside the page, not under data/nfl, because the
+  // refresh replaces that directory wholesale.
+  if (logos) {
+    fs.writeFileSync(path.join(root, 'nfl_logo_assets.json'),
+      JSON.stringify(logos));
   }
   return { root, manifest: payload };
 }
@@ -124,15 +130,55 @@ function settle(dom, ready, tries = 500) {
   });
 }
 
-async function open(overrides, schedule) {
-  const built = site(overrides, schedule);
+// jsdom's own matchMedia never changes and has no way to fire a change, so
+// a page that re-reads the theme can only be driven against a stub. This one
+// answers the page's one query and hands the test `dom.setLight(true)` to
+// flip the OS theme the way a reader does, listeners and all.
+// `api` is which subscription shape the stub offers: 'modern' for
+// addEventListener only, 'legacy' for addListener only (Safari before 14),
+// and undefined for both. A stub that offers both cannot tell the two
+// branches apart, so neither can a test using it.
+function fakeMatchMedia(window, state, api) {
+  const listeners = [];
+  window.matchMedia = function (query) {
+    const media = { media: query, get matches() { return state.light; } };
+    if (api !== 'legacy') {
+      media.addEventListener = function (kind, fn) {
+        if (kind === 'change') listeners.push(fn);
+      };
+      media.removeEventListener = function (kind, fn) {
+        const at = listeners.indexOf(fn);
+        if (kind === 'change' && at >= 0) listeners.splice(at, 1);
+      };
+    }
+    if (api !== 'modern') {
+      media.addListener = function (fn) { listeners.push(fn); };
+      media.removeListener = function (fn) {
+        const at = listeners.indexOf(fn);
+        if (at >= 0) listeners.splice(at, 1);
+      };
+    }
+    return media;
+  };
+  return function setLight(light) {
+    state.light = light;
+    for (const fn of listeners.slice()) fn({ matches: light });
+  };
+}
+
+async function open(overrides, schedule, logos, media) {
+  const built = site(overrides, schedule, logos);
   const file = path.join(built.root, 'nfl.html');
+  let setLight = null;
   const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
     url: 'file://' + file,
     runScripts: 'dangerously',
     resources: 'usable',
     pretendToBeVisual: true,
     beforeParse(window) {
+      if (media) {
+        setLight = fakeMatchMedia(window, { light: !!media.light }, media.api);
+      }
       // jsdom has no fetch. The page's one fetch is its manifest, served
       // from the same directory its scripts are.
       window.fetch = function (url) {
@@ -147,6 +193,7 @@ async function open(overrides, schedule) {
   });
   await settle(dom, () => dom.window.document.querySelector(
     '#cards .card, #refusal-list li'));
+  dom.setLight = setLight;
   return dom;
 }
 
@@ -451,4 +498,117 @@ test('a tie has no loser and no favourite', () => {
   assert.equal(app.sideFavoured({ home_wp: 0.51 }), 'home');
   assert.equal(app.sideFavoured({ home_wp: 0.49 }), 'away');
   assert.equal(app.sideFavoured({}), null);
+});
+
+// --- the club marks --------------------------------------------------------
+
+const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAf'
+  + 'FcSJAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+function logoFile() {
+  return {
+    [KC]: { light: PIXEL + '#kc-light', dark: PIXEL + '#kc-dark' },
+    [BUF]: { light: PIXEL + '#buf-light', dark: PIXEL + '#buf-dark' }
+  };
+}
+
+async function withLogos(schedule) {
+  const dom = await open(null, schedule, logoFile());
+  // The file is fetched after the first render, so wait for the re-render
+  // that puts the marks on the page.
+  await settle(dom, () => dom.window.document.querySelector('#cards img.mark'));
+  return dom;
+}
+
+test('a card draws each club\'s mark, and keeps its column without one',
+  async () => {
+    const dom = await withLogos();
+    click(dom, '#weeks button');                 // week 1: KC v BUF, both known
+    const sides = dom.window.document
+      .querySelectorAll('#cards .card .side');
+    assert.equal(sides[0].querySelector('img.mark').getAttribute('src'),
+      PIXEL + '#buf-dark');
+    assert.equal(sides[1].querySelector('img.mark').getAttribute('src'),
+      PIXEL + '#kc-dark');
+    // LA has no entry in the file; its row keeps the grid rather than
+    // sliding its name under the logo column.
+    const second = dom.window.document.querySelectorAll('#cards .card')[0];
+    assert.ok(second);
+    click(dom, '#tabs button[data-tab="rankings"]');
+    const marked = dom.window.document.querySelectorAll('#board img.mark');
+    assert.equal(marked.length, 2, 'KC and BUF are marked, LA is not');
+  });
+
+test('a club with no mark gets no broken image', async () => {
+  const dom = await withLogos();
+  const rows = [...dom.window.document.querySelectorAll('#cards .card .side')];
+  const la = rows.find(r => /Rams/.test(r.textContent));
+  assert.ok(la, 'the Rams are on this week\'s slate');
+  assert.equal(la.querySelector('img.mark'), null);
+  assert.ok(la.classList.contains('nomark'));
+});
+
+test('the rank cell keeps the table layout when a mark is beside the name',
+  async () => {
+    // `td.rk { display: inline-block }` once took every rank cell out of the
+    // table layout on the college side. The flex box here is the wrapper.
+    const dom = await withLogos();
+    click(dom, '#tabs button[data-tab="rankings"]');
+    const cell = dom.window.document.querySelector('#board td.teamcell');
+    assert.ok(cell.querySelector('span.with-mark'),
+      'the mark and the name share a wrapper inside the cell');
+  });
+
+test('flipping the OS theme redraws the marks in the other cut', async () => {
+  // The CSS repaints itself on prefers-color-scheme; the <img> src does not,
+  // because it was chosen when the card was built. A reader who switches to
+  // light mode with the page open would be left with the light-ink cut on a
+  // light background, which is an invisible logo rather than a dim one.
+  await flips({ light: false, api: 'modern' });
+});
+
+test('an engine with only the legacy addListener still gets the redraw',
+  async () => {
+    // Safari before 14 has no addEventListener on a MediaQueryList. Dropping
+    // the fallback would leave those readers with an invisible logo, and a
+    // stub that offers both APIs cannot tell the branches apart.
+    await flips({ light: false, api: 'legacy' });
+  });
+
+// The flip itself, run against whichever subscription shape `media` offers.
+async function flips(media) {
+  const dom = await open(null, null, logoFile(), media);
+  await settle(dom, () => dom.window.document.querySelector('#cards img.mark'));
+  click(dom, '#weeks button');                   // week 1: KC v BUF
+  const src = () => dom.window.document
+    .querySelector('#cards img.mark').getAttribute('src');
+  assert.equal(src(), PIXEL + '#buf-dark', 'the page starts dark');
+  dom.setLight(true);
+  await settle(dom, () => src() === PIXEL + '#buf-light');
+  assert.equal(src(), PIXEL + '#buf-light');
+  dom.setLight(false);
+  await settle(dom, () => src() === PIXEL + '#buf-dark');
+  assert.equal(src(), PIXEL + '#buf-dark', 'and back again');
+  dom.window.close();
+}
+
+test('a theme flip before the marks land does not redraw for nothing',
+  async () => {
+    // The listener is wired at start, which is before the logo file has been
+    // fetched. Firing it then must not throw on a null mark table.
+    const dom = await open(null, null, null, { light: false });
+    dom.setLight(true);
+    click(dom, '#weeks button');
+    assert.ok(dom.window.document.querySelector('#cards .card'),
+      'the scoreboard still draws');
+  });
+
+test('the page works with no logo file at all', async () => {
+  // The fetch 404s; nothing says so, because nothing the reader asked for is
+  // missing.
+  const dom = await open();
+  click(dom, '#weeks button');
+  const card = dom.window.document.querySelector('#cards .card');
+  assert.ok(card, 'the scoreboard still draws');
+  assert.equal(card.querySelector('img.mark'), null);
 });

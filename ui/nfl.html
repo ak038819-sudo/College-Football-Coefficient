@@ -156,9 +156,16 @@
           background: var(--panel-2); }
   .card .status { font-size: 11px; text-transform: uppercase;
                   letter-spacing: 0.8px; color: var(--ink-dim); }
-  .card .side { display: grid; grid-template-columns: minmax(0, 1fr) auto auto;
-                align-items: baseline; column-gap: 10px; font-size: 15px;
+  .card .side { display: grid;
+                grid-template-columns: 22px minmax(0, 1fr) auto auto;
+                align-items: center; column-gap: 10px; font-size: 15px;
                 margin-top: 6px; }
+  /* A club with no mark keeps the column, so the names in a slate stay in
+     one line whether or not every logo resolved. */
+  .card .side.nomark { grid-template-columns: 22px minmax(0, 1fr) auto auto; }
+  .card .side.nomark .nm { grid-column: 2; }
+  img.mark { object-fit: contain; display: block; }
+  .card .side.lost img.mark { opacity: 0.55; }
   .card .side .pts { font-family: var(--font-mono); min-width: 2ch;
                      text-align: right; }
   /* The win probability sits in its own column so the percentages line up
@@ -300,6 +307,12 @@
      table where it belongs. */
   .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .scroll table { min-width: 100%; }
+  /* The flex box is the WRAPPER, never the <td>. `display: flex` on a
+     table cell takes it out of the table layout, which is what
+     `td.rk { display: inline-block }` once did to every ranked
+     table on the college side. */
+  td.teamcell > span.with-mark { display: flex; align-items: center;
+                                 gap: 8px; }
   .legend { font-size: 11px; color: var(--ink-dim); margin: 0 0 6px; }
 </style>
 </head>
@@ -670,6 +683,77 @@
   /* The season's board, keyed by franchise, so a card can show a team's
    * rank, record and rating without searching the board for every side of
    * every game. Built once a render, not once a card. */
+  /* The club marks.
+   *
+   * `ui/nfl_logo_assets.json` lives OUTSIDE `ui/data/nfl/`, because the
+   * refresh replaces that directory wholesale and would delete it. It is
+   * fetched lazily and the page re-renders when it lands: about a megabyte
+   * of inlined PNG has no business on the path to the first score.
+   *
+   * It carries no `?v=` stamp and does not need one. A stale JSON of logos
+   * draws last month's mark; a stale JS MODULE is missing a function the
+   * fresh HTML calls, which is why the scripts are stamped and this is not.
+   */
+  var logoState = { marks: null, loading: false, failed: false };
+
+  function ensureLogos() {
+    if (logoState.marks || logoState.loading || logoState.failed) return;
+    logoState.loading = true;
+    fetch('nfl_logo_assets.json').then(function (response) {
+      if (!response.ok) throw new Error(String(response.status));
+      return response.json();
+    }).then(function (marks) {
+      logoState.loading = false;
+      logoState.marks = marks;
+      render();
+    }).catch(function () {
+      // A page without marks is the page as it was. Nothing says so,
+      // because nothing is missing that the reader asked for.
+      logoState.loading = false;
+      logoState.failed = true;
+    });
+  }
+
+  /* Which cut to draw. The CSS picks its palette the same way: dark unless
+   * the OS asks for light, and an explicit data-theme beats both. */
+  function themeNow() {
+    var set = document.documentElement.getAttribute('data-theme');
+    if (set === 'light' || set === 'dark') return set;
+    return window.matchMedia
+      && window.matchMedia('(prefers-color-scheme: light)').matches
+      ? 'light' : 'dark';
+  }
+
+  /* The CSS repaints itself when the OS theme flips; the marks do not,
+   * because their src was chosen at render time. A reader who switches to
+   * light mode with the page open would be left with the light-ink cut on a
+   * light background, which is an invisible logo rather than a dim one.
+   * Wired once, and only where a mark could be drawn at all. */
+  function watchTheme() {
+    if (!window.matchMedia) return;
+    var query = window.matchMedia('(prefers-color-scheme: light)');
+    var onChange = function () { if (logoState.marks) render(); };
+    if (query.addEventListener) query.addEventListener('change', onChange);
+    else if (query.addListener) query.addListener(onChange);  // Safari < 14
+  }
+
+  /* An <img> for a club, or null where there is no mark for it.
+   * Null rather than a placeholder: a blank square in a row of logos reads
+   * as a broken image, and an absent one reads as nothing at all. */
+  function teamMark(key, size) {
+    var marks = logoState.marks && logoState.marks[key];
+    if (!marks) return null;
+    var src = marks[themeNow()] || marks.light || marks.dark;
+    if (!src) return null;
+    var img = document.createElement('img');
+    img.className = 'mark';
+    img.src = src;
+    img.alt = '';
+    img.width = img.height = size || 22;
+    img.loading = 'lazy';
+    return img;
+  }
+
   function boardSeeds() {
     var out = {};
     boardRows().forEach(function (row) { out[row.team] = row; });
@@ -731,6 +815,9 @@
         // A finished game dims the loser, so a glance at a slate reads as
         // results rather than as a list of pairs. A tie dims neither.
         if (final && app.loserOf(game) === side[0]) row.classList.add('lost');
+        var mark = teamMark(side[1]);
+        if (mark) row.appendChild(mark);
+        else row.classList.add('nomark');
         var name = document.createElement('div');
         name.className = 'nm';
         var strong = document.createElement('b');
@@ -805,7 +892,17 @@
         tr.appendChild(td);
       }
       cell(row.rank, 'rk');
-      cell(teamName(row.team));
+      var nameCell = document.createElement('td');
+      nameCell.className = 'teamcell';
+      var wrap = document.createElement('span');
+      wrap.className = 'with-mark';
+      var boardMark = teamMark(row.team, 20);
+      if (boardMark) wrap.appendChild(boardMark);
+      var label = document.createElement('span');
+      label.textContent = teamName(row.team);
+      wrap.appendChild(label);
+      nameCell.appendChild(wrap);
+      tr.appendChild(nameCell);
       cell([row.conference, row.division].filter(Boolean).join(' '));
       cell(app.ratingText(row.rating), 'num');
       cell(app.recordText(row), 'num');
@@ -1881,6 +1978,10 @@
   function render() {
     renderMeta();
     renderRefusal();
+    // Asked for on the first render and never again: ensureLogos returns at
+    // once once the file has landed, failed, or is in flight, and the
+    // re-render it triggers is what puts the marks on the page.
+    ensureLogos();
     var ok = state.verdict && state.verdict.ok;
     el('scoreboard').hidden = !ok || !(state.tab === 'home'
                                        || state.tab === 'games');
@@ -1949,6 +2050,7 @@
 
   function start() {
     leagueButtons();
+    watchTheme();
     fetch(BASE + 'manifest.json', { cache: 'no-store' })
       .then(function (response) {
         if (!response.ok) throw new Error('no manifest');
