@@ -215,8 +215,12 @@
                  standings: 'standings' };
   var LABELS = { home: 'Home', stats: 'Stats', standings: 'Standings',
                  teams: 'Teams', people: 'People', games: 'Games' };
+  // What a URL naming no section means: the ratings board, which is what the
+  // preview is for. It is a constant because the route code and the initial
+  // state have to agree about it -- see tabFromHash.
+  var DEFAULT_TAB = 'standings';
   var state = { manifest: null, verdict: null, season: null, day: null,
-                filter: 'all', sort: 'tipoff', tab: 'standings' };
+                filter: 'all', sort: 'tipoff', tab: DEFAULT_TAB };
 
   function el(id) { return document.getElementById(id); }
 
@@ -227,7 +231,7 @@
    *
    * The hash is the shared one, written by ncaambb_app.writeRoute, so a
    * basketball section link is the same string switchLeague would produce:
-   * `#league=basketball&section=standings`, and home states no section.
+   * `#league=ncaambb&section=standings`, and home states no section.
    */
   function routableTab(name) {
     return TABS.indexOf(name) >= 0 && Boolean(PANELS[name])
@@ -235,7 +239,16 @@
   }
 
   function tabFromHash() {
-    var route = app.readRoute(window.location.hash);
+    var hash = String(window.location.hash || '').replace(/^#/, '');
+    // A URL naming no league at all is this page's bare URL: the first
+    // history entry, and what Back returns to after the first tab press. It
+    // asks for nothing, so it asks for the default -- and it has to say so
+    // rather than null, or Back left the previous tab drawn under a URL that
+    // reloads as the default. readRoute cannot tell this case apart for us,
+    // because a hash with no league IS football as far as the shared route
+    // is concerned, and that is the right answer everywhere but here.
+    if (!/(^|&)league=/.test(hash)) return DEFAULT_TAB;
+    var route = app.readRoute(hash);
     // A hash naming another league is not this page's to read. It cannot
     // happen by navigation, but a hand-edited link can say it.
     if (route.league !== app.BASKETBALL) return null;

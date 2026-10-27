@@ -470,6 +470,40 @@ test('the back button returns to the tab before it', async () => {
   dom.window.close();
 });
 
+test('Back to the bare URL restores the tab that URL reloads as',
+  async () => {
+    // The first history entry has no hash at all, so Back after the first tab
+    // press lands on it. It used to leave the previous tab drawn under a URL
+    // that reloads as the board -- the same address showing two things.
+    const dom = await open();
+    const document = dom.window.document;
+    const home = [...document.querySelectorAll('#tabs button')]
+      .find(b => b.textContent === 'Home');
+    home.click();
+    assert.deepEqual(visible(dom), ['scoreboard']);
+    dom.window.history.back();
+    await settle(dom, () => dom.window.location.hash === '');
+    await settle(dom, () => visible(dom).join() === 'standings');
+    assert.equal(pressed(dom), 'Standings');
+    dom.window.close();
+  });
+
+test('the bare URL draws the same tab whether reloaded or returned to',
+  async () => {
+    // Two ways of being at the same address, which must agree.
+    const reloaded = await open();
+    const returned = await open();
+    const home = [...returned.window.document.querySelectorAll('#tabs button')]
+      .find(b => b.textContent === 'Home');
+    home.click();
+    returned.window.history.back();
+    await settle(returned, () => returned.window.location.hash === '');
+    await settle(returned, () => visible(returned).length > 0);
+    assert.deepEqual(visible(returned), visible(reloaded));
+    reloaded.window.close();
+    returned.window.close();
+  });
+
 test('a hash naming a section this page cannot draw leaves the tab alone',
   async () => {
     // Stats is a disabled tab: there is no panel behind it. A link to it must
@@ -486,6 +520,31 @@ test('a hash naming another league is not read as a basketball section',
     const dom = await open(undefined, undefined,
       '#league=nfl&section=home');
     assert.deepEqual(visible(dom), ['standings']);
+    dom.window.close();
+  });
+
+test("another league's hash leaves the tab alone, rather than resetting it",
+  async () => {
+    // This is the assertion the test above cannot make: it lands on the board,
+    // which is also the default, so "ignored" and "reset to the default" look
+    // identical there. Pressing a tab first tells them apart -- and the
+    // difference matters, because the bare URL now legitimately means "the
+    // default" and that must not spread to every hash this page can't read.
+    const dom = await open();
+    const home = [...dom.window.document.querySelectorAll('#tabs button')]
+      .find(b => b.textContent === 'Home');
+    home.click();
+    assert.deepEqual(visible(dom), ['scoreboard']);
+    // Wait for the page's own listener to have run, not merely for the
+    // assignment: location.hash is set synchronously and the hashchange
+    // comes later, so asserting straight after it passes whatever the page
+    // does. This listener is added second, so it runs second.
+    let seen = false;
+    dom.window.addEventListener('hashchange', () => { seen = true; });
+    dom.window.location.hash = '#league=nfl&section=standings';
+    await settle(dom, () => seen);
+    assert.deepEqual(visible(dom), ['scoreboard'],
+      'a hash this page cannot read must not move the reader');
     dom.window.close();
   });
 
