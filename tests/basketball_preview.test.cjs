@@ -104,11 +104,14 @@ function site(overrides, schedule) {
   return { root, manifest: payload };
 }
 
-async function open(overrides, schedule) {
+async function open(overrides, schedule, hash) {
   const built = site(overrides, schedule);
   const file = path.join(built.root, 'basketball.html');
   const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
-    url: 'file://' + file,
+    // The hash is part of the URL the reader arrived with, so it is set here
+    // rather than assigned afterwards: a tab the page opens on and a tab it
+    // is moved to later are different claims, and this one is the link.
+    url: 'file://' + file + (hash || ''),
     runScripts: 'dangerously',
     resources: 'usable',
     pretendToBeVisual: true,

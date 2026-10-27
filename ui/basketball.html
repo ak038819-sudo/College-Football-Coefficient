@@ -220,6 +220,46 @@
 
   function el(id) { return document.getElementById(id); }
 
+  /* A tab is a route, not just a pressed button. Without this, every tab but
+   * the one the page opens on was unreachable by link, by reload and by the
+   * back button -- the Standings a reader wanted to share opened on whatever
+   * the page defaults to.
+   *
+   * The hash is the shared one, written by ncaambb_app.writeRoute, so a
+   * basketball section link is the same string switchLeague would produce:
+   * `#league=basketball&section=standings`, and home states no section.
+   */
+  function routableTab(name) {
+    return TABS.indexOf(name) >= 0 && Boolean(PANELS[name])
+      && app.hasSection(app.BASKETBALL, name);
+  }
+
+  function tabFromHash() {
+    var route = app.readRoute(window.location.hash);
+    // A hash naming another league is not this page's to read. It cannot
+    // happen by navigation, but a hand-edited link can say it.
+    if (route.league !== app.BASKETBALL) return null;
+    var section = route.params.section || 'home';
+    // An unroutable section -- a disabled tab, or a name this page has no
+    // panel for -- leaves the tab alone rather than opening an empty panel.
+    return routableTab(section) ? section : null;
+  }
+
+  function writeTab(name) {
+    var route = app.readRoute(window.location.hash);
+    var params = {};
+    // Every other parameter is kept: the day and the filter belong to the
+    // reader, not to the tab they happen to press.
+    Object.keys(route.params).forEach(function (key) {
+      if (key !== 'section') params[key] = route.params[key];
+    });
+    if (name !== 'home') params.section = name;
+    var hash = app.writeRoute({ league: app.BASKETBALL, params: params });
+    // Assigning an unchanged hash would still push a history entry, so a
+    // reader pressing the same tab twice would need Back twice to leave.
+    if (hash !== window.location.hash) window.location.hash = hash;
+  }
+
   function text(node, value) {
     node.textContent = value === null || value === undefined ? '' : value;
   }
@@ -266,6 +306,9 @@
       button.addEventListener('click', function () {
         if (!ready) return;
         state.tab = name;
+        // The hash first, so the hashchange it fires finds the state it
+        // describes and re-renders nothing twice.
+        writeTab(name);
         render();
       });
       host.appendChild(button);
@@ -475,6 +518,15 @@
 
   function start() {
     leagueButtons();
+    var opening = tabFromHash();
+    if (opening) state.tab = opening;
+    window.addEventListener('hashchange', function () {
+      var next = tabFromHash();
+      if (next && next !== state.tab) {
+        state.tab = next;
+        render();
+      }
+    });
     fetch(BASE + 'manifest.json', { cache: 'no-store' })
       .then(function (response) {
         if (!response.ok) throw new Error('no manifest');
