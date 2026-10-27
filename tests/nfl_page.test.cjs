@@ -874,8 +874,8 @@ test('My teams first leaves three unfollowed games in the order they had',
 
 function visible(dom) {
   const document = dom.window.document;
-  return ['scoreboard', 'standings', 'rankings', 'people', 'coaches',
-    'history'].filter(id => !document.getElementById(id).hidden);
+  return ['scoreboard', 'standings', 'rankings', 'teams', 'people',
+    'coaches', 'history'].filter(id => !document.getElementById(id).hidden);
 }
 
 function pressedTab(dom) {
@@ -929,12 +929,12 @@ test('the back button returns to the tab before it', async () => {
 
 test('a hash naming a section this page cannot draw leaves the tab alone',
   async () => {
-    // Teams is a disabled tab: the section exists for the league but this
-    // page has no panel behind it. A link to it must land on something
+    // `stats` is a football section the NFL does not have at all, so no tab
+    // and no panel can answer it. A link to it must land on something
     // rather than hiding every panel, which is the empty page the disabled
     // state exists to prevent.
     const dom = await open(null, null, null, null, null,
-      '#league=nfl&section=teams');
+      '#league=nfl&section=stats');
     assert.deepEqual(visible(dom), ['scoreboard']);
     dom.window.close();
   });

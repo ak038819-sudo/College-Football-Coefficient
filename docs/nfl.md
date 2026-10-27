@@ -639,6 +639,48 @@ had the problem because `build_dashboard.py` has always stamped its modules;
 the NFL page had no generator and so had no stamps. `ui/basketball.html`
 still has none.
 
+**Every club has a page** (2026-10-27), and NO NEW DATA was needed for it.
+The Teams tab was a disabled button from the day the page shipped: the
+section existed in the league registry and nothing drew it. It is now a
+directory of the 32 clubs and, behind each one, a franchise page —
+`#league=nfl&section=teams&team=KC`, the club's CODE rather than its key,
+because that is a link a person can read.
+
+What is on it, and where each part comes from:
+
+- The header's division, record, rating and rank are that season's **board
+  row**, the same row the Rankings table draws. A franchise with no row —
+  an expansion team before it played — still gets a page, which says it did
+  not play that season rather than drawing an empty one.
+- The season table is the **games already in the season payload**, stated
+  from that club's side: its own pregame Elo, its own pregame win
+  probability (the home side's is stored and the away side's is the exact
+  complement), and W/L/T with the score. **A tie is a result**, as
+  everywhere else on this page.
+- **A bye is a row.** A schedule that jumps from week 4 to week 6 reads as
+  a hole in the archive rather than as the week off it is. The run of weeks
+  comes from the season's own games, never from a constant: the league
+  played 17 weeks until 2021 and 18 since. A club with no game at all gets
+  no rows rather than eighteen byes.
+- The head coach (or **coaches**, where a season had two) comes from the
+  payload's coach rows for that club.
+- Season by season comes from `coach_seasons` in **history.js**, which the
+  Coaches tab already loads on demand. One row per season with both names
+  where a season had two, their games added together. Those records
+  **include the postseason**, because the coach records they come from do,
+  and the page says so beside the table. A franchise keeps one row through
+  a relocation, so the Rams' St. Louis seasons appear under Los Angeles —
+  that is the franchise rule the ratings themselves follow.
+
+The directory is **alphabetical rather than by division**: the Standings tab
+already draws the eight divisions with these same records in them, and a
+second copy of that table would be the same screen twice.
+
+Left for later, and deliberately: a game on a club's schedule does not open
+the game page, and a player opened from search is still not in the URL.
+Both are cross-section routes rather than sections, and they belong together
+rather than half-done here.
+
 **A tab is a route** (2026-10-27). It was a button and nothing else, so only
 the tab the page opened on could be linked to, reloaded into or reached with
 the back button: a reader who sent somebody the Rankings sent them the home

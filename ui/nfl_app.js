@@ -338,6 +338,164 @@
     return first === last ? String(first) : first + '\u2013' + last;
   }
 
+  /* ---- a franchise's own page ----------------------------------------- */
+
+  /* Which side of a game a franchise was on, or null where it was neither.
+   * Compared on the FRANCHISE KEY, which is what follows a club through a
+   * relocation: the Rams' St. Louis seasons are on the same key as their
+   * Los Angeles ones, so a franchise page is a franchise's whole history
+   * rather than a city's. */
+  function sideOf(game, key) {
+    if (!game) return null;
+    if (game.home === key) return 'home';
+    if (game.away === key) return 'away';
+    return null;
+  }
+
+  /* W, L or T from one side's view, or '' where the game has no final.
+   *
+   * A TIE IS A RESULT. Sixteen games since 1999 ended level and the league
+   * records them as ties, so an equal score is 'T' -- never a loss, and
+   * never the blank an unplayed game gets. */
+  function resultLetter(forPoints, againstPoints) {
+    var mine = number(forPoints);
+    var theirs = number(againstPoints);
+    if (mine === null || theirs === null) return '';
+    if (mine > theirs) return 'W';
+    if (mine < theirs) return 'L';
+    return 'T';
+  }
+
+  /* Every game a franchise played in one season, stated from ITS side and in
+   * the order it played them.
+   *
+   * ORDERED BY KICKOFF, because "the order it played them" is the claim the
+   * table makes. The postseason continues the week numbering today, so week
+   * order happens to agree -- but the week is a label the league has
+   * renumbered before now, and the kickoff is the thing itself. */
+  function teamSchedule(games, key) {
+    var rows = (games || []).filter(function (game) {
+      return sideOf(game, key) !== null;
+    }).map(function (game) {
+      var home = sideOf(game, key) === 'home';
+      var mine = home ? game.home_points : game.away_points;
+      var theirs = home ? game.away_points : game.home_points;
+      var homeWp = number(game.home_wp);
+      return {
+        game: game,
+        home: home,
+        opponent: home ? game.away : game.home,
+        elo: number(home ? game.home_elo : game.away_elo),
+        opponent_elo: number(home ? game.away_elo : game.home_elo),
+        points: mine === null || mine === undefined ? null : number(mine),
+        against: theirs === null || theirs === undefined ? null
+          : number(theirs),
+        // The home side's probability is stored and the away side's is its
+        // complement, which is exact rather than a second rounding.
+        win_probability: homeWp === null ? null : (home ? homeWp : 1 - homeWp),
+        result: resultLetter(mine, theirs),
+        coach: home ? game.home_coach : game.away_coach,
+        quarterback: home ? game.home_qb : game.away_qb
+      };
+    });
+    return rows.sort(function (a, b) {
+      var left = String(a.game.at || a.game.date || '');
+      var right = String(b.game.at || b.game.date || '');
+      return left < right ? -1 : left > right ? 1 : 0;
+    });
+  }
+
+  /* The same rows with the club's bye weeks in their places.
+   *
+   * A SCHEDULE WITH A WEEK MISSING FROM THE MIDDLE reads as a hole in the
+   * data rather than as the week off that it is. The run of weeks comes
+   * from the SEASON's own games, not from a constant: the league played 17
+   * weeks until 2021 and 18 since, and the archive states which.
+   *
+   * A club with no game at all gets no rows rather than a column of byes:
+   * an expansion team's missing season is not eighteen weeks off.
+   * A regular-season game whose week falls outside that run, or carries
+   * none, is kept and placed after the run rather than dropped. */
+  function withByeWeeks(rows, games) {
+    if (!rows || !rows.length) return [];
+    var lastWeek = 0;
+    (games || []).forEach(function (game) {
+      if (game.postseason) return;
+      var week = number(game.week);
+      if (week !== null && week > lastWeek) lastWeek = week;
+    });
+    var regular = rows.filter(function (row) { return !row.game.postseason; });
+    var post = rows.filter(function (row) { return row.game.postseason; });
+    var byWeek = {};
+    regular.forEach(function (row) {
+      var week = number(row.game.week);
+      if (week !== null && byWeek[week] === undefined) byWeek[week] = row;
+    });
+    var out = [];
+    for (var week = 1; week <= lastWeek; week += 1) {
+      out.push(byWeek[week] || { bye: true, week: week });
+    }
+    regular.forEach(function (row) {
+      if (out.indexOf(row) < 0) out.push(row);
+    });
+    return out.concat(post);
+  }
+
+  /* The record those rows add up to. Played games only: an unplayed game is
+   * not a loss, which is the whole reason `result` is '' for one. */
+  function teamRecord(rows) {
+    var record = { wins: 0, losses: 0, ties: 0 };
+    (rows || []).forEach(function (row) {
+      if (row.result === 'W') record.wins += 1;
+      else if (row.result === 'L') record.losses += 1;
+      else if (row.result === 'T') record.ties += 1;
+    });
+    return record;
+  }
+
+  /* A franchise season by season, from the coach records the history file
+   * already carries -- no new data, and no second answer to what a season's
+   * record was.
+   *
+   * A SEASON WITH TWO HEAD COACHES IS ONE ROW, not two. Both are named and
+   * their games add up, because the row is the franchise's season and not a
+   * tenure. Elo change and wins above expectation add up the same way, and
+   * stay null where the file states none rather than reading as zero.
+   *
+   * These records INCLUDE THE POSTSEASON: a 1999 row of 16-4 is 13-3 plus
+   * three playoff wins. The page says so beside the table. */
+  function franchiseSeasons(coachSeasons, key) {
+    var bySeason = {};
+    var sums = ['wins', 'losses', 'ties', 'games', 'postseason_games',
+                'postseason_wins'];
+    var signed = ['elo_change', 'wins_above', 'expected_wins'];
+    (coachSeasons || []).forEach(function (row) {
+      if (!row || row.team_key !== key) return;
+      var season = number(row.season);
+      if (season === null) return;
+      var entry = bySeason[season];
+      if (!entry) {
+        entry = bySeason[season] = { season: season, coaches: [] };
+        sums.forEach(function (field) { entry[field] = 0; });
+        signed.forEach(function (field) { entry[field] = null; });
+      }
+      if (row.coach_name && entry.coaches.indexOf(row.coach_name) < 0) {
+        entry.coaches.push(row.coach_name);
+      }
+      sums.forEach(function (field) {
+        entry[field] += number(row[field]) || 0;
+      });
+      signed.forEach(function (field) {
+        var value = number(row[field]);
+        if (value === null) return;
+        entry[field] = (entry[field] === null ? 0 : entry[field]) + value;
+      });
+    });
+    return Object.keys(bySeason).map(function (season) {
+      return bySeason[season];
+    }).sort(function (a, b) { return b.season - a.season; });
+  }
+
   /* ---- the playoff field. The seeding is computed in src/nfl/playoff.py and
    * exported; nothing here re-derives it, so the page and the data cannot
    * disagree about who is the 7 seed. */
@@ -942,6 +1100,12 @@
     signedWins: signedWins,
     coachRecord: coachRecord,
     coachSpan: coachSpan,
+    sideOf: sideOf,
+    resultLetter: resultLetter,
+    teamSchedule: teamSchedule,
+    teamRecord: teamRecord,
+    withByeWeeks: withByeWeeks,
+    franchiseSeasons: franchiseSeasons,
     playoffConference: playoffConference,
     seedNote: seedNote,
     brierText: brierText,

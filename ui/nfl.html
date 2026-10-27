@@ -259,6 +259,29 @@
   .card.open { cursor: pointer; width: 100%; text-align: left; font: inherit;
                color: inherit; }
   .card.open:hover { border-color: var(--ink-dim); }
+  /* The club directory, and a franchise's own header. A tile is a button so
+     the whole tile is the target, which is what a reader on a phone aims
+     at, and the marks sit bare on it exactly as they do on a card. */
+  .clubs { display: grid; gap: 10px; margin: 12px 0 0;
+           grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .club { display: flex; align-items: center; gap: 10px; text-align: left;
+          border: 1px solid var(--line); border-radius: 8px;
+          padding: 10px 12px; background: var(--panel-2); color: var(--ink);
+          font: inherit; cursor: pointer; }
+  .club:hover { border-color: var(--amber); }
+  .club .nm { display: flex; flex-direction: column; min-width: 0; }
+  .club .nm b { font-weight: 600; overflow: hidden;
+                text-overflow: ellipsis; white-space: nowrap; }
+  .club .sub, .clubhead .sub { font-size: 11px; color: var(--ink-dim);
+                               font-family: var(--font-mono); }
+  .clubhead { display: flex; align-items: center; gap: 12px;
+              margin: 14px 0 4px; }
+  .clubhead .nm { min-width: 0; }
+  .clubhead h3 { margin: 0; }
+  /* The home-or-away marker before an opponent's name, in the same quiet
+     ink as the rest of a sub line. */
+  .teamcell .with-mark .sub { font-size: 11px; color: var(--ink-dim);
+                              font-family: var(--font-mono); }
   .gamehead { display: flex; justify-content: space-between; gap: 12px;
               align-items: baseline; margin: 10px 0 4px; }
   .gamehead .score { font-family: var(--font-mono); font-size: 20px; }
@@ -449,6 +472,10 @@
     </table>
   </section>
 
+  <section class="panel" id="teams" hidden>
+    <div id="teams-body"></div>
+  </section>
+
   <section class="panel" id="people" hidden>
     <div class="days" id="people-views"></div>
     <div id="people-body"></div>
@@ -474,7 +501,7 @@
 
 <script src="nfl_loader.js?v=4ad39c8c1b77"></script>
 <script src="ncaambb_app.js?v=7fdd39623fcb"></script>
-<script src="nfl_app.js?v=80a64f5880d3"></script>
+<script src="nfl_app.js?v=ccf38d1a4942"></script>
 <script>
 (function () {
   'use strict';
@@ -488,7 +515,7 @@
   // page, so a tab is enabled only where this page can actually draw one.
   var PANELS = { home: 'scoreboard', games: 'scoreboard',
                  standings: 'standings', rankings: 'rankings',
-                 people: 'people', coaches: 'coaches',
+                 teams: 'teams', people: 'people', coaches: 'coaches',
                  history: 'history' };
   var LABELS = { home: 'Home', standings: 'Standings', rankings: 'Rankings',
                  people: 'Players', coaches: 'Coaches',
@@ -496,7 +523,7 @@
                  games: 'Games' };
   var state = { manifest: null, verdict: null, season: null, week: null,
                 tab: 'home', coach: null, player: null, game: null,
-                peopleView: 'players', query: '', mine: false };
+                team: null, peopleView: 'players', query: '', mine: false };
 
   function el(id) { return document.getElementById(id); }
 
@@ -533,15 +560,19 @@
     return routableTab(section) ? section : null;
   }
 
-  function writeTab(name) {
+  /* The reader's route with some parameters changed, where null removes one.
+   * Everything not named is kept: the week they are looking at belongs to
+   * them, not to the control they happened to press. */
+  function writeParams(changes) {
     var route = leagues.readRoute(window.location.hash);
     var params = {};
-    // Every other parameter is kept: the week a reader is looking at belongs
-    // to them, not to the tab they happen to press.
     Object.keys(route.params).forEach(function (key) {
-      if (key !== 'section') params[key] = route.params[key];
+      params[key] = route.params[key];
     });
-    if (name !== 'home') params.section = name;
+    Object.keys(changes).forEach(function (key) {
+      if (changes[key] === null) delete params[key];
+      else params[key] = changes[key];
+    });
     var hash = leagues.writeRoute({ league: leagues.NFL, params: params });
     // Pressing the tab already open must not cost the reader a second Back
     // to leave it. Chromium does not push an entry for an assignment that
@@ -550,6 +581,44 @@
     // that true anywhere a browser is less careful, not what makes it true
     // here. The test asserts the behaviour either way.
     if (hash !== window.location.hash) window.location.hash = hash;
+  }
+
+  function writeTab(name) {
+    var changes = { section: name === 'home' ? null : name };
+    // A franchise page is only ever open inside the Teams section, so
+    // leaving that section takes the club out of the URL with it. Pressing
+    // Teams again keeps it, which is what makes the tab a way back.
+    if (name !== 'teams') changes.team = null;
+    writeParams(changes);
+  }
+
+  function writeTeam(code) {
+    writeParams({ section: 'teams', team: code || null });
+  }
+
+  /* The club code a link names, or null. The CODE and not the franchise key:
+   * `#league=nfl&section=teams&team=KC` is a link a person can read, and the
+   * code is what the key ends in anyway. It is resolved to a key at render
+   * time rather than here, because teams.js has not loaded when the opening
+   * route is read. */
+  function teamCodeFromHash() {
+    var route = leagues.readRoute(window.location.hash);
+    if (route.league !== leagues.NFL) return null;
+    if ((route.params.section || 'home') !== 'teams') return null;
+    var code = route.params.team;
+    return code ? String(code).toUpperCase() : null;
+  }
+
+  /* What the URL now says, applied to the page. One function for both the
+   * opening route and every later hashchange, so a link and the back button
+   * cannot disagree about what a hash means. */
+  function applyRoute() {
+    var changed = false;
+    var tab = tabFromHash();
+    if (tab && tab !== state.tab) { state.tab = tab; changed = true; }
+    var code = teamCodeFromHash();
+    if (code !== state.team) { state.team = code; changed = true; }
+    return changed;
   }
 
   /* Following a team, on this device and nowhere else.
@@ -1613,6 +1682,262 @@
 
   function franchiseKey(code) { return 'nfl:nflverse:franchise:' + code; }
 
+  /* ---- the club directory, and a franchise's own page ----------------- */
+
+  /* The franchise a club code names, or null. The code IS the key's last
+     segment, so this is a lookup rather than a search -- but it goes through
+     teams.js so a code the export does not carry answers null instead of
+     building a key to a club that is not there. */
+  function teamByCode(code) {
+    if (!code) return null;
+    var key = franchiseKey(String(code).toUpperCase());
+    return teams()[key] ? key : null;
+  }
+
+  function teamButton(key, label, className) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = className || 'expand';
+    button.textContent = label;
+    button.addEventListener('click', function (event) {
+      event.stopPropagation();
+      openTeam(teamCode(key));
+    });
+    return button;
+  }
+
+  function openTeam(code) {
+    state.team = code ? String(code).toUpperCase() : null;
+    state.tab = 'teams';
+    writeTeam(state.team);
+    window.scrollTo(0, 0);
+    render();
+  }
+
+  function renderTeams() {
+    var host = el('teams-body');
+    host.innerHTML = '';
+    if (state.team) return renderTeam(host);
+    renderClubIndex(host);
+  }
+
+  /* Every club in the league, as a directory.
+   *
+   * ALPHABETICAL, NOT BY DIVISION. The Standings tab already draws the eight
+   * divisions with these same records in them; a second copy of that table
+   * would be the same screen twice, and a reader who has come here to find
+   * one club wants the one place a name can be. */
+  function renderClubIndex(host) {
+    var rows = boardRows().slice().sort(function (a, b) {
+      return teamName(a.team).localeCompare(teamName(b.team));
+    });
+    if (!rows.length) {
+      return emptyLine(host, 'No club is loaded for this season.');
+    }
+    var grid = document.createElement('div');
+    grid.className = 'clubs';
+    rows.forEach(function (row) {
+      var tile = document.createElement('button');
+      tile.type = 'button';
+      tile.className = 'club';
+      tile.dataset.team = teamCode(row.team);
+      var mark = teamMark(row.team, 26);
+      if (mark) tile.appendChild(mark);
+      var block = document.createElement('span');
+      block.className = 'nm';
+      var name = document.createElement('b');
+      name.textContent = teamName(row.team);
+      var sub = document.createElement('span');
+      sub.className = 'sub';
+      sub.textContent = [[row.conference, row.division].filter(Boolean)
+        .join(' '), app.recordText(row), app.ratingText(row.rating)]
+        .filter(Boolean).join(' \u00b7 ');
+      block.appendChild(name);
+      block.appendChild(sub);
+      tile.appendChild(block);
+      tile.addEventListener('click', function () {
+        openTeam(teamCode(row.team));
+      });
+      grid.appendChild(tile);
+    });
+    host.appendChild(grid);
+  }
+
+  function renderTeam(host) {
+    var key = teamByCode(state.team);
+    backButton(host, '\u2190 All clubs', function () {
+      state.team = null;
+      writeTeam(null);
+      render();
+    });
+    if (!key) {
+      return emptyLine(host, 'No club in this export has the code \u201c'
+        + state.team + '\u201d.');
+    }
+    var row = null;
+    boardRows().forEach(function (entry) {
+      if (entry.team === key) row = entry;
+    });
+    var head = document.createElement('div');
+    head.className = 'clubhead';
+    var mark = teamMark(key, 44);
+    if (mark) head.appendChild(mark);
+    var block = document.createElement('div');
+    block.className = 'nm';
+    var name = document.createElement('h3');
+    name.textContent = teamName(key);
+    block.appendChild(name);
+    var sub = document.createElement('div');
+    sub.className = 'sub';
+    var team = teams()[key] || {};
+    sub.textContent = row
+      ? [[row.conference, row.division].filter(Boolean).join(' '),
+         app.seasonLabel(state.season) + ' ' + app.recordText(row),
+         'Elo ' + app.ratingText(row.rating) + ' (#' + row.rank + ')']
+        .join(' \u00b7 ')
+      : [[team.conference, team.division].filter(Boolean).join(' '),
+         'did not play in ' + app.seasonLabel(state.season)]
+        .filter(Boolean).join(' \u00b7 ');
+    block.appendChild(sub);
+    head.appendChild(block);
+    head.appendChild(starButton(key, teamName(key)));
+    host.appendChild(head);
+    renderTeamSchedule(host, key);
+    renderTeamCoaches(host, key);
+    renderFranchiseSeasons(host, key);
+  }
+
+  function renderTeamSchedule(host, key) {
+    var payload = seasonPayload();
+    var rows = app.teamSchedule((payload && payload.games) || [], key);
+    host.appendChild(heading('h3', 'Season'));
+    if (!rows.length) {
+      return emptyLine(host, 'This club played no game in '
+        + app.seasonLabel(state.season) + '.');
+    }
+    var record = app.teamRecord(rows);
+    var node = table('<tr><th>Week</th><th>Opponent</th><th>Result</th>'
+      + '<th class="num">Elo</th><th class="num">Win prob.</th></tr>',
+      app.recordText(record) + ' in games played. Elo and the win '
+      + 'probability are what the model believed BEFORE each game, so they '
+      + 'are the view at the time rather than today\u2019s.');
+    var body = node.querySelector('tbody');
+    app.withByeWeeks(rows, (payload && payload.games) || [])
+      .forEach(function (row) {
+      var tr = document.createElement('tr');
+      // A week off is a row, not a gap: a schedule that jumps from 4 to 6
+      // reads as missing data.
+      if (row.bye) {
+        tr.className = 'bye';
+        cellInto(tr, 'Week ' + row.week);
+        cellInto(tr, 'Bye');
+        cellInto(tr, '\u2014');
+        cellInto(tr, '\u2014', 'num');
+        cellInto(tr, '\u2014', 'num');
+        body.appendChild(tr);
+        return;
+      }
+      cellInto(tr, app.weekLabel(row.game));
+      var against = document.createElement('td');
+      against.className = 'teamcell';
+      var wrap = document.createElement('span');
+      wrap.className = 'with-mark';
+      var at = document.createElement('span');
+      at.className = 'sub';
+      at.textContent = row.home ? 'vs' : '@';
+      wrap.appendChild(at);
+      var opponentMark = teamMark(row.opponent, 20);
+      if (opponentMark) wrap.appendChild(opponentMark);
+      wrap.appendChild(teamButton(row.opponent, teamName(row.opponent)));
+      against.appendChild(wrap);
+      tr.appendChild(against);
+      // A tie says "T" and its score, like any other result: an equal score
+      // is not a blank and not a loss.
+      cellInto(tr, row.result
+        ? row.result + ' ' + row.points + '\u2013' + row.against
+        : app.statusLine(row.game));
+      cellInto(tr, app.ratingText(row.elo), 'num');
+      cellInto(tr, app.winProbabilityText(row.win_probability) || '\u2014',
+        'num');
+      body.appendChild(tr);
+    });
+    host.appendChild(node);
+  }
+
+  function renderTeamCoaches(host, key) {
+    var payload = seasonPayload();
+    var rows = ((payload && payload.coaches) || []).filter(function (row) {
+      return row.team_key === key;
+    });
+    if (!rows.length) return;
+    host.appendChild(heading('h3', rows.length > 1 ? 'Head coaches'
+      : 'Head coach'));
+    var node = table('<tr><th>Coach</th><th class="num">Record</th>'
+      + '<th class="num">Wins vs. expectation</th></tr>');
+    var body = node.querySelector('tbody');
+    rows.forEach(function (row) {
+      var tr = document.createElement('tr');
+      cellInto(tr, row.coach_name);
+      cellInto(tr, app.coachRecord(row), 'num');
+      cellInto(tr, app.signedWins(row.wins_above), 'num');
+      body.appendChild(tr);
+    });
+    host.appendChild(node);
+  }
+
+  /* The franchise season by season, from the coach records in history.js --
+     no new data, and no second answer to what a season's record was. */
+  function renderFranchiseSeasons(host, key) {
+    ensureHistory();
+    host.appendChild(heading('h3', 'Season by season'));
+    var waiting = historyStatus();
+    if (waiting) return emptyLine(host, waiting);
+    var rows = app.franchiseSeasons((history() || {}).coach_seasons, key);
+    if (!rows.length) {
+      return emptyLine(host, 'The history file carries no season for this '
+        + 'franchise.');
+    }
+    var node = table('<tr><th>Season</th><th>Coach</th>'
+      + '<th class="num">Record</th><th class="num">Postseason</th>'
+      + '<th class="num">Elo change</th></tr>',
+      'Records INCLUDE the postseason, because the coach records they come '
+      + 'from do. A season with two head coaches is one row with both names '
+      + 'and their games added together. A franchise keeps its own row '
+      + 'through a relocation, so the Rams\u2019 St. Louis seasons are here '
+      + 'under Los Angeles.');
+    var body = node.querySelector('tbody');
+    rows.forEach(function (row) {
+      var tr = document.createElement('tr');
+      var season = document.createElement('td');
+      season.appendChild(teamSeasonButton(row.season));
+      tr.appendChild(season);
+      cellInto(tr, row.coaches.join(', '));
+      cellInto(tr, app.coachRecord(row), 'num');
+      cellInto(tr, row.postseason_games
+        ? row.postseason_wins + '\u2013'
+          + (row.postseason_games - row.postseason_wins)
+        : '\u2014', 'num');
+      cellInto(tr, app.signedWins(row.elo_change), 'num');
+      body.appendChild(tr);
+    });
+    host.appendChild(node);
+  }
+
+  /* A season in the history table is a way INTO that season: pressing it
+     moves the whole page there, which is what the season selector does, so
+     the club's own page redraws on the season pressed. */
+  function teamSeasonButton(season) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'expand';
+    button.textContent = app.seasonLabel(season);
+    button.addEventListener('click', function () {
+      el('season').value = String(season);
+      selectSeason(season);
+    });
+    return button;
+  }
+
   function renderPeopleViews() {
     var host = el('people-views');
     host.innerHTML = '';
@@ -2287,6 +2612,7 @@
                                        || state.tab === 'games');
     el('standings').hidden = !ok || state.tab !== 'standings';
     el('rankings').hidden = !ok || state.tab !== 'rankings';
+    el('teams').hidden = !ok || state.tab !== 'teams';
     el('people').hidden = !ok || state.tab !== 'people';
     el('coaches').hidden = !ok || state.tab !== 'coaches';
     el('history').hidden = !ok || state.tab !== 'history';
@@ -2315,6 +2641,7 @@
       renderStandings();
     }
     if (!el('rankings').hidden) renderBoard();
+    if (!el('teams').hidden) renderTeams();
     if (!el('people').hidden) renderPeople();
     if (!el('coaches').hidden || !el('history').hidden) ensureHistory();
     if (!el('coaches').hidden) renderCoaches();
@@ -2359,14 +2686,9 @@
   function start() {
     leagueButtons();
     watchTheme();
-    var opening = tabFromHash();
-    if (opening) state.tab = opening;
+    applyRoute();
     window.addEventListener('hashchange', function () {
-      var next = tabFromHash();
-      if (next && next !== state.tab) {
-        state.tab = next;
-        render();
-      }
+      if (applyRoute()) render();
     });
     fetch(BASE + 'manifest.json', { cache: 'no-store' })
       .then(function (response) {
