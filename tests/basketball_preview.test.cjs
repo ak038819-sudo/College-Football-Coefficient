@@ -128,8 +128,11 @@ async function open(overrides, schedule, hash) {
       };
     }
   });
+  // Rendered means whichever panel this route asks for has content in it: a
+  // page opened on Home draws cards and no board at all, so waiting for a
+  // board row there would call a correct page "never rendered".
   await settle(dom, () => dom.window.document.querySelector(
-    '#board tr, #refusal-list li'));
+    '#board tr, #refusal-list li, #cards .card'));
   return dom;
 }
 
@@ -399,6 +402,105 @@ test('a season whose schedule runs months ahead still opens on today',
     dom.window.close();
   });
 
+// --- a tab is a route ------------------------------------------------------
+//
+// Every tab but the one the page opens on used to be unreachable: no link, no
+// reload, no back button. These drive the real page rather than the helpers,
+// because the defect was that the buttons never touched the URL at all.
+
+function visible(dom) {
+  const document = dom.window.document;
+  return ['standings', 'scoreboard']
+    .filter(id => !document.getElementById(id).hidden);
+}
+
+function pressed(dom) {
+  const button = [...dom.window.document.querySelectorAll('#tabs button')]
+    .find(b => b.getAttribute('aria-pressed') === 'true');
+  return button ? button.textContent : null;
+}
+
+test('a link to a section opens on that section', async () => {
+  const dom = await open(undefined, undefined, '#league=ncaambb&section=home');
+  // Home draws the scoreboard; the page's own default draws the board. So
+  // this asserts the hash won, not merely that something rendered.
+  assert.deepEqual(visible(dom), ['scoreboard']);
+  assert.equal(pressed(dom), 'Home');
+  dom.window.close();
+});
+
+test('a link with no section opens on the page default', async () => {
+  const dom = await open();
+  assert.deepEqual(visible(dom), ['standings']);
+  assert.equal(pressed(dom), 'Standings');
+  dom.window.close();
+});
+
+test('pressing a tab puts it in the URL, in the shared league form',
+  async () => {
+    const dom = await open();
+    const document = dom.window.document;
+    const home = [...document.querySelectorAll('#tabs button')]
+      .find(b => b.textContent === 'Home');
+    home.click();
+    // Home states no section, exactly as switchLeague writes it, so the two
+    // ways of arriving at basketball's home screen are one string.
+    assert.equal(dom.window.location.hash, '#league=ncaambb');
+    const standings = [...document.querySelectorAll('#tabs button')]
+      .find(b => b.textContent === 'Standings');
+    standings.click();
+    assert.equal(dom.window.location.hash,
+      '#league=ncaambb&section=standings');
+    dom.window.close();
+  });
+
+test('the back button returns to the tab before it', async () => {
+  const dom = await open();
+  const document = dom.window.document;
+  const tab = name => [...document.querySelectorAll('#tabs button')]
+    .find(b => b.textContent === name);
+  tab('Home').click();
+  assert.deepEqual(visible(dom), ['scoreboard']);
+  tab('Standings').click();
+  assert.deepEqual(visible(dom), ['standings']);
+  dom.window.history.back();
+  await settle(dom, () => dom.window.location.hash === '#league=ncaambb');
+  await settle(dom, () => visible(dom).join() === 'scoreboard');
+  assert.equal(pressed(dom), 'Home');
+  dom.window.close();
+});
+
+test('a hash naming a section this page cannot draw leaves the tab alone',
+  async () => {
+    // Stats is a disabled tab: there is no panel behind it. A link to it must
+    // land on something rather than hiding every panel, which is the empty
+    // page the disabled state exists to prevent.
+    const dom = await open(undefined, undefined,
+      '#league=ncaambb&section=stats');
+    assert.deepEqual(visible(dom), ['standings']);
+    dom.window.close();
+  });
+
+test('a hash naming another league is not read as a basketball section',
+  async () => {
+    const dom = await open(undefined, undefined,
+      '#league=nfl&section=home');
+    assert.deepEqual(visible(dom), ['standings']);
+    dom.window.close();
+  });
+
+test('pressing a tab keeps the rest of the reader\'s route', async () => {
+  const dom = await open(undefined, undefined,
+    '#league=ncaambb&day=2026-01-02&section=home');
+  const standings = [...dom.window.document.querySelectorAll('#tabs button')]
+    .find(b => b.textContent === 'Standings');
+  standings.click();
+  // The day belongs to the reader, not to the tab they pressed.
+  assert.match(dom.window.location.hash, /day=2026-01-02/);
+  assert.match(dom.window.location.hash, /section=standings/);
+  dom.window.close();
+});
+
 // --- what the page must not do ---------------------------------------------
 
 // The selector is STAGED OFF FOR BASKETBALL. The basketball side is finished
@@ -523,18 +625,30 @@ for (const page of PICKER_PAGES) {
   });
 }
 
-test('basketball is flagged unlaunched exactly while its export is absent',
-  () => {
-    // The flag and the files have to agree, or the gate is decoration. When
-    // ui/data/ncaambb lands, this test is what fails until the flag is
-    // flipped in the same commit.
+test('no league is flagged launched without a published export', () => {
+    // The flag and the files have to agree in the direction that is a defect:
+    // a league flagged launched with nothing published offers readers an
+    // empty tab, which is the whole reason this gate exists.
+    //
+    // The REVERSE is deliberately not asserted, and this used to assert it.
+    // An export on disk with the flag still false is a finished league that
+    // has not been announced yet -- a state this release is actually in --
+    // and cbb-refresh.yml can commit one to main on its own schedule. A test
+    // that then failed would turn that into a red test job, and a red test
+    // job means the deploy never runs and FOOTBALL stops publishing. This
+    // repository has been bitten by a test reading generated data five times
+    // now, and the plan's own rule is that a basketball problem must never
+    // stop football. Flipping the flag is a person's job, not a tripwire's.
     const app = require('../ui/ncaambb_app.js');
-    const published = fs.existsSync(path.join(UI, 'data', 'ncaambb',
-      'manifest.json'));
-    assert.equal(app.isLaunched(app.BASKETBALL), published,
-      published
-        ? 'the export is published, so basketball must be flagged launched'
-        : 'there is no published export, so basketball must not be launched');
+    const published = slug => fs.existsSync(
+      path.join(UI, 'data', slug === app.BASKETBALL ? 'ncaambb' : slug,
+        'manifest.json'));
+    for (const entry of app.LEAGUES) {
+      if (entry.slug === app.FOOTBALL) continue;  // football IS the site
+      if (!entry.launched) continue;
+      assert.ok(published(entry.slug),
+        `${entry.slug} is flagged launched with no published export`);
+    }
     // Football and the NFL are launched, and nothing here may quietly unship
     // them to make the rule above easier to satisfy.
     assert.equal(app.isLaunched('cfb'), true);
