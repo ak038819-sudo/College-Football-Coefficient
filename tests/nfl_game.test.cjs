@@ -550,6 +550,24 @@ test('pressing a club on a card opens the club, not the game', async () => {
   dom.window.close();
 });
 
+test('pressing Enter on a club does not open the game under it', async () => {
+  const dom = await open(true);
+  const doc = dom.window.document;
+  const name = [...doc.querySelectorAll('#cards .card.open .nm b button')]
+    .find(node => node.textContent === 'Kansas City Chiefs');
+  const event = new dom.window.KeyboardEvent('keydown',
+    { key: 'Enter', bubbles: true, cancelable: true });
+  name.dispatchEvent(event);
+  // The card listens on itself and this keydown bubbles through it. If the
+  // card answered, it would both swallow the button's own activation and
+  // open the game, so the reader would land on neither club.
+  assert.equal(event.defaultPrevented, false,
+    'the card swallowed the club button\u2019s own activation');
+  assert.equal(doc.getElementById('game').hidden, true,
+    'a key meant for the club opened the game');
+  dom.window.close();
+});
+
 test('the game heading links both clubs', async () => {
   const dom = await open(true);
   const doc = dom.window.document;

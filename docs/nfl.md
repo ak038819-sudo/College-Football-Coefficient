@@ -695,7 +695,10 @@ Two things that were not free:
   most-seen instance of a club on the page. A card is now a `<div>` with
   `role="button"`, `tabindex="0"` and its own Enter/Space handler — the
   keyboard behaviour the element used to give it for nothing — and the
-  names inside it stop their own clicks from reaching it.
+  names inside it stop their own clicks from reaching it. That handler
+  answers only to the card itself: a keydown on a name bubbles up to it,
+  and acting on one would swallow the button's own activation and open
+  the game instead of the club the reader pressed.
 - **A link is not always amber.** In a table the name is one value among
   several and takes the page's link ink. On a card and in the rail the
   name IS the line, so it keeps that line's size and colour and reads as

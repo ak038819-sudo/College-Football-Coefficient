@@ -1157,7 +1157,9 @@
       // the most-seen instance of a club on this page -- so the card takes
       // on the keyboard behaviour a button would have given it: Enter and
       // Space open the game, and the names stop their own clicks from
-      // reaching the card.
+      // reaching the card. The keyboard handler answers only to the card
+      // itself: a keydown on a name BUBBLES here, and acting on it would
+      // open the game from under a reader pressing Enter on a club.
       var clickable = openable && app.isFinal(game);
       var card = document.createElement('div');
       card.className = clickable ? 'card open' : 'card';
@@ -1171,6 +1173,7 @@
         };
         card.addEventListener('click', openGame);
         card.addEventListener('keydown', function (event) {
+          if (event.target !== card) return;
           if (event.key !== 'Enter' && event.key !== ' ') return;
           // Space scrolls the page by default, which is what a button
           // suppresses and a div does not.
