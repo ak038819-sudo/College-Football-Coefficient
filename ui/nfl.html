@@ -421,7 +421,7 @@
          a narrow one. The rail is SECOND in the markup so that reading order
          and tab order both reach the games first; the grid puts it to the
          right without moving it in the document. -->
-    <div class="slate">
+    <div class="slate" id="slate">
       <div>
         <div class="cards" id="cards"></div>
       </div>
@@ -2233,8 +2233,14 @@
     renderSeasons();
     if (!el('scoreboard').hidden) {
       var open = Boolean(state.game);
+      // Opening a game hides the whole slate, not just the cards: the rail
+      // sits BESIDE the cards inside `.slate` and `#game` follows it, so
+      // hiding the cards alone would leave the rankings list stranded above
+      // the game detail -- and the card handler scrolls to the top, which on
+      // a phone puts the game's own heading below the fold.
       el('weeks').hidden = open;
-      el('cards').hidden = open;
+      el('slate').hidden = open;
+      el('slate-filters').hidden = open;
       el('game').hidden = !open;
       renderWeeks();
       renderSlateFilters();
