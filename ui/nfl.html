@@ -500,6 +500,58 @@
 
   function el(id) { return document.getElementById(id); }
 
+  /* A TAB IS A ROUTE, not just a pressed button. Until this, every tab but
+   * the one the page opened on was unreachable: no link, no reload, no back
+   * button. A reader who wanted to send somebody the Rankings sent them the
+   * page's own opening screen instead.
+   *
+   * The hash is the shared one `ncaambb_app` writes, so a section link here
+   * is the same string `switchLeague` produces when a reader crosses from
+   * another league: `#league=nfl&section=rankings`, with home stating no
+   * section. The shape is copied from ui/basketball.html rather than
+   * re-derived, so the two pages cannot drift apart.
+   */
+  function routableTab(name) {
+    return TABS.indexOf(name) >= 0 && Boolean(PANELS[name])
+      && leagues.hasSection(leagues.NFL, name);
+  }
+
+  function tabFromHash() {
+    var text = String(window.location.hash || '').replace(/^#/, '');
+    // No hash at all is this page's own default rather than a claim about a
+    // league. It matters on the way BACK: a reader who pressed a tab and
+    // then pressed Back returns to the bare URL they arrived on, and a page
+    // that read that as "not mine" would leave them on the tab they left.
+    if (!text) return routableTab('home') ? 'home' : null;
+    var route = leagues.readRoute(text);
+    // A hash naming another league is not this page's to read. Navigation
+    // cannot produce one here; a hand-edited link can.
+    if (route.league !== leagues.NFL) return null;
+    var section = route.params.section || 'home';
+    // A disabled tab, or a section with no panel behind it, leaves the tab
+    // alone rather than hiding every panel and leaving an empty page.
+    return routableTab(section) ? section : null;
+  }
+
+  function writeTab(name) {
+    var route = leagues.readRoute(window.location.hash);
+    var params = {};
+    // Every other parameter is kept: the week a reader is looking at belongs
+    // to them, not to the tab they happen to press.
+    Object.keys(route.params).forEach(function (key) {
+      if (key !== 'section') params[key] = route.params[key];
+    });
+    if (name !== 'home') params.section = name;
+    var hash = leagues.writeRoute({ league: leagues.NFL, params: params });
+    // Pressing the tab already open must not cost the reader a second Back
+    // to leave it. Chromium does not push an entry for an assignment that
+    // does not change the URL -- measured 2026-10-27, and it is why the
+    // mutant that removes this line survives -- so the guard is what makes
+    // that true anywhere a browser is less careful, not what makes it true
+    // here. The test asserts the behaviour either way.
+    if (hash !== window.location.hash) window.location.hash = hash;
+  }
+
   /* Following a team, on this device and nowhere else.
    *
    * The storage rule is NOT reinvented here: ncaambb_app.js already owns the
@@ -603,6 +655,9 @@
       button.addEventListener('click', function () {
         if (!ready) return;
         state.tab = name;
+        // The hash first, so the hashchange it fires finds the state it
+        // describes and nothing renders twice.
+        writeTab(name);
         render();
       });
       host.appendChild(button);
@@ -2297,6 +2352,15 @@
   function start() {
     leagueButtons();
     watchTheme();
+    var opening = tabFromHash();
+    if (opening) state.tab = opening;
+    window.addEventListener('hashchange', function () {
+      var next = tabFromHash();
+      if (next && next !== state.tab) {
+        state.tab = next;
+        render();
+      }
+    });
     fetch(BASE + 'manifest.json', { cache: 'no-store' })
       .then(function (response) {
         if (!response.ok) throw new Error('no manifest');

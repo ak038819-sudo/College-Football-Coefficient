@@ -182,12 +182,15 @@ function fakeMatchMedia(window, state, api) {
   };
 }
 
-async function open(overrides, schedule, logos, media, standings) {
+async function open(overrides, schedule, logos, media, standings, hash) {
   const built = site(overrides, schedule, logos, standings);
   const file = path.join(built.root, 'nfl.html');
   let setLight = null;
   const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
-    url: 'file://' + file,
+    // The hash is part of the URL the reader arrived with, so it is set here
+    // rather than assigned afterwards: a tab the page opens on and a tab it
+    // is moved to later are different claims, and this one is the link.
+    url: 'file://' + file + (hash || ''),
     runScripts: 'dangerously',
     resources: 'usable',
     pretendToBeVisual: true,
@@ -221,8 +224,11 @@ async function open(overrides, schedule, logos, media, standings) {
       };
     }
   });
+  // Rendered means the panel THIS route asks for has content in it. A page
+  // opened on Rankings draws a board and no cards at all, so waiting for a
+  // card there would call a correct page "never rendered".
   await settle(dom, () => dom.window.document.querySelector(
-    '#cards .card, #refusal-list li'));
+    '#cards .card, #refusal-list li, #board tr, #groups tr'));
   dom.setLight = setLight;
   return dom;
 }
@@ -857,5 +863,123 @@ test('My teams first leaves three unfollowed games in the order they had',
     assert.match(after[0], /Bills/, 'the followed game is lifted');
     assert.deepEqual(after.slice(1), before.filter(c => !/Bills/.test(c)),
       'and the other three keep the order they had');
+    dom.window.close();
+  });
+
+// --- a tab is a route ------------------------------------------------------
+//
+// Every tab but the one the page opened on used to be unreachable: no link,
+// no reload, no back button. These drive the real page rather than the
+// helpers, because the defect was that the buttons never touched the URL.
+
+function visible(dom) {
+  const document = dom.window.document;
+  return ['scoreboard', 'standings', 'rankings', 'people', 'coaches',
+    'history'].filter(id => !document.getElementById(id).hidden);
+}
+
+function pressedTab(dom) {
+  const button = dom.window.document.querySelector(
+    '#tabs button[aria-pressed="true"]');
+  return button ? button.textContent : null;
+}
+
+test('a link to a section opens on that section', async () => {
+  const dom = await open(null, null, null, null, null,
+    '#league=nfl&section=rankings');
+  // The page's own default is Home, which draws the scoreboard. So this
+  // asserts the hash won, not merely that something rendered.
+  assert.deepEqual(visible(dom), ['rankings']);
+  assert.equal(pressedTab(dom), 'Rankings');
+  dom.window.close();
+});
+
+test('a link with no section opens on the page default', async () => {
+  const dom = await open();
+  assert.deepEqual(visible(dom), ['scoreboard']);
+  assert.equal(pressedTab(dom), 'Home');
+  dom.window.close();
+});
+
+test('pressing a tab puts it in the URL, in the shared league form',
+  async () => {
+    const dom = await open();
+    click(dom, '#tabs button[data-tab="standings"]');
+    assert.equal(dom.window.location.hash, '#league=nfl&section=standings');
+    // Home states no section, exactly as switchLeague writes it, so the two
+    // ways of arriving at the NFL's home screen are one string.
+    click(dom, '#tabs button[data-tab="home"]');
+    assert.equal(dom.window.location.hash, '#league=nfl');
+    dom.window.close();
+  });
+
+test('the back button returns to the tab before it', async () => {
+  const dom = await open();
+  click(dom, '#tabs button[data-tab="standings"]');
+  assert.deepEqual(visible(dom), ['standings']);
+  click(dom, '#tabs button[data-tab="rankings"]');
+  assert.deepEqual(visible(dom), ['rankings']);
+  dom.window.history.back();
+  await settle(dom, () => dom.window.location.hash
+    === '#league=nfl&section=standings');
+  await settle(dom, () => visible(dom).join() === 'standings');
+  assert.equal(pressedTab(dom), 'Standings');
+  dom.window.close();
+});
+
+test('a hash naming a section this page cannot draw leaves the tab alone',
+  async () => {
+    // Teams is a disabled tab: the section exists for the league but this
+    // page has no panel behind it. A link to it must land on something
+    // rather than hiding every panel, which is the empty page the disabled
+    // state exists to prevent.
+    const dom = await open(null, null, null, null, null,
+      '#league=nfl&section=teams');
+    assert.deepEqual(visible(dom), ['scoreboard']);
+    dom.window.close();
+  });
+
+test('a hash naming another league is not read as an NFL section',
+  async () => {
+    const dom = await open(null, null, null, null, null,
+      '#league=ncaambb&section=standings');
+    assert.deepEqual(visible(dom), ['scoreboard']);
+    dom.window.close();
+  });
+
+test('a football hash, which names no league, is not read here either',
+  async () => {
+    // `#section=standings` with no league IS football's route, and football
+    // links are published. Reading it here would make a football link open
+    // an NFL panel.
+    const dom = await open(null, null, null, null, null,
+      '#section=standings');
+    assert.deepEqual(visible(dom), ['scoreboard']);
+    dom.window.close();
+  });
+
+test("pressing a tab keeps the rest of the reader's route", async () => {
+  const dom = await open(null, null, null, null, null,
+    '#league=nfl&ref=newsletter&section=standings');
+  click(dom, '#tabs button[data-tab="rankings"]');
+  // Where the reader came from belongs to them, not to the tab they pressed.
+  assert.match(dom.window.location.hash, /ref=newsletter/);
+  assert.match(dom.window.location.hash, /section=rankings/);
+  dom.window.close();
+});
+
+test('pressing the tab already open does not add a history entry',
+  async () => {
+    // A reader who presses Standings twice must not need Back twice to
+    // leave it. Chromium ignores an assignment that does not change the URL
+    // (measured), so the page's own guard is belt and braces -- this asserts
+    // the behaviour the reader gets, which is the thing that must hold.
+    const dom = await open();
+    click(dom, '#tabs button[data-tab="standings"]');
+    click(dom, '#tabs button[data-tab="standings"]');
+    dom.window.history.back();
+    await settle(dom, () => visible(dom).join() === 'scoreboard');
+    assert.equal(pressedTab(dom), 'Home',
+      'one Back did not leave the tab, so pressing it twice trapped them');
     dom.window.close();
   });

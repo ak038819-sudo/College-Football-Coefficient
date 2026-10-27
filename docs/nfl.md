@@ -639,6 +639,31 @@ had the problem because `build_dashboard.py` has always stamped its modules;
 the NFL page had no generator and so had no stamps. `ui/basketball.html`
 still has none.
 
+**A tab is a route** (2026-10-27). It was a button and nothing else, so only
+the tab the page opened on could be linked to, reloaded into or reached with
+the back button: a reader who sent somebody the Rankings sent them the home
+screen. The hash is the shared one `ncaambb_app` writes —
+`#league=nfl&section=rankings`, with home stating no section, which is exactly
+what `switchLeague` produces when a reader crosses from another league — and a
+`hashchange` moves the page. The shape is copied from `ui/basketball.html`
+rather than re-derived, so the two pages cannot drift. Four rules, each with a
+test:
+
+- a section this page has no panel for, such as the disabled Teams, leaves
+  the tab alone rather than hiding every panel;
+- a hash naming another league is not read as an NFL section, and neither is
+  football's own leagueless hash, because football links are published;
+- a bare URL with no hash IS this page's default, which is what makes the
+  back button work for a reader who arrived without one;
+- every other parameter survives a tab press, because where the reader came
+  from belongs to them and not to the tab they pressed.
+
+One mutant survives and is equivalent: removing the guard against assigning
+an unchanged hash changes nothing, because Chromium does not push a history
+entry for an assignment that leaves the URL the same (measured 2026-10-27).
+The guard stays as belt and braces; the test asserts the reader-facing
+behaviour, which holds either way.
+
 One trap worth naming: `rating_model.config` **is** the elo block, not the
 whole configuration file — `build_ratings` stores `config['elo']`. Reaching
 for a nested `'elo'` key finds nothing and silently plays every upcoming game
