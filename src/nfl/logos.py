@@ -111,16 +111,38 @@ def resolve(rows, names):
     return found
 
 
-def encode(data):
-    """A mark as a data URI, resized so 32 of them are not 20 MB."""
+def shrink(data):
+    """The mark's bytes, resized so 32 of them are not 20 MB."""
     from PIL import Image
     image = Image.open(io.BytesIO(data)).convert('RGBA')
     image.thumbnail((MARK_SIZE, MARK_SIZE), Image.LANCZOS)
     buffer = io.BytesIO()
     image.save(buffer, format='PNG', optimize=True)
+    return buffer.getvalue()
+
+
+def encode(data):
+    """Already-shrunk bytes as a data URI."""
     import base64
-    return 'data:image/png;base64,' + base64.b64encode(
-        buffer.getvalue()).decode('ascii')
+    return 'data:image/png;base64,' + base64.b64encode(data).decode('ascii')
+
+
+def dim_themes(dark_bytes, light_bytes):
+    """The themes a club's artwork disappears on, as the page names them.
+
+    The same rule the college side has used since the chip system was
+    removed, against the same two backgrounds, because the two shells share
+    a palette — see src/logo_contrast.py. It earns its place here because
+    the archive serves ONE image for both variants on 24 of the 32 clubs:
+    a club whose mark is close to the page's own colour has no better cut
+    to fall back to and needs something behind it instead.
+
+    Imported inside the function, like PIL above, so that merely importing
+    this module does not need an image library. The loaders read CSVs from
+    these modules.
+    """
+    from src.logo_contrast import dim_themes as measure
+    return measure(dark_bytes, light_bytes)
 
 
 def build(teams, *, opener=None, dry_run=False):
@@ -132,12 +154,17 @@ def build(teams, *, opener=None, dry_run=False):
                 for key, name in teams.items()}
     cache, out = {}, {}
     for key, name in sorted(teams.items()):
-        marks = {}
+        marks, raw = {}, {}
         for theme in ('light', 'dark'):
             url = placed[name][theme]
             if url not in cache:
-                cache[url] = encode(fetch(url, opener=opener))
-            marks[theme] = cache[url]
+                cache[url] = shrink(fetch(url, opener=opener))
+            raw[theme] = cache[url]
+            marks[theme] = encode(cache[url])
+        # Measured on the SHRUNK bytes, which are the ones the page draws.
+        dim = dim_themes(raw['dark'], raw['light'])
+        if dim:
+            marks['dim'] = dim
         out[key] = marks
     return out
 

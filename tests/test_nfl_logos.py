@@ -215,6 +215,70 @@ def indented_block(text, header):
     return '\n'.join(out)
 
 
+class TestRecordingWhichMarksNeedAPlate:
+    """The archive serves ONE image for both variants on 24 of the 32 clubs,
+    so a club whose mark is close to the page's own colour has no better cut
+    to fall back to. Those are measured here and plated by the page.
+    """
+
+    def fetcher(self, images):
+        """An opener serving the manifest, then a PNG per URL."""
+        def opener(url, timeout=None):
+            if url == logos.MANIFEST_URL:
+                body = manifest(both('Buffalo Bills')).encode()
+            else:
+                body = images[url.rsplit('/', 1)[1]]
+            return io.BytesIO(body)
+        return opener
+
+    def solid(self, rgb):
+        from PIL import Image
+        buffer = io.BytesIO()
+        Image.new('RGBA', (8, 8), rgb + (255,)).save(buffer, format='PNG')
+        return buffer.getvalue()
+
+    def test_a_club_dim_on_the_dark_page_is_recorded_as_such(self):
+        """Black artwork for both cuts: Carolina's case."""
+        black = self.solid((0, 0, 0))
+        built = logos.build({'nfl:x:CAR': 'Buffalo Bills'},
+                            opener=self.fetcher({'default.png': black,
+                                                 'dark.png': black}))
+        assert built['nfl:x:CAR']['dim'] == ['dark']
+
+    def test_a_club_dim_on_the_light_page_is_recorded_as_such(self):
+        white = self.solid((255, 255, 255))
+        built = logos.build({'nfl:x:PIT': 'Buffalo Bills'},
+                            opener=self.fetcher({'default.png': white,
+                                                 'dark.png': white}))
+        assert built['nfl:x:PIT']['dim'] == ['light']
+
+    def test_a_club_that_reads_on_both_carries_no_dim_key_at_all(self):
+        """26 of the 32 are in this position, and an empty list in each of
+        them is 26 keys saying nothing."""
+        built = logos.build({'nfl:x:BUF': 'Buffalo Bills'},
+                            opener=self.fetcher({
+                                'default.png': self.solid((0, 0, 0)),
+                                'dark.png': self.solid((255, 255, 255))}))
+        assert 'dim' not in built['nfl:x:BUF']
+        assert set(built['nfl:x:BUF']) == {'light', 'dark'}
+
+    def test_each_cut_is_judged_against_the_page_it_is_shown_on(self):
+        """The light cut answers for the light page and the dark cut for the
+        dark one. Judging one piece of artwork against both backgrounds
+        would plate every club that has two proper cuts."""
+        built = logos.build({'nfl:x:BUF': 'Buffalo Bills'},
+                            opener=self.fetcher({
+                                'default.png': self.solid((0, 0, 0)),
+                                'dark.png': self.solid((255, 255, 255))}))
+        assert 'dim' not in built['nfl:x:BUF']
+
+    def test_a_dry_run_fetches_no_images_and_measures_nothing(self):
+        """It reports the join; there are no bytes to measure."""
+        built = logos.build({'nfl:x:BUF': 'Buffalo Bills'},
+                            opener=self.fetcher({}), dry_run=True)
+        assert 'dim' not in built['nfl:x:BUF']
+
+
 class TestTheWorkflow:
     def text(self):
         return WORKFLOW.read_text()
