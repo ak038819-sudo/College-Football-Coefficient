@@ -65,54 +65,14 @@ MANIFEST = UI / "logo_manifest.json"
 SHELL = UI / "dashboard_shell.html"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
-# The two page backgrounds a mark can land on, as --bg in ui/dashboard_shell.html.
-# tests/test_logo_contrast.py holds these to the stylesheet, which is the only
-# thing that makes them true.
-DARK_BG = (0x0e, 0x15, 0x12)
-LIGHT_BG = (0xf2, 0xf0, 0xe8)
-# A mark is "dim" on a background when less than this share of its ink clears
-# 3:1 against it. Mean luminance was tried first and reads a white mark with a
-# navy outline as mid-grey, which is neither; the share of ink you can actually
-# see is what decides whether the logo needs something behind it.
-READABLE_CONTRAST = 3.0
-READABLE_SHARE = 0.35
-INK_ALPHA = 160
-
-
-def _relative_luminance(rgb) -> float:
-    def channel(value: int) -> float:
-        v = value / 255
-        return v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4
-    r, g, b = (channel(v) for v in rgb)
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
-
-
-def _contrast(a: float, b: float) -> float:
-    hi, lo = max(a, b), min(a, b)
-    return (hi + 0.05) / (lo + 0.05)
-
-
-def is_dim_on(raw: bytes, background) -> bool:
-    """Would this mark disappear against that background?
-
-    Sampled every other pixel in each direction, which is plenty on a 256px
-    image and keeps a whole-set export to a second or so.
-    """
-    image = Image.open(io.BytesIO(raw)).convert("RGBA")
-    pixels = image.load()
-    bg = _relative_luminance(background)
-    ink = readable = 0
-    for y in range(0, image.height, 2):
-        for x in range(0, image.width, 2):
-            r, g, b, a = pixels[x, y]
-            if a < INK_ALPHA:
-                continue
-            ink += 1
-            if _contrast(_relative_luminance((r, g, b)), bg) >= READABLE_CONTRAST:
-                readable += 1
-    if not ink:
-        return False
-    return readable / ink < READABLE_SHARE
+# The contrast rule lives in src/logo_contrast.py, because the NFL fetcher
+# measures the same thing about the same two backgrounds. Re-exported here
+# under the names this module has always used.
+from logo_contrast import (  # noqa: E402
+    DARK_BG, LIGHT_BG, READABLE_CONTRAST, READABLE_SHARE, INK_ALPHA,
+    is_dim_on, relative_luminance as _relative_luminance,
+    contrast as _contrast,
+)
 
 
 def decode_data_uri(uri: str) -> bytes:

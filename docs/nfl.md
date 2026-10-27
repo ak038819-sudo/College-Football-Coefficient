@@ -676,7 +676,14 @@ league's measured 57%. A test pins it.
   a light-ink mark on a light background. Where the archive holds more than
   one capture of a club's mark — three NFL name/variant pairs today — the
   newest `last_seen` wins, which is the rule `sdv_marks()` in
-  `src/fetch_non_fbs_logos.py` already follows. The file is
+  `src/fetch_non_fbs_logos.py` already follows. The archive serves the SAME
+  image for both variants on 24 of the 32 clubs, so a club can be close to
+  the page's own colour with no better cut to fall back to; those are
+  measured at fetch time with `src/logo_contrast.py` — the share of ink that
+  clears 3:1, never the mean — and recorded as a `dim` list the page turns
+  into a quiet plate. Six clubs earn one today: Carolina, Indianapolis and
+  Arizona on the dark theme, Cincinnati, Pittsburgh and Tennessee on the
+  light. The file is
   `ui/nfl_logo_assets.json`, deliberately OUTSIDE `ui/data/nfl/`, which the
   refresh replaces wholesale and would delete it with. It is fetched by
   `.github/workflows/fetch-nfl-logos.yml`, which runs by hand and apart from

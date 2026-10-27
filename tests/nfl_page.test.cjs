@@ -603,6 +603,50 @@ test('a theme flip before the marks land does not redraw for nothing',
       'the scoreboard still draws');
   });
 
+test('only a mark measured dim gets a plate, and only on that theme',
+  async () => {
+    // The archive serves one image for both cuts on 24 of the 32 clubs, so a
+    // club whose mark is close to the page's own colour needs something
+    // behind it. Which clubs is measured at fetch time, not guessed here.
+    const marks = logoFile();
+    marks[KC].dim = ['dark'];
+    marks[BUF].dim = ['light'];
+    const dom = await open(null, null, marks);
+    await settle(dom, () => dom.window.document.querySelector('#cards img.mark'));
+    click(dom, '#weeks button');                 // week 1: KC v BUF
+    const sides = [...dom.window.document.querySelectorAll('#cards .card .side')];
+    const cls = name => sides.find(s => new RegExp(name).test(s.textContent))
+      .querySelector('img.mark').className;
+    assert.match(cls('Chiefs'), /\bdim-dark\b/);
+    assert.doesNotMatch(cls('Chiefs'), /\bdim-light\b/);
+    assert.match(cls('Bills'), /\bdim-light\b/);
+    assert.doesNotMatch(cls('Bills'), /\bdim-dark\b/);
+    dom.window.close();
+  });
+
+test('a club that reads on both themes draws with no plate', async () => {
+  const dom = await withLogos();               // no dim keys at all
+  click(dom, '#weeks button');
+  for (const img of dom.window.document.querySelectorAll('#cards img.mark')) {
+    assert.equal(img.className, 'mark',
+      'a mark with nothing measured against it carries no plate class');
+  }
+  dom.window.close();
+});
+
+test('a logo file written before the measurement existed still draws',
+  async () => {
+    // ui/nfl_logo_assets.json was committed once without dim flags. The page
+    // must not require them.
+    const marks = logoFile();
+    assert.ok(!('dim' in marks[KC]), 'this fixture predates the flags');
+    const dom = await open(null, null, marks);
+    await settle(dom, () => dom.window.document.querySelector('#cards img.mark'));
+    assert.ok(dom.window.document.querySelector('#cards img.mark'),
+      'the marks still draw');
+    dom.window.close();
+  });
+
 test('the page works with no logo file at all', async () => {
   // The fetch 404s; nothing says so, because nothing the reader asked for is
   // missing.

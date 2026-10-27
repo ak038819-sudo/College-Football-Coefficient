@@ -164,7 +164,30 @@
      one line whether or not every logo resolved. */
   .card .side.nomark { grid-template-columns: 22px minmax(0, 1fr) auto auto; }
   .card .side.nomark .nm { grid-column: 2; }
-  img.mark { object-fit: contain; display: block; }
+  /* A mark sits on the page, not on a disc. Where the archive publishes a
+     light-ink cut the dark theme gets that one and the light theme the
+     colour mark, which is what makes a backdrop unnecessary. But the
+     archive serves ONE image for both variants on 24 of the 32 clubs, so a
+     mark can still be close to the page's own colour with no better cut to
+     fall back to -- Carolina on the dark theme, Pittsburgh on the light
+     one. Those get the quiet plate below, which is a wash of the page's own
+     ink rather than a brand colour, exactly as the college shell does it.
+     Which clubs is MEASURED at fetch time; see src/logo_contrast.py. */
+  img.mark { object-fit: contain; display: block;
+             background: var(--plate, transparent);
+             border-radius: 18%; box-sizing: border-box; }
+  /* Padding only where there is a plate to hold it: a bare mark should fill
+     its box, and shrinking every logo to make room for a backdrop that 26
+     of the 32 do not have would be paying for the exception everywhere. */
+  img.mark.dim-dark, img.mark.dim-light { padding: 2px; }
+  img.mark.dim-dark { --plate: rgba(238, 241, 236, 0.13); }
+  img.mark.dim-light { --plate: transparent; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) img.mark.dim-dark { --plate: transparent; }
+    :root:not([data-theme="dark"]) img.mark.dim-light { --plate: rgba(26, 31, 27, 0.09); }
+  }
+  :root[data-theme="light"] img.mark.dim-dark { --plate: transparent; }
+  :root[data-theme="light"] img.mark.dim-light { --plate: rgba(26, 31, 27, 0.09); }
   .card .side.lost img.mark { opacity: 0.55; }
   .card .side .pts { font-family: var(--font-mono); min-width: 2ch;
                      text-align: right; }
@@ -746,7 +769,13 @@
     var src = marks[themeNow()] || marks.light || marks.dark;
     if (!src) return null;
     var img = document.createElement('img');
-    img.className = 'mark';
+    // A club measured dim on a theme takes a plate there. The flags come
+    // from the assets file, so a file fetched before they existed simply
+    // has none and every mark draws bare, as it did before.
+    var dim = marks.dim || [];
+    img.className = 'mark'
+      + (dim.indexOf('dark') >= 0 ? ' dim-dark' : '')
+      + (dim.indexOf('light') >= 0 ? ' dim-light' : '');
     img.src = src;
     img.alt = '';
     img.width = img.height = size || 22;
