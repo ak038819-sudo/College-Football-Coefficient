@@ -983,3 +983,22 @@ test('pressing the tab already open does not add a history entry',
       'one Back did not leave the tab, so pressing it twice trapped them');
     dom.window.close();
   });
+
+test('typing in the header search puts the Players tab in the URL',
+  async () => {
+    // The search box is the one on the page and it moves the reader to
+    // Players. That is a section change like any other: a URL still naming
+    // the tab they left is what a share or a reload would open.
+    const dom = await open(null, null, null, null, null,
+      '#league=nfl&section=rankings');
+    const box = dom.window.document.getElementById('search');
+    box.value = 'Mahomes';
+    box.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    assert.deepEqual(visible(dom), ['people']);
+    assert.equal(dom.window.location.hash, '#league=nfl&section=people');
+    // And Back returns to where they were, rather than skipping it.
+    dom.window.history.back();
+    await settle(dom, () => visible(dom).join() === 'rankings');
+    assert.equal(pressedTab(dom), 'Rankings');
+    dom.window.close();
+  });

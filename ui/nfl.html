@@ -635,7 +635,14 @@
       state.query = el('search').value;
       state.player = null;
       state.peopleView = 'players';
-      if (state.verdict && state.verdict.ok) state.tab = 'people';
+      // Typing moves the reader to the Players tab, so it is a section
+      // change like any other and goes through the same route. Without
+      // this the URL kept saying whichever tab they had been on, which is
+      // what a share or a reload would then open.
+      if (state.verdict && state.verdict.ok) {
+        state.tab = 'people';
+        writeTab('people');
+      }
       render();
     });
   }
