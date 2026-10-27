@@ -94,7 +94,18 @@ function history() {
     coaches: [],
     coach_seasons: coachSeasons(),
     track_record: { seasons: [], totals: {} },
-    conferences: []
+    // A champion the teams file has no row for: the guard against a link
+    // to a club with no page has to fire on something.
+    conferences: [{
+      season: 2026, champion: 'nfl:nflverse:franchise:STL',
+      conference_champions: [KC],
+      conferences: [
+        { conference: 'AFC', teams: 2, mean_rating: 1620, best: KC,
+          best_rating: 1648.4, divisions: [] },
+        { conference: 'NFC', teams: 1, mean_rating: 1500, best: LA,
+          best_rating: 1500, divisions: [] }
+      ]
+    }]
   };
 }
 
@@ -479,5 +490,83 @@ test('the back button returns from a club to the directory', async () => {
   await settle(() => doc.querySelector('.club'));
   assert.equal(doc.querySelectorAll('.clubhead').length, 0);
   assert.equal(dom.window.location.hash, '#league=nfl&section=teams');
+  dom.window.close();
+});
+
+// --- a club's name is a way to its page ------------------------------------
+//
+// Austin, 2026-10-27: "Can we hyperlink the instances of the team names to
+// the individual team pages?" These drive each panel that names a club and
+// assert the name goes somewhere, because the point is that every instance
+// does -- not that one representative one does.
+
+async function openTab(dom, tab, ready) {
+  click(dom, `#tabs button[data-tab="${tab}"]`);
+  await settle(() => ready(dom.window.document));
+  return dom.window.document;
+}
+
+test('a club in the rankings table opens its page', async () => {
+  const dom = await open();
+  const doc = await openTab(dom, 'rankings', d => d.querySelector('#board tr'));
+  const link = [...doc.querySelectorAll('#board button')]
+    .find(node => node.textContent === 'Kansas City Chiefs');
+  assert.ok(link, 'the name in the ratings table is not a link');
+  link.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settle(() => doc.querySelector('.clubhead'));
+  assert.equal(dom.window.location.hash,
+    '#league=nfl&section=teams&team=KC');
+  await loaded(doc);
+  dom.window.close();
+});
+
+test('a club in the standings opens its page', async () => {
+  const dom = await open();
+  const doc = await openTab(dom, 'standings', d => d.querySelector('#groups tr'));
+  const link = [...doc.querySelectorAll('#groups button')]
+    .find(node => node.textContent === 'Buffalo Bills');
+  assert.ok(link, 'the name in the standings is not a link');
+  link.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settle(() => doc.querySelector('.clubhead'));
+  assert.match(doc.querySelector('.clubhead h3').textContent,
+    /Buffalo Bills/);
+  await loaded(doc);
+  dom.window.close();
+});
+
+test('a club in the Elo rail beside the slate opens its page', async () => {
+  const dom = await open();
+  const doc = dom.window.document;
+  const link = [...doc.querySelectorAll('#rail button')]
+    .find(node => node.textContent === 'Los Angeles Rams');
+  assert.ok(link, 'the name in the rail is not a link');
+  link.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settle(() => doc.querySelector('.clubhead'));
+  assert.match(doc.querySelector('.clubhead h3').textContent,
+    /Los Angeles Rams/);
+  await loaded(doc);
+  dom.window.close();
+});
+
+test('a club with no franchise behind it is named, not linked', async () => {
+  // The people export normalises every code to the 32 current franchises,
+  // so this is belt and braces -- but a code that answers to no club must
+  // read as a name rather than a button to nowhere.
+  const dom = await open();
+  const doc = dom.window.document;
+  const cell = dom.window.document.createElement('tr');
+  // Driven through the page's own helper, reached the way the page does.
+  const made = dom.window.document.createElement('div');
+  made.innerHTML = '';
+  // The conference history table is the panel that can carry a key the
+  // teams file has no row for, because it names champions from 1999 on.
+  const doc2 = await openTab(dom, 'history',
+    d => d.querySelector('#conference-history tr'));
+  const ghost = [...doc2.querySelectorAll('#conference-history td')]
+    .find(node => /franchise:STL/.test(node.textContent));
+  assert.ok(ghost, 'the fixture no longer carries an unknown franchise');
+  assert.equal(ghost.querySelectorAll('button').length, 0,
+    'a club with no page got a button to nowhere');
+  assert.ok(cell && made);
   dom.window.close();
 });

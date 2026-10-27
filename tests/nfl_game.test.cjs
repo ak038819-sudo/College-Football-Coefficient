@@ -504,3 +504,60 @@ test('opening a game hides the whole slate, rail and filters included',
     // rule a later stylesheet could beat
     assert.equal(doc.querySelector('#rail').closest('[hidden]').id, 'slate');
   });
+
+// --- a club's name is a way to its page ------------------------------------
+//
+// The card is the most-seen instance of a club on this page, and it used to
+// be a <button> -- which is why the names on it could not be links. It is a
+// div with role="button" now, so these pin BOTH halves: the card still
+// opens its game by click and by keyboard, and the names go to the club.
+
+test('a card is reachable by keyboard and opens its game with Enter',
+  async () => {
+    const dom = await open(true);
+    const doc = dom.window.document;
+    const card = doc.querySelector('#cards .card.open');
+    assert.equal(card.tagName, 'DIV',
+      'a button cannot hold the club links inside it');
+    assert.equal(card.getAttribute('role'), 'button');
+    assert.equal(card.tabIndex, 0, 'the card cannot be reached by keyboard');
+    card.dispatchEvent(new dom.window.KeyboardEvent('keydown',
+      { key: 'Enter', bubbles: true }));
+    await settle(() => doc.querySelector('#game table'));
+    assert.equal(doc.getElementById('game').hidden, false);
+    dom.window.close();
+  });
+
+test('a card names both clubs as links', async () => {
+  const dom = await open(true);
+  const doc = dom.window.document;
+  const names = [...doc.querySelectorAll('#cards .card.open .nm b button')]
+    .map(node => node.textContent);
+  assert.deepEqual(names, ['Buffalo Bills', 'Kansas City Chiefs']);
+  dom.window.close();
+});
+
+test('pressing a club on a card opens the club, not the game', async () => {
+  const dom = await open(true);
+  const doc = dom.window.document;
+  const name = [...doc.querySelectorAll('#cards .card.open .nm b button')]
+    .find(node => node.textContent === 'Kansas City Chiefs');
+  name.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settle(() => doc.querySelector('.clubhead'));
+  assert.equal(dom.window.location.hash, '#league=nfl&section=teams&team=KC');
+  assert.equal(doc.querySelectorAll('#game .gamehead').length, 0,
+    'the card opened its game as well as the club');
+  dom.window.close();
+});
+
+test('the game heading links both clubs', async () => {
+  const dom = await open(true);
+  const doc = dom.window.document;
+  click(dom, '#cards .card.open');
+  await settle(() => doc.querySelector('#game table'));
+  const names = [...doc.querySelectorAll('#game .gamehead button')]
+    .map(node => node.textContent);
+  assert.deepEqual(names, ['Buffalo Bills', 'Kansas City Chiefs'],
+    'the heading names both clubs and links neither');
+  dom.window.close();
+});

@@ -788,8 +788,14 @@ test('My teams first lifts followed games and leaves the rest in order',
   });
 
 test('a followed side is marked on the card but is not a control', async () => {
-  // A card can itself be a <button>; a button inside a button is invalid
-  // markup whose clicks fire both.
+  // Following happens in the rail and on the board, where a star has room
+  // to be a real control with a label. On a card the star is a MARK: a
+  // second place to follow from would be a second thing to keep in step,
+  // and the card's own tap belongs to the game.
+  //
+  // (The card nests links now -- the club names. That became legal when
+  // the card stopped being a <button>, which tests/nfl_game.test.cjs pins
+  // along with the keyboard behaviour it had to take on.)
   const dom = await open();
   dom.window.localStorage.setItem(NFL_KEY, JSON.stringify([KC]));
   click(dom, '#tabs button[data-tab="rankings"]');
@@ -797,8 +803,10 @@ test('a followed side is marked on the card but is not a control', async () => {
   click(dom, '#weeks button');                   // week 1: KC v BUF
   const card = dom.window.document.querySelector('#cards .card');
   assert.ok(card.querySelector('.fav'), 'the followed side is marked');
-  assert.equal(card.querySelector('button'), null,
-    'and there is no button nested inside the card');
+  assert.equal(card.querySelector('button.star'), null,
+    'the card offers a second place to follow from');
+  assert.equal(card.tagName, 'DIV',
+    'a card holding links cannot be a button');
   dom.window.close();
 });
 
