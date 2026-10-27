@@ -691,8 +691,21 @@ league's measured 57%. A test pins it.
   archive, it needs Pillow (which the refresh deliberately does not install),
   and a club redraws its mark about once a decade. The archive grants no
   licence; the marks belong to their clubs and are used nominatively.
-- **No favourites on this page.** The football shell's "My teams" has no
-  counterpart here yet.
+- **Following a team, and the Elo rail.** The storage rule is not reinvented
+  here: `ncaambb_app.js` already owns the per-league key, because an NFL
+  franchise key in football's list would be drawn as a football team that
+  does not exist. The NFL's is `elocast.favorites.nfl.v1`. You follow from
+  the Elo top-10 rail beside the slate or from the full Rankings board;
+  a card only *marks* a followed side, because a card can itself be a
+  `<button>` and a button nested in a button is invalid markup whose clicks
+  fire both. "My teams first" appears once you follow someone and performs a
+  STABLE partition — followed games rise, everything else keeps the order it
+  had. It is deliberately not `ncaambb_app.sortGames`, which also orders by
+  kickoff: this page has never sorted its slate, and a toggle should not
+  quietly reorder the games you did not ask about. Reaching for
+  `localStorage` can throw outright (Safari private browsing, a blocked
+  third-party context, `file://`), so every access is guarded and failure
+  reads as "nobody is followed".
 - **No live scores.** The export carries finals and schedules; there is no
   in-game clock, so a card says Final, Scheduled or Time TBD and never a zeroed
   clock. Live NFL data is a separate decision with a licensing cost attached,

@@ -311,8 +311,12 @@ test('a card opens a game page with its scoring summary and its drives',
     assert.match(panel.textContent, /TOUCHDOWN\./);
     assert.match(panel.textContent, /FIELD GOAL\./);
     assert.match(panel.textContent, /Drives/);
-    // The week strip and the card grid give way to the game.
-    assert.equal(dom.window.document.getElementById('cards').hidden, true);
+    // The week strip and the card grid give way to the game. The cards are
+    // hidden by their container rather than in their own right, since the
+    // Elo rail sits beside them and has to go too, so this asks whether
+    // they are visible rather than which element carries the attribute.
+    assert.ok(dom.window.document.getElementById('cards').closest('[hidden]'),
+      'the card grid is not visible');
     assert.equal(dom.window.document.getElementById('weeks').hidden, true);
     dom.window.close();
   });
@@ -477,3 +481,26 @@ test('a game with no injury report draws no empty table', async () => {
   assert.doesNotMatch(panel.textContent, /Injury report/);
   dom.window.close();
 });
+
+test('opening a game hides the whole slate, rail and filters included',
+  async () => {
+    // The Elo rail sits BESIDE the cards inside `.slate`, and `#game`
+    // follows it in the markup. Hiding only the cards would leave the
+    // rankings list stranded above the game detail -- and the card handler
+    // scrolls to the top, which on a phone puts the game's own heading
+    // below the fold.
+    const dom = await open(true);
+    click(dom, 'button[data-tab="games"]');
+    const doc = dom.window.document;
+    assert.equal(doc.getElementById('slate').hidden, false,
+      'the slate is there before a game is opened');
+    click(dom, '#cards .card.open');
+    await settle(() => doc.querySelector('#game table'));
+    assert.equal(doc.getElementById('slate').hidden, true);
+    assert.equal(doc.getElementById('slate-filters').hidden, true);
+    assert.equal(doc.getElementById('weeks').hidden, true);
+    assert.equal(doc.getElementById('game').hidden, false);
+    // and the rail is genuinely not painted, not merely display-none'd by a
+    // rule a later stylesheet could beat
+    assert.equal(doc.querySelector('#rail').closest('[hidden]').id, 'slate');
+  });
