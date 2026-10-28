@@ -681,6 +681,37 @@ the game page, and a player opened from search is still not in the URL.
 Both are cross-section routes rather than sections, and they belong together
 rather than half-done here.
 
+**A club's name is a way to its page** (2026-10-27, Austin: "Can we
+hyperlink the instances of the team names to the individual team pages?").
+Every panel that names a club now links it: the ratings table, the
+standings, the playoff field, the Elo rail, the conference history, a
+player's roster and draft rows, a coach's season rows, the game heading and
+a club's own schedule.
+
+Two things that were not free:
+
+- **The card had to stop being a `<button>`.** A button inside a button is
+  invalid markup whose clicks fire both, and the card carries the
+  most-seen instance of a club on the page. A card is now a `<div>` with
+  `role="button"`, `tabindex="0"` and its own Enter/Space handler — the
+  keyboard behaviour the element used to give it for nothing — and the
+  names inside it stop their own clicks from reaching it. That handler
+  answers only to the card itself: a keydown on a name bubbles up to it,
+  and acting on one would swallow the button's own activation and open
+  the game instead of the club the reader pressed.
+- **A link is not always amber.** In a table the name is one value among
+  several and takes the page's link ink. On a card and in the rail the
+  name IS the line, so it keeps that line's size and colour and reads as
+  text that happens to be tappable; the loser on a card still dims.
+
+A club the teams file has no row for is **named, not linked**. The people
+export normalises every roster and draft row to the 32 current franchise
+codes — measured, not assumed — so that guard fires on nothing today. It
+stays because a dead link is worse than plain text.
+
+A coach still expands in place rather than linking: there is no coach page
+to link to.
+
 **A tab is a route** (2026-10-27). It was a button and nothing else, so only
 the tab the page opened on could be linked to, reloaded into or reached with
 the back button: a reader who sent somebody the Rankings sent them the home

@@ -256,6 +256,17 @@
   .card .foot { font-size: 11px; color: var(--ink-dim); margin-top: 6px; }
   .undecided { color: var(--amber); }
 
+  /* A club's name is a link wherever it is drawn, but a link is not always
+     amber. In a table the name is one value among several and takes the
+     page's link ink; on a card and in the rail the name IS the line, so it
+     keeps that line's own size and colour and reads as text that happens
+     to be tappable. The loser on a card still dims. */
+  .card .side .nm b .expand, .rail .nm .expand {
+    font-size: inherit; color: inherit; font-weight: inherit;
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .card .side.lost .nm b .expand { color: var(--ink-dim); }
   .card.open { cursor: pointer; width: 100%; text-align: left; font: inherit;
                color: inherit; }
   .card.open:hover { border-color: var(--ink-dim); }
@@ -1108,7 +1119,7 @@
       else item.appendChild(document.createElement('span'));
       var name = document.createElement('span');
       name.className = 'nm';
-      name.textContent = teamName(row.team);
+      name.appendChild(teamLink(row.team));
       item.appendChild(name);
       var rating = document.createElement('span');
       rating.className = 'num';
@@ -1136,18 +1147,38 @@
     var mine = favorites();
     if (state.mine) games = myTeamsFirst(games, mine);
     games.forEach(function (game) {
-      // A card is a button only where there is something behind it. An
+      // A card opens its game only where there is something behind it. An
       // export built before the game layer, or a game not yet played, keeps
       // a plain card rather than offering a tap that opens onto nothing.
+      //
+      // IT IS A DIV WITH role="button", NOT A BUTTON, so the club names
+      // inside it can be real links to their pages. A button inside a
+      // button is invalid markup whose clicks fire both, and the names are
+      // the most-seen instance of a club on this page -- so the card takes
+      // on the keyboard behaviour a button would have given it: Enter and
+      // Space open the game, and the names stop their own clicks from
+      // reaching the card. The keyboard handler answers only to the card
+      // itself: a keydown on a name BUBBLES here, and acting on it would
+      // open the game from under a reader pressing Enter on a club.
       var clickable = openable && app.isFinal(game);
-      var card = document.createElement(clickable ? 'button' : 'div');
+      var card = document.createElement('div');
       card.className = clickable ? 'card open' : 'card';
       if (clickable) {
-        card.type = 'button';
-        card.addEventListener('click', function () {
+        card.setAttribute('role', 'button');
+        card.tabIndex = 0;
+        var openGame = function () {
           state.game = game.id;
           window.scrollTo(0, 0);
           render();
+        };
+        card.addEventListener('click', openGame);
+        card.addEventListener('keydown', function (event) {
+          if (event.target !== card) return;
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          // Space scrolls the page by default, which is what a button
+          // suppresses and a div does not.
+          event.preventDefault();
+          openGame();
         });
       }
       var status = document.createElement('div');
@@ -1177,7 +1208,7 @@
         var line = document.createElement('div');
         line.className = 'nm-line';
         var strong = document.createElement('b');
-        strong.textContent = teamName(side[1]);
+        strong.appendChild(teamLink(side[1]));
         line.appendChild(strong);
         // Shown, not operated -- see the .fav rule in the stylesheet.
         if (mine.indexOf(side[1]) >= 0) {
@@ -1264,7 +1295,7 @@
       var boardMark = teamMark(row.team, 20);
       if (boardMark) wrap.appendChild(boardMark);
       var label = document.createElement('span');
-      label.textContent = teamName(row.team);
+      label.appendChild(teamLink(row.team));
       wrap.appendChild(label);
       nameCell.appendChild(wrap);
       tr.appendChild(nameCell);
@@ -1308,7 +1339,7 @@
       group.teams.forEach(function (row) {
         var tr = document.createElement('tr');
         var name = document.createElement('td');
-        name.textContent = teamName(row.team);
+        name.appendChild(teamLink(row.team));
         var record = document.createElement('td');
         record.className = 'num';
         record.textContent = app.recordText(row);
@@ -1363,7 +1394,7 @@
         var tr = document.createElement('tr');
         if (seed.bye) tr.className = 'bye';
         cellInto(tr, seed.seed, 'seed');
-        cellInto(tr, teamName(seed.team));
+        teamCellInto(tr, seed.team);
         cellInto(tr, recordOf(seed), 'num');
         cellInto(tr, app.seedNote(seed, settled), 'tag');
         body.appendChild(tr);
@@ -1372,7 +1403,7 @@
         var tr = document.createElement('tr');
         tr.className = 'out';
         cellInto(tr, '', 'seed');
-        cellInto(tr, teamName(row.team));
+        teamCellInto(tr, row.team);
         cellInto(tr, recordOf(row), 'num');
         cellInto(tr, 'first out', 'tag');
         body.appendChild(tr);
@@ -1430,9 +1461,9 @@
     rows.forEach(function (row) {
       var tr = document.createElement('tr');
       var name = document.createElement('td');
-      // Each coach expands to his own seasons. The page has no routes of its
-      // own, so a row that opens in place is the honest alternative to a
-      // link that would go nowhere.
+      // Each coach expands to his own seasons in place. Sections and clubs
+      // are routed now, but a coach is not: there is no coach page to link
+      // to, so the row still opens where it is.
       var button = document.createElement('button');
       button.type = 'button';
       button.className = 'expand';
@@ -1480,7 +1511,8 @@
     }
     found.forEach(function (row) {
       var tr = document.createElement('tr');
-      cellInto(tr, row.season + ' · ' + teamCode(row.team_key));
+      var when = cellInto(tr, row.season + ' · ');
+      when.appendChild(teamLink(row.team_key, teamCode(row.team_key)));
       cellInto(tr, '');
       cellInto(tr, app.coachRecord(row), 'num');
       cellInto(tr, Number(row.expected_wins).toFixed(1), 'num');
@@ -1588,9 +1620,11 @@
           if (entry.conference === conference) group = entry;
         });
         cellInto(tr, group ? app.ratingText(group.mean_rating) : '—', 'num');
-        cellInto(tr, group ? teamName(group.best) : '—');
+        if (group) teamCellInto(tr, group.best);
+        else cellInto(tr, '—');
       });
-      cellInto(tr, row.champion ? teamName(row.champion) : '—');
+      if (row.champion) teamCellInto(tr, row.champion);
+      else cellInto(tr, '—');
       body.appendChild(tr);
     });
     host.appendChild(node);
@@ -1704,6 +1738,26 @@
       openTeam(teamCode(key));
     });
     return button;
+  }
+
+  /* A club's name as a way to its page, or the bare name where there is no
+     page to go to. The people export normalises every roster and draft row
+     to the 32 current franchise codes -- measured, not assumed -- so this
+     guard fires on nothing today. It stays because a dead link is worse
+     than plain text, and the day a code arrives that no franchise answers
+     to, a reader should get a name rather than a button to nowhere. */
+  function teamLink(key, label) {
+    var name = label || teamName(key);
+    if (!key || !teams()[key]) return document.createTextNode(name);
+    return teamButton(key, name);
+  }
+
+  function teamCellInto(tr, key, label, className) {
+    var td = document.createElement('td');
+    if (className) td.className = className;
+    td.appendChild(teamLink(key, label));
+    tr.appendChild(td);
+    return td;
   }
 
   function openTeam(code) {
@@ -2095,8 +2149,9 @@
       var draft = document.createElement('p');
       draft.className = 'bio';
       draft.textContent = 'Drafted ' + bio.draft.season + ', round '
-        + bio.draft.round + ', pick ' + bio.draft.pick + ', by '
-        + teamName(franchiseKey(bio.draft.team));
+        + bio.draft.round + ', pick ' + bio.draft.pick + ', by ';
+      draft.appendChild(teamLink(franchiseKey(bio.draft.team),
+                                 teamName(franchiseKey(bio.draft.team))));
       host.appendChild(draft);
     }
     if (bio.stub) {
@@ -2261,7 +2316,8 @@
     roster.forEach(function (row) {
       var tr = document.createElement('tr');
       cellInto(tr, row.season);
-      cellInto(tr, teamName(franchiseKey(row.team)));
+      teamCellInto(tr, franchiseKey(row.team),
+                   teamName(franchiseKey(row.team)));
       cellInto(tr, row.position || '');
       cellInto(tr, row.jersey === null || row.jersey === undefined
         ? '' : row.jersey, 'num');
@@ -2307,7 +2363,8 @@
       round.picks.forEach(function (pick) {
         var tr = document.createElement('tr');
         cellInto(tr, pick.pick, 'rk');
-        cellInto(tr, teamCode(franchiseKey(pick.team)));
+        teamCellInto(tr, franchiseKey(pick.team),
+                     teamCode(franchiseKey(pick.team)));
         var name = document.createElement('td');
         if (pick.id) name.appendChild(playerButton(pick.id, pick.name));
         else name.textContent = pick.name;
@@ -2565,7 +2622,9 @@
     var head = document.createElement('div');
     head.className = 'gamehead';
     var who = document.createElement('div');
-    who.textContent = teamName(game.away) + ' at ' + teamName(game.home);
+    who.appendChild(teamLink(game.away));
+    who.appendChild(document.createTextNode(' at '));
+    who.appendChild(teamLink(game.home));
     var score = document.createElement('div');
     score.className = 'score';
     score.textContent = app.isFinal(game)

@@ -492,3 +492,25 @@ test('the new sections are registered for the NFL and not for the others',
     assert.ok(leagues.hasSection('nfl', 'people'));
     assert.ok(!leagues.hasSection('ncaambb', 'coaches'));
   });
+
+test('a club in the playoff field opens its page', async () => {
+  // Every panel that names a club links it (Austin, 2026-10-27). The seeds
+  // table is the one in this file; the others are pinned where they live.
+  const dom = await open();
+  const doc = await openTab(dom, 'standings',
+    d => d.querySelector('#playoff .seeds tbody tr'));
+  const link = [...doc.querySelectorAll('#playoff .seeds button')]
+    .find(node => node.textContent === 'Kansas City Chiefs');
+  assert.ok(link, 'the name in the playoff field is not a link');
+  link.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settle(() => doc.querySelector('.clubhead'));
+  assert.match(doc.querySelector('.clubhead h3').textContent,
+    /Kansas City Chiefs/);
+  assert.equal(dom.window.location.hash, '#league=nfl&section=teams&team=KC');
+  // The club page asks for history.js on its first render, and that load
+  // resolves into a render(). Closing before it lands leaves the page
+  // calling getElementById on a closed document.
+  await settle(() => !/Loading/.test(
+    doc.getElementById('teams-body').textContent));
+  dom.window.close();
+});
