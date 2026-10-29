@@ -157,6 +157,34 @@
                                          font-weight: 600; }
   nav.tabs button[disabled] { opacity: 0.35; cursor: default; }
   .empty { color: var(--ink-dim); font-size: 14px; }
+
+  /* 5. A club's own page: a directory to reach it and a header over its
+        season. `link` is a button that reads as a link, so a club name is
+        the same control wherever it appears. */
+  button.link {
+    appearance: none; border: 0; background: transparent; padding: 0;
+    font: inherit; color: inherit; cursor: pointer; text-align: left;
+    border-bottom: 1px solid transparent;
+  }
+  button.link:hover, button.link:focus-visible {
+    border-bottom-color: var(--amber); color: var(--ink);
+  }
+  .back { margin: 0 0 10px; }
+  .clubhead { display: flex; justify-content: space-between; gap: 12px;
+              align-items: baseline; flex-wrap: wrap; margin: 0 0 12px; }
+  .clubhead h2 { margin: 0; font-size: 20px; }
+  .clubhead .sub { font-size: 12px; color: var(--ink-dim); }
+  .clubhead .num { font-family: var(--font-mono); font-size: 15px; }
+  .directory { margin: 0 0 18px; }
+  .directory h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase;
+                  letter-spacing: 0.8px; color: var(--ink-dim); }
+  .directory ul { list-style: none; margin: 0; padding: 0; display: grid;
+                  gap: 2px 14px;
+                  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+  .directory li { font-size: 14px; display: flex;
+                  justify-content: space-between; gap: 8px; }
+  .directory .rating { font-family: var(--font-mono); color: var(--ink-dim); }
+  .scroller { overflow-x: auto; }
 </style>
 </head>
 <body>
@@ -181,6 +209,10 @@
     <div class="days" id="days"></div>
     <div class="filters" id="filters"></div>
     <div class="cards" id="cards"></div>
+  </section>
+
+  <section class="panel" id="teams" hidden>
+    <div id="team-body"></div>
   </section>
 
   <section class="panel" id="standings" hidden>
@@ -215,7 +247,8 @@
   // registry: every league shows the same five. This page used to draw six,
   // because Games had a tab of its own while drawing the scoreboard that
   // Home draws.
-  var PANELS = { home: 'scoreboard', standings: 'standings' };
+  var PANELS = { home: 'scoreboard', standings: 'standings',
+                 teams: 'teams' };
   // Sections this page no longer names in a URL but must keep opening,
   // because links to them are published.
   var LEGACY = { games: 'home' };
@@ -224,7 +257,19 @@
   // state have to agree about it -- see tabFromHash.
   var DEFAULT_TAB = 'standings';
   var state = { manifest: null, verdict: null, season: null, day: null,
-                filter: 'all', sort: 'tipoff', tab: DEFAULT_TAB };
+                filter: 'all', sort: 'tipoff', tab: DEFAULT_TAB,
+                team: null };
+
+  /* A club in a URL is the provider's id and not the whole key:
+   * `#league=ncaambb&section=teams&team=18`, not
+   * `...&team=ncaambb%3Acbbd%3Ateam%3A18`. The prefix is the export's
+   * business, so a short id is resolved against the season's own teams
+   * rather than by putting the prefix back on.
+   */
+  function shortTeamId(key) {
+    var parts = String(key || '').split(':');
+    return parts[parts.length - 1];
+  }
 
   function el(id) { return document.getElementById(id); }
 
@@ -262,6 +307,29 @@
     return routableTab(section) ? section : null;
   }
 
+  /* The club id a link names, or null. Only inside Teams: a `team` left on
+   * a URL whose section is Standings would draw a club behind the board. */
+  function teamIdFromHash() {
+    var hash = String(window.location.hash || '').replace(/^#/, '');
+    if (!/(^|&)league=/.test(hash)) return null;
+    var route = app.readRoute(hash);
+    if (route.league !== app.BASKETBALL) return null;
+    if ((route.params.section || 'home') !== 'teams') return null;
+    return route.params.team ? String(route.params.team) : null;
+  }
+
+  function writeTeam(id) {
+    var route = app.readRoute(window.location.hash);
+    var params = {};
+    Object.keys(route.params).forEach(function (key) {
+      if (key !== 'section' && key !== 'team') params[key] = route.params[key];
+    });
+    params.section = 'teams';
+    if (id) params.team = id;
+    var hash = app.writeRoute({ league: app.BASKETBALL, params: params });
+    if (hash !== window.location.hash) window.location.hash = hash;
+  }
+
   function writeTab(name) {
     var route = app.readRoute(window.location.hash);
     var params = {};
@@ -270,6 +338,10 @@
     Object.keys(route.params).forEach(function (key) {
       if (key !== 'section') params[key] = route.params[key];
     });
+    // A club page is open INSIDE the Teams section, so leaving that section
+    // takes the club out of the URL with it. Pressing Teams again keeps it,
+    // which is what makes the tab a way back.
+    if (name !== 'teams') delete params.team;
     if (name !== 'home') params.section = name;
     var hash = app.writeRoute({ league: app.BASKETBALL, params: params });
     // Pressing the same tab twice must not cost a second Back to leave.
@@ -418,6 +490,179 @@
     }
   }
 
+  /* ---- the club directory, and a club's own page -------------------- */
+
+  function teamLink(key) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'link';
+    button.textContent = teamName(key);
+    button.dataset.team = shortTeamId(key);
+    button.addEventListener('click', function () {
+      state.team = shortTeamId(key);
+      window.scrollTo(0, 0);
+      writeTeam(state.team);
+      render();
+    });
+    return button;
+  }
+
+  /* The board row for the club a short id names, or null. The board is the
+   * list of Division I teams this season, so a club that did not play --
+   * or an id nobody published -- simply has no page. */
+  function boardRow(id) {
+    var payload = seasonPayload();
+    var rows = (payload && payload.board) || [];
+    for (var index = 0; index < rows.length; index += 1) {
+      if (shortTeamId(rows[index].team) === id) return rows[index];
+    }
+    return null;
+  }
+
+  function heading(tag, label) {
+    var node = document.createElement(tag);
+    node.textContent = label;
+    return node;
+  }
+
+  function emptyLine(host, message) {
+    var node = document.createElement('p');
+    node.className = 'empty';
+    node.textContent = message;
+    host.appendChild(node);
+  }
+
+  function renderTeams() {
+    var host = el('team-body');
+    host.innerHTML = '';
+    var row = state.team ? boardRow(state.team) : null;
+    if (state.team && !row) {
+      // A club this season does not hold is said plainly, with the way out.
+      backButton(host, '\u2190 All teams');
+      return emptyLine(host, 'No Division I club in '
+        + app.seasonLabel(state.season) + ' has that id.');
+    }
+    if (row) return renderClub(host, row);
+    renderDirectory(host);
+  }
+
+  function backButton(host, label) {
+    var paragraph = document.createElement('p');
+    paragraph.className = 'back';
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'link';
+    button.textContent = label;
+    button.addEventListener('click', function () {
+      state.team = null;
+      writeTeam(null);
+      render();
+    });
+    paragraph.appendChild(button);
+    host.appendChild(paragraph);
+  }
+
+  /* Every Division I club this season, by conference. Ordered by rating
+   * inside a conference rather than alphabetically: the board is the one
+   * ordering this site has, and repeating it here keeps the two agreeing. */
+  function renderDirectory(host) {
+    var payload = seasonPayload();
+    var rows = (payload && payload.board) || [];
+    if (!rows.length) {
+      return emptyLine(host, 'No teams are loaded for this season.');
+    }
+    var order = [];
+    var groups = {};
+    rows.forEach(function (row) {
+      var name = row.conference || 'Independent';
+      if (!groups[name]) { groups[name] = []; order.push(name); }
+      groups[name].push(row);
+    });
+    order.sort();
+    order.forEach(function (name) {
+      var block = document.createElement('div');
+      block.className = 'directory';
+      block.appendChild(heading('h3', name));
+      var list = document.createElement('ul');
+      groups[name].forEach(function (row) {
+        var item = document.createElement('li');
+        item.appendChild(teamLink(row.team));
+        var rating = document.createElement('span');
+        rating.className = 'rating';
+        rating.textContent = app.ratingText(row.rating);
+        item.appendChild(rating);
+        list.appendChild(item);
+      });
+      block.appendChild(list);
+      host.appendChild(block);
+    });
+  }
+
+  function renderClub(host, row) {
+    backButton(host, '\u2190 All teams');
+    var payload = seasonPayload();
+    var rows = app.teamSchedule((payload && payload.games) || [], row.team);
+    var head = document.createElement('div');
+    head.className = 'clubhead';
+    var block = document.createElement('div');
+    block.appendChild(heading('h2', teamName(row.team)));
+    var sub = document.createElement('div');
+    sub.className = 'sub';
+    sub.textContent = [row.conference, app.seasonLabel(state.season),
+                       '#' + row.rank + ' of ' + (payload.board || []).length]
+      .filter(Boolean).join(' \u00b7 ');
+    block.appendChild(sub);
+    head.appendChild(block);
+    var figure = document.createElement('div');
+    figure.className = 'num';
+    // The board's record, not the schedule's: the board counts the season
+    // the ratings were built from, and two numbers for one thing on one
+    // screen is a bug report waiting to be filed.
+    figure.textContent = app.ratingText(row.rating) + ' \u00b7 '
+      + row.wins + '-' + row.losses;
+    head.appendChild(figure);
+    host.appendChild(head);
+    if (!rows.length) {
+      return emptyLine(host, 'This club has no games in '
+        + app.seasonLabel(state.season) + '.');
+    }
+    host.appendChild(heading('h3', 'Season'));
+    var scroller = document.createElement('div');
+    scroller.className = 'scroller';
+    var table = document.createElement('table');
+    table.innerHTML = '<thead><tr><th>Date</th><th>Opponent</th>'
+      + '<th>Result</th></tr></thead><tbody></tbody>';
+    var body = table.querySelector('tbody');
+    rows.forEach(function (entry) {
+      var tr = document.createElement('tr');
+      var when = document.createElement('td');
+      when.textContent = app.dayOf(entry.game) || 'TBD';
+      tr.appendChild(when);
+      var against = document.createElement('td');
+      var at = document.createElement('span');
+      at.className = 'sub';
+      // A neutral-site game is neither: saying "vs" would put a Final Four
+      // in a club's home record as far as a reader is concerned.
+      at.textContent = entry.neutral ? 'N ' : (entry.home ? 'vs ' : '@ ');
+      against.appendChild(at);
+      against.appendChild(teamLink(entry.opponent));
+      tr.appendChild(against);
+      var result = document.createElement('td');
+      var scored = entry.points !== null && entry.points !== undefined
+        && entry.against !== null && entry.against !== undefined;
+      var score = entry.points + '\u2013' + entry.against;
+      // A score with no verdict is a level score, which basketball's
+      // overtime makes impossible: the number is reported, the result is
+      // not invented.
+      result.textContent = entry.result ? entry.result + ' ' + score
+        : (scored ? score : app.statusLine(entry.game));
+      tr.appendChild(result);
+      body.appendChild(tr);
+    });
+    scroller.appendChild(table);
+    host.appendChild(scroller);
+  }
+
   function renderDays() {
     var host = el('days');
     host.innerHTML = '';
@@ -504,11 +749,13 @@
     renderMeta();
     renderRefusal();
     var ok = state.verdict && state.verdict.ok;
+    el('teams').hidden = !ok || state.tab !== 'teams';
     el('standings').hidden = !ok || state.tab !== 'standings';
     el('scoreboard').hidden = !ok || !(state.tab === 'home'
                                        || state.tab === 'games');
     tabButtons();
     if (!ok) return;
+    if (!el('teams').hidden) renderTeams();
     if (!el('standings').hidden) renderBoard();
     if (!el('scoreboard').hidden) {
       renderDays();
@@ -539,12 +786,16 @@
     leagueButtons();
     var opening = tabFromHash();
     if (opening) state.tab = opening;
+    state.team = teamIdFromHash();
     window.addEventListener('hashchange', function () {
+      var changed = false;
       var next = tabFromHash();
-      if (next && next !== state.tab) {
-        state.tab = next;
-        render();
-      }
+      if (next && next !== state.tab) { state.tab = next; changed = true; }
+      // The club is read from the URL and nowhere else, so a link and the
+      // back button cannot disagree about which club is open.
+      var club = teamIdFromHash();
+      if (club !== state.team) { state.team = club; changed = true; }
+      if (changed) render();
     });
     fetch(BASE + 'manifest.json', { cache: 'no-store' })
       .then(function (response) {

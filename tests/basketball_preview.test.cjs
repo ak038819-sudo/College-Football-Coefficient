@@ -132,7 +132,8 @@ async function open(overrides, schedule, hash) {
   // page opened on Home draws cards and no board at all, so waiting for a
   // board row there would call a correct page "never rendered".
   await settle(dom, () => dom.window.document.querySelector(
-    '#board tr, #refusal-list li, #cards .card'));
+    '#board tr, #refusal-list li, #cards .card, #team-body .directory, '
+    + '#team-body .clubhead, #team-body .empty'));
   return dom;
 }
 
@@ -223,27 +224,29 @@ test('the Stats tab is present and disabled, not silently missing', async () => 
 
 test('every enabled tab has a panel, and clicking one never empties the page',
   async () => {
-    // Teams and People are real basketball sections -- the league holds both,
-    // and switchLeague is right to carry them -- but this page draws only the
-    // board and the scoreboard. They were enabled anyway, so clicking either
-    // hid both panels and left a blank page: the exact thing Stats is
-    // disabled to avoid.
+    // Teams and People are real basketball sections -- the league holds
+    // both, and switchLeague is right to carry them -- but this page draws
+    // no People panel. It was enabled anyway, so clicking it hid every
+    // panel and left a blank page: the exact thing Stats is disabled to
+    // avoid. Teams has a panel now and is expected to be live.
     const dom = await open();
     const document = dom.window.document;
     const tabs = [...document.querySelectorAll('#tabs button')];
     const drawn = () => !document.getElementById('standings').hidden
-      || !document.getElementById('scoreboard').hidden;
+      || !document.getElementById('scoreboard').hidden
+      || !document.getElementById('teams').hidden;
     assert.ok(drawn(), 'something is drawn to begin with');
     for (const button of tabs) {
       if (button.disabled) continue;
       button.click();
       assert.ok(drawn(), `${button.textContent} leaves the page empty`);
     }
-    for (const name of ['Teams', 'People']) {
+    for (const [name, live] of [['Teams', true], ['People', false]]) {
       const button = tabs.find(b => b.textContent === name);
       assert.ok(button, `${name} is still listed rather than vanishing`);
-      assert.equal(button.disabled, true,
-        `${name} has no panel on this page, so it must not be clickable`);
+      assert.equal(button.disabled, !live,
+        live ? `${name} has a panel now and must be clickable`
+          : `${name} has no panel on this page, so it must not be clickable`);
     }
     // The league itself still claims those sections: the page lacking a panel
     // is not a statement about the data, and a league switch must still carry
@@ -814,5 +817,179 @@ test('the same coverage claiming to be a finished season draws no board',
     assert.equal(rows(dom).length, 0);
     assert.ok(dom.window.document.querySelectorAll('#refusal-list li').length
       > 0);
+    dom.window.close();
+  });
+
+/* ---- the Teams tab: a directory, and a club's own page ---------------- */
+
+function clubLink(dom, label) {
+  return [...dom.window.document.querySelectorAll('#team-body button.link')]
+    .find(node => node.textContent === label);
+}
+
+test('the Teams tab lists every Division I club by conference', async () => {
+  const dom = await open(undefined, undefined, '#league=ncaambb&section=teams');
+  const doc = dom.window.document;
+  await settle(dom, () => doc.querySelector('#team-body .directory'));
+  const blocks = [...doc.querySelectorAll('#team-body .directory')];
+  assert.deepEqual(blocks.map(node => node.querySelector('h3').textContent),
+    ['ACC', 'Big 12', 'Big Ten']);
+  assert.deepEqual(blocks.map(node => node.querySelector('li button.link')
+    .textContent), ['Duke', 'BYU', 'Michigan']);
+  // The rating beside a club is the board's, rounded for display.
+  assert.equal(blocks[0].querySelector('.rating').textContent, '2211');
+  dom.window.close();
+});
+
+test('a club in the directory opens its page, and says so in the URL',
+  async () => {
+    const dom = await open(undefined, undefined,
+      '#league=ncaambb&section=teams');
+    const doc = dom.window.document;
+    await settle(dom, () => doc.querySelector('#team-body .directory'));
+    clubLink(dom, 'Michigan').click();
+    await settle(dom, () => doc.querySelector('#team-body .clubhead'));
+    // The short id, not the whole key: an address is for a reader.
+    assert.equal(dom.window.location.hash,
+      '#league=ncaambb&section=teams&team=1');
+    const head = doc.querySelector('#team-body .clubhead');
+    assert.match(head.textContent, /Michigan/);
+    assert.match(head.textContent, /Big Ten/);
+    assert.match(head.textContent, /2274 · 30-4/);
+    dom.window.close();
+  });
+
+test('a link to a club opens its page cold', async () => {
+  const dom = await open(undefined, undefined,
+    '#league=ncaambb&section=teams&team=2');
+  const doc = dom.window.document;
+  await settle(dom, () => doc.querySelector('#team-body .clubhead'));
+  assert.match(doc.querySelector('#team-body .clubhead').textContent, /Duke/);
+  dom.window.close();
+});
+
+test('a club page lists its season, with a neutral game called neither',
+  async () => {
+    const slate = [
+      { id: 'g-home', at: DAY + 'T19:00:00Z', status: 'final',
+        home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:2',
+        home_points: 70, away_points: 60 },
+      { id: 'g-away', at: daysFromToday(1) + 'T19:00:00Z', status: 'final',
+        home: 'ncaambb:cbbd:team:3', away: 'ncaambb:cbbd:team:1',
+        home_points: 80, away_points: 71 },
+      { id: 'g-neutral', at: daysFromToday(2) + 'T19:00:00Z', status: 'final',
+        neutral: 1, home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:3',
+        home_points: 66, away_points: 64 },
+      { id: 'g-later', at: daysFromToday(3) + 'T19:00:00Z',
+        status: 'scheduled', home: 'ncaambb:cbbd:team:1',
+        away: 'ncaambb:cbbd:team:2', home_points: null, away_points: null }
+    ];
+    const dom = await open(undefined, slate,
+      '#league=ncaambb&section=teams&team=1');
+    const doc = dom.window.document;
+    await settle(dom, () => doc.querySelector('#team-body tbody tr'));
+    const table = [...doc.querySelectorAll('#team-body tbody tr')]
+      .map(tr => [...tr.children].map(td => td.textContent));
+    assert.deepEqual(table.map(row => row[1]),
+      ['vs Duke', '@ BYU', 'N BYU', 'vs Duke']);
+    assert.deepEqual(table.map(row => row[2]),
+      ['W 70\u201360', 'L 71\u201380', 'W 66\u201364', 'Scheduled']);
+    dom.window.close();
+  });
+
+test('an opponent on a club page opens that club', async () => {
+  const dom = await open(undefined, undefined,
+    '#league=ncaambb&section=teams&team=1');
+  const doc = dom.window.document;
+  await settle(dom, () => doc.querySelector('#team-body tbody tr'));
+  clubLink(dom, 'Duke').click();
+  await settle(dom, () => /Duke/.test(
+    doc.querySelector('#team-body .clubhead').textContent));
+  assert.equal(dom.window.location.hash,
+    '#league=ncaambb&section=teams&team=2');
+  dom.window.close();
+});
+
+test('leaving the Teams tab takes the club out of the URL', async () => {
+  const dom = await open(undefined, undefined,
+    '#league=ncaambb&section=teams&team=1');
+  const doc = dom.window.document;
+  await settle(dom, () => doc.querySelector('#team-body .clubhead'));
+  [...doc.querySelectorAll('#tabs button')]
+    .find(node => node.textContent === 'Standings').click();
+  await settle(dom, () => !doc.getElementById('standings').hidden);
+  assert.equal(dom.window.location.hash,
+    '#league=ncaambb&section=standings');
+  dom.window.close();
+});
+
+test('a club id this season does not hold says so, with the way out',
+  async () => {
+    const dom = await open(undefined, undefined,
+      '#league=ncaambb&section=teams&team=9999');
+    const doc = dom.window.document;
+    await settle(dom, () => doc.querySelector('#team-body .empty'));
+    assert.match(doc.querySelector('#team-body .empty').textContent,
+      /has that id/);
+    assert.ok(clubLink(dom, '\u2190 All teams'),
+      'a club that is not there left the reader with no way back');
+    dom.window.close();
+  });
+
+test('a level score is reported without a verdict', async () => {
+  // Basketball plays overtime until somebody wins, so a game the feed
+  // reports as level is bad data. Calling it a loss would be the page
+  // inventing a result; the score is shown and the verdict withheld.
+  const slate = [
+    { id: 'g-level', at: DAY + 'T19:00:00Z', status: 'final',
+      home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:2',
+      home_points: 70, away_points: 70 }
+  ];
+  const dom = await open(undefined, slate,
+    '#league=ncaambb&section=teams&team=1');
+  const doc = dom.window.document;
+  await settle(dom, () => doc.querySelector('#team-body tbody tr'));
+  const cells = [...doc.querySelectorAll('#team-body tbody tr td')]
+    .map(td => td.textContent);
+  assert.equal(cells[2], '70\u201370');
+  dom.window.close();
+});
+
+test('a club\u2019s season is ordered by date, not by whether a tip-off is set',
+  async () => {
+    // Codex, PR #153: this comparator was copied from the scoreboard, which
+    // orders ONE day and rightly puts an undecided tip-off at the end of
+    // it. Over a season that put a November game still to be scheduled
+    // after a December game that has a time.
+    const slate = [
+      { id: 'g-dec', at: '2025-12-01T19:00:00Z', status: 'scheduled',
+        home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:2',
+        home_points: null, away_points: null },
+      { id: 'g-nov-tbd', at: '2025-11-01', time_tbd: 1, status: 'scheduled',
+        home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:3',
+        home_points: null, away_points: null },
+      // The ids sort the OTHER way from the tip-offs on purpose: with the
+      // early game named 'a' the id fallback produces the right order by
+      // itself, and the test passes with the tip-off comparison deleted.
+      { id: 'g-nov-a', at: '2025-11-01T23:00:00Z', status: 'final',
+        home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:2',
+        home_points: 81, away_points: 70 },
+      { id: 'g-nov-z', at: '2025-11-01T17:00:00Z', status: 'final',
+        home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:3',
+        home_points: 77, away_points: 60 }
+    ];
+    const dom = await open(undefined, slate,
+      '#league=ncaambb&section=teams&team=1');
+    const doc = dom.window.document;
+    await settle(dom, () => doc.querySelector('#team-body tbody tr'));
+    const dates = [...doc.querySelectorAll('#team-body tbody tr')]
+      .map(tr => tr.children[0].textContent);
+    assert.deepEqual(dates,
+      ['2025-11-01', '2025-11-01', '2025-11-01', '2025-12-01']);
+    // Within the one day, the known tip-offs come in order and the
+    // undecided one is last -- which is the rule the scoreboard has.
+    const against = [...doc.querySelectorAll('#team-body tbody tr')]
+      .map(tr => tr.children[1].textContent);
+    assert.deepEqual(against, ['vs BYU', 'vs Duke', 'vs BYU', 'vs Duke']);
     dom.window.close();
   });
