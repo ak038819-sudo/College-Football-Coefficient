@@ -663,6 +663,11 @@
     // leaving that section takes the club out of the URL with it. Pressing
     // Teams again keeps it, which is what makes the tab a way back.
     if (name !== 'teams') changes.team = null;
+    // A game and a person are each open INSIDE a tab, so pressing a tab or
+    // a view leaves them. Without this the URL kept naming a player while
+    // the Draft was on screen, and a reload opened something else.
+    changes.game = null;
+    changes.player = null;
     writeParams(changes);
   }
 
@@ -670,7 +675,25 @@
     // The view goes with the section it belonged to. Opening a club from
     // the Elo board otherwise left `view=elo` in a URL whose section has no
     // views at all, so one club page had two addresses.
-    writeParams({ section: 'teams', view: null, team: code || null });
+    writeParams({ section: 'teams', view: null, team: code || null,
+                  game: null, player: null });
+  }
+
+  /* A game's own address. The id in the URL is the provider's short form --
+   * `2024_01_BAL_KC` and not the whole key -- because it is readable, and
+   * because it NAMES ITS SEASON, which is what lets a link opened cold load
+   * the right season file before looking for the game. The game lives in
+   * the Home tab, so the section states nothing. */
+  function writeGame(id) {
+    writeParams({ section: null, view: null, game: id || null, team: null,
+                  player: null });
+  }
+
+  /* A player's own address. Players is the first view of People, so the
+   * view states nothing -- one place, one string. */
+  function writePlayer(id) {
+    writeParams({ section: 'people', view: null, player: id || null,
+                  team: null, game: null });
   }
 
   /* The club code a link names, or null. The CODE and not the franchise key:
@@ -686,6 +709,98 @@
     return code ? String(code).toUpperCase() : null;
   }
 
+  /* Opening a game takes the reader to the Home tab, to the week it was
+   * played in, and gives the screen its own address. One function, because
+   * a game card and a club's schedule row must land in the same place. */
+  function openGame(game) {
+    state.tab = 'home';
+    state.view = null;
+    state.team = null;
+    state.player = null;
+    state.game = game.id;
+    state.week = game.postseason ? 'post' : Number(game.week);
+    window.scrollTo(0, 0);
+    writeGame(shortGameId(game.id));
+    render();
+  }
+
+  function closeGame() {
+    state.game = null;
+    writeParams({ game: null });
+    render();
+  }
+
+  function openPlayer(id) {
+    state.tab = 'people';
+    state.view = 'players';
+    state.player = id;
+    window.scrollTo(0, 0);
+    writePlayer(id);
+    render();
+  }
+
+  function closePlayer() {
+    state.player = null;
+    writeParams({ player: null });
+    render();
+  }
+
+  var GAME_PREFIX = 'nfl:nflverse:game:';
+
+  function shortGameId(id) {
+    var text = String(id || '');
+    return text.indexOf(GAME_PREFIX) === 0
+      ? text.slice(GAME_PREFIX.length) : text;
+  }
+
+  /* The SHORT game id a link names, or null. Only inside Home: a `game`
+   * left on a URL whose section is Teams would draw a game behind a club
+   * page.
+   *
+   * It is resolved to a key against the season's own games rather than by
+   * putting the prefix back, because the prefix is the export's business
+   * and not a shape this page is entitled to assume. */
+  function gameIdFromHash() {
+    var route = leagues.readRoute(window.location.hash);
+    if (route.league !== leagues.NFL) return null;
+    if ((route.params.section || 'home') !== 'home') return null;
+    var id = route.params.game;
+    return id ? String(id) : null;
+  }
+
+  function gameByShortId(short) {
+    var games = (seasonPayload() || {}).games || [];
+    for (var i = 0; i < games.length; i += 1) {
+      if (shortGameId(games[i].id) === short) return games[i];
+    }
+    return null;
+  }
+
+  function hasSeason(season) {
+    var seasons = state.manifest && state.manifest.seasons;
+    return Boolean(seasons && Object.prototype.hasOwnProperty.call(
+      seasons, String(season)));
+  }
+
+  /* The season a game link names, from the id's own leading year, or null.
+   * A link to a 2004 game has to load 2004 rather than the latest season
+   * and then find nothing. */
+  function gameSeasonFromHash() {
+    var short = gameIdFromHash();
+    var match = short ? /^(\d{4})_/.exec(short) : null;
+    return match ? Number(match[1]) : null;
+  }
+
+  /* The player a link names, or null. Only inside the People tab's Players
+   * view, which is where a player page is drawn. */
+  function playerIdFromHash() {
+    var route = leagues.readRoute(window.location.hash);
+    if (route.league !== leagues.NFL) return null;
+    if ((route.params.section || 'home') !== 'people') return null;
+    if ((route.params.view || 'players') !== 'players') return null;
+    return route.params.player ? String(route.params.player) : null;
+  }
+
   /* What the URL now says, applied to the page. One function for both the
    * opening route and every later hashchange, so a link and the back button
    * cannot disagree about what a hash means. */
@@ -694,17 +809,29 @@
     var place = placeFromHash();
     if (place) {
       if (place.tab !== state.tab) { state.tab = place.tab; changed = true; }
-      if (place.view !== state.view) {
-        state.view = place.view;
-        // A person is open INSIDE a view. Going somewhere else -- by the
-        // back button as much as by the strip -- leaves them, or the page
-        // draws one player under a URL that names the draft.
-        state.player = null;
-        changed = true;
-      }
+      if (place.view !== state.view) { state.view = place.view; changed = true; }
     }
     var code = teamCodeFromHash();
     if (code !== state.team) { state.team = code; changed = true; }
+    // A game and a person are read from the URL and nowhere else, so the
+    // back button and a pasted link cannot disagree about which is open.
+    var short = gameIdFromHash();
+    if (short !== (state.game ? shortGameId(state.game) : null)) {
+      // A game the loaded season does not hold leaves nothing open. The
+      // route is read again once its season has landed, so a cold link is
+      // not lost by being read before its payload.
+      var opened = short ? gameByShortId(short) : null;
+      state.game = opened ? opened.id : null;
+      // The week comes with the game: pressing Back out of a game opened
+      // cold would otherwise land on whichever week the season opens on
+      // rather than the one the game was played in.
+      if (opened) {
+        state.week = opened.postseason ? 'post' : Number(opened.week);
+      }
+      changed = true;
+    }
+    var person = playerIdFromHash();
+    if (person !== state.player) { state.player = person; changed = true; }
     return changed;
   }
 
@@ -1006,6 +1133,9 @@
       host.appendChild(option);
     });
     host.onchange = function () {
+      // A game id belongs to one season, so changing season closes the
+      // game -- in the URL as well as in the page.
+      writeParams({ game: null });
       selectSeason(Number(host.value));
     };
   }
@@ -1030,6 +1160,7 @@
       button.addEventListener('click', function () {
         state.week = week;
         state.game = null;
+        writeParams({ game: null });
         render();
       });
       host.appendChild(button);
@@ -1043,6 +1174,7 @@
       button.addEventListener('click', function () {
         state.week = 'post';
         state.game = null;
+        writeParams({ game: null });
         render();
       });
       host.appendChild(button);
@@ -1246,8 +1378,7 @@
       host.appendChild(empty);
       return;
     }
-    var openable = Boolean(loader.gameWeekSource(
-      state.manifest, state.season, loader.gameWeekKey(games[0]), BASE));
+    var openable = gameOpenable(games[0]);
     var mine = favorites();
     if (state.mine) games = myTeamsFirst(games, mine);
     games.forEach(function (game) {
@@ -1270,19 +1401,15 @@
       if (clickable) {
         card.setAttribute('role', 'button');
         card.tabIndex = 0;
-        var openGame = function () {
-          state.game = game.id;
-          window.scrollTo(0, 0);
-          render();
-        };
-        card.addEventListener('click', openGame);
+        var openThis = function () { openGame(game); };
+        card.addEventListener('click', openThis);
         card.addEventListener('keydown', function (event) {
           if (event.target !== card) return;
           if (event.key !== 'Enter' && event.key !== ' ') return;
           // Space scrolls the page by default, which is what a button
           // suppresses and a div does not.
           event.preventDefault();
-          openGame();
+          openThis();
         });
       }
       var status = document.createElement('div');
@@ -1808,18 +1935,10 @@
     button.type = 'button';
     button.className = 'expand';
     button.textContent = name;
-    button.addEventListener('click', function () {
-      state.player = id;
-      state.view = 'players';
-      state.tab = 'people';
-      window.scrollTo(0, 0);
-      // A player opened from the Draft is shown under Players, so the URL
-      // has to say Players too. Leaving `view=draft` on it gave the screen
-      // an address that reloads as something else, and Back then restored
-      // the Draft view with the player still drawn over it.
-      writeTab('people', 'players');
-      render();
-    });
+    // A player opened from the Draft is shown under Players, so the URL
+    // has to say Players too, and it names the player himself: the page he
+    // is looking at is the thing a reader shares or reloads.
+    button.addEventListener('click', function () { openPlayer(id); });
     return button;
   }
 
@@ -2015,10 +2134,25 @@
       against.appendChild(wrap);
       tr.appendChild(against);
       // A tie says "T" and its score, like any other result: an equal score
-      // is not a blank and not a loss.
-      cellInto(tr, row.result
+      // is not a blank and not a loss. The result is also the way into the
+      // game itself, where there is a page behind it -- a reader looking at
+      // a club's season should not have to find the week on the scoreboard
+      // to read the game.
+      var resultText = row.result
         ? row.result + ' ' + row.points + '\u2013' + row.against
-        : app.statusLine(row.game));
+        : app.statusLine(row.game);
+      if (gameOpenable(row.game)) {
+        var result = document.createElement('td');
+        var link = document.createElement('button');
+        link.type = 'button';
+        link.className = 'expand';
+        link.textContent = resultText;
+        link.addEventListener('click', function () { openGame(row.game); });
+        result.appendChild(link);
+        tr.appendChild(result);
+      } else {
+        cellInto(tr, resultText);
+      }
       cellInto(tr, app.ratingText(row.elo), 'num');
       cellInto(tr, app.winProbabilityText(row.win_probability) || '\u2014',
         'num');
@@ -2096,6 +2230,7 @@
     button.textContent = app.seasonLabel(season);
     button.addEventListener('click', function () {
       el('season').value = String(season);
+      writeParams({ game: null });
       selectSeason(season);
     });
     return button;
@@ -2204,10 +2339,7 @@
     button.className = 'expand';
     button.textContent = state.query ? '← Search results'
       : '← All players';
-    button.addEventListener('click', function () {
-      state.player = null;
-      render();
-    });
+    button.addEventListener('click', closePlayer);
     back.appendChild(button);
     host.appendChild(back);
 
@@ -2487,6 +2619,14 @@
     });
   }
 
+  /* Whether a game has a page behind it: it has to have been played, and
+   * the week file its page reads has to be one this export built. */
+  function gameOpenable(game) {
+    if (!game || !app.isFinal(game)) return false;
+    return Boolean(loader.gameWeekSource(state.manifest, state.season,
+      loader.gameWeekKey(game), BASE));
+  }
+
   function currentGame() {
     var games = (seasonPayload() || {}).games || [];
     for (var i = 0; i < games.length; i += 1) {
@@ -2705,10 +2845,7 @@
       state.game = null;
       return;
     }
-    backButton(host, '\u2190 Back to the week', function () {
-      state.game = null;
-      render();
-    });
+    backButton(host, '\u2190 Back to the week', closeGame);
     var head = document.createElement('div');
     head.className = 'gamehead';
     var who = document.createElement('div');
@@ -2840,6 +2977,16 @@
     watchTheme();
     applyRoute();
     window.addEventListener('hashchange', function () {
+      // A hash that names a game in another season needs that season
+      // loaded before the game can be found. The back and forward buttons
+      // reach this: open a 2004 game, leave it, change season, go forward.
+      var wanted = gameSeasonFromHash();
+      if (wanted !== null && wanted !== state.season && hasSeason(wanted)) {
+        selectSeason(wanted).then(function () {
+          if (applyRoute()) render();
+        });
+        return;
+      }
       if (applyRoute()) render();
     });
     fetch(BASE + 'manifest.json', { cache: 'no-store' })
@@ -2856,8 +3003,19 @@
         }
         var sources = [loader.fileSource(manifest, 'teams', BASE)]
           .filter(Boolean);
+        // A link to a game names its season, and that season has to be the
+        // one loaded -- the latest season does not hold a 2004 game. An id
+        // naming a season this export does not carry falls back rather than
+        // asking for a file that is not there.
+        var wanted = gameSeasonFromHash();
+        var known = wanted !== null && hasSeason(wanted);
         return Promise.all(sources.map(load)).then(function () {
-          return selectSeason(manifest.latest_season);
+          return selectSeason(known ? wanted : manifest.latest_season);
+        }).then(function () {
+          // selectSeason clears the open game, because changing season
+          // normally means leaving it. Reading the route again is what puts
+          // back the one the link asked for, now that its season is loaded.
+          if (applyRoute()) render();
         });
       })
       .catch(function (error) {

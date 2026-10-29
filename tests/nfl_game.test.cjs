@@ -270,11 +270,11 @@ function settle(ready, tries = 500) {
   });
 }
 
-async function open(withGames, payloadOver) {
+async function open(withGames, payloadOver, hash) {
   const root = site(withGames, payloadOver);
   const file = path.join(root, 'nfl.html');
   const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
-    url: 'file://' + file,
+    url: 'file://' + file + (hash || ''),
     runScripts: 'dangerously',
     resources: 'usable',
     pretendToBeVisual: true,
@@ -289,8 +289,10 @@ async function open(withGames, payloadOver) {
       };
     }
   });
+  // A hash can open the page somewhere other than the scoreboard, so the
+  // settle has to know every screen a link can land on.
   await settle(() => dom.window.document.querySelector(
-    '#cards .card, #refusal-list li'));
+    '#cards .card, #refusal-list li, #game table, .clubhead'));
   return dom;
 }
 
@@ -605,3 +607,98 @@ test('the game heading links both clubs', async () => {
     'the heading names both clubs and links neither');
   dom.window.close();
 });
+
+/* ---- a game is a place, with an address ------------------------------- */
+
+test('opening a game puts the game in the URL', async () => {
+  const dom = await open(true);
+  click(dom, '#cards .card.open');
+  await settle(() => dom.window.document.querySelector('#game table'));
+  // The short id, not the export's key: the address is for a reader.
+  assert.equal(dom.window.location.hash, '#league=nfl&game=g1');
+  dom.window.close();
+});
+
+test('a link to a game opens the game', async () => {
+  const dom = await open(true, undefined, '#league=nfl&game=g1');
+  const doc = dom.window.document;
+  await settle(() => doc.querySelector('#game table'));
+  assert.match(doc.getElementById('game').textContent,
+    /Buffalo Bills at Kansas City Chiefs/);
+  assert.equal(doc.getElementById('weeks').hidden, true,
+    'the week strip is still over the game');
+  dom.window.close();
+});
+
+test('a link naming a game this season does not hold opens the week',
+  async () => {
+    const dom = await open(true, undefined, '#league=nfl&game=no-such-game');
+    const doc = dom.window.document;
+    await settle(() => doc.querySelector('#cards .card'));
+    assert.equal(doc.getElementById('game').hidden, true,
+      'a game that is not there was drawn anyway');
+    dom.window.close();
+  });
+
+test('going back out of a game takes the game out of the URL', async () => {
+  const dom = await open(true);
+  const doc = dom.window.document;
+  click(dom, '#cards .card.open');
+  await settle(() => doc.querySelector('#game table'));
+  const back = [...doc.querySelectorAll('#game button')]
+    .find(node => /Back to the week/.test(node.textContent));
+  assert.ok(back, 'no way back out of the game');
+  back.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  // The cards are rendered under the game rather than thrown away, so the
+  // thing to wait for is the slate being visible again.
+  await settle(() => !doc.getElementById('slate').hidden);
+  assert.equal(dom.window.location.hash, '#league=nfl');
+  dom.window.close();
+});
+
+test('pressing a week takes the game out of the URL too', async () => {
+  const dom = await open(true);
+  const doc = dom.window.document;
+  click(dom, '#cards .card.open');
+  await settle(() => doc.querySelector('#game table'));
+  const week = [...doc.querySelectorAll('#weeks button')]
+    .find(node => node.textContent === 'Wk 1');
+  week.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settle(() => !doc.getElementById('slate').hidden);
+  assert.equal(dom.window.location.hash, '#league=nfl');
+  dom.window.close();
+});
+
+test('a result on a club\u2019s schedule opens that game', async () => {
+  // A reader looking at a club's season should not have to find the week on
+  // the scoreboard to read the game.
+  const dom = await open(true, undefined, '#league=nfl&section=teams&team=KC');
+  const doc = dom.window.document;
+  await settle(() => doc.querySelector('.clubhead'));
+  const result = [...doc.querySelectorAll('#teams tbody button')]
+    .find(node => /^W 27\u201320$/.test(node.textContent));
+  assert.ok(result, 'the schedule draws no way into the game');
+  result.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settle(() => doc.querySelector('#game table'));
+  assert.equal(dom.window.location.hash, '#league=nfl&game=g1');
+  assert.match(doc.getElementById('game').textContent,
+    /Buffalo Bills at Kansas City Chiefs/);
+  assert.equal(doc.getElementById('teams').hidden, true,
+    'the club page is still open under the game');
+  dom.window.close();
+});
+
+test('a schedule result with no game page behind it is plain text',
+  async () => {
+    // withGames false: the export has no week files, so there is nothing to
+    // open and the row must not offer a tap onto nothing.
+    const dom = await open(false, undefined,
+      '#league=nfl&section=teams&team=KC');
+    const doc = dom.window.document;
+    await settle(() => doc.querySelector('.clubhead'));
+    const offered = [...doc.querySelectorAll('#teams tbody button')]
+      .some(node => /^W 27\u201320$/.test(node.textContent));
+    assert.equal(offered, false, 'the row offered a game page that is absent');
+    assert.match(doc.getElementById('teams').textContent, /W 27\u201320/);
+    dom.window.close();
+  });
