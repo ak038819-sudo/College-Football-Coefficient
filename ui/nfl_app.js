@@ -453,6 +453,76 @@
     return record;
   }
 
+  /* How a club's game went AGAINST THE CLOSING SPREAD, from its own side.
+   *
+   * `spread` in the export is the HOME side's expected margin, positive
+   * when the home team is favoured. That is the convention
+   * src/nfl/market.py states, and the archive agrees: across 1999, 2010 and
+   * 2025 the mean of (actual margin - spread) sits within a point of zero,
+   * while the same sum with the sign flipped is off by three to six points.
+   * So a visiting club's own line is the spread NEGATED.
+   *
+   * A margin EQUAL to the line is a PUSH -- 'P', not a loss. The stake comes
+   * back, and a half of NFL spreads are whole numbers, so this is not a rare
+   * corner: calling it a loss would be the page inventing a result the bet
+   * did not have. A game with no line, or none played, returns ''.
+   */
+  function atsResult(row) {
+    var spread = number(row && row.game && row.game.spread);
+    if (spread === null) return '';
+    if (row.points === null || row.against === null) return '';
+    var margin = row.points - row.against;
+    var line = row.home ? spread : -spread;
+    if (margin === line) return 'P';
+    return margin > line ? 'W' : 'L';
+  }
+
+  /* The same game against the CLOSING TOTAL: 'O', 'U', or 'P' for a push.
+   *
+   * This is a property of the game, not of a side, so both clubs in one
+   * game get the same letter. */
+  function totalResult(row) {
+    var line = number(row && row.game && row.game.total_line);
+    if (line === null) return '';
+    if (row.points === null || row.against === null) return '';
+    var scored = row.points + row.against;
+    if (scored === line) return 'P';
+    return scored > line ? 'O' : 'U';
+  }
+
+  /* What those rows add up to against the market.
+   *
+   * The ATS fields are named `ats_wins`/`ats_losses`/`ats_pushes` ON PURPOSE:
+   * atsText(), atsRate() and atsBeatsVig() already read exactly those names
+   * off the track-record rows, so this tally is the same shape and those
+   * three are reused rather than reinvented per caller. The over/under half
+   * has no counterpart, so it is spelled out here.
+   *
+   * `priced` counts the games that HAD a line and were played, which is the
+   * denominator the two records are out of -- not the club's game count,
+   * since a game with no line is in neither record.
+   */
+  function marketRecord(rows) {
+    var tally = {
+      ats_wins: 0, ats_losses: 0, ats_pushes: 0,
+      overs: 0, unders: 0, total_pushes: 0,
+      priced: 0, totalled: 0
+    };
+    (rows || []).forEach(function (row) {
+      var ats = atsResult(row);
+      if (ats) tally.priced += 1;
+      if (ats === 'W') tally.ats_wins += 1;
+      else if (ats === 'L') tally.ats_losses += 1;
+      else if (ats === 'P') tally.ats_pushes += 1;
+      var over = totalResult(row);
+      if (over) tally.totalled += 1;
+      if (over === 'O') tally.overs += 1;
+      else if (over === 'U') tally.unders += 1;
+      else if (over === 'P') tally.total_pushes += 1;
+    });
+    return tally;
+  }
+
   /* A franchise season by season, from the coach records the history file
    * already carries -- no new data, and no second answer to what a season's
    * record was.
@@ -1104,6 +1174,9 @@
     resultLetter: resultLetter,
     teamSchedule: teamSchedule,
     teamRecord: teamRecord,
+    atsResult: atsResult,
+    totalResult: totalResult,
+    marketRecord: marketRecord,
     withByeWeeks: withByeWeeks,
     franchiseSeasons: franchiseSeasons,
     playoffConference: playoffConference,
