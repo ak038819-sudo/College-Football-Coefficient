@@ -779,6 +779,46 @@ Four rules, each with a test and each mutation-checked:
 A tab with a single view draws no strip: a control offering one choice is
 chrome that says nothing.
 
+**A game and a player are places too** (2026-10-29). The tabs became a route
+in #151; the two screens *inside* them did not, so a reader on a game or on a
+player had no address to share, nothing to reload, and a back button that
+took them off the page rather than out of the game. Both are now in the URL
+and read from it:
+
+| screen | address |
+| --- | --- |
+| a game | `#league=nfl&game=2024_01_BAL_KC` |
+| a player | `#league=nfl&section=people&player=00-0033873` |
+
+The rules, each with a test and each mutation-checked:
+
+- **the URL is the one source of truth.** `applyRoute` reads the game and the
+  player out of the hash; nothing else sets them. A control that opens one
+  writes the hash and renders, so a link, the back button and the page cannot
+  disagree about what is open;
+- **the id in the URL is the provider's short form**, `2024_01_BAL_KC` and
+  not `nfl:nflverse:game:2024_01_BAL_KC`. It is resolved against the season's
+  own games rather than by putting the prefix back: the prefix is the
+  export's business, and a fixture whose ids are plain `g1` proved the point
+  by breaking every game test the moment the page assumed a shape;
+- **a game link names its season**, which is what lets one open cold. A 2004
+  game is not in the latest season's file, so `start()` reads the year off
+  the id and loads that season — falling back to the latest where the export
+  does not carry it — then reads the route again once the payload has landed.
+  A one-season fixture cannot tell "loaded the right season" from "loaded the
+  only season", so `tests/nfl_routes.test.cjs` builds two;
+- **a game and a person are open inside a tab**, so pressing a tab, a view, a
+  week, or changing the season takes them out of the URL as well as off the
+  screen;
+- **a result on a club's schedule opens that game**, where there is a page
+  behind it: the game has to have been played and the week file it reads has
+  to be one this export built. `gameOpenable` is the one answer to that
+  question, shared by the schedule row and the scoreboard card, so the two
+  cannot come to differ about which games are worth a tap. It is asked of
+  each game, never of the week: Codex caught a first draft that asked it of
+  the week's first game, which would have taken the tap off every finished
+  game sitting below a postponed or unscored one.
+
 One trap worth naming: `rating_model.config` **is** the elo block, not the
 whole configuration file — `build_ratings` stores `config['elo']`. Reaching
 for a nested `'elo'` key finds nothing and silently plays every upcoming game

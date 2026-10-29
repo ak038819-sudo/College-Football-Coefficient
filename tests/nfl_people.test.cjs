@@ -242,11 +242,12 @@ function settle(ready, tries = 500) {
   });
 }
 
-async function open() {
+async function open(hash) {
   const root = site();
   const file = path.join(root, 'nfl.html');
   const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
-    url: 'file://' + file, runScripts: 'dangerously', resources: 'usable',
+    url: 'file://' + file + (hash || ''), runScripts: 'dangerously',
+    resources: 'usable',
     pretendToBeVisual: true,
     beforeParse(window) {
       window.scrollTo = () => {};
@@ -258,8 +259,10 @@ async function open() {
       };
     }
   });
+  // A hash can open the page on a player rather than the scoreboard.
   await settle(() => dom.window.document.querySelector(
-    '#cards .card, #refusal-list li'));
+    '#cards .card, #refusal-list li, #people-body .playerhead, '
+    + '#people-body h3'));
   return dom;
 }
 
@@ -326,7 +329,10 @@ test('opening a player from the draft says Players in the URL', async () => {
   await settle(() => /2026 draft/.test(body.textContent));
   assert.equal(dom.window.location.hash, '#league=nfl&section=people&view=draft');
   button(document, '#people-body', 'Josh Allen').click();
-  assert.equal(dom.window.location.hash, '#league=nfl&section=people');
+  // The player has his own address now, so the URL names him as well as
+  // the view he is drawn in.
+  assert.equal(dom.window.location.hash,
+    '#league=nfl&section=people&player=00-1');
   dom.window.history.back();
   await settle(() => /2026 draft/.test(body.textContent));
   assert.equal(dom.window.location.hash, '#league=nfl&section=people&view=draft');
@@ -399,3 +405,34 @@ test('a player page draws his injury report and names the 2015 boundary',
     assert.match(body.textContent, /dropped “Probable” after 2015/);
     dom.window.close();
   });
+
+/* ---- a player is a place, with an address ----------------------------- */
+
+test('a link to a player opens his page', async () => {
+  const dom = await open('#league=nfl&section=people&player=00-1');
+  const body = dom.window.document.getElementById('people-body');
+  await settle(() => /Buffalo Bills/.test(body.textContent));
+  assert.match(body.textContent, /Josh Allen/);
+  assert.equal(dom.window.document.getElementById('people').hidden, false,
+    'the People tab is not the one open');
+  dom.window.close();
+});
+
+test('leaving a player takes him out of the URL', async () => {
+  const dom = await open();
+  const document = dom.window.document;
+  const body = document.getElementById('people-body');
+  button(document, '#tabs', 'People').click();
+  await settle(() => button(document, '#people-body', 'Josh Allen'));
+  button(document, '#people-body', 'Josh Allen').click();
+  await settle(() => /Buffalo Bills/.test(body.textContent));
+  assert.equal(dom.window.location.hash,
+    '#league=nfl&section=people&player=00-1');
+  const back = [...body.querySelectorAll('button')]
+    .find(node => /All players|Search results/.test(node.textContent));
+  assert.ok(back, 'no way back out of the player');
+  back.click();
+  assert.equal(dom.window.location.hash, '#league=nfl&section=people');
+  await new Promise(resolve => setTimeout(resolve, 50));
+  dom.window.close();
+});
