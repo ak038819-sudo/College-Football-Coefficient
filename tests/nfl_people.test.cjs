@@ -273,7 +273,7 @@ test('a leader opens his page, with a career row through the season in '
   const dom = await open();
   const document = dom.window.document;
   assert.equal(document.getElementById('refusal').hidden, true);
-  button(document, '#tabs', 'Players').click();
+  button(document, '#tabs', 'People').click();
   const body = document.getElementById('people-body');
   assert.match(body.textContent, /2026 regular-season leaders/);
   button(document, '#people-body', 'Josh Allen').click();
@@ -304,7 +304,7 @@ test('the header search finds a player and the draft links what it can',
     const body = document.getElementById('people-body');
     await settle(() => body.querySelectorAll('tbody tr').length === 3);
     assert.equal(document.getElementById('people').hidden, false);
-    button(document, '#people-views', 'Draft').click();
+    button(document, '#subnav', 'Draft').click();
     await settle(() => /2026 draft/.test(body.textContent));
     assert.match(body.textContent, /2 picks; 1 open a player page/);
     assert.ok(button(document, '#people-body', 'Josh Allen'));
@@ -343,7 +343,7 @@ test('a player page draws his snaps and says what the share is an average '
   + 'of', async () => {
     const dom = await open();
     const document = dom.window.document;
-    button(document, '#tabs', 'Players').click();
+    button(document, '#tabs', 'People').click();
     const body = document.getElementById('people-body');
     button(document, '#people-body', 'Josh Allen').click();
     await settle(() => /Snaps/.test(body.textContent));
@@ -361,7 +361,7 @@ test('a player page draws his injury report and names the 2015 boundary',
   async () => {
     const dom = await open();
     const document = dom.window.document;
-    button(document, '#tabs', 'Players').click();
+    button(document, '#tabs', 'People').click();
     const body = document.getElementById('people-body');
     button(document, '#people-body', 'Josh Allen').click();
     await settle(() => /Injury report/.test(body.textContent));

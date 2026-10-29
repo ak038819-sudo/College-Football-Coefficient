@@ -225,10 +225,12 @@ async function open(overrides, schedule, logos, media, standings, hash) {
     }
   });
   // Rendered means the panel THIS route asks for has content in it. A page
-  // opened on Rankings draws a board and no cards at all, so waiting for a
-  // card there would call a correct page "never rendered".
+  // opened on the Elo board draws rows and no cards at all, so waiting for
+  // a card there would call a correct page "never rendered". The last two
+  // are the People and Stats views that load history on demand.
   await settle(dom, () => dom.window.document.querySelector(
-    '#cards .card, #refusal-list li, #board tr, #groups tr'));
+    '#cards .card, #refusal-list li, #board tr, #groups tr,'
+    + ' #coach-career *, #track-record *'));
   dom.setLight = setLight;
   return dom;
 }
@@ -237,6 +239,32 @@ function click(dom, selector) {
   const node = dom.window.document.querySelector(selector);
   assert.ok(node, 'no node for ' + selector);
   node.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+}
+
+/* Open a tab, and a view inside it where the fold put one.
+ *
+ * The page shows the five tabs every league shows, so what used to be the
+ * Rankings, Coaches, History and Games tabs are views of Standings, People
+ * and Stats, or Home. Driving the real controls -- the tab, then the strip
+ * under it -- is the point: a test that reached straight for a panel would
+ * pass with the nav broken.
+ */
+const FOLD = {
+  games: ['home', null],
+  rankings: ['standings', 'elo'],
+  standings: ['standings', null],
+  coaches: ['people', 'coaches'],
+  history: ['stats', null],
+  people: ['people', null],
+  teams: ['teams', null],
+  home: ['home', null],
+  stats: ['stats', null]
+};
+
+function go(dom, name) {
+  const [tab, view] = FOLD[name] || [name, null];
+  click(dom, `#tabs button[data-tab="${tab}"]`);
+  if (view) click(dom, `#subnav button[data-view="${view}"]`);
 }
 
 // --- the page draws what the export says -----------------------------------
@@ -271,7 +299,7 @@ test('a game with no kickoff time says so rather than showing midnight',
 
 test('the rankings tab ranks teams with whole-number ratings', async () => {
   const dom = await open();
-  click(dom, '#tabs button[data-tab="rankings"]');
+  go(dom, 'rankings');
   // The data cells only. The last cell is the follow control, which has its
   // own tests; reading it here would make this one fail for a reason that
   // has nothing to do with ranks or ratings.
@@ -286,7 +314,7 @@ test('the rankings tab ranks teams with whole-number ratings', async () => {
 
 test('standings group by division and are ordered by record', async () => {
   const dom = await open();
-  click(dom, '#tabs button[data-tab="standings"]');
+  go(dom, 'standings');
   const headings = [...dom.window.document.querySelectorAll('#groups h3')]
     .map(node => node.textContent);
   assert.deepEqual(headings, ['AFC East', 'AFC West', 'NFC West']);
@@ -317,7 +345,7 @@ test('the league selector offers the launched leagues, with the NFL selected',
     dom.window.close();
   });
 
-test('an export without the people layer says so on the Players tab',
+test('an export without the people layer says so on the People tab',
   async () => {
     // This fixture's manifest names no `files.people`, which is every export
     // before schema 3 and the one on main until the first refresh after the
@@ -328,8 +356,8 @@ test('an export without the people layer says so on the Players tab',
     const dom = await open();
     const document = dom.window.document;
     const tab = [...document.querySelectorAll('#tabs button')]
-      .find(node => node.textContent === 'Players');
-    assert.ok(tab && !tab.disabled, 'the Players tab is offered');
+      .find(node => node.textContent === 'People');
+    assert.ok(tab && !tab.disabled, 'the People tab is offered');
     tab.click();
     assert.equal(document.getElementById('people').hidden, false);
     assert.match(document.getElementById('people-body').textContent,
@@ -574,7 +602,7 @@ test('a card draws each club\'s mark, and keeps its column without one',
     // sliding its name under the logo column.
     const second = dom.window.document.querySelectorAll('#cards .card')[0];
     assert.ok(second);
-    click(dom, '#tabs button[data-tab="rankings"]');
+    go(dom, 'rankings');
     const marked = dom.window.document.querySelectorAll('#board img.mark');
     assert.equal(marked.length, 2, 'KC and BUF are marked, LA is not');
   });
@@ -593,7 +621,7 @@ test('the rank cell keeps the table layout when a mark is beside the name',
     // `td.rk { display: inline-block }` once took every rank cell out of the
     // table layout on the college side. The flex box here is the wrapper.
     const dom = await withLogos();
-    click(dom, '#tabs button[data-tab="rankings"]');
+    go(dom, 'rankings');
     const cell = dom.window.document.querySelector('#board td.teamcell');
     assert.ok(cell.querySelector('span.with-mark'),
       'the mark and the name share a wrapper inside the cell');
@@ -705,7 +733,7 @@ test('the NFL writes its own favorites key, never football\'s', async () => {
   // A franchise key in football's list would be drawn as a football team
   // that does not exist. ncaambb_app owns this rule; the page must use it.
   const dom = await open();
-  click(dom, '#tabs button[data-tab="rankings"]');
+  go(dom, 'rankings');
   click(dom, '#board tr .star');
   assert.deepEqual(JSON.parse(dom.window.localStorage.getItem(NFL_KEY)), [KC]);
   assert.equal(dom.window.localStorage.getItem('elocast.favorites.v1'), null,
@@ -715,7 +743,7 @@ test('the NFL writes its own favorites key, never football\'s', async () => {
 
 test('the star toggles, and says which team it is for', async () => {
   const dom = await open();
-  click(dom, '#tabs button[data-tab="rankings"]');
+  go(dom, 'rankings');
   const star = () => dom.window.document.querySelector('#board tr .star');
   assert.equal(star().getAttribute('aria-pressed'), 'false');
   assert.match(star().getAttribute('aria-label'), /^Follow Kansas City/);
@@ -731,7 +759,7 @@ test('the star toggles, and says which team it is for', async () => {
 test('a saved follow is read back on the next visit', async () => {
   const dom = await open();
   dom.window.localStorage.setItem(NFL_KEY, JSON.stringify([BUF]));
-  click(dom, '#tabs button[data-tab="rankings"]');
+  go(dom, 'rankings');
   const pressed = [...dom.window.document.querySelectorAll('#board .star')]
     .filter(b => b.getAttribute('aria-pressed') === 'true')
     .map(b => b.getAttribute('aria-label'));
@@ -759,9 +787,9 @@ test('My teams first appears only once something is followed', async () => {
   const dom = await open();
   assert.equal(dom.window.document.querySelector('#slate-filters button'), null,
     'a control that can only be pressed to no effect is worse than none');
-  click(dom, '#tabs button[data-tab="rankings"]');
+  go(dom, 'rankings');
   click(dom, '#board tr .star');
-  click(dom, '#tabs button[data-tab="games"]');
+  go(dom, 'games');
   assert.ok(dom.window.document.querySelector('#slate-filters button'));
   dom.window.close();
 });
@@ -777,8 +805,8 @@ test('My teams first lifts followed games and leaves the rest in order',
     const before = names();
     assert.match(before[0], /Rams/);
     dom.window.localStorage.setItem(NFL_KEY, JSON.stringify([BUF]));
-    click(dom, '#tabs button[data-tab="rankings"]');
-    click(dom, '#tabs button[data-tab="games"]');
+    go(dom, 'rankings');
+    go(dom, 'games');
     click(dom, '#slate-filters button');
     const after = names();
     assert.match(after[0], /Bills/, 'the followed game comes first');
@@ -798,8 +826,8 @@ test('a followed side is marked on the card but is not a control', async () => {
   // along with the keyboard behaviour it had to take on.)
   const dom = await open();
   dom.window.localStorage.setItem(NFL_KEY, JSON.stringify([KC]));
-  click(dom, '#tabs button[data-tab="rankings"]');
-  click(dom, '#tabs button[data-tab="games"]');
+  go(dom, 'rankings');
+  go(dom, 'games');
   click(dom, '#weeks button');                   // week 1: KC v BUF
   const card = dom.window.document.querySelector('#cards .card');
   assert.ok(card.querySelector('.fav'), 'the followed side is marked');
@@ -817,7 +845,7 @@ test('a page whose storage throws still draws', async () => {
     configurable: true,
     get() { throw new Error('SecurityError'); }
   });
-  click(dom, '#tabs button[data-tab="rankings"]');
+  go(dom, 'rankings');
   assert.ok(dom.window.document.querySelector('#board tr'),
     'the board still draws with no favorites at all');
   assert.equal(
@@ -835,7 +863,7 @@ test('the rail stops at ten however many teams are rated', async () => {
   }));
   const dom = await open(null, null, null, null, many);
   assert.equal(dom.window.document.querySelectorAll('#rail li').length, 10);
-  click(dom, '#tabs button[data-tab="rankings"]');
+  go(dom, 'rankings');
   assert.equal(dom.window.document.querySelectorAll('#board tr').length, 18,
     'the full board is not capped; only the rail is');
   dom.window.close();
@@ -864,8 +892,8 @@ test('My teams first leaves three unfollowed games in the order they had',
     const before = order();
     assert.equal(before.length, 4);
     dom.window.localStorage.setItem(NFL_KEY, JSON.stringify([BUF]));
-    click(dom, '#tabs button[data-tab="rankings"]');
-    click(dom, '#tabs button[data-tab="games"]');
+    go(dom, 'rankings');
+    go(dom, 'games');
     click(dom, '#slate-filters button');
     const after = order();
     assert.match(after[0], /Bills/, 'the followed game is lifted');
@@ -892,13 +920,76 @@ function pressedTab(dom) {
   return button ? button.textContent : null;
 }
 
+function pressedView(dom) {
+  const button = dom.window.document.querySelector(
+    '#subnav button[aria-pressed="true"]');
+  return button ? button.textContent : null;
+}
+
+test('the tab row is the five every league shows, in that order',
+  async () => {
+    const leagues = require(path.join(UI, 'ncaambb_app.js'));
+    const dom = await open();
+    const drawn = [...dom.window.document.querySelectorAll('#tabs button')]
+      .map(node => [node.dataset.tab, node.textContent]);
+    assert.deepEqual(drawn, leagues.tabs());
+    // And every one of them works here: the NFL is the league with the most
+    // behind it, so a disabled tab would mean the fold lost something.
+    assert.deepEqual([...dom.window.document.querySelectorAll('#tabs button')]
+      .filter(node => node.disabled).map(node => node.dataset.tab), []);
+    dom.window.close();
+  });
+
+test('a tab with one view draws no strip to choose it from', async () => {
+  const dom = await open();
+  const subnav = dom.window.document.getElementById('subnav');
+  assert.equal(subnav.hidden, true, 'Home offers a choice of one');
+  go(dom, 'standings');
+  assert.equal(subnav.hidden, false);
+  assert.deepEqual([...subnav.querySelectorAll('button')]
+    .map(node => node.textContent), ['Divisions', 'Elo']);
+  go(dom, 'people');
+  assert.deepEqual([...subnav.querySelectorAll('button')]
+    .map(node => node.textContent), ['Players', 'Draft', 'Coaches']);
+  dom.window.close();
+});
+
 test('a link to a section opens on that section', async () => {
   const dom = await open(null, null, null, null, null,
-    '#league=nfl&section=rankings');
+    '#league=nfl&section=standings&view=elo');
   // The page's own default is Home, which draws the scoreboard. So this
   // asserts the hash won, not merely that something rendered.
   assert.deepEqual(visible(dom), ['rankings']);
-  assert.equal(pressedTab(dom), 'Rankings');
+  assert.equal(pressedTab(dom), 'Standings');
+  assert.equal(pressedView(dom), 'Elo');
+  dom.window.close();
+});
+
+test('every link to a tab this page used to have still opens it', async () => {
+  // Rankings, Coaches, History and Games were tabs of their own before the
+  // five-tab nav, and links naming them are published. Each must land on
+  // the panel that material lives in now -- not on the page's default,
+  // which is what an unrecognised section gives.
+  const cases = [['rankings', 'rankings', 'Standings'],
+                 ['coaches', 'coaches', 'People'],
+                 ['history', 'history', 'Stats'],
+                 ['games', 'scoreboard', 'Home']];
+  for (const [section, panel, tab] of cases) {
+    const dom = await open(null, null, null, null, null,
+      '#league=nfl&section=' + section);
+    assert.deepEqual(visible(dom), [panel], section);
+    assert.equal(pressedTab(dom), tab, section);
+    dom.window.close();
+  }
+});
+
+test('a view this tab does not have is dropped, not drawn', async () => {
+  // `draft` is a People view. Under Standings it names nothing, and a page
+  // that honoured it would show a reader an empty screen from a link.
+  const dom = await open(null, null, null, null, null,
+    '#league=nfl&section=standings&view=draft');
+  assert.deepEqual(visible(dom), ['standings']);
+  assert.equal(pressedView(dom), 'Divisions');
   dom.window.close();
 });
 
@@ -912,20 +1003,20 @@ test('a link with no section opens on the page default', async () => {
 test('pressing a tab puts it in the URL, in the shared league form',
   async () => {
     const dom = await open();
-    click(dom, '#tabs button[data-tab="standings"]');
+    go(dom, 'standings');
     assert.equal(dom.window.location.hash, '#league=nfl&section=standings');
     // Home states no section, exactly as switchLeague writes it, so the two
     // ways of arriving at the NFL's home screen are one string.
-    click(dom, '#tabs button[data-tab="home"]');
+    go(dom, 'home');
     assert.equal(dom.window.location.hash, '#league=nfl');
     dom.window.close();
   });
 
 test('the back button returns to the tab before it', async () => {
   const dom = await open();
-  click(dom, '#tabs button[data-tab="standings"]');
+  go(dom, 'standings');
   assert.deepEqual(visible(dom), ['standings']);
-  click(dom, '#tabs button[data-tab="rankings"]');
+  go(dom, 'rankings');
   assert.deepEqual(visible(dom), ['rankings']);
   dom.window.history.back();
   await settle(dom, () => dom.window.location.hash
@@ -937,12 +1028,12 @@ test('the back button returns to the tab before it', async () => {
 
 test('a hash naming a section this page cannot draw leaves the tab alone',
   async () => {
-    // `stats` is a football section the NFL does not have at all, so no tab
-    // and no panel can answer it. A link to it must land on something
-    // rather than hiding every panel, which is the empty page the disabled
-    // state exists to prevent.
+    // `recruiting` is a section no league here has, so no tab and no panel
+    // can answer it. A link to it must land on something rather than hiding
+    // every panel, which is the empty page the disabled state exists to
+    // prevent.
     const dom = await open(null, null, null, null, null,
-      '#league=nfl&section=stats');
+      '#league=nfl&section=recruiting');
     assert.deepEqual(visible(dom), ['scoreboard']);
     dom.window.close();
   });
@@ -969,10 +1060,10 @@ test('a football hash, which names no league, is not read here either',
 test("pressing a tab keeps the rest of the reader's route", async () => {
   const dom = await open(null, null, null, null, null,
     '#league=nfl&ref=newsletter&section=standings');
-  click(dom, '#tabs button[data-tab="rankings"]');
+  go(dom, 'rankings');
   // Where the reader came from belongs to them, not to the tab they pressed.
   assert.match(dom.window.location.hash, /ref=newsletter/);
-  assert.match(dom.window.location.hash, /section=rankings/);
+  assert.match(dom.window.location.hash, /section=standings&view=elo/);
   dom.window.close();
 });
 
@@ -983,8 +1074,8 @@ test('pressing the tab already open does not add a history entry',
     // (measured), so the page's own guard is belt and braces -- this asserts
     // the behaviour the reader gets, which is the thing that must hold.
     const dom = await open();
-    click(dom, '#tabs button[data-tab="standings"]');
-    click(dom, '#tabs button[data-tab="standings"]');
+    go(dom, 'standings');
+    go(dom, 'standings');
     dom.window.history.back();
     await settle(dom, () => visible(dom).join() === 'scoreboard');
     assert.equal(pressedTab(dom), 'Home',
@@ -992,13 +1083,13 @@ test('pressing the tab already open does not add a history entry',
     dom.window.close();
   });
 
-test('typing in the header search puts the Players tab in the URL',
+test('typing in the header search puts the People tab in the URL',
   async () => {
     // The search box is the one on the page and it moves the reader to
-    // Players. That is a section change like any other: a URL still naming
+    // People. That is a section change like any other: a URL still naming
     // the tab they left is what a share or a reload would open.
     const dom = await open(null, null, null, null, null,
-      '#league=nfl&section=rankings');
+      '#league=nfl&section=standings&view=elo');
     const box = dom.window.document.getElementById('search');
     box.value = 'Mahomes';
     box.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
@@ -1007,6 +1098,6 @@ test('typing in the header search puts the Players tab in the URL',
     // And Back returns to where they were, rather than skipping it.
     dom.window.history.back();
     await settle(dom, () => visible(dom).join() === 'rankings');
-    assert.equal(pressedTab(dom), 'Rankings');
+    assert.equal(pressedTab(dom), 'Standings');
     dom.window.close();
   });

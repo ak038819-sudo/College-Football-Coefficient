@@ -737,6 +737,48 @@ entry for an assignment that leaves the URL the same (measured 2026-10-27).
 The guard stays as belt and braces; the test asserts the reader-facing
 behaviour, which holds either way.
 
+**Five tabs, the same five every league shows** (2026-10-29). Austin: *"Can
+we make the tabs more succinct? ... I want to make our visual layouts and
+Identity consistent."* This page drew eight — Standings and Rankings side by
+side reading as one thing, Games drawing the panel Home already drew, and
+Coaches, History and Players as top-level tabs where the other leagues fold
+the same material under People and Stats. Basketball drew six. The names and
+the order now live in `ncaambb_app.js` (`TABS`, `tabs()`, `tabLabel()`), for
+the same reason `SECTIONS` does: a per-page list is a list that drifts.
+
+Nothing was dropped. What was a tab is a **view**:
+
+| was a tab | is now |
+| --- | --- |
+| Rankings | Standings › Elo |
+| Coaches | People › Coaches |
+| History | Stats |
+| Games | Home |
+| Players | People › Players |
+
+A page decides which of the five it can *draw* — an empty tab is worse than
+an absent one, which is why basketball shows Stats, Teams and People
+disabled — but not what they are called or what order they come in. The
+college page's tabs are hand-written markup rather than built from the
+registry, so a test asserts the row it draws equals `tabs()`; its `rankings`
+section keeps its name, because football links naming it are published.
+
+Four rules, each with a test and each mutation-checked:
+
+- a section this page used to name — `rankings`, `coaches`, `history`,
+  `games` — still opens the panel that material lives in now, because links
+  to them are published. They are read, never written;
+- the first view of a tab states nothing in the URL, so `section=people` and
+  `section=people&view=players` cannot be two strings for one place;
+- a view the open tab does not have is dropped rather than drawn: a
+  hand-edited `view=draft` under Standings shows Standings, not nothing;
+- a view does not ride along into a section with no views. Opening a club
+  from the Elo board left `view=elo` in the URL until a test caught it, which
+  gave one club page two addresses.
+
+A tab with a single view draws no strip: a control offering one choice is
+chrome that says nothing.
+
 One trap worth naming: `rating_model.config` **is** the elo block, not the
 whole configuration file — `build_ratings` stores `config['elo']`. Reaching
 for a nested `'elo'` key finds nothing and silently plays every upcoming game

@@ -204,17 +204,21 @@
   var loader = window.ncaambbLoader;
   var app = window.ncaambbApp;
   var BASE = 'data/ncaambb/';
-  var TABS = ['home', 'standings', 'teams', 'people', 'games'];
   // Which panel each tab shows. A league having a section is not the same as
   // this page having a panel for it: basketball genuinely holds teams and
   // people, and switchLeague is right to carry those sections, but the
   // preview draws only the board and the scoreboard. A tab with no panel
   // behind it hid both and left an empty page, which is the thing the Stats
   // tab is deliberately disabled to avoid.
-  var PANELS = { home: 'scoreboard', games: 'scoreboard',
-                 standings: 'standings' };
-  var LABELS = { home: 'Home', stats: 'Stats', standings: 'Standings',
-                 teams: 'Teams', people: 'People', games: 'Games' };
+  //
+  // The tabs themselves, and their names and order, come from the shared
+  // registry: every league shows the same five. This page used to draw six,
+  // because Games had a tab of its own while drawing the scoreboard that
+  // Home draws.
+  var PANELS = { home: 'scoreboard', standings: 'standings' };
+  // Sections this page no longer names in a URL but must keep opening,
+  // because links to them are published.
+  var LEGACY = { games: 'home' };
   // What a URL naming no section means: the ratings board, which is what the
   // preview is for. It is a constant because the route code and the initial
   // state have to agree about it -- see tabFromHash.
@@ -234,8 +238,7 @@
    * `#league=ncaambb&section=standings`, and home states no section.
    */
   function routableTab(name) {
-    return TABS.indexOf(name) >= 0 && Boolean(PANELS[name])
-      && app.hasSection(app.BASKETBALL, name);
+    return app.tabLabel(name) !== null && Boolean(PANELS[name]);
   }
 
   function tabFromHash() {
@@ -253,6 +256,7 @@
     // happen by navigation, but a hand-edited link can say it.
     if (route.league !== app.BASKETBALL) return null;
     var section = route.params.section || 'home';
+    if (LEGACY[section]) section = LEGACY[section];
     // An unroutable section -- a disabled tab, or a name this page has no
     // panel for -- leaves the tab alone rather than opening an empty panel.
     return routableTab(section) ? section : null;
@@ -268,8 +272,10 @@
     });
     if (name !== 'home') params.section = name;
     var hash = app.writeRoute({ league: app.BASKETBALL, params: params });
-    // Assigning an unchanged hash would still push a history entry, so a
-    // reader pressing the same tab twice would need Back twice to leave.
+    // Pressing the same tab twice must not cost a second Back to leave.
+    // Chromium pushes no entry for an assignment that leaves the URL the
+    // same (measured 2026-10-27), so this guard is what makes that true
+    // anywhere a browser is less careful, not what makes it true here.
     if (hash !== window.location.hash) window.location.hash = hash;
   }
 
@@ -303,13 +309,13 @@
   function tabButtons() {
     var host = el('tabs');
     host.innerHTML = '';
-    TABS.concat(['stats']).forEach(function (name) {
+    app.tabs().forEach(function (pair) {
+      var name = pair[0];
       var button = document.createElement('button');
       button.type = 'button';
-      button.textContent = LABELS[name];
+      button.textContent = pair[1];
       button.dataset.tab = name;
-      var ready = app.hasSection(app.BASKETBALL, name)
-        && Boolean(PANELS[name]);
+      var ready = routableTab(name);
       // A feature appears only where it is ready. Stats carries nothing until
       // Player Impact or Roster Scenarios exists, so it is shown disabled
       // rather than opening an empty panel.

@@ -22,8 +22,12 @@ class LocalAssets extends ResourceLoader {
     return Promise.resolve(fs.readFileSync(filename));
   }
 }
+// 500 ticks, not 300: this file boots the whole dashboard once per test, and
+// adding the shared-tabs test was enough to push the section-marking test
+// past a 3s budget on one run while the page was perfectly correct. Waiting
+// longer weakens nothing -- a page that never marks the section still fails.
 async function until(w,predicate){
-  for(let i=0;i<300;i++){if(predicate()) return;await new Promise(r=>setTimeout(r,10));}
+  for(let i=0;i<500;i++){if(predicate()) return;await new Promise(r=>setTimeout(r,10));}
   throw new Error('never reached');
 }
 /** The bar is static markup, so it is in the DOM before a single script has
@@ -50,6 +54,22 @@ function open({standalone=false,display=false}={}){
     }});
   return {dom,w:dom.window,d:dom.window.document,errors};
 }
+
+test('the masthead draws the five tabs every league draws',async()=>{
+  // Austin, 2026-10-29: one nav across the three leagues. The NFL and
+  // basketball pages BUILD their rows from the registry, so they cannot
+  // drift; this page's are hand-written markup, which can. The labels and
+  // the order are what a reader crossing leagues sees, so both are pinned.
+  const leagues=require(path.join(root,'ui','ncaambb_app.js'));
+  const {dom,d}=open();
+  try {
+    await booted(dom.window,d);
+    const drawn=Array.from(d.querySelectorAll('#tabs a'),
+      a=>[a.dataset.section==='rankings'?'standings':a.dataset.section,
+          a.textContent.trim()]);
+    assert.deepEqual(drawn,leagues.tabs());
+  } finally { dom.window.close(); }
+});
 
 test('the app bar and the masthead offer the same sections',async()=>{
   const {dom,d}=open();

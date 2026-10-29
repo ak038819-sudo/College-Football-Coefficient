@@ -189,6 +189,26 @@ test('the league selector is there, with basketball selected', async () => {
   dom.window.close();
 });
 
+test('the tab row is the five every league shows, in that order',
+  async () => {
+    // This page used to draw six, Games among them, which opened the same
+    // scoreboard Home opens. One nav across the three leagues is the point.
+    const app = require('../ui/ncaambb_app.js');
+    const dom = await open();
+    const drawn = [...dom.window.document.querySelectorAll('#tabs button')]
+      .map(node => [node.dataset.tab, node.textContent]);
+    assert.deepEqual(drawn, app.tabs());
+    dom.window.close();
+  });
+
+test('a link to the Games section still opens the scoreboard', async () => {
+  // Games was a tab here before the five, so links naming it are published.
+  const dom = await open(undefined, undefined, '#league=ncaambb&section=games');
+  await settle(dom, () => dom.window.document.querySelector('#cards .card'));
+  assert.equal(dom.window.document.getElementById('scoreboard').hidden, false);
+  dom.window.close();
+});
+
 test('the Stats tab is present and disabled, not silently missing', async () => {
   // An empty tab is worse than an absent one, and a tab that vanishes is
   // worse than one that says "not yet".
@@ -311,8 +331,10 @@ test('a stale export is still drawn, and badged red', async () => {
 
 async function scoreboard(dom) {
   const document = dom.window.document;
+  // The scoreboard is Home now: Games was a sixth tab drawing the panel
+  // Home already draws, and every league shows the same five.
   const games = [...document.querySelectorAll('#tabs button')]
-    .find(button => button.textContent === 'Games');
+    .find(button => button.textContent === 'Home');
   games.click();
   await settle(dom, () => document.querySelector('#cards .card'));
   return document;
