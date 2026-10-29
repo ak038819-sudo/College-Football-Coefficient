@@ -814,7 +814,10 @@ The rules, each with a test and each mutation-checked:
   behind it: the game has to have been played and the week file it reads has
   to be one this export built. `gameOpenable` is the one answer to that
   question, shared by the schedule row and the scoreboard card, so the two
-  cannot come to differ about which games are worth a tap.
+  cannot come to differ about which games are worth a tap. It is asked of
+  each game, never of the week: Codex caught a first draft that asked it of
+  the week's first game, which would have taken the tap off every finished
+  game sitting below a postponed or unscored one.
 
 One trap worth naming: `rating_model.config` **is** the elo block, not the
 whole configuration file — `build_ratings` stores `config['elo']`. Reaching

@@ -1378,7 +1378,6 @@
       host.appendChild(empty);
       return;
     }
-    var openable = gameOpenable(games[0]);
     var mine = favorites();
     if (state.mine) games = myTeamsFirst(games, mine);
     games.forEach(function (game) {
@@ -1395,7 +1394,11 @@
       // reaching the card. The keyboard handler answers only to the card
       // itself: a keydown on a name BUBBLES here, and acting on it would
       // open the game from under a reader pressing Enter on a club.
-      var clickable = openable && app.isFinal(game);
+      // Asked of THIS game, never of the week: a week whose first game is
+      // postponed or still has no score would otherwise take the tap off
+      // every finished game beside it, and the same game stays reachable
+      // from its club's schedule, which asks per row.
+      var clickable = gameOpenable(game);
       var card = document.createElement('div');
       card.className = clickable ? 'card open' : 'card';
       if (clickable) {

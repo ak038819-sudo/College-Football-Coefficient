@@ -218,13 +218,14 @@ function weekPayload(over) {
   }, over || {});
 }
 
-function site(withGames, payloadOver) {
+function site(withGames, payloadOver, slate) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nfl-game-'));
   const base = path.join(root, 'data', 'nfl');
   fs.mkdirSync(path.join(base, 'seasons'), { recursive: true });
   const seasonText = 'window.NFL_SEASONS=(window.NFL_SEASONS||{});'
     + 'window.NFL_SEASONS[2026]='
-    + JSON.stringify({ season: 2026, board: board(), games: schedule() })
+    + JSON.stringify({ season: 2026, board: board(),
+                       games: slate || schedule() })
     + ';\n';
   const teamsText = 'window.NFL_TEAMS=' + JSON.stringify(teams()) + ';\n';
   fs.writeFileSync(path.join(base, 'seasons', '2026.js'), seasonText);
@@ -270,8 +271,8 @@ function settle(ready, tries = 500) {
   });
 }
 
-async function open(withGames, payloadOver, hash) {
-  const root = site(withGames, payloadOver);
+async function open(withGames, payloadOver, hash, slate) {
+  const root = site(withGames, payloadOver, slate);
   const file = path.join(root, 'nfl.html');
   const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
     url: 'file://' + file + (hash || ''),
@@ -700,5 +701,31 @@ test('a schedule result with no game page behind it is plain text',
       .some(node => /^W 27\u201320$/.test(node.textContent));
     assert.equal(offered, false, 'the row offered a game page that is absent');
     assert.match(doc.getElementById('teams').textContent, /W 27\u201320/);
+    dom.window.close();
+  });
+
+test('an unplayed game first in the week does not close the finals beside it',
+  async () => {
+    // Codex, PR #152: the openability check moved from the week to the
+    // first game of it, so one postponed or unscored game at the top took
+    // the tap off every finished game in the same week.
+    const slate = [
+      { id: 'g0', date: '2026-09-13', at: '2026-09-13T13:00:00Z', week: 1,
+        type: 'regular', home: BUF, away: KC, home_points: null,
+        away_points: null, rateable: 0, venue: 'Highmark Stadium' },
+      ...schedule()
+    ];
+    const dom = await open(true, undefined, undefined, slate);
+    const doc = dom.window.document;
+    await settle(() => doc.querySelectorAll('#cards .card').length === 2);
+    const cards = [...doc.querySelectorAll('#cards .card')];
+    assert.equal(cards.length, 2);
+    assert.equal(cards[0].classList.contains('open'), false,
+      'a game with no score offered a page');
+    assert.equal(cards[1].classList.contains('open'), true,
+      'the finished game lost its page to the one above it');
+    cards[1].dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    await settle(() => doc.querySelector('#game table'));
+    assert.equal(dom.window.location.hash, '#league=nfl&game=g1');
     dom.window.close();
   });
