@@ -206,11 +206,31 @@ UTC on 2026-10-21 (run 39521046771): the counter had not reset — it had gone
 genuinely rolling and seven days long, so the 2026-10-20 spend does not age
 out until 2026-10-27.
 
-So the cap sits on a window of at least seven days, at roughly a thousand
-requests, and the only remedies are a larger allowance or waiting for the
-window to roll. The diagnosis always comes from asking the usage endpoint
-rather than inferring it from a 429 — three times now the inference has been
-wrong and the endpoint has been right. Two reasons, both learned from that run. A season whose first
+**That was wrong too, and the provider says so in words.** Measured
+2026-10-27, once the 2026-10-20 spend had aged out of the seven-day window
+(runs 40464788173, 40464929729 and 40465293133): `/info/usage` reported **202
+requests over the seven days** — 188 basketball — and three minutes later the
+refresh was refused with 429 on its **first** request, as were four retries
+and three more calls spaced five seconds apart. The body, which
+`report_burst` had been throwing away and now prints, says:
+
+```json
+{"message":"Monthly call quota exceeded."}
+```
+
+So the cap is **monthly**, and the seven-day figure `/info/usage` prints is a
+reporting window, not the allowance. It resets with the month, not seven days
+after a spend.
+
+The lesson is narrower than "ask the usage endpoint". The endpoint answers a
+different question from the one that matters: it says what has been spent over
+its own window, and it cannot say whether a request will be allowed. Only a
+real data request can, and only its **body** distinguishes a pacing problem
+from an exhausted allowance. Four inferences from a bare 429 have now been
+wrong — too fast, daily, weekly-rolling, and seven-days-at-a-thousand — and
+the one sentence of JSON settled it immediately.
+
+So the remedies are a larger allowance or waiting for the month to turn. Two reasons, both learned from that run. A season whose first
 request never cleared the limit means the quota is spent, so every later season
 would burn its full backoff to fail identically — 35 requests where 5 told the
 whole story. And a plain failure gets reported per season as "not stored",

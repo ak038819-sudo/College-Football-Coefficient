@@ -416,22 +416,36 @@ def test_a_release_key_can_never_be_mistaken_for_a_stage_key(polled):
             assert not (keys & stages), (season, poll, keys & stages)
 
 
-def test_a_poll_has_a_release_for_a_week_the_elo_table_has_not_reached(polled):
+def test_a_release_and_a_stage_can_name_the_same_week_and_still_not_collide(polled):
     """
-    The concrete form of the same point, measured rather than asserted: a
-    mid-season poll is released BEFORE that week's games, so the ballots run a
-    week ahead of the played weeks. Found from the data, so it holds whichever
-    season is current.
+    What makes the disjointness above worth asserting: both sides number their
+    weeks from the same sequence, so week 7's ballot and week 7's ratings are
+    two different moments wearing the same number, and only the key's prefix
+    separates them.
+
+    This used to assert the OPPOSITE shape -- that some poll release is for a
+    week the Elo stages have not reached -- which is true only in the window
+    between a release and that week's games. It went false on 2026-10-28 when
+    the refresh pulled in week 9's results while AP's week 9 release was still
+    the newest one, and took main's deploy down with it. A week number on both
+    sides is true of every week of every season once its games are played, and
+    where no season has played such a week yet there is nothing to compare, so
+    this skips rather than failing the publish.
     """
-    ahead = False
-    for payload in polled.values():
-        played = {s[3] for s in payload["stages"] if s[3] is not None}
+    compared = 0
+    for season, payload in polled.items():
+        weeks = {s[3] for s in payload["stages"] if s[3] is not None}
+        stages = {s[0] for s in payload["stages"]}
         for poll in polls(payload):
-            weeks = {r["week"] for r in poll_releases(payload, poll)
-                     if r["season_type"] == "regular"}
-            if weeks - played:
-                ahead = True
-    assert ahead, "no poll release past the last played week -- the check proves nothing"
+            shared = {r["week"] for r in poll_releases(payload, poll)
+                      if r["season_type"] == "regular"} & weeks
+            for release in poll_releases(payload, poll):
+                if release["season_type"] != "regular" or release["week"] not in shared:
+                    continue
+                compared += 1
+                assert release["key"] not in stages, (season, poll, release)
+    if not compared:
+        pytest.skip("no season has played a week a poll has also released")
 
 
 def test_the_page_reads_only_poll_fields_the_payload_ships(repo_root):

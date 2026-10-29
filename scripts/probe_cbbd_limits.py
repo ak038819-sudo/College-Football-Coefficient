@@ -144,12 +144,19 @@ def report_burst(key, count):
     print('| # | status | seconds | limit headers |')
     print('| --- | --- | --- | --- |')
     first_429 = None
+    refusal = None
     for index in range(1, count + 1):
-        status, headers, _, took = call(BASKETBALL, PROBE_PATH, PROBE_PARAMS,
-                                        key=key)
+        status, headers, body, took = call(BASKETBALL, PROBE_PATH,
+                                          PROBE_PARAMS, key=key)
         limits = interesting(headers)
         print(f'| {index} | {status} | {took:.2f} |'
               f' {json.dumps(limits) if limits else "none"} |')
+        if status != 200 and refusal is None:
+            # What the provider SAYS, not just the number it says it with. A
+            # 429 on the first request of a window with 800 requests of
+            # headroom is not a pacing problem, and the only thing that can
+            # tell the two apart is the body.
+            refusal = (status, (body or '').strip()[:300])
         if status == 429 and first_429 is None:
             first_429 = index
             if 'Retry-After' not in headers and 'retry-after' not in \
@@ -162,6 +169,9 @@ def report_burst(key, count):
         print(f'\nNo 429 in {count} unpaced requests.\n')
     else:
         print(f'\nFirst 429 at request {first_429}.\n')
+    if refusal:
+        print(f'What the provider said with its HTTP {refusal[0]}:'
+              f' `{refusal[1] or "an empty body"}`\n')
     return first_429
 
 
