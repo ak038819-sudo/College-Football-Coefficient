@@ -258,7 +258,7 @@
   var DEFAULT_TAB = 'standings';
   var state = { manifest: null, verdict: null, season: null, day: null,
                 filter: 'all', sort: 'tipoff', tab: DEFAULT_TAB,
-                team: null };
+                team: null, query: '' };
 
   /* A club in a URL is the provider's id and not the whole key:
    * `#league=ncaambb&section=teams&team=18`, not
@@ -376,6 +376,29 @@
       host.appendChild(button);
     });
     el('search').placeholder = app.searchPlaceholder(app.BASKETBALL);
+    // The header's search box finds clubs. It took typing and did nothing
+    // at all until now, which is worse than having no box: a reader cannot
+    // tell a control that found nothing from one that was never wired.
+    //
+    // It is the one search box on the page, so it takes the reader to the
+    // Teams tab rather than growing a second box inside it -- the pattern
+    // the NFL page already uses for players.
+    el('search').addEventListener('input', function () {
+      state.query = el('search').value;
+      // A search is a fresh choice, not a filter over the club already
+      // open: leaving that club drawn would hide the results behind it.
+      state.team = null;
+      if (state.verdict && state.verdict.ok) {
+        state.tab = 'teams';
+        // writeTeam, not writeTab: pressing the Teams tab keeps the club
+        // in the URL, which is right for a tab and wrong here. Typing left
+        // `team=1` on an address showing search results -- the page and
+        // the URL saying different things, which is the one thing the
+        // route is for.
+        writeTeam(null);
+      }
+      render();
+    });
   }
 
   function tabButtons() {
@@ -536,6 +559,7 @@
     var host = el('team-body');
     host.innerHTML = '';
     var row = state.team ? boardRow(state.team) : null;
+    if (!row && app.normalizeName(state.query)) return renderResults(host);
     if (state.team && !row) {
       // A club this season does not hold is said plainly, with the way out.
       backButton(host, '\u2190 All teams');
@@ -544,6 +568,37 @@
     }
     if (row) return renderClub(host, row);
     renderDirectory(host);
+  }
+
+  /* What the search box found. A flat list rather than the conference
+   * blocks: a reader who has typed a name is looking for one club, and
+   * grouping three results under three headings buries them. */
+  function renderResults(host) {
+    var payload = seasonPayload();
+    var found = app.searchTeams((payload && payload.board) || [],
+      window.NCAAMBB_TEAMS || {}, state.query, 25);
+    var line = document.createElement('p');
+    line.className = 'empty';
+    line.textContent = found.length
+      ? found.length + (found.length === 1 ? ' club matches ' : ' clubs match ')
+        + '\u201c' + state.query + '\u201d.'
+      : 'No club matches \u201c' + state.query + '\u201d.';
+    host.appendChild(line);
+    if (!found.length) return;
+    var block = document.createElement('div');
+    block.className = 'directory';
+    var list = document.createElement('ul');
+    found.forEach(function (row) {
+      var item = document.createElement('li');
+      item.appendChild(teamLink(row.team));
+      var rating = document.createElement('span');
+      rating.className = 'rating';
+      rating.textContent = app.ratingText(row.rating);
+      item.appendChild(rating);
+      list.appendChild(item);
+    });
+    block.appendChild(list);
+    host.appendChild(block);
   }
 
   function backButton(host, label) {
@@ -599,7 +654,10 @@
   }
 
   function renderClub(host, row) {
-    backButton(host, '\u2190 All teams');
+    // A reader who searched gets back to their results, not to the whole
+    // directory they never asked for.
+    backButton(host, app.normalizeName(state.query)
+      ? '\u2190 Search results' : '\u2190 All teams');
     var payload = seasonPayload();
     var rows = app.teamSchedule((payload && payload.games) || [], row.team);
     var head = document.createElement('div');

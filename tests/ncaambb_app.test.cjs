@@ -352,3 +352,71 @@ test("football's own router is untouched by a league parameter", () => {
   assert.deepEqual(withLeague, football,
     'a parameter football does not know must change nothing about its route');
 });
+
+/* ---- finding a club by name ------------------------------------------ */
+
+const CLUBS = {
+  't1': { name: 'Miami (FL)', school: 'Miami', abbr: 'MIA' },
+  't2': { name: 'North Carolina', school: 'North Carolina', abbr: 'UNC' },
+  't3': { name: "St. John's", school: "St. John's", abbr: 'SJU' },
+  't4': { name: 'Central Miami Tech', school: 'Central Miami Tech',
+          abbr: 'CMT' },
+  't5': { name: 'Hawaiʻi', school: 'Hawaiʻi', abbr: 'HAW' }
+};
+
+const BOARD = [
+  { team: 't1', rating: 1800 }, { team: 't2', rating: 1900 },
+  { team: 't3', rating: 1700 },
+  // Rated ABOVE Miami on purpose: a word match must not beat a match on
+  // the start of the name just because the club is better.
+  { team: 't4', rating: 2100 }, { team: 't5', rating: 1600 }
+];
+
+test('a club is found by the start of its name before a word inside one',
+  () => {
+    assert.deepEqual(app.searchTeams(BOARD, CLUBS, 'mia').map(r => r.team),
+      ['t1', 't4']);
+  });
+
+test('two clubs in the same tier come best-rated first', () => {
+  const board = [{ team: 't1', rating: 1800 }, { team: 't4', rating: 2100 }];
+  const clubs = { t1: { name: 'Miami' }, t4: { name: 'Miami Tech' } };
+  assert.deepEqual(app.searchTeams(board, clubs, 'miami').map(r => r.team),
+    ['t4', 't1']);
+});
+
+test('a club is found by its abbreviation as readily as by its name', () => {
+  assert.deepEqual(app.searchTeams(BOARD, CLUBS, 'unc').map(r => r.team),
+    ['t2']);
+});
+
+test('punctuation and accents are not something a reader has to type', () => {
+  assert.deepEqual(app.searchTeams(BOARD, CLUBS, 'st johns').map(r => r.team),
+    ['t3']);
+  assert.deepEqual(app.searchTeams(BOARD, CLUBS, 'hawaii').map(r => r.team),
+    ['t5']);
+});
+
+test('an empty query finds nothing, rather than everything', () => {
+  // Every name contains the empty string, so without its own guard this
+  // returns the whole board -- which the page would draw as "365 clubs
+  // match" the moment a reader cleared the box.
+  assert.deepEqual(app.searchTeams(BOARD, CLUBS, ''), []);
+  assert.deepEqual(app.searchTeams(BOARD, CLUBS, '   '), []);
+  assert.deepEqual(app.searchTeams(BOARD, CLUBS, '!!'), []);
+});
+
+test('a query matching nothing finds nothing', () => {
+  assert.deepEqual(app.searchTeams(BOARD, CLUBS, 'notaschool'), []);
+});
+
+test('the limit is honoured', () => {
+  const board = [];
+  const clubs = {};
+  for (let index = 0; index < 40; index += 1) {
+    board.push({ team: 'k' + index, rating: 1500 + index });
+    clubs['k' + index] = { name: 'Tech ' + index };
+  }
+  assert.equal(app.searchTeams(board, clubs, 'tech').length, 25);
+  assert.equal(app.searchTeams(board, clubs, 'tech', 5).length, 5);
+});
