@@ -954,3 +954,42 @@ test('a level score is reported without a verdict', async () => {
   assert.equal(cells[2], '70\u201370');
   dom.window.close();
 });
+
+test('a club\u2019s season is ordered by date, not by whether a tip-off is set',
+  async () => {
+    // Codex, PR #153: this comparator was copied from the scoreboard, which
+    // orders ONE day and rightly puts an undecided tip-off at the end of
+    // it. Over a season that put a November game still to be scheduled
+    // after a December game that has a time.
+    const slate = [
+      { id: 'g-dec', at: '2025-12-01T19:00:00Z', status: 'scheduled',
+        home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:2',
+        home_points: null, away_points: null },
+      { id: 'g-nov-tbd', at: '2025-11-01', time_tbd: 1, status: 'scheduled',
+        home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:3',
+        home_points: null, away_points: null },
+      // The ids sort the OTHER way from the tip-offs on purpose: with the
+      // early game named 'a' the id fallback produces the right order by
+      // itself, and the test passes with the tip-off comparison deleted.
+      { id: 'g-nov-a', at: '2025-11-01T23:00:00Z', status: 'final',
+        home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:2',
+        home_points: 81, away_points: 70 },
+      { id: 'g-nov-z', at: '2025-11-01T17:00:00Z', status: 'final',
+        home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:3',
+        home_points: 77, away_points: 60 }
+    ];
+    const dom = await open(undefined, slate,
+      '#league=ncaambb&section=teams&team=1');
+    const doc = dom.window.document;
+    await settle(dom, () => doc.querySelector('#team-body tbody tr'));
+    const dates = [...doc.querySelectorAll('#team-body tbody tr')]
+      .map(tr => tr.children[0].textContent);
+    assert.deepEqual(dates,
+      ['2025-11-01', '2025-11-01', '2025-11-01', '2025-12-01']);
+    // Within the one day, the known tip-offs come in order and the
+    // undecided one is last -- which is the rule the scoreboard has.
+    const against = [...doc.querySelectorAll('#team-body tbody tr')]
+      .map(tr => tr.children[1].textContent);
+    assert.deepEqual(against, ['vs BYU', 'vs Duke', 'vs BYU', 'vs Duke']);
+    dom.window.close();
+  });

@@ -481,13 +481,24 @@
         result: decided(points, against)
       });
     });
+    // THE DAY COMES FIRST. A scoreboard orders one day's games and rightly
+    // puts an undecided tip-off at the end of it; a season is ordered by
+    // date, and borrowing that rule here put a November game still to be
+    // scheduled after a December game that has a time. Tip-off decides
+    // only within a day.
     rows.sort(function (a, b) {
+      var da = dayOf(a.game) || '';
+      var db = dayOf(b.game) || '';
+      // A game with no date at all cannot be placed, so it goes last
+      // rather than sorting as the earliest game of the season.
+      if (Boolean(da) !== Boolean(db)) return da ? -1 : 1;
+      if (da !== db) return da < db ? -1 : 1;
       var ka = timeKnown(a.game) ? 0 : 1;
       var kb = timeKnown(b.game) ? 0 : 1;
       if (ka !== kb) return ka - kb;
-      var da = dayOf(a.game) || '';
-      var db = dayOf(b.game) || '';
-      if (da !== db) return da < db ? -1 : 1;
+      if (ka === 0 && a.game.at !== b.game.at) {
+        return a.game.at < b.game.at ? -1 : 1;
+      }
       return String(a.game.id).localeCompare(String(b.game.id));
     });
     return rows;

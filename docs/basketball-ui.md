@@ -300,6 +300,13 @@ wait on something.
   score is shown; `W`/`L` is not invented. A 2,400-game fixture produced two
   such rows, which is how this was noticed.
 
+**A season is ordered by date**, and the tip-off decides only within a day.
+The first version borrowed the scoreboard's comparator, which orders ONE day
+and rightly puts an undecided tip-off at the end of it; over a season that
+put a November game still to be scheduled after a December game with a time.
+Codex caught it. A game with no date at all goes last rather than sorting as
+the earliest game of the season.
+
 The club header's record is the **board's**, not the schedule's. Two numbers
 for one thing on one screen is a bug report waiting to be filed, and the
 board's is the one the ratings were built from.
