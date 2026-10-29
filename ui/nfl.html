@@ -694,7 +694,14 @@
     var place = placeFromHash();
     if (place) {
       if (place.tab !== state.tab) { state.tab = place.tab; changed = true; }
-      if (place.view !== state.view) { state.view = place.view; changed = true; }
+      if (place.view !== state.view) {
+        state.view = place.view;
+        // A person is open INSIDE a view. Going somewhere else -- by the
+        // back button as much as by the strip -- leaves them, or the page
+        // draws one player under a URL that names the draft.
+        state.player = null;
+        changed = true;
+      }
     }
     var code = teamCodeFromHash();
     if (code !== state.team) { state.team = code; changed = true; }
@@ -1806,6 +1813,11 @@
       state.view = 'players';
       state.tab = 'people';
       window.scrollTo(0, 0);
+      // A player opened from the Draft is shown under Players, so the URL
+      // has to say Players too. Leaving `view=draft` on it gave the screen
+      // an address that reloads as something else, and Back then restored
+      // the Draft view with the player still drawn over it.
+      writeTab('people', 'players');
       render();
     });
     return button;

@@ -314,6 +314,31 @@ test('the header search finds a player and the draft links what it can',
     dom.window.close();
   });
 
+test('opening a player from the draft says Players in the URL', async () => {
+  // Codex, PR #151: the handler showed Players and left `view=draft` on the
+  // address, so the screen reloaded as something else -- and Back restored
+  // the Draft view with the player still drawn over it.
+  const dom = await open();
+  const document = dom.window.document;
+  const body = document.getElementById('people-body');
+  button(document, '#tabs', 'People').click();
+  button(document, '#subnav', 'Draft').click();
+  await settle(() => /2026 draft/.test(body.textContent));
+  assert.equal(dom.window.location.hash, '#league=nfl&section=people&view=draft');
+  button(document, '#people-body', 'Josh Allen').click();
+  assert.equal(dom.window.location.hash, '#league=nfl&section=people');
+  dom.window.history.back();
+  await settle(() => /2026 draft/.test(body.textContent));
+  assert.equal(dom.window.location.hash, '#league=nfl&section=people&view=draft');
+  assert.doesNotMatch(body.textContent, /Drafted/,
+    'the player is still drawn under a URL that names the draft');
+  // The back button's hashchange re-renders, and the people files it asks
+  // for resolve after this test body would otherwise end -- into a window
+  // that is gone. Let them land first.
+  await new Promise(resolve => setTimeout(resolve, 50));
+  dom.window.close();
+});
+
 // --- snaps and the injury report on a player page --------------------------
 
 test('packed usage rows unpack in order, the regular season first', () => {
