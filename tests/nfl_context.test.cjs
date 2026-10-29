@@ -312,8 +312,34 @@ function click(dom, selector) {
   node.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
 }
 
-async function openTab(dom, tab, ready) {
+/* Open a tab, and a view inside it where the fold put one.
+ *
+ * The page shows the five tabs every league shows, so what used to be the
+ * Rankings, Coaches, History and Games tabs are views of Standings, People
+ * and Stats, or Home. Driving the real controls -- the tab, then the strip
+ * under it -- is the point: a test that reached straight for a panel would
+ * pass with the nav broken.
+ */
+const FOLD = {
+  games: ['home', null],
+  rankings: ['standings', 'elo'],
+  standings: ['standings', null],
+  coaches: ['people', 'coaches'],
+  history: ['stats', null],
+  people: ['people', null],
+  teams: ['teams', null],
+  home: ['home', null],
+  stats: ['stats', null]
+};
+
+function go(dom, name) {
+  const [tab, view] = FOLD[name] || [name, null];
   click(dom, `#tabs button[data-tab="${tab}"]`);
+  if (view) click(dom, `#subnav button[data-view="${view}"]`);
+}
+
+async function openTab(dom, tab, ready) {
+  go(dom, tab);
   await settle(() => ready(dom.window.document));
   return dom.window.document;
 }

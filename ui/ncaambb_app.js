@@ -67,6 +67,38 @@
           'coaches', 'history']
   };
 
+  /* THE FIVE TABS, in one order, under one set of names, for every league.
+   *
+   * Austin, 2026-10-29: "I want to make our visual layouts and Identity
+   * consistent." Before this the NFL drew EIGHT tabs (Standings and Rankings
+   * among them, which read as the same thing), basketball drew three, and
+   * the same tab was called Players on one page and People on another. A
+   * reader crossing leagues met a different nav each time.
+   *
+   * It lives here for the same reason `SECTIONS` does: a per-page list is a
+   * list that drifts. A page decides which of the five it can DRAW -- an
+   * empty tab is worse than an absent one -- but not what they are called or
+   * what order they come in.
+   */
+  var TABS = [
+    ['home', 'Home'],
+    ['stats', 'Stats'],
+    ['standings', 'Standings'],
+    ['teams', 'Teams'],
+    ['people', 'People']
+  ];
+
+  function tabs() {
+    return TABS.map(function (pair) { return pair.slice(); });
+  }
+
+  function tabLabel(name) {
+    for (var index = 0; index < TABS.length; index += 1) {
+      if (TABS[index][0] === name) return TABS[index][1];
+    }
+    return null;
+  }
+
   function league(slug) {
     for (var index = 0; index < LEAGUES.length; index += 1) {
       if (LEAGUES[index].slug === slug) return LEAGUES[index];
@@ -442,6 +474,9 @@
     readRoute: readRoute,
     writeRoute: writeRoute,
     sections: sections,
+    TABS: TABS,
+    tabs: tabs,
+    tabLabel: tabLabel,
     launchedLeagues: launchedLeagues,
     isLaunched: isLaunched,
     hasSection: hasSection,

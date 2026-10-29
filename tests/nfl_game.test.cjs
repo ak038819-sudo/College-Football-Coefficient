@@ -300,10 +300,36 @@ function click(dom, selector) {
   node.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
 }
 
+/* Open a tab, and a view inside it where the fold put one.
+ *
+ * The page shows the five tabs every league shows, so what used to be the
+ * Rankings, Coaches, History and Games tabs are views of Standings, People
+ * and Stats, or Home. Driving the real controls -- the tab, then the strip
+ * under it -- is the point: a test that reached straight for a panel would
+ * pass with the nav broken.
+ */
+const FOLD = {
+  games: ['home', null],
+  rankings: ['standings', 'elo'],
+  standings: ['standings', null],
+  coaches: ['people', 'coaches'],
+  history: ['stats', null],
+  people: ['people', null],
+  teams: ['teams', null],
+  home: ['home', null],
+  stats: ['stats', null]
+};
+
+function go(dom, name) {
+  const [tab, view] = FOLD[name] || [name, null];
+  click(dom, `#tabs button[data-tab="${tab}"]`);
+  if (view) click(dom, `#subnav button[data-view="${view}"]`);
+}
+
 test('a card opens a game page with its scoring summary and its drives',
   async () => {
     const dom = await open(true);
-    click(dom, 'button[data-tab="games"]');
+    go(dom, 'games');
     click(dom, '#cards .card.open');
     await settle(() => dom.window.document.querySelector('#game table'));
     const panel = dom.window.document.getElementById('game');
@@ -324,7 +350,7 @@ test('a card opens a game page with its scoring summary and its drives',
 test('the drive table names the home team over the win-probability column, '
   + 'because every row of it is the home team’s', async () => {
     const dom = await open(true);
-    click(dom, 'button[data-tab="games"]');
+    go(dom, 'games');
     click(dom, '#cards .card.open');
     await settle(() => dom.window.document.querySelector('#game table'));
     const tables = dom.window.document.querySelectorAll('#game table');
@@ -337,7 +363,7 @@ test('the drive table names the home team over the win-probability column, '
 test('the win-probability line is drawn with a scale to read it by',
   async () => {
     const dom = await open(true);
-    click(dom, 'button[data-tab="games"]');
+    go(dom, 'games');
     click(dom, '#cards .card.open');
     await settle(() => dom.window.document.querySelector('#game svg'));
     const svg = dom.window.document.querySelector('#game svg');
@@ -353,7 +379,7 @@ test('a game whose scoring does not add up says so above the summary',
     const payload = weekPayload();
     payload.games.g1.ok = 0;
     const dom = await open(true, payload);
-    click(dom, 'button[data-tab="games"]');
+    go(dom, 'games');
     click(dom, '#cards .card.open');
     await settle(() => dom.window.document.querySelector('#game table'));
     assert.match(dom.window.document.getElementById('game').textContent,
@@ -368,7 +394,7 @@ test('a game with an unpriced drive says why it carries no number',
     // runs to the end of regulation.
     payload.games.g1.d.push(drive([[0, 3], [2, 5], [3, 0], [11, null]]));
     const dom = await open(true, payload);
-    click(dom, 'button[data-tab="games"]');
+    go(dom, 'games');
     click(dom, '#cards .card.open');
     await settle(() => dom.window.document.querySelector('#game table'));
     assert.match(dom.window.document.querySelector('#game .wplegend').textContent,
@@ -379,7 +405,7 @@ test('a game with an unpriced drive says why it carries no number',
 test('a game with every drive priced says nothing about overtime',
   async () => {
     const dom = await open(true);
-    click(dom, 'button[data-tab="games"]');
+    go(dom, 'games');
     click(dom, '#cards .card.open');
     await settle(() => dom.window.document.querySelector('#game table'));
     assert.doesNotMatch(
@@ -391,7 +417,7 @@ test('a game with every drive priced says nothing about overtime',
 test('an export built before the game layer offers no tap that opens onto '
   + 'nothing', async () => {
     const dom = await open(false);
-    click(dom, 'button[data-tab="games"]');
+    go(dom, 'games');
     assert.equal(
       dom.window.document.querySelector('#cards .card.open'), null);
     assert.ok(dom.window.document.querySelector('#cards .card'));
@@ -400,7 +426,7 @@ test('an export built before the game layer offers no tap that opens onto '
 
 test('going back to the week restores the cards', async () => {
   const dom = await open(true);
-  click(dom, 'button[data-tab="games"]');
+  go(dom, 'games');
   click(dom, '#cards .card.open');
   await settle(() => dom.window.document.querySelector('#game table'));
   click(dom, '#game button.expand');
@@ -459,7 +485,7 @@ test('the game page lists the week’s designated players and says who is '
     payload.games.g1.i = [[1, 0, 'T.Kelce', 'TE', 'Knee'],
                           [0, 2, 'J.Allen', 'QB', 'Elbow']];
     const dom = await open(true, payload);
-    click(dom, 'button[data-tab="games"]');
+    go(dom, 'games');
     click(dom, '#cards .card.open');
     await settle(() => dom.window.document.querySelector('#game table'));
     const panel = dom.window.document.getElementById('game');
@@ -474,7 +500,7 @@ test('the game page lists the week’s designated players and says who is '
 
 test('a game with no injury report draws no empty table', async () => {
   const dom = await open(true);
-  click(dom, 'button[data-tab="games"]');
+  go(dom, 'games');
   click(dom, '#cards .card.open');
   await settle(() => dom.window.document.querySelector('#game table'));
   const panel = dom.window.document.getElementById('game');
@@ -490,7 +516,7 @@ test('opening a game hides the whole slate, rail and filters included',
     // scrolls to the top, which on a phone puts the game's own heading
     // below the fold.
     const dom = await open(true);
-    click(dom, 'button[data-tab="games"]');
+    go(dom, 'games');
     const doc = dom.window.document;
     assert.equal(doc.getElementById('slate').hidden, false,
       'the slate is there before a game is opened');

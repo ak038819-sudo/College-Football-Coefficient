@@ -442,6 +442,10 @@
   </header>
 
   <nav class="tabs" id="tabs" aria-label="Sections"></nav>
+  <!-- One strip for every tab's views. The people panel used to carry its
+       own Players/Draft row, which meant the page had two places a view
+       could be chosen from and the Coaches tab was neither. -->
+  <nav class="days subnav" id="subnav" aria-label="Views" hidden></nav>
 
   <div class="panel refusal" id="refusal" hidden>
     <h2>These ratings are not being shown</h2>
@@ -488,7 +492,6 @@
   </section>
 
   <section class="panel" id="people" hidden>
-    <div class="days" id="people-views"></div>
     <div id="people-body"></div>
   </section>
 
@@ -511,7 +514,7 @@
 
 
 <script src="nfl_loader.js?v=4ad39c8c1b77"></script>
-<script src="ncaambb_app.js?v=7fdd39623fcb"></script>
+<script src="ncaambb_app.js?v=47cf588fb299"></script>
 <script src="nfl_app.js?v=ccf38d1a4942"></script>
 <script>
 (function () {
@@ -520,21 +523,62 @@
   var leagues = window.ncaambbApp;   // the shared league registry
   var app = window.nflApp;           // the NFL's own rules
   var BASE = 'data/nfl/';
-  var TABS = ['home', 'standings', 'rankings', 'people', 'coaches',
-              'history', 'teams', 'games'];
-  // A tab with no panel behind it would hide everything and leave an empty
-  // page, so a tab is enabled only where this page can actually draw one.
-  var PANELS = { home: 'scoreboard', games: 'scoreboard',
-                 standings: 'standings', rankings: 'rankings',
-                 teams: 'teams', people: 'people', coaches: 'coaches',
-                 history: 'history' };
-  var LABELS = { home: 'Home', standings: 'Standings', rankings: 'Rankings',
-                 people: 'Players', coaches: 'Coaches',
-                 history: 'History', teams: 'Teams',
-                 games: 'Games' };
+  /* FIVE TABS, the same five every league shows, named and ordered by the
+   * shared registry. This page used to draw EIGHT of its own: Standings and
+   * Rankings side by side reading as one thing, Games duplicating Home (both
+   * have always drawn the same panel), and Coaches, History and Players as
+   * top-level tabs where the other leagues fold the same material under
+   * People and Stats. Austin, 2026-10-29: "I want to make our visual layouts
+   * and Identity consistent."
+   *
+   * Nothing was dropped. What was a tab is a VIEW now, and every link that
+   * named one still opens it -- see LEGACY below.
+   */
+  var VIEWS = {
+    standings: [['divisions', 'Divisions'], ['elo', 'Elo']],
+    people: [['players', 'Players'], ['draft', 'Draft'],
+             ['coaches', 'Coaches']]
+  };
+
+  /* Which panel a tab draws, and for two of them which VIEW decides. A tab
+   * with no panel behind it would hide everything and leave an empty page,
+   * so `null` here is what disables a tab. */
+  function panelFor(tab, view) {
+    if (tab === 'home') return 'scoreboard';
+    if (tab === 'stats') return 'history';
+    if (tab === 'teams') return 'teams';
+    if (tab === 'standings') return view === 'elo' ? 'rankings' : 'standings';
+    if (tab === 'people') return view === 'coaches' ? 'coaches' : 'people';
+    return null;
+  }
+
+  /* The sections this page used to name in its URLs, and where each one is
+   * now. A link somebody shared, bookmarked or published is not ours to
+   * break, so these keep resolving; they are read, never written. */
+  var LEGACY = {
+    games: { tab: 'home', view: null },
+    rankings: { tab: 'standings', view: 'elo' },
+    coaches: { tab: 'people', view: 'coaches' },
+    history: { tab: 'stats', view: null }
+  };
+
+  /* The first view of a tab is what the tab alone means, so it states no
+   * view in the URL: `section=people` and `section=people&view=players` are
+   * one place and must be one string. */
+  function defaultView(tab) {
+    var views = VIEWS[tab];
+    return views && views.length ? views[0][0] : null;
+  }
+
+  function viewsFor(tab) {
+    return (VIEWS[tab] || []).filter(function (pair) {
+      return Boolean(panelFor(tab, pair[0]));
+    });
+  }
+
   var state = { manifest: null, verdict: null, season: null, week: null,
-                tab: 'home', coach: null, player: null, game: null,
-                team: null, peopleView: 'players', query: '', mine: false };
+                tab: 'home', view: null, coach: null, player: null,
+                game: null, team: null, query: '', mine: false };
 
   function el(id) { return document.getElementById(id); }
 
@@ -550,25 +594,40 @@
    * re-derived, so the two pages cannot drift apart.
    */
   function routableTab(name) {
-    return TABS.indexOf(name) >= 0 && Boolean(PANELS[name])
-      && leagues.hasSection(leagues.NFL, name);
+    return leagues.tabLabel(name) !== null && Boolean(panelFor(name,
+      defaultView(name)));
   }
 
-  function tabFromHash() {
+  /* The tab and view a hash names, or null where it names neither.
+   *
+   * A legacy section resolves to the place that material lives now, and a
+   * view this tab does not have is dropped rather than drawn: a hand-edited
+   * `view=draft` under Standings should show Standings, not nothing.
+   */
+  function placeFromHash() {
     var text = String(window.location.hash || '').replace(/^#/, '');
     // No hash at all is this page's own default rather than a claim about a
     // league. It matters on the way BACK: a reader who pressed a tab and
     // then pressed Back returns to the bare URL they arrived on, and a page
     // that read that as "not mine" would leave them on the tab they left.
-    if (!text) return routableTab('home') ? 'home' : null;
+    if (!text) return routableTab('home') ? { tab: 'home', view: null } : null;
     var route = leagues.readRoute(text);
     // A hash naming another league is not this page's to read. Navigation
     // cannot produce one here; a hand-edited link can.
     if (route.league !== leagues.NFL) return null;
     var section = route.params.section || 'home';
+    var view = route.params.view || null;
+    if (LEGACY[section]) {
+      view = LEGACY[section].view;
+      section = LEGACY[section].tab;
+    }
     // A disabled tab, or a section with no panel behind it, leaves the tab
     // alone rather than hiding every panel and leaving an empty page.
-    return routableTab(section) ? section : null;
+    if (!routableTab(section)) return null;
+    var known = viewsFor(section).some(function (pair) {
+      return pair[0] === view;
+    });
+    return { tab: section, view: known ? view : defaultView(section) };
   }
 
   /* The reader's route with some parameters changed, where null removes one.
@@ -594,8 +653,12 @@
     if (hash !== window.location.hash) window.location.hash = hash;
   }
 
-  function writeTab(name) {
+  function writeTab(name, view) {
+    var chosen = view || defaultView(name);
     var changes = { section: name === 'home' ? null : name };
+    // The tab alone means its first view, so that view states nothing: one
+    // place must be one string, or Back lands on the same screen twice.
+    changes.view = chosen && chosen !== defaultView(name) ? chosen : null;
     // A franchise page is only ever open inside the Teams section, so
     // leaving that section takes the club out of the URL with it. Pressing
     // Teams again keeps it, which is what makes the tab a way back.
@@ -604,7 +667,10 @@
   }
 
   function writeTeam(code) {
-    writeParams({ section: 'teams', team: code || null });
+    // The view goes with the section it belonged to. Opening a club from
+    // the Elo board otherwise left `view=elo` in a URL whose section has no
+    // views at all, so one club page had two addresses.
+    writeParams({ section: 'teams', view: null, team: code || null });
   }
 
   /* The club code a link names, or null. The CODE and not the franchise key:
@@ -625,8 +691,18 @@
    * cannot disagree about what a hash means. */
   function applyRoute() {
     var changed = false;
-    var tab = tabFromHash();
-    if (tab && tab !== state.tab) { state.tab = tab; changed = true; }
+    var place = placeFromHash();
+    if (place) {
+      if (place.tab !== state.tab) { state.tab = place.tab; changed = true; }
+      if (place.view !== state.view) {
+        state.view = place.view;
+        // A person is open INSIDE a view. Going somewhere else -- by the
+        // back button as much as by the strip -- leaves them, or the page
+        // draws one player under a URL that names the draft.
+        state.player = null;
+        changed = true;
+      }
+    }
     var code = teamCodeFromHash();
     if (code !== state.team) { state.team = code; changed = true; }
     return changed;
@@ -714,7 +790,7 @@
     el('search').addEventListener('input', function () {
       state.query = el('search').value;
       state.player = null;
-      state.peopleView = 'players';
+      state.view = 'players';
       // Typing moves the reader to the Players tab, so it is a section
       // change like any other and goes through the same route. Without
       // this the URL kept saying whichever tab they had been on, which is
@@ -730,21 +806,49 @@
   function tabButtons() {
     var host = el('tabs');
     host.innerHTML = '';
-    TABS.forEach(function (name) {
+    leagues.tabs().forEach(function (pair) {
+      var name = pair[0];
       var button = document.createElement('button');
       button.type = 'button';
-      button.textContent = LABELS[name];
+      button.textContent = pair[1];
       button.dataset.tab = name;
-      var ready = leagues.hasSection(leagues.NFL, name)
-        && Boolean(PANELS[name]);
+      var ready = routableTab(name);
       if (!ready) button.disabled = true;
       button.setAttribute('aria-pressed', String(name === state.tab && ready));
       button.addEventListener('click', function () {
         if (!ready) return;
         state.tab = name;
+        state.view = defaultView(name);
         // The hash first, so the hashchange it fires finds the state it
         // describes and nothing renders twice.
-        writeTab(name);
+        writeTab(name, state.view);
+        render();
+      });
+      host.appendChild(button);
+    });
+  }
+
+  /* The views of the tab that is open, or nothing where it has one view.
+   * A strip offering a single choice is chrome that says nothing. */
+  function viewButtons() {
+    var host = el('subnav');
+    var views = viewsFor(state.tab);
+    host.innerHTML = '';
+    host.hidden = views.length < 2;
+    if (host.hidden) return;
+    views.forEach(function (pair) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = pair[1];
+      button.dataset.view = pair[0];
+      button.setAttribute('aria-pressed', String(pair[0] === state.view));
+      button.addEventListener('click', function () {
+        state.view = pair[0];
+        // Leaving a person's page is what pressing a view means here: a
+        // reader on one player who presses Draft is asking for the draft,
+        // not for the draft with that player still open over it.
+        state.player = null;
+        writeTab(state.tab, pair[0]);
         render();
       });
       host.appendChild(button);
@@ -1706,9 +1810,14 @@
     button.textContent = name;
     button.addEventListener('click', function () {
       state.player = id;
-      state.peopleView = 'players';
+      state.view = 'players';
       state.tab = 'people';
       window.scrollTo(0, 0);
+      // A player opened from the Draft is shown under Players, so the URL
+      // has to say Players too. Leaving `view=draft` on it gave the screen
+      // an address that reloads as something else, and Back then restored
+      // the Draft view with the player still drawn over it.
+      writeTab('people', 'players');
       render();
     });
     return button;
@@ -1992,24 +2101,6 @@
     return button;
   }
 
-  function renderPeopleViews() {
-    var host = el('people-views');
-    host.innerHTML = '';
-    [['players', 'Players'], ['draft', 'Draft']].forEach(function (pair) {
-      var button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = pair[1];
-      button.setAttribute('aria-pressed',
-        String(state.peopleView === pair[0] && !state.player));
-      button.addEventListener('click', function () {
-        state.peopleView = pair[0];
-        state.player = null;
-        render();
-      });
-      host.appendChild(button);
-    });
-  }
-
   var LEADER_LABELS = {
     passing_yards: 'Passing yards', passing_tds: 'Passing TDs',
     rushing_yards: 'Rushing yards', rushing_tds: 'Rushing TDs',
@@ -2022,7 +2113,6 @@
   function renderPeople() {
     var host = el('people-body');
     host.innerHTML = '';
-    renderPeopleViews();
     // Checked first, before any view: the leaderboard comes from the season
     // payload rather than the people files, so without this an export that
     // predates players would offer "search for a player above" and only say
@@ -2031,7 +2121,7 @@
       return emptyLine(host, fileStatus({ missing: true }));
     }
     if (state.player) return renderPlayer(host);
-    if (state.peopleView === 'draft') return renderDraft(host);
+    if (state.view === 'draft') return renderDraft(host);
     if (state.query && app.normalizeName(state.query)) {
       return renderSearch(host);
     }
@@ -2667,15 +2757,18 @@
     // re-render it triggers is what puts the marks on the page.
     ensureLogos();
     var ok = state.verdict && state.verdict.ok;
-    el('scoreboard').hidden = !ok || !(state.tab === 'home'
-                                       || state.tab === 'games');
-    el('standings').hidden = !ok || state.tab !== 'standings';
-    el('rankings').hidden = !ok || state.tab !== 'rankings';
-    el('teams').hidden = !ok || state.tab !== 'teams';
-    el('people').hidden = !ok || state.tab !== 'people';
-    el('coaches').hidden = !ok || state.tab !== 'coaches';
-    el('history').hidden = !ok || state.tab !== 'history';
+    // ONE panel is open: the one the tab and its view name. Listing them
+    // against the tab each kept its own copy of the mapping, which is how
+    // Standings and Rankings came to be two tabs for one idea.
+    // NOT `open`: a `var open` further down this same function would be the
+    // SAME binding, because var is function-scoped.
+    var openPanel = ok ? panelFor(state.tab, state.view) : null;
+    ['scoreboard', 'standings', 'rankings', 'teams', 'people', 'coaches',
+     'history'].forEach(function (panel) {
+      el(panel).hidden = panel !== openPanel;
+    });
     tabButtons();
+    viewButtons();
     if (!ok) return;
     renderSeasons();
     if (!el('scoreboard').hidden) {

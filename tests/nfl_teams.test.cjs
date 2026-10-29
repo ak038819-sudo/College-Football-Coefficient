@@ -314,8 +314,34 @@ function click(dom, selector) {
   node.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
 }
 
+/* Open a tab, and a view inside it where the fold put one.
+ *
+ * The page shows the five tabs every league shows, so what used to be the
+ * Rankings, Coaches, History and Games tabs are views of Standings, People
+ * and Stats, or Home. Driving the real controls -- the tab, then the strip
+ * under it -- is the point: a test that reached straight for a panel would
+ * pass with the nav broken.
+ */
+const FOLD = {
+  games: ['home', null],
+  rankings: ['standings', 'elo'],
+  standings: ['standings', null],
+  coaches: ['people', 'coaches'],
+  history: ['stats', null],
+  people: ['people', null],
+  teams: ['teams', null],
+  home: ['home', null],
+  stats: ['stats', null]
+};
+
+function go(dom, name) {
+  const [tab, view] = FOLD[name] || [name, null];
+  click(dom, `#tabs button[data-tab="${tab}"]`);
+  if (view) click(dom, `#subnav button[data-view="${view}"]`);
+}
+
 async function openTeams(dom) {
-  click(dom, '#tabs button[data-tab="teams"]');
+  go(dom, 'teams');
   await settle(() => dom.window.document.querySelector('.club, .clubhead'));
   return dom.window.document;
 }
@@ -474,8 +500,9 @@ test('leaving the Teams tab takes the club out of the URL', async () => {
   const doc = dom.window.document;
   await settle(() => doc.querySelector('.clubhead'));
   await loaded(doc);
-  click(dom, '#tabs button[data-tab="rankings"]');
-  assert.equal(dom.window.location.hash, '#league=nfl&section=rankings',
+  go(dom, 'rankings');
+  assert.equal(dom.window.location.hash,
+    '#league=nfl&section=standings&view=elo',
     'the club rode along into a section it has no meaning in');
   dom.window.close();
 });
@@ -501,7 +528,7 @@ test('the back button returns from a club to the directory', async () => {
 // does -- not that one representative one does.
 
 async function openTab(dom, tab, ready) {
-  click(dom, `#tabs button[data-tab="${tab}"]`);
+  go(dom, tab);
   await settle(() => ready(dom.window.document));
   return dom.window.document;
 }
