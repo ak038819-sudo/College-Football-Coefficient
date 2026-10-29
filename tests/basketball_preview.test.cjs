@@ -993,3 +993,86 @@ test('a club\u2019s season is ordered by date, not by whether a tip-off is set',
     assert.deepEqual(against, ['vs BYU', 'vs Duke', 'vs BYU', 'vs Duke']);
     dom.window.close();
   });
+
+/* ---- the header search box finds clubs ------------------------------- */
+
+function type(dom, value) {
+  const box = dom.window.document.getElementById('search');
+  box.value = value;
+  box.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+}
+
+test('typing in the header box finds clubs and opens the Teams tab',
+  async () => {
+    // The box took typing and did nothing at all before this: worse than no
+    // box, because a reader cannot tell a control that found nothing from
+    // one that was never wired.
+    const dom = await open();
+    const doc = dom.window.document;
+    type(dom, 'duke');
+    await settle(dom, () => doc.querySelector('#team-body .directory'));
+    assert.equal(doc.getElementById('teams').hidden, false,
+      'typing did not take the reader to the Teams tab');
+    assert.equal(dom.window.location.hash, '#league=ncaambb&section=teams');
+    const names = [...doc.querySelectorAll('#team-body li button.link')]
+      .map(node => node.textContent);
+    assert.deepEqual(names, ['Duke']);
+    assert.match(doc.querySelector('#team-body .empty').textContent,
+      /1 club matches/);
+    dom.window.close();
+  });
+
+test('a search that matches nothing says so rather than showing everything',
+  async () => {
+    const dom = await open();
+    const doc = dom.window.document;
+    type(dom, 'notaschool');
+    await settle(dom, () => /No club matches/.test(
+      doc.getElementById('team-body').textContent));
+    assert.equal(doc.querySelectorAll('#team-body li').length, 0,
+      'a search with no match fell back to the whole directory');
+    dom.window.close();
+  });
+
+test('clearing the box brings the whole directory back', async () => {
+  const dom = await open();
+  const doc = dom.window.document;
+  type(dom, 'duke');
+  await settle(dom, () => doc.querySelector('#team-body li'));
+  assert.equal(doc.querySelectorAll('#team-body li').length, 1);
+  type(dom, '');
+  await settle(dom, () => doc.querySelectorAll('#team-body li').length === 3);
+  assert.deepEqual([...doc.querySelectorAll('#team-body .directory h3')]
+    .map(node => node.textContent), ['ACC', 'Big 12', 'Big Ten']);
+  dom.window.close();
+});
+
+test('a club opened from a search offers the way back to the results',
+  async () => {
+    const dom = await open();
+    const doc = dom.window.document;
+    type(dom, 'duke');
+    await settle(dom, () => doc.querySelector('#team-body li'));
+    clubLink(dom, 'Duke').click();
+    await settle(dom, () => doc.querySelector('#team-body .clubhead'));
+    const back = clubLink(dom, '\u2190 Search results');
+    assert.ok(back, 'the club page sent the reader back to the whole '
+      + 'directory they never asked for');
+    back.click();
+    await settle(dom, () => doc.querySelector('#team-body li'));
+    assert.equal(doc.querySelectorAll('#team-body li').length, 1);
+    dom.window.close();
+  });
+
+test('typing while a club is open replaces it with the results', async () => {
+  const dom = await open(undefined, undefined,
+    '#league=ncaambb&section=teams&team=1');
+  const doc = dom.window.document;
+  await settle(dom, () => doc.querySelector('#team-body .clubhead'));
+  type(dom, 'duke');
+  await settle(dom, () => doc.querySelector('#team-body li'));
+  assert.equal(doc.querySelectorAll('#team-body .clubhead').length, 0,
+    'the club stayed drawn over its own search results');
+  assert.equal(dom.window.location.hash, '#league=ncaambb&section=teams');
+  dom.window.close();
+});

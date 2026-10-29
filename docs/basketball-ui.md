@@ -310,3 +310,41 @@ the earliest game of the season.
 The club header's record is the **board's**, not the schedule's. Two numbers
 for one thing on one screen is a bug report waiting to be filed, and the
 board's is the one the ratings were built from.
+
+## The header search box finds clubs (2026-10-29)
+
+Austin: *"I'm simply improvement hungry."* The audit that followed found a
+dead control: the header's search box took typing and did nothing at all.
+The football shell's search works and the NFL page's searches players; this
+page's was decoration, on the one league about to go live.
+
+A box that does nothing is worse than no box, because a reader cannot tell a
+control that found nothing from one that was never wired.
+
+It finds **clubs**, and takes the reader to the Teams tab rather than growing
+a second box inside it — the pattern `ui/nfl.html` already uses for players.
+The matching lives in `ncaambb_app.js` as `normalizeName` and `searchTeams`,
+the same tiered rule the NFL side uses, because one house convention for
+matching a name beats a third one per league:
+
+- a club is searched by **every name the export gives it** — display name,
+  school and abbreviation — since a reader types `UNC` as readily as
+  `North Carolina`;
+- a name that **starts** with the query beats one where any **word** does,
+  which beats one that merely **contains** it. Inside a tier the better-rated
+  club comes first. So `mia` offers Miami before Central Miami Tech, even
+  when Central Miami Tech is rated higher;
+- accents and punctuation are folded, so `st johns` finds St. John's and
+  `hawaii` finds Hawai'i;
+- an **empty query finds nothing**, which needs its own guard: every name
+  contains the empty string, so without it a cleared box would report that
+  all 365 clubs match.
+
+Typing writes the route with `writeTeam(null)` rather than `writeTab`.
+Pressing the Teams *tab* keeps the club in the URL, which is right for a tab
+and wrong here: the first version left `team=1` on an address showing search
+results, the page and the URL saying different things. A test caught it.
+
+A club opened from a search offers *← Search results* rather than
+*← All teams*: a reader who searched should not be handed the whole
+directory they never asked for.

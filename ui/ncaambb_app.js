@@ -538,6 +538,66 @@
     return tally.wins + '-' + tally.losses;
   }
 
+  /* A name reduced to what a reader typing it would get right: accents
+   * folded, punctuation dropped, case and spacing ignored. So "St. John's"
+   * is found by "st johns", and Hawai'i by "hawaii".
+   *
+   * The same rule the NFL page uses, deliberately: one house convention for
+   * matching a name, not a third one per league.
+   */
+  function normalizeName(value) {
+    var text = String(value === null || value === undefined ? '' : value);
+    if (text.normalize) {
+      text = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+    return text.toLowerCase().replace(/[^a-z0-9 ]+/g, '')
+      .replace(/\s+/g, ' ').trim();
+  }
+
+  /* Board rows matching a query, best first.
+   *
+   * A club is searched by every name the export gives it -- the display
+   * name, the school and the abbreviation -- because a reader types "UNC"
+   * as readily as "North Carolina", and the export carries both.
+   *
+   * A name that STARTS with the query beats one where any WORD does, which
+   * beats one that merely contains it: typing "mia" should offer Miami
+   * before it offers a club with "miami" buried mid-name. Inside a tier the
+   * better-rated club comes first, since the board is the one ordering this
+   * site has.
+   */
+  function searchTeams(board, teams, query, limit) {
+    var wanted = normalizeName(query);
+    if (!wanted) return [];
+    var directory = teams || {};
+    var found = [];
+    (board || []).forEach(function (row) {
+      var team = directory[row.team] || {};
+      var tier = null;
+      [team.name, team.school, team.short, team.abbr].forEach(
+        function (value) {
+        if (!value) return;
+        var name = normalizeName(value);
+        if (!name) return;
+        var rank = null;
+        if (name.indexOf(wanted) === 0) rank = 0;
+        else if ((' ' + name).indexOf(' ' + wanted) >= 0) rank = 1;
+        else if (name.indexOf(wanted) >= 0) rank = 2;
+        if (rank !== null && (tier === null || rank < tier)) tier = rank;
+      });
+      if (tier !== null) found.push({ tier: tier, row: row });
+    });
+    found.sort(function (a, b) {
+      if (a.tier !== b.tier) return a.tier - b.tier;
+      var rating = Number(b.row.rating) - Number(a.row.rating);
+      if (rating) return rating < 0 ? -1 : 1;
+      return String(a.row.team).localeCompare(String(b.row.team));
+    });
+    return found.slice(0, limit || 25).map(function (item) {
+      return item.row;
+    });
+  }
+
   function searchPlaceholder(slug) {
     if (slug === BASKETBALL) return 'Search college basketball…';
     if (slug === NFL) return 'Search the NFL…';
@@ -586,6 +646,8 @@
     teamSchedule: teamSchedule,
     teamRecord: teamRecord,
     recordText: recordText,
+    normalizeName: normalizeName,
+    searchTeams: searchTeams,
     searchPlaceholder: searchPlaceholder
   };
 
