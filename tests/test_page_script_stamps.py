@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.stamp_page_scripts import PAGES, SCRIPT, rewrite, stamp
+from scripts.stamp_page_scripts import GENERATED, PAGES, SCRIPT, rewrite, stamp
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -36,6 +36,23 @@ def test_every_script_the_page_loads_is_stamped_with_its_own_hash(page):
         assert version == '?v=' + stamp(target), (
             f'{page} loads {name}{version}, but that file now hashes to '
             f'{stamp(target)}. Run scripts/stamp_page_scripts.py.')
+
+
+def test_every_hand_written_page_is_on_the_stamper_s_list():
+    """The list is the whole mechanism, so a page left off it is the bug.
+
+    `ui/basketball.html` shipped unstamped for exactly this reason: the
+    stamper named one page, nothing checked that it named them all, and the
+    basketball page then grew a call to a helper the cached module lacks.
+    """
+    named = {page.name for page in PAGES}
+    for page in sorted((ROOT / 'ui').glob('*.html')):
+        if page.name in GENERATED:
+            continue
+        assert page.name in named, (
+            f'ui/{page.name} is hand-written but not in '
+            f'stamp_page_scripts.PAGES, so its scripts are unversioned and a '
+            f'returning reader can get it beside a stale cached module.')
 
 
 def test_the_stamper_itself_notices_a_changed_file(tmp_path):

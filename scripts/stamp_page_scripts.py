@@ -29,8 +29,13 @@ from pathlib import Path
 
 # Only pages with no generator of their own. `ui/dashboard.html` is NOT here:
 # build_dashboard.py stamps it, and two things writing one file is how they
-# disagree.
-PAGES = (Path('ui/nfl.html'),)
+# disagree. Nor is `ui/dashboard_shell.html`, which is that generator's input
+# and is never served. Every OTHER page in `ui/` belongs here, and
+# tests/test_page_script_stamps.py fails when a new one is not: a hand-written
+# page left off this list is unstamped, which is the bug this script exists
+# to prevent.
+GENERATED = ('dashboard.html', 'dashboard_shell.html')
+PAGES = (Path('ui/basketball.html'), Path('ui/nfl.html'))
 
 SCRIPT = re.compile(r'(<script src=")([A-Za-z0-9_.\-]+\.js)(\?v=[0-9a-f]+)?(")')
 
