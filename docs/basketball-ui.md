@@ -267,3 +267,39 @@ is published, if it is deleted rather than parked, or if the remembered-league
 key drifts from the one `ui/ncaambb_app.js` uses. That is deliberate: a guard
 that blocks another league's release gets deleted by whoever is trying to
 ship, and then protects nothing.
+
+## A Teams tab, built before the data arrives (2026-10-29)
+
+Austin: *"Let's finish the NFL then move to NCAAM."* NCAAM's data is blocked
+until the month turns — the provider's call quota is monthly and was
+exhausted on 27 October, and there is no cached copy in the repository — so
+the first export cannot be built before `cbb-refresh.yml`'s cron fires on
+1 November. What is *not* blocked is the page behind it: this page drew Home
+and Standings, and showed Stats, Teams and People disabled.
+
+**Teams needs no new data.** The export contract already carries every team
+and every game of a season, so a club directory and a club's own page are
+built from the payload the board is built from. Only People and Stats still
+wait on something.
+
+- **The directory** lists every Division I club by conference, ordered by
+  rating inside a conference rather than alphabetically: the board is the
+  one ordering this site has, and a second ordering is two answers to one
+  question. 360 clubs across 12 conferences render without overflow at
+  430px and at 1400px.
+- **A club is a route**: `#league=ncaambb&section=teams&team=18`, carrying
+  the provider's id and not the whole `ncaambb:cbbd:team:18` key, resolved
+  against the season's own board. The club is read from the URL and nowhere
+  else, so a link and the back button cannot disagree; pressing another tab
+  takes the club out of the URL with it.
+- **A neutral-site game is neither home nor away.** The row says `N`, not
+  `vs`: the provider lists one club as home, and honouring that would put a
+  Final Four in a club's home record.
+- **A level score is reported without a verdict.** Basketball plays overtime
+  until somebody wins, so a game the feed reports as level is bad data. The
+  score is shown; `W`/`L` is not invented. A 2,400-game fixture produced two
+  such rows, which is how this was noticed.
+
+The club header's record is the **board's**, not the schedule's. Two numbers
+for one thing on one screen is a bug report waiting to be filed, and the
+board's is the one the ratings were built from.

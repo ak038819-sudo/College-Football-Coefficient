@@ -456,6 +456,77 @@
     return isFinite(number) ? String(Math.round(number)) : '—';
   }
 
+  /* One club's season, oldest game first: every game it played or will
+   * play, with the side it was on already worked out.
+   *
+   * A neutral-site game is NEITHER home nor away. Calling it home because
+   * the provider listed it there would put a Final Four in a club's home
+   * record, so `home` is false and `neutral` says why.
+   */
+  function teamSchedule(games, key) {
+    var rows = [];
+    (games || []).forEach(function (game) {
+      if (game.home !== key && game.away !== key) return;
+      var home = game.home === key;
+      var neutral = Boolean(game.neutral);
+      var points = home ? game.home_points : game.away_points;
+      var against = home ? game.away_points : game.home_points;
+      rows.push({
+        game: game,
+        opponent: home ? game.away : game.home,
+        home: home && !neutral,
+        neutral: neutral,
+        points: points,
+        against: against,
+        result: decided(points, against)
+      });
+    });
+    rows.sort(function (a, b) {
+      var ka = timeKnown(a.game) ? 0 : 1;
+      var kb = timeKnown(b.game) ? 0 : 1;
+      if (ka !== kb) return ka - kb;
+      var da = dayOf(a.game) || '';
+      var db = dayOf(b.game) || '';
+      if (da !== db) return da < db ? -1 : 1;
+      return String(a.game.id).localeCompare(String(b.game.id));
+    });
+    return rows;
+  }
+
+  /* 'W', 'L' or null. A missing score is null, NEVER a loss: an unplayed
+   * game is not a defeat.
+   *
+   * A LEVEL score is also null. Basketball plays overtime until somebody
+   * wins, so a game the feed reports as level is bad data rather than a
+   * draw -- and calling it a loss would be this page inventing a result.
+   * The score is still shown; only the verdict is withheld.
+   */
+  function decided(points, against) {
+    if (points === null || points === undefined) return null;
+    if (against === null || against === undefined) return null;
+    var mine = Number(points);
+    var theirs = Number(against);
+    if (!isFinite(mine) || !isFinite(theirs)) return null;
+    if (mine === theirs) return null;
+    return mine > theirs ? 'W' : 'L';
+  }
+
+  /* Wins and losses over the rows a schedule returned, counting only the
+   * games that have a result. */
+  function teamRecord(rows) {
+    var record = { wins: 0, losses: 0 };
+    (rows || []).forEach(function (row) {
+      if (row.result === 'W') record.wins += 1;
+      if (row.result === 'L') record.losses += 1;
+    });
+    return record;
+  }
+
+  function recordText(record) {
+    var tally = record || { wins: 0, losses: 0 };
+    return tally.wins + '-' + tally.losses;
+  }
+
   function searchPlaceholder(slug) {
     if (slug === BASKETBALL) return 'Search college basketball…';
     if (slug === NFL) return 'Search the NFL…';
@@ -501,6 +572,9 @@
     statusLine: statusLine,
     scoreLine: scoreLine,
     ratingText: ratingText,
+    teamSchedule: teamSchedule,
+    teamRecord: teamRecord,
+    recordText: recordText,
     searchPlaceholder: searchPlaceholder
   };
 
