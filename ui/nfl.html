@@ -418,6 +418,14 @@
   td.teamcell > span.with-mark { display: flex; align-items: center;
                                  gap: 8px; }
   .legend { font-size: 11px; color: var(--ink-dim); margin: 0 0 6px; }
+  /* A club that cleared the vig, not merely one over .500 -- the
+     legend says which, and the weight is the only thing marking it. */
+  td.beat { font-weight: 600; color: var(--ink); }
+  /* Seven columns of short records do not fit a phone, so they SCROLL
+     rather than wrap: without this "5-2" breaks after the hyphen and a
+     record reads as two numbers in a column one character wide. The
+     scroller is already there; wrapping is what stops it being used. */
+  #market-body td, #market-body th { white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -510,12 +518,16 @@
     <div id="track-record"></div>
     <div id="conference-history"></div>
   </section>
+
+  <section class="panel" id="market" hidden>
+    <div id="market-body"></div>
+  </section>
 </div>
 
 
 <script src="nfl_loader.js?v=4ad39c8c1b77"></script>
 <script src="ncaambb_app.js?v=ce573ddecc16"></script>
-<script src="nfl_app.js?v=ccf38d1a4942"></script>
+<script src="nfl_app.js?v=9b983b2ded47"></script>
 <script>
 (function () {
   'use strict';
@@ -536,6 +548,7 @@
    */
   var VIEWS = {
     standings: [['divisions', 'Divisions'], ['elo', 'Elo']],
+    stats: [['history', 'Track record'], ['market', 'Against the spread']],
     people: [['players', 'Players'], ['draft', 'Draft'],
              ['coaches', 'Coaches']]
   };
@@ -545,7 +558,7 @@
    * so `null` here is what disables a tab. */
   function panelFor(tab, view) {
     if (tab === 'home') return 'scoreboard';
-    if (tab === 'stats') return 'history';
+    if (tab === 'stats') return view === 'market' ? 'market' : 'history';
     if (tab === 'teams') return 'teams';
     if (tab === 'standings') return view === 'elo' ? 'rankings' : 'standings';
     if (tab === 'people') return view === 'coaches' ? 'coaches' : 'people';
@@ -2889,6 +2902,98 @@
     injuryTable(host, entry, got.data, game);
   }
 
+  /* Every club of the season against the closing line.
+   *
+   * NO NEW DATA: the spread and the total are on every game in the season
+   * payload the scoreboard already loads, and have been since 1999. Nothing
+   * on the site read either until this view.
+   *
+   * These records INCLUDE THE POSTSEASON, because the board's own
+   * wins-losses beside them does -- 2024 Philadelphia reads 18-3, which is
+   * 14-3 plus four playoff wins. Two record columns on one row counting
+   * different games would be a bug report waiting to be filed.
+   *
+   * Sorted by ATS record, the thing the view is for. A club with no priced
+   * game sorts last rather than as a perfect nothing.
+   */
+  function marketRows() {
+    var payload = seasonPayload();
+    var games = (payload && payload.games) || [];
+    return ((payload && payload.board) || []).map(function (row) {
+      var tally = app.marketRecord(app.teamSchedule(games, row.team));
+      return {
+        team: row.team,
+        conference: row.conference,
+        division: row.division,
+        record: app.recordText(row),
+        tally: tally,
+        rate: app.atsRate(tally)
+      };
+    }).sort(function (a, b) {
+      if ((a.rate === null) !== (b.rate === null)) {
+        return a.rate === null ? 1 : -1;
+      }
+      if (a.rate !== b.rate) return b.rate - a.rate;
+      if (a.tally.priced !== b.tally.priced) {
+        return b.tally.priced - a.tally.priced;
+      }
+      return String(a.team).localeCompare(String(b.team));
+    });
+  }
+
+  function renderMarket() {
+    var host = el('market-body');
+    host.innerHTML = '';
+    var rows = marketRows();
+    host.appendChild(heading('h3', app.seasonLabel(state.season)
+      + ' against the closing line'));
+    var priced = rows.reduce(function (sum, row) {
+      return sum + row.tally.priced;
+    }, 0);
+    if (!priced) {
+      return emptyLine(host, 'No game of this season carries a closing '
+        + 'line, so there is nothing to measure against.');
+    }
+    var node = table('<tr><th>Team</th><th>Record</th>'
+      + '<th class="num">ATS</th><th class="num">ATS%</th>'
+      + '<th class="num">O/U</th><th class="num">Games</th></tr>',
+      'Against the spread and the total, postseason included, from the '
+      + 'closing line on each game. A tied margin is a push and counts in '
+      + 'neither half. ATS% is the share of decided bets won: a bettor '
+      + 'needs about ' + app.percentText(app.ATS_BREAK_EVEN)
+      + ' to clear a standard −110 vig, so a record just over half is '
+      + 'still a loss.');
+    var body = node.querySelector('tbody');
+    rows.forEach(function (row) {
+      var tr = document.createElement('tr');
+      var nameCell = document.createElement('td');
+      nameCell.className = 'teamcell';
+      var wrap = document.createElement('span');
+      wrap.className = 'with-mark';
+      var mark = teamMark(row.team, 20);
+      if (mark) wrap.appendChild(mark);
+      var label = document.createElement('span');
+      label.appendChild(teamLink(row.team));
+      wrap.appendChild(label);
+      nameCell.appendChild(wrap);
+      tr.appendChild(nameCell);
+      cellInto(tr, row.record, 'num');
+      cellInto(tr, app.atsText(row.tally), 'num');
+      // Only a club that CLEARED the vig is marked, and the mark says that
+      // and not "winning record": 9-8 is 52.9% and beats it, 17-16 is 51.5%
+      // and does not.
+      var rateCell = cellInto(tr, app.percentText(row.rate), 'num');
+      if (app.atsBeatsVig(row.tally)) rateCell.className = 'num beat';
+      cellInto(tr, row.tally.totalled
+        ? row.tally.overs + '-' + row.tally.unders
+          + (row.tally.total_pushes ? '-' + row.tally.total_pushes : '')
+        : '—', 'num');
+      cellInto(tr, row.tally.priced, 'num');
+      body.appendChild(tr);
+    });
+    host.appendChild(node);
+  }
+
   function render() {
     renderMeta();
     renderRefusal();
@@ -2904,7 +3009,7 @@
     // SAME binding, because var is function-scoped.
     var openPanel = ok ? panelFor(state.tab, state.view) : null;
     ['scoreboard', 'standings', 'rankings', 'teams', 'people', 'coaches',
-     'history'].forEach(function (panel) {
+     'history', 'market'].forEach(function (panel) {
       el(panel).hidden = panel !== openPanel;
     });
     tabButtons();
@@ -2941,6 +3046,7 @@
       renderTrackRecord();
       renderConferenceHistory();
     }
+    if (!el('market').hidden) renderMarket();
   }
 
   function load(src) {
