@@ -149,7 +149,10 @@
   }
   #league-selector a[aria-current="page"] {
     background: var(--amber);
-    color: #15110a;
+    /* var(--bg), not a fixed near-black: the fill flips light and dark with
+       the theme, so a foreground that does not flip with it is only ever
+       right in one of them. */
+    color: var(--bg);
     font-weight: 600;
   }
   /* The mark is decorative: the wordmark beside it already says the name, so
@@ -969,7 +972,7 @@
     border-radius: 2px;
     text-transform: uppercase;
   }
-  .tag.bye { background: var(--green-hl); color: #fff; }
+  .tag.bye { background: var(--green-hl); color: var(--bg); }
   .tag.champ { border: 1px solid var(--amber-dim); color: var(--amber); background: transparent; }
 
   .bracket-section-label {

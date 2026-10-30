@@ -67,10 +67,39 @@ const AA_NORMAL = 4.5;
 const INKS = ['ink', 'ink-dim', 'amber', 'red-ink', 'green-hl'];
 const SURFACES = ['bg', 'panel', 'panel-2'];
 
-// Where a palette colour is the BACKGROUND and something else is the text.
-// `.badge.stale` is 11px, so AA wants 4.5 here too, not the 3.0 it allows
-// large text.
-const FILLS = [['red', '#ffffff']];
+// Every rule that puts text ON a palette fill, read out of the stylesheet
+// rather than listed by hand.
+//
+// A hand-written list is why this file missed a regression it was written to
+// prevent: darkening `--amber` for readable links also darkened the fill
+// behind the selected league button, whose `color: #15110a` was chosen
+// against the OLD amber and fell to 3.32:1. The list only named `--red`, so
+// nothing failed. Reading the rules means a new amber-filled control is
+// covered the day it is written.
+function fillRules(page) {
+  const text = fs.readFileSync(path.join(UI, page), 'utf8');
+  const style = text.slice(text.indexOf('<style>'), text.indexOf('</style>'));
+  const out = [];
+  // Declaration blocks, crudely but adequately: everything between braces.
+  for (const [, body] of style.matchAll(/\{([^{}]*)\}/g)) {
+    const fill = body.match(/background:\s*var\(--([a-z0-9-]+)\)/i);
+    const ink = body.match(/(?:^|[;\s])color:\s*(var\(--[a-z0-9-]+\)|#[0-9a-f]{3,6})/i);
+    if (fill && ink) out.push({ fill: fill[1], ink: ink[1] });
+  }
+  return out;
+}
+
+// '#abc' -> '#aabbcc'; 'var(--x)' -> the palette's value; else null.
+function resolve(value, colours) {
+  const named = value.match(/^var\(--([a-z0-9-]+)\)$/i);
+  if (named) return colours[named[1]] || null;
+  const hex = value.toLowerCase();
+  if (/^#[0-9a-f]{6}$/.test(hex)) return hex;
+  if (/^#[0-9a-f]{3}$/.test(hex)) {
+    return '#' + [1, 2, 3].map(i => hex[i] + hex[i]).join('');
+  }
+  return null;
+}
 
 for (const page of PAGES) {
   test(`${page} light-mode text clears WCAG AA on every surface`, () => {
@@ -105,11 +134,17 @@ for (const page of PAGES) {
                        [':root {', 'dark']]) {
     test(`${page} ${theme[1]}-mode text ON a palette fill clears AA`, () => {
       const colours = palette(page, theme[0]);
-      for (const [fill, over] of FILLS) {
-        if (!colours[fill]) continue;
-        const ratio = contrast(over, colours[fill]);
+      const rules = fillRules(page);
+      assert.ok(rules.length, `${page} has no text-on-fill rules to check`);
+      for (const rule of rules) {
+        const back = colours[rule.fill];
+        const front = resolve(rule.ink, colours);
+        // A fill or ink this theme does not define, or a keyword like
+        // `inherit`, is not a measurable pair rather than a passing one.
+        if (!back || !front) continue;
+        const ratio = contrast(front, back);
         assert.ok(ratio >= AA_NORMAL,
-          `${over} on --${fill} (${colours[fill]}) is ${ratio.toFixed(2)}:1, ` +
+          `${rule.ink} on --${rule.fill} (${back}) is ${ratio.toFixed(2)}:1, ` +
           `and AA wants ${AA_NORMAL}`);
       }
     });
