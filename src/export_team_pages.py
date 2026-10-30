@@ -480,7 +480,11 @@ def split_team_pages(data: dict) -> dict:
     seasons: dict[int, dict] = {}
 
     def team(tid):
-        return teams.setdefault(int(tid), _blank_scope())
+        # The shard says whose it is. `swings`, `history` and `advanced` are
+        # one team's, and the page re-keys them into by-team maps; without
+        # team_id here those maps come out empty and three panels on every
+        # team page go blank with the data sitting right there in the file.
+        return teams.setdefault(int(tid), dict(_blank_scope(), team_id=int(tid)))
 
     def season(year):
         return seasons.setdefault(int(year), _blank_scope())

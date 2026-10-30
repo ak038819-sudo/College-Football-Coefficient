@@ -527,3 +527,17 @@ def test_the_version_changes_when_the_bytes_do(tmp_path):
     # And a file the change did not touch keeps its stamp.
     assert first["teams"]["20"] == second["teams"]["20"]
 
+
+
+def test_a_team_shard_names_its_own_team_and_a_season_shard_does_not():
+    """The page re-keys a team's swings, history and advanced numbers onto
+    this id. Without it the indexer keys them onto `undefined`, and the
+    History panel, both Swing panels and the advanced block draw empty with
+    every number sitting unreachable in the file."""
+    split = split_team_pages(_payload())
+    for tid, scope in split["teams"].items():
+        assert scope["team_id"] == tid, f"team shard {tid} does not say whose it is"
+    for year, scope in split["seasons"].items():
+        assert "team_id" not in scope, (
+            f"season shard {year} claims to be one team's, which would "
+            "attribute that team's history to the whole season")
