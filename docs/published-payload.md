@@ -67,27 +67,23 @@ Three rules worth keeping:
    plain `date` field looks duplicated by `kickoff_utc` and is **not**: one is
    the game's local date and the other UTC, and deriving either from the other
    is a trap this project has already been caught by.
-2. ~~The 47% of box-score lines whose statistic is zero.~~ **DONE** — Austin
-   took this call on 2026-10-30 ("I see no point in pulling a bunch of
-   inferred, irrelivant data, so I'm good tripping that out of the
-   scoreboard"). `drop_zero_lines` in `src/export_static_data.py` leaves them
-   out of the shards the game page reads, and the panel now says outright that
-   it lists only what a player recorded, so an absent line is not read as a gap
-   in the data. Measured on the shipped archive: **38.9% of lines go, the
-   encoded archive falls 83.4 MB → 59.1 MB (29.1% further off), and no game
-   loses its box score**. One game page went from 411 rows to 166.
+2. **The 38.9% of box-score lines whose statistic is zero — not a saving.**
+   The game page no longer draws them (see below), but they are still
+   *exported*, and that is deliberate. The Stats hub reads the same shards
+   through `loadPlayerArchive`, and `aggregatePlayers` in `ui/stats.js` counts a
+   player's games from the lines that exist (`row._games.add(gameId)`), so
+   dropping them from the export moved **312 of 2025's player-category game
+   counts** — one Pittsburgh defender from ten games to seven — and inflated
+   every per-game average with them. A zero-valued season field also became
+   missing rather than zero. Codex caught this on PR #160 after I had verified
+   only the game page.
 
-   Note the saving is 29%, not the "roughly half" an earlier version of this
-   document predicted. Halving was right of the *old* format, where each zero
-   line also carried a spelled-out name and athlete id; the encoding in #158
-   had already deduplicated exactly those bytes, so what was left to remove was
-   the smaller part. Two savings on the same bytes do not add.
+   So the filter lives in `recordedBoxScoreTeams` in `ui/dashboard_shell.html`,
+   at render. One game page goes from 411 rows to 166 and 48 stat groups to 40;
+   the archive stays 83.4 MB. **The page win is real and the byte win is zero.**
+   Keeping both would mean giving the aggregator a player's game count by
+   another route, which is a bigger change than it is worth today.
 
-   The career game log in `ui/data/game_logs` deliberately keeps its zeros: it
-   is read a game at a time, and a game where a player's only lines were zeros
-   would otherwise vanish from his career entirely. `data/raw/player_boxscores`
-   keeps every line either way — this is a statement about the page, not the
-   archive.
 3. **Non-FBS box scores.** Named in earlier reviews as the obvious cut. In fact
    `export_static_data.export` already keeps only games the database rates and
    has played, so this one is mostly already paid for; measure before

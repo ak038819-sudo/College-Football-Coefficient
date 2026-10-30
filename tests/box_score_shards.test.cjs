@@ -166,16 +166,18 @@ test('a drain with nothing queued leaves the archive alone', () => {
                'an untouched page should not grow an empty archive');
 });
 
-// The panel says what it leaves out. The exporter drops a line the source
-// reports as zero -- 38.9% of the archive -- so without this sentence a player
-// with no receiving row looks like a gap in the data rather than a player who
-// caught nothing. This renders the REAL panel rather than grepping the shell,
+// What the panel leaves out, and what it must not. CFBD publishes a row per
+// rostered player per statistic, so 38.9% of every line in the archive reads
+// zero. The filter lives HERE, at render, because the Stats hub reads the same
+// shards and aggregatePlayers counts a player's games from the lines that
+// exist -- stripping them in the exporter moved 312 of 2025's player-category
+// game counts. These render the REAL panel rather than grepping the shell,
 // because a test that reads source text passes while the code is broken.
-function renderPanel() {
+function panel() {
   const consts = ['STAT_CATEGORY_ORDER', 'STAT_TYPE_ORDER'];
-  const fns = ['esc', 'statGroupRank', 'orderStatGroups', 'boxScoreNameLookup',
-               'boxScorePlayerCell', 'boxScoreLineCell', 'rosterIdSet',
-               'playerBoxscorePanel'];
+  const fns = ['esc', 'statGroupRank', 'orderStatGroups', 'zeroBoxScoreStat',
+               'recordedBoxScoreTeams', 'boxScoreNameLookup', 'boxScorePlayerCell',
+               'boxScoreLineCell', 'rosterIdSet', 'playerBoxscorePanel'];
   const source = consts.map(name => {
     const m = shell.match(new RegExp('^const ' + name + ' = [^]*?;$', 'm'));
     assert.ok(m, 'the shell must declare ' + name);
@@ -186,20 +188,80 @@ function renderPanel() {
     return m[0];
   })).join('\n');
   const context = {TEAM_BY_NAME: new Map()};
-  vm.runInNewContext(source + '\nthis.__panel = playerBoxscorePanel;', context);
-  return context.__panel([{
-    name: 'Georgia State', home_away: 'away',
-    categories: [{name: 'defensive', type: 'TOT', lines: [
-      {name: 'Marlin Dean', stat: '7', id: '5220652'},
-    ]}],
-  }], null, null, null);
+  vm.runInNewContext(source + '\nthis.__x = {playerBoxscorePanel, zeroBoxScoreStat, recordedBoxScoreTeams};',
+                     context);
+  return context.__x;
 }
 
+function team(name, ...cats) {
+  return {name, home_away: 'away', categories: cats.map(([cat, type, lines]) => ({
+    name: cat, type, lines: lines.map(([who, stat]) => ({name: who, stat, id: '1'})),
+  }))};
+}
+
+test('a line the player recorded nothing in is not drawn', () => {
+  const {playerBoxscorePanel} = panel();
+  const html = playerBoxscorePanel([team('Georgia State',
+    ['defensive', 'TOT', [['Marlin Dean', '7'], ['Brent Washington', '0']]],
+    ['defensive', 'TD', [['Marlin Dean', '0'], ['Brent Washington', '0']]])],
+    null, null, null);
+  assert.match(html, /Marlin Dean/);
+  assert.doesNotMatch(html, /Brent Washington/, 'he recorded nothing at all');
+  // The whole TD group went: every line in it was zero. An empty container
+  // draws as a heading with nothing under it.
+  assert.doesNotMatch(html, /TD/);
+  assert.match(html, /TOT/);
+});
+
+test('what counts as zero is every digit being zero', () => {
+  const {zeroBoxScoreStat} = panel();
+  for (const zero of ['0', '0.0', '0/0', '0-0', '0:00', '00', '--', '-', '', '  ', null]) {
+    assert.equal(zeroBoxScoreStat(zero), true, JSON.stringify(zero));
+  }
+  // The ones that are NOT zero matter more: a five-yard loss, a missed kick
+  // that was a real attempt, and half a sack.
+  for (const kept of ['-5', '0/1', '0-7', '10', '0.5', '1', 'DNP', '1/0']) {
+    assert.equal(zeroBoxScoreStat(kept), false, JSON.stringify(kept));
+  }
+});
+
+test('a team that recorded nothing is left out', () => {
+  const {recordedBoxScoreTeams} = panel();
+  const kept = recordedBoxScoreTeams([
+    team('Georgia State', ['defensive', 'TD', [['A', '0']]]),
+    team('Troy', ['passing', 'YDS', [['B', '23']]]),
+  ]);
+  assert.deepEqual(kept.map(t => t.name), ['Troy']);
+});
+
+test('the filter does not mutate the archive the Stats hub reads', () => {
+  // loadPlayerArchive hands out the cached season object, so a filter that
+  // edited it in place would strip the aggregator's input on the way past.
+  const {recordedBoxScoreTeams} = panel();
+  const source = [team('Georgia State', ['defensive', 'TD', [['A', '0'], ['B', '3']]])];
+  recordedBoxScoreTeams(source);
+  assert.equal(source[0].categories[0].lines.length, 2, 'both lines still there');
+  assert.equal(source[0].categories[0].lines[0].stat, '0');
+});
+
 test('the box score states that it lists only what a player recorded', () => {
-  const html = renderPanel();
+  const {playerBoxscorePanel} = panel();
+  const html = playerBoxscorePanel(
+    [team('Georgia State', ['defensive', 'TOT', [['Marlin Dean', '7']]])], null, null, null);
   assert.match(html, /Only statistics a player recorded are listed/);
   // Drawn whatever the links did: the note used to exist solely to explain the
   // linking rules, and with no line linked there was no note at all.
   assert.match(html, /class="section-note"/);
   assert.match(html, /Marlin Dean/, 'and the box score itself still renders');
+});
+
+test('a game CFBD has not published still says so', () => {
+  // Keyed on the unfiltered input, so this stays a different statement from
+  // "it published and every line was zero".
+  const {playerBoxscorePanel} = panel();
+  assert.match(playerBoxscorePanel([], null, null, null),
+               /Player lines appear here when CFBD publishes/);
+  assert.match(playerBoxscorePanel(
+    [team('Georgia State', ['defensive', 'TD', [['A', '0']]])], null, null, null),
+    /No player recorded a statistic in this game/);
 });

@@ -19,8 +19,7 @@ import pytest
 
 from export_static_data import (BOX_SCORE_FORMAT, BOX_SCORE_SHARDS,
                                 box_score_shard, decode_box_score_shard,
-                                drop_zero_lines, encode_box_score_shard,
-                                is_zero_stat, write_box_score_shards)
+                                encode_box_score_shard, write_box_score_shards)
 
 
 def side(team, home_away, *lines):
@@ -255,74 +254,17 @@ def test_the_manifest_entry_states_the_format_it_wrote(tmp_path):
     assert entry["format"] == BOX_SCORE_FORMAT
 
 
-# A line the source reports as zero is not exported. CFBD publishes a row per
-# rostered player per statistic, so 38.9% of the archive's lines read 0 and the
-# game page drew every one of them.
-def test_a_zero_line_is_not_exported(tmp_path):
+def test_the_export_keeps_a_zero_line(tmp_path):
+    """The Stats hub reads these same shards, and aggregatePlayers counts a
+    player's GAMES from the lines that exist -- so dropping zeros here moved
+    312 of 2025's player-category game counts and inflated every per-game
+    average with them. The game page filters them when it renders instead."""
     games = {"401838053": [
         side("Georgia State", "away",
-             ("defensive", "TOT", [("Marlin Dean", "7", "5220652"),
-                                   ("Brent Washington", "0", "5195994")]),
-             ("defensive", "TD", [("Marlin Dean", "0", "5220652"),
-                                  ("Brent Washington", "0", "5195994")]))]}
-    entry = write_box_score_shards(tmp_path, 2025, games)
+             ("defensive", "TOT", [("Marlin Dean", "7", "5220652")]),
+             ("defensive", "TD", [("Marlin Dean", "0", "5220652")]))]}
+    write_box_score_shards(tmp_path, 2025, games)
     kept = games_in(tmp_path / "2025" / "5.js")["401838053"][0]["categories"]
-    # The whole TD category went: every line in it was zero.
-    assert [(c["name"], c["type"]) for c in kept] == [("defensive", "TOT")]
-    assert [l["name"] for l in kept[0]["lines"]] == ["Marlin Dean"]
-    assert entry["files"]["5"].startswith("data/players/2025/5.js?v=")
-
-
-def test_a_team_with_nothing_but_zeros_is_left_out():
-    """An empty container renders as a heading with nothing under it."""
-    stripped = drop_zero_lines({"1": [
-        side("Georgia State", "away", ("defensive", "TD", [("A", "0", "1")])),
-        side("Troy", "home", ("passing", "YDS", [("B", "23", "2")]))]})
-    assert [s["name"] for s in stripped["1"]] == ["Troy"]
-
-
-def test_a_game_whose_every_line_is_zero_is_still_a_game():
-    """The manifest naming a shard that does not hold a game is the one failure
-    the page cannot recover from, so an emptied game stays, empty.
-
-    BOTH sides have to be all zeros here: a fixture where one side survives
-    cannot tell this rule from dropping emptied games, which is exactly how the
-    first version of this test let that mutant through.
-    """
-    stripped = drop_zero_lines({"1": [
-        side("Georgia State", "away", ("defensive", "TD", [("A", "0", "1")])),
-        side("Troy", "home", ("defensive", "TD", [("B", "0", "2")]))]})
-    assert list(stripped) == ["1"], "the game itself survives"
-    assert stripped["1"] == [], "with no team left in it"
-
-
-def test_what_counts_as_zero_is_every_digit_being_zero():
-    """Zero is spelled several ways across 23 seasons, and the forms that are
-    NOT zero matter more: a five-yard loss, a missed kick that was a real
-    attempt, and half a sack."""
-    for zero in ("0", "0.0", "0/0", "0-0", "0:00", "00", "--", "-", "", "  ", None):
-        assert is_zero_stat(zero), repr(zero)
-    for kept in ("-5", "0/1", "0-7", "10", "0.5", "1", "DNP", "1/0"):
-        assert not is_zero_stat(kept), repr(kept)
-
-
-def test_dropping_zeros_leaves_every_game_with_a_box_score(repo_root):
-    """No game in the shipped archive is reduced to nothing by the rule.
-
-    The rule is applied HERE rather than read off the files, because between a
-    source commit and the next deploy the shipped shards still hold their
-    zeros -- a test that only looked would pass on that archive while proving
-    nothing. Applying it is what makes keeping an emptied game a guard rather
-    than a live code path.
-    """
-    players = sharded_manifest(repo_root)
-    checked = emptied = 0
-    for season, entry in players.items():
-        for src in entry["files"].values():
-            games = games_in(repo_root / "ui" / src.split("?")[0])
-            for game_id, sides in drop_zero_lines(games).items():
-                checked += 1
-                if not any(c["lines"] for s in sides for c in s["categories"]):
-                    emptied += 1
-    assert checked > 15000, f"only {checked} games checked"
-    assert emptied == 0, f"{emptied} of {checked} games lose every line"
+    assert [(c["name"], c["type"]) for c in kept] == [("defensive", "TOT"),
+                                                      ("defensive", "TD")]
+    assert kept[1]["lines"][0]["stat"] == "0", "the zero reaches the aggregator"
