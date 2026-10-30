@@ -17,8 +17,45 @@ import json
 
 import pytest
 
-from export_static_data import (BOX_SCORE_SHARDS, box_score_shard,
-                                write_box_score_shards)
+from export_static_data import (BOX_SCORE_FORMAT, BOX_SCORE_SHARDS,
+                                box_score_shard, decode_box_score_shard,
+                                encode_box_score_shard, write_box_score_shards)
+
+
+def side(team, home_away, *lines):
+    """One team's half of a box score, in the shape the archive really holds.
+
+    The encoder reads these keys, so a fixture of bare strings would pass a
+    test that the shipped exporter could not run.
+    """
+    return {"name": team, "home_away": home_away,
+            "categories": [{"name": category, "type": stat_type,
+                            "lines": [{"name": name, "stat": stat, "id": athlete}
+                                      for name, stat, athlete in rows]}
+                           for category, stat_type, rows in lines]}
+
+
+def game(team="Georgia State", *, stat="23", athlete="5220652", name="Marlin Dean"):
+    return [side(team, "away", ("passing", "YDS", [(name, stat, athlete)]))]
+
+
+def payload_of(path):
+    """The JSON a shard file carries, whichever shape it is written in.
+
+    A v2 shard pushes its payload onto a queue; a v1 shard -- which is what the
+    repository still holds between a source commit and the next deploy --
+    merges an object into the season.
+    """
+    text = path.read_text(encoding="utf-8")
+    if ".push(" in text:
+        return json.loads(text[text.index(".push(") + len(".push("):text.rindex(");")])
+    return json.loads(text[text.index("||{},") + len("||{},"):text.rindex(");")])
+
+
+def games_in(path):
+    """The games one shard file holds, decoded if it needs decoding."""
+    payload = payload_of(path)
+    return decode_box_score_shard(payload) if payload.get("v") else payload
 
 
 def sharded_manifest(repo_root):
@@ -42,9 +79,9 @@ def sharded_manifest(repo_root):
 
 def test_a_game_lands_in_the_shard_the_rule_names(tmp_path):
     entry = write_box_score_shards(tmp_path, 2025, {
-        "401838053": ["five"],      # 401838053 % 32 == 5
-        "401838085": ["five too"],  # also 5
-        "401838054": ["six"],
+        "401838053": game(),            # 401838053 % 32 == 5
+        "401838085": game("Troy"),      # also 5
+        "401838054": game("Marshall"),
     })
     assert entry["shards"] == BOX_SCORE_SHARDS
     assert set(entry["files"]) == {"5", "6"}
@@ -54,17 +91,25 @@ def test_a_game_lands_in_the_shard_the_rule_names(tmp_path):
     assert "401838054" not in body
 
 
-def test_a_shard_merges_into_its_season_rather_than_assigning_it(tmp_path):
-    """Two shards of one season must both survive being loaded."""
-    write_box_score_shards(tmp_path, 2025, {"401838053": ["a"], "401838054": ["b"]})
+def test_a_shard_queues_itself_so_two_shards_both_survive(tmp_path):
+    """Two shards of one season must both survive being loaded.
+
+    A shard no longer merges into window.__CFB_PLAYERS__, because what it
+    carries is encoded and what the page renders is not; it pushes onto a queue
+    the page drains. Pushing is what keeps the second shard from replacing the
+    first, so the test is that each file APPENDS and names its own season.
+    """
+    write_box_score_shards(tmp_path, 2025,
+                           {"401838053": game(), "401838054": game("Marshall")})
     for shard in ("5", "6"):
         body = (tmp_path / "2025" / f"{shard}.js").read_text(encoding="utf-8")
-        assert "Object.assign" in body, body[:80]
-        assert "window.__CFB_PLAYERS__[2025]=window.__CFB_PLAYERS__[2025]||{}" in body
+        assert "(window.__CFB_BOX_QUEUE__=window.__CFB_BOX_QUEUE__||[]).push(" in body, body[:90]
+        assert "Object.assign" not in body, "a shard that assigns loses the other shard"
+        assert payload_of(tmp_path / "2025" / f"{shard}.js")["s"] == 2025
 
 
 def test_an_empty_shard_is_never_written_or_named(tmp_path):
-    entry = write_box_score_shards(tmp_path, 2025, {"401838053": ["five"]})
+    entry = write_box_score_shards(tmp_path, 2025, {"401838053": game()})
     assert list(entry["files"]) == ["5"]
     assert [p.name for p in (tmp_path / "2025").glob("*.js")] == ["5.js"]
 
@@ -72,15 +117,15 @@ def test_an_empty_shard_is_never_written_or_named(tmp_path):
 def test_a_negative_game_id_lands_where_the_page_will_look(tmp_path):
     """The exporter and the page must agree, and they agree on a FLOORED
     modulo: -7 belongs in 25, where a bare JavaScript % would say -7."""
-    entry = write_box_score_shards(tmp_path, 1999, {"-7": ["odd"]})
+    entry = write_box_score_shards(tmp_path, 1999, {"-7": game()})
     assert list(entry["files"]) == ["25"]
     assert (tmp_path / "1999" / "25.js").exists()
 
 
 def test_the_version_changes_when_a_shard_changes(tmp_path):
-    first = write_box_score_shards(tmp_path, 2025, {"401838053": ["a"]})
-    again = write_box_score_shards(tmp_path, 2025, {"401838053": ["a"]})
-    changed = write_box_score_shards(tmp_path, 2025, {"401838053": ["b"]})
+    first = write_box_score_shards(tmp_path, 2025, {"401838053": game()})
+    again = write_box_score_shards(tmp_path, 2025, {"401838053": game()})
+    changed = write_box_score_shards(tmp_path, 2025, {"401838053": game(stat="24")})
     assert first == again, "the same data must produce the same file and version"
     assert changed["files"]["5"] != first["files"]["5"]
 
@@ -108,10 +153,7 @@ def test_every_shard_holds_only_the_games_the_rule_assigns_it(repo_root):
         for shard, src in entry["files"].items():
             path = repo_root / "ui" / src.split("?")[0]
             assert path.exists(), src
-            text = path.read_text(encoding="utf-8")
-            # The file merges its games into the season: the payload is the
-            # second argument of the Object.assign, after the `||{},` guard.
-            games = json.loads(text[text.index("||{},") + len("||{},"):text.rindex(");")])
+            games = games_in(path)
             assert games, f"{src} is empty and should not have been written"
             for game_id in games:
                 assert box_score_shard(game_id) == int(shard), (season, shard, game_id)
@@ -140,3 +182,73 @@ def test_the_shipped_exports_leave_no_unsharded_season_behind(repo_root):
     players_dir = repo_root / "ui" / "data" / "players"
     assert [d for d in players_dir.iterdir() if d.is_dir()], "no sharded seasons"
     assert not list(players_dir.glob("*.js")), "an unsharded season file survived"
+
+
+# The encoding itself. A shard carries string tables and positional rows
+# because the published site is capped at 1 GB and these box scores were 245 MB
+# of it, nearly all of it the same names and the same key spellings over again.
+# Nothing is dropped, so the test that matters is a round trip.
+def test_the_encoding_round_trips_through_the_decoder():
+    games = {"401838053": [
+        side("Georgia State", "away",
+             ("defensive", "TOT", [("Marlin Dean", "7", "5220652"),
+                                   ("Brent Washington", "4", "5195994")]),
+             ("defensive", "TD", [("Marlin Dean", "0", "5220652"),
+                                  ("Brent Washington", "0", "5195994")])),
+        side("Troy", "home",
+             ("passing", "C/ATT", [("Goode Smith", "17/24", "4685794")]))]}
+    payload = encode_box_score_shard(2025, games)
+    assert payload["v"] == BOX_SCORE_FORMAT
+    assert decode_box_score_shard(payload) == games
+
+
+def test_a_name_is_stored_once_however_many_lines_it_appears_on():
+    """The saving IS the deduplication, so it is worth asserting outright: a
+    player recorded a line in every statistic his position has, and his name
+    and athlete id used to be spelled out on each one."""
+    rows = [("Marlin Dean", str(n), "5220652") for n in range(5)]
+    payload = encode_box_score_shard(
+        2025, {"1": [side("Georgia State", "away", ("defensive", "TOT", rows))]})
+    assert payload["n"] == ["Marlin Dean"]
+    assert payload["i"] == ["5220652"]
+    assert [line[0] for line in payload["g"]["1"][0][2][0][2]] == [0, 0, 0, 0, 0]
+    # and the stats, which are the only thing that differs, all survive
+    assert [line[1] for line in payload["g"]["1"][0][2][0][2]] == ["0", "1", "2", "3", "4"]
+
+
+def test_the_encoded_shard_is_much_smaller_than_the_objects():
+    """A tripwire on the whole point of the change, on a fixture shaped like the
+    real thing: eleven players, each with the statistics his position records."""
+    games = {str(401838053 + g): [
+        side(team, "home" if g % 2 else "away",
+             ("defensive", "TOT", [(f"Player {n}", str(n % 9), str(5000000 + n))
+                                   for n in range(11)]),
+             ("defensive", "SOLO", [(f"Player {n}", str(n % 5), str(5000000 + n))
+                                    for n in range(11)]),
+             ("defensive", "TD", [(f"Player {n}", "0", str(5000000 + n))
+                                  for n in range(11)]))
+        for team in ("Georgia State", "Troy")] for g in range(4)}
+    objects = len(json.dumps(games, separators=(",", ":")))
+    encoded = len(json.dumps(encode_box_score_shard(2025, games), separators=(",", ":")))
+    assert encoded < objects * 0.6, f"{encoded} vs {objects}"
+
+
+def test_an_index_the_tables_do_not_reach_decodes_to_an_empty_string():
+    """A shard written by a different exporter than the reader was built from
+    should cost that one value, not the whole box score. The page's
+    decodeBoxScores makes the same promise."""
+    payload = encode_box_score_shard(
+        2025, {"1": [side("Georgia State", "away",
+                          ("defensive", "TOT", [("Marlin Dean", "7", "5220652")]))]})
+    payload["n"] = []
+    decoded = decode_box_score_shard(payload)
+    assert decoded["1"][0]["categories"][0]["lines"][0]["name"] == ""
+    assert decoded["1"][0]["categories"][0]["lines"][0]["stat"] == "7"
+
+
+def test_the_manifest_entry_states_the_format_it_wrote(tmp_path):
+    """So a human reading the manifest can tell which shape the files are in.
+    The page does not need it -- a v2 shard announces itself by queueing --
+    but a stale pair of manifest and files is exactly what this records."""
+    entry = write_box_score_shards(tmp_path, 2025, {"401838053": game()})
+    assert entry["format"] == BOX_SCORE_FORMAT

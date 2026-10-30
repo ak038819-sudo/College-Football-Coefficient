@@ -419,13 +419,95 @@ def box_score_shard(game_id) -> int:
     return int(game_id) % BOX_SCORE_SHARDS
 
 
+# Published GitHub Pages sites are capped at 1 GB and ui/ had reached 637 MB,
+# 245 MB of it these box scores. The bytes are nearly all repetition: a line is
+# `{"name":...,"stat":...,"id":...}`, so 19 bytes of key spelling per line, and
+# within one shard a name and an athlete id recur once per statistic the player
+# recorded -- 307,000 lines drawing on 8,056 names in 2025 alone. So a shard
+# now carries its own string tables and positional rows, and the page puts the
+# objects back. Measured whole-season: 66% off 2025, 70% off 2005. No value is
+# dropped; this is spelling, not content.
+#
+# Version 1 is the object form, which a cached manifest may still name. The
+# shapes are told apart by the file itself rather than by a flag: a v2 shard
+# PUSHES its payload onto a queue the page drains, where v1 merged straight
+# into window.__CFB_PLAYERS__. A page therefore reads whichever it is served.
+BOX_SCORE_FORMAT = 2
+
+
+class _StringTable:
+    """Interns strings for one shard, in first-seen order.
+
+    Per SHARD, never per season: a game page fetches one shard, so a table
+    spanning the season would be bytes the reader must fetch and cannot use.
+    """
+
+    def __init__(self) -> None:
+        self.items: list = []
+        self._index: dict = {}
+
+    def __call__(self, value) -> int:
+        key = "" if value is None else str(value)
+        if key not in self._index:
+            self._index[key] = len(self.items)
+            self.items.append(key)
+        return self._index[key]
+
+
+def encode_box_score_shard(season: int, games: dict) -> dict:
+    """One shard's box scores as string tables plus positional rows.
+
+    The inverse is decode_box_score_shard below and `decodeBoxScores` in
+    ui/dashboard_shell.html, and tests hold all three to each other.
+    """
+    names, ids, categories, types = (_StringTable() for _ in range(4))
+    out = {}
+    for game_id, sides in games.items():
+        out[str(game_id)] = [
+            [side["name"], side["home_away"],
+             [[categories(category["name"]), types(category["type"]),
+               [[names(line["name"]), line["stat"], ids(line["id"])]
+                for line in category["lines"]]]
+              for category in side["categories"]]]
+            for side in sides]
+    return {"v": BOX_SCORE_FORMAT, "s": int(season), "n": names.items,
+            "i": ids.items, "c": categories.items, "t": types.items, "g": out}
+
+
+def decode_box_score_shard(payload: dict) -> dict:
+    """The objects a page renders, back from the encoded shard.
+
+    Here so a test can hold the encoder to a round trip in the language that
+    wrote it; the page has its own copy of this because the page is what
+    actually reads the file.
+
+    An index the tables do not reach reads as an empty string, the same promise
+    `decodeBoxScores` makes: a shard written by a different exporter than the
+    reader was built from should cost that one value, not a whole box score.
+    """
+    def at(table, index):
+        return table[index] if isinstance(index, int) and 0 <= index < len(table) else ""
+
+    names, ids = payload["n"], payload["i"]
+    categories, types = payload["c"], payload["t"]
+    return {game_id: [{"name": side[0], "home_away": side[1],
+                       "categories": [{"name": at(categories, category[0]),
+                                       "type": at(types, category[1]),
+                                       "lines": [{"name": at(names, line[0]), "stat": line[1],
+                                                  "id": at(ids, line[2])}
+                                                 for line in category[2]]}
+                                      for category in side[2]]}
+                      for side in sides]
+            for game_id, sides in payload["g"].items()}
+
+
 def write_box_score_shards(players_dir: Path, season: int, selected: dict) -> dict:
     """Write one season's box scores as shards, and return its manifest entry.
 
-    A shard MERGES into its season rather than assigning it, so loading two of
-    them keeps both. An empty shard is not written at all, and the entry names
-    only the files that exist, because the page reads the entry to decide what
-    to request.
+    A shard PUSHES onto a queue rather than assigning a season, so loading two
+    of them keeps both and neither has to know what the other found. An empty
+    shard is not written at all, and the entry names only the files that exist,
+    because the page reads the entry to decide what to request.
     """
     shards: dict = {}
     for game_id, value in selected.items():
@@ -434,11 +516,11 @@ def write_box_score_shards(players_dir: Path, season: int, selected: dict) -> di
     for shard in sorted(shards):
         version = _write_js_expr(
             players_dir / str(season) / f"{shard}.js",
-            "(window.__CFB_PLAYERS__=window.__CFB_PLAYERS__||{{}}),"
-            "Object.assign(window.__CFB_PLAYERS__[%d]=window.__CFB_PLAYERS__[%d]||{{}},"
-            "{payload});" % (season, season), shards[shard])
+            "(window.__CFB_BOX_QUEUE__=window.__CFB_BOX_QUEUE__||[])"
+            ".push({payload});",
+            encode_box_score_shard(season, shards[shard]))
         files[str(shard)] = f"data/players/{season}/{shard}.js?v={version}"
-    return {"shards": BOX_SCORE_SHARDS, "files": files}
+    return {"shards": BOX_SCORE_SHARDS, "format": BOX_SCORE_FORMAT, "files": files}
 
 
 # A game page's drive list and scoring summary. One row per drive, in the order

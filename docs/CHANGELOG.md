@@ -1,5 +1,18 @@
 # Site release history
 
+## Unreleased — room to publish (2026-10-30)
+
+- **The published site is a third smaller.** GitHub Pages refuses a site over
+  1 GB and `ui/` had reached 637 MB, 245 MB of it the per-game box scores. Two
+  thirds of those bytes were repetition rather than content: nineteen bytes of
+  key spelling on every line, and a player's name and athlete id spelled out
+  again for each statistic he recorded. A shard now carries its own string
+  tables and positional rows and the page puts the objects back, which took the
+  archive from 255.3 MB to 83.4 MB with no value dropped. Nothing about the
+  site changes for a reader: the same game pages and the same season
+  aggregates, verified against the previous export row for row.
+  `docs/published-payload.md` has the measurements and what is left.
+
 ## Unreleased — Elocast on a home screen (2026-10-19)
 
 - **The site is installable.** Add to Home Screen on iOS or Install on Android
