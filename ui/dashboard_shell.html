@@ -9274,22 +9274,63 @@ function playerArchiveEntry(season) {
   if (typeof entry === 'string') return {legacy: entry};
   return entry && entry.files ? entry : null;
 }
+// A shard's own string tables, put back into the objects every panel renders.
+// src/export_static_data.py writes them and holds this to a round trip: a line
+// is [nameIndex, stat, idIndex] and a category [nameIndex, typeIndex, lines],
+// which took 66% off the published archive without dropping a single value.
+// An index the tables do not reach would be a shard written by a different
+// exporter than this page was built from, so it reads as an empty string
+// rather than throwing a whole box score away.
+function decodeBoxScores(payload) {
+  const at = (table, index) => (table || [])[index] ?? '';
+  const games = {};
+  for (const [gameId, sides] of Object.entries(payload.g || {})) {
+    games[gameId] = (sides || []).map(side => ({
+      name: side[0],
+      home_away: side[1],
+      categories: (side[2] || []).map(category => ({
+        name: at(payload.c, category[0]),
+        type: at(payload.t, category[1]),
+        lines: (category[2] || []).map(line => ({
+          name: at(payload.n, line[0]), stat: line[1], id: at(payload.i, line[2]),
+        })),
+      })),
+    }));
+  }
+  return games;
+}
+// Shards announce themselves on a queue instead of merging into the archive,
+// because an encoded payload and a decoded season cannot share one object.
+// Draining is what merges them, and it has to happen after the scripts resolve
+// and before the archive is read.
+function drainBoxScoreQueue() {
+  const queue = window.__CFB_BOX_QUEUE__;
+  if (!queue || !queue.length) return;
+  const archive = window.__CFB_PLAYERS__ = window.__CFB_PLAYERS__ || {};
+  // Spliced out one at a time: a shard that arrives while this runs is still
+  // on the queue for the next drain rather than dropped with the batch.
+  while (queue.length) {
+    const payload = queue.shift();
+    if (!payload || payload.s == null) continue;
+    Object.assign(archive[payload.s] = archive[payload.s] || {}, decodeBoxScores(payload));
+  }
+}
 function loadPlayerArchive(season, gameId) {
   const entry = playerArchiveEntry(season);
   if (!entry) return Promise.resolve({});
   // Read the global AFTER the script resolves, never before: a legacy file
   // ASSIGNS window.__CFB_PLAYERS__, so a reference captured first is a
   // detached object the script replaces, and the box score comes back empty.
-  if (entry.legacy) {
-    return loadDataScript(entry.legacy)
-      .then(() => (window.__CFB_PLAYERS__ || {})[season] || {});
-  }
+  const archive = () => {
+    drainBoxScoreQueue();
+    return (window.__CFB_PLAYERS__ || {})[season] || {};
+  };
+  if (entry.legacy) return loadDataScript(entry.legacy).then(archive);
   const wanted = gameId == null
     ? Object.values(entry.files)
     : [entry.files[String(boxScoreShard(gameId, entry.shards))]].filter(Boolean);
-  if (!wanted.length) return Promise.resolve((window.__CFB_PLAYERS__ || {})[season] || {});
-  return Promise.all(wanted.map(loadDataScript))
-    .then(() => (window.__CFB_PLAYERS__ || {})[season] || {});
+  if (!wanted.length) return Promise.resolve(archive());
+  return Promise.all(wanted.map(loadDataScript)).then(archive);
 }
 // Drive-by-drive records for one game: the scoring summary, and the drive list
 // behind it. Sharded on the game id exactly as the box scores are, so a game
