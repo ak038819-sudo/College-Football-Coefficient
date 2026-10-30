@@ -12,6 +12,15 @@
   site changes for a reader: the same game pages and the same season
   aggregates, verified against the previous export row for row.
   `docs/published-payload.md` has the measurements and what is left.
+- **A box score shows what a player did, not what he didn’t.** The source
+  publishes a row per rostered player per statistic, so a game page listed
+  seventy defenders under "defensive · TD" every one of them showing 0 — 38.9%
+  of every line in the archive. Those lines are no longer exported, which took
+  one game page from 411 rows to 166 and another 24 MB off the published site.
+  The panel says outright that it lists only statistics a player recorded, so
+  an absent line reads as "none of that" rather than as missing data. The
+  career game log on a player page keeps its zeros, because it is read a game
+  at a time and a game would otherwise disappear from his record.
 
 ## Unreleased — Elocast on a home screen (2026-10-19)
 

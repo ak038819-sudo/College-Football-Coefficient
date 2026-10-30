@@ -419,6 +419,62 @@ def box_score_shard(game_id) -> int:
     return int(game_id) % BOX_SCORE_SHARDS
 
 
+# CFBD publishes a row per rostered player per statistic, so a game's box score
+# lists every defender under every defensive statistic whether or not he
+# recorded any of it: measured over the whole archive, 38.9% of lines read 0.
+# The game page drew every one, which is seventy players under "defensive · TD"
+# all showing 0 for each one that matters (Austin, 2026-10-30: "I see no point
+# in pulling a bunch of inferred, irrelivant data, so I'm good tripping that
+# out of the scoreboard").
+#
+# So a line the source reports as zero is not exported. What that costs is
+# honesty about absence -- a player with no TD row might have recorded none or
+# simply not be in the feed -- which is why the panel now says outright that it
+# lists only what a player recorded. It is a statement about the PAGE, not the
+# archive: data/raw/player_boxscores keeps every line, and so does the career
+# game log, which is read a game at a time and would otherwise lose a game
+# entirely where a player's only lines were zeros.
+def is_zero_stat(stat) -> bool:
+    """Does this statistic say the player recorded none of it?
+
+    Zero is spelled several ways across 23 seasons -- `0`, `0.0`, `0/0`, `0-0`,
+    `0:00` -- and an unrecorded line as `--`, `-` or empty. The rule is every
+    DIGIT being zero, rather than a list of spellings or a character class: it
+    catches a form nobody has seen yet, and it keeps `-5` (a five-yard loss),
+    `0/1` (a missed kick, which is a real attempt) and `0.5` (half a sack).
+    """
+    text = "" if stat is None else str(stat).strip()
+    if text in ("", "-", "--"):
+        return True
+    digits = [c for c in text if c.isdigit()]
+    return bool(digits) and all(c == "0" for c in digits)
+
+
+def drop_zero_lines(games: dict) -> dict:
+    """The same box scores with every zero line left out.
+
+    A category emptied of lines goes with them, and so does a team left with no
+    category -- an empty container renders as a heading with nothing under it.
+    A GAME is kept even if it somehow empties, because the manifest naming a
+    shard that does not hold it is the one failure the page cannot recover
+    from; measured on the shipped archive no game empties.
+    """
+    out = {}
+    for game_id, sides in games.items():
+        kept_sides = []
+        for side in sides:
+            categories = []
+            for category in side["categories"]:
+                lines = [line for line in category["lines"]
+                         if not is_zero_stat(line.get("stat"))]
+                if lines:
+                    categories.append({**category, "lines": lines})
+            if categories:
+                kept_sides.append({**side, "categories": categories})
+        out[game_id] = kept_sides
+    return out
+
+
 # Published GitHub Pages sites are capped at 1 GB and ui/ had reached 637 MB,
 # 245 MB of it these box scores. The bytes are nearly all repetition: a line is
 # `{"name":...,"stat":...,"id":...}`, so 19 bytes of key spelling per line, and
@@ -508,9 +564,14 @@ def write_box_score_shards(players_dir: Path, season: int, selected: dict) -> di
     of them keeps both and neither has to know what the other found. An empty
     shard is not written at all, and the entry names only the files that exist,
     because the page reads the entry to decide what to request.
+
+    Zero lines are dropped HERE rather than by the caller, because this is the
+    one function whose output is what the game page reads: `archives` keeps
+    every line for the career game log, and a caller that had to remember to
+    strip could forget.
     """
     shards: dict = {}
-    for game_id, value in selected.items():
+    for game_id, value in drop_zero_lines(selected).items():
         shards.setdefault(box_score_shard(game_id), {})[game_id] = value
     files = {}
     for shard in sorted(shards):
@@ -797,6 +858,8 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
         if not selected:
             continue
         archives[season] = selected
+        # `archives` keeps every line for the career game log; the shards the
+        # game page reads drop their zeros inside write_box_score_shards.
         players[str(season)] = write_box_score_shards(players_dir, season, selected)
     # Drive-by-drive records, sharded the same way and for the same reason.
     drives_dir = out_dir / "drives"

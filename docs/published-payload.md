@@ -67,15 +67,27 @@ Three rules worth keeping:
    plain `date` field looks duplicated by `kickoff_utc` and is **not**: one is
    the game's local date and the other UTC, and deriving either from the other
    is a trap this project has already been caught by.
-2. **The 47% of box-score lines whose statistic is zero.** These are real
-   bytes and, arguably, real information: a line says the player took the field
-   and recorded none of that statistic, and dropping it would make absence
-   ambiguous — which `src/export_static_data.py` has a comment warning against.
-   It is also a product question, because the game page draws every one of
-   them: a reader currently scrolls seventy players under "defensive · TD", all
-   of them zero. Deciding to show only non-zero lines would cut the archive
-   roughly in half *and* improve the page. That decision is not the exporter's
-   to make.
+2. ~~The 47% of box-score lines whose statistic is zero.~~ **DONE** — Austin
+   took this call on 2026-10-30 ("I see no point in pulling a bunch of
+   inferred, irrelivant data, so I'm good tripping that out of the
+   scoreboard"). `drop_zero_lines` in `src/export_static_data.py` leaves them
+   out of the shards the game page reads, and the panel now says outright that
+   it lists only what a player recorded, so an absent line is not read as a gap
+   in the data. Measured on the shipped archive: **38.9% of lines go, the
+   encoded archive falls 83.4 MB → 59.1 MB (29.1% further off), and no game
+   loses its box score**. One game page went from 411 rows to 166.
+
+   Note the saving is 29%, not the "roughly half" an earlier version of this
+   document predicted. Halving was right of the *old* format, where each zero
+   line also carried a spelled-out name and athlete id; the encoding in #158
+   had already deduplicated exactly those bytes, so what was left to remove was
+   the smaller part. Two savings on the same bytes do not add.
+
+   The career game log in `ui/data/game_logs` deliberately keeps its zeros: it
+   is read a game at a time, and a game where a player's only lines were zeros
+   would otherwise vanish from his career entirely. `data/raw/player_boxscores`
+   keeps every line either way — this is a statement about the page, not the
+   archive.
 3. **Non-FBS box scores.** Named in earlier reviews as the obvious cut. In fact
    `export_static_data.export` already keeps only games the database rates and
    has played, so this one is mostly already paid for; measure before

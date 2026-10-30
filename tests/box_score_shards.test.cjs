@@ -165,3 +165,41 @@ test('a drain with nothing queued leaves the archive alone', () => {
   assert.equal(context.window.__CFB_PLAYERS__, undefined,
                'an untouched page should not grow an empty archive');
 });
+
+// The panel says what it leaves out. The exporter drops a line the source
+// reports as zero -- 38.9% of the archive -- so without this sentence a player
+// with no receiving row looks like a gap in the data rather than a player who
+// caught nothing. This renders the REAL panel rather than grepping the shell,
+// because a test that reads source text passes while the code is broken.
+function renderPanel() {
+  const consts = ['STAT_CATEGORY_ORDER', 'STAT_TYPE_ORDER'];
+  const fns = ['esc', 'statGroupRank', 'orderStatGroups', 'boxScoreNameLookup',
+               'boxScorePlayerCell', 'boxScoreLineCell', 'rosterIdSet',
+               'playerBoxscorePanel'];
+  const source = consts.map(name => {
+    const m = shell.match(new RegExp('^const ' + name + ' = [^]*?;$', 'm'));
+    assert.ok(m, 'the shell must declare ' + name);
+    return m[0];
+  }).concat(fns.map(name => {
+    const m = shell.match(new RegExp('^function ' + name + '\\([^]*?\\n\\}', 'm'));
+    assert.ok(m, 'the shell must declare ' + name);
+    return m[0];
+  })).join('\n');
+  const context = {TEAM_BY_NAME: new Map()};
+  vm.runInNewContext(source + '\nthis.__panel = playerBoxscorePanel;', context);
+  return context.__panel([{
+    name: 'Georgia State', home_away: 'away',
+    categories: [{name: 'defensive', type: 'TOT', lines: [
+      {name: 'Marlin Dean', stat: '7', id: '5220652'},
+    ]}],
+  }], null, null, null);
+}
+
+test('the box score states that it lists only what a player recorded', () => {
+  const html = renderPanel();
+  assert.match(html, /Only statistics a player recorded are listed/);
+  // Drawn whatever the links did: the note used to exist solely to explain the
+  // linking rules, and with no line linked there was no note at all.
+  assert.match(html, /class="section-note"/);
+  assert.match(html, /Marlin Dean/, 'and the box score itself still renders');
+});
