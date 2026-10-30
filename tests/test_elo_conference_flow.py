@@ -24,8 +24,8 @@ def fixture_exports(monkeypatch, conferences, *, completed=True, paired=True):
            [2, 3, 0, 0, 0, 5]]
     if paired:
         elo.append([2, 4, 0, 0, 0, -5])
-    monkeypatch.setattr(audit, 'read_export', lambda path:
-                        {'elo': elo} if path.name == 'team_pages.js' else payload)
+    monkeypatch.setattr(audit, 'read_team_pages', lambda: {'elo': elo})
+    monkeypatch.setattr(audit, 'read_export', lambda path: payload)
 
 
 @pytest.mark.parametrize('membership', [None, '', '  ', 'absent'])

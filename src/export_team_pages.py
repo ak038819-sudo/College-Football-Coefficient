@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Team-page data export (Milestone 2): writes ui/data/team_pages.js, loaded by
-the dashboard only when a team page is first opened.
+Team-page data export (Milestone 2): writes ui/data/team_pages/, one shard
+per team and one per season, loaded a shard at a time as a reader opens a
+team page or an Elo board.
 
-Why a .js file rather than .json: the dashboard is often opened straight
+Why .js files rather than .json: the dashboard is often opened straight
 from disk (file://), where browsers block fetch() of local JSON. A classic
-<script src> still works from disk AND from GitHub Pages, so the data is
-wrapped as `window.__TEAM_PAGES__ = {...};`.
+<script src> still works from disk AND from GitHub Pages, so each shard is
+wrapped as an assignment onto `window`.
 
 Every number the team page shows is computed HERE, deterministically, from
 the authoritative tables -- the browser only filters/sorts for display and
@@ -39,6 +40,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import sys
 from collections import defaultdict
@@ -438,10 +440,171 @@ def build_team_pages(conn: sqlite3.Connection, champions: list[dict] | None = No
     }
 
 
+# ---------------------------------------------------------------------------
+# Sharding. build_team_pages() above returns ONE object holding every team and
+# every season, which is what ui/data/team_pages.js used to be: 7.3 MB downloaded to
+# draw one team's page, of which about 70 KB was that team's.
+#
+# The file is split along BOTH of the ways the site reads it, because the two
+# are at right angles:
+#
+#   a team page   wants one team across all 47 seasons
+#   the Elo board, the Top 25 and the "as of week N" views each want one
+#                 season across all 139 teams, because they recompute Last 5,
+#                 strength of schedule and the record as they stood then
+#
+# Sharding one way alone turns the other into 139 (or 47) downloads, so the
+# Elo and game rows are written TWICE, once under each index. That reverses
+# this module's original "no game duplicated per team" rule on purpose: it
+# costs a few megabytes on a disk already holding half a gigabyte, and it is
+# the difference between a reader fetching 7.3 MB and fetching 70 KB.
+#
+# `core` holds what neither index can answer alone -- including the two
+# per-season totals the browser used to derive by counting every team-season
+# row it had. A shard does not have them all, so counting there would quietly
+# produce a smaller denominator and a wrong rank.
+
+
+def _blank_scope() -> dict:
+    return {"games": [], "elo": [], "team_seasons": [], "non_fbs": []}
+
+
+def split_team_pages(data: dict) -> dict:
+    """One whole-league payload in, {core, teams, seasons} out.
+
+    Pure: it reads `data` and builds new lists, so the builder keeps its
+    single authoritative pass over the database and this only re-files what
+    that pass produced.
+    """
+    teams: dict[int, dict] = {}
+    seasons: dict[int, dict] = {}
+
+    def team(tid):
+        return teams.setdefault(int(tid), _blank_scope())
+
+    def season(year):
+        return seasons.setdefault(int(year), _blank_scope())
+
+    # A game belongs to BOTH clubs playing it and to its season.
+    for game in data["games"]:
+        season(game[1])["games"].append(game)
+        team(game[4])["games"].append(game)
+        if game[5] != game[4]:
+            team(game[5])["games"].append(game)
+
+    # An Elo row is one team's view of one game, so it has a single home in
+    # the team index; its season comes from the game it names.
+    season_of_game = {g[0]: g[1] for g in data["games"]}
+    for row in data["elo"]:
+        team(row[1])["elo"].append(row)
+        year = season_of_game.get(row[0])
+        if year is not None:
+            season(year)["elo"].append(row)
+
+    for row in data["team_seasons"]:
+        team(row[0])["team_seasons"].append(row)
+        season(row[1])["team_seasons"].append(row)
+
+    # The season views count these toward a record, so both indexes carry them.
+    for row in data.get("non_fbs", []):
+        team(row[4])["non_fbs"].append(row)
+        season(row[1])["non_fbs"].append(row)
+
+    # Team-keyed extras that only a team page reads.
+    for key, bucket in (("swings", "swings"), ("history", "history")):
+        for tid, value in (data.get(key) or {}).items():
+            team(tid)[bucket] = value
+    advanced = data.get("advanced") or {}
+    for tid, value in (advanced.get("teams") or {}).items():
+        team(tid)["advanced"] = value
+    for composite, value in (data.get("coe2_rollups") or {}).items():
+        tid = composite.split("|", 1)[0]
+        team(tid).setdefault("coe2_rollups", {})[composite] = value
+    for composite, value in (data.get("non_fbs_records") or {}).items():
+        tid = composite.split("|", 1)[0]
+        team(tid).setdefault("non_fbs_records", {})[composite] = value
+
+    # Counted over the WHOLE league, never inside a shard. The browser used to
+    # derive these while indexing; a shard holds one season or one team, so the
+    # same loop there would divide by the wrong number.
+    teams_per_season: dict[int, int] = {}
+    coe2_per_season: dict[int, int] = {}
+    for row in data["team_seasons"]:
+        year = int(row[1])
+        teams_per_season[year] = teams_per_season.get(year, 0) + 1
+        if row[14] is not None:
+            coe2_per_season[year] = coe2_per_season.get(year, 0) + 1
+
+    core = {
+        "cfp_first_season": data.get("cfp_first_season"),
+        "titles_since": data.get("titles_since"),
+        "teams_per_season": teams_per_season,
+        "coe2_per_season": coe2_per_season,
+        # The metric list and its first season describe the Analytics tab for
+        # every club; only the per-team numbers move into the shards.
+        "advanced": ({k: v for k, v in advanced.items() if k != "teams"}
+                     if advanced else None),
+    }
+    return {"core": core, "teams": teams, "seasons": seasons}
+
+
+def write_team_pages(data: dict, out_dir: Path) -> dict:
+    """Write core.js plus one file per team and per season; return the manifest."""
+    split = split_team_pages(data)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    def write(path: Path, variable: str, key, payload) -> str:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        body = json.dumps(payload, separators=(",", ":"))
+        if key is None:
+            text = f"window.{variable}={body};\n"
+        else:
+            text = (f"(window.{variable}=window.{variable}||{{}})"
+                    f"[{json.dumps(str(key))}]={body};\n")
+        path.write_text(text, encoding="utf-8")
+        return hashlib.sha256(path.read_bytes()).hexdigest()[:10]
+
+    manifest = {"teams": {}, "seasons": {}}
+    version = write(out_dir / "core.js", "__TEAM_PAGES_CORE__", None, split["core"])
+    manifest["core"] = f"data/team_pages/core.js?v={version}"
+    for tid, payload in sorted(split["teams"].items()):
+        version = write(out_dir / "team" / f"{tid}.js", "__TEAM_PAGES_TEAM__", tid, payload)
+        manifest["teams"][str(tid)] = f"data/team_pages/team/{tid}.js?v={version}"
+    for year, payload in sorted(split["seasons"].items()):
+        version = write(out_dir / "season" / f"{year}.js", "__TEAM_PAGES_SEASON__", year, payload)
+        manifest["seasons"][str(year)] = f"data/team_pages/season/{year}.js?v={version}"
+    return manifest
+
+
+# Reading the shards back. The season index alone carries every game, every
+# Elo row and every team-season the league has, each exactly once, so a reader
+# that wants the whole league -- the identity audit and the conference-flow
+# audit both do -- rebuilds it from the season files and never needs the
+# per-team index, which holds the same rows a second time.
+
+
+def _assignment_body(text: str, bracketed: bool) -> dict:
+    """The JSON out of `window.X=<json>;` or `(window.X=...)["k"]=<json>;`."""
+    body = text.split("]=", 1)[1] if bracketed else text.split("=", 1)[1]
+    return json.loads(body.rstrip().rstrip(";"))
+
+
+def read_sharded_team_pages(shard_dir: Path) -> dict:
+    """Reassemble the league-wide payload from <shard_dir>/season/*.js."""
+    out = {"games": [], "elo": [], "team_seasons": [], "non_fbs": []}
+    for path in sorted((shard_dir / "season").glob("*.js")):
+        payload = _assignment_body(path.read_text(encoding="utf-8"), bracketed=True)
+        for key, rows in out.items():
+            rows.extend(payload.get(key, []))
+    out.update(_assignment_body((shard_dir / "core.js").read_text(encoding="utf-8"),
+                                bracketed=False))
+    return out
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--db", default="db/league.db")
-    p.add_argument("--out", default="ui/data/team_pages.js")
+    p.add_argument("--out", default="ui/data/team_pages")
     p.add_argument("--champions", default=str(CHAMPIONS_PATH))
     args = p.parse_args()
 
@@ -449,11 +612,11 @@ def main() -> None:
     data = build_team_pages(conn, load_national_champions(conn, Path(args.champions)))
     conn.close()
 
-    out = Path(args.out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text("window.__TEAM_PAGES__=" + json.dumps(data, separators=(",", ":")) + ";\n", encoding="utf-8")
-    print(f"Wrote {out} ({out.stat().st_size:,} bytes): {len(data['games'])} games, "
-          f"{len(data['elo'])} Elo rows, {len(data['team_seasons'])} team-seasons, "
+    manifest = write_team_pages(data, Path(args.out))
+    print(f"Wrote {args.out}: {len(manifest['teams'])} team shards, "
+          f"{len(manifest['seasons'])} season shards, "
+          f"{len(data['games'])} games, {len(data['elo'])} Elo rows, "
+          f"{len(data['team_seasons'])} team-seasons, "
           f"{len(data['non_fbs'])} games against unrated opponents")
 
 

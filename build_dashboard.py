@@ -26,7 +26,6 @@ from pathlib import Path
 SHELL_PATH = Path("ui/dashboard_shell.html")
 DATA_PATH = Path("ui/dashboard_data.json")
 OUT_PATH = Path("ui/dashboard.html")
-TEAM_PAGES_PATH = Path("ui/data/team_pages.js")
 CONFERENCE_PAGES_PATH = Path("ui/data/conference_pages.js")
 LOGO_MANIFEST_PATH = Path("ui/logo_manifest.json")
 TEAM_BRAND_COLORS_PATH = Path("ui/team_brand_colors.json")
@@ -65,7 +64,7 @@ def render_from_exports() -> None:
     """Render the template from existing exports, without touching model data."""
     from src.export_team_identities import export
     export()
-    required = [SHELL_PATH, DATA_PATH, TEAM_PAGES_PATH, CONFERENCE_PAGES_PATH, LOGO_MANIFEST_PATH,
+    required = [SHELL_PATH, DATA_PATH, CONFERENCE_PAGES_PATH, LOGO_MANIFEST_PATH,
                 TEAM_BRAND_COLORS_PATH,
                 STATIC_MANIFEST_PATH, NAVIGATION_PATH, SEARCH_PATH, STATS_PATH, GEOGRAPHY_PATH, LIVE_TEAMS_PATH,
                 FAVORITES_PATH]
@@ -78,7 +77,6 @@ def render_from_exports() -> None:
              .replace("__LOGO_MANIFEST_JSON__", LOGO_MANIFEST_PATH.read_text(encoding="utf-8"))
              .replace("__TEAM_BRAND_COLORS_JSON__", TEAM_BRAND_COLORS_PATH.read_text(encoding="utf-8"))
              .replace("__STATIC_MANIFEST_JSON__", STATIC_MANIFEST_PATH.read_text(encoding="utf-8"))
-             .replace("__TEAM_PAGES_VERSION__", hashlib.sha256(TEAM_PAGES_PATH.read_bytes()).hexdigest()[:12])
              .replace("__CONFERENCE_PAGES_VERSION__", hashlib.sha256(CONFERENCE_PAGES_PATH.read_bytes()).hexdigest()[:12])
              .replace("__NAVIGATION_VERSION__", hashlib.sha256(NAVIGATION_PATH.read_bytes()).hexdigest()[:12])
              .replace("__LIVE_TEAMS_VERSION__", hashlib.sha256(LIVE_TEAMS_PATH.read_bytes()).hexdigest()[:12])
@@ -112,16 +110,9 @@ def main() -> None:
          "--out", str(DATA_PATH)],
         check=True,
     )
-    # Team-page data (Milestone 2): loaded by the dashboard only when a team
-    # page opens. Its content hash is stamped into the page so a browser or
-    # GitHub Pages cache can never pair a new dashboard with an old data file.
-    subprocess.run(
-        [sys.executable, "src/export_team_pages.py", "--db", args.db, "--out", str(TEAM_PAGES_PATH)],
-        check=True,
-    )
     # Conference-page data (Milestone E): members, historical CoE, external
     # performance. Loaded only when a conference page opens, and content-hashed
-    # into the page for the same cache-pairing reason as team_pages.js.
+    # into the page for the same cache-pairing reason as the other lazy exports.
     subprocess.run(
         [sys.executable, "src/export_conference_pages.py", "--db", args.db, "--out", str(CONFERENCE_PAGES_PATH)],
         check=True,

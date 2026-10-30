@@ -1,6 +1,7 @@
 """UI preview builds must preserve every authoritative data export."""
 import hashlib
 import importlib.util
+import json
 import re
 from pathlib import Path
 
@@ -14,7 +15,7 @@ def test_preview_uses_existing_exports_without_recomputing(tmp_path, monkeypatch
     monkeypatch.chdir(root)
     monkeypatch.setattr(builder, "OUT_PATH", tmp_path / "dashboard.html")
     monkeypatch.setattr(builder.subprocess, "run", lambda *a, **kw: (_ for _ in ()).throw(AssertionError("unexpected model rebuild")))
-    inputs = [builder.DATA_PATH, builder.TEAM_PAGES_PATH, builder.CONFERENCE_PAGES_PATH,
+    inputs = [builder.DATA_PATH, builder.CONFERENCE_PAGES_PATH,
               builder.LOGO_MANIFEST_PATH, builder.STATIC_MANIFEST_PATH]
     before = {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}
     builder.render_from_exports()
@@ -29,10 +30,22 @@ def test_preview_uses_existing_exports_without_recomputing(tmp_path, monkeypatch
     assert f'search.js?v={search_version}' in html
     # Every lazily-loaded data file is content-versioned, so a cached page can never
     # be paired with a stale data file (Milestone E adds the conference one).
-    for path, placeholder in ((builder.TEAM_PAGES_PATH, "__TEAM_PAGES_VERSION__"),
-                              (builder.CONFERENCE_PAGES_PATH, "__CONFERENCE_PAGES_VERSION__")):
-        assert placeholder not in html
-        assert hashlib.sha256(path.read_bytes()).hexdigest()[:12] in html
+    assert "__CONFERENCE_PAGES_VERSION__" not in html
+    assert hashlib.sha256(builder.CONFERENCE_PAGES_PATH.read_bytes()).hexdigest()[:12] in html
+    # Team-page data is sharded, so the page no longer names one file: it reads
+    # the shard URLs out of static_manifest.json, which carries the same
+    # content version on each of them.
+    assert "__TEAM_PAGES_VERSION__" not in html
+    manifest = json.loads(builder.STATIC_MANIFEST_PATH.read_text(encoding="utf-8"))
+    shards = manifest.get("team_pages")
+    if shards:                      # absent until the first deploy writes the shards
+        urls = [shards["core"], *shards["teams"].values(), *shards["seasons"].values()]
+        assert urls, "a team_pages manifest with no shard URLs would silently blank every team page"
+        for url in urls:
+            path, _, version = url.partition("?v=")
+            disk = root / "ui" / path
+            assert version == hashlib.sha256(disk.read_bytes()).hexdigest()[:10], \
+                f"{path} is served under a version that is not its content hash"
 
 
 def _shell(root: Path) -> str:

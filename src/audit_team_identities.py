@@ -12,6 +12,7 @@ import re
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from export_team_pages import read_sharded_team_pages
 from team_identity import canonical_name, normalize, registry
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -99,7 +100,7 @@ def audit(root=ROOT):
                 check(r['team'] in by_name, f'Rating identity mismatch: {r["team"]}')
                 counts['rating_rows'] += 1
 
-    team_pages = read_js(root / 'ui/data/team_pages.js')
+    team_pages = read_sharded_team_pages(root / 'ui/data/team_pages')
     for game in team_pages['games']:
         check(source_games.get(game[0]) == (game[4], game[5]), f'Team-page game mismatch: {game[0]}')
     for game in team_pages['elo']:

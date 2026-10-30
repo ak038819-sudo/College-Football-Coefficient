@@ -227,16 +227,15 @@ def test_a_coachs_season_is_the_same_number_the_team_page_shows(repo_root, db_co
     current season's export is a different vintage, which is a difference of data
     rather than of formula.
     """
-    import json
+    from export_team_pages import read_sharded_team_pages
 
     if not db_conn.execute("SELECT name FROM sqlite_master WHERE type = 'table' "
                            "AND name = 'coach_season_metrics'").fetchone():
         pytest.skip('run src/build_coach_metrics.py first')
-    export = repo_root / "ui" / "data" / "team_pages.js"
-    if not export.exists():
+    export = repo_root / "ui" / "data" / "team_pages"
+    if not (export / "core.js").exists():
         pytest.skip('team pages have not been exported')
-    raw = export.read_text(encoding="utf-8")
-    data = json.loads(raw[raw.index("{"):raw.rindex("}") + 1])
+    data = read_sharded_team_pages(export)
     # [team_id, season, games, w, l, t, start, end, change, sos, sos_rank,
     #  expected, actual, above_expected, ...]
     team = {(row[0], row[1]): row for row in data["team_seasons"]}

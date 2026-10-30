@@ -2270,12 +2270,12 @@ function hydrateRankingStages(version) {
 
 
 // ---------------- The Elo table as of a week ----------------
-// Every column here is recomputed from the per-game chain team_pages.js already
+// Every column here is recomputed from the per-game chain the team-page shards already
 // carries, counting only the games played by the chosen point. Nothing is a
 // season total trimmed down -- SOS, vs Exp and the record each mean "so far".
 // The rating and the rank come from the timeline, which is the engine's own
 // audit trail, so this table and Week by Week can never disagree.
-// team_pages.js stores the phase as PHASE_CODE from src/export_team_pages.py,
+// the shards store the phase as PHASE_CODE from src/export_team_pages.py,
 // an INTEGER and not the name the database holds: 0 regular, 1 bowl, 2 cfp.
 const POSTSEASON_PHASES = [1, 2];
 
@@ -2370,7 +2370,7 @@ function eloAsOfRows(tp, timeline, stageIndex) {
 }
 
 // Conference, schedule strength, recent movement and wins-above-expectation all
-// live in team_pages.js, the same export a team page opens. It is fetched once
+// live in the team-page shards, the same export a team page opens. One is fetched once
 // and cached, so the table paints from the inline data first and fills in.
 function eloAsOfBody(rows, season) {
   const cell = (value, digits, signedValue) => {
@@ -2399,7 +2399,7 @@ function hydrateEloAsOf(version) {
   const season = state.year;
   const target = document.getElementById('elo-asof');
   if (!target) return;
-  Promise.all([loadEloTimeline(season), loadTeamPages()]).then(([timeline, tp]) => {
+  Promise.all([loadEloTimeline(season), loadTeamPages({season})]).then(([timeline, tp]) => {
     if (version !== renderVersion) return;
     const holder = document.getElementById('elo-asof');
     if (!holder) return;
@@ -2492,7 +2492,7 @@ function hydrateTop25AsOf(version) {
   const season = state.year;
   const holder = document.getElementById('top25-asof');
   if (!holder) return;
-  Promise.all([loadEloTimeline(season), loadTeamPages()]).then(([timeline, tp]) => {
+  Promise.all([loadEloTimeline(season), loadTeamPages({season})]).then(([timeline, tp]) => {
     if (version !== renderVersion) return;
     const target = document.getElementById('top25-asof');
     if (!target) return;
@@ -2582,7 +2582,7 @@ function hydrateEloDetail(version) {
   const table = document.querySelector('.elo-table');
   if (!table) return;
   const season = state.year;
-  loadTeamPages().then(tp => {
+  loadTeamPages({season}).then(tp => {
     if (version !== renderVersion) return;
     const signedCell = (cell, value, digits) => {
       cell.dataset.sort = String(value);
@@ -4000,21 +4000,23 @@ function loading(id, title) {
 }
 
 // ---------------- Team page data & sections (Milestone 2) ----------------
-// data/team_pages.js is produced by src/export_team_pages.py and loaded only
+// data/team_pages/ is produced by src/export_team_pages.py and loaded only
 // the first time a team page opens. It's a <script> (not fetch) so it also
 // works when dashboard.html is opened straight from disk. Every number shown
 // here was computed in Python; this code only indexes, filters and draws.
-const TEAM_PAGES_VERSION = '__TEAM_PAGES_VERSION__';
-let TP = null;
-let _teamPagesPromise = null;
 let teamPageState = { teamId: null, chartSeason: 'all', season: null, rosterSeason: null };
 
-function indexTeamPages(raw) {
+// `raw` is one scope's rows (one team, or one season); `core` is the small
+// league-wide file. They are separate arguments because the second is shared
+// by every scope and cached once.
+function indexTeamPages(raw, core) {
+  raw = raw || {};
+  core = core || {};
   const gamesById = new Map();
-  raw.games.forEach(g => gamesById.set(g[0], { id: g[0], season: g[1], date: g[2], week: g[3], home: g[4],
+  (raw.games || []).forEach(g => gamesById.set(g[0], { id: g[0], season: g[1], date: g[2], week: g[3], home: g[4],
     away: g[5], hs: g[6], as: g[7], neutral: g[8] === 1, phase: g[9], ot: g[10] === 1, kickoff_utc: g[11] ?? null }));
   const eloByTeam = new Map();   // already grouped by team and chronological in the export
-  raw.elo.forEach(r => {
+  (raw.elo || []).forEach(r => {
     if (!eloByTeam.has(r[1])) eloByTeam.set(r[1], []);
     eloByTeam.get(r[1]).push({ gid: r[0], tid: r[1], pre: r[2], oppPre: r[3], exp: r[4], chg: r[5], post: r[6],
       mov: r[7] ?? null, coe: r[8] ?? null });
@@ -4031,41 +4033,95 @@ function indexTeamPages(raw) {
       opp: r[5], mine: r[6], theirs: r[7], home: r[8] === 1, neutral: r[9] === 1,
       phase: r[10], ot: r[11] === 1, cls: r[12] ?? null });
   });
-  const seasonsByTeam = new Map(), teamsPerSeason = new Map(), coe2PerSeason = new Map();
-  raw.team_seasons.forEach(s => {
+  const seasonsByTeam = new Map();
+  (raw.team_seasons || []).forEach(s => {
     const o = { tid: s[0], season: s[1], games: s[2], w: s[3], l: s[4], t: s[5], startElo: s[6], endElo: s[7],
       eloChange: s[8], sos: s[9], sosRank: s[10], expWins: s[11], actWins: s[12], aboveExp: s[13],
       coe2: s[14], coe2Rank: s[15], conf: s[16] ?? null };
     if (!seasonsByTeam.has(o.tid)) seasonsByTeam.set(o.tid, new Map());
     seasonsByTeam.get(o.tid).set(o.season, o);
-    teamsPerSeason.set(o.season, (teamsPerSeason.get(o.season) || 0) + 1);
-    if (o.coe2 != null) coe2PerSeason.set(o.season, (coe2PerSeason.get(o.season) || 0) + 1);
   });
+  // These two are COUNTED OVER THE WHOLE LEAGUE and so cannot be derived
+  // here any more: this scope holds one team or one season, and counting its
+  // rows would give "#1 of 1" where the page means "#1 of 139". They are
+  // counted once in the exporter and shipped in core.
+  const asCounts = table => new Map(Object.entries(table || {})
+    .map(([season, n]) => [Number(season), n]));
+  const teamsPerSeason = asCounts(core.teams_per_season);
+  const coe2PerSeason = asCounts(core.coe2_per_season);
+  // `swings`, `history` and `advanced` are ONE team's in a team scope, so they
+  // are re-keyed into the by-team maps the panels have always read. A season
+  // scope carries none of them, which is right: no season view reads them.
+  const byId = (value, id) => (value === undefined || id == null ? {} : { [String(id)]: value });
   return { gamesById, eloByTeam, seasonsByTeam, teamsPerSeason, coe2PerSeason,
     nonFbsByTeam, nonFbsRecords: raw.non_fbs_records || {},
-    swings: raw.swings, history: raw.history, cfpFirst: raw.cfp_first_season, titlesSince: raw.titles_since,
-    advanced: raw.advanced || null,
+    swings: byId(raw.swings, raw.team_id), history: byId(raw.history, raw.team_id),
+    cfpFirst: core.cfp_first_season, titlesSince: core.titles_since,
+    advanced: core.advanced ? { ...core.advanced, teams: byId(raw.advanced, raw.team_id) } : null,
     // ENG-13: {"<team>|<season>": {games, bonus, total, items}} -- the season total
     // decomposed, so the ledger can show where every point came from.
     rollups: raw.coe2_rollups || {} };
 }
 
-function loadTeamPages() {
-  if (TP) return Promise.resolve(TP);
-  if (!_teamPagesPromise) {
-    _teamPagesPromise = new Promise((resolve, reject) => {
-      const el = document.createElement('script');
-      el.src = 'data/team_pages.js?v=' + encodeURIComponent(TEAM_PAGES_VERSION);
-      el.onload = () => {
-        if (!window.__TEAM_PAGES__) { _teamPagesPromise = null; reject(new Error('data file was empty')); return; }
-        TP = indexTeamPages(window.__TEAM_PAGES__);
-        resolve(TP);
-      };
-      el.onerror = () => { _teamPagesPromise = null; el.remove(); reject(new Error('could not load data/team_pages.js')); };
-      document.head.appendChild(el);
-    });
+// The team-page data is sharded two ways, because the site reads it two ways:
+// a team page wants ONE TEAM across every season, while the Elo board, the
+// Top 25 and the as-of views each want ONE SEASON across every team. Asking
+// for a scope loads core plus that one shard -- about 80 KB for a team and
+// 145 KB for a season, against the 7.3 MB a single file cost either of them.
+//
+// `scope` is {team: id} or {season: year}. The object handed back has exactly
+// the shape indexTeamPages has always returned, so every panel below reads it
+// unchanged; it simply holds one scope's rows instead of the league's.
+const TEAM_PAGES = () => STATIC_MANIFEST.team_pages || null;
+const _teamScopes = new Map();
+
+function loadDataScriptOnce(src) {
+  return new Promise((resolve, reject) => {
+    const el = document.createElement('script');
+    el.src = src;
+    el.onload = () => resolve();
+    el.onerror = () => { el.remove(); reject(new Error('could not load ' + src)); };
+    document.head.appendChild(el);
+  });
+}
+
+function loadTeamPagesCore() {
+  const manifest = TEAM_PAGES();
+  if (!manifest || !manifest.core) {
+    return Promise.reject(new Error('this build has no team page data'));
   }
-  return _teamPagesPromise;
+  if (!_teamScopes.has('core')) {
+    _teamScopes.set('core', loadDataScriptOnce(manifest.core).then(() => {
+      const core = window.__TEAM_PAGES_CORE__;
+      if (!core) { _teamScopes.delete('core'); throw new Error('core was empty'); }
+      return core;
+    }).catch(error => { _teamScopes.delete('core'); throw error; }));
+  }
+  return _teamScopes.get('core');
+}
+
+function loadTeamPages(scope) {
+  const manifest = TEAM_PAGES();
+  if (!manifest) return Promise.reject(new Error('this build has no team page data'));
+  const byTeam = scope && scope.team != null;
+  const key = byTeam ? 'team:' + scope.team : 'season:' + scope.season;
+  if (_teamScopes.has(key)) return _teamScopes.get(key);
+  const src = byTeam ? (manifest.teams || {})[String(scope.team)]
+                     : (manifest.seasons || {})[String(scope.season)];
+  // A scope the export does not carry is not an error the reader can act on:
+  // an expansion team has no 1980 season and a season has no shard before it
+  // is played. It indexes to an empty scope, and the panels say so.
+  const rows = src
+    ? loadDataScriptOnce(src).then(() => {
+        const bucket = byTeam ? window.__TEAM_PAGES_TEAM__ : window.__TEAM_PAGES_SEASON__;
+        return (bucket || {})[byTeam ? String(scope.team) : String(scope.season)] || {};
+      })
+    : Promise.resolve({});
+  const loaded = Promise.all([loadTeamPagesCore(), rows])
+    .then(([core, scopeRows]) => indexTeamPages(scopeRows, core))
+    .catch(error => { _teamScopes.delete(key); throw error; });
+  _teamScopes.set(key, loaded);
+  return loaded;
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -4929,12 +4985,12 @@ function hydrateTeamPage() {
     teamPageState = { teamId: team.id, chartSeason: 'all', season: null, schedSeason: null,
                       ledgerSeason: null, rosterSeason: null };
   }
-  // The roster is in the people exports, a different file from team_pages.js, so
+  // The roster is in the people exports, a different file from the team shard, so
   // it fills on its own: a missing roster must not blank the Elo panel, and a
   // missing team history must not blank the roster.
   fillRosterPanel(team);
   fillTeamStatistics(team);
-  loadTeamPages().then(tp => {
+  loadTeamPages({team: team.id}).then(tp => {
     const cur = resolveTeam(state.teamParam);
     if (state.view !== 'team' || !cur || cur.id !== team.id) return;   // user navigated away meanwhile
     fillWeekPanel(tp, team);

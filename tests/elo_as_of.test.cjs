@@ -42,15 +42,28 @@ function loadGlobalScript(file, globalName) {
   return sandbox.window[globalName] ?? sandbox[globalName] ?? null;
 }
 
-const rawTeamPages = loadGlobalScript('ui/data/team_pages.js', '__TEAM_PAGES__');
-const tp = rawTeamPages && (() => {
-  // The shell's own indexer, so the shapes under test are the shapes the page
-  // reads -- the phase code in particular, which is an integer here and a word
-  // in the database.
-  const holder = { raw: rawTeamPages, result: null };
-  vm.runInNewContext(sourceOf('indexTeamPages') + '\nresult = indexTeamPages(raw);', holder);
-  return holder.result;
-})();
+// Team-page data is sharded by season, and these views read exactly one
+// season's shard, so the test loads what the page loads rather than a
+// league-wide file the browser never fetches.
+const tpCore = loadGlobalScript('ui/data/team_pages/core.js', '__TEAM_PAGES_CORE__');
+const _tpBySeason = new Map();
+function tpFor(season) {
+  if (_tpBySeason.has(season)) return _tpBySeason.get(season);
+  const bucket = loadGlobalScript(
+    `ui/data/team_pages/season/${season}.js`, '__TEAM_PAGES_SEASON__');
+  const raw = bucket && bucket[String(season)];
+  let indexed = null;
+  if (raw && tpCore) {
+    // The shell's own indexer, so the shapes under test are the shapes the
+    // page reads -- the phase code in particular, which is an integer here
+    // and a word in the database.
+    const holder = { raw, core: tpCore, result: null };
+    vm.runInNewContext(sourceOf('indexTeamPages') + '\nresult = indexTeamPages(raw, core);', holder);
+    indexed = holder.result;
+  }
+  _tpBySeason.set(season, indexed);
+  return indexed;
+}
 
 function timelineFor(season) {
   const file = `ui/data/elo_timeline/${season}.js`;
@@ -74,7 +87,7 @@ function timelineFor(season) {
 const SEASONS = [1990, 2015, 2024];
 
 function available(season) {
-  return tp && timelineFor(season);
+  return tpFor(season) && timelineFor(season);
 }
 
 // ---- the stage rule agrees with the exporter's own -------------------------
@@ -84,6 +97,7 @@ test('a game lands in the stage the exporter counted it in', () => {
   for (const season of SEASONS) {
     const timeline = available(season);
     if (!timeline) continue;
+    const tp = tpFor(season);
     // Count every game of the season by the browser's rule, then compare with
     // the per-stage game counts src/elo_timeline.py wrote into the payload.
     const counted = new Map();
@@ -113,6 +127,7 @@ test('at the last stage every column equals the season the exporter exported', (
   for (const season of SEASONS) {
     const timeline = available(season);
     if (!timeline) continue;
+    const tp = tpFor(season);
     const rows = ctx.eloAsOfRows(tp, timeline, timeline.stages.length - 1);
     assert.ok(rows.length, `${season} has no rows`);
     for (const row of rows) {
@@ -152,6 +167,7 @@ test('a mid-season stage counts fewer games than the season, for everyone', () =
   const season = SEASONS.find(available);
   if (!season) { test.skip('no shipped payloads'); return; }
   const timeline = timelineFor(season);
+  const tp = tpFor(season);
   const middle = Math.floor(timeline.stages.length / 2);
   const early = ctx.eloAsOfRows(tp, timeline, middle);
   const final = ctx.eloAsOfRows(tp, timeline, timeline.stages.length - 1);
@@ -170,7 +186,7 @@ test('a mid-season stage counts fewer games than the season, for everyone', () =
 test('preseason has no record, no schedule faced and no wins above expectation', () => {
   const season = SEASONS.find(available);
   if (!season) { test.skip('no shipped payloads'); return; }
-  const rows = ctx.eloAsOfRows(tp, timelineFor(season), 0);
+  const rows = ctx.eloAsOfRows(tpFor(season), timelineFor(season), 0);
   assert.ok(rows.length);
   for (const row of rows) {
     assert.equal(row.record.text, '', `${row.name} has a record before a game was played`);
@@ -185,7 +201,7 @@ test('the rank and the rating come from the timeline, never recomputed here', ()
   if (!season) { test.skip('no shipped payloads'); return; }
   const timeline = timelineFor(season);
   const index = Math.floor(timeline.stages.length / 2);
-  const rows = ctx.eloAsOfRows(tp, timeline, index);
+  const rows = ctx.eloAsOfRows(tpFor(season), timeline, index);
   const source = timeline.rows[index];
   assert.equal(rows.length, source.length);
   rows.forEach((row, i) => {
@@ -198,7 +214,7 @@ test('schedule strength ranks 1 as the toughest and ties share a rank', () => {
   const season = SEASONS.find(available);
   if (!season) { test.skip('no shipped payloads'); return; }
   const timeline = timelineFor(season);
-  const rows = ctx.eloAsOfRows(tp, timeline, timeline.stages.length - 1)
+  const rows = ctx.eloAsOfRows(tpFor(season), timeline, timeline.stages.length - 1)
     .filter(r => r.sos != null).sort((a, b) => a.sosRank - b.sosRank);
   assert.equal(rows[0].sosRank, 1);
   for (let i = 1; i < rows.length; i++) {
