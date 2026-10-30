@@ -1533,9 +1533,13 @@
         <a data-section="people" href="#section=people">People</a>
       </nav>
       <div class="global-search" role="search">
-        <label class="visually-hidden" for="global-search">Search teams, games and seasons</label>
+        <!-- The box has found players and coaches since v0.1.1 and conferences
+             since the conference pages landed, but it went on advertising three
+             of the five. A reader who reads the placeholder has no reason to
+             type a player's name, so the feature may as well not exist. -->
+        <label class="visually-hidden" for="global-search">Search teams, players, coaches, games, conferences and seasons</label>
         <input type="search" id="global-search" autocomplete="off" spellcheck="false" maxlength="150"
-               placeholder="Search teams, games, seasons  ( / )"
+               placeholder="Search teams, players, games…  ( / )"
                aria-controls="search-results" aria-expanded="false" aria-describedby="search-status">
         <div id="search-results" class="search-results" hidden></div>
         <p id="search-status" class="visually-hidden" aria-live="polite"></p>
