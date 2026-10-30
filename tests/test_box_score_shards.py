@@ -252,3 +252,19 @@ def test_the_manifest_entry_states_the_format_it_wrote(tmp_path):
     but a stale pair of manifest and files is exactly what this records."""
     entry = write_box_score_shards(tmp_path, 2025, {"401838053": game()})
     assert entry["format"] == BOX_SCORE_FORMAT
+
+
+def test_the_export_keeps_a_zero_line(tmp_path):
+    """The Stats hub reads these same shards, and aggregatePlayers counts a
+    player's GAMES from the lines that exist -- so dropping zeros here moved
+    312 of 2025's player-category game counts and inflated every per-game
+    average with them. The game page filters them when it renders instead."""
+    games = {"401838053": [
+        side("Georgia State", "away",
+             ("defensive", "TOT", [("Marlin Dean", "7", "5220652")]),
+             ("defensive", "TD", [("Marlin Dean", "0", "5220652")]))]}
+    write_box_score_shards(tmp_path, 2025, games)
+    kept = games_in(tmp_path / "2025" / "5.js")["401838053"][0]["categories"]
+    assert [(c["name"], c["type"]) for c in kept] == [("defensive", "TOT"),
+                                                      ("defensive", "TD")]
+    assert kept[1]["lines"][0]["stat"] == "0", "the zero reaches the aggregator"
