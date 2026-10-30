@@ -14,6 +14,7 @@ import csv
 import hashlib
 import io
 import json
+import sys
 
 import pytest
 from PIL import Image
@@ -93,8 +94,9 @@ def test_the_opponent_list_is_the_one_the_shipped_pages_hold():
     database; getting it subtly wrong would drop schools quietly. So the list is
     compared with the opponents the shipped team-page export actually names.
     """
-    export = (REPO / "ui/data/team_pages.js").read_text(encoding="utf-8")
-    payload = json.loads(export[export.index("=") + 1:].rstrip().rstrip(";"))
+    sys.path.insert(0, str(REPO / "src"))
+    from export_team_pages import read_sharded_team_pages
+    payload = read_sharded_team_pages(REPO / "ui/data/team_pages")
     shipped = {row[5] for row in payload["non_fbs"]}
     dated = json.loads((REPO / "ui/dated_logo_assets.json").read_text(encoding="utf-8"))
     assert shipped, "the export carries no non-FBS games at all"

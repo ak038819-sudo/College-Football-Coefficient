@@ -15,7 +15,7 @@ The foundation the Games section, game pages and global search build on:
                               downloading it
 
 Files are `window.__CFB__...=` scripts rather than bare JSON for the same reason as
-team_pages.js: browsers block fetch() of local JSON when dashboard.html is opened
+the team-page shards: browsers block fetch() of local JSON when dashboard.html is opened
 from disk, but a <script src> still works there and on GitHub Pages.
 
 Every value is copied from an authoritative table; nothing is recomputed:
@@ -54,6 +54,8 @@ from build_adjusted_stats import build_season as build_adjusted_season  # noqa: 
 from build_awards_payload import build_payload as build_awards_payload  # noqa: E402
 import player_archive  # noqa: E402
 from export_people_pages import export as export_people  # noqa: E402
+from export_team_pages import (  # noqa: E402
+    build_team_pages, load_national_champions, write_team_pages)
 from predict_upcoming import build_upcoming, elo_config  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
@@ -804,6 +806,15 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
     if conn.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'players'").fetchone():
         people = export_people(conn, out_dir / "people")
 
+    # Team-page data, sharded by team AND by season (see split_team_pages).
+    # It is written HERE rather than by build_dashboard.py so the paths and
+    # their content versions land in this manifest, the way the people files
+    # already do -- a version the page reads is better than one substituted
+    # into the shell, because the shell cannot have one per shard.
+    team_pages = write_team_pages(
+        build_team_pages(conn, load_national_champions(conn)),
+        out_dir / "team_pages")
+
     manifest = {"seasons": seasons, "search_index": f"data/search_index.js?v={sv}",
                 "stadiums": f"data/stadiums.js?v={stadium_version}", "game_fields": FIELDS,
                 "details": details, "players": players, "game_logs": game_logs, "series": series, "series_shards": SERIES_SHARDS,
@@ -838,7 +849,11 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                 # v0.1.1: player and coach pages. Absent, not empty, when the
                 # database has no person tables, so the UI can tell "no data
                 # here" from "no such feature".
-                **({"people": people} if people else {})}
+                **({"people": people} if people else {}),
+                # Where the team-page shards are. Absent rather than empty
+                # when they have not been written, so the page can tell "not
+                # built yet" from "this team has no data".
+                **({"team_pages": team_pages} if team_pages else {})}
     (out_dir / "static_manifest.json").write_text(json.dumps(manifest, separators=(",", ":")), encoding="utf-8")
     return manifest
 

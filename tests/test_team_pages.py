@@ -8,7 +8,7 @@ import sqlite3
 
 import pytest
 
-from export_team_pages import build_team_pages
+from export_team_pages import build_team_pages, split_team_pages, write_team_pages
 
 # team_season row layout (see export_team_pages module docstring)
 (TID, SEASON, GAMES, W, L, T, START, END, CHG, SOS, SOS_RANK, EXP, ACT, ABOVE,
@@ -352,3 +352,192 @@ def test_the_award_is_the_one_stored_for_that_team_not_its_opponents(tmp_path):
         conn.close()
     assert (by[(1, 1)][MERIT], by[(1, 2)][MERIT]) == (3.9, 0.0)
     assert (by[(2, 1)][MERIT], by[(2, 2)][MERIT]) == (0.0, 2.1)
+
+
+# ---------------------------------------------------------------------------
+# Sharding. The whole-league payload is re-filed under two indexes; these pin
+# that nothing is lost, nothing is invented, and the two totals the browser
+# can no longer count for itself are counted here.
+
+
+def _payload():
+    """A league of three teams over two seasons, built by hand.
+
+    Hand-built rather than taken from build_team_pages, because a splitter
+    tested against its own producer's output only proves the two agree.
+    """
+    return {
+        "cfp_first_season": 2014,
+        "titles_since": 1980,
+        # game: [id, season, date, week, home, away, hs, as, neutral, phase, ot, kickoff]
+        "games": [
+            [1, 2024, "2024-09-01", 1, 10, 20, 24, 17, 0, 0, 0, None],
+            [2, 2024, "2024-09-08", 2, 20, 30, 10, 13, 0, 0, 0, None],
+            [3, 2025, "2025-09-01", 1, 10, 30, 31, 28, 0, 0, 1, None],
+        ],
+        # elo: [game_id, team_id, pre, opp_pre, exp, change, post, mov, coe]
+        "elo": [
+            [1, 10, 1500.0, 1400.0, 0.64, 9.0, 1509.0, None, None],
+            [1, 20, 1400.0, 1500.0, 0.36, -9.0, 1391.0, None, None],
+            [2, 20, 1391.0, 1450.0, 0.42, -8.0, 1383.0, None, None],
+            [2, 30, 1450.0, 1391.0, 0.58, 8.0, 1458.0, None, None],
+            [3, 10, 1509.0, 1458.0, 0.57, 7.0, 1516.0, None, None],
+            [3, 30, 1458.0, 1509.0, 0.43, -7.0, 1451.0, None, None],
+        ],
+        # team_season: team, season, ... coe2 at index 14
+        "team_seasons": [
+            [10, 2024, 1, 1, 0, 0, 1500.0, 1509.0, 9.0, 1400.0, 1, 0.6, 1, 0.4, 2.5, 1, "ACC"],
+            [20, 2024, 2, 0, 2, 0, 1400.0, 1383.0, -17.0, 1475.0, 2, 0.8, 0, -0.8, None, None, "ACC"],
+            [30, 2024, 1, 1, 0, 0, 1450.0, 1458.0, 8.0, 1391.0, 3, 0.4, 1, 0.6, 1.5, 2, "SEC"],
+            [10, 2025, 1, 1, 0, 0, 1509.0, 1516.0, 7.0, 1458.0, 1, 0.6, 1, 0.4, 3.0, 1, "ACC"],
+            [30, 2025, 1, 0, 1, 0, 1458.0, 1451.0, -7.0, 1509.0, 2, 0.4, 0, -0.4, None, None, "SEC"],
+        ],
+        # non_fbs: [id, season, date, week, team, opponent, mine, theirs, home, neutral, phase, ot, class]
+        "non_fbs": [[99, 2024, "2024-09-15", 3, 10, "Someone FCS", 45, 3, 1, 0, 0, 0, "fcs"]],
+        "non_fbs_records": {"10|2024": {"w": 1, "l": 0, "t": 0}},
+        "coe2_rollups": {"10|2024": {"total": 2.5}, "30|2024": {"total": 1.5}},
+        "swings": {"10": {"gains": [1], "losses": []}},
+        "history": {"10": {"titles": 1}},
+        "advanced": {"metrics": ["a", "b"], "first_season": 2004,
+                     "teams": {"10": {"x": 1}, "20": {"x": 2}}},
+    }
+
+
+def test_every_row_survives_the_split_exactly_once_per_index():
+    """Not one row lost and not one invented, counted both ways."""
+    data = _payload()
+    split = split_team_pages(data)
+    for index in ("teams", "seasons"):
+        for key in ("elo", "team_seasons", "non_fbs"):
+            moved = [row for scope in split[index].values() for row in scope[key]]
+            assert len(moved) == len(data[key]), (index, key)
+            # Same rows, not merely the same count.
+            assert sorted(map(repr, moved)) == sorted(map(repr, data[key])), (index, key)
+
+
+def test_a_game_is_filed_under_BOTH_clubs_and_its_season():
+    """The one place duplication is deliberate: a game has two teams.
+
+    The old layout kept one copy precisely so it was not duplicated; the whole
+    point of the split is that a team page should not download the other 138
+    teams' games to find its own.
+    """
+    split = split_team_pages(_payload())
+    assert [g[0] for g in split["teams"][10]["games"]] == [1, 3]
+    assert [g[0] for g in split["teams"][20]["games"]] == [1, 2]
+    assert [g[0] for g in split["teams"][30]["games"]] == [2, 3]
+    assert [g[0] for g in split["seasons"][2024]["games"]] == [1, 2]
+    assert [g[0] for g in split["seasons"][2025]["games"]] == [3]
+    # Across the team index a game appears exactly twice -- once per club.
+    filed = [g[0] for scope in split["teams"].values() for g in scope["games"]]
+    assert sorted(filed) == [1, 1, 2, 2, 3, 3]
+
+
+def test_a_team_playing_itself_is_filed_once():
+    """Guards the `game[5] != game[4]` check, which is otherwise invisible."""
+    data = _payload()
+    data["games"].append([4, 2025, "2025-10-01", 5, 10, 10, 7, 7, 0, 0, 0, None])
+    split = split_team_pages(data)
+    assert [g[0] for g in split["teams"][10]["games"]].count(4) == 1
+
+
+def test_an_elo_row_reaches_its_season_through_the_game_it_names():
+    # An Elo row carries no season of its own; the only way to it is the game.
+    split = split_team_pages(_payload())
+    assert sorted(r[0] for r in split["seasons"][2024]["elo"]) == [1, 1, 2, 2]
+    assert sorted(r[0] for r in split["seasons"][2025]["elo"]) == [3, 3]
+    assert sorted(r[0] for r in split["teams"][10]["elo"]) == [1, 3]
+
+
+def test_an_elo_row_whose_game_is_missing_still_reaches_its_team():
+    """Losing the season is survivable; losing the team loses a ledger row."""
+    data = _payload()
+    data["elo"].append([404, 10, 1500.0, 1400.0, 0.5, 0.0, 1500.0, None, None])
+    split = split_team_pages(data)
+    assert 404 in [r[0] for r in split["teams"][10]["elo"]]
+    assert 404 not in [r[0] for scope in split["seasons"].values() for r in scope["elo"]]
+
+
+def test_the_team_only_extras_go_to_their_team_and_nowhere_else():
+    split = split_team_pages(_payload())
+    assert split["teams"][10]["swings"] == {"gains": [1], "losses": []}
+    assert split["teams"][10]["history"] == {"titles": 1}
+    assert split["teams"][10]["advanced"] == {"x": 1}
+    assert split["teams"][10]["coe2_rollups"] == {"10|2024": {"total": 2.5}}
+    assert split["teams"][30]["coe2_rollups"] == {"30|2024": {"total": 1.5}}
+    assert split["teams"][10]["non_fbs_records"] == {"10|2024": {"w": 1, "l": 0, "t": 0}}
+    # A club with none of them simply has no key, rather than an empty object
+    # that would read as "measured, and nothing there".
+    assert "swings" not in split["teams"][20]
+    assert "coe2_rollups" not in split["teams"][20]
+
+
+def test_the_per_season_totals_are_counted_over_the_WHOLE_league():
+    """The browser used to count these while indexing every team-season row.
+
+    A shard holds one season or one team, so counting there would divide by a
+    smaller number and quietly produce a wrong rank -- "#1 of 1" instead of
+    "#1 of 3". They are counted here, once, and shipped in core.
+    """
+    core = split_team_pages(_payload())["core"]
+    assert core["teams_per_season"] == {2024: 3, 2025: 2}
+    # Only the team-seasons that HAVE a CoE 2.0 value count toward its
+    # denominator, which is why it is a separate count and not the one above:
+    # 2024 has two of its three, 2025 one of its two.
+    assert core["coe2_per_season"] == {2024: 2, 2025: 1}
+
+
+def test_core_carries_the_league_wide_advanced_metadata_but_no_team_numbers():
+    core = split_team_pages(_payload())["core"]
+    assert core["advanced"] == {"metrics": ["a", "b"], "first_season": 2004}
+    assert "teams" not in core["advanced"]
+    assert core["cfp_first_season"] == 2014
+    assert core["titles_since"] == 1980
+
+
+def test_an_empty_league_splits_into_nothing_rather_than_failing():
+    split = split_team_pages({"games": [], "elo": [], "team_seasons": []})
+    assert split["teams"] == {}
+    assert split["seasons"] == {}
+    assert split["core"]["teams_per_season"] == {}
+    assert split["core"]["advanced"] is None
+
+
+def test_the_written_files_name_their_own_scope(tmp_path):
+    """Each file assigns into a keyed global, so loading two cannot clobber."""
+    manifest = write_team_pages(_payload(), tmp_path)
+    core = (tmp_path / "core.js").read_text()
+    assert core.startswith("window.__TEAM_PAGES_CORE__=")
+    team = (tmp_path / "team" / "10.js").read_text()
+    assert team.startswith('(window.__TEAM_PAGES_TEAM__=window.__TEAM_PAGES_TEAM__||{})["10"]=')
+    season = (tmp_path / "season" / "2024.js").read_text()
+    assert season.startswith('(window.__TEAM_PAGES_SEASON__=window.__TEAM_PAGES_SEASON__||{})["2024"]=')
+    assert manifest["teams"]["10"].startswith("data/team_pages/team/10.js?v=")
+    assert manifest["seasons"]["2024"].startswith("data/team_pages/season/2024.js?v=")
+    assert manifest["core"].startswith("data/team_pages/core.js?v=")
+
+
+def test_the_version_changes_when_the_bytes_do(tmp_path):
+    """A stamp nobody recomputes reads as a promise the file has not changed."""
+    first = write_team_pages(_payload(), tmp_path)
+    data = _payload()
+    data["team_seasons"][0][7] = 1999.0
+    second = write_team_pages(data, tmp_path)
+    assert first["teams"]["10"] != second["teams"]["10"]
+    # And a file the change did not touch keeps its stamp.
+    assert first["teams"]["20"] == second["teams"]["20"]
+
+
+
+def test_a_team_shard_names_its_own_team_and_a_season_shard_does_not():
+    """The page re-keys a team's swings, history and advanced numbers onto
+    this id. Without it the indexer keys them onto `undefined`, and the
+    History panel, both Swing panels and the advanced block draw empty with
+    every number sitting unreachable in the file."""
+    split = split_team_pages(_payload())
+    for tid, scope in split["teams"].items():
+        assert scope["team_id"] == tid, f"team shard {tid} does not say whose it is"
+    for year, scope in split["seasons"].items():
+        assert "team_id" not in scope, (
+            f"season shard {year} claims to be one team's, which would "
+            "attribute that team's history to the whole season")

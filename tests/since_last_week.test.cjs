@@ -40,13 +40,13 @@ function timeline(season){
     rows:raw.rows.map(stage=>stage.map(r=>unpack(raw.row_fields,r)))};
 }
 
-/** The team-page export, parsed the same way the page's loader parses it. */
-function teamPages(){
-  const file=path.join(root,'ui/data/team_pages.js');
+/** One season's team-page shard, parsed the way the page's loader parses it. */
+function teamPages(season){
+  const file=path.join(root,'ui/data/team_pages/season',season+'.js');
   const sandbox={window:{}};
   sandbox.window.window=sandbox.window;
   require('node:vm').runInNewContext(fs.readFileSync(file,'utf8'),sandbox);
-  return sandbox.window.__CFB_TEAM_PAGES__||sandbox.window.TEAM_PAGES||sandbox.window.__TEAM_PAGES__;
+  return sandbox.window.__TEAM_PAGES_SEASON__[String(season)];
 }
 
 function open(){
@@ -190,7 +190,7 @@ test('following a team, and what the last week did to it',async t=>{
       // The timeline counts RATED games, so a team whose single game that week
       // was against an FCS opponent has stage_games 0 and would read as a bye.
       // Found from the data rather than named, so it holds in any week.
-      const tp=teamPages();
+      const tp=teamPages(season);
       const nonFbs=(tp.non_fbs||[]);            // [id, season, date, week, tid, opp, ...]
       const stage=tl.stages[tl.stages.length-1];
       const idleIds=new Set(last.filter(r=>r.stage_games===0)

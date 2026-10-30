@@ -3,6 +3,7 @@
 import csv
 import json
 import re
+import sys
 from collections import defaultdict
 from pathlib import Path
 
@@ -17,6 +18,13 @@ def read_export(path):
     return json.JSONDecoder().raw_decode(text[match.start(1):])[0]
 
 
+def read_team_pages():
+    """The league-wide team-page payload, rebuilt from its season shards."""
+    sys.path.insert(0, str(ROOT / 'src'))
+    from export_team_pages import read_sharded_team_pages
+    return read_sharded_team_pages(ROOT / 'ui/data/team_pages')
+
+
 def group(conf, team):
     if not isinstance(conf, str) or not conf.strip():
         raise ValueError(f'Missing conference for team {team}')
@@ -25,7 +33,7 @@ def group(conf, team):
 
 
 def audit(seasons=range(2018, 2027)):
-    published = read_export(ROOT / 'ui/data/team_pages.js')
+    published = read_team_pages()
     deltas = {(r[0], r[1]): r[5] for r in published['elo']}
     rows, summaries = [], []
     for season in seasons:
