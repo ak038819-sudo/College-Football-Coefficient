@@ -1,0 +1,47 @@
+name: College basketball provider usage
+
+# What the provider account has actually spent, and over what window. Three
+# requests to the usage endpoint and nothing else: no data file, no database,
+# no commit, so it cannot publish or overwrite anything.
+#
+# Why this exists as its own workflow: basketball cannot publish until the CBBD
+# allowance recovers, and "the allowance is spent" and "the key is wrong" look
+# identical from outside -- both are an HTTP 429 on /teams. The usage endpoint
+# answered 200 on 2026-10-20 while data endpoints were being refused, so it is
+# diagnosable even when nothing else is. Until now the only way to ask was to
+# borrow another workflow's dispatch slot, because workflow_dispatch only
+# registers a workflow whose file is already on the default branch; that
+# borrowing is what left `cbb-player-impact-pilot` recorded as the failure
+# behind a basketball alert it had nothing to do with.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  usage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Its own group, never the deploy's or the refresh's: a pending run of
+    # either used to cancel whatever was queued behind it.
+    concurrency:
+      group: cbb-usage-probe
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Report what the account has spent
+        env:
+          CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
+        run: |
+          # `cmd | tee` reports tee's status, so without pipefail a crash in
+          # the probe would pass this step.
+          set -o pipefail
+          python scripts/probe_cbbd_limits.py --usage-only \
+            | tee -a "$GITHUB_STEP_SUMMARY"
