@@ -60,6 +60,7 @@
     --map-land: #243548;
     --amber-dim: #7a5a26;
     --red: #c4453c;
+    --red-ink: #d16e67;
     --green-hl: #6fae5a;
     --font-display: 'Roboto Slab', Georgia, serif;
     --font-collegiate: 'Graduate', Georgia, serif;
@@ -74,10 +75,11 @@
       --line: #d8d4c6;
       --ink: #1a1f1b;
       --ink-dim: #5c6259;
-      --amber: #b5741a;
+      --amber: #8f5c15;
       --amber-dim: #e8c68f;
       --red: #a3352c;
-      --green-hl: #3f7a30;
+      --red-ink: #a3352c;
+      --green-hl: #3b732d;
     }
   }
   :root[data-theme="light"] {
@@ -87,10 +89,11 @@
     --line: #d8d4c6;
     --ink: #1a1f1b;
     --ink-dim: #5c6259;
-    --amber: #b5741a;
+    --amber: #8f5c15;
     --amber-dim: #e8c68f;
     --red: #a3352c;
-    --green-hl: #3f7a30;
+    --red-ink: #a3352c;
+    --green-hl: #3b732d;
   }
   * { box-sizing: border-box; }
   body {
@@ -146,7 +149,10 @@
   }
   #league-selector a[aria-current="page"] {
     background: var(--amber);
-    color: #15110a;
+    /* var(--bg), not a fixed near-black: the fill flips light and dark with
+       the theme, so a foreground that does not flip with it is only ever
+       right in one of them. */
+    color: var(--bg);
     font-weight: 600;
   }
   /* The mark is decorative: the wordmark beside it already says the name, so
@@ -301,8 +307,8 @@
   .ledger td { font-family: var(--font-mono); }
   .ledger td.opp { font-family: inherit; }
   .ledger td small { display: block; color: var(--ink-dim); font-size: 10.5px; }
-  .ledger td.pos { color: var(--green-hl); } .ledger td.neg { color: var(--red); }
-  .rank-table td.pos { color: var(--green-hl); } .rank-table td.neg { color: var(--red); }
+  .ledger td.pos { color: var(--green-hl); } .ledger td.neg { color: var(--red-ink); }
+  .rank-table td.pos { color: var(--green-hl); } .rank-table td.neg { color: var(--red-ink); }
   .hfa-search { width: min(100%, 360px); padding: 9px; margin: 0 0 12px; background: var(--panel-2);
     color: var(--ink); border: 1px solid var(--line); border-radius: 3px; font: inherit; }
   .rank-table td.flat, .rank-table td.bye { color: var(--ink-dim); }
@@ -751,7 +757,7 @@
   .week-game-link:hover, .week-game-link:focus-visible { text-decoration: underline; }
   .week-games-note { margin: 10px 0 0; }
   .week-game .pos, .team-stat .pos { color: var(--green-hl); }
-  .week-game .neg, .team-stat .neg { color: var(--red); }
+  .week-game .neg, .team-stat .neg { color: var(--red-ink); }
   .week-game .flat, .team-stat .flat { color: var(--ink-dim); }
   /* The offline banner. Hidden entirely while the browser reports a connection,
      so it costs nothing on the overwhelming majority of visits. */
@@ -798,7 +804,7 @@
   .swing-row:last-child { border-bottom: 0; }
   .swing-delta { grid-row: span 2; align-self: center; font-family: var(--font-display); font-size: 20px; }
   .swing-delta.pos { color: var(--green-hl); }
-  .swing-delta.neg { color: var(--red); }
+  .swing-delta.neg { color: var(--red-ink); }
   .swing-main { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 14px; }
   .swing-where { font-family: var(--font-mono); font-size: 12px; color: var(--ink-dim); }
   .swing-score { font-family: var(--font-mono); font-weight: 600; }
@@ -855,7 +861,7 @@
   .page-tabs a[aria-current="page"] { color: var(--amber); border-color: var(--amber); }
   @media (max-width: 520px) { .page-tabs a { padding: 9px 7px; font-size: 11px; } }
   .ledger tbody tr:hover td { background: var(--panel-2); }
-  .ledger td.win { color: var(--green-hl); } .ledger td.loss { color: var(--red); }
+  .ledger td.win { color: var(--green-hl); } .ledger td.loss { color: var(--red-ink); }
   .ledger td.live-now { color: var(--amber); }
   .dim, .ledger td.dim { color: var(--ink-dim); }
   .ledger caption { caption-side: bottom; font: 11px var(--font-mono); color: var(--ink-dim); text-align: left; padding-top: 8px; }
@@ -966,7 +972,7 @@
     border-radius: 2px;
     text-transform: uppercase;
   }
-  .tag.bye { background: var(--green-hl); color: #fff; }
+  .tag.bye { background: var(--green-hl); color: var(--bg); }
   .tag.champ { border: 1px solid var(--amber-dim); color: var(--amber); background: transparent; }
 
   .bracket-section-label {
@@ -1533,9 +1539,13 @@
         <a data-section="people" href="#section=people">People</a>
       </nav>
       <div class="global-search" role="search">
-        <label class="visually-hidden" for="global-search">Search teams, games and seasons</label>
+        <!-- The box has found players and coaches since v0.1.1 and conferences
+             since the conference pages landed, but it went on advertising three
+             of the five. A reader who reads the placeholder has no reason to
+             type a player's name, so the feature may as well not exist. -->
+        <label class="visually-hidden" for="global-search">Search teams, players, coaches, games, conferences and seasons</label>
         <input type="search" id="global-search" autocomplete="off" spellcheck="false" maxlength="150"
-               placeholder="Search teams, games, seasons  ( / )"
+               placeholder="Search teams, players, games…  ( / )"
                aria-controls="search-results" aria-expanded="false" aria-describedby="search-status">
         <div id="search-results" class="search-results" hidden></div>
         <p id="search-status" class="visually-hidden" aria-live="polite"></p>
@@ -7510,8 +7520,21 @@ function awardsHtml(data, season) {
   const won = (data.winners || []).filter(w => w.season === Number(season));
   if (!won.length) {
     const held = [...new Set((data.winners || []).map(w => w.season))].sort((a, b) => a - b);
+    // A dead end with a door. The season picker here is the one the stats
+    // views share, so it usually reads the CURRENT season -- which the award
+    // archive is always a year behind, because the trophies are handed out
+    // after it ends. Clicking Awards therefore lands on nothing, every year,
+    // from the end of one season until the next lot are published.
+    //
+    // The view does NOT quietly show another season instead: the picker
+    // would then say one year while the table showed another, which is the
+    // page and its own controls disagreeing. It offers the link and lets the
+    // reader take it, so whatever is on screen is the season named above it.
+    const last = held.length ? held[held.length - 1] : null;
     return '<div class="empty-note">No award winners are recorded for ' + esc(season) +
-      (held.length ? '. The archive covers ' + held[0] + '\u2013' + held[held.length - 1] + '.' : '.') +
+      (held.length ? '. The archive covers ' + held[0] + '\u2013' + last + '. ' +
+        '<a href="' + esc('#section=stats&view=awards&season=' + last) + '">Show ' +
+        last + '</a>.' : '.') +
       '</div>';
   }
   // Ordered by the trophy's name, with a shared trophy's winners together
