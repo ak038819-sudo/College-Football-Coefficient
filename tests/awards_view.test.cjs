@@ -68,11 +68,16 @@ function view(season, {manifest, data} = {}) {
   const ctx = {
     STATIC_MANIFEST: {awards: manifest === undefined ? 'data/awards.js?v=abc' : manifest},
     state: {year: season, section: 'stats', subview: 'awards'},
-    esc: s => String(s),
+    // The REAL esc, lifted from the shell rather than stubbed as identity.
+    // It was `s => String(s)`, which quietly made every claim in this file
+    // about escaping vacuous: a name carrying an ampersand or a quote would
+    // have come through raw and no assertion here would have noticed.
+
     teamCellById: id => '<a class="t" href="#team=' + id + '">Team ' + id + '</a>',
     playerHref: id => '#player=' + id,
   };
   vm.runInNewContext(
+    sourceOf('esc') + '\n' +
     sourceOf('awardsWinnerCell') + '\n' + sourceOf('awardsHtml') + '\n' +
     sourceOf('renderAwards') + '\n' + sourceOf('playerAwardsPanel') + '\n' +
     'this.html = awardsHtml; this.render = renderAwards;' +
@@ -161,6 +166,31 @@ test('the awards view', async t => {
     // Not "no awards were given in 1995", which is a different claim.
     assert.match(html, /archive covers 2023–2024/);
     assert.ok(!html.includes('<table'), 'no empty table');
+  });
+
+  await t.test('an uncovered season offers the latest one that IS covered', () => {
+    // The stats views share one season picker, so Awards opens on the current
+    // season -- which the archive is always a year behind, because trophies
+    // are handed out after a season ends. Without this the view is a dead end
+    // from the end of one season until the next lot are published.
+    const {html} = view(1995);
+    assert.match(html, /href="#section=stats&amp;view=awards&amp;season=2024"/);
+    assert.match(html, /Show 2024/);
+  });
+
+  await t.test('the door points at the LAST covered season, not the first', () => {
+    // 2023 is also covered, and offering it would be a link to older data
+    // than the archive has.
+    const {html} = view(1995);
+    assert.ok(!/Show 2023/.test(html), 'must not offer the earliest season');
+    assert.ok(!/season=2023"/.test(html), 'must not link the earliest season');
+  });
+
+  await t.test('a covered season shows no door at all', () => {
+    // The link belongs to the empty state. On a season with winners it would
+    // be an invitation to leave the page the reader just asked for.
+    const {html} = view(2023);
+    assert.ok(!/Show 20\d\d/.test(html), 'no door on a season with winners');
   });
 
   await t.test('a build with no awards file never asks for one', () => {

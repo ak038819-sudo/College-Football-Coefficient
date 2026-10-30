@@ -33,6 +33,7 @@
     --amber: #e8a33d;
     --amber-dim: #7a5a26;
     --red: #c4453c;
+    --red-ink: #d16e67;
     --green-hl: #6fae5a;
     --font-display: 'Roboto Slab', Georgia, serif;
     --font-body: 'IBM Plex Sans', sans-serif;
@@ -41,14 +42,14 @@
   @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]) {
       --bg: #f2f0e8; --panel: #ffffff; --panel-2: #eae7dc; --line: #d8d4c6;
-      --ink: #1a1f1b; --ink-dim: #5c6259; --amber: #b5741a;
-      --amber-dim: #e8c68f; --red: #a3352c; --green-hl: #3f7a30;
+      --ink: #1a1f1b; --ink-dim: #5c6259; --amber: #8f5c15;
+      --amber-dim: #e8c68f; --red: #a3352c; --red-ink: #a3352c; --green-hl: #3b732d;
     }
   }
   :root[data-theme="light"] {
     --bg: #f2f0e8; --panel: #ffffff; --panel-2: #eae7dc; --line: #d8d4c6;
-    --ink: #1a1f1b; --ink-dim: #5c6259; --amber: #b5741a;
-    --amber-dim: #e8c68f; --red: #a3352c; --green-hl: #3f7a30;
+    --ink: #1a1f1b; --ink-dim: #5c6259; --amber: #8f5c15;
+    --amber-dim: #e8c68f; --red: #a3352c; --red-ink: #a3352c; --green-hl: #3b732d;
   }
   * { box-sizing: border-box; }
   body {
@@ -102,7 +103,7 @@
     padding: 16px; margin: 18px 0 0;
   }
   .refusal { border-color: var(--red); }
-  .refusal h2 { margin: 0 0 8px; font-size: 16px; color: var(--red); }
+  .refusal h2 { margin: 0 0 8px; font-size: 16px; color: var(--red-ink); }
   .refusal ul { margin: 0; padding-left: 20px; font-size: 14px; }
 
   .days { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
