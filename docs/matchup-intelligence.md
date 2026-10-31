@@ -107,3 +107,23 @@ coverage; team-game predictions are not independent, some earlier years are
 sparse, and date-level cutoff sacrifices intra-day updates for safety. A
 production backtest needs coverage stratification by week, season, metric,
 conference and schedule connectivity, plus uncertainty/error bars.
+
+
+## Real-data coverage audit
+
+The read-only `src/audit_matchup_coverage.py` reports actual source
+availability for each supported metric. It distinguishes completed FBS games,
+paired observations (both teams present), single-sided observations, missing
+FBS membership, stale-schema missing columns, and advanced rows not matched
+to a completed FBS game.
+
+```bash
+python src/audit_matchup_coverage.py --season 2025 --db db/league.db
+python src/audit_matchup_coverage.py --season 2026 --db db/league.db
+```
+
+Review the coverage before fitting. In particular, a newly added SQLite
+column does **not** prove the historical API values were fetched. The first
+successful feature-workflow run tested synthetic fixtures only; an actual
+data backfill and full pipeline dry run are outstanding. Existing production
+refresh automation is not modified by this draft PR.
