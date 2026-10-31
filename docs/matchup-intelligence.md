@@ -127,3 +127,18 @@ column does **not** prove the historical API values were fetched. The first
 successful feature-workflow run tested synthetic fixtures only; an actual
 data backfill and full pipeline dry run are outstanding. Existing production
 refresh automation is not modified by this draft PR.
+
+
+## Real committed-data reports in pull-request CI
+
+The normal `Test, Rebuild Dashboard, and Deploy` workflow now performs
+**read-only** matchup coverage audits for 2025 and 2026 after building its
+test SQLite database from committed game and advanced-stat CSVs. It also
+runs strict prior-date `success_rate` backtests for both seasons. Results
+appear in the workflow job logs. The preexisting `rebuild-and-deploy`
+job remains restricted to `main` and is not invoked by draft PRs.
+
+These reports only describe the **currently committed source CSVs**; they
+do not re-fetch the CFBD API, do not guarantee rushing/passing split
+coverage, and do not assert positive forecast skill. Historical rush/pass
+re-fetch and controlled calibration remain required before release.
