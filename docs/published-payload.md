@@ -67,15 +67,23 @@ Three rules worth keeping:
    plain `date` field looks duplicated by `kickoff_utc` and is **not**: one is
    the game's local date and the other UTC, and deriving either from the other
    is a trap this project has already been caught by.
-2. **The 47% of box-score lines whose statistic is zero.** These are real
-   bytes and, arguably, real information: a line says the player took the field
-   and recorded none of that statistic, and dropping it would make absence
-   ambiguous — which `src/export_static_data.py` has a comment warning against.
-   It is also a product question, because the game page draws every one of
-   them: a reader currently scrolls seventy players under "defensive · TD", all
-   of them zero. Deciding to show only non-zero lines would cut the archive
-   roughly in half *and* improve the page. That decision is not the exporter's
-   to make.
+2. **The 38.9% of box-score lines whose statistic is zero — not a saving.**
+   The game page no longer draws them (see below), but they are still
+   *exported*, and that is deliberate. The Stats hub reads the same shards
+   through `loadPlayerArchive`, and `aggregatePlayers` in `ui/stats.js` counts a
+   player's games from the lines that exist (`row._games.add(gameId)`), so
+   dropping them from the export moved **312 of 2025's player-category game
+   counts** — one Pittsburgh defender from ten games to seven — and inflated
+   every per-game average with them. A zero-valued season field also became
+   missing rather than zero. Codex caught this on PR #160 after I had verified
+   only the game page.
+
+   So the filter lives in `recordedBoxScoreTeams` in `ui/dashboard_shell.html`,
+   at render. One game page goes from 411 rows to 166 and 48 stat groups to 40;
+   the archive stays 83.4 MB. **The page win is real and the byte win is zero.**
+   Keeping both would mean giving the aggregator a player's game count by
+   another route, which is a bigger change than it is worth today.
+
 3. **Non-FBS box scores.** Named in earlier reviews as the obvious cut. In fact
    `export_static_data.export` already keeps only games the database rates and
    has played, so this one is mostly already paid for; measure before
