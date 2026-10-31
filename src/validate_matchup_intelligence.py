@@ -113,18 +113,20 @@ def evaluate_walk_forward(
         # Simple prior offense-only shrinkage baseline (not opponent-adjusted).
         prior = defaultdict(list)
         for r in training:
-            prior[r.team].append(r.value)
+            prior[r.team].append((r.value, r.weight))
         for offense, defense, observed, venue_side in by_day[day]:
             considered += 1
             national_errors.append(observed - baseline)
             prior_values = prior.get(offense, [])
-            offensive_guess = ((sum(prior_values) + shrinkage * baseline)
-                               / (len(prior_values) + shrinkage))
+            total_w = sum(w for _, w in prior_values)
+            offensive_guess = ((sum(v * w for v, w in prior_values) + ridge * baseline)
+                               / (total_w + ridge))
             team_errors.append(observed - offensive_guess)
             if offense not in grades or defense not in grades:
                 continue
             prediction = project_matchup(
-                grades, baseline, offense, defense,\n                venue_adjustment=grades[offense].home_effect * venue_side).projected_value
+                grades, baseline, offense, defense,
+                venue_adjustment=grades[offense].home_effect * venue_side).projected_value
             model_errors.append(observed - prediction)
             matched_national_errors.append(observed - baseline)
             matched_team_errors.append(observed - offensive_guess)
