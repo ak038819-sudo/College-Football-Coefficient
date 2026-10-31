@@ -35,6 +35,7 @@ class TeamGrade:
     offensive_percentile: float
     defensive_percentile: float
     games: int
+    home_effect: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -98,7 +99,7 @@ def fit_profiles(
         t: TeamGrade(t, fit["off"][t], fit["def"][t],
                      _percentile(direction * fit["off"][t], off_dist),
                      _percentile(-direction * fit["def"][t], def_dist),
-                     offensive[t])
+                     offensive[t], fit["home"])
         for t in qualified
     }
     # A simple return signature is maintained for existing consumers.
