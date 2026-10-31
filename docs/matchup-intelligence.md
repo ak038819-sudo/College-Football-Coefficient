@@ -142,3 +142,39 @@ These reports only describe the **currently committed source CSVs**; they
 do not re-fetch the CFBD API, do not guarantee rushing/passing split
 coverage, and do not assert positive forecast skill. Historical rush/pass
 re-fetch and controlled calibration remain required before release.
+
+
+## Architectural consolidation (PR #161)
+
+The original PR prototype independently fitted offense/defense coefficients.
+**This is retired.** `src/matchup_intelligence.py` now invokes the existing
+`src/build_adjusted_stats.py::solve()` for the fitted league mean, offensive
+effects, defensive allowance effects and venue coefficient. It creates only
+percentile and pregame projection *views* of those fitted quantities.
+`tests/test_matchup_shared_solver.py` checks equality with direct calls to
+that shared solver.
+
+For `success_rate` and `ppa`, when per-game offensive play counts exist,
+point-in-time profiles use the production `LAMBDA[metric] = 200` and
+play weighting. This matches the **model formulation and its configured ridge
+strength**; the pregame cutoff means a weekly estimate will naturally differ
+from a full-season end-of-year adjusted statistic. The pregame model enforces
+FBS-only membership and strict prior-date observations.
+
+For `explosiveness` and rushing/passing breakdowns, the shared *solver* is
+used, but source metrics and weights are not yet calibrated to the existing
+adjusted-stat settings. They use provisional per-team-game weights with ridge
+2.0, and should NOT be presented as calibrated. (Overall explosiveness can
+use available `off_plays` weighting; its ridge remains provisional.) To
+make the missing split exposure robust, distinguish unavailable source
+fields from genuine zero observations and do not label incomplete data
+as a national percentile.
+
+The `home_effect` is retained on each scouting profile for the same fit.
+An estimated matchup can supply `--venue-side 0.5` when its offense is home,
+`-0.5` when away or `0` for neutral, consistent with the established
+model's venue convention. Historical walk-forward evaluation uses the
+observed home/away/neutral designation.
+
+**Remaining work**: real-data replay, calibration for splits, uncertainty,
+static exports and UI. No feature is connected to production Elo or Merits.
