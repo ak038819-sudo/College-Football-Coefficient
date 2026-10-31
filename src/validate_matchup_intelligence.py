@@ -15,10 +15,12 @@ from pathlib import Path
 
 try:
     from src.build_matchup_intelligence import METRICS, load_observations
-    from src.matchup_intelligence import fit_profiles, project_matchup\n    from src.build_adjusted_stats import LAMBDA
+    from src.matchup_intelligence import fit_profiles, project_matchup
+    from src.build_adjusted_stats import LAMBDA
 except ModuleNotFoundError:
     from build_matchup_intelligence import METRICS, load_observations
-    from matchup_intelligence import fit_profiles, project_matchup\n    from build_adjusted_stats import LAMBDA
+    from matchup_intelligence import fit_profiles, project_matchup
+    from build_adjusted_stats import LAMBDA
 
 
 def _scores(errors: list[float]) -> dict | None:
