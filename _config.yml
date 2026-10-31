@@ -1,0 +1,36 @@
+# What GitHub Pages publishes.
+#
+# Pages serves this branch's whole tree, so until now the site carried every
+# build input with it: data/ alone is 179 MB of CFBD snapshots that exist so
+# CI can rebuild the database, and that no browser has ever fetched. The
+# published site is measured against a 1 GB limit, so those megabytes are not
+# free -- they are the headroom the player and box-score archives need.
+#
+# Everything the site actually serves lives in ui/, plus the three files at
+# the root: index.html (the share target and the redirect), service-worker.js
+# and manifest.webmanifest. Nothing published references any directory below;
+# tests/test_pages_publish.py pins both halves of that -- that the excluded
+# paths are unreferenced, and that nothing the site DOES need is excluded,
+# which is the typo that would take the whole site down.
+exclude:
+  - analysis
+  - archive
+  - build_dashboard.py
+  - config
+  - data
+  - db
+  - docs
+  - package-lock.json
+  - package.json
+  - pytest.ini
+  - requirements-dev.txt
+  - run_pipeline.py
+  - scripts
+  - sql
+  - src
+  - tests
+  # Jekyll's own defaults, which naming `exclude` would otherwise replace.
+  - node_modules
+  - vendor
+  - Gemfile
+  - Gemfile.lock
