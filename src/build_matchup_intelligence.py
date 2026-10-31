@@ -58,7 +58,7 @@ def load_observations(
     candidates = conn.execute(f"""
         SELECT g.game_id, g.home_team_id, g.away_team_id, a.team_id,
                a.{column} AS metric_value, a.season_year AS metric_season,
-               g.game_date, g.season_year
+               g.game_date, g.season_year, g.neutral_site,
         FROM games AS g
         JOIN game_team_advanced AS a ON a.game_id = g.game_id
         JOIN team_membership_by_season AS mh
@@ -76,7 +76,7 @@ def load_observations(
               "duplicate_team_games": 0, "eligible_rows": 0}
     observations: list[Observation] = []
     seen: set[tuple[int, int]] = set()
-    for game_id, home, away, team, value, metric_season, game_day, game_season in candidates:
+    for game_id, home, away, team, value, metric_season, game_day, game_season, neutral in candidates:
         if metric_season != game_season:
             report["season_mismatch"] += 1
             continue
@@ -105,7 +105,7 @@ def load_observations(
             continue
         seen.add(pair)
         opponent = away if team == home else home
-        observations.append(Observation(str(team), str(opponent), float(value)))
+        observations.append(Observation(\n            str(team), str(opponent), float(value),\n            side=0.0 if neutral else (0.5 if team == home else -0.5)))
     report["eligible_rows"] = len(observations)
     report["eligible_games"] = len({game_id for game_id, _team_id in seen})
     return observations, report
