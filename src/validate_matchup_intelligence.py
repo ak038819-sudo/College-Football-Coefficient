@@ -54,7 +54,7 @@ def evaluate_walk_forward(
     # First collect all eligible played games with a far-future cutoff.
     # The adapter handles FBS identity, score completeness and missing values.
     # We also get their recorded dates here for chronological grouping.
-    rows, coverage = load_observations(
+    _rows, coverage = load_observations(
         conn, season=season, as_of=f"{season + 2}-01-01", metric=metric)
     column = METRICS[metric]
     # Use the exact same eligibility conditions; retrieve dates by game/team
@@ -95,6 +95,7 @@ def evaluate_walk_forward(
         by_day[date_key].append((
             str(team), str(away if team == home else home), float(value)))
     model_errors, national_errors, team_errors = [], [], []
+    matched_national_errors, matched_team_errors = [], []
     scored_dates = 0
     considered = 0
     # Refit once per calendar date; all games of the same day remain unseen.
@@ -119,6 +120,8 @@ def evaluate_walk_forward(
                 continue
             prediction = project_matchup(grades, baseline, offense, defense).projected_value
             model_errors.append(observed - prediction)
+            matched_national_errors.append(observed - baseline)
+            matched_team_errors.append(observed - offensive_guess)
         scored_dates += 1
     return {
         "season": season, "metric": metric, "model": "opponent-adjusted-ridge-v1",
@@ -128,7 +131,9 @@ def evaluate_walk_forward(
         "opponent_adjusted": _scores(model_errors),
         "national_mean_baseline": _scores(national_errors),
         "prior_team_offense_baseline": _scores(team_errors),
-        "note": "Baselines cover all considered observations; use matched subset for a fair comparison.",
+        "matched_national_baseline": _scores(matched_national_errors),
+        "matched_team_offense_baseline": _scores(matched_team_errors),
+        "note": "Compare the model to matched baselines on identical observed team-games.",
         "source_coverage": coverage,
     }
 
