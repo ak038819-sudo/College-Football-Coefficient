@@ -47,3 +47,32 @@ Defensive percentile is ordered so that **allowing less** is good for success ra
 ## Status
 
 **Foundation only.** The mathematics and tests are added on an isolated feature branch. No live data export, visual interface, split-stat collection, or production matchup forecast has been deployed.
+
+
+## Phase 2 progress: rushing and passing source fields
+
+Verified against CFBD's current official `/stats/game/advanced` response
+schema: both `offense` and `defense` contain nested `rushingPlays` and
+`passingPlays`, each with `successRate`, `ppa`, and `explosiveness`.
+`src/fetch_cfbd_game_advanced.py` now captures these twelve nullable fields,
+`sql/game_advanced_tables.sql` describes them, and
+`src/load_game_advanced.py` adds nullable columns to older databases before
+loading. The existing overall metrics used for Elo are unchanged.
+
+**Important:** historical `data/raw/game_advanced_YYYY.csv` files fetched
+before this change do not have the new columns. Loading them again will store
+NULL splits for those seasons, not backfill historical split values. The next
+data pass must re-fetch and reload the seasons of interest using the revised
+fetcher; do not claim rushing/passing coverage from schema presence alone.
+
+The experimental read-only matchup adapter now accepts:
+`rush_success_rate`, `rush_ppa`, `rush_explosiveness`,
+`pass_success_rate`, `pass_ppa`, `pass_explosiveness`.
+It rejects missing split columns explicitly. Both teams' FBS membership and
+full historical cutoff remain mandatory.
+
+**Pending checks before production:** execute the full test suite, re-fetch a
+real season under the configured CFBD token and audit paired-game coverage,
+confirm garbage-time conventions, backtest as-of snapshots chronologically,
+compare calibration against baselines and add uncertainty intervals and UI.
+No production export or merge is authorized.
