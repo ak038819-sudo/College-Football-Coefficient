@@ -37,7 +37,7 @@ def evaluate_walk_forward(
     season: int,
     metric: str,
     min_training_games: int = 4,
-    shrinkage: float = 8.0,
+    shrinkage: float = 2.0,
 ) -> dict:
     """Score only games strictly later than the data used for fitting.
 
