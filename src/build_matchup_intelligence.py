@@ -131,8 +131,13 @@ def load_observations(
 def build_snapshot(
     conn: sqlite3.Connection, *, season: int, as_of: str, metric: str,
     offensive_team_id: int | None = None, defensive_team_id: int | None = None,
+    venue_side: float = 0.0,
 ) -> dict:
     """Produce a JSON-ready read-only scouting snapshot or matchup estimate."""
+    if venue_side not in (-0.5, 0.0, 0.5):
+        raise ValueError("venue_side must be -0.5, 0 or +0.5")
+    if (offensive_team_id is None) != (defensive_team_id is None):
+        raise ValueError("Specify both matchup teams or neither")
     rows, coverage = load_observations(conn, season=season, as_of=as_of, metric=metric)
     if not rows:
         return {"season": season, "as_of": as_of, "metric": metric,
@@ -146,11 +151,10 @@ def build_snapshot(
               "coverage": coverage,
               "baseline": baseline,
               "profiles": {key: vars(v) for key, v in sorted(grades.items())}}
-    if (offensive_team_id is None) != (defensive_team_id is None):
-        raise ValueError("Specify both matchup teams or neither")
     if offensive_team_id is not None:
         result["matchup"] = vars(project_matchup(
-            grades, baseline, str(offensive_team_id), str(defensive_team_id)))
+            grades, baseline, str(offensive_team_id), str(defensive_team_id),
+            venue_adjustment=grades[str(offensive_team_id)].home_effect * venue_side))
     return result
 
 
@@ -162,13 +166,16 @@ def main() -> None:
     p.add_argument("--metric", choices=sorted(METRICS), default="success_rate")
     p.add_argument("--offense", type=int)
     p.add_argument("--defense", type=int)
+    p.add_argument("--venue-side", choices=(-0.5, 0.0, 0.5), type=float, default=0.0,
+                   help="+0.5 offense home, -0.5 offense away, 0 neutral")
     args = p.parse_args()
     # Read-only SQLite connection prevents accidental modifications.
     path = Path(args.db).resolve()
     with sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True) as conn:
         result = build_snapshot(
             conn, season=args.season, as_of=args.as_of, metric=args.metric,
-            offensive_team_id=args.offense, defensive_team_id=args.defense)
+            offensive_team_id=args.offense, defensive_team_id=args.defense,
+            venue_side=args.venue_side)
     print(json.dumps(result, indent=2, sort_keys=True))
 
 
