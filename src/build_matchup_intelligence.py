@@ -23,6 +23,12 @@ METRICS = {
     "success_rate": "off_success_rate",
     "ppa": "off_ppa",
     "explosiveness": "off_explosiveness",
+    "rush_success_rate": "off_rush_success_rate",
+    "rush_ppa": "off_rush_ppa",
+    "rush_explosiveness": "off_rush_explosiveness",
+    "pass_success_rate": "off_pass_success_rate",
+    "pass_ppa": "off_pass_ppa",
+    "pass_explosiveness": "off_pass_explosiveness",
 }
 
 
@@ -43,6 +49,10 @@ def load_observations(
     if missing:
         raise ValueError(f"Missing database tables: {sorted(missing)}")
     column = METRICS[metric]  # identifier comes from a closed allowlist, not user SQL
+    available_columns = {r[1] for r in conn.execute(
+        "PRAGMA table_info(game_team_advanced)")}
+    if column not in available_columns:
+        raise ValueError(f"Metric {metric} requires refreshed advanced-game schema")
     # Team identity is canonical team_id (not ambiguous names). Both teams must
     # have an explicit FBS flag in the season being evaluated.
     candidates = conn.execute(f"""
