@@ -13,7 +13,11 @@ import sqlite3
 from datetime import date
 from pathlib import Path
 
-from src.matchup_intelligence import Observation, fit_profiles, project_matchup
+try:
+    from src.matchup_intelligence import Observation, fit_profiles, project_matchup
+except ModuleNotFoundError:
+    # Support direct invocation: python src/build_matchup_intelligence.py ...
+    from matchup_intelligence import Observation, fit_profiles, project_matchup
 
 METRICS = {
     "success_rate": "off_success_rate",
@@ -93,7 +97,7 @@ def load_observations(
         opponent = away if team == home else home
         observations.append(Observation(str(team), str(opponent), float(value)))
     report["eligible_rows"] = len(observations)
-    report["eligible_games"] = len({r for r in seen})
+    report["eligible_games"] = len({game_id for game_id, _team_id in seen})
     return observations, report
 
 
