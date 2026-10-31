@@ -47,10 +47,23 @@ FIELDS = [
     ("off_ppa", "offense", ("ppa",)),
     ("off_success_rate", "offense", ("successRate",)),
     ("off_explosiveness", "offense", ("explosiveness",)),
+    # True play-type splits from CFBD; absent historical values remain NULL.
+    ("off_rush_success_rate", "offense", ("rushingPlays", "successRate")),
+    ("off_rush_ppa", "offense", ("rushingPlays", "ppa")),
+    ("off_rush_explosiveness", "offense", ("rushingPlays", "explosiveness")),
+    ("off_pass_success_rate", "offense", ("passingPlays", "successRate")),
+    ("off_pass_ppa", "offense", ("passingPlays", "ppa")),
+    ("off_pass_explosiveness", "offense", ("passingPlays", "explosiveness")),
     ("def_plays", "defense", ("plays",)),
     ("def_ppa", "defense", ("ppa",)),
     ("def_success_rate", "defense", ("successRate",)),
     ("def_explosiveness", "defense", ("explosiveness",)),
+    ("def_rush_success_rate", "defense", ("rushingPlays", "successRate")),
+    ("def_rush_ppa", "defense", ("rushingPlays", "ppa")),
+    ("def_rush_explosiveness", "defense", ("rushingPlays", "explosiveness")),
+    ("def_pass_success_rate", "defense", ("passingPlays", "successRate")),
+    ("def_pass_ppa", "defense", ("passingPlays", "ppa")),
+    ("def_pass_explosiveness", "defense", ("passingPlays", "explosiveness")),
 ]
 CSV_FIELDS = ["season_year", "game_id", "week", "team", "opponent",
               "garbage_time_excluded"] + [f[0] for f in FIELDS]
