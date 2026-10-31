@@ -15,10 +15,10 @@ from pathlib import Path
 
 try:
     from src.build_matchup_intelligence import METRICS, load_observations
-    from src.matchup_intelligence import fit_profiles, project_matchup
+    from src.matchup_intelligence import fit_profiles, project_matchup\n    from src.build_adjusted_stats import LAMBDA
 except ModuleNotFoundError:
     from build_matchup_intelligence import METRICS, load_observations
-    from matchup_intelligence import fit_profiles, project_matchup
+    from matchup_intelligence import fit_profiles, project_matchup\n    from build_adjusted_stats import LAMBDA
 
 
 def _scores(errors: list[float]) -> dict | None:
@@ -104,7 +104,9 @@ def evaluate_walk_forward(
             conn, season=season, as_of=day, metric=metric)
         if len({(r.team, r.opponent) for r in training}) < min_training_games:
             continue
-        grades, baseline = fit_profiles(training, shrinkage=shrinkage)
+        weighted = metric in LAMBDA and any(r.weight > 1 for r in training)
+        ridge = LAMBDA[metric] if weighted else shrinkage
+        grades, baseline = fit_profiles(training, shrinkage=ridge)
         # Simple prior offense-only shrinkage baseline (not opponent-adjusted).
         prior = defaultdict(list)
         for r in training:
@@ -124,7 +126,7 @@ def evaluate_walk_forward(
             matched_team_errors.append(observed - offensive_guess)
         scored_dates += 1
     return {
-        "season": season, "metric": metric, "model": "opponent-adjusted-ridge-v1",
+        "season": season, "metric": metric, "model": "shared-adjusted-stats-solver",
         "method": "strict-prior-calendar-date",
         "evaluation_dates": scored_dates, "considered_team_games": considered,
         "model_coverage": (len(model_errors) / considered) if considered else 0,
