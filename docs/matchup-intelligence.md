@@ -76,3 +76,34 @@ real season under the configured CFBD token and audit paired-game coverage,
 confirm garbage-time conventions, backtest as-of snapshots chronologically,
 compare calibration against baselines and add uncertainty intervals and UI.
 No production export or merge is authorized.
+
+
+## Validation harness (experimental)
+
+`src/validate_matchup_intelligence.py` now provides a **read-only**, strict
+prior-calendar-date backtest over completed FBS team-game advanced statistics.
+For each evaluated date it refits from prior games, predicts an offense's
+metric against the opposing defense, and reports MAE, RMSE, number of evaluated
+team-games, and eligibility coverage. It also reports national-average and
+shrunken prior-team-offense baselines on both all eligible observations and
+the exact **matched subset** for which the opponent-adjusted model predicts.
+
+Example after historical per-game data has been backfilled:
+
+```bash
+python src/validate_matchup_intelligence.py --db db/league.db --season 2025 --metric rush_success_rate
+python src/validate_matchup_intelligence.py --db db/league.db --season 2026 --metric pass_ppa
+python -m pytest tests/test_matchup_intelligence.py tests/test_build_matchup_intelligence.py tests/test_matchup_split_ingestion.py tests/test_validate_matchup_intelligence.py -q
+```
+
+**Not yet calibrated:** shrinkage=8, min_games=3, and minimum-training-games=4
+are provisional; the first evaluation is not sufficient evidence to choose
+them. Compare on multiple seasons, tune on prior folds only, and reserve later
+seasons for honest out-of-sample reporting. Current backtest evaluates
+metric prediction, not win probability, final score, or win/loss accuracy.
+
+**Known limitations:** the advanced-stat game dataset may have asymmetric
+coverage; team-game predictions are not independent, some earlier years are
+sparse, and date-level cutoff sacrifices intra-day updates for safety. A
+production backtest needs coverage stratification by week, season, metric,
+conference and schedule connectivity, plus uncertainty/error bars.
