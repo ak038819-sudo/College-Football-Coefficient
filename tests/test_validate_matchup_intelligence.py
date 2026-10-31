@@ -10,7 +10,7 @@ def make_db():
     CREATE TABLE games (
       game_id INTEGER PRIMARY KEY, season_year INTEGER, game_date TEXT,
       home_team_id INTEGER, away_team_id INTEGER,
-      home_score INTEGER, away_score INTEGER
+      home_score INTEGER, away_score INTEGER, neutral_site INTEGER DEFAULT 0
     );
     CREATE TABLE teams (team_id INTEGER PRIMARY KEY, team_name TEXT);
     CREATE TABLE team_membership_by_season (
@@ -29,7 +29,7 @@ def make_db():
     for week in range(1, 7):
         for home, away in [(1, 2), (3, 4), (1, 3), (2, 4)]:
             day = f"2026-09-{week:02d}"
-            c.execute("INSERT INTO games VALUES (?,2026,?,?,?,?,?)",
+            c.execute("INSERT INTO games (game_id,season_year,game_date,home_team_id,away_team_id,home_score,away_score) VALUES (?,2026,?,?,?,?,?)",
                       (gid, day, home, away, 20, 17))
             for t, opponent in ((home, away), (away, home)):
                 value = 0.40 + 0.02 * (t - opponent) + 0.001 * week
