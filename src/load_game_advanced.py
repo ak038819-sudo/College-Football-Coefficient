@@ -31,6 +31,17 @@ from load_games import resolve_team_name, team_id  # noqa: E402
 
 SCHEMA = Path(__file__).resolve().parent.parent / "sql" / "game_advanced_tables.sql"
 METRIC_COLS = [c for c, _, _ in FIELDS]
+# CREATE TABLE IF NOT EXISTS does not add columns on older production DBs.
+# Only these new nullable research metrics should be migrated.
+SPLIT_COLS = [c for c in METRIC_COLS if c.startswith((
+    "off_rush_", "off_pass_", "def_rush_", "def_pass_"))]
+
+
+def ensure_split_columns(conn: sqlite3.Connection) -> None:
+    existing = {r[1] for r in conn.execute("PRAGMA table_info(game_team_advanced)")}
+    for col in SPLIT_COLS:
+        if col not in existing:
+            conn.execute(f"ALTER TABLE game_team_advanced ADD COLUMN {col} REAL")
 
 
 def _num(v, integer=False):
@@ -41,6 +52,7 @@ def _num(v, integer=False):
 
 def load_game_advanced(conn: sqlite3.Connection, csv_path: str) -> dict:
     conn.executescript(SCHEMA.read_text(encoding="utf-8"))
+    ensure_split_columns(conn)
     cur = conn.cursor()
     with open(csv_path, newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
