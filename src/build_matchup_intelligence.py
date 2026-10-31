@@ -15,9 +15,11 @@ from pathlib import Path
 
 try:
     from src.matchup_intelligence import Observation, fit_profiles, project_matchup
+    from src.build_adjusted_stats import LAMBDA
 except ModuleNotFoundError:
     # Support direct invocation: python src/build_matchup_intelligence.py ...
     from matchup_intelligence import Observation, fit_profiles, project_matchup
+    from build_adjusted_stats import LAMBDA
 
 METRICS = {
     "success_rate": "off_success_rate",
@@ -53,12 +55,19 @@ def load_observations(
         "PRAGMA table_info(game_team_advanced)")}
     if column not in available_columns:
         raise ValueError(f"Metric {metric} requires refreshed advanced-game schema")
+    # Use the existing calibrated *play-weighted* adjusted-stat objective for
+    # the three overall advanced metrics. Split-stat totals do not currently
+    # provide verified play counts in the nested CFBD game schema, so those
+    # stay provisional unit-weight fits rather than claiming calibration.
+    overall = metric in ("success_rate", "ppa", "explosiveness")
+    has_plays = overall and "off_plays" in available_columns
+    plays_sql = "a.off_plays" if has_plays else "NULL"
     # Team identity is canonical team_id (not ambiguous names). Both teams must
     # have an explicit FBS flag in the season being evaluated.
     candidates = conn.execute(f"""
         SELECT g.game_id, g.home_team_id, g.away_team_id, a.team_id,
                a.{column} AS metric_value, a.season_year AS metric_season,
-               g.game_date, g.season_year, g.neutral_site,
+               g.game_date, g.season_year, g.neutral_site,\n               {plays_sql} AS observed_plays,
         FROM games AS g
         JOIN game_team_advanced AS a ON a.game_id = g.game_id
         JOIN team_membership_by_season AS mh
@@ -76,7 +85,7 @@ def load_observations(
               "duplicate_team_games": 0, "eligible_rows": 0}
     observations: list[Observation] = []
     seen: set[tuple[int, int]] = set()
-    for game_id, home, away, team, value, metric_season, game_day, game_season, neutral in candidates:
+    for game_id, home, away, team, value, metric_season, game_day, game_season, neutral, plays in candidates:
         if metric_season != game_season:
             report["season_mismatch"] += 1
             continue
@@ -99,13 +108,13 @@ def load_observations(
         if value is None:
             report["missing_value"] += 1
             continue
-        pair = (game_id, team)
+        if has_plays and (plays is None or plays <= 0):\n            report.setdefault("missing_plays", 0)\n            report["missing_plays"] += 1\n            continue\n        pair = (game_id, team)
         if pair in seen:
             report["duplicate_team_games"] += 1
             continue
         seen.add(pair)
         opponent = away if team == home else home
-        observations.append(Observation(\n            str(team), str(opponent), float(value),\n            side=0.0 if neutral else (0.5 if team == home else -0.5)))
+        observations.append(Observation(\n            str(team), str(opponent), float(value),\n            weight=float(plays) if has_plays else 1.0,\n            side=0.0 if neutral else (0.5 if team == home else -0.5)))
     report["eligible_rows"] = len(observations)
     report["eligible_games"] = len({game_id for game_id, _team_id in seen})
     return observations, report
@@ -120,9 +129,9 @@ def build_snapshot(
     if not rows:
         return {"season": season, "as_of": as_of, "metric": metric,
                 "coverage": coverage, "status": "no_data", "profiles": {}}
-    grades, baseline = fit_profiles(rows)
+    weighted = metric in ("success_rate", "ppa", "explosiveness") and any(r.weight > 1 for r in rows)\n    ridge = LAMBDA[metric] if weighted and metric in LAMBDA else 2.0\n    grades, baseline = fit_profiles(rows, shrinkage=ridge)
     result = {"season": season, "as_of": as_of, "metric": metric,
-              "model": "opponent-adjusted-ridge-v1", "coverage": coverage,
+              "model": "shared-adjusted-stats-solver", "shrinkage": ridge,\n              "weighting": "offensive_plays" if weighted else "team_game",\n              "coverage": coverage,
               "baseline": baseline,
               "profiles": {key: vars(v) for key, v in sorted(grades.items())}}
     if (offensive_team_id is None) != (defensive_team_id is None):
