@@ -63,7 +63,7 @@ def evaluate_walk_forward(
     # via identity. Duplicate team-game values are skipped by the adapter.
     dated = conn.execute(f"""
         SELECT g.game_date, g.home_team_id, g.away_team_id,
-               a.team_id, a.{column}, g.game_id
+               a.team_id, a.{column}, g.game_id, g.neutral_site
         FROM games g
         JOIN game_team_advanced a ON a.game_id = g.game_id
         JOIN team_membership_by_season mh
@@ -81,7 +81,7 @@ def evaluate_walk_forward(
     from datetime import date
     by_day: dict[str, list[tuple[str, str, float]]] = defaultdict(list)
     seen = set()
-    for day, home, away, team, value, game_id in dated:
+    for day, home, away, team, value, game_id, neutral in dated:
         if not day:
             continue
         try:
@@ -95,7 +95,8 @@ def evaluate_walk_forward(
             continue
         seen.add(key)
         by_day[date_key].append((
-            str(team), str(away if team == home else home), float(value)))
+            str(team), str(away if team == home else home), float(value),
+            0.0 if neutral else (0.5 if team == home else -0.5)))
     model_errors, national_errors, team_errors = [], [], []
     matched_national_errors, matched_team_errors = [], []
     scored_dates = 0
@@ -113,7 +114,7 @@ def evaluate_walk_forward(
         prior = defaultdict(list)
         for r in training:
             prior[r.team].append(r.value)
-        for offense, defense, observed in by_day[day]:
+        for offense, defense, observed, venue_side in by_day[day]:
             considered += 1
             national_errors.append(observed - baseline)
             prior_values = prior.get(offense, [])
@@ -122,7 +123,8 @@ def evaluate_walk_forward(
             team_errors.append(observed - offensive_guess)
             if offense not in grades or defense not in grades:
                 continue
-            prediction = project_matchup(grades, baseline, offense, defense).projected_value
+            prediction = project_matchup(
+                grades, baseline, offense, defense,\n                venue_adjustment=grades[offense].home_effect * venue_side).projected_value
             model_errors.append(observed - prediction)
             matched_national_errors.append(observed - baseline)
             matched_team_errors.append(observed - offensive_guess)
