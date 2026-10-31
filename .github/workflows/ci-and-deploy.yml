@@ -145,6 +145,16 @@ jobs:
       - name: Run tests
         run: pytest -v
 
+      # Draft PR #161: audit the real committed CFBD per-game data loaded above.
+      # PR runs never reach the production deployment job (main-only gate).
+      - name: Audit matchup data coverage (2025-2026)
+        if: github.event_name == 'pull_request'
+        run: |
+          python3 src/audit_matchup_coverage.py --db db/league.db --season 2025
+          python3 src/audit_matchup_coverage.py --db db/league.db --season 2026
+          python3 src/validate_matchup_intelligence.py --db db/league.db --season 2025 --metric success_rate
+          python3 src/validate_matchup_intelligence.py --db db/league.db --season 2026 --metric success_rate
+
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
