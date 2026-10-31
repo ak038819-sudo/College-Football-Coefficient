@@ -1,15 +1,21 @@
-"""Opponent-adjusted team scouting and matchup estimates.
+"""Pregame scouting presentation adapter for Elocast's ONE adjusted-stat engine.
 
-Experimental standalone analytics: does not modify Elo, Merits, or deployed UI.
-A row is an OFFENSIVE team-game observation of one metric against one opponent.
-Callers MUST supply only games completed before the preview cutoff.
+Do not implement a second regression here. All fitted offensive, defensive,
+and venue effects come from src/build_adjusted_stats.solve(), the existing
+production-adjusted-stat implementation. For unit-weight game observations the
+default shrinkage is a *provisional* per-game strength; play-weighted production
+metrics use their existing calibrated metric-specific lambdas instead.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from math import isfinite
-from statistics import mean
 from typing import Iterable
+
+try:
+    from src import build_adjusted_stats as adjusted
+except ModuleNotFoundError:
+    import build_adjusted_stats as adjusted
 
 
 @dataclass(frozen=True)
@@ -18,6 +24,7 @@ class Observation:
     opponent: str
     value: float
     weight: float = 1.0
+    side: float = 0.0  # +.5 home, -.5 away, 0 neutral
 
 
 @dataclass(frozen=True)
@@ -38,105 +45,78 @@ class MatchupEstimate:
     national_average: float
     offense_adjustment: float
     defense_adjustment: float
+    venue_adjustment: float = 0.0
 
 
 def _percentile(value: float, population: list[float]) -> float:
-    """Midrank empirical percentile. A higher grade is always favorable."""
     below = sum(v < value for v in population)
     tied = sum(v == value for v in population)
-    return 100.0 * (below + 0.5 * tied) / len(population)
+    return 100 * (below + .5 * tied) / len(population)
 
 
 def fit_profiles(
     observations: Iterable[Observation],
     *,
     higher_is_better: bool = True,
-    shrinkage: float = 8.0,
+    shrinkage: float = 2.0,
     iterations: int = 80,
     min_games: int = 3,
 ) -> tuple[dict[str, TeamGrade], float]:
-    """Fit regularized two-way offensive/defensive effects.
+    """Convert a canonical adjusted_stats.solve fit into scouting percentiles.
 
-    Value = league average + offensive effect + defensive allowance effect.
-    Defensive grades reverse sign: allowing less is better for the defense
-    when higher_is_better=True. For a negative-direction metric (e.g. turnovers),
-    both percentiles reverse appropriately.
-
-    Per-game observations should not be duplicated as separate defense rows.
-    Incomplete or nonfinite samples are refused rather than silently zeroed.
+    Iterations is retained for callers' compatibility; the shared solver owns
+    its own convergence controls. Games counts require at least min_games on
+    *each* side of the observed matchup graph.
     """
     if shrinkage < 0 or iterations < 1 or min_games < 1:
         raise ValueError("Invalid fitting parameters")
     rows = list(observations)
     if not rows:
         raise ValueError("No observations")
-    counts: dict[str, int] = {}
-    offenses: dict[str, list[Observation]] = {}
-    defenses: dict[str, list[Observation]] = {}
+    offensive: dict[str, int] = {}
+    defensive: dict[str, int] = {}
+    tuples = []
     for r in rows:
         if not r.team or not r.opponent or r.team == r.opponent:
             raise ValueError("Invalid team/opponent")
-        if not isfinite(r.value) or not isfinite(r.weight) or r.weight <= 0:
-            raise ValueError("Nonfinite value or nonpositive weight")
-        offenses.setdefault(r.team, []).append(r)
-        defenses.setdefault(r.opponent, []).append(r)
-        counts[r.team] = counts.get(r.team, 0) + 1
-    teams = sorted(set(offenses) | set(defenses))
-    total_weight = sum(r.weight for r in rows)
-    average = sum(r.value * r.weight for r in rows) / total_weight
-    attack = {t: 0.0 for t in teams}
-    allowance = {t: 0.0 for t in teams}
-    # Ridge-penalized coordinate descent. Ridge makes sparse teams regress
-    # toward the national baseline instead of producing extreme estimates.
-    for _ in range(iterations):
-        for t, group in offenses.items():
-            attack[t] = sum(
-                r.weight * (r.value - average - allowance[r.opponent]) for r in group
-            ) / (shrinkage + sum(r.weight for r in group))
-        for t, group in defenses.items():
-            allowance[t] = sum(
-                r.weight * (r.value - average - attack[r.team]) for r in group
-            ) / (shrinkage + sum(r.weight for r in group))
-    eligible = [
-        t for t in teams if len(offenses.get(t, [])) >= min_games
-        and len(defenses.get(t, [])) >= min_games
-    ]
-    if not eligible:
-        return {}, average
+        if not all(map(isfinite, (r.value, r.weight, r.side))) or r.weight <= 0:
+            raise ValueError("Nonfinite value/venue or nonpositive weight")
+        if r.side not in (-.5, 0, .5):
+            raise ValueError("Venue side must be +.5, -.5 or 0")
+        offensive[r.team] = offensive.get(r.team, 0) + 1
+        defensive[r.opponent] = defensive.get(r.opponent, 0) + 1
+        tuples.append((r.team, r.opponent, r.value, r.weight, r.side))
+    fit = adjusted.solve(tuples, shrinkage)
+    qualified = sorted(t for t in fit["off"] if (
+        offensive.get(t, 0) >= min_games and defensive.get(t, 0) >= min_games))
+    if not qualified:
+        return {}, fit["mu"]
     direction = 1 if higher_is_better else -1
-    off_dist = [direction * attack[t] for t in eligible]
-    def_dist = [-direction * allowance[t] for t in eligible]
-    return {
-        t: TeamGrade(
-            team=t,
-            offense=attack[t],
-            defense_allowed=allowance[t],
-            offensive_percentile=_percentile(direction * attack[t], off_dist),
-            defensive_percentile=_percentile(-direction * allowance[t], def_dist),
-            games=counts.get(t, 0),
-        )
-        for t in eligible
-    }, average
+    off_dist = [direction * fit["off"][t] for t in qualified]
+    def_dist = [-direction * fit["def"][t] for t in qualified]
+    grades = {
+        t: TeamGrade(t, fit["off"][t], fit["def"][t],
+                     _percentile(direction * fit["off"][t], off_dist),
+                     _percentile(-direction * fit["def"][t], def_dist),
+                     offensive[t])
+        for t in qualified
+    }
+    # A simple return signature is maintained for existing consumers.
+    # Use project_matchup(..., venue_adjustment=...) when venue has to be applied.
+    return grades, fit["mu"]
 
 
 def project_matchup(
-    profiles: dict[str, TeamGrade], league_average: float, offense: str, defense: str
+    profiles: dict[str, TeamGrade], league_average: float,
+    offense: str, defense: str, *, venue_adjustment: float = 0.0
 ) -> MatchupEstimate:
-    """Estimate one offensive metric against a particular defense.
-
-    This is a point estimate on the original metric scale, NOT a win probability,
-    and has no venue adjustment or uncertainty interval yet.
-    """
+    """Metric-level expectation, not a score or calibrated win probability."""
     if offense not in profiles or defense not in profiles:
         raise ValueError("Both teams need sufficient completed-game coverage")
-    if not isfinite(league_average):
-        raise ValueError("Invalid baseline")
+    if not isfinite(league_average) or not isfinite(venue_adjustment):
+        raise ValueError("Invalid baseline or venue adjustment")
     a, d = profiles[offense], profiles[defense]
     return MatchupEstimate(
-        offense=offense,
-        defense=defense,
-        projected_value=league_average + a.offense + d.defense_allowed,
-        national_average=league_average,
-        offense_adjustment=a.offense,
-        defense_adjustment=d.defense_allowed,
-    )
+        offense, defense,
+        league_average + a.offense + d.defense_allowed + venue_adjustment,
+        league_average, a.offense, d.defense_allowed, venue_adjustment)
