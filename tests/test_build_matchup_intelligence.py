@@ -13,7 +13,7 @@ def db():
         CREATE TABLE games (
           game_id INTEGER PRIMARY KEY, season_year INTEGER, game_date TEXT,
           home_team_id INTEGER, away_team_id INTEGER, home_score INTEGER,
-          away_score INTEGER
+          away_score INTEGER, neutral_site INTEGER DEFAULT 0
         );
         CREATE TABLE teams (team_id INTEGER PRIMARY KEY, team_name TEXT);
         CREATE TABLE team_membership_by_season (
