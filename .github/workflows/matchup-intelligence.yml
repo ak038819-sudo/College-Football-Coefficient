@@ -6,6 +6,7 @@ on:
       - 'src/matchup_intelligence.py'
       - 'src/build_matchup_intelligence.py'
       - 'src/validate_matchup_intelligence.py'
+      - 'src/audit_matchup_coverage.py'
       - 'src/fetch_cfbd_game_advanced.py'
       - 'src/load_game_advanced.py'
       - 'sql/game_advanced_tables.sql'
@@ -13,6 +14,7 @@ on:
       - 'tests/test_build_matchup_intelligence.py'
       - 'tests/test_matchup_split_ingestion.py'
       - 'tests/test_validate_matchup_intelligence.py'
+      - 'tests/test_audit_matchup_coverage.py'
       - '.github/workflows/matchup-intelligence.yml'
   workflow_dispatch:
 
@@ -36,4 +38,5 @@ jobs:
             tests/test_matchup_intelligence.py \
             tests/test_build_matchup_intelligence.py \
             tests/test_matchup_split_ingestion.py \
-            tests/test_validate_matchup_intelligence.py
+            tests/test_validate_matchup_intelligence.py \
+            tests/test_audit_matchup_coverage.py
