@@ -26,7 +26,7 @@ def db():
         INSERT INTO teams VALUES (1,'A'),(2,'B'),(3,'C'),(4,'FCS');
         INSERT INTO team_membership_by_season VALUES
           (1,2026,1),(2,2026,1),(3,2026,1),(4,2026,0);
-        INSERT INTO games VALUES
+        INSERT INTO games (game_id,season_year,game_date,home_team_id,away_team_id,home_score,away_score) VALUES
           (10,2026,'2026-09-05T15:00:00Z',1,2,24,17),
           (11,2026,'2026-09-12',2,3,17,21),
           (12,2026,'2026-09-19',3,1,10,31),
