@@ -508,6 +508,14 @@ def write_box_score_shards(players_dir: Path, season: int, selected: dict) -> di
     of them keeps both and neither has to know what the other found. An empty
     shard is not written at all, and the entry names only the files that exist,
     because the page reads the entry to decide what to request.
+
+    Every line is written, zeros included. CFBD publishes a row per rostered
+    player per statistic, so 38.9% of lines read zero and the game page used to
+    draw every one -- but the Stats hub reads these same shards and
+    `aggregatePlayers` counts a player's GAMES from the lines that exist, so
+    dropping them here moved 312 of 2025's player-category game counts and
+    inflated every per-game average with them. The game page filters them when
+    it renders instead; see `zeroBoxScoreStat` in ui/dashboard_shell.html.
     """
     shards: dict = {}
     for game_id, value in selected.items():
