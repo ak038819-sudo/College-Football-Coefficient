@@ -36,6 +36,8 @@ class TeamGrade:
     defensive_percentile: float
     games: int
     home_effect: float = 0.0
+    distinct_opponents: int = 0
+    reliability: str = "insufficient"
 
 
 @dataclass(frozen=True)
@@ -47,6 +49,21 @@ class MatchupEstimate:
     offense_adjustment: float
     defense_adjustment: float
     venue_adjustment: float = 0.0
+
+
+def reliability_label(games: int, distinct_opponents: int) -> str:
+    """Data-sufficiency tier, NOT a calibrated predictive confidence interval.
+
+    Both volume and schedule diversity are necessary. The early weeks remain
+    explicitly provisional even when the solver produces numeric effects.
+    """
+    if games < 3 or distinct_opponents < 3:
+        return "insufficient"
+    if games < 5 or distinct_opponents < 5:
+        return "provisional"
+    if games < 8 or distinct_opponents < 7:
+        return "developing"
+    return "established"
 
 
 def _percentile(value: float, population: list[float]) -> float:
@@ -76,6 +93,7 @@ def fit_profiles(
         raise ValueError("No observations")
     offensive: dict[str, int] = {}
     defensive: dict[str, int] = {}
+    opponents: dict[str, set[str]] = {}
     tuples = []
     for r in rows:
         if not r.team or not r.opponent or r.team == r.opponent:
@@ -84,6 +102,8 @@ def fit_profiles(
             raise ValueError("Nonfinite value/venue or nonpositive weight")
         if r.side not in (-.5, 0, .5):
             raise ValueError("Venue side must be +.5, -.5 or 0")
+        opponents.setdefault(r.team, set()).add(r.opponent)
+        opponents.setdefault(r.opponent, set()).add(r.team)
         offensive[r.team] = offensive.get(r.team, 0) + 1
         defensive[r.opponent] = defensive.get(r.opponent, 0) + 1
         tuples.append((r.team, r.opponent, r.value, r.weight, r.side))
@@ -99,7 +119,9 @@ def fit_profiles(
         t: TeamGrade(t, fit["off"][t], fit["def"][t],
                      _percentile(direction * fit["off"][t], off_dist),
                      _percentile(-direction * fit["def"][t], def_dist),
-                     offensive[t], fit["home"])
+                     offensive[t], fit["home"], len(opponents.get(t, ())),
+                     reliability_label(min(offensive[t], defensive[t]),
+                                       len(opponents.get(t, ()))))
         for t in qualified
     }
     # A simple return signature is maintained for existing consumers.
