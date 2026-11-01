@@ -175,8 +175,8 @@ jobs:
         with:
           node-version: "22"
 
+      # Required on main too: the shared dashboard test expects real scouting assets.
       - name: Generate verified descriptive scouting UI assets
-        if: github.event_name == 'pull_request'
         run: |
           python3 src/export_descriptive_site_assets.py --db db/league.db
           python3 build_dashboard.py --reuse-exports
