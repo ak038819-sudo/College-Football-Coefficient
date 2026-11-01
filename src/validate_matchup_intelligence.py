@@ -105,7 +105,7 @@ def evaluate_walk_forward(
     for day in sorted(by_day):
         training, _ = load_observations(
             conn, season=season, as_of=day, metric=metric)
-        if len({(r.team, r.opponent) for r in training}) < min_training_games:
+        if len(training) < min_training_games:
             continue
         weighted = metric in LAMBDA and any(r.weight > 1 for r in training)
         ridge = LAMBDA[metric] if weighted else shrinkage
