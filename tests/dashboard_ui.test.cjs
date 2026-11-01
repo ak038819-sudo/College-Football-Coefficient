@@ -335,6 +335,21 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    assert.equal(d.querySelector('.tm-duel-meter').getAttribute('aria-hidden'),'true');
    // Percentiles spell their own ordinal: 81st, never 81th.
    assert.doesNotMatch(d.querySelector('#tm-opponent-result').textContent,/(?<![1])[123]th\b/);
+   // The toggle turns the panel around to the other half of the matchup.
+   const first=[...d.querySelectorAll('.tm-match-side-label')].map(x=>x.textContent);
+   assert.ok(first.every(x=>/ offense$/.test(x)||/ defense$/.test(x)));
+   assert.equal(d.querySelector('.tm-unit-button[data-unit="offense"]').getAttribute('aria-pressed'),'true');
+   d.querySelector('.tm-unit-button[data-unit="defense"]').dispatchEvent(new w.Event('click',{bubbles:true}));
+   assert.equal(d.querySelector('.tm-unit-button[data-unit="defense"]').getAttribute('aria-pressed'),'true');
+   const second=[...d.querySelectorAll('.tm-match-side-label')].map(x=>x.textContent);
+   assert.equal(second.length,first.length);
+   assert.notDeepEqual(second,first);
+   assert.equal(d.querySelectorAll('#tm-opponent-result .tm-match-row').length,6);
+   // Both schools' colours reach the rows, and neither is left unset.
+   const style=d.querySelector('#tm-opponent-result').style;
+   assert.match(style.getPropertyValue('--tm-team-color'),/^#[0-9a-f]{6}$/);
+   assert.match(style.getPropertyValue('--tm-opp-color'),/^#[0-9a-f]{6}$/);
+   assert.notEqual(style.getPropertyValue('--tm-team-color'),style.getPropertyValue('--tm-opp-color'));
    assert.doesNotMatch(panel.textContent,/\bwin probability\s*:\s*\d/i);
    await route('#team=byu&tab=overview',()=>d.querySelector('#tp-scouting'));
    await until(w,()=>d.querySelector('#tm-opponent'));

@@ -17,7 +17,11 @@ function lift(names) {
   assert.ok(traits, 'the shell must declare SCOUTING_TRAITS');
   const edges = shell.match(/^const MATCHUP_EDGE_SPAN[^\n]*\n^const MATCHUP_EDGE_EVEN[^\n]*/m);
   assert.ok(edges, 'the shell must declare the edge scale');
-  const source = [traits[0], edges[0]].concat(names.map(name => {
+  const card = shell.match(/^const MATCHUP_CARD_BG[^\n]*/m);
+  assert.ok(card, 'the shell must declare the card background it measures against');
+  const units = shell.match(/^const MATCHUP_UNITS = \{[^\n]*\n^function matchupUnitSides[^\n]*/m);
+  assert.ok(units, 'the shell must declare the unit pairs');
+  const source = [traits[0], edges[0], card[0], units[0]].concat(names.map(name => {
     const m = shell.match(new RegExp('^function ' + name + '\\([^]*?\\n\\}', 'm'));
     assert.ok(m, 'the shell must declare ' + name);
     return m[0];
@@ -30,10 +34,19 @@ function lift(names) {
   return context.__out;
 }
 
-const { scoutingOrdinal, matchupEdgeLabel, matchupEdgeClass,
-        matchupMeterPosition, matchupMeterRow, renderMatchupMeters } =
-  lift(['scoutingOrdinal', 'matchupEdgeLabel', 'matchupEdgeClass',
-        'matchupMeterPosition', 'matchupMeterRow', 'renderMatchupMeters']);
+const { scoutingOrdinal, matchupEdgeLabel, matchupEdgeClass, matchupMeterPosition,
+        matchupMeterRow, renderMatchupMeters, matchupUnitToggle,
+        matchupLighten, matchupReadableColor, matchupRelativeLuminance } =
+  lift(['scoutingOrdinal', 'matchupEdgeLabel', 'matchupEdgeClass', 'matchupMeterPosition',
+        'matchupMeterRow', 'renderMatchupMeters', 'matchupUnitToggle',
+        'matchupLighten', 'matchupReadableColor', 'matchupRelativeLuminance']);
+
+// WCAG 2.1 contrast, the same formula the stylesheet test uses.
+function contrast(a, b) {
+  const [hi, lo] = [matchupRelativeLuminance(a), matchupRelativeLuminance(b)]
+    .sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
 
 // One asset's worth of metrics: the same offensive and defensive percentile on
 // every trait, so a whole panel can be read in one assertion.
@@ -82,17 +95,18 @@ test('the verdict colour follows the same three cases as its wording', () => {
   assert.equal(matchupEdgeClass(null), 'tm-edge-even');
 });
 
-test('the marker leaves the centre with the edge and stops short of the ends', () => {
+test('the marker travels toward the side holding the edge, and stops short of the ends', () => {
   assert.equal(matchupMeterPosition(0), 50);
   assert.equal(matchupMeterPosition(null), 50);
-  assert.equal(matchupMeterPosition(40), 85);
-  assert.equal(matchupMeterPosition(-40), 15);
+  // Our team's percentile is printed on the LEFT, so our edge moves left.
+  assert.equal(matchupMeterPosition(40), 15);
+  assert.equal(matchupMeterPosition(-40), 85);
   // Clamped: a 99-point gap is no further out than a 40-point one.
-  assert.equal(matchupMeterPosition(99), 85);
-  assert.equal(matchupMeterPosition(-99), 15);
+  assert.equal(matchupMeterPosition(99), 15);
+  assert.equal(matchupMeterPosition(-99), 85);
   // And it is monotone in between, on both sides of the centre.
-  assert.ok(matchupMeterPosition(5) > 50 && matchupMeterPosition(5) < matchupMeterPosition(20));
-  assert.ok(matchupMeterPosition(-5) < 50 && matchupMeterPosition(-5) > matchupMeterPosition(-20));
+  assert.ok(matchupMeterPosition(5) < 50 && matchupMeterPosition(5) > matchupMeterPosition(20));
+  assert.ok(matchupMeterPosition(-5) > 50 && matchupMeterPosition(-5) < matchupMeterPosition(-20));
 });
 
 test('a row shows both percentiles, the verdict, and a fill on the leading side', () => {
@@ -106,21 +120,23 @@ test('a row shows both percentiles, the verdict, and a fill on the leading side'
   assert.match(ours, /class="tm-match-verdict tm-edge-team"/);
   assert.match(ours, /tm-team-fill/);
   assert.doesNotMatch(ours, /tm-opp-fill/);
-  // The fill runs from the centre out to the marker, so its width is the gap.
+  // The fill runs from the marker back to the centre, on our side of the track.
   const marker = Number(ours.match(/tm-duel-marker" style="left:([\d.]+)%/)[1]);
-  const width = Number(ours.match(/tm-team-fill" style="left:50%;width:([\d.]+)%/)[1]);
-  assert.ok(Math.abs(width - (marker - 50)) < 0.01, width + ' vs ' + (marker - 50));
+  assert.ok(marker < 50, 'our edge belongs on our own side: ' + marker);
+  const fill = ours.match(/tm-team-fill" style="left:([\d.]+)%;width:([\d.]+)%/);
+  assert.equal(Number(fill[1]), marker);
+  assert.ok(Math.abs(Number(fill[2]) - (50 - marker)) < 0.02);
 
   const theirs = matchupMeterRow('Pass success',
     { teamName: 'BYU', oppName: 'Utah', teamPct: 79, oppPct: 92 });
   assert.match(theirs, /Clear Utah edge/);
   assert.match(theirs, /tm-opp-fill/);
   assert.doesNotMatch(theirs, /tm-team-fill/);
-  // The opponent's fill starts at the marker and ends at the centre.
+  // Theirs starts at the centre and runs out to the marker, on their side.
   const oppMarker = Number(theirs.match(/tm-duel-marker" style="left:([\d.]+)%/)[1]);
-  const oppFill = theirs.match(/tm-opp-fill" style="left:([\d.]+)%;width:([\d.]+)%/);
-  assert.equal(Number(oppFill[1]), oppMarker);
-  assert.ok(Math.abs(Number(oppFill[2]) - (50 - oppMarker)) < 0.02);
+  assert.ok(oppMarker > 50, 'their edge belongs on their own side: ' + oppMarker);
+  const oppFill = theirs.match(/tm-opp-fill" style="left:50%;width:([\d.]+)%/);
+  assert.ok(Math.abs(Number(oppFill[1]) - (oppMarker - 50)) < 0.02);
 });
 
 test('an unrated trait shows no number, no edge and no fill', () => {
@@ -173,4 +189,68 @@ test('a trait the asset has not rated is skipped even when it carries numbers', 
   // A trait missing from the opponent's asset entirely is the same case.
   const thin = renderMatchupMeters('BYU', 'Utah', rated(81, 70), {});
   assert.equal((thin.match(/Not rated/g) || []).length, 6);
+});
+
+test('the toggle turns the panel around: our defence against their offence', () => {
+  // Rated offence and defence on both sides, so the two halves cannot be
+  // confused with each other: BYU is the better offence, Utah the better
+  // defence, and the second half of the matchup belongs to Utah.
+  const BYU = rated(81, 40), UTAH = rated(55, 76);
+  const first = renderMatchupMeters('BYU', 'Utah', BYU, UTAH, 'offense');
+  assert.equal((first.match(/BYU offense/g) || []).length, 6);
+  assert.equal((first.match(/Utah defense/g) || []).length, 6);
+  assert.equal((first.match(/<strong>81st<\/strong>/g) || []).length, 6);
+  assert.equal((first.match(/Slight BYU edge/g) || []).length, 6);
+
+  const second = renderMatchupMeters('BYU', 'Utah', BYU, UTAH, 'defense');
+  assert.equal((second.match(/BYU defense/g) || []).length, 6);
+  assert.equal((second.match(/Utah offense/g) || []).length, 6);
+  // Our defensive percentile and their offensive one, not the other pair.
+  assert.equal((second.match(/<strong>40th<\/strong>/g) || []).length, 6);
+  assert.equal((second.match(/<strong>55th<\/strong>/g) || []).length, 6);
+  assert.doesNotMatch(second, /81st|76th/);
+  assert.equal((second.match(/Clear Utah edge/g) || []).length, 6);
+  // An unknown or absent unit is the offensive half, which is what the panel opens on.
+  assert.equal(renderMatchupMeters('BYU', 'Utah', BYU, UTAH, 'nonsense'), first);
+  assert.equal(renderMatchupMeters('BYU', 'Utah', BYU, UTAH), first);
+});
+
+test('the toggle says which half is showing, in text as well as in colour', () => {
+  const html = matchupUnitToggle('BYU', 'Utah', 'offense');
+  assert.match(html, /data-unit="offense" aria-pressed="true"/);
+  assert.match(html, /data-unit="defense" aria-pressed="false"/);
+  assert.match(html, /BYU offense vs Utah defense/);
+  assert.match(html, /BYU defense vs Utah offense/);
+  const flipped = matchupUnitToggle('BYU', 'Utah', 'defense');
+  assert.match(flipped, /data-unit="offense" aria-pressed="false"/);
+  assert.match(flipped, /data-unit="defense" aria-pressed="true"/);
+});
+
+test('a school colour is lifted until it can be read on the card', () => {
+  // Navy on navy is the case that matters: BYU's #0057B8 measures 2.3:1 on the
+  // card and has to come up, Wyoming's near-white is already clear of it.
+  assert.ok(contrast('#0057B8', '#142d4c') < 4.5);
+  for (const brand of ['#0057B8', '#CC0000', '#000000', '#001E62', '#F8FAFC', '#BF5700']) {
+    const lifted = matchupReadableColor(brand, '#7fe3bc');
+    assert.match(lifted, /^#[0-9a-f]{6}$/);
+    assert.ok(contrast(lifted, '#142d4c') >= 4.5,
+      brand + ' lifted to ' + lifted + ' is still ' + contrast(lifted, '#142d4c').toFixed(2) + ':1');
+  }
+  // Lifting keeps the hue: BYU's navy comes up blue, not grey.
+  const navy = matchupReadableColor('#002E5D', '#7fe3bc');
+  const [nr, ng, nb] = [1, 3, 5].map(i => parseInt(navy.slice(i, i + 2), 16));
+  assert.ok(nb > nr + 40, 'a navy must stay blue once lifted: ' + navy);
+  const crimson = matchupReadableColor('#9E1B32', '#7fe3bc');
+  const [cr, cg, cb] = [1, 3, 5].map(i => parseInt(crimson.slice(i, i + 2), 16));
+  assert.ok(cr > cb + 40 && cr > cg + 40, 'a crimson must stay red once lifted: ' + crimson);
+  // A grey brand has no hue to keep, and stays grey.
+  const grey = matchupLighten([60, 60, 60], 0.7);
+  assert.match(grey, /^#b3b3b3$/);
+
+  // A colour that already reads is left exactly as it is.
+  assert.equal(matchupReadableColor('#F8FAFC', '#7fe3bc'), '#f8fafc');
+  // And anything that is not a colour falls back rather than being invented.
+  assert.equal(matchupReadableColor(null, '#7fe3bc'), '#7fe3bc');
+  assert.equal(matchupReadableColor('rebeccapurple', '#7fe3bc'), '#7fe3bc');
+  assert.equal(matchupReadableColor('#abc', '#7fe3bc'), '#7fe3bc');
 });

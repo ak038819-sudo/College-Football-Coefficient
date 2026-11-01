@@ -160,6 +160,14 @@ body:has(.team-header) .panel {
 /* Head-to-head meters, one card per trait. The card stacks, so it reads the
    same on a phone as on a desktop and needs no horizontal scroller. The
    verdict and both percentiles are real text; the meter is decoration. */
+/* Which half of the matchup is on screen. Two buttons, the pressed one carrying
+   the state in aria-pressed as well as in its colour. */
+.tm-unit-toggle { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 12px; }
+.tm-unit-button { flex: 1 1 auto; min-height: 40px; padding: 8px 12px; cursor: pointer;
+  border: 1px solid #35516f; border-radius: 999px; background: #10294a; color: #abd3f4;
+  font: 600 12px var(--font-body); }
+.tm-unit-button[aria-pressed="true"] { background: #1d4474; border-color: #5982ae; color: #fff; }
+.tm-unit-button:focus-visible { outline: 2px solid #83ccff; outline-offset: 2px; }
 .tm-matchup-rows { display: grid; gap: 14px; margin-top: 4px; }
 .tm-match-row { padding: 15px 16px 13px; border: 1px solid #35516f; border-radius: 12px;
   background: linear-gradient(145deg,#142d4c,#0b1e35); }
@@ -168,8 +176,8 @@ body:has(.team-header) .panel {
 .tm-match-trait { font: 700 16px var(--font-display); color: #fff; }
 .tm-match-verdict { font: 700 11px var(--font-mono); text-transform: uppercase;
   letter-spacing: .05em; padding-top: 3px; }
-.tm-edge-team { color: #7fe3bc; }
-.tm-edge-opp { color: #ffb4a8; }
+.tm-edge-team { color: var(--tm-team-color,#7fe3bc); }
+.tm-edge-opp { color: var(--tm-opp-color,#ffb4a8); }
 .tm-edge-even { color: #abd3f4; }
 .tm-match-values { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
   align-items: end; gap: 10px; }
@@ -183,8 +191,13 @@ body:has(.team-header) .panel {
 .tm-duel-center { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px;
   background: #dbe9f6; opacity: .75; transform: translateX(-50%); }
 .tm-duel-fill { position: absolute; top: 2px; bottom: 2px; border-radius: 999px; }
-.tm-team-fill { background: linear-gradient(90deg,#337be0,#7fe3bc); }
-.tm-opp-fill { background: linear-gradient(90deg,#ffb4a8,#f0b768); }
+/* Each side's fill and verdict carry that school's own colour, lifted by
+   matchupReadableColor() until it can be read on the card. The defaults are
+   the neutral pair, for a team whose brand colour is not in the registry. */
+.tm-team-fill { background: linear-gradient(270deg,var(--tm-team-color,#7fe3bc),
+  color-mix(in srgb, var(--tm-team-color,#7fe3bc) 55%, #10294a)); }
+.tm-opp-fill { background: linear-gradient(90deg,
+  color-mix(in srgb, var(--tm-opp-color,#ffb4a8) 55%, #10294a),var(--tm-opp-color,#ffb4a8)); }
 .tm-duel-marker { position: absolute; top: 50%; width: 13px; height: 13px; border-radius: 50%;
   background: #f4f8fc; border: 2px solid #113153; transform: translate(-50%,-50%);
   box-shadow: 0 0 0 2px rgba(7,19,34,.55); }
