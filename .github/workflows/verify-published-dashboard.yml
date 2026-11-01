@@ -1,0 +1,63 @@
+name: Verify Published Elocast Dashboard
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-public-pages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check exact published URLs and Pages configuration
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          BASE="https://ak038819-sudo.github.io/College-Football-Coefficient"
+          echo "GitHub Pages build configuration (public API):"
+          curl -sSL --retry 2 -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/pages" \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps({k:d.get(k) for k in ("status","html_url","source","build_type","public")}, indent=2))'
+          echo "Actual public dashboard (bypass HTTP/CDN caches via unique query):"
+          for attempt in 1 2 3 4 5 6; do
+            curl -fLsS --max-time 25 -D /tmp/published-headers \
+              "$BASE/ui/dashboard.html?deploy_check=${GITHUB_SHA}-${attempt}" \
+              -o /tmp/published-dashboard.html || true
+            curl -fLsS --max-time 25 "$BASE/ui/team-modern.css?deploy_check=${GITHUB_SHA}-${attempt}" \
+              -o /tmp/published-modern.css || true
+            python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          html=Path('/tmp/published-dashboard.html')
+          css=Path('/tmp/published-modern.css')
+          b=html.read_bytes() if html.exists() else b''
+          c=css.read_bytes() if css.exists() else b''
+          print("html_bytes",len(b),"sha256",hashlib.sha256(b).hexdigest()[:16],"modern_link",b'team-modern.css?v=' in b,"scouting",b'Opponent-adjusted scouting' in b,"radar",b'renderModernRadar' in b)
+          print("css_bytes",len(c),"sha256",hashlib.sha256(c).hexdigest()[:16],"modern_palette",b'--tm-deep' in c)
+          PY
+            if grep -q 'team-modern.css?v=' /tmp/published-dashboard.html && grep -q 'renderModernRadar' /tmp/published-dashboard.html; then
+              echo "Published dashboard has the Modern release."
+              exit 0
+            fi
+            echo "Still serving old HTML on attempt ${attempt}."
+            sleep 12
+          done
+          echo "::error::Published GitHub Pages HTML does not match merged Modern dashboard."
+          cat /tmp/published-headers || true
+          exit 1
+      - name: Upload fetched public-site evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: elocast-public-pages-diagnostic
+          path: |
+            /tmp/published-headers
+            /tmp/published-dashboard.html
+            /tmp/published-modern.css
+          retention-days: 2
+          if-no-files-found: warn
