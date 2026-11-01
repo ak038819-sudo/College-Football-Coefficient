@@ -66,6 +66,10 @@ def build_scouting_bundle(
             "rated_teams": len(profiles),
             "coverage": snapshot["coverage"],
             "team_profiles": profiles if valid else {},
+            "descriptive_profiles": (
+                snapshot.get("descriptive_units", {}).get("teams", {}) if valid else {}
+            ),
+            "descriptive_method": "opponent_and_venue_adjusted_with_explicit_ridge_residual",
         }
         if home_team_id is not None:
             home, away = str(home_team_id), str(away_team_id)
