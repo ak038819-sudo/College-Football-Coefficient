@@ -21,6 +21,7 @@ def opponent_sensitivity(
     shrinkage: float = 2., min_games: int = 3,
     higher_is_better: bool = True,
     min_competitors: int = 3,
+    target_teams: tuple[str, ...] | None = None,
 ) -> dict:
     if min_competitors < 1:
         raise ValueError("min_competitors must be positive")
@@ -32,7 +33,11 @@ def opponent_sensitivity(
         opponents[row.team].add(row.opponent)
         opponents[row.opponent].add(row.team)
     result = {}
-    for team, baseline in full["teams"].items():
+    targets = sorted(full["teams"]) if target_teams is None else target_teams
+    for team in targets:
+        if team not in full["teams"]:
+            raise ValueError(f"Unknown target team {team}")
+        baseline = full["teams"][team]
         if not baseline["rating_eligible"]:
             result[team] = {"status": "insufficient", "checks": 0}
             continue
