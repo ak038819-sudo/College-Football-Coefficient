@@ -3934,6 +3934,8 @@ function renderTeamPage(param) {
   const { value: recStr, note: recNote } = teamHeaderRecord(rec, unrated);
 
   const profileColor = teamProfileColor(team.name);
+  // The body-level variable lets the whole page, including sibling sections, share the team palette.
+  document.body.style.setProperty('--team-page-color', profileColor);
   const header =
     '<div class="panel team-header" style="--team-profile-color:' + profileColor + '">' +
       '<div class="team-header-main">' + logoMarkup(team.name, 'team', 'lg', season || undefined) +
