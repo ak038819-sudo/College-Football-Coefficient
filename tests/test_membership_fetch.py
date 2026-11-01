@@ -127,8 +127,8 @@ def test_the_2026_snapshot_covers_every_reviewed_fbs_program():
     """The committed snapshot is what CI loads, so guard it directly.
 
     Only the programs this project knows are not FBS in 2026 may be absent:
-    Idaho dropped to FCS after 2017, and Sacramento State and North Dakota
-    State are reclassifying upward and have no FBS conference yet.
+    Idaho dropped to FCS after 2017. The verified 2026 snapshot now includes
+    North Dakota State (Mountain West) and Sacramento State (MAC).
     """
     reviewed = {
         team["canonical_name"]
@@ -142,7 +142,7 @@ def test_the_2026_snapshot_covers_every_reviewed_fbs_program():
             (ROOT / "data/raw/membership_2026.csv").open(newline="")
         )
     }
-    not_fbs_in_2026 = {"Idaho", "North Dakota State", "Sacramento State"}
+    not_fbs_in_2026 = {"Idaho"}
 
     assert snapshot <= reviewed, sorted(snapshot - reviewed)
     assert reviewed - snapshot == not_fbs_in_2026, sorted(reviewed - snapshot - not_fbs_in_2026)

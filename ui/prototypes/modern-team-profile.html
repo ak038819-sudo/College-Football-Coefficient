@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Elocast — The Modern / Design Prototype</title>
+<style>
+:root{color-scheme:dark;--bg:#070f20;--panel:#0d1c32;--panel2:#122644;--stroke:#264466;--ink:#edf5ff;--muted:#9aafcd;--blue:#3c88ff;--cyan:#61c5ff;--good:#5fe0ac;--gold:#f2bd65}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 35% -20%,#1b4581 0%,transparent 55%),var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif}
+a{color:var(--cyan)}button{font:inherit;cursor:pointer}.top{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px max(22px,calc((100vw - 1210px)/2));border-bottom:1px solid var(--stroke);background:#071323ee}
+.brand{font-weight:850;font-size:24px;letter-spacing:-.7px}.bars{color:#53a0ff;margin-right:9px}.nav{display:flex;gap:20px;color:var(--muted)}.nav span:first-child{color:#fff}
+main{max-width:1210px;margin:auto;padding:0 22px 55px}.hero{position:relative;margin:20px 0 0;padding:32px;min-height:195px;overflow:hidden;border:1px solid #3566a0;border-radius:18px;background:linear-gradient(115deg,#071f3ddc,#092245aa),radial-gradient(ellipse at 75% 5%,#3960a8,#071731 60%)}
+.hero:after{position:absolute;right:-5%;bottom:-54%;width:75%;height:110%;content:"";background:linear-gradient(150deg,#274d80aa 25%,#112744 28% 39%,#305482aa 42%,#0a1c34 45% 55%,#234368 58%,#071b31 65%);clip-path:polygon(0 100%,22% 40%,38% 73%,60% 10%,76% 60%,88% 33%,100% 65%,100% 100%);opacity:.6}
+.hero>*{position:relative;z-index:1}.kicker{font-size:11px;letter-spacing:1.8px;text-transform:uppercase;color:var(--cyan);font-weight:750}.heroRow{display:flex;align-items:center;gap:18px;margin-top:18px}.mark{width:72px;height:72px;display:grid;place-items:center;border-radius:50%;background:#11366b;border:3px solid #fff;font-family:Georgia,serif;font-size:37px;font-weight:900;box-shadow:0 6px 35px #03142d80}.team h1{font-size:34px;line-height:1.15;margin:0}.sub{color:#b5c7dc}.pills{display:flex;gap:10px;margin-left:auto}.stat{padding:11px 20px;background:#07182fcd;border:1px solid #5376a5;border-radius:10px;text-align:center;min-width:102px}.stat b{display:block;font-size:23px;line-height:1.2}.stat small{color:var(--muted)}
+.tabbar{display:flex;gap:2px;overflow:auto;border-bottom:1px solid var(--stroke);margin:6px 0 20px}.tabbar button{border:0;border-bottom:3px solid transparent;padding:15px 23px;color:var(--muted);background:transparent;white-space:nowrap}.tabbar button[aria-selected=true]{border-color:var(--blue);color:white;background:#12376866}
+.grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(270px,1fr);gap:16px}.panel{border:1px solid var(--stroke);border-radius:14px;background:linear-gradient(155deg,#122742 0%,#0a172a 80%);padding:22px;min-width:0}.panel h2{margin:0;font-size:20px;letter-spacing:-.3px}.intro{font-size:13px;color:var(--muted);margin:0 0 13px}.chartWrap{display:flex;justify-content:center}.radar{width:min(100%,420px);height:auto;overflow:visible}.radar .gridline{fill:none;stroke:#47658b;stroke-width:1}.radar .axis{stroke:#527098}.radar .shape{fill:#1f77ff55;stroke:#75c4ff;stroke-width:3}.radar .dot{fill:#dcefff}.radar text{fill:#e5f1ff;font-size:12px;font-weight:650}.radar .value{fill:#65cfff;font-size:13px}.right{display:grid;gap:16px}.measure{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid #254060;font-size:14px}.measure:last-child{border-bottom:0}.number{font-weight:750;color:var(--gold)}.tag{display:inline-block;border:1px solid #4c759e;background:#173d65;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:750}.tag.caution{color:#f5cd80;background:#503c1f;border-color:#7b5b2b}
+.matchup{margin-top:16px;padding:20px;border:1px solid #357fd8;border-radius:14px;background:linear-gradient(105deg,#123f7c,#0b2344 75%)}.matchupHead{display:flex;justify-content:space-between;align-items:center;gap:10px}.pair{display:grid;grid-template-columns:1fr auto 1fr;gap:20px;align-items:center;margin-top:16px}.unit{display:flex;gap:11px;align-items:center}.unit:last-child{justify-content:flex-end;text-align:right}.unit .initial{width:43px;height:43px;border-radius:50%;display:grid;place-items:center;background:#18457a;border:2px solid white;font-size:21px;font-family:Georgia,serif;font-weight:800}.unit .utah{background:#ad243d}.unit strong{display:block;font-size:24px;color:var(--good)}.unit small{display:block;color:var(--muted)}.versus{color:var(--muted);font-weight:850}
+.notice{margin-top:17px;color:#a5bbd6;font-size:12px}.selector{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 14px}.selector button{padding:6px 12px;border:1px solid #355478;border-radius:18px;background:#10233e;color:#c5d7ed}.selector button[aria-pressed=true]{background:#2460ac;border-color:#68aaff;color:#fff}
+.hidden{display:none!important}.legend{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:15px}.legend div{padding:10px;border-radius:8px;background:#0a1b30;text-align:center;font-size:11px;color:#a8bbd4}.legend strong{display:block;color:#eaf4ff;font-size:16px}
+@media(max-width:740px){.top{padding:12px 18px}.nav{display:none}main{padding:0 13px 32px}.hero{padding:22px 17px;min-height:210px}.heroRow{flex-wrap:wrap;gap:12px}.mark{width:59px;height:59px;font-size:30px}.team h1{font-size:27px}.pills{width:100%;margin:8px 0 0}.stat{flex:1;padding:8px}.grid{grid-template-columns:1fr}.right{grid-template-columns:1fr 1fr}.panel{padding:17px}.pair{gap:8px}.unit{gap:8px}.unit .initial{width:32px;height:32px;font-size:17px}.unit strong{font-size:19px}}@media(max-width:480px){.right{grid-template-columns:1fr}.hero{margin-top:12px}.tabbar button{padding:13px 17px}.legend{grid-template-columns:repeat(3,1fr)}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style></head>
+<body>
+<header class="top"><div class="brand"><span class="bars" aria-hidden="true">▂▅▇</span>Elocast</div><nav class="nav" aria-label="Site sections"><span>Teams</span><span>Stats</span><span>Standings</span><span>Home</span></nav><span class="tag caution">DESIGN PROTOTYPE</span></header>
+<main>
+<section class="hero" aria-label="Team header">
+<div class="kicker">Elocast / Teams / Team overview</div>
+<div class="heroRow"><div class="mark" aria-hidden="true">Y</div><div class="team"><h1>BYU Cougars</h1><div class="sub">2026 season · Team landing concept</div></div><div class="pills"><div class="stat"><small>Elo</small><b>—</b></div><div class="stat"><small>Merits</small><b>—</b></div></div></div>
+</section>
+<nav class="tabbar" aria-label="Team page views">
+<button type="button" data-tab="overview" aria-selected="true">Overview</button><button type="button" data-tab="offense" aria-selected="false">Offense</button><button type="button" data-tab="defense" aria-selected="false">Defense</button><button type="button" data-tab="matchup" aria-selected="false">Matchup</button>
+</nav>
+<div class="selector" aria-label="Metrics"><span style="font-size:12px;color:var(--muted)">SCOUTING LENS</span><button type="button" data-lens="rush" aria-pressed="true">Rushing</button><button type="button" data-lens="pass" aria-pressed="false">Passing</button></div>
+<section class="grid" id="profile">
+<article class="panel"><h2>Team performance profile</h2><p class="intro">Opponent-adjusted percentiles · illustrative layout only</p>
+<div class="chartWrap"><svg class="radar" viewBox="0 0 440 390" role="img" aria-label="Illustrative radar chart of six offensive and defensive traits, not real BYU statistics">
+<g id="radargrid"></g><polygon id="radarshape" class="shape" points=""></polygon><g id="radardots"></g><g id="radarlabels"></g></svg></div>
+<div class="legend"><div>OFFENSE<strong id="offSummary">—</strong></div><div>DEFENSE<strong id="defSummary">—</strong></div><div>SCHEDULE<strong>—</strong></div></div>
+</article>
+<div class="right"><article class="panel"><h2>Schedule difficulty</h2><p class="intro">Opponent-unit strength · higher percentile = tougher</p><div id="schedules"></div></article><article class="panel"><h2>Sample &amp; reliability</h2><p class="intro">What supports the rating?</p><div class="measure"><span>Games observed</span><b>—</b></div><div class="measure"><span>Distinct opponents</span><b>—</b></div><div class="measure"><span>Reliability</span><span class="tag caution">Awaiting data</span></div><div class="measure"><span>Split denominator</span><span>Not verified</span></div></article></div>
+</section>
+<section class="matchup" id="matchup"><div class="matchupHead"><div><strong>Matchup Intelligence</strong><div class="intro" style="margin:0">Side-by-side unit comparison, never a score prediction</div></div><span class="tag">CONCEPT</span></div><div class="pair"><div class="unit"><div class="initial">Y</div><div>BYU<small id="attackLabel">Rushing offense</small><strong>—</strong></div></div><div class="versus">VS</div><div class="unit"><div>Utah<small id="defenseLabel">Rushing defense</small><strong>—</strong></div><div class="initial utah">U</div></div></div></section>
+<p class="notice">This page is an isolated, non-production design prototype. All rating fields are deliberately blank; no real BYU or Utah values are claimed. The final view will receive validated `elocast-descriptive-v1` data.</p>
+</main>
+<script>
+(function(){
+"use strict";
+const labels=["Rush success","Rush explosive","Rush PPA","Pass success","Pass explosive","Pass PPA"];
+const grid=document.getElementById("radargrid"),shape=document.getElementById("radarshape"),dots=document.getElementById("radardots"),text=document.getElementById("radarlabels");
+const NS="http://www.w3.org/2000/svg",cx=220,cy=194,r=130;
+function el(tag,attrs,parent){const n=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,v);parent.appendChild(n);return n}
+function at(i,percent){let angle=(Math.PI*2*i/6)-Math.PI/2;return [cx+Math.cos(angle)*r*percent,cy+Math.sin(angle)*r*percent]}
+for(const p of [.25,.5,.75,1])el("polygon",{points:Array.from({length:6},(_,i)=>at(i,p).join(",")).join(" "),class:"gridline"},grid);
+for(let i=0;i<6;i++){el("line",{x1:cx,y1:cy,x2:at(i,1)[0],y2:at(i,1)[1],class:"axis"},grid);let [x,y]=at(i,1.23);const t=el("text",{x,y,"text-anchor":"middle"},text);t.textContent=labels[i];}
+shape.setAttribute("points",Array.from({length:6},(_,i)=>at(i,0).join(",")).join(" "));
+const noValues=document.createElement("div");noValues.className="notice";noValues.textContent="Actual percentile polygon will appear when verified data is bound.";
+document.querySelector(".chartWrap").insertAdjacentElement("afterend",noValues);
+function lens(label){document.querySelectorAll("[data-lens]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lens===label)));document.getElementById("attackLabel").textContent=label==="rush"?"Rushing offense":"Passing offense";document.getElementById("defenseLabel").textContent=label==="rush"?"Rushing defense":"Passing defense";document.getElementById("schedules").innerHTML="";["Opposing "+(label==="rush"?"rush":"pass")+" defenses","Opposing "+(label==="rush"?"rush":"pass")+" offenses"].forEach(x=>{const row=document.createElement("div");row.className="measure";const a=document.createElement("span");a.textContent=x;const b=document.createElement("b");b.textContent="—";row.append(a,b);document.getElementById("schedules").append(row)})}
+function tab(id){document.querySelectorAll("[data-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===id)));document.getElementById("profile").classList.toggle("hidden",id==="matchup");document.getElementById("matchup").classList.toggle("hidden",id==="offense"||id==="defense");}
+document.querySelectorAll("[data-lens]").forEach(b=>b.addEventListener("click",()=>lens(b.dataset.lens)));document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>tab(b.dataset.tab)));lens("rush");
+})();
+</script></body></html>

@@ -3967,13 +3967,148 @@ function renderTeamPage(param) {
   } else if (tab === 'history') {
     body = loading('tp-seasons', 'Season by Season') + loading('tp-history', 'Program History');
   } else if (tab === 'analytics') {
-    body = loading('tp-analytics', 'Advanced Analytics') + loading('tp-ledger', 'Rating Ledger');
+    body = loading('tp-scouting', 'Opponent-adjusted scouting') + loading('tp-analytics', 'Advanced Analytics') + loading('tp-ledger', 'Rating Ledger');
   } else {
-    body = teamExtremes(team) + loading('tp-elo', 'Historical Elo') + renderUpcomingCard(team) +
+    body = loading('tp-scouting', 'Opponent-adjusted scouting') + teamExtremes(team) + loading('tp-elo', 'Historical Elo') + renderUpcomingCard(team) +
       '<div class="grid-2 team-section">' + loading('tp-gains', 'Biggest Elo Gains') +
       loading('tp-losses', 'Biggest Elo Losses') + '</div>';
   }
   return back + header + pageTabNav('team', TEAM_TAB_LABELS) + body;
+}
+
+// Validated and versioned historical descriptive assets. The panel is optional,
+// and existing team sections continue working if the asset cannot be loaded.
+const SCOUTING_VERSIONS = __SCOUTING_VERSIONS__;
+const _scoutingRequests = new Map();
+const SCOUTING_TRAITS = [
+  ['rush_success_rate', 'Rush success'], ['rush_ppa', 'Rush PPA'],
+  ['rush_explosiveness', 'Rush explosiveness'], ['pass_success_rate', 'Pass success'],
+  ['pass_ppa', 'Pass PPA'], ['pass_explosiveness', 'Pass explosiveness'],
+];
+function scoutingAsset(year) {
+  const version = SCOUTING_VERSIONS[String(year)];
+  if (!version) return Promise.resolve(null);
+  if (!_scoutingRequests.has(year)) {
+    _scoutingRequests.set(year,
+      loadDataScriptOnce('data/scouting/' + year + '.js?v=' + version)
+        .then(() => (window.__ELOCAST_SCOUTING__ || {})[year] || null)
+        .catch(() => { _scoutingRequests.delete(year); return null; }));
+  }
+  return _scoutingRequests.get(year);
+}
+function scoutingPercentile(v) { return Number.isFinite(v) ? Math.round(v) + 'th' : '—'; }
+function scoutingNumber(v) { return Number.isFinite(v) ? Number(v).toFixed(3) : '—'; }
+function scoutingTraitRow(metric, row, side) {
+  const pct = side === 'defense' ? row.defense_percentile : row.offense_percentile;
+  const raw = side === 'defense' ? row.raw_defense_allowed : row.raw_offense;
+  const adjusted = side === 'defense' ? row.adjusted_defense_allowed : row.adjusted_offense;
+  const label = (SCOUTING_TRAITS.find(x => x[0] === metric) || [metric, metric])[1];
+  const ratio = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 0;
+  return '<div class="tm-trait"><div class="tm-trait-top"><strong>' + esc(label) +
+    '</strong><span>' + scoutingPercentile(pct) + '</span></div>' +
+    '<div class="tm-track" role="img" aria-label="' + esc(label) + ': ' +
+    (Number.isFinite(pct) ? Math.round(pct) + 'th percentile' : 'percentile unavailable') +
+    '"><span style="width:' + ratio + '%"></span></div>' +
+    '<div class="tm-trait-note">Observed ' + scoutingNumber(raw) +
+    ' · Adjusted ' + scoutingNumber(adjusted) + '</div></div>';
+}
+function renderModernRadar(metrics) {
+  const percentiles = SCOUTING_TRAITS.map(([key]) => metrics[key] && metrics[key].offense_percentile);
+  if (!percentiles.every(Number.isFinite)) {
+    return '<p class="tm-scout-foot">A full six-trait radar needs all six rated metrics. Available measurements remain listed below.</p>';
+  }
+  const cx = 170, cy = 155, r = 100;
+  const point = (i, ratio) => {
+    const angle = Math.PI * i / 3 - Math.PI / 2;
+    return [cx + Math.cos(angle) * r * ratio, cy + Math.sin(angle) * r * ratio];
+  };
+  const polygon = ratios => ratios.map((ratio, i) => point(i, ratio).map(v => v.toFixed(1)).join(',')).join(' ');
+  const layers = [0.25, 0.5, 0.75, 1].map(ratio =>
+    '<polygon class="tm-radar-grid" points="' + polygon(Array(6).fill(ratio)) + '"/>').join('');
+  const axes = percentiles.map((_, i) => {
+    const [x, y] = point(i, 1);
+    return '<line class="tm-radar-axis" x1="' + cx + '" y1="' + cy +
+      '" x2="' + x.toFixed(1) + '" y2="' + y.toFixed(1) + '"/>';
+  }).join('');
+  const polygonShape = '<polygon class="tm-radar-shape" points="' +
+    polygon(percentiles.map(v => v / 100)) + '"/>';
+  const labels = SCOUTING_TRAITS.map(([key, title], i) => {
+    const [x, y] = point(i, 1.34);
+    const short = title.replace('explosiveness', 'explosive');
+    return '<text x="' + x.toFixed(1) + '" y="' + y.toFixed(1) +
+      '" text-anchor="middle">' + esc(short) + '</text>';
+  }).join('');
+  const desc = SCOUTING_TRAITS.map(([key, title], i) =>
+    title + ' ' + Math.round(percentiles[i]) + 'th percentile').join(', ');
+  return '<div class="tm-radar-wrap"><svg class="tm-radar" viewBox="0 0 340 325" role="img" aria-label="' +
+    esc('Observed opponent-adjusted offensive traits: ' + desc) + '">' +
+    layers + axes + polygonShape + labels + '</svg></div>';
+}
+function renderModernScouting(panel, team, bundle) {
+  if (!panel) return;
+  const record = bundle && bundle.teams && bundle.teams[String(team.id)];
+  if (!record || bundle.schema_version !== 'elocast-descriptive-v1') {
+    panel.innerHTML = '<h2 class="section-title">Opponent-adjusted scouting</h2><p class="empty-note">Verified scouting metrics are not available for this season.</p>';
+    return;
+  }
+  const metrics = record.metrics;
+  const views = ['offense', 'defense'];
+  const complete = SCOUTING_TRAITS.filter(([key]) => metrics[key] && metrics[key].status === 'rated').length;
+  const sample = metrics.rush_success_rate || metrics.success_rate;
+  const note = sample ? (sample.sample_games + ' games · ' + sample.distinct_opponents +
+    ' different opponents · ' + esc(sample.reliability)) : 'No eligible FBS game observations';
+  const options = Object.values(bundle.teams).filter(t => String(t.team_id) !== String(team.id))
+    .sort((a,b) => a.name.localeCompare(b.name));
+  const selected = '<section class="tm-match-compare"><h3>Matchup Intelligence</h3>' +
+    '<p class="section-note">Compare observed offensive and defensive units. Not a prediction.</p>' +
+    '<label for="tm-opponent">Compare ' + esc(team.name) + ' with</label>' +
+    '<select id="tm-opponent"><option value="">Select an opponent</option>' +
+    options.map(t => '<option value="' + Number(t.team_id) + '">' + esc(t.name) + '</option>').join('') +
+    '</select><div id="tm-opponent-result" aria-live="polite">Choose an opponent to compare units.</div></section>';
+  const sourceLabel = String(bundle.advanced_source_path || '').includes('/research/')
+    ? 'Archived verified snapshot' : 'Verified synced source';
+  panel.innerHTML = '<h2 class="section-title">Opponent-adjusted scouting</h2>' +
+    '<p class="section-note">FBS games completed before ' +
+    esc(bundle.as_of_exclusive) + ' · ' + sourceLabel + '</p>' +
+    '<div class="tm-scout-meta">' + note + ' · ' + complete + ' of 6 split traits rated</div>' +
+    renderModernRadar(metrics) +
+    '<div class="tm-scout-grid">' + views.map(side => '<div class="tm-scout-card">' +
+      '<h3>' + (side === 'offense' ? 'Offense' : 'Defense') + '</h3>' +
+      SCOUTING_TRAITS.map(([key]) => scoutingTraitRow(key, metrics[key] || {}, side)).join('') +
+      '</div>').join('') + '</div>' +
+    '<div class="tm-scout-foot">Higher percentiles mean stronger units. Defense measures lower opponent production allowed. ' +
+    'Rush/pass splits are weighted equally by game while eligible split-play denominators remain unavailable. ' +
+    'These are season-to-date descriptions, not projected scores or win probabilities.</div>' + selected;
+  const opponentSelect = panel.querySelector('#tm-opponent');
+  opponentSelect.addEventListener('change', () => {
+    const rival = bundle.teams[opponentSelect.value];
+    const result = panel.querySelector('#tm-opponent-result');
+    if (!rival) { result.textContent = 'Choose an opponent to compare units.'; return; }
+    const rows = SCOUTING_TRAITS.map(([key, title]) => {
+      const ours = metrics[key] || {};
+      const theirs = (rival.metrics || {})[key] || {};
+      const a = ours.status === 'rated' ? scoutingPercentile(ours.offense_percentile) : 'Unavailable';
+      const b = theirs.status === 'rated' ? scoutingPercentile(theirs.defense_percentile) : 'Unavailable';
+      return '<tr><th scope="row">' + esc(title) + '</th><td>' + a +
+        '</td><td>' + b + '</td></tr>';
+    }).join('');
+    result.innerHTML = '<div class="tm-compare-overflow"><table><thead><tr><th scope="col">Trait</th><th scope="col">' +
+      esc(team.name) + ' offense</th><th scope="col">' + esc(rival.name) +
+      ' defense</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<p class="tm-scout-foot">Percentile comparisons describe completed games, not future results. ' +
+      'Both teams are evaluated as of the same date.</p>';
+  });
+}
+function fillModernScouting(team) {
+  const panel = document.getElementById('tp-scouting');
+  if (!panel) return;
+  const year = latestSeasonFor(team.name);
+  const renderAt = renderVersion;
+  panel.innerHTML = '<h2 class="section-title">Opponent-adjusted scouting</h2><p class="empty-note">Loading verified FBS statistics…</p>';
+  scoutingAsset(year).then(bundle => {
+    if (renderAt !== renderVersion || !document.getElementById('tp-scouting')) return;
+    renderModernScouting(panel, team, bundle);
+  });
 }
 
 // ---------------- Detail-page tabs (Milestone E) ----------------
@@ -4998,6 +5133,7 @@ function hydrateTeamPage() {
     fillSchedulePanel(tp, team);
     fillSeasonHistoryPanel(tp, team);
     fillAnalyticsPanel(tp, team);
+    fillModernScouting(team);
     fillSwingPanels(tp, team);
     fillLedgerPanel(tp, team);
     fillHistoryPanel(tp, team);

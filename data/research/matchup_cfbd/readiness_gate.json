@@ -1,0 +1,160 @@
+{
+  "blockers": [],
+  "coverage_gate_passed": true,
+  "note": "Coverage alone cannot establish model skill, no leakage or reliability.",
+  "production_ready": false,
+  "seasons": {
+    "2025": {
+      "advanced_games_with_both_sides": 808,
+      "advanced_rows_unmatched_to_fbs_game_side": 0,
+      "advanced_team_games_recorded": 1616,
+      "completed_fbs_games": 808,
+      "completed_games": 808,
+      "metrics": {
+        "explosiveness": {
+          "eligible_games": 808,
+          "eligible_team_game_slots": 1616,
+          "paired_games": 808,
+          "status": "available",
+          "team_games": 1616
+        },
+        "pass_explosiveness": {
+          "eligible_games": 808,
+          "eligible_team_game_slots": 1616,
+          "paired_games": 808,
+          "status": "available",
+          "team_games": 1616
+        },
+        "pass_ppa": {
+          "eligible_games": 808,
+          "eligible_team_game_slots": 1616,
+          "paired_games": 808,
+          "status": "available",
+          "team_games": 1616
+        },
+        "pass_success_rate": {
+          "eligible_games": 808,
+          "eligible_team_game_slots": 1616,
+          "paired_games": 808,
+          "status": "available",
+          "team_games": 1616
+        },
+        "ppa": {
+          "eligible_games": 808,
+          "eligible_team_game_slots": 1616,
+          "paired_games": 808,
+          "status": "available",
+          "team_games": 1616
+        },
+        "rush_explosiveness": {
+          "eligible_games": 808,
+          "eligible_team_game_slots": 1616,
+          "paired_games": 808,
+          "status": "available",
+          "team_games": 1616
+        },
+        "rush_ppa": {
+          "eligible_games": 808,
+          "eligible_team_game_slots": 1616,
+          "paired_games": 808,
+          "status": "available",
+          "team_games": 1616
+        },
+        "rush_success_rate": {
+          "eligible_games": 808,
+          "eligible_team_game_slots": 1616,
+          "paired_games": 808,
+          "status": "available",
+          "team_games": 1616
+        },
+        "success_rate": {
+          "eligible_games": 808,
+          "eligible_team_game_slots": 1616,
+          "paired_games": 808,
+          "status": "available",
+          "team_games": 1616
+        }
+      },
+      "missing_membership_games": 0,
+      "season": 2025
+    },
+    "2026": {
+      "advanced_games_with_both_sides": 463,
+      "advanced_rows_unmatched_to_fbs_game_side": 0,
+      "advanced_team_games_recorded": 926,
+      "completed_fbs_games": 463,
+      "completed_games": 463,
+      "metrics": {
+        "explosiveness": {
+          "eligible_games": 463,
+          "eligible_team_game_slots": 926,
+          "paired_games": 463,
+          "status": "available",
+          "team_games": 926
+        },
+        "pass_explosiveness": {
+          "eligible_games": 463,
+          "eligible_team_game_slots": 926,
+          "paired_games": 463,
+          "status": "available",
+          "team_games": 926
+        },
+        "pass_ppa": {
+          "eligible_games": 463,
+          "eligible_team_game_slots": 926,
+          "paired_games": 463,
+          "status": "available",
+          "team_games": 926
+        },
+        "pass_success_rate": {
+          "eligible_games": 463,
+          "eligible_team_game_slots": 926,
+          "paired_games": 463,
+          "status": "available",
+          "team_games": 926
+        },
+        "ppa": {
+          "eligible_games": 463,
+          "eligible_team_game_slots": 926,
+          "paired_games": 463,
+          "status": "available",
+          "team_games": 926
+        },
+        "rush_explosiveness": {
+          "eligible_games": 463,
+          "eligible_team_game_slots": 926,
+          "paired_games": 463,
+          "status": "available",
+          "team_games": 926
+        },
+        "rush_ppa": {
+          "eligible_games": 463,
+          "eligible_team_game_slots": 926,
+          "paired_games": 463,
+          "status": "available",
+          "team_games": 926
+        },
+        "rush_success_rate": {
+          "eligible_games": 463,
+          "eligible_team_game_slots": 926,
+          "paired_games": 463,
+          "status": "available",
+          "team_games": 926
+        },
+        "success_rate": {
+          "eligible_games": 463,
+          "eligible_team_game_slots": 926,
+          "paired_games": 463,
+          "status": "available",
+          "team_games": 926
+        }
+      },
+      "missing_membership_games": 0,
+      "season": 2026
+    }
+  },
+  "thresholds": {
+    "min_paired_games_fraction": 0.9,
+    "min_team_game_sides_fraction": 0.95
+  }
+}

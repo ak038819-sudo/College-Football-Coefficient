@@ -84,6 +84,7 @@ const PRECACHE_ASSETS = ['manifest.webmanifest', 'ui/brand/mark.svg',
 // takes the script URLs from it. Nothing here is hardcoded, so the list cannot
 // drift from what the page actually loads.
 const SCRIPT_SRC = /<script[^>]+src=["']([^"']+)["']/gi;
+const STYLESHEET_HREF = /<link\b(?=[^>]*rel=["']stylesheet["'])[^>]*href=["']([^"']+)["']/gi;
 
 async function precacheRuntimeScripts(documents) {
   const page = await documents.match('ui/dashboard.html');
@@ -97,6 +98,11 @@ async function precacheRuntimeScripts(documents) {
     // Same-origin only: a cross-origin script would need CORS to be cached,
     // and the page has none of those.
     const url = new URL(src, new URL('ui/dashboard.html', self.location.href));
+    if (url.origin === self.location.origin) urls.add(url.href);
+  }
+  // Cache versioned same-origin stylesheets with scripts for PWA offline use.
+  while ((match = STYLESHEET_HREF.exec(html)) !== null) {
+    const url = new URL(match[1], new URL('ui/dashboard.html', self.location.href));
     if (url.origin === self.location.origin) urls.add(url.href);
   }
   await Promise.all([...urls].map(url => assets.add(url).catch(() => null)));
