@@ -33,3 +33,20 @@ def test_existing_team_page_uses_same_data_and_all_eight_tabs():
                  "leaders", "history", "analytics"):
         assert re.search(r"\b" + name + r"\s*:", tabs.group(1))
     assert "pageTabNav('team', TEAM_TAB_LABELS)" in shell
+
+
+def test_normal_production_builder_always_generates_and_renders_modern_dashboard():
+    """Protect against a literal backslash-n turning the final build into a comment."""
+    import ast
+    root = ast.parse((ROOT / "build_dashboard.py").read_text())
+    main = next(n for n in root.body if isinstance(n, ast.FunctionDef) and n.name == "main")
+    calls = [n for n in ast.walk(main) if isinstance(n, ast.Call)]
+    render_calls = [n for n in calls
+                    if isinstance(n.func, ast.Name) and n.func.id == "render_from_exports"]
+    # One is the preview path; the other MUST be the normal production path.
+    assert len(render_calls) == 2
+    assert any(
+        isinstance(n, ast.Constant) and n.value == "src/export_descriptive_site_assets.py"
+        for n in ast.walk(main)
+    ), "Normal production build must create the source-backed scouting assets"
+    assert "\\n    render_from_exports()" not in (ROOT / "build_dashboard.py").read_text()

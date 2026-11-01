@@ -138,7 +138,12 @@ def main() -> None:
     subprocess.run([sys.executable, "src/build_coach_metrics.py", "--db", args.db], check=True)
     # Per-season game files + search index, loaded on demand (data foundation step).
     subprocess.run([sys.executable, "src/export_static_data.py", "--db", args.db], check=True)
-    # Research splits enter only an in-memory copy, never production Elo/Merits.\n    subprocess.run([sys.executable, "src/export_descriptive_site_assets.py",\n                    "--db", args.db], check=True)\n    render_from_exports()
+    # Research splits enter only an in-memory copy, never production Elo/Merits.
+    subprocess.run(
+        [sys.executable, "src/export_descriptive_site_assets.py", "--db", args.db],
+        check=True,
+    )
+    render_from_exports()
     print("Open ui/dashboard.html, or publish it together with its neighboring static assets.")
 
 

@@ -377,6 +377,27 @@ jobs:
         if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
         run: python3 build_dashboard.py --draw-seed 1
 
+      # The production render must actually run. PR-only --reuse-exports checks
+      # previously missed a literal backslash-n commenting out this path.
+      - name: Verify the generated production dashboard contains The Modern
+        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html = Path("ui/dashboard.html").read_text(encoding="utf-8")
+          for marker in ('team-modern.css?v=', 'renderModernRadar',
+                         'Opponent-adjusted scouting'):
+              if marker not in html:
+                  raise SystemExit(f"Production dashboard is missing Modern marker: {marker}")
+          if '__SCOUTING_VERSIONS__' in html:
+              raise SystemExit("Unresolved scouting version placeholder")
+          for year in (2025, 2026):
+              path = Path(f"ui/data/scouting/{year}.js")
+              if not path.is_file() or path.stat().st_size < 100:
+                  raise SystemExit(f"Missing production scouting asset: {path}")
+          print("Generated Modern team pages and data-bound scouting assets: OK")
+          PY
+
       # A stale push can fetch new data too, so retest whenever the feed ran.
       - name: Test the freshly fetched data before publishing
         if: github.event_name != 'workflow_run' && steps.sunday_time.outputs.skip != 'true' && (github.event_name != 'push' && github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
