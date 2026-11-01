@@ -18,11 +18,13 @@ try:
     from src.matchup_intelligence import Observation, fit_profiles, project_matchup
     from src.build_adjusted_stats import LAMBDA
     from src.describe_matchup_metrics import describe_units
+    from src.matchup_metric_exposure import exposure_policy
 except ModuleNotFoundError:
     # Support direct invocation: python src/build_matchup_intelligence.py ...
     from matchup_intelligence import Observation, fit_profiles, project_matchup
     from build_adjusted_stats import LAMBDA
     from describe_matchup_metrics import describe_units
+    from matchup_metric_exposure import exposure_policy
 
 METRICS = {
     "success_rate": "off_success_rate",
@@ -62,8 +64,8 @@ def load_observations(
     # the three overall advanced metrics. Split-stat totals do not currently
     # provide verified play counts in the nested CFBD game schema, so those
     # stay provisional unit-weight fits rather than claiming calibration.
-    overall = metric in ("success_rate", "ppa", "explosiveness")
-    has_plays = overall and "off_plays" in available_columns
+    policy = exposure_policy(metric, available_columns)
+    has_plays = policy["weighting"] == "play_count"
     plays_sql = "a.off_plays" if has_plays else "NULL"
     # Team identity is canonical team_id (not ambiguous names). Both teams must
     # have an explicit FBS flag in the season being evaluated.
@@ -137,6 +139,7 @@ def load_observations(
             str(team), str(opponent), numeric,
             weight=float(plays) if has_plays else 1.0,
             side=0.0 if neutral else (0.5 if team == home else -0.5)))
+    report["exposure"] = policy
     report["eligible_rows"] = len(observations)
     report["eligible_games"] = len({game_id for game_id, _team_id in seen})
     return observations, report
@@ -156,13 +159,15 @@ def build_snapshot(
     if not rows:
         return {"season": season, "as_of": as_of, "metric": metric,
                 "coverage": coverage, "status": "no_data", "profiles": {}}
-    weighted = metric in ("success_rate", "ppa", "explosiveness") and any(r.weight > 1 for r in rows)
+    policy = coverage["exposure"]
+    weighted = policy["weighting"] == "play_count"
     ridge = LAMBDA[metric] if weighted and metric in LAMBDA else 2.0
     grades, baseline = fit_profiles(rows, shrinkage=ridge)
     description = describe_units(rows, shrinkage=ridge)
     result = {"season": season, "as_of": as_of, "metric": metric,
               "model": "shared-adjusted-stats-solver", "shrinkage": ridge,
               "weighting": "offensive_plays" if weighted else "team_game",
+              "denominator_provenance": policy,
               "coverage": coverage,
               "baseline": baseline,
               "profiles": {key: vars(v) for key, v in sorted(grades.items())},
