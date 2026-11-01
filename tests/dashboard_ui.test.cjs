@@ -323,7 +323,8 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    assert.match(panel.textContent,/Rush success/);
    assert.match(panel.textContent,/Observed/);
    assert.match(panel.textContent,/denominators remain unavailable/);
-   assert.match(panel.textContent,/date exclusive/);
+   assert.match(panel.textContent,/FBS games completed before/);
+   assert.match(panel.textContent,/verified snapshot|synced source/i);
    const option=[...select.options].find(x=>x.value);
    assert.ok(option);
    change('tm-opponent',option.value);
