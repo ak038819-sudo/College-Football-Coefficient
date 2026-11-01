@@ -122,3 +122,18 @@
   .tm-scout-grid { grid-template-columns: 1fr; }
   .tm-scout-card { padding: 14px; }
 }
+
+.tm-match-compare { margin-top: 20px; padding: clamp(14px,2vw,22px);
+  border: 1px solid #355e8f; border-radius: 12px;
+  background: linear-gradient(125deg,#10284a,#0a1c34); color: #eaf3ff; }
+.tm-match-compare h3 { margin: 0 0 4px; color: #fff; font: 700 19px var(--font-display); }
+.tm-match-compare label { display: block; margin: 14px 0 6px; font-size: 13px; }
+.tm-match-compare select { width: min(100%,440px); min-height: 44px; border: 1px solid #5982ae;
+  border-radius: 8px; color: #fff; background: #17365a; padding: 10px; font: inherit; }
+.tm-match-compare select:focus-visible { outline: 2px solid #83ccff; outline-offset: 3px; }
+#tm-opponent-result { margin-top: 14px; }
+.tm-compare-overflow { max-width: 100%; overflow-x: auto; }
+.tm-compare-overflow table { min-width: 445px; width: 100%; border-collapse: collapse; color: #eaf3ff; }
+.tm-compare-overflow th, .tm-compare-overflow td { padding: 9px 11px; border-bottom: 1px solid #35516f;
+  text-align: left; font-size: 12px; }
+.tm-compare-overflow thead th { color: #abd3f4; }
