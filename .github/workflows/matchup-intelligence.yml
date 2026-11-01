@@ -13,6 +13,7 @@ on:
       - 'src/calibrate_matchup_splits.py'
       - 'src/describe_matchup_metrics.py'
       - 'src/audit_matchup_stability.py'
+      - 'src/audit_matchup_descriptive_research.py'
       - 'src/fetch_cfbd_game_advanced.py'
       - 'src/load_game_advanced.py'
       - 'sql/game_advanced_tables.sql'
@@ -28,6 +29,7 @@ on:
       - 'tests/test_calibrate_matchup_splits.py'
       - 'tests/test_describe_matchup_metrics.py'
       - 'tests/test_audit_matchup_stability.py'
+      - 'tests/test_audit_matchup_descriptive_research.py'
       - 'src/build_adjusted_stats.py'
       - '.github/workflows/matchup-intelligence.yml'
   workflow_dispatch:
@@ -60,4 +62,90 @@ jobs:
             tests/test_matchup_data_readiness.py \
             tests/test_calibrate_matchup_splits.py \
             tests/test_describe_matchup_metrics.py \
-            tests/test_audit_matchup_stability.py
+            tests/test_audit_matchup_stability.py \
+            tests/test_audit_matchup_descriptive_research.py
+
+  # One-time preservation of independently verified CFBD evidence. Limits
+  # write access to this exact same-repo draft feature branch, not forks.
+  # The original data/raw/ files and production main are never changed.
+  preserve-split-evidence:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feature/matchup-intelligence-foundation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/matchup-intelligence-foundation
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Restore previous verified CFBD research artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/matchup-source"
+          gh run download 41255752882 --name matchup-cfbd-staged-2025-2026 --dir "$RUNNER_TEMP/matchup-source"
+          test -s "$RUNNER_TEMP/matchup-source/game_advanced_2025.csv"
+          test -s "$RUNNER_TEMP/matchup-source/game_advanced_2026.csv"
+      - name: Validate canonical FBS coverage in disposable database
+        run: |
+          python src/bootstrap_league_db.py --backup db/league_backup_before_playoff_migration.db --out db/league.db
+          for year in 2025 2026; do
+            python src/load_games.py "data/raw/games_${year}.csv"
+          done
+          python src/patch_known_membership_gaps.py --db db/league.db
+          python src/load_membership_snapshot.py data/raw/membership_2026.csv --db db/league.db --year 2026
+          for year in 2025 2026; do
+            python src/load_game_advanced.py "$RUNNER_TEMP/matchup-source/game_advanced_${year}.csv" --db db/league.db
+          done
+          python src/check_matchup_data_readiness.py --db db/league.db --season 2025 --season 2026 > "$RUNNER_TEMP/matchup-source/readiness_gate.json"
+      - name: Audit descriptive sample, percentiles, and opponent sensitivity
+        run: |
+          python src/audit_matchup_descriptive_research.py --db db/league.db --season 2025 --as-of 2026-02-01 --sample-size 4 --out "$RUNNER_TEMP/matchup-source/descriptive_2025.json"
+          python src/audit_matchup_descriptive_research.py --db db/league.db --season 2026 --as-of 2026-10-31 --sample-size 4 --out "$RUNNER_TEMP/matchup-source/descriptive_2026.json"
+      - name: Preserve research-only source and provenance on feature branch
+        run: |
+          mkdir -p data/research/matchup_cfbd
+          cp "$RUNNER_TEMP/matchup-source/game_advanced_2025.csv" data/research/matchup_cfbd/
+          cp "$RUNNER_TEMP/matchup-source/game_advanced_2026.csv" data/research/matchup_cfbd/
+          cp "$RUNNER_TEMP/matchup-source/split_coverage_report.json" data/research/matchup_cfbd/
+          cp "$RUNNER_TEMP/matchup-source/readiness_gate.json" data/research/matchup_cfbd/
+          cp "$RUNNER_TEMP/matchup-source/descriptive_2025.json" data/research/matchup_cfbd/
+          cp "$RUNNER_TEMP/matchup-source/descriptive_2026.json" data/research/matchup_cfbd/
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/research/matchup_cfbd/provenance.json')
+          p.write_text(json.dumps({
+            'source':'CFBD /stats/game/advanced; authenticated staging',
+            'source_workflow_run':41255752882,
+            'source_artifact_id':13062014924,
+            'seasons':[2025,2026],
+            'scope':'Research only, no production promotion',
+            'raw_files_unchanged':True
+          },indent=2)+'\n')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/research/matchup_cfbd/
+          if ! git diff --cached --quiet; then
+            git commit -m "Preserve validated CFBD split research evidence (no production raw changes)"
+            git push origin HEAD:feature/matchup-intelligence-foundation
+          fi
+      - name: Attach audit reports for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: matchup-descriptive-integrity
+          path: |
+            ${{ runner.temp }}/matchup-source/readiness_gate.json
+            ${{ runner.temp }}/matchup-source/descriptive_2025.json
+            ${{ runner.temp }}/matchup-source/descriptive_2026.json
+          retention-days: 7
