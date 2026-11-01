@@ -187,6 +187,28 @@ jobs:
           npm run check
           npm test
 
+      - name: Capture Modern responsive team-page screenshots
+        if: github.event_name == 'pull_request'
+        run: |
+          mkdir -p /tmp/elocast-visual-qa
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/elocast-visual-server.log 2>&1 &
+          CHROME=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)
+          test -n "$CHROME"
+          for width in 390 768 1280; do
+            for view in overview analytics; do
+              timeout 45 "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --window-size="${width},900" --virtual-time-budget=12000 --screenshot="/tmp/elocast-visual-qa/byu-${view}-${width}.png" "http://127.0.0.1:8765/ui/dashboard.html#team=byu&tab=${view}"
+              test -s "/tmp/elocast-visual-qa/byu-${view}-${width}.png"
+            done
+          done
+      - name: Upload Modern visual QA screenshots
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: elocast-modern-team-browser-qa
+          path: /tmp/elocast-visual-qa/*.png
+          retention-days: 7
+          if-no-files-found: warn
+
   rebuild-and-deploy:
     needs: test
     if: >-
