@@ -6327,14 +6327,55 @@ function boxScoreLineCell(line, lookup, idSet) {
   return {html: cell, attributed: false, matched: cell.startsWith('<a ')};
 }
 
-function playerBoxscorePanel(teams, updated, checked, rosterData) {
+// Does this statistic say the player recorded none of it? Every DIGIT being
+// zero, rather than a list of spellings: that catches 0, 0.0, 0/0, 0-0, 0:00
+// and a form nobody has seen yet, while keeping -5 (a five-yard loss), 0/1 (a
+// missed kick, which is a real attempt) and 0.5 (half a sack). An unrecorded
+// --, - or empty counts too, because it draws as nothing either way.
+function zeroBoxScoreStat(stat) {
+  const text = stat == null ? '' : String(stat).trim();
+  if (text === '' || text === '-' || text === '--') return true;
+  const digits = text.replace(/\D/g, '');
+  return digits.length > 0 && !/[1-9]/.test(digits);
+}
+// The lines a team actually recorded. CFBD publishes a row per rostered player
+// per statistic, so 38.9% of every line in the archive reads zero and this
+// panel used to draw all of them -- seventy players under "defensive · TD",
+// every one showing 0.
+//
+// FILTERED HERE, at render, and deliberately NOT in the exporter: the Stats hub
+// reads these same shards through loadPlayerArchive, and aggregatePlayers
+// counts a player's GAMES from the lines that exist. Stripping them from the
+// export moved 312 of 2025's player-category game counts -- one Pittsburgh
+// defender from ten games to seven -- and inflated every per-game average with
+// them. Codex caught that on PR #160. A category emptied of lines goes with
+// them, and so does a team left with no category, because an empty container
+// draws as a heading with nothing under it.
+function recordedBoxScoreTeams(teams) {
+  return (teams || []).map(team => ({
+    ...team,
+    categories: (team.categories || []).map(category => ({
+      ...category,
+      lines: (category.lines || []).filter(line => !zeroBoxScoreStat(line && line.stat)),
+    })).filter(category => category.lines.length),
+  })).filter(team => team.categories.length);
+}
+
+function playerBoxscorePanel(allTeams, updated, checked, rosterData) {
+  const teams = recordedBoxScoreTeams(allTeams);
   const timestamp = value => {
     const date = value ? new Date(value) : null;
     return date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : null;
   };
-  if (!teams.length) return '<div class="panel"><h2 class="section-title">Player box score</h2>' +
+  // Keyed on the UNFILTERED input, so "CFBD has not published this" stays a
+  // different statement from "it published and every line was zero". The
+  // second does not occur on the shipped archive -- no game loses every line
+  // -- so it is a guard against saying something untrue, not a live path.
+  if (!(allTeams || []).length) return '<div class="panel"><h2 class="section-title">Player box score</h2>' +
     '<p class="section-note">Player lines appear here when CFBD publishes this game’s box score.' +
     (timestamp(checked) ? ' Last checked ' + esc(timestamp(checked)) + '.' : '') + '</p></div>';
+  if (!teams.length) return '<div class="panel"><h2 class="section-title">Player box score</h2>' +
+    '<p class="section-note">No player recorded a statistic in this game.</p></div>';
   let linked = 0;
   let attributed = 0;
   const groups = teams.map(team => {
@@ -6355,6 +6396,13 @@ function playerBoxscorePanel(teams, updated, checked, rosterData) {
   });
   // How a line became a link is a rule a reader needs to judge the links; where
   // nothing linked there is no rule to state, so the note is left out entirely.
+  // The recorded-only rule is stated whatever the links did, because it is what
+  // explains an ABSENT line: the source lists every rostered player under every
+  // statistic, so 38.9% of the lines in the archive read 0 and the exporter
+  // leaves them out. Without saying so, a player with no receiving row looks
+  // like a gap in the data rather than a player who caught nothing.
+  const recordedRule = 'Only statistics a player recorded are listed, so a ' +
+    'line he is absent from is one he recorded none of.';
   const linkRule = (attributed ? 'A line CFBD numbers with an athlete id links to that person because ' +
       'the source says whose line it is.' : '') +
     (linked ? (attributed ? ' An unnumbered line links' : 'A name links') +
@@ -6362,7 +6410,8 @@ function playerBoxscorePanel(teams, updated, checked, rosterData) {
       'season, which is this project\u2019s own inference rather than the source\u2019s; a ' +
       'shared name is left unlinked rather than guessed at.' : '');
   return '<div class="panel"><h2 class="section-title">Player box score</h2>' +
-    (linkRule ? '<p class="section-note">' + linkRule + '</p>' : '') +
+    '<p class="section-note">' + recordedRule +
+    (linkRule ? ' ' + linkRule : '') + '</p>' +
     '<div class="live-player-grid">' + groups.join('') + '</div></div>';
 }
 function liveEloPanel(g) {
