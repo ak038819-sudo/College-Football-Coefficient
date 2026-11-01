@@ -4065,9 +4065,11 @@ function renderModernScouting(panel, team, bundle) {
     '<select id="tm-opponent"><option value="">Select an opponent</option>' +
     options.map(t => '<option value="' + Number(t.team_id) + '">' + esc(t.name) + '</option>').join('') +
     '</select><div id="tm-opponent-result" aria-live="polite">Choose an opponent to compare units.</div></section>';
+  const sourceLabel = String(bundle.advanced_source_path || '').includes('/research/')
+    ? 'Archived verified snapshot' : 'Verified synced source';
   panel.innerHTML = '<h2 class="section-title">Opponent-adjusted scouting</h2>' +
-    '<p class="section-note">What this team has done against its FBS opponents · through ' +
-    esc(bundle.as_of_exclusive) + ' (date exclusive)</p>' +
+    '<p class="section-note">FBS games completed before ' +
+    esc(bundle.as_of_exclusive) + ' · ' + sourceLabel + '</p>' +
     '<div class="tm-scout-meta">' + note + ' · ' + complete + ' of 6 split traits rated</div>' +
     renderModernRadar(metrics) +
     '<div class="tm-scout-grid">' + views.map(side => '<div class="tm-scout-card">' +
