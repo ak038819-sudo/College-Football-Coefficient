@@ -178,3 +178,48 @@ observed home/away/neutral designation.
 
 **Remaining work**: real-data replay, calibration for splits, uncertainty,
 static exports and UI. No feature is connected to production Elo or Merits.
+
+
+## Backend-to-UI design handoff (no visual implementation yet)
+
+`src/export_matchup_scouting.py` produces an explicit research JSON artifact
+with `schema_version=matchup-scouting-v1`, season, strict pregame `as_of`,
+metric-by-metric coverage and eligibility, team-level adjusted effects and
+empirical percentiles, and two matchup directions with separate venue
+adjustments. It never changes production `ui/data` or Elo/Merits.
+Unavailable metrics have `team_profiles={}` and a null baseline/matchup,
+not artificial 50th-percentile scores.
+
+Example:
+
+```bash
+python src/export_matchup_scouting.py --db db/league.db \
+  --season 2026 --as-of 2026-10-31 \
+  --out /tmp/elocast-scouting-2026.json
+```
+
+A draft-PR CI build writes 2025 and 2026 research samples and attaches them
+as the `matchup-scouting-contract` artifact, so UI designers can review the
+real data shape without the site using it. Those artifacts are **not**
+evidence of completed rushing/passing coverage or calibrated performance.
+
+### Verified input gap
+
+Inspected the branch's committed `data/raw/game_advanced_2025.csv` and
+`data/raw/game_advanced_2026.csv` headers: **neither contains any
+rushing/passing split column**. The new parser and migration can accommodate
+those values, but they must be fetched again from CFBD. Without the backfill,
+rush/pass profile cards must show unavailable and be excluded from production.
+
+### Remaining backend gates before activating the UI
+
+- Obtain 2025/2026 split-stat data through an authorized CFBD-secret workflow;
+  retain original CSVs until a staged fetch and completeness check succeeds.
+- Confirm count of paired FBS observations per metric using
+  `src/audit_matchup_coverage.py`.
+- Measure strictly chronological held-out error using
+  `src/validate_matchup_intelligence.py`, compare **matched** baselines,
+  and calibrate split metric weights/shrinkage only on training periods.
+- Calibrate uncertainty or suppress confidence language entirely.
+- Check latest repository-wide CI and export artifacts. Do not merge/deploy
+  until the UI and integration tests are also completed.
