@@ -200,6 +200,8 @@ jobs:
               test -s "/tmp/elocast-visual-qa/byu-${view}-${width}.png"
             done
           done
+          timeout 60 "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --window-size="390,2200" --virtual-time-budget=12000 --screenshot="/tmp/elocast-visual-qa/byu-analytics-390-long.png" "http://127.0.0.1:8765/ui/dashboard.html#team=byu&tab=analytics"
+          test -s "/tmp/elocast-visual-qa/byu-analytics-390-long.png"
       - name: Upload Modern visual QA screenshots
         if: always() && github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
