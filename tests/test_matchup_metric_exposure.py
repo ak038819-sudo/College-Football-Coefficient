@@ -42,3 +42,40 @@ def test_missing_overall_plays_fails_to_game_equal_without_fake_number():
 def test_unknown_metric_rejected():
     with pytest.raises(ValueError):
         exposure_policy("score",{"off_plays"})
+
+
+def test_actual_observation_weights_match_the_correct_metric_denominator():
+    import sqlite3
+    from src.build_matchup_intelligence import load_observations
+    db=sqlite3.connect(":memory:")
+    db.executescript("""
+       CREATE TABLE teams(team_id INTEGER,team_name TEXT);
+       CREATE TABLE games(game_id INTEGER,season_year INTEGER,game_date TEXT,
+         home_team_id INTEGER,away_team_id INTEGER,home_score INTEGER,
+         away_score INTEGER,neutral_site INTEGER);
+       CREATE TABLE team_membership_by_season(team_id INTEGER,season_year INTEGER,is_fbs INTEGER);
+       CREATE TABLE game_team_advanced(
+         game_id INTEGER,team_id INTEGER,season_year INTEGER,
+         off_plays INTEGER, off_success_rate REAL,off_ppa REAL,
+         off_explosiveness REAL,off_rush_success_rate REAL,
+         off_pass_ppa REAL,off_rush_explosiveness REAL);
+       INSERT INTO teams VALUES (1,'A'),(2,'B');
+       INSERT INTO team_membership_by_season VALUES (1,2026,1),(2,2026,1);
+       INSERT INTO games VALUES (1,2026,'2026-09-01',1,2,21,14,0);
+       INSERT INTO game_team_advanced VALUES
+          (1,1,2026,95,.60,.14,1.35,.58,.08,1.9),
+          (1,2,2026,38,.35,-.09,.70,.36,-.02,.9);
+    """)
+    expected={
+       "success_rate": [95.,38.],
+       "ppa":[95.,38.],
+       "explosiveness":[1.,1.],
+       "rush_success_rate":[1.,1.],
+       "pass_ppa":[1.,1.],
+       "rush_explosiveness":[1.,1.],
+    }
+    for metric,weights in expected.items():
+        rows,coverage=load_observations(db,season=2026,as_of="2026-09-02",metric=metric)
+        assert [r.weight for r in rows]==weights
+        assert coverage["exposure"]["weighting"]==("play_count" if metric in ("success_rate","ppa") else "game_equal")
+    db.close()
