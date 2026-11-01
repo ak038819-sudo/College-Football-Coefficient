@@ -246,3 +246,36 @@ This script needs the existing repository CFBD key available in its
 invocation environment. The GitHub connector available for this task does
 not expose that key or a safe workflow-dispatch action, so no historical
 split-data backfill has actually been run by this PR.
+
+
+## Data-certainty release gate (2026-10-31)
+
+A read-only, conservative audit is implemented in
+`src/check_matchup_data_readiness.py`:
+
+```bash
+python src/check_matchup_data_readiness.py --db db/league.db --season 2025 --season 2026
+```
+
+For **each** rush/pass metric and season, this requires at least 90% of
+completed FBS games with *both* observed teams, and at least 95% of potential
+FBS team-game sides observed. These are provisional **minimum** coverage
+thresholds, not proof of correctness. The tool exits nonzero when its
+requirements fail, and always reports `production_ready=false` because
+coverage alone says nothing about point-in-time reproducibility, historical
+forecast error, or calibrated uncertainty. Any missing schema field fails.
+
+The historical data adapter also rejects nonfinite measurements,
+nonpositive/nonfinite play weights, and success rates outside [0,1]. True
+zero success rates are retained. Tests now cover these scenarios.
+
+**Actual data status:** committed 2025 and 2026 game-advanced CSVs lack
+all rushing/passing split fields; do not publish rush/pass percentiles from
+those files. Staged CFBD re-fetch and a disposable-database verification
+are still mandatory, as are strictly walk-forward held-out metrics
+and a complete CI pass.
+
+**Design hold:** No UI implementation or production export should begin
+until the necessary source and validation gates have reported actual
+satisfactory results. Pending work is explicitly a data-quality blocker,
+not a cosmetic task.
