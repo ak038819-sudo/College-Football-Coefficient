@@ -17,10 +17,12 @@ from pathlib import Path
 try:
     from src.matchup_intelligence import Observation, fit_profiles, project_matchup
     from src.build_adjusted_stats import LAMBDA
+    from src.describe_matchup_metrics import describe_units
 except ModuleNotFoundError:
     # Support direct invocation: python src/build_matchup_intelligence.py ...
     from matchup_intelligence import Observation, fit_profiles, project_matchup
     from build_adjusted_stats import LAMBDA
+    from describe_matchup_metrics import describe_units
 
 METRICS = {
     "success_rate": "off_success_rate",
@@ -157,12 +159,14 @@ def build_snapshot(
     weighted = metric in ("success_rate", "ppa", "explosiveness") and any(r.weight > 1 for r in rows)
     ridge = LAMBDA[metric] if weighted and metric in LAMBDA else 2.0
     grades, baseline = fit_profiles(rows, shrinkage=ridge)
+    description = describe_units(rows, shrinkage=ridge)
     result = {"season": season, "as_of": as_of, "metric": metric,
               "model": "shared-adjusted-stats-solver", "shrinkage": ridge,
               "weighting": "offensive_plays" if weighted else "team_game",
               "coverage": coverage,
               "baseline": baseline,
-              "profiles": {key: vars(v) for key, v in sorted(grades.items())}}
+              "profiles": {key: vars(v) for key, v in sorted(grades.items())},
+              "descriptive_units": description}
     if offensive_team_id is not None:
         result["matchup"] = vars(project_matchup(
             grades, baseline, str(offensive_team_id), str(defensive_team_id),
