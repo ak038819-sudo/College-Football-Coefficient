@@ -4000,7 +4000,75 @@ function scoutingAsset(year) {
   }
   return _scoutingRequests.get(year);
 }
-function scoutingPercentile(v) { return Number.isFinite(v) ? Math.round(v) + 'th' : '—'; }
+// Percentiles read as ordinals wherever they are shown, so 81 is 81st and not
+// 81th. An unrated trait has no number at all, which is not a zero.
+function scoutingOrdinal(value) {
+  if (!Number.isFinite(value)) return '—';
+  const n = Math.round(value);
+  const tens = Math.abs(n) % 100, ones = Math.abs(n) % 10;
+  const suffix = tens >= 11 && tens <= 13 ? 'th'
+    : ones === 1 ? 'st' : ones === 2 ? 'nd' : ones === 3 ? 'rd' : 'th';
+  return n + suffix;
+}
+// A head-to-head meter is centred: the marker leaves the middle by how far the
+// two percentiles differ. MATCHUP_EDGE_SPAN points of difference reach
+// MATCHUP_EDGE_REACH percent from the centre, and anything larger is clamped
+// there, so a blowout mismatch still reads inside the track.
+const MATCHUP_EDGE_SPAN = 40, MATCHUP_EDGE_REACH = 35;
+const MATCHUP_EDGE_EVEN = 4, MATCHUP_EDGE_CLEAR = 12, MATCHUP_EDGE_MAJOR = 20;
+function matchupEdgeLabel(edge, teamName, oppName) {
+  if (!Number.isFinite(edge)) return 'Not rated';
+  const size = Math.abs(edge);
+  if (size <= MATCHUP_EDGE_EVEN) return 'Even matchup';
+  const level = size >= MATCHUP_EDGE_MAJOR ? 'Major' : size >= MATCHUP_EDGE_CLEAR ? 'Clear' : 'Slight';
+  return level + ' ' + (edge > 0 ? teamName : oppName) + ' edge';
+}
+function matchupEdgeClass(edge) {
+  if (!Number.isFinite(edge) || Math.abs(edge) <= MATCHUP_EDGE_EVEN) return 'tm-edge-even';
+  return edge > 0 ? 'tm-edge-team' : 'tm-edge-opp';
+}
+function matchupMeterPosition(edge) {
+  if (!Number.isFinite(edge)) return 50;
+  const clamped = Math.max(-MATCHUP_EDGE_SPAN, Math.min(MATCHUP_EDGE_SPAN, edge));
+  return 50 + (clamped / MATCHUP_EDGE_SPAN) * MATCHUP_EDGE_REACH;
+}
+function matchupMeterRow(trait, sides) {
+  const ours = Number.isFinite(sides.teamPct) ? sides.teamPct : null;
+  const theirs = Number.isFinite(sides.oppPct) ? sides.oppPct : null;
+  const edge = ours == null || theirs == null ? null : ours - theirs;
+  const verdict = matchupEdgeLabel(edge, sides.teamName, sides.oppName);
+  const marker = matchupMeterPosition(edge);
+  const width = Math.abs(marker - 50).toFixed(2) + '%';
+  const fill = edge == null ? ''
+    : edge >= 0
+      ? '<div class="tm-duel-fill tm-team-fill" style="left:50%;width:' + width + '"></div>'
+      : '<div class="tm-duel-fill tm-opp-fill" style="left:' + marker.toFixed(2) + '%;width:' + width + '"></div>';
+  const side = (cls, label, value) => '<div class="tm-match-side ' + cls + '">' +
+    '<span class="tm-match-side-label">' + esc(label) + '</span>' +
+    '<strong>' + scoutingOrdinal(value == null ? NaN : value) + '</strong></div>';
+  return '<article class="tm-match-row">' +
+    '<div class="tm-match-row-top"><div class="tm-match-trait">' + esc(trait) + '</div>' +
+    '<div class="tm-match-verdict ' + matchupEdgeClass(edge) + '">' + esc(verdict) + '</div></div>' +
+    '<div class="tm-match-values">' +
+      side('tm-left', sides.teamName + ' offense', ours) +
+      '<div></div>' +
+      side('tm-right', sides.oppName + ' defense', theirs) +
+    '</div>' +
+    '<div class="tm-duel-meter" aria-hidden="true"><div class="tm-duel-track"></div>' +
+    '<div class="tm-duel-center"></div>' + fill +
+    '<div class="tm-duel-marker" style="left:' + marker.toFixed(2) + '%"></div></div>' +
+    '</article>';
+}
+function renderMatchupMeters(teamName, oppName, metrics, rivalMetrics) {
+  return '<div class="tm-matchup-rows">' + SCOUTING_TRAITS.map(([key, title]) => {
+    const ours = metrics[key] || {}, theirs = (rivalMetrics || {})[key] || {};
+    return matchupMeterRow(title, {
+      teamName, oppName,
+      teamPct: ours.status === 'rated' ? ours.offense_percentile : null,
+      oppPct: theirs.status === 'rated' ? theirs.defense_percentile : null,
+    });
+  }).join('') + '</div>';
+}
 function scoutingNumber(v) { return Number.isFinite(v) ? Number(v).toFixed(3) : '—'; }
 function scoutingTraitRow(metric, row, side) {
   const pct = side === 'defense' ? row.defense_percentile : row.offense_percentile;
@@ -4009,7 +4077,7 @@ function scoutingTraitRow(metric, row, side) {
   const label = (SCOUTING_TRAITS.find(x => x[0] === metric) || [metric, metric])[1];
   const ratio = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 0;
   return '<div class="tm-trait"><div class="tm-trait-top"><strong>' + esc(label) +
-    '</strong><span>' + scoutingPercentile(pct) + '</span></div>' +
+    '</strong><span>' + scoutingOrdinal(pct) + '</span></div>' +
     '<div class="tm-track" role="img" aria-label="' + esc(label) + ': ' +
     (Number.isFinite(pct) ? Math.round(pct) + 'th percentile' : 'percentile unavailable') +
     '"><span style="width:' + ratio + '%"></span></div>' +
@@ -4088,17 +4156,7 @@ function renderModernScouting(panel, team, bundle) {
     const rival = bundle.teams[opponentSelect.value];
     const result = panel.querySelector('#tm-opponent-result');
     if (!rival) { result.textContent = 'Choose an opponent to compare units.'; return; }
-    const rows = SCOUTING_TRAITS.map(([key, title]) => {
-      const ours = metrics[key] || {};
-      const theirs = (rival.metrics || {})[key] || {};
-      const a = ours.status === 'rated' ? scoutingPercentile(ours.offense_percentile) : 'Unavailable';
-      const b = theirs.status === 'rated' ? scoutingPercentile(theirs.defense_percentile) : 'Unavailable';
-      return '<tr><th scope="row">' + esc(title) + '</th><td>' + a +
-        '</td><td>' + b + '</td></tr>';
-    }).join('');
-    result.innerHTML = '<div class="tm-compare-overflow"><table><thead><tr><th scope="col">Trait</th><th scope="col">' +
-      esc(team.name) + ' offense</th><th scope="col">' + esc(rival.name) +
-      ' defense</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    result.innerHTML = renderMatchupMeters(team.name, rival.name, metrics, rival.metrics) +
       '<p class="tm-scout-foot">Percentile comparisons describe completed games, not future results. ' +
       'Both teams are evaluated as of the same date.</p>';
   });

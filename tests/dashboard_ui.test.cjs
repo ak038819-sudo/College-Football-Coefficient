@@ -328,8 +328,13 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    const option=[...select.options].find(x=>x.value);
    assert.ok(option);
    change('tm-opponent',option.value);
-   assert.ok(d.querySelectorAll('#tm-opponent-result tbody tr').length>=6);
+   assert.equal(d.querySelectorAll('#tm-opponent-result .tm-match-row').length,6);
    assert.match(d.querySelector('#tm-opponent-result').textContent,/defense/);
+   // The verdict is real text, not a colour, and the meter is decoration.
+   assert.match(d.querySelector('.tm-match-verdict').textContent,/edge|Even matchup|Not rated/);
+   assert.equal(d.querySelector('.tm-duel-meter').getAttribute('aria-hidden'),'true');
+   // Percentiles spell their own ordinal: 81st, never 81th.
+   assert.doesNotMatch(d.querySelector('#tm-opponent-result').textContent,/(?<![1])[123]th\b/);
    assert.doesNotMatch(panel.textContent,/\bwin probability\s*:\s*\d/i);
    await route('#team=byu&tab=overview',()=>d.querySelector('#tp-scouting'));
    await until(w,()=>d.querySelector('#tm-opponent'));
