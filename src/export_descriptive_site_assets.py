@@ -11,9 +11,14 @@ import json
 import sqlite3
 from datetime import date
 from pathlib import Path
-from src.load_game_advanced import load_game_advanced
-from src.export_matchup_descriptive import build_descriptive_contract
-from src.validate_matchup_descriptive_contract import verify_contract
+try:
+    from src.load_game_advanced import load_game_advanced
+    from src.export_matchup_descriptive import build_descriptive_contract
+    from src.validate_matchup_descriptive_contract import verify_contract
+except ModuleNotFoundError:
+    from load_game_advanced import load_game_advanced
+    from export_matchup_descriptive import build_descriptive_contract
+    from validate_matchup_descriptive_contract import verify_contract
 
 SOURCE_ROOT = Path("data/research/matchup_cfbd")
 SEASONS = (2025, 2026)
