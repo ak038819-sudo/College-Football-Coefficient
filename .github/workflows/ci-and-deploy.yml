@@ -195,14 +195,26 @@ jobs:
           python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/elocast-visual-server.log 2>&1 &
           CHROME=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)
           test -n "$CHROME"
+          export CHROME
+          # Driven over the DevTools protocol rather than with Chrome's own
+          # --screenshot and --virtual-time-budget, which could not photograph
+          # the team page at all: virtual time pauses while a fetch is
+          # outstanding, and the live-score poll starts another one every time
+          # it resumes, so the budget never expired and Chrome never wrote the
+          # file or exited. Each capture now waits for a selector the rendered
+          # view owns, so a page that fails to render fails this step instead
+          # of yielding a picture of an empty shell.
+          SHOT="node scripts/visual_qa_screenshot.mjs"
+          SITE="http://127.0.0.1:8765/ui/dashboard.html"
           for width in 390 768 1280; do
-            for view in overview analytics; do
-              timeout 45 "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --window-size="${width},900" --virtual-time-budget=12000 --screenshot="/tmp/elocast-visual-qa/byu-${view}-${width}.png" "http://127.0.0.1:8765/ui/dashboard.html#team=byu&tab=${view}"
-              test -s "/tmp/elocast-visual-qa/byu-${view}-${width}.png"
-            done
+            $SHOT --url "$SITE#team=byu&tab=overview" --width "$width" --height 900 \
+              --selector ".team-header" --out "/tmp/elocast-visual-qa/byu-overview-${width}.png"
+            $SHOT --url "$SITE#team=byu&tab=analytics" --width "$width" --height 900 \
+              --selector ".tm-scout-card" --out "/tmp/elocast-visual-qa/byu-analytics-${width}.png"
           done
-          timeout 60 "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --window-size="390,2200" --virtual-time-budget=12000 --screenshot="/tmp/elocast-visual-qa/byu-analytics-390-long.png" "http://127.0.0.1:8765/ui/dashboard.html#team=byu&tab=analytics"
-          test -s "/tmp/elocast-visual-qa/byu-analytics-390-long.png"
+          $SHOT --url "$SITE#team=byu&tab=analytics" --width 390 --height 2200 --full \
+            --selector ".tm-scout-card" --out "/tmp/elocast-visual-qa/byu-analytics-390-long.png"
+          for shot in /tmp/elocast-visual-qa/*.png; do test -s "$shot"; done
       - name: Upload Modern visual QA screenshots
         if: always() && github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4

@@ -157,11 +157,55 @@ body:has(.team-header) .panel {
   border-radius: 8px; color: #fff; background: #17365a; padding: 10px; font: inherit; }
 .tm-match-compare select:focus-visible { outline: 2px solid #83ccff; outline-offset: 3px; }
 #tm-opponent-result { margin-top: 14px; }
-.tm-compare-overflow { max-width: 100%; overflow-x: auto; }
-.tm-compare-overflow table { min-width: 445px; width: 100%; border-collapse: collapse; color: #eaf3ff; }
-.tm-compare-overflow th, .tm-compare-overflow td { padding: 9px 11px; border-bottom: 1px solid #35516f;
-  text-align: left; font-size: 12px; }
-.tm-compare-overflow thead th { color: #abd3f4; }
+/* Head-to-head meters, one card per trait. The card stacks, so it reads the
+   same on a phone as on a desktop and needs no horizontal scroller. The
+   verdict and both percentiles are real text; the meter is decoration. */
+/* Which half of the matchup is on screen. Two buttons, the pressed one carrying
+   the state in aria-pressed as well as in its colour. */
+.tm-unit-toggle { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 12px; }
+.tm-unit-button { flex: 1 1 auto; min-height: 40px; padding: 8px 12px; cursor: pointer;
+  border: 1px solid #35516f; border-radius: 999px; background: #10294a; color: #abd3f4;
+  font: 600 12px var(--font-body); }
+.tm-unit-button[aria-pressed="true"] { background: #1d4474; border-color: #5982ae; color: #fff; }
+.tm-unit-button:focus-visible { outline: 2px solid #83ccff; outline-offset: 2px; }
+.tm-matchup-rows { display: grid; gap: 14px; margin-top: 4px; }
+.tm-match-row { padding: 15px 16px 13px; border: 1px solid #35516f; border-radius: 12px;
+  background: linear-gradient(145deg,#142d4c,#0b1e35); }
+.tm-match-row-top { display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.tm-match-trait { font: 700 16px var(--font-display); color: #fff; }
+.tm-match-verdict { font: 700 11px var(--font-mono); text-transform: uppercase;
+  letter-spacing: .05em; padding-top: 3px; }
+.tm-edge-team { color: var(--tm-team-color,#7fe3bc); }
+.tm-edge-opp { color: var(--tm-opp-color,#ffb4a8); }
+.tm-edge-even { color: #abd3f4; }
+.tm-match-values { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
+  align-items: end; gap: 10px; }
+.tm-match-side { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tm-match-side.tm-right { text-align: right; }
+.tm-match-side-label { color: #abd3f4; font: 11px/1.3 var(--font-body); overflow-wrap: anywhere; }
+.tm-match-side strong { color: #fff; font: 700 15px var(--font-mono); }
+.tm-duel-meter { position: relative; height: 14px; margin: 10px 0 0; }
+.tm-duel-track { position: absolute; inset: 0; border-radius: 999px;
+  background: linear-gradient(90deg,#1b3555,#28496f 50%,#1b3555); }
+.tm-duel-center { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px;
+  background: #dbe9f6; opacity: .75; transform: translateX(-50%); }
+.tm-duel-fill { position: absolute; top: 2px; bottom: 2px; border-radius: 999px; }
+/* Each side's fill and verdict carry that school's own colour, lifted by
+   matchupReadableColor() until it can be read on the card. The defaults are
+   the neutral pair, for a team whose brand colour is not in the registry. */
+.tm-team-fill { background: linear-gradient(270deg,var(--tm-team-color,#7fe3bc),
+  color-mix(in srgb, var(--tm-team-color,#7fe3bc) 55%, #10294a)); }
+.tm-opp-fill { background: linear-gradient(90deg,
+  color-mix(in srgb, var(--tm-opp-color,#ffb4a8) 55%, #10294a),var(--tm-opp-color,#ffb4a8)); }
+.tm-duel-marker { position: absolute; top: 50%; width: 13px; height: 13px; border-radius: 50%;
+  background: #f4f8fc; border: 2px solid #113153; transform: translate(-50%,-50%);
+  box-shadow: 0 0 0 2px rgba(7,19,34,.55); }
+@media(max-width:420px) {
+  .tm-match-trait { font-size: 15px; }
+  .tm-match-values { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+  .tm-match-values > div:nth-child(2) { display: none; }
+}
 
 /* Radar overview reads only verified percentages; the rows beneath carry exact values. */
 .tm-radar-wrap { display: flex; justify-content: center; padding: 2px 0 16px; }
