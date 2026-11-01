@@ -10929,6 +10929,16 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
         // An installed app may stay open for days: check on launch AND when
         // it returns to the foreground, not only on the initial install.
         registration.update().catch(() => {});
+        // New worker controls this page after activation. Reload just once so
+        // the installed home-screen app shows the newly published HTML.
+        if (navigator.serviceWorker.addEventListener) {
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!sessionStorage.getItem('elocast-sw-refresh-v2')) {
+              sessionStorage.setItem('elocast-sw-refresh-v2', '1');
+              location.reload();
+            }
+          });
+        }
         document.addEventListener('visibilitychange', () => {
           if (!document.hidden && navigator.onLine !== false)
             registration.update().catch(() => {});
