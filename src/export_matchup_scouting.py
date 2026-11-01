@@ -75,6 +75,10 @@ def build_scouting_bundle(
                 a = profiles[away]
                 # A single fitted home effect applies with opposing signs
                 # (+.5 to home offense, -.5 to visitor offense).
+                tier_order = {"insufficient": 0, "provisional": 1, "developing": 2, "established": 3}
+                weaker = min((h["reliability"], a["reliability"]), key=lambda t: tier_order[t])
+                record["matchup_reliability"] = weaker
+                record["eligible_for_public_projection"] = weaker == "established" and record["calibration"] != "provisional"
                 record["matchup"] = {
                     "home_offense_vs_away_defense": {
                         "estimate": mean + h["offense"] + a["defense_allowed"] + .5 * h["home_effect"],
@@ -91,6 +95,8 @@ def build_scouting_bundle(
                 }
             else:
                 record["matchup"] = None
+                record["matchup_reliability"] = "insufficient"
+                record["eligible_for_public_projection"] = False
         metrics_out[metric] = record
     return {
         "schema_version": VERSION,
