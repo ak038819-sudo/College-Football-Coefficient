@@ -1,0 +1,11 @@
+{
+  "source": "CFBD /stats/game/advanced; authenticated staging",
+  "source_workflow_run": 41255752882,
+  "source_artifact_id": 13062014924,
+  "seasons": [
+    2025,
+    2026
+  ],
+  "scope": "Research only, no production promotion",
+  "raw_files_unchanged": true
+}

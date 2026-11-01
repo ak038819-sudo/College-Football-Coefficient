@@ -1,0 +1,386 @@
+{
+  "as_of": "2026-10-31",
+  "method": "descriptive_effects_and_opponent_leave_one_out",
+  "metrics": {
+    "pass_explosiveness": {
+      "coverage": {
+        "candidate_rows": 926,
+        "duplicate_team_games": 0,
+        "eligible_games": 452,
+        "eligible_rows": 904,
+        "future_or_same_day": 22,
+        "invalid_metric_value": 0,
+        "invalid_team_side": 0,
+        "invalid_weight": 0,
+        "missing_or_invalid_date": 0,
+        "missing_value": 0,
+        "season_mismatch": 0
+      },
+      "established_teams": 7,
+      "failed_invariants": [],
+      "observation_sides": 904,
+      "rated_teams": 138,
+      "sensitivity_evaluated": 4,
+      "sensitivity_sample": {
+        "12": {
+          "checks": 8,
+          "max_defense_percentile_change": 37.68115942028986,
+          "max_offense_percentile_change": 8.695652173913043,
+          "mean_defense_percentile_change": 12.047101449275363,
+          "mean_offense_percentile_change": 6.884057971014493,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "121": {
+          "checks": 8,
+          "max_defense_percentile_change": 21.014492753623188,
+          "max_offense_percentile_change": 13.043478260869563,
+          "mean_defense_percentile_change": 6.793478260869565,
+          "mean_offense_percentile_change": 5.072463768115943,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "7": {
+          "checks": 8,
+          "max_defense_percentile_change": 15.942028985507243,
+          "max_offense_percentile_change": 17.391304347826086,
+          "mean_defense_percentile_change": 6.7934782608695645,
+          "mean_offense_percentile_change": 9.601449275362318,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "85": {
+          "checks": 8,
+          "max_defense_percentile_change": 23.188405797101446,
+          "max_offense_percentile_change": 4.3478260869565215,
+          "mean_defense_percentile_change": 10.688405797101447,
+          "mean_offense_percentile_change": 1.358695652173913,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        }
+      },
+      "status": "pass"
+    },
+    "pass_ppa": {
+      "coverage": {
+        "candidate_rows": 926,
+        "duplicate_team_games": 0,
+        "eligible_games": 452,
+        "eligible_rows": 904,
+        "future_or_same_day": 22,
+        "invalid_metric_value": 0,
+        "invalid_team_side": 0,
+        "invalid_weight": 0,
+        "missing_or_invalid_date": 0,
+        "missing_value": 0,
+        "season_mismatch": 0
+      },
+      "established_teams": 7,
+      "failed_invariants": [],
+      "observation_sides": 904,
+      "rated_teams": 138,
+      "sensitivity_evaluated": 4,
+      "sensitivity_sample": {
+        "12": {
+          "checks": 8,
+          "max_defense_percentile_change": 13.043478260869566,
+          "max_offense_percentile_change": 28.26086956521739,
+          "mean_defense_percentile_change": 4.619565217391305,
+          "mean_offense_percentile_change": 7.065217391304348,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "121": {
+          "checks": 8,
+          "max_defense_percentile_change": 12.318840579710141,
+          "max_offense_percentile_change": 5.79710144927536,
+          "mean_defense_percentile_change": 5.253623188405798,
+          "mean_offense_percentile_change": 2.6268115942029002,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "7": {
+          "checks": 8,
+          "max_defense_percentile_change": 18.115942028985508,
+          "max_offense_percentile_change": 6.521739130434781,
+          "mean_defense_percentile_change": 7.789855072463768,
+          "mean_offense_percentile_change": 1.2681159420289863,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "85": {
+          "checks": 8,
+          "max_defense_percentile_change": 3.6231884057971016,
+          "max_offense_percentile_change": 11.594202898550723,
+          "mean_defense_percentile_change": 2.1739130434782608,
+          "mean_offense_percentile_change": 7.155797101449275,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        }
+      },
+      "status": "pass"
+    },
+    "pass_success_rate": {
+      "coverage": {
+        "candidate_rows": 926,
+        "duplicate_team_games": 0,
+        "eligible_games": 452,
+        "eligible_rows": 904,
+        "future_or_same_day": 22,
+        "invalid_metric_value": 0,
+        "invalid_team_side": 0,
+        "invalid_weight": 0,
+        "missing_or_invalid_date": 0,
+        "missing_value": 0,
+        "season_mismatch": 0
+      },
+      "established_teams": 7,
+      "failed_invariants": [],
+      "observation_sides": 904,
+      "rated_teams": 138,
+      "sensitivity_evaluated": 4,
+      "sensitivity_sample": {
+        "12": {
+          "checks": 8,
+          "max_defense_percentile_change": 10.144927536231885,
+          "max_offense_percentile_change": 15.942028985507243,
+          "mean_defense_percentile_change": 3.532608695652174,
+          "mean_offense_percentile_change": 7.880434782608697,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "121": {
+          "checks": 8,
+          "max_defense_percentile_change": 15.942028985507246,
+          "max_offense_percentile_change": 5.79710144927536,
+          "mean_defense_percentile_change": 8.423913043478262,
+          "mean_offense_percentile_change": 3.170289855072461,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "7": {
+          "checks": 8,
+          "max_defense_percentile_change": 15.942028985507243,
+          "max_offense_percentile_change": 2.173913043478265,
+          "mean_defense_percentile_change": 6.702898550724637,
+          "mean_offense_percentile_change": 0.27173913043478315,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "85": {
+          "checks": 8,
+          "max_defense_percentile_change": 7.246376811594203,
+          "max_offense_percentile_change": 13.043478260869565,
+          "mean_defense_percentile_change": 2.4456521739130435,
+          "mean_offense_percentile_change": 5.797101449275363,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        }
+      },
+      "status": "pass"
+    },
+    "rush_explosiveness": {
+      "coverage": {
+        "candidate_rows": 926,
+        "duplicate_team_games": 0,
+        "eligible_games": 452,
+        "eligible_rows": 904,
+        "future_or_same_day": 22,
+        "invalid_metric_value": 0,
+        "invalid_team_side": 0,
+        "invalid_weight": 0,
+        "missing_or_invalid_date": 0,
+        "missing_value": 0,
+        "season_mismatch": 0
+      },
+      "established_teams": 7,
+      "failed_invariants": [],
+      "observation_sides": 904,
+      "rated_teams": 138,
+      "sensitivity_evaluated": 4,
+      "sensitivity_sample": {
+        "12": {
+          "checks": 8,
+          "max_defense_percentile_change": 30.434782608695652,
+          "max_offense_percentile_change": 6.521739130434783,
+          "mean_defense_percentile_change": 9.96376811594203,
+          "mean_offense_percentile_change": 1.6304347826086956,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "121": {
+          "checks": 8,
+          "max_defense_percentile_change": 28.98550724637681,
+          "max_offense_percentile_change": 21.014492753623188,
+          "mean_defense_percentile_change": 18.47826086956522,
+          "mean_offense_percentile_change": 10.326086956521738,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "7": {
+          "checks": 8,
+          "max_defense_percentile_change": 28.985507246376812,
+          "max_offense_percentile_change": 10.144927536231885,
+          "mean_defense_percentile_change": 8.333333333333332,
+          "mean_offense_percentile_change": 2.355072463768116,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "85": {
+          "checks": 8,
+          "max_defense_percentile_change": 27.53623188405797,
+          "max_offense_percentile_change": 16.666666666666664,
+          "mean_defense_percentile_change": 12.499999999999998,
+          "mean_offense_percentile_change": 9.329710144927535,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        }
+      },
+      "status": "pass"
+    },
+    "rush_ppa": {
+      "coverage": {
+        "candidate_rows": 926,
+        "duplicate_team_games": 0,
+        "eligible_games": 452,
+        "eligible_rows": 904,
+        "future_or_same_day": 22,
+        "invalid_metric_value": 0,
+        "invalid_team_side": 0,
+        "invalid_weight": 0,
+        "missing_or_invalid_date": 0,
+        "missing_value": 0,
+        "season_mismatch": 0
+      },
+      "established_teams": 7,
+      "failed_invariants": [],
+      "observation_sides": 904,
+      "rated_teams": 138,
+      "sensitivity_evaluated": 4,
+      "sensitivity_sample": {
+        "12": {
+          "checks": 8,
+          "max_defense_percentile_change": 13.043478260869566,
+          "max_offense_percentile_change": 13.768115942028986,
+          "mean_defense_percentile_change": 6.521739130434783,
+          "mean_offense_percentile_change": 6.612318840579711,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "121": {
+          "checks": 8,
+          "max_defense_percentile_change": 3.6231884057971087,
+          "max_offense_percentile_change": 18.115942028985515,
+          "mean_defense_percentile_change": 0.9963768115942049,
+          "mean_offense_percentile_change": 7.608695652173916,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "7": {
+          "checks": 8,
+          "max_defense_percentile_change": 11.594202898550726,
+          "max_offense_percentile_change": 31.159420289855078,
+          "mean_defense_percentile_change": 6.9746376811594235,
+          "mean_offense_percentile_change": 10.326086956521742,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "85": {
+          "checks": 8,
+          "max_defense_percentile_change": 15.217391304347828,
+          "max_offense_percentile_change": 23.913043478260867,
+          "mean_defense_percentile_change": 6.612318840579713,
+          "mean_offense_percentile_change": 11.050724637681158,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        }
+      },
+      "status": "pass"
+    },
+    "rush_success_rate": {
+      "coverage": {
+        "candidate_rows": 926,
+        "duplicate_team_games": 0,
+        "eligible_games": 452,
+        "eligible_rows": 904,
+        "future_or_same_day": 22,
+        "invalid_metric_value": 0,
+        "invalid_team_side": 0,
+        "invalid_weight": 0,
+        "missing_or_invalid_date": 0,
+        "missing_value": 0,
+        "season_mismatch": 0
+      },
+      "established_teams": 7,
+      "failed_invariants": [],
+      "observation_sides": 904,
+      "rated_teams": 138,
+      "sensitivity_evaluated": 4,
+      "sensitivity_sample": {
+        "12": {
+          "checks": 8,
+          "max_defense_percentile_change": 21.739130434782613,
+          "max_offense_percentile_change": 19.56521739130435,
+          "mean_defense_percentile_change": 11.141304347826088,
+          "mean_offense_percentile_change": 7.699275362318841,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "121": {
+          "checks": 8,
+          "max_defense_percentile_change": 1.4492753623188435,
+          "max_offense_percentile_change": 10.14492753623189,
+          "mean_defense_percentile_change": 0.7246376811594217,
+          "mean_offense_percentile_change": 5.978260869565219,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "7": {
+          "checks": 8,
+          "max_defense_percentile_change": 23.913043478260867,
+          "max_offense_percentile_change": 12.318840579710148,
+          "mean_defense_percentile_change": 8.242753623188406,
+          "mean_offense_percentile_change": 3.3514492753623193,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        },
+        "85": {
+          "checks": 8,
+          "max_defense_percentile_change": 21.014492753623188,
+          "max_offense_percentile_change": 18.84057971014493,
+          "mean_defense_percentile_change": 5.434782608695653,
+          "mean_offense_percentile_change": 9.329710144927537,
+          "note": "Sensitivity to removing one opponent; not a statistical confidence interval",
+          "opponents_available": 8,
+          "status": "evaluated"
+        }
+      },
+      "status": "pass"
+    }
+  },
+  "sample_size": 4,
+  "season": 2026
+}
