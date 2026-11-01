@@ -194,3 +194,64 @@ body:has(.team-header) .panel {
 .team-header .team-stat {
   border-color: color-mix(in srgb, var(--team-profile-color, #304250) 36%, #294564);
 }
+
+/* Full-page school identity: dark blended school colors for legibility.
+   The body theme is only active while a team profile is in the DOM;
+   other Elocast destinations retain the global neutral palette. */
+body:has(.team-header) {
+  --tm-school: var(--team-page-color, #304250);
+  --panel: color-mix(in srgb, var(--tm-school) 22%, #111c2b);
+  --panel-2: color-mix(in srgb, var(--tm-school) 27%, #172333);
+  --line: color-mix(in srgb, var(--tm-school) 44%, #405064);
+  --tm-card: color-mix(in srgb, var(--tm-school) 24%, #112237);
+  --tm-raised: color-mix(in srgb, var(--tm-school) 30%, #183049);
+  --tm-edge: color-mix(in srgb, var(--tm-school) 46%, #455b70);
+  --tm-accent: color-mix(in srgb, var(--tm-school) 52%, #d4e8f8);
+  background:
+    radial-gradient(ellipse at 49% 5%, color-mix(in srgb, var(--tm-school) 52%, transparent), transparent 65%),
+    linear-gradient(155deg,
+      color-mix(in srgb, var(--tm-school) 36%, #101824),
+      color-mix(in srgb, var(--tm-school) 18%, #111a28) 65%,
+      #111a28);
+  background-attachment: fixed;
+}
+body:has(.team-header) .panel {
+  border-color: var(--line);
+  background-color: var(--panel);
+}
+body:has(.team-header) .team-header.panel {
+  /* Retain the existing brand-specific header artwork and gradients. */
+  background:
+    radial-gradient(ellipse at 82% -30%, color-mix(in srgb, var(--tm-school) 75%, transparent), transparent 56%),
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--tm-school) 52%, #081322) 0%,
+      color-mix(in srgb, var(--tm-school) 28%, #081322) 54%, #081322 100%);
+}
+body:has(.team-header) .team-header .team-stat {
+  background: color-mix(in srgb, var(--tm-school) 18%, #0b1725);
+}
+body:has(.team-header) .tm-scout-card {
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--tm-school) 31%, #13283f),
+    color-mix(in srgb, var(--tm-school) 17%, #0b1d31));
+  border-color: var(--line);
+}
+body:has(.team-header) .tm-match-compare {
+  background: linear-gradient(125deg,
+    color-mix(in srgb, var(--tm-school) 29%, #10243b),
+    color-mix(in srgb, var(--tm-school) 15%, #0b1b30));
+  border-color: var(--line);
+}
+body:has(.team-header) .tm-track span {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--tm-school) 54%, #70acd8),
+    color-mix(in srgb, var(--tm-school) 30%, #b3d9ef));
+}
+body:has(.team-header) .tm-radar-shape {
+  fill: color-mix(in srgb, var(--tm-school) 35%, transparent);
+  stroke: color-mix(in srgb, var(--tm-school) 52%, #a5dfff);
+}
+body:has(.team-header) .tm-radar-grid { stroke: var(--tm-edge); }
+@media (prefers-reduced-motion: reduce) {
+  body:has(.team-header) { background-attachment: scroll; }
+}
