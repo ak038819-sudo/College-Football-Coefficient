@@ -38,7 +38,7 @@ def has_split_observations(path: Path) -> bool:
         reader = csv.DictReader(fh)
         if not SPLIT_COLUMNS.issubset(set(reader.fieldnames or ())):
             return False
-        return any(all(row.get(k, "").strip() for k in SPLIT_COLUMNS) for row in reader)
+        return any(all(str(row.get(k) or "").strip() for k in SPLIT_COLUMNS) for row in reader)
 
 def latest_covered_game(conn: sqlite3.Connection, season: int) -> str | None:
     query = ("SELECT MAX(SUBSTR(g.game_date,1,10)) FROM games g "
