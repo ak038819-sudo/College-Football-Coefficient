@@ -1,0 +1,59 @@
+name: Refresh Published Elocast Pages
+on:
+  push:
+    paths: [.github/workflows/refresh-pages-publication.yml]
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  issues: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger Pages build from already committed main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          echo "Triggering Pages build for committed dashboard."
+          RESPONSE="$(gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds" 2>&1)"
+          RC=$?
+          echo "Pages API exit: $RC"
+          echo "$RESPONSE"
+          printf '%s\n' "$RESPONSE" > /tmp/elocast-pages-build-result.txt
+          printf '%s\n' "$RC" > /tmp/elocast-pages-build-exit.txt
+      - name: Check public HTML and report observed result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BASE="https://ak038819-sudo.github.io/College-Football-Coefficient"
+          FOUND=no
+          for i in 1 2 3 4 5 6 7 8; do
+            curl -fLsS --max-time 20 "$BASE/ui/dashboard.html?pages_refresh=${GITHUB_SHA}-${i}" -o /tmp/elocast-public-check.html || true
+            if grep -q 'team-modern.css?v=' /tmp/elocast-public-check.html && grep -q 'renderModernRadar' /tmp/elocast-public-check.html; then
+              FOUND=yes
+              break
+            fi
+            sleep 12
+          done
+          {
+            echo "Pages-only publication check for commit \`$GITHUB_SHA\`"
+            echo ""
+            echo "Pages API result:"
+            echo '~~~'
+            head -c 600 /tmp/elocast-pages-build-result.txt || true
+            echo ""
+            echo '~~~'
+            echo "Pages API exit code: $(cat /tmp/elocast-pages-build-exit.txt)"
+            echo "Public HTML size: $(wc -c </tmp/elocast-public-check.html 2>/dev/null || echo unavailable)"
+            echo "Public Modern HTML and radar verified: **$FOUND**"
+          } >/tmp/elocast-pages-report.md
+          gh issue comment 163 --repo "$GITHUB_REPOSITORY" --body-file /tmp/elocast-pages-report.md
+          if [ "$FOUND" != yes ]; then
+            echo "::error::Still serving the old HTML; Pages configuration/deployment needs intervention."
+            exit 1
+          fi
