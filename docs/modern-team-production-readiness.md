@@ -63,3 +63,25 @@ The first live-renderer styling pass may advance to QA, but until the
 above checks and scouting integration complete, **this is not a
 production-ready full team-page overhaul**. Do not merge, deploy or remove
 the draft flag without user authorization.
+
+## Integrated research-to-production path
+
+- `src/export_descriptive_site_assets.py` takes a SQLite memory backup, then
+  loads verified CFBD advanced-game splits there; the original league database
+  and Elo/Merits values are not altered. Current `data/raw` is preferred only
+  when all six split fields are populated and **100% paired FBS game coverage**
+  is satisfied; otherwise the archived verified snapshot is used.
+- The export derives its **exclusive as-of cutoff** from the most recent
+  completed source-covered FBS game, never a made-up end-of-season cutoff.
+  Each asset identifies which source it used.
+- `build_dashboard.py` creates content-hashed scouting assets in
+  `ui/data/scouting/<season>.js`. Their URLs are lazily loaded on a team
+  page; users without a cached scouting asset receive an unavailable state
+  without breaking the team's existing schedule/roster/coaches/history.
+- A regression test in `tests/dashboard_ui.test.cjs` navigates to BYU,
+  asserts that the true scouting cards loaded, changes opponent selection,
+  checks the six traits, and returns to Overview with existing data intact.
+
+**Deployment restriction:** This is still a draft until the final full CI
+results and actual-phone visual acceptance are documented. A pass on source
+checks alone is not release approval.
