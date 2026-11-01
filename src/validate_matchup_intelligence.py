@@ -40,6 +40,7 @@ def evaluate_walk_forward(
     metric: str,
     min_training_games: int = 4,
     shrinkage: float = 2.0,
+    min_team_games: int = 3,
 ) -> dict:
     """Score only games strictly later than the data used for fitting.
 
@@ -49,8 +50,8 @@ def evaluate_walk_forward(
     Teams lacking both offense and defensive profile coverage are excluded
     from model error, but counted against forecast coverage.
     """
-    if min_training_games < 1:
-        raise ValueError("min_training_games must be positive")
+    if min_training_games < 1 or min_team_games < 1 or shrinkage < 0:
+        raise ValueError("Invalid training/reliability or shrinkage setting")
     if metric not in METRICS:
         raise ValueError(f"Unknown metric {metric}")
     # First collect all eligible played games with a far-future cutoff.
@@ -109,7 +110,7 @@ def evaluate_walk_forward(
             continue
         weighted = metric in LAMBDA and any(r.weight > 1 for r in training)
         ridge = LAMBDA[metric] if weighted else shrinkage
-        grades, baseline = fit_profiles(training, shrinkage=ridge)
+        grades, baseline = fit_profiles(training, shrinkage=ridge, min_games=min_team_games)
         # Simple prior offense-only shrinkage baseline (not opponent-adjusted).
         prior = defaultdict(list)
         for r in training:
@@ -133,6 +134,7 @@ def evaluate_walk_forward(
         scored_dates += 1
     return {
         "season": season, "metric": metric, "model": "shared-adjusted-stats-solver",
+        "shrinkage": ridge if scored_dates else None, "min_team_games": min_team_games,
         "method": "strict-prior-calendar-date",
         "evaluation_dates": scored_dates, "considered_team_games": considered,
         "model_coverage": (len(model_errors) / considered) if considered else 0,
@@ -152,12 +154,15 @@ def main() -> None:
     p.add_argument("--season", type=int, required=True)
     p.add_argument("--metric", choices=sorted(METRICS), required=True)
     p.add_argument("--min-training-games", type=int, default=4)
+    p.add_argument("--min-team-games", type=int, default=3)
+    p.add_argument("--shrinkage", type=float, default=2.0)
     args = p.parse_args()
     db = Path(args.db).resolve()
     with sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True) as conn:
         report = evaluate_walk_forward(
             conn, season=args.season, metric=args.metric,
-            min_training_games=args.min_training_games)
+            min_training_games=args.min_training_games,
+            min_team_games=args.min_team_games, shrinkage=args.shrinkage)
     print(json.dumps(report, indent=2, sort_keys=True))
 
 
