@@ -37,12 +37,12 @@
     // "Men's Basketball" in the picker: the women's game is a different
     // competition and an unqualified label would claim something we are not.
     //
-    // NOT launched: ui/data/ncaambb is not published yet, because the
-    // provider's rolling allowance does not recover until 2026-10-27. Flip
-    // this to true in the same commit that publishes the export, and not
-    // before. See docs/basketball-ui.md.
+    // Launched 2026-11-01, with the export it waited for: ui/data/ncaambb
+    // carries 2015-2026. It was held false for eleven days because the
+    // provider's monthly quota was spent, and a league offered here with no
+    // data behind it is the one thing this flag exists to prevent.
     { slug: BASKETBALL, label: 'College Basketball', short: "Men's Basketball",
-      picker: "Men's Basketball", launched: false },
+      picker: "Men's Basketball", launched: true },
     { slug: NFL, label: 'NFL', short: 'NFL', picker: 'NFL', launched: true }
   ];
 
