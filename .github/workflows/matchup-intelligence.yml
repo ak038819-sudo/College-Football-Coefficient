@@ -17,6 +17,7 @@ on:
       - 'src/analyze_matchup_percentile_stability.py'
       - 'src/audit_matchup_graph_outliers.py'
       - 'src/run_matchup_graph_outlier_audit.py'
+      - 'src/matchup_metric_exposure.py'
       - 'src/fetch_cfbd_game_advanced.py'
       - 'src/load_game_advanced.py'
       - 'sql/game_advanced_tables.sql'
@@ -35,6 +36,7 @@ on:
       - 'tests/test_audit_matchup_descriptive_research.py'
       - 'tests/test_analyze_matchup_percentile_stability.py'
       - 'tests/test_audit_matchup_graph_outliers.py'
+      - 'tests/test_matchup_metric_exposure.py'
       - 'src/build_adjusted_stats.py'
       - '.github/workflows/matchup-intelligence.yml'
   workflow_dispatch:
@@ -70,4 +72,5 @@ jobs:
             tests/test_audit_matchup_stability.py \
             tests/test_audit_matchup_descriptive_research.py \
             tests/test_analyze_matchup_percentile_stability.py \
-            tests/test_audit_matchup_graph_outliers.py
+            tests/test_audit_matchup_graph_outliers.py \
+            tests/test_matchup_metric_exposure.py
