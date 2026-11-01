@@ -52,6 +52,7 @@ on:
 
 permissions:
   contents: write
+  pages: write
   # The alert jobs below keep one issue as this pipeline's health light.
   issues: write
 
@@ -400,6 +401,30 @@ jobs:
           scripts/publish_to_main.sh "$MESSAGE" \
             data/raw/ ui/dashboard.html ui/dashboard_data.json ui/data/ \
             ui/assets/ ui/logo_manifest.json data/processed/
+
+      # GitHub Pages is configured for main/(root). A push made by GITHUB_TOKEN
+      # does not trigger the branch-based Pages build; request it explicitly
+      # after all generated assets have been pushed to main successfully.
+      - name: Publish committed dashboard to GitHub Pages
+        if: steps.sunday_time.outputs.skip != 'true' && (github.event.schedule != '35 * * 1,8-12 5,6,0,1' || steps.freshness.outputs.needed == 'true')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          CONFIG="$(gh api "repos/$GITHUB_REPOSITORY/pages")"
+          SOURCE="$(printf '%s' "$CONFIG" | python3 -c 'import sys,json; d=json.load(sys.stdin); s=d.get("source") or {}; print(s.get("branch","")+":"+s.get("path",""))')"
+          BUILD_TYPE="$(printf '%s' "$CONFIG" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("build_type",""))')"
+          echo "Pages source: $SOURCE; build type: $BUILD_TYPE"
+          if [ "$SOURCE" != "main:/" ]; then
+            echo "::error::Pages does not point to main/(root), expected by the publishing pipeline."
+            exit 1
+          fi
+          if [ "$BUILD_TYPE" = "workflow" ]; then
+            echo "::error::Pages is configured for Actions deployment, not legacy branch builds. Explicit deploy-pages is needed."
+            exit 1
+          fi
+          gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds"
+          echo "Explicit GitHub Pages build requested from the latest main commit."
 
   # A scheduled failure here is invisible: nothing publishes while the test
   # job is red, and the only place that shows is the Actions tab. Six runs
