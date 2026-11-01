@@ -50,7 +50,7 @@
    belong to the current version, and the new worker takes over at once
    (skipWaiting + claim) rather than waiting for every tab to close. */
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const DOCUMENT_CACHE = `elocast-documents-${CACHE_VERSION}`;
 const ASSET_CACHE = `elocast-assets-${CACHE_VERSION}`;
 const CURRENT_CACHES = [DOCUMENT_CACHE, ASSET_CACHE];
