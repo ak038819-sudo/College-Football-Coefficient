@@ -3967,13 +3967,86 @@ function renderTeamPage(param) {
   } else if (tab === 'history') {
     body = loading('tp-seasons', 'Season by Season') + loading('tp-history', 'Program History');
   } else if (tab === 'analytics') {
-    body = loading('tp-analytics', 'Advanced Analytics') + loading('tp-ledger', 'Rating Ledger');
+    body = loading('tp-scouting', 'Opponent-adjusted scouting') + loading('tp-analytics', 'Advanced Analytics') + loading('tp-ledger', 'Rating Ledger');
   } else {
-    body = teamExtremes(team) + loading('tp-elo', 'Historical Elo') + renderUpcomingCard(team) +
+    body = loading('tp-scouting', 'Opponent-adjusted scouting') + teamExtremes(team) + loading('tp-elo', 'Historical Elo') + renderUpcomingCard(team) +
       '<div class="grid-2 team-section">' + loading('tp-gains', 'Biggest Elo Gains') +
       loading('tp-losses', 'Biggest Elo Losses') + '</div>';
   }
   return back + header + pageTabNav('team', TEAM_TAB_LABELS) + body;
+}
+
+// Validated and versioned historical descriptive assets. The panel is optional,
+// and existing team sections continue working if the asset cannot be loaded.
+const SCOUTING_VERSIONS = __SCOUTING_VERSIONS__;
+const _scoutingRequests = new Map();
+const SCOUTING_TRAITS = [
+  ['rush_success_rate', 'Rush success'], ['rush_ppa', 'Rush PPA'],
+  ['rush_explosiveness', 'Rush explosiveness'], ['pass_success_rate', 'Pass success'],
+  ['pass_ppa', 'Pass PPA'], ['pass_explosiveness', 'Pass explosiveness'],
+];
+function scoutingAsset(year) {
+  const version = SCOUTING_VERSIONS[String(year)];
+  if (!version) return Promise.resolve(null);
+  if (!_scoutingRequests.has(year)) {
+    _scoutingRequests.set(year,
+      loadDataScriptOnce('data/scouting/' + year + '.js?v=' + version)
+        .then(() => (window.__ELOCAST_SCOUTING__ || {})[year] || null)
+        .catch(() => { _scoutingRequests.delete(year); return null; }));
+  }
+  return _scoutingRequests.get(year);
+}
+function scoutingPercentile(v) { return Number.isFinite(v) ? Math.round(v) + 'th' : '—'; }
+function scoutingNumber(v) { return Number.isFinite(v) ? Number(v).toFixed(3) : '—'; }
+function scoutingTraitRow(metric, row, side) {
+  const pct = side === 'defense' ? row.defense_percentile : row.offense_percentile;
+  const raw = side === 'defense' ? row.raw_defense_allowed : row.raw_offense;
+  const adjusted = side === 'defense' ? row.adjusted_defense_allowed : row.adjusted_offense;
+  const label = (SCOUTING_TRAITS.find(x => x[0] === metric) || [metric, metric])[1];
+  const ratio = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 0;
+  return '<div class="tm-trait"><div class="tm-trait-top"><strong>' + esc(label) +
+    '</strong><span>' + scoutingPercentile(pct) + '</span></div>' +
+    '<div class="tm-track" role="img" aria-label="' + esc(label) + ': ' +
+    (Number.isFinite(pct) ? Math.round(pct) + 'th percentile' : 'percentile unavailable') +
+    '"><span style="width:' + ratio + '%"></span></div>' +
+    '<div class="tm-trait-note">Observed ' + scoutingNumber(raw) +
+    ' · Adjusted ' + scoutingNumber(adjusted) + '</div></div>';
+}
+function renderModernScouting(panel, team, bundle) {
+  if (!panel) return;
+  const record = bundle && bundle.teams && bundle.teams[String(team.id)];
+  if (!record || bundle.schema_version !== 'elocast-descriptive-v1') {
+    panel.innerHTML = '<h2 class="section-title">Opponent-adjusted scouting</h2><p class="empty-note">Verified scouting metrics are not available for this season.</p>';
+    return;
+  }
+  const metrics = record.metrics;
+  const views = ['offense', 'defense'];
+  const complete = SCOUTING_TRAITS.filter(([key]) => metrics[key] && metrics[key].status === 'rated').length;
+  const sample = metrics.rush_success_rate || metrics.success_rate;
+  const note = sample ? (sample.sample_games + ' games · ' + sample.distinct_opponents +
+    ' different opponents · ' + esc(sample.reliability)) : 'No eligible FBS game observations';
+  panel.innerHTML = '<h2 class="section-title">Opponent-adjusted scouting</h2>' +
+    '<p class="section-note">What this team has done against its FBS opponents · through ' +
+    esc(bundle.as_of_exclusive) + ' (date exclusive)</p>' +
+    '<div class="tm-scout-meta">' + note + ' · ' + complete + ' of 6 split traits rated</div>' +
+    '<div class="tm-scout-grid">' + views.map(side => '<div class="tm-scout-card">' +
+      '<h3>' + (side === 'offense' ? 'Offense' : 'Defense') + '</h3>' +
+      SCOUTING_TRAITS.map(([key]) => scoutingTraitRow(key, metrics[key] || {}, side)).join('') +
+      '</div>').join('') + '</div>' +
+    '<div class="tm-scout-foot">Higher percentiles mean stronger units. Defense measures lower opponent production allowed. ' +
+    'Rush/pass splits are weighted equally by game while eligible split-play denominators remain unavailable. ' +
+    'These are season-to-date descriptions, not projected scores or win probabilities.</div>';
+}
+function fillModernScouting(team) {
+  const panel = document.getElementById('tp-scouting');
+  if (!panel) return;
+  const year = latestSeasonFor(team.name);
+  const renderAt = renderVersion;
+  panel.innerHTML = '<h2 class="section-title">Opponent-adjusted scouting</h2><p class="empty-note">Loading verified FBS statistics…</p>';
+  scoutingAsset(year).then(bundle => {
+    if (renderAt !== renderVersion || !document.getElementById('tp-scouting')) return;
+    renderModernScouting(panel, team, bundle);
+  });
 }
 
 // ---------------- Detail-page tabs (Milestone E) ----------------
@@ -4998,6 +5071,7 @@ function hydrateTeamPage() {
     fillSchedulePanel(tp, team);
     fillSeasonHistoryPanel(tp, team);
     fillAnalyticsPanel(tp, team);
+    fillModernScouting(team);
     fillSwingPanels(tp, team);
     fillLedgerPanel(tp, team);
     fillHistoryPanel(tp, team);
