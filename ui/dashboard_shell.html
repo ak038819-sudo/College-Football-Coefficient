@@ -3937,6 +3937,8 @@ function renderTeamPage(param) {
   // overridden here until the full school-color catalog is audited.
   const verifiedProfileColors = { 'Utah': '#CC0000', 'Texas': '#BF5700', 'BYU': '#0057B8' };
   const profileColor = verifiedProfileColors[team.name] || TEAM_BRAND_COLORS[team.name] || '#304250';
+  // The body-level variable lets the whole page, including sibling sections, share the team palette.
+  document.body.style.setProperty('--team-page-color', profileColor);
   const header =
     '<div class="panel team-header" style="--team-profile-color:' + profileColor + '">' +
       '<div class="team-header-main">' + logoMarkup(team.name, 'team', 'lg', season || undefined) +
