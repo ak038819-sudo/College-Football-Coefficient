@@ -1,0 +1,170 @@
+"""Chronological, no-future-data validation of matchup metric point estimates.
+
+Intentionally standalone and read-only. Each evaluated date uses only games
+from earlier dates, with the same matchup model used for scouting. This
+estimates metric error, NOT game win probability or Elo predictive quality.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import sqlite3
+from collections import defaultdict
+from pathlib import Path
+
+try:
+    from src.build_matchup_intelligence import METRICS, load_observations
+    from src.matchup_intelligence import fit_profiles, project_matchup
+    from src.build_adjusted_stats import LAMBDA
+except ModuleNotFoundError:
+    from build_matchup_intelligence import METRICS, load_observations
+    from matchup_intelligence import fit_profiles, project_matchup
+    from build_adjusted_stats import LAMBDA
+
+
+def _scores(errors: list[float]) -> dict | None:
+    if not errors:
+        return None
+    return {
+        "n": len(errors),
+        "mae": sum(abs(e) for e in errors) / len(errors),
+        "rmse": math.sqrt(sum(e * e for e in errors) / len(errors)),
+    }
+
+
+def evaluate_walk_forward(
+    conn: sqlite3.Connection,
+    *,
+    season: int,
+    metric: str,
+    min_training_games: int = 4,
+    shrinkage: float = 2.0,
+    min_team_games: int = 3,
+) -> dict:
+    """Score only games strictly later than the data used for fitting.
+
+    Evaluates every offense team-game row independently. Two baselines:
+    national game-average and the same team's shrinkage-adjusted prior
+    offensive average. Never fits on the test date or later observations.
+    Teams lacking both offense and defensive profile coverage are excluded
+    from model error, but counted against forecast coverage.
+    """
+    if min_training_games < 1 or min_team_games < 1 or shrinkage < 0:
+        raise ValueError("Invalid training/reliability or shrinkage setting")
+    if metric not in METRICS:
+        raise ValueError(f"Unknown metric {metric}")
+    # First collect all eligible played games with a far-future cutoff.
+    # The adapter handles FBS identity, score completeness and missing values.
+    # We also get their recorded dates here for chronological grouping.
+    _rows, coverage = load_observations(
+        conn, season=season, as_of=f"{season + 2}-01-01", metric=metric)
+    column = METRICS[metric]
+    # Use the exact same eligibility conditions; retrieve dates by game/team
+    # via identity. Duplicate team-game values are skipped by the adapter.
+    dated = conn.execute(f"""
+        SELECT g.game_date, g.home_team_id, g.away_team_id,
+               a.team_id, a.{column}, g.game_id, g.neutral_site
+        FROM games g
+        JOIN game_team_advanced a ON a.game_id = g.game_id
+        JOIN team_membership_by_season mh
+          ON mh.team_id = g.home_team_id AND mh.season_year = g.season_year
+        JOIN team_membership_by_season ma
+          ON ma.team_id = g.away_team_id AND ma.season_year = g.season_year
+        WHERE g.season_year = ? AND mh.is_fbs = 1 AND ma.is_fbs = 1
+          AND g.home_score IS NOT NULL AND g.away_score IS NOT NULL
+          AND a.season_year = g.season_year AND a.{column} IS NOT NULL
+          AND a.team_id IN (g.home_team_id, g.away_team_id)
+        ORDER BY g.game_date, g.game_id, a.team_id
+    """, (season,)).fetchall()
+    # Match the adapter's chronological set, never using test game values
+    # as training input or allowing duplicates or invalid dates.
+    from datetime import date
+    by_day: dict[str, list[tuple[str, str, float]]] = defaultdict(list)
+    seen = set()
+    for day, home, away, team, value, game_id, neutral in dated:
+        if not day:
+            continue
+        try:
+            date_key = date.fromisoformat(str(day)[:10]).isoformat()
+        except ValueError:
+            continue
+        if date_key >= f"{season + 2}-01-01":
+            continue
+        key = (game_id, team)
+        if key in seen:
+            continue
+        seen.add(key)
+        by_day[date_key].append((
+            str(team), str(away if team == home else home), float(value),
+            0.0 if neutral else (0.5 if team == home else -0.5)))
+    model_errors, national_errors, team_errors = [], [], []
+    matched_national_errors, matched_team_errors = [], []
+    scored_dates = 0
+    considered = 0
+    # Refit once per calendar date; all games of the same day remain unseen.
+    for day in sorted(by_day):
+        training, _ = load_observations(
+            conn, season=season, as_of=day, metric=metric)
+        if len(training) < min_training_games:
+            continue
+        weighted = metric in LAMBDA and any(r.weight > 1 for r in training)
+        ridge = LAMBDA[metric] if weighted else shrinkage
+        grades, baseline = fit_profiles(training, shrinkage=ridge, min_games=min_team_games)
+        # Simple prior offense-only shrinkage baseline (not opponent-adjusted).
+        prior = defaultdict(list)
+        for r in training:
+            prior[r.team].append((r.value, r.weight))
+        for offense, defense, observed, venue_side in by_day[day]:
+            considered += 1
+            national_errors.append(observed - baseline)
+            prior_values = prior.get(offense, [])
+            total_w = sum(w for _, w in prior_values)
+            offensive_guess = ((sum(v * w for v, w in prior_values) + ridge * baseline)
+                               / (total_w + ridge))
+            team_errors.append(observed - offensive_guess)
+            if offense not in grades or defense not in grades:
+                continue
+            prediction = project_matchup(
+                grades, baseline, offense, defense,
+                venue_adjustment=grades[offense].home_effect * venue_side).projected_value
+            model_errors.append(observed - prediction)
+            matched_national_errors.append(observed - baseline)
+            matched_team_errors.append(observed - offensive_guess)
+        scored_dates += 1
+    return {
+        "season": season, "metric": metric, "model": "shared-adjusted-stats-solver",
+        "shrinkage": ridge if scored_dates else None, "min_team_games": min_team_games,
+        "method": "strict-prior-calendar-date",
+        "evaluation_dates": scored_dates, "considered_team_games": considered,
+        "model_coverage": (len(model_errors) / considered) if considered else 0,
+        "opponent_adjusted": _scores(model_errors),
+        "national_mean_baseline": _scores(national_errors),
+        "prior_team_offense_baseline": _scores(team_errors),
+        "matched_national_baseline": _scores(matched_national_errors),
+        "matched_team_offense_baseline": _scores(matched_team_errors),
+        "note": "Compare the model to matched baselines on identical observed team-games.",
+        "source_coverage": coverage,
+    }
+
+
+def main() -> None:
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--db", default="db/league.db")
+    p.add_argument("--season", type=int, required=True)
+    p.add_argument("--metric", choices=sorted(METRICS), required=True)
+    p.add_argument("--min-training-games", type=int, default=4)
+    p.add_argument("--min-team-games", type=int, default=3)
+    p.add_argument("--shrinkage", type=float, default=2.0)
+    args = p.parse_args()
+    db = Path(args.db).resolve()
+    with sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True) as conn:
+        report = evaluate_walk_forward(
+            conn, season=args.season, metric=args.metric,
+            min_training_games=args.min_training_games,
+            min_team_games=args.min_team_games, shrinkage=args.shrinkage)
+    print(json.dumps(report, indent=2, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()

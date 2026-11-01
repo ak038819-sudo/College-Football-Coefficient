@@ -27,6 +27,20 @@ CREATE TABLE IF NOT EXISTS game_team_advanced (
     def_success_rate   REAL,
     def_explosiveness  REAL,
 
+    -- Per-game rushing/passing splits. NULL means not reported, not zero.
+    off_rush_success_rate REAL,
+    off_rush_ppa REAL,
+    off_rush_explosiveness REAL,
+    off_pass_success_rate REAL,
+    off_pass_ppa REAL,
+    off_pass_explosiveness REAL,
+    def_rush_success_rate REAL,
+    def_rush_ppa REAL,
+    def_rush_explosiveness REAL,
+    def_pass_success_rate REAL,
+    def_pass_ppa REAL,
+    def_pass_explosiveness REAL,
+
     PRIMARY KEY (game_id, team_id),
     FOREIGN KEY (team_id) REFERENCES teams(team_id)
 );

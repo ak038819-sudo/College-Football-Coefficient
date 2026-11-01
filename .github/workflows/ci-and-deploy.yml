@@ -145,15 +145,71 @@ jobs:
       - name: Run tests
         run: pytest -v
 
+      # Draft PR #161: audit the real committed CFBD per-game data loaded above.
+      # PR runs never reach the production deployment job (main-only gate).
+      - name: Audit matchup data coverage (2025-2026)
+        if: github.event_name == 'pull_request'
+        run: |
+          python3 src/audit_matchup_coverage.py --db db/league.db --season 2025
+          python3 src/audit_matchup_coverage.py --db db/league.db --season 2026
+          python3 src/validate_matchup_intelligence.py --db db/league.db --season 2025 --metric success_rate
+          python3 src/validate_matchup_intelligence.py --db db/league.db --season 2026 --metric success_rate
+
+      # Research-only data artifact for the UI design handoff. Never published.
+      - name: Build offline scouting contract samples
+        if: github.event_name == 'pull_request'
+        run: |
+          mkdir -p /tmp/elocast-scouting
+          python3 src/export_matchup_scouting.py --db db/league.db --season 2025 --as-of 2025-11-01 --out /tmp/elocast-scouting/2025-weekly-snapshot.json
+          python3 src/export_matchup_scouting.py --db db/league.db --season 2026 --as-of 2026-10-31 --out /tmp/elocast-scouting/2026-weekly-snapshot.json
+
+      - name: Attach scouting research samples
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: matchup-scouting-contract
+          path: /tmp/elocast-scouting/*.json
+          retention-days: 7
+
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
+
+      - name: Generate verified descriptive scouting UI assets
+        if: github.event_name == 'pull_request'
+        run: |
+          python3 src/export_descriptive_site_assets.py --db db/league.db
+          python3 build_dashboard.py --reuse-exports
 
       - name: Test dashboard navigation and search
         run: |
           npm ci --ignore-scripts
           npm run check
           npm test
+
+      - name: Capture Modern responsive team-page screenshots
+        if: github.event_name == 'pull_request'
+        run: |
+          mkdir -p /tmp/elocast-visual-qa
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/elocast-visual-server.log 2>&1 &
+          CHROME=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)
+          test -n "$CHROME"
+          for width in 390 768 1280; do
+            for view in overview analytics; do
+              timeout 45 "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --window-size="${width},900" --virtual-time-budget=12000 --screenshot="/tmp/elocast-visual-qa/byu-${view}-${width}.png" "http://127.0.0.1:8765/ui/dashboard.html#team=byu&tab=${view}"
+              test -s "/tmp/elocast-visual-qa/byu-${view}-${width}.png"
+            done
+          done
+          timeout 60 "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --window-size="390,2200" --virtual-time-budget=12000 --screenshot="/tmp/elocast-visual-qa/byu-analytics-390-long.png" "http://127.0.0.1:8765/ui/dashboard.html#team=byu&tab=analytics"
+          test -s "/tmp/elocast-visual-qa/byu-analytics-390-long.png"
+      - name: Upload Modern visual QA screenshots
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: elocast-modern-team-browser-qa
+          path: /tmp/elocast-visual-qa/*.png
+          retention-days: 7
+          if-no-files-found: warn
 
   rebuild-and-deploy:
     needs: test

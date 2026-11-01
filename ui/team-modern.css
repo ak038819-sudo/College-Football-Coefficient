@@ -1,0 +1,173 @@
+/* Activate the Modern palette only while an actual team detail page exists.
+   This keeps Home, Stats, Standings and other pages on their existing theme. */
+body:has(.team-header) {
+  color-scheme: dark;
+  --bg: #071322;
+  --panel: #10223a;
+  --panel-2: #172d48;
+  --line: #294760;
+  --ink: #eef5ff;
+  --ink-dim: #b4c4d9;
+  --amber: #efb758;
+  --amber-dim: #6a532b;
+  --green-hl: #77dcb5;
+  --red-ink: #ff9999;
+  background: radial-gradient(ellipse at 60% -20%,#143156 0%,transparent 55%),#071322;
+  color: var(--ink);
+}
+body:has(.team-header) input,
+body:has(.team-header) select {
+  color-scheme: dark;
+}
+body:has(.team-header) .panel {
+  border-color: #294760;
+}
+
+/* Elocast The Modern — team-page-only visual system.
+   Existing content, rating data, routing and all eight tabs are unchanged.
+   Intentional selectors restrict effects to team detail pages. */
+:root {
+  --tm-deep: #091529;
+  --tm-card: #10233a;
+  --tm-raised: #132d4b;
+  --tm-edge: #2c4967;
+  --tm-text: #f0f6ff;
+  --tm-secondary: #aec3d9;
+  --tm-accent: #60b4ff;
+}
+.team-header.panel {
+  position: relative; isolation: isolate; overflow: hidden;
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  gap: clamp(17px, 2.8vw, 28px);
+  padding: clamp(19px, 3vw, 32px);
+  margin-bottom: 16px;
+  border: 1px solid #355c87;
+  border-radius: 17px;
+  background:
+    radial-gradient(ellipse at 85% -30%, rgba(76, 145, 227, .35), transparent 52%),
+    linear-gradient(145deg, #112a49 0%, #0b1e36 50%, #071628 100%);
+  box-shadow: 0 16px 40px rgba(2, 10, 22, .17);
+  color: var(--tm-text);
+}
+.team-header.panel::before {
+  content: ""; position: absolute; z-index: -1;
+  width: 61%; height: 83%; right: -4%; top: 0;
+  opacity: .24; pointer-events: none;
+  background: linear-gradient(155deg, transparent 0 22%, #366197 23% 42%, transparent 43%),
+    linear-gradient(145deg, transparent 0 34%, #5b8fc0 35% 47%, transparent 48%),
+    linear-gradient(120deg, transparent 0 47%, #2d5280 48% 65%, transparent 66%);
+  clip-path: polygon(0 100%, 17% 57%, 31% 78%, 55% 15%, 72% 64%, 85% 40%, 100% 77%, 100% 100%);
+}
+.team-header .team-header-main { flex: initial; align-items: center; gap: clamp(13px, 2.2vw, 22px); }
+.team-header .team-header-main > .logo-mark,
+.team-header .team-header-main > .monogram {
+  flex-shrink: 0;
+  filter: drop-shadow(0 6px 13px rgba(0, 8, 25, .35));
+}
+.team-header .team-title {
+  font-size: clamp(26px, 3.7vw, 42px);
+  line-height: 1.1; letter-spacing: -.015em; color: #fff;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px;
+}
+.team-header .team-title .fav-toggle { margin: 0; flex-shrink: 0; }
+.team-header .team-sub { flex-wrap: wrap; color: #bad2e9; font-size: 12px; }
+.team-header .team-sub a, .team-header .team-stadiums a { color: #f3bc63; }
+.team-header .team-stadiums { color: #c5d4e3; line-height: 1.55; }
+.team-header .team-stats {
+  flex: initial; width: 100%; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(8px, 1.5vw, 14px);
+}
+.team-header .team-stat {
+  min-width: 0; padding: 15px 17px; border: 1px solid #294564;
+  border-radius: 11px; background: rgba(8, 25, 44, .76);
+}
+.team-header .team-stat .lbl {
+  color: #b1c5d9; font-size: 11px; line-height: 1.45;
+  letter-spacing: .07em;
+}
+.team-header .team-stat .val { color: #f2bd67; font-size: clamp(21px, 3vw, 30px); overflow-wrap: anywhere; }
+.team-header .team-stat .sub { color: #b8c9da; line-height: 1.4; }
+.team-header .team-stat .elo-change.up { color: #78e9bd; }
+.team-header .team-stat .elo-change.down { color: #ffa4a4; }
+.team-header ~ .page-tabs {
+  display: flex; gap: 5px; overflow-x: auto; flex-wrap: nowrap;
+  overscroll-behavior-x: contain; scrollbar-width: thin;
+  border-bottom: 1px solid var(--line); margin: 0 0 20px;
+  padding: 0 2px 4px;
+}
+.team-header ~ .page-tabs a {
+  flex-shrink: 0; min-height: 44px; display: inline-flex;
+  align-items: center; padding: 9px 14px;
+  border-radius: 7px 7px 0 0; white-space: nowrap;
+  font-size: 13px; transition: background .16s ease;
+}
+.team-header ~ .page-tabs a[aria-current="page"] {
+  color: #f4c372; background: rgba(51, 112, 189, .13);
+  border-bottom-color: #4d9cf4;
+}
+.team-header ~ .page-tabs a:hover,
+.team-header ~ .page-tabs a:focus-visible { background: rgba(50, 109, 179, .19); }
+.team-header ~ .team-section,
+.team-header ~ .grid-2.team-section > .panel { border-radius: 12px; }
+@media(max-width: 800px) {
+  .team-header .team-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media(max-width: 520px) {
+  .team-header.panel { padding: 17px 14px; gap: 19px; border-radius: 12px; }
+  .team-header .team-header-main { align-items: flex-start; gap: 12px; min-width: 0; }
+  .team-header .team-title { font-size: clamp(22px, 6vw, 30px); }
+  .team-header .team-stat { padding: 12px 11px; }
+  .team-header .team-stat .val { font-size: clamp(20px, 5.3vw, 26px); }
+  .team-header .team-stat .lbl { font-size: 10px; }
+  .team-header ~ .page-tabs { margin-bottom: 15px; }
+  .team-header ~ .page-tabs a { padding: 10px 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .team-header ~ .page-tabs a { transition: none; }
+}
+
+/* Verified descriptive scouting, shared by team overview and Analytics. */
+#tp-scouting { border-radius: 14px; overflow: hidden; }
+.tm-scout-meta { color: var(--ink-dim); font: 12px var(--font-body); margin: 8px 0 16px; }
+.tm-scout-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+.tm-scout-card { padding: clamp(14px,2vw,22px); border-radius: 12px;
+  background: linear-gradient(155deg,#142d4c,#0c1e35); color: #eaf4ff;
+  border: 1px solid #2c5176; min-width: 0; }
+.tm-scout-card h3 { font: 700 18px var(--font-display); color: #fff; margin: 0 0 14px; }
+.tm-trait { margin: 0 0 17px; }
+.tm-trait:last-child { margin-bottom: 0; }
+.tm-trait-top { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.tm-trait-top span { color: #8de0ff; font: 700 13px var(--font-mono); }
+.tm-track { height: 9px; border-radius: 20px; background: #243b57; overflow: hidden; margin-top: 7px; }
+.tm-track span { display:block; height:100%; background: linear-gradient(90deg,#337be0,#62c9e3);
+  border-radius:inherit; }
+.tm-trait-note { color: #aebed2; font: 11px/1.4 var(--font-mono); margin-top: 6px; }
+.tm-scout-foot { color: var(--ink-dim); font: 12px/1.55 var(--font-body); margin-top: 15px; }
+@media(max-width:650px) {
+  .tm-scout-grid { grid-template-columns: 1fr; }
+  .tm-scout-card { padding: 14px; }
+}
+
+.tm-match-compare { margin-top: 20px; padding: clamp(14px,2vw,22px);
+  border: 1px solid #355e8f; border-radius: 12px;
+  background: linear-gradient(125deg,#10284a,#0a1c34); color: #eaf3ff; }
+.tm-match-compare h3 { margin: 0 0 4px; color: #fff; font: 700 19px var(--font-display); }
+.tm-match-compare label { display: block; margin: 14px 0 6px; font-size: 13px; }
+.tm-match-compare select { width: min(100%,440px); min-height: 44px; border: 1px solid #5982ae;
+  border-radius: 8px; color: #fff; background: #17365a; padding: 10px; font: inherit; }
+.tm-match-compare select:focus-visible { outline: 2px solid #83ccff; outline-offset: 3px; }
+#tm-opponent-result { margin-top: 14px; }
+.tm-compare-overflow { max-width: 100%; overflow-x: auto; }
+.tm-compare-overflow table { min-width: 445px; width: 100%; border-collapse: collapse; color: #eaf3ff; }
+.tm-compare-overflow th, .tm-compare-overflow td { padding: 9px 11px; border-bottom: 1px solid #35516f;
+  text-align: left; font-size: 12px; }
+.tm-compare-overflow thead th { color: #abd3f4; }
+
+/* Radar overview reads only verified percentages; the rows beneath carry exact values. */
+.tm-radar-wrap { display: flex; justify-content: center; padding: 2px 0 16px; }
+.tm-radar { width: min(100%, 430px); height: auto; overflow: visible; }
+.tm-radar-grid { fill: none; stroke: #53779c; stroke-width: 1; opacity: .65; }
+.tm-radar-axis { stroke: #426587; stroke-width: 1; }
+.tm-radar-shape { fill: rgba(43, 124, 242, .38); stroke: #80cdff; stroke-width: 2.8; }
+.tm-radar text { fill: var(--ink); font: 10px var(--font-body); }
+@media(max-width:400px){ .tm-radar text{ font-size: 9px; } }

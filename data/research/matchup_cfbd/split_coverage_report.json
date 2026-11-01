@@ -1,0 +1,120 @@
+[
+  {
+    "distinct_games": 1658,
+    "games_with_at_least_two_sides": 1658,
+    "note": "Source-only counts. Canonical FBS membership and dates are audited after staging into a scratch SQLite database.",
+    "season": 2025,
+    "source": "cfbd_stats_game_advanced",
+    "split_metrics": {
+      "def_pass_explosiveness": {
+        "games_with_at_least_two_sides": 1658,
+        "team_games_reported": 3316
+      },
+      "def_pass_ppa": {
+        "games_with_at_least_two_sides": 1658,
+        "team_games_reported": 3316
+      },
+      "def_pass_success_rate": {
+        "games_with_at_least_two_sides": 1658,
+        "team_games_reported": 3316
+      },
+      "def_rush_explosiveness": {
+        "games_with_at_least_two_sides": 1658,
+        "team_games_reported": 3316
+      },
+      "def_rush_ppa": {
+        "games_with_at_least_two_sides": 1658,
+        "team_games_reported": 3316
+      },
+      "def_rush_success_rate": {
+        "games_with_at_least_two_sides": 1658,
+        "team_games_reported": 3316
+      },
+      "off_pass_explosiveness": {
+        "games_with_at_least_two_sides": 1658,
+        "team_games_reported": 3316
+      },
+      "off_pass_ppa": {
+        "games_with_at_least_two_sides": 1658,
+        "team_games_reported": 3316
+      },
+      "off_pass_success_rate": {
+        "games_with_at_least_two_sides": 1658,
+        "team_games_reported": 3316
+      },
+      "off_rush_explosiveness": {
+        "games_with_at_least_two_sides": 1658,
+        "team_games_reported": 3316
+      },
+      "off_rush_ppa": {
+        "games_with_at_least_two_sides": 1658,
+        "team_games_reported": 3316
+      },
+      "off_rush_success_rate": {
+        "games_with_at_least_two_sides": 1658,
+        "team_games_reported": 3316
+      }
+    },
+    "status": "staged_for_review",
+    "team_game_rows": 3316
+  },
+  {
+    "distinct_games": 1135,
+    "games_with_at_least_two_sides": 1135,
+    "note": "Source-only counts. Canonical FBS membership and dates are audited after staging into a scratch SQLite database.",
+    "season": 2026,
+    "source": "cfbd_stats_game_advanced",
+    "split_metrics": {
+      "def_pass_explosiveness": {
+        "games_with_at_least_two_sides": 1135,
+        "team_games_reported": 2270
+      },
+      "def_pass_ppa": {
+        "games_with_at_least_two_sides": 1135,
+        "team_games_reported": 2270
+      },
+      "def_pass_success_rate": {
+        "games_with_at_least_two_sides": 1135,
+        "team_games_reported": 2270
+      },
+      "def_rush_explosiveness": {
+        "games_with_at_least_two_sides": 1135,
+        "team_games_reported": 2270
+      },
+      "def_rush_ppa": {
+        "games_with_at_least_two_sides": 1135,
+        "team_games_reported": 2270
+      },
+      "def_rush_success_rate": {
+        "games_with_at_least_two_sides": 1135,
+        "team_games_reported": 2270
+      },
+      "off_pass_explosiveness": {
+        "games_with_at_least_two_sides": 1135,
+        "team_games_reported": 2270
+      },
+      "off_pass_ppa": {
+        "games_with_at_least_two_sides": 1135,
+        "team_games_reported": 2270
+      },
+      "off_pass_success_rate": {
+        "games_with_at_least_two_sides": 1135,
+        "team_games_reported": 2270
+      },
+      "off_rush_explosiveness": {
+        "games_with_at_least_two_sides": 1135,
+        "team_games_reported": 2270
+      },
+      "off_rush_ppa": {
+        "games_with_at_least_two_sides": 1135,
+        "team_games_reported": 2270
+      },
+      "off_rush_success_rate": {
+        "games_with_at_least_two_sides": 1135,
+        "team_games_reported": 2270
+      }
+    },
+    "status": "staged_for_review",
+    "team_game_rows": 2270
+  }
+]
