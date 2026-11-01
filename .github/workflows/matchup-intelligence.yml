@@ -10,6 +10,7 @@ on:
       - 'src/export_matchup_scouting.py'
       - 'src/stage_matchup_backfill.py'
       - 'src/check_matchup_data_readiness.py'
+      - 'src/calibrate_matchup_splits.py'
       - 'src/fetch_cfbd_game_advanced.py'
       - 'src/load_game_advanced.py'
       - 'sql/game_advanced_tables.sql'
@@ -22,6 +23,7 @@ on:
       - 'tests/test_export_matchup_scouting.py'
       - 'tests/test_stage_matchup_backfill.py'
       - 'tests/test_matchup_data_readiness.py'
+      - 'tests/test_calibrate_matchup_splits.py'
       - 'src/build_adjusted_stats.py'
       - '.github/workflows/matchup-intelligence.yml'
   workflow_dispatch:
@@ -51,4 +53,55 @@ jobs:
             tests/test_matchup_shared_solver.py \
             tests/test_export_matchup_scouting.py \
             tests/test_stage_matchup_backfill.py \
-            tests/test_matchup_data_readiness.py
+            tests/test_matchup_data_readiness.py \
+            tests/test_calibrate_matchup_splits.py
+
+  # One-off offline calibration of already-staged evidence, NEVER refetch CFBD.
+  # The source artifact expires; remove this job after recording its results.
+  calibrate-staged:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feature/matchup-intelligence-foundation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Retrieve previously verified CFBD evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/matchup-source"
+          gh run download 41255752882 --name matchup-cfbd-staged-2025-2026 --dir "$RUNNER_TEMP/matchup-source"
+          test -s "$RUNNER_TEMP/matchup-source/game_advanced_2025.csv"
+          test -s "$RUNNER_TEMP/matchup-source/game_advanced_2026.csv"
+      - name: Build disposable season database
+        run: |
+          python src/bootstrap_league_db.py --backup db/league_backup_before_playoff_migration.db --out db/league.db
+          for year in 2025 2026; do
+            python src/load_games.py "data/raw/games_${year}.csv"
+          done
+          python src/patch_known_membership_gaps.py --db db/league.db
+          python src/load_membership_snapshot.py data/raw/membership_2026.csv --db db/league.db --year 2026
+          for year in 2025 2026; do
+            python src/load_game_advanced.py "$RUNNER_TEMP/matchup-source/game_advanced_${year}.csv" --db db/league.db
+          done
+          python src/check_matchup_data_readiness.py --db db/league.db --season 2025 --season 2026 > "$RUNNER_TEMP/coverage_gate.json"
+      - name: Tune on 2025, evaluate 2026 untouched
+        run: |
+          python src/calibrate_matchup_splits.py --db db/league.db --training 2025 --holdout 2026 --out "$RUNNER_TEMP/calibrated_holdout_report.json"
+      - name: Attach evaluation-only report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: matchup-calibrated-holdout
+          path: |
+            ${{ runner.temp }}/coverage_gate.json
+            ${{ runner.temp }}/calibrated_holdout_report.json
+          retention-days: 7
