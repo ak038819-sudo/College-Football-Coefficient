@@ -101,7 +101,7 @@ jobs:
         run: |
           git fetch origin main
           UPSTREAM=$(git rev-parse origin/main)
-          if [ "$UPSTREAM" != "f6358a92e11a43809bf9b6e8da65f4f4e7016d15" ]; then
+          if [ "$UPSTREAM" != "68ea4e2943fcda2146295c57c030eb0cff66b0c9" ]; then
             echo "::error::main changed since the reviewed overlap audit"
             exit 1
           fi
