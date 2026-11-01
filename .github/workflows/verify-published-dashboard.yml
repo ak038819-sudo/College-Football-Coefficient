@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   verify-public-pages:
@@ -61,3 +62,26 @@ jobs:
             /tmp/published-modern.css
           retention-days: 2
           if-no-files-found: warn
+
+      - name: Post published-file diagnosis to existing pipeline alert
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          API="https://api.github.com/repos/$GITHUB_REPOSITORY/pages"
+          PAGE_INFO=$(curl -sSL -H "Accept: application/vnd.github+json" "$API" || true)
+          python3 -c 'import json,os; from pathlib import Path; src=os.getenv("PAGE_INFO",""); p=Path("/tmp/pages-settings.json"); p.write_text(src)' || true
+          {
+            echo "Published-site verification for commit \`$GITHUB_SHA\`:"
+            echo ""
+            echo 'GitHub Pages configuration:'
+            echo '~~~json'
+            echo "$PAGE_INFO" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps({k:d.get(k) for k in ("status","html_url","source","build_type","public")},indent=2))' || true
+            echo '~~~'
+            echo "Published dashboard bytes: $(wc -c </tmp/published-dashboard.html 2>/dev/null || echo absent)"
+            echo "Published Modern CSS bytes: $(wc -c </tmp/published-modern.css 2>/dev/null || echo absent)"
+            echo "Modern stylesheet linked in public HTML: $(grep -q 'team-modern.css?v=' /tmp/published-dashboard.html && echo YES || echo NO)"
+            echo "Modern radar present in public HTML: $(grep -q 'renderModernRadar' /tmp/published-dashboard.html && echo YES || echo NO)"
+            echo "URL: https://ak038819-sudo.github.io/College-Football-Coefficient/ui/dashboard.html"
+          } > /tmp/elocast-public-report.md
+          gh issue comment 163 --repo "$GITHUB_REPOSITORY" --body-file /tmp/elocast-public-report.md
