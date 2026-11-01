@@ -9,7 +9,7 @@ import argparse
 import hashlib
 import json
 import sqlite3
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 try:
     from src.load_game_advanced import load_game_advanced
@@ -43,8 +43,29 @@ def export(db_path: str, output: str = "ui/data/scouting", as_of: str | None = N
         versions = {}
         for year in SEASONS:
             # Source is season-scoped; never label a future game as observed.
-            cutoff = as_of if year == max(SEASONS) and as_of else f"{year + 1}-01-01"
-            date.fromisoformat(cutoff)
+            captured = scratch.execute(
+                """SELECT MAX(SUBSTR(g.game_date,1,10)) FROM games g
+                   JOIN game_team_advanced a ON a.game_id=g.game_id
+                   JOIN team_membership_by_season mh
+                     ON mh.team_id=g.home_team_id AND mh.season_year=g.season_year
+                   JOIN team_membership_by_season ma
+                     ON ma.team_id=g.away_team_id AND ma.season_year=g.season_year
+                   WHERE g.season_year=? AND mh.is_fbs=1 AND ma.is_fbs=1
+                     AND g.home_score IS NOT NULL AND g.away_score IS NOT NULL
+                     AND a.off_rush_success_rate IS NOT NULL""", (year,)
+            ).fetchone()[0]
+            if not captured:
+                raise ValueError(f"{year}: no completed source-covered FBS games")
+            # Strict earlier-date filtering: cutoff is the day AFTER the last
+            # source-covered completed matchup. Never imply future coverage.
+            source_cutoff = (date.fromisoformat(captured) + timedelta(days=1)).isoformat()
+            if as_of and year == max(SEASONS):
+                requested = date.fromisoformat(as_of)
+                if requested > date.fromisoformat(source_cutoff):
+                    raise ValueError("Requested scouting cutoff exceeds archived coverage")
+                cutoff = as_of
+            else:
+                cutoff = source_cutoff
             data = build_descriptive_contract(scratch, season=year, as_of=cutoff)
             validation = verify_contract(data)
             if not validation["passed"] or validation["rated_team_metric_pairs"] < 1:
