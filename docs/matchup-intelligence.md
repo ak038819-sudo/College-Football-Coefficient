@@ -223,3 +223,26 @@ rush/pass profile cards must show unavailable and be excluded from production.
 - Calibrate uncertainty or suppress confidence language entirely.
 - Check latest repository-wide CI and export artifacts. Do not merge/deploy
   until the UI and integration tests are also completed.
+
+
+## Safe research backfill, prior to UI work
+
+A new manual-only script stages refreshed CFBD per-game advanced files
+**outside** the committed `data/raw` directory:
+
+```bash
+CFBD_API_KEY=... python src/stage_matchup_backfill.py 2025 2026 --out-dir /tmp/elocast-split-staging
+```
+
+It writes CSVs with the new rushing/passing columns plus
+`split_coverage_report.json`, distinguishing reported metrics, truly zero
+values and missing fields. Incomplete or failed fetches are flagged.
+**Nothing is automatically promoted, merged, or deployed.** The next
+verification is to load staged files into a disposable DB and compare
+canonical FBS pairing and date coverage against the report before replacing
+any raw dataset.
+
+This script needs the existing repository CFBD key available in its
+invocation environment. The GitHub connector available for this task does
+not expose that key or a safe workflow-dispatch action, so no historical
+split-data backfill has actually been run by this PR.
