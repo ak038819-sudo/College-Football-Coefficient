@@ -171,3 +171,26 @@ body:has(.team-header) .panel {
 .tm-radar-shape { fill: rgba(43, 124, 242, .38); stroke: #80cdff; stroke-width: 2.8; }
 .tm-radar text { fill: var(--ink); font: 10px var(--font-body); }
 @media(max-width:400px){ .tm-radar text{ font-size: 9px; } }
+
+
+/* The shared identity registry drives every team profile, rather than
+   the same blue visual treatment across all programs. color-mix keeps
+   vibrant school colors legible against Elocast's dark surfaces. */
+.team-header.panel {
+  border-color: color-mix(in srgb, var(--team-profile-color, #304250) 65%, #a7bdd3);
+  background:
+    radial-gradient(ellipse at 82% -30%, color-mix(in srgb, var(--team-profile-color, #304250) 75%, transparent), transparent 56%),
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--team-profile-color, #304250) 52%, #081322) 0%,
+      color-mix(in srgb, var(--team-profile-color, #304250) 28%, #081322) 54%,
+      #081322 100%);
+}
+.team-header.panel::before {
+  background:
+    linear-gradient(155deg, transparent 0 22%, color-mix(in srgb, var(--team-profile-color, #304250) 65%, #8ca4bf) 23% 42%, transparent 43%),
+    linear-gradient(145deg, transparent 0 34%, color-mix(in srgb, var(--team-profile-color, #304250) 55%, #e2e8f0) 35% 47%, transparent 48%),
+    linear-gradient(120deg, transparent 0 47%, color-mix(in srgb, var(--team-profile-color, #304250) 75%, #596e86) 48% 65%, transparent 66%);
+}
+.team-header .team-stat {
+  border-color: color-mix(in srgb, var(--team-profile-color, #304250) 36%, #294564);
+}

@@ -3933,8 +3933,12 @@ function renderTeamPage(param) {
   const unrated = season ? ((DATA.non_fbs_records_by_year || {})[season] || {})[team.id] : null;
   const { value: recStr, note: recNote } = teamHeaderRecord(rec, unrated);
 
+  // Use the shared team-brand registry; only explicitly verified colors are
+  // overridden here until the full school-color catalog is audited.
+  const verifiedProfileColors = { 'Utah': '#CC0000', 'Texas': '#BF5700', 'BYU': '#0057B8' };
+  const profileColor = verifiedProfileColors[team.name] || TEAM_BRAND_COLORS[team.name] || '#304250';
   const header =
-    '<div class="panel team-header">' +
+    '<div class="panel team-header" style="--team-profile-color:' + profileColor + '">' +
       '<div class="team-header-main">' + logoMarkup(team.name, 'team', 'lg', season || undefined) +
         '<div class="team-header-text"><h1 class="team-title">' + team.name + favButton(team) + '</h1>' +
         '<div class="team-sub">' +
