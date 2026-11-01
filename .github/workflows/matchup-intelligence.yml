@@ -19,6 +19,7 @@ on:
       - 'src/run_matchup_graph_outlier_audit.py'
       - 'src/matchup_metric_exposure.py'
       - 'src/export_matchup_descriptive.py'
+      - 'src/validate_matchup_descriptive_contract.py'
       - 'src/fetch_cfbd_game_advanced.py'
       - 'src/load_game_advanced.py'
       - 'sql/game_advanced_tables.sql'
@@ -39,6 +40,7 @@ on:
       - 'tests/test_audit_matchup_graph_outliers.py'
       - 'tests/test_matchup_metric_exposure.py'
       - 'tests/test_export_matchup_descriptive.py'
+      - 'tests/test_validate_matchup_descriptive_contract.py'
       - 'src/build_adjusted_stats.py'
       - '.github/workflows/matchup-intelligence.yml'
   workflow_dispatch:
@@ -76,4 +78,48 @@ jobs:
             tests/test_analyze_matchup_percentile_stability.py \
             tests/test_audit_matchup_graph_outliers.py \
             tests/test_matchup_metric_exposure.py \
-            tests/test_export_matchup_descriptive.py
+            tests/test_export_matchup_descriptive.py \
+            tests/test_validate_matchup_descriptive_contract.py
+
+  # One-time real-data verification, using archived 2025-2026 split source.
+  # No CFBD calls, production raw writes, site publishing or main deployment.
+  descriptive-contract-research:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feature/matchup-intelligence-foundation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Restore FBS games and verified split source in disposable database
+        run: |
+          python src/bootstrap_league_db.py --backup db/league_backup_before_playoff_migration.db --out db/league.db
+          for year in 2025 2026; do python src/load_games.py "data/raw/games_${year}.csv"; done
+          python src/patch_known_membership_gaps.py --db db/league.db
+          python src/load_membership_snapshot.py data/raw/membership_2026.csv --db db/league.db --year 2026
+          for year in 2025 2026; do
+            python src/load_game_advanced.py "data/research/matchup_cfbd/game_advanced_${year}.csv" --db db/league.db
+          done
+          python src/check_matchup_data_readiness.py --db db/league.db --season 2025 --season 2026 > "$RUNNER_TEMP/hand_off_source_gate.json"
+      - name: Export and validate complete descriptive-only research contracts
+        run: |
+          python src/export_matchup_descriptive.py --db db/league.db --season 2025 --as-of 2025-12-31 --out "$RUNNER_TEMP/descriptive-2025.json"
+          python src/export_matchup_descriptive.py --db db/league.db --season 2026 --as-of 2026-10-31 --out "$RUNNER_TEMP/descriptive-2026.json"
+          python src/validate_matchup_descriptive_contract.py "$RUNNER_TEMP/descriptive-2025.json"
+          python src/validate_matchup_descriptive_contract.py "$RUNNER_TEMP/descriptive-2026.json"
+      - name: Attach backend-to-UI handoff samples
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: elocast-descriptive-ui-handoff
+          path: |
+            ${{ runner.temp }}/hand_off_source_gate.json
+            ${{ runner.temp }}/descriptive-2025.json
+            ${{ runner.temp }}/descriptive-2026.json
+          retention-days: 7
