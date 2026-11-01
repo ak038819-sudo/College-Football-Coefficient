@@ -85,7 +85,9 @@ jobs:
           done
           python src/patch_known_membership_gaps.py --db db/league.db
           for year in 2025 2026; do
-            python src/load_membership_snapshot.py "data/raw/membership_${year}.csv" --db db/league.db --year "${year}"
+            if [ -f "data/raw/membership_${year}.csv" ]; then
+              python src/load_membership_snapshot.py "data/raw/membership_${year}.csv" --db db/league.db --year "${year}"
+            fi
             python src/load_game_advanced.py "$RUNNER_TEMP/elocast-matchup-stage/game_advanced_${year}.csv" --db db/league.db
             python src/audit_matchup_coverage.py --db db/league.db --season "${year}" --output "$RUNNER_TEMP/elocast-matchup-stage/fbs_audit_${year}.json"
           done
