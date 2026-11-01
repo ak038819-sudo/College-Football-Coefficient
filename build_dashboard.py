@@ -93,7 +93,11 @@ def render_from_exports() -> None:
     version = hashlib.sha256(TEAM_MODERN_CSS_PATH.read_bytes()).hexdigest()[:12]
     style_link = f'<link rel="stylesheet" href="team-modern.css?v={version}">'
     final = final.replace("</head>", style_link + "\n</head>", 1)
-    versions = {p.stem: hashlib.sha256(p.read_bytes()).hexdigest()[:12]\n                for p in SCOUTING_PATH.glob("*.js")} if SCOUTING_PATH.exists() else {}\n    final = final.replace("__SCOUTING_VERSIONS__", __import__("json").dumps(versions))\n    OUT_PATH.write_text(final, encoding="utf-8")
+    versions = ({p.stem: hashlib.sha256(p.read_bytes()).hexdigest()[:12]
+                 for p in SCOUTING_PATH.glob("*.js")}
+                if SCOUTING_PATH.exists() else {})
+    final = final.replace("__SCOUTING_VERSIONS__", __import__("json").dumps(versions))
+    OUT_PATH.write_text(final, encoding="utf-8")
     print(f"\nBuilt {OUT_PATH} ({OUT_PATH.stat().st_size:,} bytes)")
 
 
