@@ -222,7 +222,7 @@ test('activate deletes this project\'s older caches and nothing else',async()=>{
 });
 
 // What a real dashboard.html hands the worker on install.
-const PAGE='<html><head></head><body><script src="geography.js?v=aaaaaaaaaa"></script>'+
+const PAGE='<html><head><link rel="stylesheet" href="team-modern.css?v=cccccccccc"></head><body><script src="geography.js?v=aaaaaaaaaa"></script>'+
   '<script src="navigation.js?v=bbbbbbbbbb"></script>'+
   '<script src="https://cdn.example.com/other.js"></script><script>inline()</script></body></html>';
 
@@ -246,6 +246,7 @@ test('install also takes the scripts the dashboard cannot render without',async 
   const assets=w.caches.store.get(ASSET_CACHE_NAME(w));
   assert.ok(await assets.match({url:u('/ui/geography.js?v=aaaaaaaaaa')}),'geography.js was not precached');
   assert.ok(await assets.match({url:u('/ui/navigation.js?v=bbbbbbbbbb')}),'navigation.js was not precached');
+  assert.ok(await assets.match({url:u('/ui/team-modern.css?v=cccccccccc')}),'team styling was not precached');
   const cached=[...w.caches.store.values()].flatMap(c=>[...c.entries.keys()]);
   assert.ok(!cached.some(url=>url.includes('cdn.example.com')),
     'a cross-origin script cannot be cached without CORS and must not be attempted');
@@ -256,6 +257,8 @@ test('install also takes the scripts the dashboard cannot render without',async 
     assert.equal(page.body,PAGE);
     const script=await w.respond(makeRequest(u('/ui/navigation.js?v=bbbbbbbbbb')));
     assert.equal(script.body,'ok','the page would reach an undefined CfbNavigation');
+    const style=await w.respond(makeRequest(u('/ui/team-modern.css?v=cccccccccc')));
+    assert.equal(style.body,'ok','offline team page must retain Modern styling');
   });
 });
 
