@@ -279,3 +279,42 @@ and a complete CI pass.
 until the necessary source and validation gates have reported actual
 satisfactory results. Pending work is explicitly a data-quality blocker,
 not a cosmetic task.
+
+
+## Per-metric calibration and early-season reliability (research)
+
+A training-only selection tool, `src/calibrate_matchup_splits.py`, evaluates
+rush/pass success-rate, PPA, and explosiveness independently across
+regularization strengths 0.5, 2, 8 and 24 on **2025**, then scores the
+chosen configuration **once** on untouched **2026**. Selection cannot use
+2026 errors. If all candidates fail the training coverage threshold or
+fail to improve the matched prior-offense baseline by at least 0.2%,
+the metric explicitly falls back to the baseline policy rather than
+being automatically promoted.
+
+The experimental model uses the established
+`build_adjusted_stats.solve()` routine; only split-specific ridge
+strengths change. The current objective remains raw-scale metric MAE,
+which can be inappropriate for unstable explosiveness tails. If
+explosiveness continues to underperform, do not force adjustment into
+production; assess robust prediction losses and alternative variance
+models on a **new** strictly chronological training window.
+
+Early-season scouting profiles now expose `distinct_opponents` and
+`reliability`. The descriptive reliability tiers are:
+- insufficient: fewer than 3 games or 3 distinct opponents
+- provisional: fewer than 5 games or 5 distinct opponents
+- developing: fewer than 8 games or 7 distinct opponents
+- established: otherwise
+
+These are transparent sample-adequacy labels, **not statistical
+confidence levels or calibrated error bars**. Opponent graph connectivity
+and predictive uncertainty need separate work before a numeric confidence
+score or an estimated range can be trusted. A grade's percentile should
+never be interpreted as a win probability.
+
+A one-off CI job `calibrate-staged` downloads the previously verified
+CFBD Actions artifact, builds a disposable database and runs the train/holdout
+procedure. No CFBD API request or production CSV change is involved.
+Remove the job after extracting the evaluation artifact so it does not
+repeat computation or depend on an expiring source artifact.
