@@ -313,6 +313,27 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    const profile=d.querySelector('#people-results a');assert.ok(decodeURIComponent(profile.href).includes('q=Saban'));
    assert.equal(d.querySelector('#people-kind').value,'coach');
   });
+  await t.test('Modern team scouting uses the verified season asset and compares opposing units',async()=>{
+   await route('#team=byu&tab=analytics',()=>d.querySelector('#tp-scouting'));
+   await until(w,()=>d.querySelector('#tm-opponent') || /not available for this season/i.test(d.querySelector('#tp-scouting')?.textContent||''));
+   const panel=d.querySelector('#tp-scouting');
+   const select=d.querySelector('#tm-opponent');
+   assert.ok(select,'2026 authenticated scouting asset must be available in the PR test build');
+   assert.equal(d.querySelectorAll('.tm-scout-card').length,2);
+   assert.match(panel.textContent,/Rush success/);
+   assert.match(panel.textContent,/Observed/);
+   assert.match(panel.textContent,/denominators remain unavailable/);
+   assert.match(panel.textContent,/date exclusive/);
+   const option=[...select.options].find(x=>x.value);
+   assert.ok(option);
+   change('tm-opponent',option.value);
+   assert.ok(d.querySelectorAll('#tm-opponent-result tbody tr').length>=6);
+   assert.match(d.querySelector('#tm-opponent-result').textContent,/defense/);
+   assert.doesNotMatch(panel.textContent,/\bwin probability\s*:\s*\d/i);
+   await route('#team=byu&tab=overview',()=>d.querySelector('#tp-scouting'));
+   await until(w,()=>d.querySelector('#tm-opponent'));
+   assert.ok(d.querySelector('.team-header .team-stats'),'original team header remains');
+  });
   await t.test('Team statistics, leaders, roster sorting and chart ranges work',async()=>{
    await route('#team=byu&tab=stats',()=>d.querySelector('#tp-statistics tbody tr'));
    assert.ok(d.querySelector('#tp-statistics').textContent.includes('Games'));
