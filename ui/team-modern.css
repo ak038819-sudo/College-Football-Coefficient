@@ -100,3 +100,25 @@
 @media (prefers-reduced-motion: reduce) {
   .team-header ~ .page-tabs a { transition: none; }
 }
+
+/* Verified descriptive scouting, shared by team overview and Analytics. */
+#tp-scouting { border-radius: 14px; overflow: hidden; }
+.tm-scout-meta { color: var(--ink-dim); font: 12px var(--font-body); margin: 8px 0 16px; }
+.tm-scout-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+.tm-scout-card { padding: clamp(14px,2vw,22px); border-radius: 12px;
+  background: linear-gradient(155deg,#142d4c,#0c1e35); color: #eaf4ff;
+  border: 1px solid #2c5176; min-width: 0; }
+.tm-scout-card h3 { font: 700 18px var(--font-display); color: #fff; margin: 0 0 14px; }
+.tm-trait { margin: 0 0 17px; }
+.tm-trait:last-child { margin-bottom: 0; }
+.tm-trait-top { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.tm-trait-top span { color: #8de0ff; font: 700 13px var(--font-mono); }
+.tm-track { height: 9px; border-radius: 20px; background: #243b57; overflow: hidden; margin-top: 7px; }
+.tm-track span { display:block; height:100%; background: linear-gradient(90deg,#337be0,#62c9e3);
+  border-radius:inherit; }
+.tm-trait-note { color: #aebed2; font: 11px/1.4 var(--font-mono); margin-top: 6px; }
+.tm-scout-foot { color: var(--ink-dim); font: 12px/1.55 var(--font-body); margin-top: 15px; }
+@media(max-width:650px) {
+  .tm-scout-grid { grid-template-columns: 1fr; }
+  .tm-scout-card { padding: 14px; }
+}
