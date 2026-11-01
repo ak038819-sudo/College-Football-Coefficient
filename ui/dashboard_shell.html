@@ -4012,6 +4012,38 @@ function scoutingTraitRow(metric, row, side) {
     '<div class="tm-trait-note">Observed ' + scoutingNumber(raw) +
     ' · Adjusted ' + scoutingNumber(adjusted) + '</div></div>';
 }
+function renderModernRadar(metrics) {
+  const percentiles = SCOUTING_TRAITS.map(([key]) => metrics[key] && metrics[key].offense_percentile);
+  if (!percentiles.every(Number.isFinite)) {
+    return '<p class="tm-scout-foot">A full six-trait radar needs all six rated metrics. Available measurements remain listed below.</p>';
+  }
+  const cx = 170, cy = 155, r = 100;
+  const point = (i, ratio) => {
+    const angle = Math.PI * i / 3 - Math.PI / 2;
+    return [cx + Math.cos(angle) * r * ratio, cy + Math.sin(angle) * r * ratio];
+  };
+  const polygon = ratios => ratios.map((ratio, i) => point(i, ratio).map(v => v.toFixed(1)).join(',')).join(' ');
+  const layers = [0.25, 0.5, 0.75, 1].map(ratio =>
+    '<polygon class="tm-radar-grid" points="' + polygon(Array(6).fill(ratio)) + '"/>').join('');
+  const axes = percentiles.map((_, i) => {
+    const [x, y] = point(i, 1);
+    return '<line class="tm-radar-axis" x1="' + cx + '" y1="' + cy +
+      '" x2="' + x.toFixed(1) + '" y2="' + y.toFixed(1) + '"/>';
+  }).join('');
+  const polygonShape = '<polygon class="tm-radar-shape" points="' +
+    polygon(percentiles.map(v => v / 100)) + '"/>';
+  const labels = SCOUTING_TRAITS.map(([key, title], i) => {
+    const [x, y] = point(i, 1.34);
+    const short = title.replace('explosiveness', 'explosive');
+    return '<text x="' + x.toFixed(1) + '" y="' + y.toFixed(1) +
+      '" text-anchor="middle">' + esc(short) + '</text>';
+  }).join('');
+  const desc = SCOUTING_TRAITS.map(([key, title], i) =>
+    title + ' ' + Math.round(percentiles[i]) + 'th percentile').join(', ');
+  return '<div class="tm-radar-wrap"><svg class="tm-radar" viewBox="0 0 340 325" role="img" aria-label="' +
+    esc('Observed opponent-adjusted offensive traits: ' + desc) + '">' +
+    layers + axes + polygonShape + labels + '</svg></div>';
+}
 function renderModernScouting(panel, team, bundle) {
   if (!panel) return;
   const record = bundle && bundle.teams && bundle.teams[String(team.id)];
@@ -4037,6 +4069,7 @@ function renderModernScouting(panel, team, bundle) {
     '<p class="section-note">What this team has done against its FBS opponents · through ' +
     esc(bundle.as_of_exclusive) + ' (date exclusive)</p>' +
     '<div class="tm-scout-meta">' + note + ' · ' + complete + ' of 6 split traits rated</div>' +
+    renderModernRadar(metrics) +
     '<div class="tm-scout-grid">' + views.map(side => '<div class="tm-scout-card">' +
       '<h3>' + (side === 'offense' ? 'Offense' : 'Defense') + '</h3>' +
       SCOUTING_TRAITS.map(([key]) => scoutingTraitRow(key, metrics[key] || {}, side)).join('') +
