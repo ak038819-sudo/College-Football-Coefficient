@@ -1,3 +1,28 @@
+/* Activate the Modern palette only while an actual team detail page exists.
+   This keeps Home, Stats, Standings and other pages on their existing theme. */
+body:has(.team-header) {
+  color-scheme: dark;
+  --bg: #071322;
+  --panel: #10223a;
+  --panel-2: #172d48;
+  --line: #294760;
+  --ink: #eef5ff;
+  --ink-dim: #b4c4d9;
+  --amber: #efb758;
+  --amber-dim: #6a532b;
+  --green-hl: #77dcb5;
+  --red-ink: #ff9999;
+  background: radial-gradient(ellipse at 60% -20%,#143156 0%,transparent 55%),#071322;
+  color: var(--ink);
+}
+body:has(.team-header) input,
+body:has(.team-header) select {
+  color-scheme: dark;
+}
+body:has(.team-header) .panel {
+  border-color: #294760;
+}
+
 /* Elocast The Modern — team-page-only visual system.
    Existing content, rating data, routing and all eight tabs are unchanged.
    Intentional selectors restrict effects to team detail pages. */
