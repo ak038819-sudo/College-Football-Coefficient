@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sqlite3
 from datetime import date
 from pathlib import Path
@@ -83,7 +84,8 @@ def load_observations(
     report = {"candidate_rows": len(candidates), "missing_value": 0,
               "missing_or_invalid_date": 0, "future_or_same_day": 0,
               "season_mismatch": 0, "invalid_team_side": 0,
-              "duplicate_team_games": 0, "eligible_rows": 0}
+              "duplicate_team_games": 0, "invalid_metric_value": 0,
+              "invalid_weight": 0, "eligible_rows": 0}
     observations: list[Observation] = []
     seen: set[tuple[int, int]] = set()
     for game_id, home, away, team, value, metric_season, game_day, game_season, neutral, plays in candidates:
@@ -109,9 +111,19 @@ def load_observations(
         if value is None:
             report["missing_value"] += 1
             continue
-        if has_plays and (plays is None or plays <= 0):
-            report.setdefault("missing_plays", 0)
-            report["missing_plays"] += 1
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError, OverflowError):
+            report["invalid_metric_value"] += 1
+            continue
+        if not math.isfinite(numeric) or (
+            metric.endswith("success_rate") and not 0 <= numeric <= 1
+        ):
+            report["invalid_metric_value"] += 1
+            continue
+        if has_plays and (plays is None or not math.isfinite(float(plays))
+                          or float(plays) <= 0):
+            report["invalid_weight"] += 1
             continue
         pair = (game_id, team)
         if pair in seen:
@@ -120,7 +132,7 @@ def load_observations(
         seen.add(pair)
         opponent = away if team == home else home
         observations.append(Observation(
-            str(team), str(opponent), float(value),
+            str(team), str(opponent), numeric,
             weight=float(plays) if has_plays else 1.0,
             side=0.0 if neutral else (0.5 if team == home else -0.5)))
     report["eligible_rows"] = len(observations)
