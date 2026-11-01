@@ -4025,6 +4025,14 @@ function renderModernScouting(panel, team, bundle) {
   const sample = metrics.rush_success_rate || metrics.success_rate;
   const note = sample ? (sample.sample_games + ' games · ' + sample.distinct_opponents +
     ' different opponents · ' + esc(sample.reliability)) : 'No eligible FBS game observations';
+  const options = Object.values(bundle.teams).filter(t => String(t.team_id) !== String(team.id))
+    .sort((a,b) => a.name.localeCompare(b.name));
+  const selected = '<section class="tm-match-compare"><h3>Matchup Intelligence</h3>' +
+    '<p class="section-note">Compare observed offensive and defensive units. Not a prediction.</p>' +
+    '<label for="tm-opponent">Compare ' + esc(team.name) + ' with</label>' +
+    '<select id="tm-opponent"><option value="">Select an opponent</option>' +
+    options.map(t => '<option value="' + Number(t.team_id) + '">' + esc(t.name) + '</option>').join('') +
+    '</select><div id="tm-opponent-result" aria-live="polite">Choose an opponent to compare units.</div></section>';
   panel.innerHTML = '<h2 class="section-title">Opponent-adjusted scouting</h2>' +
     '<p class="section-note">What this team has done against its FBS opponents · through ' +
     esc(bundle.as_of_exclusive) + ' (date exclusive)</p>' +
@@ -4035,7 +4043,26 @@ function renderModernScouting(panel, team, bundle) {
       '</div>').join('') + '</div>' +
     '<div class="tm-scout-foot">Higher percentiles mean stronger units. Defense measures lower opponent production allowed. ' +
     'Rush/pass splits are weighted equally by game while eligible split-play denominators remain unavailable. ' +
-    'These are season-to-date descriptions, not projected scores or win probabilities.</div>';
+    'These are season-to-date descriptions, not projected scores or win probabilities.</div>' + selected;
+  const opponentSelect = panel.querySelector('#tm-opponent');
+  opponentSelect.addEventListener('change', () => {
+    const rival = bundle.teams[opponentSelect.value];
+    const result = panel.querySelector('#tm-opponent-result');
+    if (!rival) { result.textContent = 'Choose an opponent to compare units.'; return; }
+    const rows = SCOUTING_TRAITS.map(([key, title]) => {
+      const ours = metrics[key] || {};
+      const theirs = (rival.metrics || {})[key] || {};
+      const a = ours.status === 'rated' ? scoutingPercentile(ours.offense_percentile) : 'Unavailable';
+      const b = theirs.status === 'rated' ? scoutingPercentile(theirs.defense_percentile) : 'Unavailable';
+      return '<tr><th scope="row">' + esc(title) + '</th><td>' + a +
+        '</td><td>' + b + '</td></tr>';
+    }).join('');
+    result.innerHTML = '<div class="tm-compare-overflow"><table><thead><tr><th scope="col">Trait</th><th scope="col">' +
+      esc(team.name) + ' offense</th><th scope="col">' + esc(rival.name) +
+      ' defense</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<p class="tm-scout-foot">Percentile comparisons describe completed games, not future results. ' +
+      'Both teams are evaluated as of the same date.</p>';
+  });
 }
 function fillModernScouting(team) {
   const panel = document.getElementById('tp-scouting');
