@@ -37,6 +37,7 @@ GEOGRAPHY_PATH = Path("ui/geography.js")
 LIVE_TEAMS_PATH = Path("ui/live_teams.js")
 FAVORITES_PATH = Path("ui/favorites.js")
 TEAM_MODERN_CSS_PATH = Path("ui/team-modern.css")
+SCOUTING_PATH = Path("ui/data/scouting")
 
 
 def live_feed_url() -> str:
@@ -92,7 +93,7 @@ def render_from_exports() -> None:
     version = hashlib.sha256(TEAM_MODERN_CSS_PATH.read_bytes()).hexdigest()[:12]
     style_link = f'<link rel="stylesheet" href="team-modern.css?v={version}">'
     final = final.replace("</head>", style_link + "\n</head>", 1)
-    OUT_PATH.write_text(final, encoding="utf-8")
+    versions = {p.stem: hashlib.sha256(p.read_bytes()).hexdigest()[:12]\n                for p in SCOUTING_PATH.glob("*.js")} if SCOUTING_PATH.exists() else {}\n    final = final.replace("__SCOUTING_VERSIONS__", __import__("json").dumps(versions))\n    OUT_PATH.write_text(final, encoding="utf-8")
     print(f"\nBuilt {OUT_PATH} ({OUT_PATH.stat().st_size:,} bytes)")
 
 
@@ -133,7 +134,7 @@ def main() -> None:
     subprocess.run([sys.executable, "src/build_coach_metrics.py", "--db", args.db], check=True)
     # Per-season game files + search index, loaded on demand (data foundation step).
     subprocess.run([sys.executable, "src/export_static_data.py", "--db", args.db], check=True)
-    render_from_exports()
+    # Research splits enter only an in-memory copy, never production Elo/Merits.\n    subprocess.run([sys.executable, "src/export_descriptive_site_assets.py",\n                    "--db", args.db], check=True)\n    render_from_exports()
     print("Open ui/dashboard.html, or publish it together with its neighboring static assets.")
 
 
