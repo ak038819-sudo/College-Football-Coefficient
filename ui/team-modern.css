@@ -137,3 +137,12 @@
 .tm-compare-overflow th, .tm-compare-overflow td { padding: 9px 11px; border-bottom: 1px solid #35516f;
   text-align: left; font-size: 12px; }
 .tm-compare-overflow thead th { color: #abd3f4; }
+
+/* Radar overview reads only verified percentages; the rows beneath carry exact values. */
+.tm-radar-wrap { display: flex; justify-content: center; padding: 2px 0 16px; }
+.tm-radar { width: min(100%, 430px); height: auto; overflow: visible; }
+.tm-radar-grid { fill: none; stroke: #53779c; stroke-width: 1; opacity: .65; }
+.tm-radar-axis { stroke: #426587; stroke-width: 1; }
+.tm-radar-shape { fill: rgba(43, 124, 242, .38); stroke: #80cdff; stroke-width: 2.8; }
+.tm-radar text { fill: var(--ink); font: 10px var(--font-body); }
+@media(max-width:400px){ .tm-radar text{ font-size: 9px; } }
