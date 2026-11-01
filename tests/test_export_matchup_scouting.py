@@ -45,6 +45,8 @@ def test_research_contract_and_two_opposing_units():
     assert metric["status"] == "available"
     assert metric["rated_teams"] == 2
     assert metric["calibration"] == "existing_play_weighted_settings"
+    assert metric["matchup_reliability"] == "provisional"
+    assert metric["eligible_for_public_projection"] is False
     matchup = metric["matchup"]
     assert matchup["home_offense_vs_away_defense"]["estimate"] != matchup["away_offense_vs_home_defense"]["estimate"]
     db.close()
