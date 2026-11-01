@@ -52,3 +52,36 @@ jobs:
             tests/test_export_matchup_scouting.py \
             tests/test_stage_matchup_backfill.py \
             tests/test_matchup_data_readiness.py
+
+  # Research-only CFBD pull, triggered ONLY for our same-repo draft feature PR.
+  # No git writes; never use pull_request_target or check out untrusted forks.
+  stage-real-cfbd:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feature/matchup-intelligence-foundation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install HTTP client
+        run: python -m pip install 'requests>=2.28'
+      - name: Stage 2025 and 2026 CFBD split data (no repository writes)
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          test -n "$CFBD_API_KEY" || { echo "Missing CFBD_API_KEY; cannot verify data"; exit 1; }
+          python src/stage_matchup_backfill.py 2025 2026 --out-dir "$RUNNER_TEMP/elocast-matchup-stage"
+      - name: Upload isolated CFBD source and coverage evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: matchup-cfbd-staged-2025-2026
+          path: ${{ runner.temp }}/elocast-matchup-stage/
+          if-no-files-found: warn
+          retention-days: 7
