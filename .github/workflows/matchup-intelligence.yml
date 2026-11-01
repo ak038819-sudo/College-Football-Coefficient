@@ -77,6 +77,33 @@ jobs:
         run: |
           test -n "$CFBD_API_KEY" || { echo "Missing CFBD_API_KEY; cannot verify data"; exit 1; }
           python src/stage_matchup_backfill.py 2025 2026 --out-dir "$RUNNER_TEMP/elocast-matchup-stage"
+      - name: Reconcile staged data against canonical FBS game database
+        run: |
+          python src/bootstrap_league_db.py --backup db/league_backup_before_playoff_migration.db --out db/league.db
+          for year in 2025 2026; do
+            python src/load_games.py "data/raw/games_${year}.csv"
+          done
+          python src/patch_known_membership_gaps.py --db db/league.db
+          for year in 2025 2026; do
+            python src/load_membership_snapshot.py "data/raw/membership_${year}.csv" --db db/league.db --year "${year}"
+            python src/load_game_advanced.py "$RUNNER_TEMP/elocast-matchup-stage/game_advanced_${year}.csv" --db db/league.db
+            python src/audit_matchup_coverage.py --db db/league.db --season "${year}" --output "$RUNNER_TEMP/elocast-matchup-stage/fbs_audit_${year}.json"
+          done
+          python src/check_matchup_data_readiness.py --db db/league.db --season 2025 --season 2026 > "$RUNNER_TEMP/elocast-matchup-stage/fbs_readiness.json" || echo "Coverage gate blocked: inspect detailed report artifact"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          base = Path(os.environ['RUNNER_TEMP']) / "elocast-matchup-stage"
+          for year in (2025, 2026):
+              d=json.loads((base/f"fbs_audit_{year}.json").read_text())
+              print(f"FBS {year}: eligible_games={d['completed_fbs_games']}; membership_gaps={d['missing_membership_games']}; unmatched_rows={d['advanced_rows_unmatched_to_fbs_game_side']}")
+              for metric in ('rush_success_rate','rush_ppa','rush_explosiveness','pass_success_rate','pass_ppa','pass_explosiveness'):
+                  v=d['metrics'][metric]
+                  print(f"  {metric}: paired={v['paired_games']} sides={v['team_games']}")
+          gate=json.loads((base/"fbs_readiness.json").read_text())
+          print("FBS COVERAGE GATE:",gate['coverage_gate_passed'])
+          print("BLOCKERS:",json.dumps(gate['blockers']))
+          PY
       - name: Upload isolated CFBD source and coverage evidence
         if: always()
         uses: actions/upload-artifact@v4
