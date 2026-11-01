@@ -10925,8 +10925,16 @@ applyRoute();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('../service-worker.js', { scope: '../' })
-      // A failed registration is not a page error: the site works exactly as
-      // it did before, it simply is not installable in this browser.
+      .then(registration => {
+        // An installed app may stay open for days: check on launch AND when
+        // it returns to the foreground, not only on the initial install.
+        registration.update().catch(() => {});
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden && navigator.onLine !== false)
+            registration.update().catch(() => {});
+        });
+      })
+      // A failed registration cannot prevent normal scoreboard rendering.
       .catch(() => {});
   });
 }
