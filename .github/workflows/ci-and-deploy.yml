@@ -155,6 +155,22 @@ jobs:
           python3 src/validate_matchup_intelligence.py --db db/league.db --season 2025 --metric success_rate
           python3 src/validate_matchup_intelligence.py --db db/league.db --season 2026 --metric success_rate
 
+      # Research-only data artifact for the UI design handoff. Never published.
+      - name: Build offline scouting contract samples
+        if: github.event_name == 'pull_request'
+        run: |
+          mkdir -p /tmp/elocast-scouting
+          python3 src/export_matchup_scouting.py --db db/league.db --season 2025 --as-of 2025-11-01 --out /tmp/elocast-scouting/2025-weekly-snapshot.json
+          python3 src/export_matchup_scouting.py --db db/league.db --season 2026 --as-of 2026-10-31 --out /tmp/elocast-scouting/2026-weekly-snapshot.json
+
+      - name: Attach scouting research samples
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: matchup-scouting-contract
+          path: /tmp/elocast-scouting/*.json
+          retention-days: 7
+
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
