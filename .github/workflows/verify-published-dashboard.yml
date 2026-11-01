@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
+      - uses: actions/checkout@v4
       - name: Check exact published URLs and Pages configuration
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -78,6 +79,12 @@ jobs:
             echo '~~~json'
             echo "$PAGE_INFO" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps({k:d.get(k) for k in ("status","html_url","source","build_type","public")},indent=2))' || true
             echo '~~~'
+            echo "Committed HTML bytes: $(wc -c <ui/dashboard.html 2>/dev/null || echo absent)"
+            echo "Committed HTML SHA256: $(sha256sum ui/dashboard.html | awk '{print $1}')"
+            echo "Public HTML SHA256: $(sha256sum /tmp/published-dashboard.html | awk '{print $1}')"
+            echo "Committed HTML Modern stylesheet link: $(grep -q 'team-modern.css?v=' ui/dashboard.html && echo YES || echo NO)"
+            echo "Committed HTML Modern radar: $(grep -q 'renderModernRadar' ui/dashboard.html && echo YES || echo NO)"
+            echo "Same exact HTML bytes: $(cmp -s ui/dashboard.html /tmp/published-dashboard.html && echo YES || echo NO)"
             echo "Published dashboard bytes: $(wc -c </tmp/published-dashboard.html 2>/dev/null || echo absent)"
             echo "Published Modern CSS bytes: $(wc -c </tmp/published-modern.css 2>/dev/null || echo absent)"
             echo "Modern stylesheet linked in public HTML: $(grep -q 'team-modern.css?v=' /tmp/published-dashboard.html && echo YES || echo NO)"
