@@ -1,0 +1,102 @@
+/* Elocast The Modern — team-page-only visual system.
+   Existing content, rating data, routing and all eight tabs are unchanged.
+   Intentional selectors restrict effects to team detail pages. */
+:root {
+  --tm-deep: #091529;
+  --tm-card: #10233a;
+  --tm-raised: #132d4b;
+  --tm-edge: #2c4967;
+  --tm-text: #f0f6ff;
+  --tm-secondary: #aec3d9;
+  --tm-accent: #60b4ff;
+}
+.team-header.panel {
+  position: relative; isolation: isolate; overflow: hidden;
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  gap: clamp(17px, 2.8vw, 28px);
+  padding: clamp(19px, 3vw, 32px);
+  margin-bottom: 16px;
+  border: 1px solid #355c87;
+  border-radius: 17px;
+  background:
+    radial-gradient(ellipse at 85% -30%, rgba(76, 145, 227, .35), transparent 52%),
+    linear-gradient(145deg, #112a49 0%, #0b1e36 50%, #071628 100%);
+  box-shadow: 0 16px 40px rgba(2, 10, 22, .17);
+  color: var(--tm-text);
+}
+.team-header.panel::before {
+  content: ""; position: absolute; z-index: -1;
+  width: 61%; height: 83%; right: -4%; top: 0;
+  opacity: .24; pointer-events: none;
+  background: linear-gradient(155deg, transparent 0 22%, #366197 23% 42%, transparent 43%),
+    linear-gradient(145deg, transparent 0 34%, #5b8fc0 35% 47%, transparent 48%),
+    linear-gradient(120deg, transparent 0 47%, #2d5280 48% 65%, transparent 66%);
+  clip-path: polygon(0 100%, 17% 57%, 31% 78%, 55% 15%, 72% 64%, 85% 40%, 100% 77%, 100% 100%);
+}
+.team-header .team-header-main { flex: initial; align-items: center; gap: clamp(13px, 2.2vw, 22px); }
+.team-header .team-header-main > .logo-mark,
+.team-header .team-header-main > .monogram {
+  flex-shrink: 0;
+  filter: drop-shadow(0 6px 13px rgba(0, 8, 25, .35));
+}
+.team-header .team-title {
+  font-size: clamp(26px, 3.7vw, 42px);
+  line-height: 1.1; letter-spacing: -.015em; color: #fff;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px;
+}
+.team-header .team-title .fav-toggle { margin: 0; flex-shrink: 0; }
+.team-header .team-sub { flex-wrap: wrap; color: #bad2e9; font-size: 12px; }
+.team-header .team-sub a, .team-header .team-stadiums a { color: #f3bc63; }
+.team-header .team-stadiums { color: #c5d4e3; line-height: 1.55; }
+.team-header .team-stats {
+  flex: initial; width: 100%; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(8px, 1.5vw, 14px);
+}
+.team-header .team-stat {
+  min-width: 0; padding: 15px 17px; border: 1px solid #294564;
+  border-radius: 11px; background: rgba(8, 25, 44, .76);
+}
+.team-header .team-stat .lbl {
+  color: #b1c5d9; font-size: 11px; line-height: 1.45;
+  letter-spacing: .07em;
+}
+.team-header .team-stat .val { color: #f2bd67; font-size: clamp(21px, 3vw, 30px); overflow-wrap: anywhere; }
+.team-header .team-stat .sub { color: #b8c9da; line-height: 1.4; }
+.team-header .team-stat .elo-change.up { color: #78e9bd; }
+.team-header .team-stat .elo-change.down { color: #ffa4a4; }
+.team-header ~ .page-tabs {
+  display: flex; gap: 5px; overflow-x: auto; flex-wrap: nowrap;
+  overscroll-behavior-x: contain; scrollbar-width: thin;
+  border-bottom: 1px solid var(--line); margin: 0 0 20px;
+  padding: 0 2px 4px;
+}
+.team-header ~ .page-tabs a {
+  flex-shrink: 0; min-height: 44px; display: inline-flex;
+  align-items: center; padding: 9px 14px;
+  border-radius: 7px 7px 0 0; white-space: nowrap;
+  font-size: 13px; transition: background .16s ease;
+}
+.team-header ~ .page-tabs a[aria-current="page"] {
+  color: #f4c372; background: rgba(51, 112, 189, .13);
+  border-bottom-color: #4d9cf4;
+}
+.team-header ~ .page-tabs a:hover,
+.team-header ~ .page-tabs a:focus-visible { background: rgba(50, 109, 179, .19); }
+.team-header ~ .team-section,
+.team-header ~ .grid-2.team-section > .panel { border-radius: 12px; }
+@media(max-width: 800px) {
+  .team-header .team-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media(max-width: 520px) {
+  .team-header.panel { padding: 17px 14px; gap: 19px; border-radius: 12px; }
+  .team-header .team-header-main { align-items: flex-start; gap: 12px; min-width: 0; }
+  .team-header .team-title { font-size: clamp(22px, 6vw, 30px); }
+  .team-header .team-stat { padding: 12px 11px; }
+  .team-header .team-stat .val { font-size: clamp(20px, 5.3vw, 26px); }
+  .team-header .team-stat .lbl { font-size: 10px; }
+  .team-header ~ .page-tabs { margin-bottom: 15px; }
+  .team-header ~ .page-tabs a { padding: 10px 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .team-header ~ .page-tabs a { transition: none; }
+}
