@@ -19,8 +19,8 @@ game_id,season_year,week,kickoff_utc,start_time_tbd,season_type,home_team,away_t
 401907355,2026,10,2026-11-07T21:00:00.000Z,0,regular,Savannah State,Virginia Lynchburg,0,regular,,Ted Wright Stadium,3952,SIAC,,ii,
 401908536,2026,11,2026-11-14T17:00:00.000Z,0,regular,New England College,New England,0,regular,,,,,Commonwealth Coast,,iii
 401906617,2026,11,2026-11-14T18:00:00.000Z,0,regular,Monroe,Keystone,0,regular,,,,,Independent DIII,,iii
-401915931,2026,11,2026-11-14T18:00:00.000Z,0,regular,Chicago State,Virginia Lynchburg,0,regular,,SeatGeek Stadium,3453,FCS Independents,,fcs,
 401907630,2026,11,2026-11-14T18:00:00.000Z,0,regular,Slippery Rock,Lackawanna,0,regular,,Mihalik-Thompson Stadium,4430,Pennsylvania State Athletic,,ii,
+401915931,2026,11,2026-11-14T18:00:00.000Z,0,regular,Chicago State,Virginia Lynchburg,0,regular,,SeatGeek Stadium,3453,FCS Independents,,fcs,
 401909017,2026,11,2026-11-14T19:00:00.000Z,0,regular,Roanoke College,Washington and Lee,0,regular,,,,,Old Dominion,,iii
 401908330,2026,11,2026-11-14T21:00:00.000Z,0,regular,Schreiner,McMurry,0,regular,,Antler Stadium,11956,,American Southwest,,iii
 401856749,2026,12,2026-11-21T17:00:00.000Z,0,regular,Ole Miss,Wofford,0,regular,,Vaught-Hemingway Stadium,3974,SEC,Southern,fbs,fcs
