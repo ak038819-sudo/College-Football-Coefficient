@@ -4097,6 +4097,28 @@ function matchupReadableColor(hex, fallback) {
 function matchupBrandColor(name, fallback) {
   return matchupReadableColor(teamProfileColor(name), fallback);
 }
+// The row in a sentence. Which side is attacking and which is defending
+// changes with the toggle, so the wording is built from the units rather than
+// from a fixed "our offence against their defence": in the defensive half it
+// is their offence that has been produced and ours that has allowed it. A
+// trait neither side has rated gets no sentence at all, because there is
+// nothing to say about a number that is not there.
+function matchupInterpretation(trait, edge, sides) {
+  if (!Number.isFinite(edge)) return '';
+  // Lowercased to sit inside a sentence, but PPA is an acronym and stays one.
+  const subject = trait.toLowerCase().replace(/\bppa\b/g, 'PPA');
+  const attacking = sides.teamUnit === 'defense' ? sides.oppName : sides.teamName;
+  const defending = sides.teamUnit === 'defense' ? sides.teamName : sides.oppName;
+  if (Math.abs(edge) <= MATCHUP_EDGE_EVEN) {
+    return sides.teamName + ' and ' + sides.oppName + ' are closely matched in ' + subject + '.';
+  }
+  // A positive edge is the selected team's, whichever unit of theirs is shown.
+  const teamLeads = edge > 0;
+  const offenceLeads = sides.teamUnit === 'defense' ? !teamLeads : teamLeads;
+  return offenceLeads
+    ? attacking + "'s " + subject + ' has been stronger than what ' + defending + ' usually allows.'
+    : defending + ' has defended ' + subject + ' better than ' + attacking + ' usually produces it.';
+}
 function matchupMeterRow(trait, sides) {
   const ours = Number.isFinite(sides.teamPct) ? sides.teamPct : null;
   const theirs = Number.isFinite(sides.oppPct) ? sides.oppPct : null;
@@ -4110,6 +4132,7 @@ function matchupMeterRow(trait, sides) {
       ? '<div class="tm-duel-fill tm-team-fill" style="left:' + marker.toFixed(2) + '%;width:' + width + '"></div>'
       : '<div class="tm-duel-fill tm-opp-fill" style="left:50%;width:' + width + '"></div>';
   const unitName = side => side === 'defense' ? 'defense' : 'offense';
+  const note = matchupInterpretation(trait, edge, sides);
   const side = (cls, label, value) => '<div class="tm-match-side ' + cls + '">' +
     '<span class="tm-match-side-label">' + esc(label) + '</span>' +
     '<strong>' + scoutingOrdinal(value == null ? NaN : value) + '</strong></div>';
@@ -4124,6 +4147,7 @@ function matchupMeterRow(trait, sides) {
     '<div class="tm-duel-meter" aria-hidden="true"><div class="tm-duel-track"></div>' +
     '<div class="tm-duel-center"></div>' + fill +
     '<div class="tm-duel-marker" style="left:' + marker.toFixed(2) + '%"></div></div>' +
+    (note ? '<p class="tm-match-note">' + esc(note) + '</p>' : '') +
     '</article>';
 }
 // Either half of the matchup: our offence against their defence, or our

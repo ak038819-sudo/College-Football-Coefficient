@@ -35,10 +35,10 @@ function lift(names) {
 }
 
 const { scoutingOrdinal, matchupEdgeLabel, matchupEdgeClass, matchupMeterPosition,
-        matchupMeterRow, renderMatchupMeters, matchupUnitToggle,
+        matchupInterpretation, matchupMeterRow, renderMatchupMeters, matchupUnitToggle,
         matchupLighten, matchupReadableColor, matchupRelativeLuminance } =
   lift(['scoutingOrdinal', 'matchupEdgeLabel', 'matchupEdgeClass', 'matchupMeterPosition',
-        'matchupMeterRow', 'renderMatchupMeters', 'matchupUnitToggle',
+        'matchupInterpretation', 'matchupMeterRow', 'renderMatchupMeters', 'matchupUnitToggle',
         'matchupLighten', 'matchupReadableColor', 'matchupRelativeLuminance']);
 
 // WCAG 2.1 contrast, the same formula the stylesheet test uses.
@@ -253,4 +253,55 @@ test('a school colour is lifted until it can be read on the card', () => {
   assert.equal(matchupReadableColor(null, '#7fe3bc'), '#7fe3bc');
   assert.equal(matchupReadableColor('rebeccapurple', '#7fe3bc'), '#7fe3bc');
   assert.equal(matchupReadableColor('#abc', '#7fe3bc'), '#7fe3bc');
+});
+
+test('the sentence under a row names who produced and who allowed', () => {
+  const offensive = { teamName: 'BYU', oppName: 'Utah', teamUnit: 'offense', oppUnit: 'defense' };
+  // Our offence leads: we produced it, they allowed it.
+  assert.equal(matchupInterpretation('Rush success', 11, offensive),
+    "BYU's rush success has been stronger than what Utah usually allows.");
+  // Their defence leads: they defended it, we produced it.
+  assert.equal(matchupInterpretation('Rush success', -11, offensive),
+    'Utah has defended rush success better than BYU usually produces it.');
+  assert.equal(matchupInterpretation('Pass PPA', 3, offensive),
+    'BYU and Utah are closely matched in pass PPA.');
+  assert.equal(matchupInterpretation('Pass PPA', -4, offensive),
+    'BYU and Utah are closely matched in pass PPA.');
+  // An acronym stays an acronym inside the sentence.
+  assert.match(matchupInterpretation('Rush PPA', 11, offensive), /rush PPA has been stronger/);
+  // A trait neither side has rated says nothing at all.
+  assert.equal(matchupInterpretation('Pass PPA', null, offensive), '');
+});
+
+test('the sentence turns around with the toggle, not just the labels', () => {
+  // In the defensive half OUR defence faces THEIR offence, so a positive edge
+  // -- still ours -- means we defended it, not that we produced it.
+  const defensive = { teamName: 'BYU', oppName: 'Utah', teamUnit: 'defense', oppUnit: 'offense' };
+  assert.equal(matchupInterpretation('Rush success', 11, defensive),
+    'BYU has defended rush success better than Utah usually produces it.');
+  assert.equal(matchupInterpretation('Rush success', -11, defensive),
+    "Utah's rush success has been stronger than what BYU usually allows.");
+  // The even wording is symmetric, so it reads the same in either half.
+  assert.equal(matchupInterpretation('Rush PPA', 0, defensive),
+    'BYU and Utah are closely matched in rush PPA.');
+  // Nobody is ever said to have produced their own defence, in either half.
+  for (const sides of [defensive, { teamName: 'BYU', oppName: 'Utah', teamUnit: 'offense', oppUnit: 'defense' }]) {
+    for (const edge of [-25, -11, -5, 5, 11, 25]) {
+      const line = matchupInterpretation('Rush success', edge, sides);
+      assert.match(line, /^(BYU|Utah)('s| has)/);
+      assert.ok(!/defended .* better than .* usually allows/.test(line), line);
+    }
+  }
+});
+
+test('every rendered row carries its sentence, escaped', () => {
+  const html = renderMatchupMeters('Texas A&M', 'Utah', rated(81, 70), rated(65, 76), 'offense');
+  assert.equal((html.match(/class="tm-match-note"/g) || []).length, 6);
+  // The ampersand is escaped; the apostrophe is text, and needs no escaping.
+  assert.match(html, /Texas A&amp;M's rush success has been stronger/);
+  assert.doesNotMatch(html, /Texas A&M/);
+  // An unrated trait has a card but no sentence.
+  const thin = renderMatchupMeters('BYU', 'Utah', rated(81, 70), {}, 'offense');
+  assert.equal((thin.match(/class="tm-match-row"/g) || []).length, 6);
+  assert.equal((thin.match(/class="tm-match-note"/g) || []).length, 0);
 });
