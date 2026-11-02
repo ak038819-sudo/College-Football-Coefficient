@@ -1485,6 +1485,9 @@
   }
 
 .gp-pregame-hero .gp-score{display:none}
+.gp-pregame-hero .gp-board{max-width:940px;margin-inline:auto}
+.gp-pregame-hero .gp-side .logo-mark.lg{width:110px;height:110px}
+@media(max-width:520px){.gp-pregame-hero .gp-side .logo-mark.lg{width:78px;height:78px}}
 .gp-pregame-insights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .gp-pregame-insights .panel{min-width:0}
 .gp-intel-label{color:var(--amber);font:600 11px var(--font-mono);text-transform:uppercase;letter-spacing:.07em}
@@ -9978,7 +9981,7 @@ function hydrateGamePage(version) {
       const hero = '<div class="panel gp-hero' + (g.completed ? '' : ' gp-pregame-hero') + '"><div class="gl-top">' + badges.join('') + '<span class="gl-when">' + esc(when) + '</span></div>' +
         '<p class="gp-meta">' + season + ' season · ' + stage + (g.stadium ? ' · Venue: ' + esc(g.stadium) : '') + '</p>' +
         '<div class="gp-board">' + side(away, an, g.away_score, false) + '<div class="gp-mid">' + (g.neutral ? 'vs.' : 'at') +
-        (g.completed ? '' : '<br>win chance') + '</div>' + side(home, hn, g.home_score, true) + '</div>' +
+        '' + '</div>' + side(home, hn, g.home_score, true) + '</div>' +
         lineScoreTable(d, g, an, hn) + '</div>';
 
       const n1 = v => v == null ? '—' : Number(v).toFixed(1);
