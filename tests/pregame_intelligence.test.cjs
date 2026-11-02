@@ -8,7 +8,7 @@ const shell = fs.readFileSync('ui/dashboard_shell.html', 'utf8');
 const match = shell.match(/function gamePregameIntelligence\([^]*?\n\}/);
 assert.ok(match, 'real Game Center helper exists');
 const ctx = {
-  esc: x => String(x).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;'),
+  esc: x => String(x).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'),
   eloValue: v => Math.round(v).toString(),
   probPct: p => ({home: Math.round(p*100), away: 100-Math.round(p*100)})
 };
