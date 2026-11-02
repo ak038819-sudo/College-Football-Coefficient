@@ -1503,11 +1503,11 @@
            this nav is governed by: a league listed here with no data behind
            it is the one thing the staging exists to prevent.
 
-           Basketball is therefore still parked, below. Its side of the site
-           is complete and tested, but its first export cannot be built until
-           the provider's rolling allowance recovers on 2026-10-27, and a
-           visible league tab with no data behind it is worse than no tab.
-           The basketball thread re-adds its own entry with that export.
+           All three now have one. Basketball joined on 2026-11-01, when the
+           provider's MONTHLY quota reset and its archive could finally be
+           fetched: ui/data/ncaambb carries 2015-2026, and ncaambb_app.js
+           marks the league launched in the same change. Nothing here is
+           parked any more.
 
            The #league-selector CSS is addressed by id on purpose: the shell's
            global link rule is (0,3,1) and wins otherwise, which painted the
@@ -1515,15 +1515,9 @@
            docs/nfl.md. -->
       <nav class="leagues" id="league-selector" aria-label="League">
         <a data-league="cfb" href="#section=home" aria-current="page">College Football</a>
+        <a data-league="ncaambb" href="basketball.html">Men's Basketball</a>
         <a data-league="nfl" href="nfl.html">NFL</a>
       </nav>
-      <!-- Parked until ui/data/ncaambb is published. Re-adding it is this one
-           line, inside the nav above, between College Football and the NFL;
-           tests in tests/basketball_preview.test.cjs fail if it goes live
-           before then, or if it is deleted rather than left parked here:
-
-             <a data-league="ncaambb" href="basketball.html">Men's Basketball</a>
-      -->
     </div>
     <nav class="header-links" aria-label="About the data">
       <a href="#section=coverage">Data Coverage</a>

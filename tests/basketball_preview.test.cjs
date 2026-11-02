@@ -587,18 +587,13 @@ test('pressing a tab keeps the rest of the reader\'s route', async () => {
 
 // --- what the page must not do ---------------------------------------------
 
-// The selector is STAGED OFF FOR BASKETBALL. The basketball side is finished
-// and tested, but its first export cannot be built until the provider's
-// allowance recovers, and a visible league tab with no data behind it is worse
-// than no tab.
-//
-// What these tests do NOT assert is that the selector itself is off. Football
-// and the NFL both have data, so the nav can go live for them at any time, and
-// the NFL thread owns that. The invariant that has to survive that change is
-// narrower and is the only one worth guarding: **no live markup sends a reader
-// to basketball until basketball has an export**. These tests therefore pass
-// both before and after the nav is turned on, and fail the moment the
-// basketball entry goes live. When the export lands, invert them.
+// Basketball LAUNCHED on 2026-11-01, with the export the gate was waiting
+// for. These tests were the staging: they asserted that no live markup sent a
+// reader to basketball while it had no data, and that the entry was parked
+// rather than deleted. Both halves have now been inverted, and the invariant
+// they existed for is kept in the direction that is still a defect: **nothing
+// offers a league whose export is not on disk**. That reads the files, not
+// the flag, so the two cannot drift.
 
 const live = () => {
   // What the browser actually runs: HTML comments and commented-out JS lines
@@ -608,18 +603,26 @@ const live = () => {
     .split('\n').filter(line => !/^\s*\/\//.test(line)).join('\n');
 };
 
-test('no live markup on the football page sends a reader to basketball',
+test('the football page offers basketball, and only because it has data',
   () => {
-    const shell = fs.readFileSync(path.join(UI, 'dashboard_shell.html'), 'utf8');
     const running = live();
-    for (const parked of ['href="basketball.html"', 'data-league="ncaambb"']) {
-      assert.ok(!running.includes(parked),
-        `${parked} must not be live until the basketball export is published`);
-      assert.ok(shell.includes(parked),
-        `${parked} must stay parked in a comment, so it can be re-added`);
+    const published = fs.existsSync(
+      path.join(UI, 'data', 'ncaambb', 'manifest.json'));
+    for (const live_markup of ['href="basketball.html"',
+      'data-league="ncaambb"']) {
+      assert.ok(running.includes(live_markup),
+        `${live_markup} is live now that basketball has an export`);
+      // The direction that is still a defect, and the reason this test is
+      // worth keeping rather than deleting with the staging it guarded.
+      assert.ok(published,
+        `${live_markup} is live with no export on disk behind it`);
     }
-    assert.ok(!shell.includes('league=ncaambb'),
-      'football gains no league parameter of its own');
+    // Football's own routes gain no league parameter: its hash is unchanged
+    // forever, which is what keeps every published football link working.
+    for (const parameter of ['#league=ncaambb', '&league=ncaambb']) {
+      assert.ok(!running.includes(parameter),
+        `football states no ${parameter} of its own`);
+    }
   });
 
 test("football's own routes are unmoved, selector on or off", () => {
@@ -683,6 +686,12 @@ async function picker(page, extras) {
 
 const PICKER_PAGES = ['basketball.html', 'nfl.html'];
 
+// Where each league's export lives, so this reads the files rather than the
+// flag that is supposed to describe them. Football IS the site: its data is
+// spread across ui/data and ui/dashboard_data.json, so it is not checked here.
+const EXPORTS = { ncaambb: 'ui/data/ncaambb/manifest.json',
+                  nfl: 'ui/data/nfl/manifest.json' };
+
 for (const page of PICKER_PAGES) {
   test(`${page}'s picker offers no league without an export`, async () => {
     const app = require('../ui/ncaambb_app.js');
@@ -697,14 +706,17 @@ for (const page of PICKER_PAGES) {
       if (slug === app.BASKETBALL && page === 'basketball.html') continue;
       assert.ok(app.isLaunched(slug),
         `${page} offers ${slug}, which has no published export`);
+      if (EXPORTS[slug]) {
+        assert.ok(fs.existsSync(path.join(__dirname, '..', EXPORTS[slug])),
+          `${page} offers ${slug}, whose export is not on disk`);
+      }
     }
-    if (page !== 'basketball.html') {
-      assert.ok(!offered.includes(app.BASKETBALL),
-        `${page} must not offer basketball until its export is published`);
-      const hrefs = buttons.map(b => b.getAttribute('data-href') || '');
-      assert.ok(!hrefs.some(href => href.includes('basketball.html')),
-        `${page} must not link to basketball.html either`);
-    }
+    // Basketball is launched, so every picker must now carry it -- the
+    // inverse of what this block asserted while it was staged off. Checked
+    // positively rather than dropped: a league that quietly disappears from
+    // one page's picker is as wrong as one that appears too early.
+    assert.ok(offered.includes(app.BASKETBALL),
+      `${page} offers basketball now that its export is published`);
     dom.window.close();
   });
 }
