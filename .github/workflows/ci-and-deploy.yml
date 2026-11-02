@@ -224,21 +224,21 @@ jobs:
           # Pick a real scheduled, rated fixture from the static export, rather
           # than pinning an ID that will become final after Saturday.
           GAME_ID=$(python3 - <<'PY'
-import json
-from pathlib import Path
-raw = Path("ui/data/games/2026.js").read_text()
-payload = json.loads(raw[raw.index("={") + 1:].rstrip(";\\n"))
-fields = payload["fields"]
-for row in payload["games"]:
-    game = dict(zip(fields, row))
-    if not game["completed"] and game["p_home"] is not None:
-        print(game["game_id"])
-        break
-PY
+          import json
+          from pathlib import Path
+          raw = Path("ui/data/games/2026.js").read_text()
+          payload = json.loads(raw[raw.index("={") + 1:].rstrip(";\\n"))
+          fields = payload["fields"]
+          for row in payload["games"]:
+              game = dict(zip(fields, row))
+              if not game["completed"] and game["p_home"] is not None:
+                  print(game["game_id"])
+                  break
+          PY
           )
           if test -n "$GAME_ID"; then
             for width in 390 1280; do
-              $SHOT --url "$SITE#game=$GAME_ID&season=2026" --width "$width" --height 950 \\
+              $SHOT --url "$SITE#game=$GAME_ID&season=2026" --width "$width" --height 950 \
                 --selector ".gp-pregame-insights" --out "/tmp/elocast-visual-qa/real-pregame-${width}.png"
             done
           else
