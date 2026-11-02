@@ -345,6 +345,11 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    assert.equal(second.length,first.length);
    assert.notDeepEqual(second,first);
    assert.equal(d.querySelectorAll('#tm-opponent-result .tm-match-row').length,6);
+   // Each row reads as a sentence, and it turns around with the toggle.
+   const notes=[...d.querySelectorAll('.tm-match-note')].map(x=>x.textContent);
+   assert.equal(notes.length,6);
+   assert.ok(notes.every(x=>/\.$/.test(x.trim())),'each note is a sentence: '+notes[0]);
+   assert.ok(notes.some(x=>/stronger than what|has defended|closely matched/.test(x)));
    // Both schools' colours reach the rows, and neither is left unset.
    const style=d.querySelector('#tm-opponent-result').style;
    assert.match(style.getPropertyValue('--tm-team-color'),/^#[0-9a-f]{6}$/);

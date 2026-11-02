@@ -201,6 +201,7 @@ body:has(.team-header) .panel {
 .tm-duel-marker { position: absolute; top: 50%; width: 13px; height: 13px; border-radius: 50%;
   background: #f4f8fc; border: 2px solid #113153; transform: translate(-50%,-50%);
   box-shadow: 0 0 0 2px rgba(7,19,34,.55); }
+.tm-match-note { margin: 10px 0 0; color: #b9c8d7; font: 12px/1.5 var(--font-body); }
 @media(max-width:420px) {
   .tm-match-trait { font-size: 15px; }
   .tm-match-values { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
