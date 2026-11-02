@@ -9980,8 +9980,7 @@ function hydrateGamePage(version) {
       };
       const hero = '<div class="panel gp-hero' + (g.completed ? '' : ' gp-pregame-hero') + '"><div class="gl-top">' + badges.join('') + '<span class="gl-when">' + esc(when) + '</span></div>' +
         '<p class="gp-meta">' + season + ' season · ' + stage + (g.stadium ? ' · Venue: ' + esc(g.stadium) : '') + '</p>' +
-        '<div class="gp-board">' + side(away, an, g.away_score, false) + '<div class="gp-mid">' + (g.neutral ? 'vs.' : 'at') +
-        '' + '</div>' + side(home, hn, g.home_score, true) + '</div>' +
+        '<div class="gp-board">' + side(away, an, g.away_score, false) + '<div class="gp-mid">' + (g.neutral ? 'vs.' : 'at') + '</div>' + side(home, hn, g.home_score, true) + '</div>' +
         lineScoreTable(d, g, an, hn) + '</div>';
 
       const n1 = v => v == null ? '—' : Number(v).toFixed(1);
