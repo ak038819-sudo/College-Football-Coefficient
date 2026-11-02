@@ -214,6 +214,13 @@ jobs:
           done
           $SHOT --url "$SITE#team=byu&tab=analytics" --width 390 --height 2200 --full \
             --selector ".tm-scout-card" --out "/tmp/elocast-visual-qa/byu-analytics-390-long.png"
+          # Capture the isolated analytics-first Game Center at phone, tablet
+          # and desktop widths. The production page remains separately gated.
+          PREGAME="http://127.0.0.1:8765/ui/prototypes/analytics-pregame-game-center.html"
+          for width in 390 768 1280; do
+            $SHOT --url "$PREGAME" --width "$width" --height 950 \
+              --selector ".prob" --out "/tmp/elocast-visual-qa/pregame-${width}.png"
+          done
           for shot in /tmp/elocast-visual-qa/*.png; do test -s "$shot"; done
       - name: Upload Modern visual QA screenshots
         if: always() && github.event_name == 'pull_request'
