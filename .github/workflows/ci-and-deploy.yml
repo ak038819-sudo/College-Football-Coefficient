@@ -227,7 +227,7 @@ jobs:
           import json
           from pathlib import Path
           raw = Path("ui/data/games/2026.js").read_text()
-          payload = json.loads(raw[raw.index("={") + 1:].rstrip(";\\n"))
+          payload, _ = json.JSONDecoder().raw_decode(raw[raw.index("={") + 1:])
           fields = payload["fields"]
           for row in payload["games"]:
               game = dict(zip(fields, row))
