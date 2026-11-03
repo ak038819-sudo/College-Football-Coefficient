@@ -85,3 +85,26 @@ def test_the_probe_never_prints_the_key():
     text = PROBE.read_text(encoding='utf-8')
     assert 'CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}' in text
     assert 'echo' not in script(), 'nothing in this job echoes, least of all the env'
+
+
+def test_the_probe_can_ask_what_the_refusal_says():
+    """The usage endpoint cannot say whether a fetch would be ALLOWED, and a
+    bare 429 has been read three different wrong ways. One data call carries
+    the provider's own words, so the workflow has to be able to make one --
+    and exactly one, because the allowance is the thing being measured."""
+    inputs = workflow()[True]['workflow_dispatch']['inputs']
+    assert sorted(inputs['ask']['options']) == ['refusal', 'usage']
+    assert inputs['ask']['default'] == 'usage', 'the cheap ask is the default'
+    text = script()
+    assert '--burst 1' in text
+    assert '--paced 0' in text, 'a paced run would spend six more'
+    assert '--cooldown 0' in text, 'and wait ninety seconds to do it'
+
+
+def test_the_refusal_mode_passes_flags_the_script_has():
+    out = subprocess.run([sys.executable, 'scripts/probe_cbbd_limits.py',
+                          '--help'], cwd=ROOT, capture_output=True, text=True,
+                         timeout=60)
+    assert out.returncode == 0, out.stderr
+    for flag in ('--burst', '--paced', '--cooldown'):
+        assert flag in out.stdout, flag
