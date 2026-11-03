@@ -33,7 +33,7 @@ SHARDS = 16
 # The export contract's own version for these files, inside the manifest's
 # `people` section. Separate from the manifest's schema_version, which governs
 # the manifest's shape.
-PEOPLE_VERSION = 1
+PEOPLE_VERSION = 2
 
 # How many of the most recent seasons get people files, by default.
 #
@@ -126,29 +126,61 @@ def _provider_id(key):
 def season_lines(connection, season):
     """Every player-game line in a season, grouped by player provider id.
 
-    Each line is [game id, team index, minutes, points, starter]. Minutes and
-    points stay NULL when the provider recorded none: a player who was on the
-    bench all night and one whose minutes nobody wrote down are different
-    things, and 0 would merge them.
+    Each line is LINE_FIELDS. Minutes and points stay NULL when the provider
+    recorded none: a player who was on the bench all night and one whose
+    minutes nobody wrote down are different things, and 0 would merge them.
+
+    The DAY and the OPPONENT are carried in the line itself rather than looked
+    up in the season's own payload. A career page spans four or five seasons
+    and loads one; measured in a browser against the real export, every season
+    but the loaded one was a table of em dashes. Fetching four 1.8 MB season
+    files to date forty games is the wrong trade -- a date and two small
+    integers per line cost a fraction of that, and they make a player page
+    self-contained.
     """
     rows = connection.execute(
         'SELECT g.provider_id AS game_id, p.provider_id AS player_id,'
-        '       s.team_key, s.minutes, s.points, s.starter'
+        '       s.team_key, s.minutes, s.points, s.starter,'
+        '       g.playing_date, g.start_date_utc, g.home_team_key,'
+        '       g.away_team_key, g.neutral_site'
         '  FROM player_game_stat s'
         '  JOIN game g ON g.game_key = s.game_key'
         '  JOIN player p ON p.player_key = s.player_key'
         ' WHERE g.season = ?'
         ' ORDER BY g.provider_id, p.provider_id', (season,)).fetchall()
     teams, index, lines = [], {}, {}
-    for row in rows:
-        key = row['team_key']
+
+    def slot(key):
         if key not in index:
             index[key] = len(teams)
             teams.append(key)
+        return index[key]
+
+    for row in rows:
+        mine = slot(row['team_key'])
+        # The opponent is the side of the game that is not the club this line
+        # was recorded for. A line whose club is neither side of its own game
+        # has no opponent to name, and says so rather than naming one at
+        # random.
+        other = None
+        if row['team_key'] == row['home_team_key']:
+            other = row['away_team_key']
+        elif row['team_key'] == row['away_team_key']:
+            other = row['home_team_key']
+        site = None
+        if row['neutral_site']:
+            site = 'N'
+        elif other is not None:
+            site = 'H' if row['team_key'] == row['home_team_key'] else 'A'
         lines.setdefault(str(row['player_id']), []).append([
-            row['game_id'], index[key], _number(row['minutes']),
+            row['game_id'], mine, _number(row['minutes']),
             _number(row['points']),
-            None if row['starter'] is None else int(row['starter'])])
+            None if row['starter'] is None else int(row['starter']),
+            # The day it was PLAYED on, in Eastern time, which is what the
+            # scoreboard groups by. `start_date_utc` is a fallback for a row
+            # stored before that column existed, never a preference.
+            row['playing_date'] or row['start_date_utc'],
+            None if other is None else slot(other), site])
     return teams, index, lines
 
 
@@ -185,7 +217,8 @@ def season_people(connection, season):
     # mid-season transfer does not get one merged row.
     totals = {}
     for player, rows in lines.items():
-        for game_id, team_index, minutes, points, _starter in rows:
+        for line in rows:
+            game_id, team_index, minutes, points = line[0], line[1], line[2], line[3]
             tally = totals.setdefault((player, team_index),
                                       dict(g=0, min=0.0, pts=0.0,
                                            min_known=False, pts_known=False))
@@ -290,7 +323,8 @@ def payloads(connection, seasons=None, limit=None):
 # What each row in those payloads means, carried in the payload itself so a
 # reader is never decoding positions from memory.
 ROSTER_FIELDS = ['player', 'jersey', 'position', 'games', 'minutes', 'points']
-LINE_FIELDS = ['game', 'team', 'minutes', 'points', 'starter']
+LINE_FIELDS = ['game', 'team', 'minutes', 'points', 'starter', 'day',
+               'opponent', 'site']
 MEMBER_FIELDS = ['team', 'jersey', 'position', 'height', 'weight']
 
 

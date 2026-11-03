@@ -314,6 +314,35 @@ def test_the_people_seasons_come_from_the_exporter():
     assert 'people=' in step['run']
 
 
+@pytest.mark.parametrize('path', [
+    '.github/workflows/cbb-refresh.yml',
+    '.github/workflows/nfl-refresh.yml',
+])
+def test_publish_false_actually_means_false(path):
+    """MEASURED on cbb run 41671313813, dispatched with publish: false, which
+    replaced the published export anyway.
+
+    `inputs.publish == null && 'true' || inputs.publish` reads as "default to
+    true when no input was given", and it is not: GitHub's `==` coerces both
+    sides to a number, so `false == null` is `0 == 0`, which is TRUE. An
+    explicit false was therefore indistinguishable from no input at all, and
+    the one thing the input exists to prevent was the one thing it could not
+    prevent. The event name is the real question, because only a dispatch
+    carries inputs."""
+    # Read from the PARSED workflow, not the file's text: the comment above
+    # the expression names the broken form, and a text search would find it
+    # there and call the fix the bug.
+    parsed = yaml.safe_load((ROOT / path).read_text(encoding='utf-8'))
+    allowed = [step['env']['ALLOWED']
+               for job in parsed['jobs'].values()
+               for step in job.get('steps', [])
+               if 'ALLOWED' in (step.get('env') or {})]
+    assert allowed, 'no step decides whether it may publish'
+    for expression in allowed:
+        assert 'inputs.publish == null' not in expression
+        assert "github.event_name != 'workflow_dispatch'" in expression
+
+
 def test_the_active_seasons_people_cache_is_not_committed():
     """Its box scores change every night, so banking them writes a
     multi-megabyte blob into the repository every day for a file the next run

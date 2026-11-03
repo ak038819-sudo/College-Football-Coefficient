@@ -235,7 +235,7 @@
 <nav class="tabs" id="tabs" aria-label="Sections"></nav>
 
 <script src="ncaambb_loader.js?v=7f2c07388500"></script>
-<script src="ncaambb_app.js?v=bc5c1c2e935d"></script>
+<script src="ncaambb_app.js?v=f0e25c0064e0"></script>
 <script>
 (function () {
   'use strict';
@@ -891,9 +891,19 @@
    * assumed every season had people would draw an empty roster for 2015 and
    * call it a club with no players.
    */
+  // Which people contracts this page can read. The payload's SHAPE is
+  // versioned separately from the manifest's, and a version this page does
+  // not know is treated as no people at all rather than decoded on a guess:
+  // version 1 carried no day and no opponent on a line, so reading it here
+  // would draw a career log of em dashes and call it the player's record.
+  var PEOPLE_VERSIONS = [2];
+
   function peopleSection() {
     var files = state.manifest && state.manifest.files;
-    return (files && files.people) || null;
+    var section = (files && files.people) || null;
+    if (!section) return null;
+    return PEOPLE_VERSIONS.indexOf(Number(section.version)) < 0
+      ? null : section;
   }
 
   function peopleSeasons() {
@@ -1026,7 +1036,7 @@
     var note = document.createElement('p');
     note.className = 'empty';
     note.textContent = 'Players are loaded for '
-      + seasons.map(app.seasonLabel).join(' and ') + '.';
+      + app.seasonRange(seasons) + '.';
     host.appendChild(note);
 
     var form = document.createElement('div');
@@ -1234,35 +1244,31 @@
       + '<th class="num">Min</th><th class="num">Pts</th></tr></thead>'
       + '<tbody></tbody>';
     var body = table.querySelector('tbody');
-    var payload = seasonPayload(career.season);
-    var byId = {};
-    ((payload && payload.games) || []).forEach(function (game) {
-      byId[app.providerIdOf(game.id)] = game;
-    });
+    // Every line carries its own day and opponent, so a season whose
+    // schedule this page has not loaded is dated all the same. Looking them
+    // up in the season payload dated the one loaded season and left the rest
+    // of a four-season career a table of em dashes, which is how this was
+    // found -- in a browser, against the real export.
     career.games.slice().sort(function (a, b) {
-      var ga = byId[String(a.game)];
-      var gb = byId[String(b.game)];
-      var da = (ga && app.dayOf(ga)) || '';
-      var db = (gb && app.dayOf(gb)) || '';
+      var da = a.day || '';
+      var db = b.day || '';
       if (da !== db) return da < db ? -1 : 1;
       return a.game - b.game;
     }).forEach(function (row) {
-      var game = byId[String(row.game)];
       var tr = document.createElement('tr');
       var when = document.createElement('td');
-      // A game this season's payload does not hold cannot be dated. The line
-      // is still shown: the minutes were played either way.
-      when.textContent = (game && app.dayOf(game)) || '\u2014';
+      // A line the provider gave no date for is still shown: the minutes
+      // were played either way.
+      when.textContent = row.day || '\u2014';
       tr.appendChild(when);
       var against = document.createElement('td');
-      if (game && row.team) {
-        var other = game.home === row.team ? game.away : game.home;
+      if (row.opponent) {
         var at = document.createElement('span');
         at.className = 'sub';
-        at.textContent = game.neutral ? 'N ' : (game.home === row.team
-                                                ? 'vs ' : '@ ');
+        at.textContent = row.site === 'N' ? 'N '
+          : (row.site === 'H' ? 'vs ' : '@ ');
         against.appendChild(at);
-        against.appendChild(teamLink(other));
+        against.appendChild(teamLink(row.opponent));
       } else {
         against.textContent = '\u2014';
       }

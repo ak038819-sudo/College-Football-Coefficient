@@ -128,6 +128,20 @@ about people: a missing, empty or stale one is refused for free. The shards
 are listed in numeric order, and a reader matches the one it wants by NAME
 rather than by position in that list.
 
+**A line carries its own day and opponent.** Measured in Chromium against the
+real export: a career spans four or five seasons and a player page loads one
+season's schedule, so dating each game by looking it up in the season payload
+dated one season and left the rest of the career a table of em dashes.
+Fetching four 1.8 MB season files to date forty games is the wrong trade; a
+date and two small integers per line cost a fraction of that and make a player
+page self-contained. The day is the EASTERN playing date, the same one the
+scoreboard groups by.
+
+That is what `people` version **2** is. The page states which versions it can
+read and treats an unknown one as no people at all, rather than decoding it on
+a guess: a version 1 payload read by this page would draw a career of em
+dashes and present it as the player's record.
+
 **NOTHING HERE IS A SUM OF SOMETHING ELSE.** A season line is the player's own
 box score lines added up, per club, so a mid-season transfer is two rows and
 never one merged player. It is never reconciled against the team's score: the

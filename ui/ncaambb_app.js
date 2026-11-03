@@ -236,7 +236,15 @@
       (lines || []).forEach(function (row) {
         entry.games.push({
           game: row[0], team: (shard.t || [])[row[1]] || null,
-          minutes: row[2], points: row[3], starter: row[4]
+          minutes: row[2], points: row[3], starter: row[4],
+          // The day and the opponent come from the LINE, not from the
+          // season's payload: a career page spans four or five seasons and
+          // loads one, so looking them up there dated one season and left
+          // the rest a table of em dashes.
+          day: row[5] || null,
+          opponent: row[6] === null || row[6] === undefined
+            ? null : ((shard.t || [])[row[6]] || null),
+          site: row[7] || null
         });
       });
       found[shard.season] = entry;
@@ -281,6 +289,22 @@
   function perGame(total, games) {
     if (total === null || total === undefined || !games) return null;
     return Math.round((total / games) * 10) / 10;
+  }
+
+  /* How to name a run of seasons in a sentence.
+   *
+   * `join(' and ')` is right for two and absurd for six: it read "2021-22 and
+   * 2022-23 and 2023-24 and 2024-25 and 2025-26 and 2026-27" on the People
+   * tab, which is how it looked in the browser.
+   */
+  function seasonRange(seasons) {
+    var rows = (seasons || []).slice().sort(function (a, b) { return a - b; });
+    if (!rows.length) return '';
+    if (rows.length > 2) {
+      return seasonLabel(rows[0]) + ' through '
+        + seasonLabel(rows[rows.length - 1]);
+    }
+    return rows.map(seasonLabel).join(' and ');
   }
 
   /* The players a query finds, by name, best first.
@@ -882,6 +906,7 @@
     playerTotals: playerTotals,
     perGame: perGame,
     searchPlayers: searchPlayers,
+    seasonRange: seasonRange,
     timeKnown: timeKnown,
     startInstant: startInstant,
     tipText: tipText,

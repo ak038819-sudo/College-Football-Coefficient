@@ -142,11 +142,53 @@ def test_a_game_line_carries_the_game_the_club_the_minutes_and_the_points(db):
     files, _ = export_people.payloads(db)
     _, payload = files[f'people/2026/{export_people.shard_of(101)}.js']
     assert payload['fields'] == ['game', 'team', 'minutes', 'points',
-                                 'starter']
-    game_id, team_index, minutes, points, starter = payload['p']['101'][0]
+                                 'starter', 'day', 'opponent', 'site']
+    (game_id, team_index, minutes, points, starter,
+     day, opponent, site) = payload['p']['101'][0]
     assert game_id == GAME
     assert payload['t'][team_index] == entity_key('team', 10)
     assert (minutes, points, starter) == (30, 20, 1)
+    # The day and the opponent travel WITH the line, so a career page can
+    # date a season it has not loaded the schedule for. The fixture's game is
+    # 2025-11-07T23:00:00Z, which is the evening of the 7th in New York.
+    assert day == '2025-11-07'
+    assert payload['t'][opponent] == entity_key('team', 20)
+    assert site == 'H', 'club 10 is the home side of this game'
+
+
+def test_the_day_on_a_line_is_the_evening_it_was_played(db):
+    """Not the UTC date. A 9pm Eastern tip-off is 02:00Z the next morning, so
+    the UTC date is tomorrow -- which is the measurement behind `playing_date`
+    (2,140 of 2026-27's 3,759 timed games) applied to a career log."""
+    upsert_teams(db, [team(10), team(20)])
+    upsert_team_seasons(db, 2026, [team(10), team(20)])
+    upsert_games(db, [game(GAME, season=2026,
+                           day='2025-11-08T02:00:00Z')], [10, 20])
+    upsert_players(db, [player(101)])
+    upsert_player_team_seasons(db, 2026, [(player(101), 10)])
+    upsert_box_scores(db, [box(GAME, 10, [line(101)])])
+    files, _ = export_people.payloads(db)
+    _, payload = files[f'people/2026/{export_people.shard_of(101)}.js']
+    assert payload['p']['101'][0][5] == '2025-11-07', (
+        'the evening of the 7th in New York, though 02:00Z on the 8th')
+
+
+def test_the_away_side_of_a_game_says_so(db):
+    seeded(db)
+    files, _ = export_people.payloads(db)
+    _, payload = files[f'people/2026/{export_people.shard_of(201)}.js']
+    line_row = payload['p']['201'][0]
+    assert payload['t'][line_row[1]] == entity_key('team', 20)
+    assert payload['t'][line_row[6]] == entity_key('team', 10)
+    assert line_row[7] == 'A'
+
+
+def test_a_neutral_site_game_is_neither_home_nor_away(db):
+    seeded(db)
+    db.execute('UPDATE game SET neutral_site = 1')
+    files, _ = export_people.payloads(db)
+    _, payload = files[f'people/2026/{export_people.shard_of(101)}.js']
+    assert payload['p']['101'][0][7] == 'N'
 
 
 def test_an_unrecorded_minute_count_stays_absent_not_zero(db):
@@ -157,7 +199,7 @@ def test_an_unrecorded_minute_count_stays_absent_not_zero(db):
                                                minutes=None)])])
     files, _ = export_people.payloads(db)
     _, payload = files[f'people/2026/{export_people.shard_of(101)}.js']
-    _, _, minutes, points, _ = payload['p']['101'][0]
+    minutes, points = payload['p']['101'][0][2:4]
     assert minutes is None
     assert points == 0, 'a measured zero is still a measurement'
 
@@ -314,7 +356,7 @@ def test_a_season_known_only_from_box_scores_is_still_a_season(db):
     assert 'people/2026/roster.js' in files
     assert [row['season'] for row in summary] == [2026]
     assert files['people/2026/5.js'][1]['p'] == {
-        '101': [[GAME, 0, 30, 20, 1]]}
+        '101': [[GAME, 0, 30, 20, 1, '2025-11-07', 1, 'H']]}
 
 
 def test_only_the_most_recent_seasons_get_people_files():

@@ -127,12 +127,16 @@ const MEMBERS = {
   205: [[1, '21', 'C', 83, 250]]
 };
 
-// [game id, team index, minutes, points, starter], per player.
+// [game id, team index, minutes, points, starter, day, opponent index, site],
+// per player. The day and the opponent are IN the line because a career page
+// spans seasons and loads one schedule; see LINE_FIELDS in
+// src/ncaambb/export_people.py.
 const LINES = {
-  101: [[700, 0, 30, 22, 1], [701, 0, 28, 14, 1]],
+  101: [[700, 0, 30, 22, 1, DAY, 1, 'H'],
+        [701, 0, 28, 14, 1, DAY, 2, 'H']],
   // A line with no minutes recorded at all, which is not zero minutes.
-  102: [[700, 0, null, 0, 0]],
-  205: [[700, 1, 33, 19, 1]]
+  102: [[700, 0, null, 0, 0, DAY, 1, 'H']],
+  205: [[700, 1, 33, 19, 1, DAY, 0, 'A']]
 };
 
 function writePeople(root, payload, overrides) {
@@ -143,7 +147,9 @@ function writePeople(root, payload, overrides) {
     v: 1, seasons: [2026], shards: SHARDS, players: PLAYERS }) + ';\n';
   fs.writeFileSync(path.join(base, 'index.js'), indexText);
 
-  const teams = [TEAM_KEYS[0], TEAM_KEYS[1]];
+  // All three, because a line names its OPPONENT by index into this list
+  // as well as its own club.
+  const teams = [TEAM_KEYS[0], TEAM_KEYS[1], TEAM_KEYS[2]];
   const roster = {};
   Object.keys(MEMBERS).forEach(id => {
     MEMBERS[id].forEach(row => {
@@ -190,11 +196,19 @@ function writePeople(root, payload, overrides) {
   // nothing -- a reader looks up the shard it wants by NAME -- and writing it
   // in shard order would let a page that matched by array position pass.
   shards.reverse();
+  const seasons = { 2026: {
+    roster: 'people/2026/roster.js?v=' + stamp(rosterText), shards } };
+  // Extra season KEYS, pointing at the same files. The page takes the list of
+  // seasons it has people for from these keys, so this is how a test gets a
+  // multi-season export without writing six seasons of fixtures.
+  ((overrides && overrides.extraSeasons) || []).forEach(year => {
+    seasons[year] = seasons[2026];
+  });
   payload.files.people = {
-    version: 1, shards: SHARDS,
+    version: (overrides && overrides.peopleVersion) || 2,
+    shards: SHARDS,
     index: 'people/index.js?v=' + stamp(indexText),
-    seasons: { 2026: { roster: 'people/2026/roster.js?v=' + stamp(rosterText),
-                       shards } }
+    seasons
   };
 }
 
@@ -216,7 +230,9 @@ function site(overrides, schedule) {
   // `board`, `lines`, `people` and `at` describe the EXPORT and the page's
   // clock, not the manifest, so they are taken out before the rest is merged
   // into it.
-  const people = { lines: rules.lines, people: rules.people };
+  const people = { lines: rules.lines, people: rules.people,
+                   extraSeasons: rules.extraSeasons,
+                   peopleVersion: rules.peopleVersion };
   // `at` freezes the PAGE's clock, so a test can put it at a named moment.
   // The export's age is measured against that same instant, or a page opened
   // at a fixed moment would badge a fresh export as months stale and draw a
@@ -224,6 +240,8 @@ function site(overrides, schedule) {
   const at = rules.at ? Date.parse(rules.at) : null;
   delete rules.board;
   delete rules.lines;
+  delete rules.extraSeasons;
+  delete rules.peopleVersion;
   delete rules.at;
   overrides = rules;
   const seasonText = 'window.NCAAMBB_SEASONS=(window.NCAAMBB_SEASONS||{});'
@@ -1407,6 +1425,35 @@ test('the People tab is enabled only when the export carries people',
     without.window.close();
   });
 
+test('a people payload this page cannot read counts as no people',
+  async () => {
+    // The payload's shape is versioned apart from the manifest's. Version 1
+    // carried no day and no opponent on a line, so decoding it with this
+    // page's reader would draw a career log of em dashes and present it as
+    // the player's record. Better to say there is no player data.
+    const dom = await open({ peopleVersion: 1 });
+    const doc = peopleTab(dom, '');
+    await settle(dom, () => doc.getElementById('people-body').textContent);
+    assert.match(doc.getElementById('people-body').textContent,
+      /no player data yet/);
+    // And nothing is half-drawn: no leaders board, no search box.
+    assert.equal(doc.querySelector('#people-body tbody tr'), null);
+    assert.equal(doc.getElementById('player-search'), null);
+    dom.window.close();
+  });
+
+test('a run of seasons is named rather than listed with "and"', async () => {
+  // Six seasons read "2021-22 and 2022-23 and 2023-24 and ..." on the real
+  // export. One season and two are still listed, which is why this needs
+  // three to say anything at all.
+  const dom = await open({ extraSeasons: [2024, 2025] });
+  const doc = peopleTab(dom, '');
+  await settle(dom, () => doc.querySelector('#people-body .filters'));
+  assert.match(doc.getElementById('people-body').textContent,
+    /Players are loaded for 2023-24 through 2025-26\./);
+  dom.window.close();
+});
+
 test('the People tab opens on the season’s leading scorers', async () => {
   const dom = await open();
   const doc = peopleTab(dom, '');
@@ -1479,7 +1526,8 @@ test('a player page lists his games oldest first, not by game id', async () => {
   // YESTERDAY and carries the higher id.
   const yesterday = daysFromToday(-1);
   const dom = await open({
-    lines: { 101: [[700, 0, 30, 22, 1], [703, 0, 24, 9, 0]] }
+    lines: { 101: [[700, 0, 30, 22, 1, DAY, 1, 'H'],
+                   [703, 0, 24, 9, 0, yesterday, 1, 'H']] }
   }, [
     { id: 'ncaambb:cbbd:game:700', at: DAY, tip: DAY + 'T17:00:00Z',
       status: 'final', home: TEAM_KEYS[0], away: TEAM_KEYS[1],
@@ -1509,6 +1557,26 @@ test('a player page says who he played and whether it was at home',
     assert.deepEqual(against, ['vs Duke', 'vs BYU']);
     dom.window.close();
   });
+
+test('a season whose schedule is not loaded is still dated', async () => {
+  // THE BUG THIS CARRIES ITS OWN DATE FOR. A career spans four or five
+  // seasons and the page loads one schedule, so dating a game by looking it
+  // up in the season payload dated one season and left the rest a table of
+  // em dashes. Found in Chromium against the real export, not here.
+  //
+  // Game 650 is in no loaded season payload at all, which is what every game
+  // of a previous season looks like to this page.
+  const dom = await open({
+    lines: { 101: [[650, 0, 26, 18, 1, '2025-12-19', 1, 'A']] }
+  }, undefined, '#league=ncaambb&section=people&player=101');
+  const doc = dom.window.document;
+  await settle(dom, () => doc.querySelector('#people-body tbody tr'));
+  const row = [...doc.querySelector('#people-body tbody tr').children]
+    .map(td => td.textContent);
+  assert.equal(row[0], '2025-12-19', 'the line’s own day');
+  assert.equal(row[1], '@ Duke', 'and its own opponent, away');
+  dom.window.close();
+});
 
 test('a player page sums only what was measured', async () => {
   const dom = await open(undefined, undefined,

@@ -173,7 +173,18 @@ jobs:
         id: publish
         env:
           BUILT: ${{ runner.temp }}/ncaambb-export
-          ALLOWED: ${{ inputs.publish == null && 'true' || inputs.publish }}
+          # NOT `inputs.publish == null && 'true' || inputs.publish`,
+          # which this was and which never worked: GitHub's `==`
+          # coerces both sides to a number, so `false == null` is 0 == 0,
+          # which is TRUE -- an explicit `publish: false` was
+          # indistinguishable from giving no input at all and published
+          # anyway. Measured on run 41671313813, dispatched with
+          # publish: false, which replaced the export regardless.
+          # The event name is the thing actually being asked about: only
+          # a dispatch carries inputs, and on a dispatch the declared
+          # default means inputs.publish is always a real boolean.
+          ALLOWED: ${{ github.event_name != 'workflow_dispatch'
+            || inputs.publish }}
         run: |
           set -o pipefail
           python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
@@ -205,7 +216,18 @@ jobs:
       - name: Commit the raw cache and, if the gate allowed it, the export
         if: always() && steps.seasons.conclusion == 'success'
         env:
-          ALLOWED: ${{ inputs.publish == null && 'true' || inputs.publish }}
+          # NOT `inputs.publish == null && 'true' || inputs.publish`,
+          # which this was and which never worked: GitHub's `==`
+          # coerces both sides to a number, so `false == null` is 0 == 0,
+          # which is TRUE -- an explicit `publish: false` was
+          # indistinguishable from giving no input at all and published
+          # anyway. Measured on run 41671313813, dispatched with
+          # publish: false, which replaced the export regardless.
+          # The event name is the thing actually being asked about: only
+          # a dispatch carries inputs, and on a dispatch the declared
+          # default means inputs.publish is always a real boolean.
+          ALLOWED: ${{ github.event_name != 'workflow_dispatch'
+            || inputs.publish }}
           ACTIVE: ${{ steps.seasons.outputs.active }}
         run: |
           # The raw cache is banked whatever else happened, and the `publish`

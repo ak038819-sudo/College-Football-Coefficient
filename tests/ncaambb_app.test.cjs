@@ -643,3 +643,17 @@ test('a player search is capped', () => {
   assert.equal(app.searchPlayers(many, 'guard').length, 25);
   assert.equal(app.searchPlayers(many, 'guard', 5).length, 5);
 });
+
+test('a run of seasons is named, not listed with "and" six times', () => {
+  // It read "2021-22 and 2022-23 and 2023-24 and 2024-25 and 2025-26 and
+  // 2026-27" on the People tab, which is how it looked in the browser.
+  assert.equal(app.seasonRange([2027]), '2026-27');
+  assert.equal(app.seasonRange([2026, 2027]), '2025-26 and 2026-27');
+  assert.equal(app.seasonRange([2025, 2026, 2027]), '2024-25 through 2026-27');
+  assert.equal(app.seasonRange([2022, 2023, 2024, 2025, 2026, 2027]),
+    '2021-22 through 2026-27');
+  // Oldest first whatever order they arrive in, and nothing at all for none.
+  assert.equal(app.seasonRange([2027, 2022, 2025]), '2021-22 through 2026-27');
+  assert.equal(app.seasonRange([]), '');
+  assert.equal(app.seasonRange(undefined), '');
+});
