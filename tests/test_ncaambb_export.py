@@ -534,3 +534,84 @@ def test_a_coverage_row_that_does_not_say_is_judged_as_a_finished_season():
     reasons = gate.check_coverage(dict(coverage=[dict(
         season=2027, division_one_teams=364, rated_teams=40, games=500)]))
     assert any('games is below' in reason for reason in reasons)
+
+
+# --- the day and the tip-off time a reader sees -----------------------------
+#
+# The payload contract these pin is read in JavaScript by ui/ncaambb_app.js:
+# `at` is a calendar day and `tip` is an instant. They were one field until
+# the live export was measured, and because `at` had only ever carried a date,
+# every game on the site read as having no known time.
+
+def test_a_game_states_its_playing_day_and_its_tip_off_instant(db):
+    national(db)
+    db.execute("UPDATE game SET playing_date = '2025-11-14',"
+               " start_at_utc = '2025-11-15T00:30:00Z',"
+               " start_date_utc = '2025-11-15' WHERE game_key = '2026-1'")
+    db.commit()
+    _, payloads, _ = built(db)
+    game = next(row for row in payloads[2026]['games']
+                if row['id'] == '2026-1')
+    assert game['at'] == '2025-11-14', 'the evening it was played'
+    assert game['tip'] == '2025-11-15T00:30:00Z'
+    assert len(game['at']) == 10, 'a day, never a timestamp'
+
+
+def test_a_game_whose_time_is_undecided_carries_no_tip(db):
+    national(db)
+    db.execute("UPDATE game SET playing_date = '2025-11-14',"
+               " start_time_tbd = 1, start_at_utc = NULL"
+               " WHERE game_key = '2026-1'")
+    db.commit()
+    _, payloads, _ = built(db)
+    game = next(row for row in payloads[2026]['games']
+                if row['id'] == '2026-1')
+    assert 'tip' not in game
+    assert game['time_tbd'] == 1
+    assert game['at'] == '2025-11-14'
+
+
+def test_a_stored_tip_is_withheld_while_the_time_is_flagged_undecided(db):
+    """Belt and braces: the flag wins. A leftover timestamp from before the
+    time was unset must not come back as a decided tip-off."""
+    national(db)
+    db.execute("UPDATE game SET start_time_tbd = 1,"
+               " start_at_utc = '2025-11-15T05:00:00Z'"
+               " WHERE game_key = '2026-1'")
+    db.commit()
+    _, payloads, _ = built(db)
+    game = next(row for row in payloads[2026]['games']
+                if row['id'] == '2026-1')
+    assert 'tip' not in game
+
+
+def test_a_game_loaded_before_schema_three_still_appears_on_its_utc_date(db):
+    """A row with no Eastern date is one loaded by older code. Dropping it
+    from the scoreboard would be worse than showing it a day late, and a
+    reload corrects it."""
+    national(db)
+    db.execute("UPDATE game SET playing_date = NULL, start_at_utc = NULL"
+               " WHERE game_key = '2026-1'")
+    db.commit()
+    _, payloads, _ = built(db)
+    game = next(row for row in payloads[2026]['games']
+                if row['id'] == '2026-1')
+    assert game['at'] == db.execute(
+        "SELECT start_date_utc FROM game WHERE game_key = '2026-1'"
+    ).fetchone()['start_date_utc']
+    assert 'tip' not in game
+
+
+def test_two_games_on_one_night_come_out_in_the_order_they_tipped(db):
+    national(db)
+    db.execute("UPDATE game SET playing_date = '2025-11-14',"
+               " start_at_utc = '2025-11-15T03:00:00Z'"
+               " WHERE game_key = '2026-1'")
+    db.execute("UPDATE game SET playing_date = '2025-11-14',"
+               " start_at_utc = '2025-11-14T18:00:00Z'"
+               " WHERE game_key = '2026-2'")
+    db.commit()
+    _, payloads, _ = built(db)
+    order = [row['id'] for row in payloads[2026]['games']
+             if row['id'] in ('2026-1', '2026-2')]
+    assert order == ['2026-2', '2026-1']

@@ -224,13 +224,14 @@
       </thead>
       <tbody id="board"></tbody>
     </table>
+    <p class="empty" id="board-note" hidden></p>
   </section>
 </div>
 
 <nav class="tabs" id="tabs" aria-label="Sections"></nav>
 
 <script src="ncaambb_loader.js?v=91399aa621e8"></script>
-<script src="ncaambb_app.js?v=c75deb1cee90"></script>
+<script src="ncaambb_app.js?v=0680179660de"></script>
 <script>
 (function () {
   'use strict';
@@ -500,9 +501,13 @@
       cell(teamName(row.team));
       cell(row.conference);
       cell(app.ratingText(row.rating), 'num');
-      cell(row.wins + '-' + row.losses, 'num');
+      // A club that has not played yet has no record to show. "0-0" would
+      // read as a measurement, and its rating is last season's carried over
+      // rather than anything this season has decided.
+      cell(row.rated_games ? row.wins + '-' + row.losses : '\u2014', 'num');
       body.appendChild(tr);
     });
+    carriedNote(rows);
     if (!rows.length) {
       var tr = document.createElement('tr');
       var td = document.createElement('td');
@@ -512,6 +517,25 @@
       tr.appendChild(td);
       body.appendChild(tr);
     }
+  }
+
+  /* How many of this board's clubs are yet to play, said once under the
+   * table. Early in a season most of it is last season's ratings carried
+   * over, and a ranked table that does not say so reads as results.
+   */
+  function carriedNote(rows) {
+    var host = el('board-note');
+    if (!host) return;
+    var waiting = rows.filter(function (row) {
+      return !row.rated_games;
+    }).length;
+    if (!waiting) { host.textContent = ''; host.hidden = true; return; }
+    host.hidden = false;
+    host.textContent = waiting === rows.length
+      ? 'No club has played yet. Every rating here is last season\u2019s, '
+        + 'carried over.'
+      : waiting + ' of these ' + rows.length + ' clubs have not played yet, '
+        + 'and carry last season\u2019s rating.';
   }
 
   /* ---- the club directory, and a club's own page -------------------- */

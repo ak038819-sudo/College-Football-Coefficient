@@ -8,8 +8,23 @@ hard failure, never a quiet partial answer.
 """
 
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from .http import CbbdError, get_json
+
+# The timezone a college basketball day is counted in.
+#
+# MEASURED on the 2026-27 schedule: of the 3,759 games whose tip-off time is
+# decided, 2,140 -- 57% -- fall on a different UTC date than the evening they
+# are played on, because a 7pm Eastern tip-off is already midnight UTC and a
+# 9pm Pacific one is four in the morning. Reading the UTC date as the day put
+# more than half the scoreboard on the following day.
+#
+# The provider itself counts in Eastern time, which is how this is known
+# rather than assumed: all 2,247 games whose time is undecided carry the
+# placeholder 05:00Z, exactly midnight Eastern Standard Time on the date they
+# are scheduled for, and not one of them straddles a UTC date as a result.
+EASTERN = ZoneInfo('America/New_York')
 
 # `/games` returns at most 3,000 records. Reaching it means truncation.
 GAMES_RECORD_CAP = 3000
@@ -61,8 +76,13 @@ def _stamp(day, end):
     return moment.isoformat().replace('+00:00', 'Z')
 
 
-def game_day(game):
-    """The UTC date a game starts on, or None when the provider omits it."""
+def start_moment(game):
+    """The instant a game starts, in UTC, or None when it cannot be read.
+
+    A timestamp with no timezone is refused rather than assumed to be UTC: the
+    date is what assigns a game to a season and to a day, and a guess there is
+    a guess about which night a reader saw it played.
+    """
     raw = game.get('startDate')
     if not isinstance(raw, str) or not raw:
         return None
@@ -72,7 +92,32 @@ def game_day(game):
         return None
     if moment.tzinfo is None:
         return None
-    return moment.astimezone(timezone.utc).date()
+    return moment.astimezone(timezone.utc)
+
+
+def game_day(game):
+    """The UTC date a game starts on, or None when the provider omits it.
+
+    This is the provider's own notion of the date, and it is kept for exactly
+    one job: checking that the rows a date-windowed request returned fall
+    inside the window that was asked for. The provider filters by UTC, so the
+    check has to as well.
+
+    It is NOT the day the game is played on. That is `playing_day`, and it is
+    what the site groups a schedule by.
+    """
+    moment = start_moment(game)
+    return None if moment is None else moment.date()
+
+
+def playing_day(game):
+    """The calendar date, in the Eastern United States, that a game is played.
+
+    The night a reader watched it, which is the day a scoreboard must file it
+    under. See `EASTERN` for the measurement behind this.
+    """
+    moment = start_moment(game)
+    return None if moment is None else moment.astimezone(EASTERN).date()
 
 
 def fetch_windowed(path, season, first, last, *, cap, count=len, day_of=None,

@@ -740,3 +740,94 @@ def test_a_roster_team_the_season_omits_but_another_season_carries(db):
                       ' ORDER BY season').fetchall()
     assert [(r['season'], r['division_one']) for r in rows] == [(2025, 0),
                                                                 (2026, 1)]
+
+
+# --- which day, and whether it has been played -----------------------------
+#
+# Both of these were found by measuring the LIVE export against the provider's
+# 2026-27 feed, not by reading the code. A season in progress is the only
+# season that can show either defect, and before November 2026 every exported
+# season was finished.
+
+def test_an_unplayed_game_stores_no_score_although_the_provider_sends_zero(db):
+    """`/games` returns homePoints: 0 for a game nobody has played. Stored as
+    given, it published every upcoming game as 0-0."""
+    load_season(db, 2027, [game(1, season=2027, status='scheduled',
+                                home_points=0, away_points=0,
+                                day='2026-11-14T23:00:00Z')],
+                [team(10), team(20, 'Beta')])
+    row = db.execute('SELECT home_points, away_points, status FROM game'
+                     ' WHERE provider_id = 1').fetchone()
+    assert (row['home_points'], row['away_points']) == (None, None)
+    assert row['status'] == 'scheduled'
+
+
+@pytest.mark.parametrize('status', ['postponed', 'cancelled'])
+def test_a_postponed_or_cancelled_game_stores_no_score_either(db, status):
+    load_season(db, 2027, [game(1, season=2027, status=status, home_points=0,
+                                away_points=0, day='2026-11-14T23:00:00Z')],
+                [team(10), team(20, 'Beta')])
+    row = db.execute('SELECT home_points FROM game'
+                     ' WHERE provider_id = 1').fetchone()
+    assert row['home_points'] is None
+
+
+def test_a_game_under_way_keeps_a_real_nil_nil(db):
+    """Two minutes in, 0-0 is a measurement. The status is what separates a
+    scoreless game from an unplayed one; rejecting every zero would lose it."""
+    load_season(db, 2027, [game(1, season=2027, status='in_progress',
+                                home_points=0, away_points=0,
+                                day='2026-11-14T23:00:00Z')],
+                [team(10), team(20, 'Beta')])
+    row = db.execute('SELECT home_points, away_points FROM game'
+                     ' WHERE provider_id = 1').fetchone()
+    assert (row['home_points'], row['away_points']) == (0, 0)
+
+
+def test_a_finals_score_is_stored_exactly_as_given(db):
+    load_season(db, 2026, [game(1, home_points=70, away_points=60)],
+                [team(10), team(20, 'Beta')])
+    row = db.execute('SELECT home_points, away_points FROM game'
+                     ' WHERE provider_id = 1').fetchone()
+    assert (row['home_points'], row['away_points']) == (70, 60)
+
+
+def test_the_playing_day_is_the_eastern_evening_not_the_utc_date(db):
+    """A 7pm Eastern tip-off is already tomorrow in UTC. 57% of the 2026-27
+    games with a decided time are in this position."""
+    load_season(db, 2027, [game(1, season=2027, status='scheduled',
+                                home_points=0, away_points=0,
+                                day='2026-11-15T00:30:00Z')],
+                [team(10), team(20, 'Beta')])
+    row = db.execute('SELECT playing_date, start_date_utc, start_at_utc'
+                     ' FROM game WHERE provider_id = 1').fetchone()
+    assert row['playing_date'] == '2026-11-14'
+    # The UTC date is kept, unchanged, because it is what validates a fetch
+    # window against the provider's own date filter.
+    assert row['start_date_utc'] == '2026-11-15'
+    assert row['start_at_utc'] == '2026-11-15T00:30:00Z'
+
+
+def test_the_providers_undecided_placeholder_lands_on_its_own_date(db):
+    """All 2,247 undecided games carry 05:00Z -- midnight Eastern on the date
+    they are scheduled for. That is the evidence the feed counts in Eastern
+    time, and the day must come out as that date, with no time."""
+    row = dict(game(1, season=2027, status='scheduled', home_points=0,
+                    away_points=0, day='2026-11-11T05:00:00Z'))
+    row['startTimeTbd'] = True
+    load_season(db, 2027, [row], [team(10), team(20, 'Beta')])
+    stored = db.execute('SELECT playing_date, start_at_utc, start_time_tbd'
+                        ' FROM game WHERE provider_id = 1').fetchone()
+    assert stored['playing_date'] == '2026-11-11'
+    assert stored['start_at_utc'] is None
+    assert stored['start_time_tbd'] == 1
+
+
+def test_a_column_added_after_a_database_exists_is_added_to_it(db):
+    """CREATE TABLE IF NOT EXISTS brings a missing table forward and a missing
+    column not at all, so a database built before schema 3 would have kept
+    rejecting every write to the new columns."""
+    from src.ncaambb.store import add_missing_columns
+    db.execute('ALTER TABLE game DROP COLUMN playing_date')
+    assert 'game.playing_date' in add_missing_columns(db)
+    assert add_missing_columns(db) == []

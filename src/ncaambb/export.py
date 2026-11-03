@@ -101,16 +101,25 @@ def teams(connection):
 def season_games(connection, season):
     rows = connection.execute(
         'SELECT game_key, provider_id, season_type, tournament, status,'
-        '       start_date_utc, start_time_tbd, neutral_site, conference_game,'
+        '       start_date_utc, playing_date, start_at_utc, start_time_tbd,'
+        '       neutral_site, conference_game,'
         '       home_team_key, away_team_key, home_points, away_points,'
         '       venue, city, state, rateable, division_one'
-        '  FROM game WHERE season = ? ORDER BY start_date_utc, game_key',
+        '  FROM game WHERE season = ?'
+        # Ordered by the instant, so two games on one night come out in the
+        # order they were played rather than in the order of their keys.
+        ' ORDER BY COALESCE(start_at_utc, playing_date, start_date_utc),'
+        ' game_key',
         (season,)).fetchall()
     out = []
     for row in rows:
         game = dict(
             id=row['game_key'],
-            at=row['start_date_utc'],
+            # The night it is played, not the UTC date. A game with no
+            # Eastern date stored is one loaded before schema 3; falling back
+            # to the UTC date keeps it on the scoreboard rather than dropping
+            # it, and a reload puts it right.
+            at=row['playing_date'] or row['start_date_utc'],
             status=row['status'],
             home=row['home_team_key'],
             away=row['away_team_key'],
@@ -126,6 +135,11 @@ def season_games(connection, season):
             game['neutral'] = 1
         if row['start_time_tbd']:
             game['time_tbd'] = 1
+        # The tip-off time, as an instant, only when one has been decided. A
+        # reader's browser turns it into their own local time; the export does
+        # not pick a timezone on their behalf.
+        if row['start_at_utc'] and not row['start_time_tbd']:
+            game['tip'] = row['start_at_utc']
         if row['conference_game']:
             game['conference_game'] = 1
         if row['tournament']:

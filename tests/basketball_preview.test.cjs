@@ -52,11 +52,14 @@ function games() {
 function board() {
   return [
     { team: 'ncaambb:cbbd:team:1', conference: 'Big Ten', rating: 2273.7,
-      rank: 1, wins: 30, losses: 4, d1_wins: 29, d1_losses: 4 },
+      rank: 1, wins: 30, losses: 4, d1_wins: 29, d1_losses: 4,
+      rated_games: 34 },
     { team: 'ncaambb:cbbd:team:2', conference: 'ACC', rating: 2211.3,
-      rank: 2, wins: 29, losses: 5, d1_wins: 29, d1_losses: 5 },
+      rank: 2, wins: 29, losses: 5, d1_wins: 29, d1_losses: 5,
+      rated_games: 34 },
     { team: 'ncaambb:cbbd:team:3', conference: 'Big 12', rating: 1788.4,
-      rank: 3, wins: 18, losses: 14, d1_wins: 17, d1_losses: 14 }
+      rank: 3, wins: 18, losses: 14, d1_wins: 17, d1_losses: 14,
+      rated_games: 32 }
   ];
 }
 
@@ -81,13 +84,20 @@ function stamp(text) {
 }
 
 /* A whole export on disk, next to a copy of the page and its scripts. */
+// `overrides` goes into the manifest, EXCEPT `board`, which is the season
+// payload's rating board. It is pulled out here so a test can describe a
+// season in progress without a fourth positional argument.
 function site(overrides, schedule) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cbb-preview-'));
   const data = path.join(root, 'data', 'ncaambb', 'seasons');
   fs.mkdirSync(data, { recursive: true });
+  const rules = Object.assign({}, overrides || {});
+  const boardRows = rules.board || board();
+  delete rules.board;
+  overrides = rules;
   const seasonText = 'window.NCAAMBB_SEASONS=(window.NCAAMBB_SEASONS||{});'
     + 'window.NCAAMBB_SEASONS[2026]='
-    + JSON.stringify({ season: 2026, board: board(),
+    + JSON.stringify({ season: 2026, board: boardRows,
       games: schedule || games() }) + ';\n';
   const teamsText = 'window.NCAAMBB_TEAMS=' + JSON.stringify(teams()) + ';\n';
   fs.writeFileSync(path.join(data, '2026.js'), seasonText);
@@ -172,6 +182,44 @@ test('the board renders, ranked, with ratings as whole numbers', async () => {
   assert.equal(table.length, 3);
   assert.deepEqual(table[0], ['1', 'Michigan', 'Big Ten', '2274', '30-4']);
   assert.deepEqual(table[2].slice(0, 2), ['3', 'BYU']);
+  dom.window.close();
+});
+
+test('a club yet to play shows no record, and the table says how many',
+  async () => {
+    // Two days into 2026-27 the chain knew twelve teams. The other 353 carry
+    // last season's rating, and a ranked table that does not say so reads as
+    // results nobody has played for.
+    const early = board().map((row, index) => (
+      index === 0 ? row : Object.assign({}, row, {
+        rated_games: 0, wins: 0, losses: 0, d1_wins: 0, d1_losses: 0
+      })));
+    const dom = await open({ board: early });
+    const table = rows(dom);
+    assert.equal(table[0][4], '30-4', 'a club that has played shows its record');
+    assert.equal(table[1][4], '\u2014', 'and one that has not shows none');
+    assert.equal(table[1][3], '2211', 'its carried rating is still shown');
+    const note = dom.window.document.getElementById('board-note');
+    assert.equal(note.hidden, false);
+    assert.match(note.textContent, /2 of these 3 clubs have not played yet/);
+    dom.window.close();
+  });
+
+test('a settled season says nothing about clubs yet to play', async () => {
+  const dom = await open();
+  const note = dom.window.document.getElementById('board-note');
+  assert.equal(note.hidden, true);
+  assert.equal(note.textContent, '');
+  dom.window.close();
+});
+
+test('a board where nobody has played says exactly that', async () => {
+  const none = board().map(row => Object.assign({}, row, {
+    rated_games: 0, wins: 0, losses: 0
+  }));
+  const dom = await open({ board: none });
+  const note = dom.window.document.getElementById('board-note');
+  assert.match(note.textContent, /No club has played yet/);
   dom.window.close();
 });
 

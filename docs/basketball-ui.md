@@ -79,11 +79,20 @@ a season from the calendar year.
 
 ### Two measured facts this table has to absorb
 
-**44% of the 2026-27 schedule has no tip-off time.** 2,669 of 6,015 games
+**37% of the 2026-27 schedule has no tip-off time.** 2,247 of 6,006 games
 carry `startTimeTbd`. A date strip can place them on a day; a `Tipoff` sort
 cannot order them against each other, and rendering an unknown time as
 midnight would put them first and read as a real time. They need their own
 bucket on the day, after the timed games, labelled as undecided.
+
+The other 3,759 DO have a time, and it is now shown. The payload states the
+day in `at` and the instant in `tip`, and the card renders `tip` in the
+reader's own timezone. These were one field until the live export was measured
+against this page: `at` had only ever carried a bare date, so `timeKnown` was
+false for every basketball game in every season and the whole scoreboard said
+"Scheduled" where it could have said when. `ui/ncaambb_app.js` is shared with
+the NFL, whose export states its instant in `at` instead, so `startInstant`
+reads either shape and only a payload with a `tip` gets a clock on its cards.
 
 **There is no in-game clock for basketball yet.** The B02 archive holds final
 scores and period points, not a live half or clock, so `half/OT · clock` has

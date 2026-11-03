@@ -63,6 +63,16 @@ CREATE TABLE IF NOT EXISTS game (
     status         TEXT    NOT NULL,
     start_date     TEXT    NOT NULL,
     start_date_utc TEXT    NOT NULL,
+    -- The calendar date this game is played on in the Eastern United States,
+    -- which is the day a scoreboard files it under. It is NOT the UTC date:
+    -- 36% of the 2026-27 schedule falls on a different UTC date than the night
+    -- it is played, because a 7pm Eastern tip-off is already tomorrow in UTC.
+    playing_date   TEXT,
+    -- The instant the game starts, in UTC, when the provider has decided one.
+    -- NULL while the tip-off time is undecided, so that a page can show the
+    -- time it knows and say "time to be decided" for the rest, rather than
+    -- showing every game as midnight.
+    start_at_utc   TEXT,
     -- 44% of the 2026-27 schedule has no tip-off time yet. A missing time is
     -- recorded as such; it is never rendered or stored as midnight.
     start_time_tbd INTEGER NOT NULL DEFAULT 0,

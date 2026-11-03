@@ -376,14 +376,68 @@
 
   /* Whether a game's tip-off time is known.
    *
-   * 2,669 of the 2026-27 season's 6,015 games carry startTimeTbd. Rendering an
+   * 2,247 of the 2026-27 season's 6,006 games carry startTimeTbd. Rendering an
    * unknown time as midnight would put them first and read as a real time, so
    * they get their own bucket at the end of the day, labelled as undecided.
+   *
+   * The time lives in `tip`, an instant, and the day in `at`. They were one
+   * field until the export was measured: `at` had always been a bare date, so
+   * this read every game in every season as having no time at all, and the
+   * whole scoreboard said "Scheduled" where it could have said when.
    */
+  /* THE INSTANT A GAME STARTS, whichever league's payload this is.
+   *
+   * This module is the shared registry for all three leagues, so it meets two
+   * payload shapes. The NFL export states the instant in `at` and the day in
+   * `date`. Basketball states the day in `at` and the instant in `tip`, and
+   * its `at` has only ever been a bare date -- which is the bug behind all of
+   * this: reading the instant out of `at` alone meant every basketball game
+   * in every season was a game with no known tip-off time.
+   *
+   * Ten characters is a date; longer is a timestamp.
+   */
+  function startInstant(game) {
+    if (!game) return null;
+    if (typeof game.tip === 'string' && game.tip.length > 10) return game.tip;
+    if (typeof game.at === 'string' && game.at.length > 10) return game.at;
+    return null;
+  }
+
   function timeKnown(game) {
     if (!game) return false;
     if (game.time_tbd) return false;
-    return typeof game.at === 'string' && game.at.length > 10;
+    return startInstant(game) !== null;
+  }
+
+  /* The tip-off time in the reader's own timezone, or null.
+   *
+   * Deliberately reads `tip` and not `startInstant`: a league whose export
+   * states a tip-off instant gets a time on the card, and one that does not
+   * keeps saying "Scheduled" rather than having a clock appear on its pages
+   * as a side effect of this change.
+   *
+   * The export states an instant and nothing else; which evening that is
+   * belongs to whoever is reading. A timestamp the browser cannot parse
+   * returns null rather than "Invalid Date".
+   */
+  function tipText(game, locale) {
+    if (!game || game.time_tbd) return null;
+    if (typeof game.tip !== 'string' || game.tip.length <= 10) return null;
+    var when = new Date(game.tip);
+    if (isNaN(when.getTime())) return null;
+    try {
+      return when.toLocaleTimeString(locale || undefined,
+        { hour: 'numeric', minute: '2-digit' });
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /* The instant a game is ordered by within its day. A game whose time is
+   * undecided has none, and callers put those last.
+   */
+  function tipKey(game) {
+    return timeKnown(game) ? startInstant(game) : null;
   }
 
   function sortGames(games, mode, favorites) {
@@ -401,7 +455,7 @@
       var kb = timeKnown(b) ? 0 : 1;
       if (ka !== kb) return ka - kb;
       if (ka === 1) return String(a.id).localeCompare(String(b.id));
-      if (a.at !== b.at) return a.at < b.at ? -1 : 1;
+      if (tipKey(a) !== tipKey(b)) return tipKey(a) < tipKey(b) ? -1 : 1;
       return String(a.id).localeCompare(String(b.id));
     });
     return rows;
@@ -426,13 +480,20 @@
    * and period points. So a card says scheduled, final, or a score with no
    * clock, and NEVER a zeroed clock, which reads as the period expiring.
    */
-  function statusLine(game) {
+  function statusLine(game, locale) {
     if (!game) return '';
     if (game.status === 'final') return 'Final';
     if (game.status === 'cancelled') return 'Cancelled';
     if (game.status === 'postponed') return 'Postponed';
+    // Under way, with no clock to show: the archive holds period points, not
+    // a running clock, so this says that it has started and no more.
+    if (game.status === 'in_progress') return 'In progress';
+    // "Time TBD" is for a game whose time nobody has decided. A league whose
+    // export states no tip-off instant keeps the old wording: it knows WHEN
+    // the game is, it just has no time to put on the card.
     if (!timeKnown(game)) return 'Time TBD';
-    return 'Scheduled';
+    var time = tipText(game, locale);
+    return time === null ? 'Scheduled' : time;
   }
 
   function scoreLine(game) {
@@ -496,8 +557,8 @@
       var ka = timeKnown(a.game) ? 0 : 1;
       var kb = timeKnown(b.game) ? 0 : 1;
       if (ka !== kb) return ka - kb;
-      if (ka === 0 && a.game.at !== b.game.at) {
-        return a.game.at < b.game.at ? -1 : 1;
+      if (ka === 0 && tipKey(a.game) !== tipKey(b.game)) {
+        return tipKey(a.game) < tipKey(b.game) ? -1 : 1;
       }
       return String(a.game.id).localeCompare(String(b.game.id));
     });
@@ -638,6 +699,9 @@
     todayKey: todayKey,
     openingDay: openingDay,
     timeKnown: timeKnown,
+    startInstant: startInstant,
+    tipText: tipText,
+    tipKey: tipKey,
     sortGames: sortGames,
     filterGames: filterGames,
     statusLine: statusLine,

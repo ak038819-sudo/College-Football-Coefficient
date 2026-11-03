@@ -4,6 +4,12 @@
 // football's favorites key, a league switch that lands on an empty panel, a
 // game with no tip-off time sorted as though it tipped at midnight, and a
 // zeroed clock on a sport that has no live feed.
+// A tip-off time is rendered in the TIMEZONE the reader's browser is set to,
+// which has nothing to do with their locale, so an assertion about one has to
+// fix the other. Pinned here, before the first Date is formatted, or this
+// file's expectations would change with the machine running it.
+process.env.TZ = 'America/New_York';
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const app = require('../ui/ncaambb_app.js');
@@ -187,9 +193,16 @@ test('a season label is never guessed from nothing', () => {
 
 const DAY = '2026-11-07';
 
+// The shape the export actually writes: `at` is the calendar day the game is
+// played on in the Eastern United States, and `tip` is the instant it starts,
+// present only when the provider has decided one. These were one field until
+// the export was measured against it -- `at` had always been a bare date, so
+// every game read as having no time and the whole scoreboard said
+// "Scheduled". tests/test_ncaambb_export.py pins the same two fields on the
+// Python side.
 function game(overrides) {
   return Object.assign({
-    id: 'g', at: DAY + 'T19:00:00Z', status: 'scheduled',
+    id: 'g', at: DAY, tip: DAY + 'T19:00:00Z', status: 'scheduled',
     home: 'H', away: 'A', home_points: null, away_points: null
   }, overrides || {});
 }
@@ -245,34 +258,38 @@ test('the strip crosses a month boundary correctly', () => {
 });
 
 test('a game belongs to the day its date names', () => {
-  const games = [game({ id: 'a' }), game({ id: 'b', at: '2026-11-08T01:00:00Z' })];
+  const games = [game({ id: 'a' }), game({ id: 'b', at: '2026-11-08' })];
   assert.deepEqual(app.gamesOn(games, DAY).map(g => g.id), ['a']);
 });
 
 test('a game with no tip-off time sorts last on its day, not first', () => {
   // 2,669 of the 2026-27 season's 6,015 games have no time. Rendering an
   // unknown time as midnight would put them at the top and read as real.
+  // The ids are deliberately in the OPPOSITE alphabetical order to the
+  // times, because ordering by id is the fallback: with ids that agreed, a
+  // sort that ignored the tip-off entirely would pass this test.
   const rows = app.sortGames([
-    game({ id: 'tbd', at: DAY, time_tbd: 1 }),
-    game({ id: 'late', at: DAY + 'T23:00:00Z' }),
-    game({ id: 'early', at: DAY + 'T17:00:00Z' })
+    game({ id: 'a-tbd', tip: null, time_tbd: 1 }),
+    game({ id: 'b-late', tip: DAY + 'T23:00:00Z' }),
+    game({ id: 'c-early', tip: DAY + 'T17:00:00Z' })
   ], 'tipoff');
-  assert.deepEqual(rows.map(row => row.id), ['early', 'late', 'tbd']);
+  assert.deepEqual(rows.map(row => row.id),
+    ['c-early', 'b-late', 'a-tbd']);
 });
 
 test('two undecided games keep a stable order instead of an invented one', () => {
   const rows = app.sortGames([
-    game({ id: 'z', at: DAY, time_tbd: 1 }),
-    game({ id: 'a', at: DAY, time_tbd: 1 })
+    game({ id: 'z', tip: null, time_tbd: 1 }),
+    game({ id: 'a', tip: null, time_tbd: 1 })
   ], 'tipoff');
   assert.deepEqual(rows.map(row => row.id), ['a', 'z']);
 });
 
 test('featured puts a followed team first, and still buries the undecided', () => {
   const rows = app.sortGames([
-    game({ id: 'early', at: DAY + 'T17:00:00Z' }),
-    game({ id: 'mine', at: DAY + 'T21:00:00Z', home: 'BYU' }),
-    game({ id: 'tbd-mine', at: DAY, time_tbd: 1, away: 'BYU' })
+    game({ id: 'early', tip: DAY + 'T17:00:00Z' }),
+    game({ id: 'mine', tip: DAY + 'T21:00:00Z', home: 'BYU' }),
+    game({ id: 'tbd-mine', tip: null, time_tbd: 1, away: 'BYU' })
   ], 'featured', ['BYU']);
   assert.deepEqual(rows.map(row => row.id), ['mine', 'tbd-mine', 'early']);
 });
@@ -290,10 +307,46 @@ test('the live filter returns nothing, because basketball has no live feed', () 
 // --- what a card may say ---------------------------------------------------
 
 test('a scheduled game with no time says so, and never shows a clock', () => {
-  assert.equal(app.statusLine(game({ time_tbd: 1, at: DAY })), 'Time TBD');
-  assert.equal(app.statusLine(game()), 'Scheduled');
+  assert.equal(app.statusLine(game({ time_tbd: 1, tip: null })), 'Time TBD');
   assert.equal(app.statusLine(game({ status: 'final' })), 'Final');
   assert.equal(app.statusLine(game({ status: 'postponed' })), 'Postponed');
+  // Under way. There is no basketball clock to put next to it.
+  assert.equal(app.statusLine(game({ status: 'in_progress' })),
+    'In progress');
+});
+
+test('a scheduled game with a tip-off time says when, in one timezone', () => {
+  // 19:00Z is 2pm in New York and 7pm in London. The card states the
+  // reader's own evening, which is the only one they can act on.
+  assert.equal(app.statusLine(game(), 'en-US'), '2:00 PM');
+  assert.equal(app.tipText(game(), 'en-GB'), '14:00');
+  // A timestamp no browser can read is absent, not "Invalid Date".
+  // Long enough to get past the length check, so this reaches the guard that
+  // turns an unreadable timestamp into an absence rather than "Invalid Date".
+  assert.equal(app.tipText(game({ tip: 'whenever, honestly' })), null);
+  // A time exists and cannot be rendered, which is not the same as no time
+  // having been decided, so the card says neither a clock nor "Time TBD".
+  assert.equal(app.statusLine(game({ tip: 'whenever, honestly' })),
+    'Scheduled');
+});
+
+test('a basketball game whose day field is a bare date has no known time', () => {
+  // The old bug, pinned. `at` is basketball's DAY, so a game with no `tip`
+  // has no tip-off time however the day is written.
+  assert.equal(app.timeKnown({ at: DAY, status: 'scheduled' }), false);
+  assert.equal(app.statusLine({ at: DAY, status: 'scheduled' }), 'Time TBD');
+});
+
+test('an NFL-shaped game keeps its instant in `at`, and gets no clock', () => {
+  // This module is shared by all three leagues: the NFL export states the
+  // instant in `at` and no `tip` at all. Its games must still sort and
+  // bucket by time -- and must NOT start showing a tip-off time on a page
+  // this change was never about.
+  const nfl = { at: DAY + 'T19:00:00Z', status: 'scheduled' };
+  assert.equal(app.startInstant(nfl), DAY + 'T19:00:00Z');
+  assert.equal(app.timeKnown(nfl), true);
+  assert.equal(app.tipText(nfl), null);
+  assert.equal(app.statusLine(nfl), 'Scheduled');
 });
 
 test('no status line anywhere is a zeroed clock', () => {

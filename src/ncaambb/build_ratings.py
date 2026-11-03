@@ -21,7 +21,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .elo import replay, score
+from .elo import INITIAL_RATING, regress, replay, score
 from .fit_elo import load_games
 from .store import (connect, record_rating_model, record_snapshot,
                     upsert_rating_games, upsert_team_ratings)
@@ -119,12 +119,24 @@ def report_from_config(payload):
                 holdout=dict(validation['holdout']))
 
 
-def season_ratings(rows, final_ratings):
-    """Each team's rating at the end of each season, from the game chain.
+def season_ratings(rows, final_ratings, *, rosters=None, retention=None):
+    """Each team's rating in each season, from the game chain.
 
     Taken from the chain rather than from the replay's running totals, because
     the chain is what is stored and auditable: a team's last counted game of a
     season carries its end-of-season rating.
+
+    `rosters` maps a season to the Division I teams the provider lists for it.
+    Given one, a team that has not yet played a counted game in that season
+    gets its CARRIED rating -- last season's, regressed by `retention`, which
+    is what the model already says about it -- recorded with zero games.
+
+    Why this exists: two days into 2026-27, twelve games had been played, so
+    the chain knew twelve teams and the published standings were a table of
+    twelve. The other 353 were not unrated, only unasked: the replay regresses
+    every rating at the season boundary and would have used exactly these
+    numbers for their first game. A board of 12 is not a more cautious answer
+    than a board of 365, it is a wrong one.
     """
     latest, counted = {}, Counter()
     for row in rows:
@@ -134,8 +146,47 @@ def season_ratings(rows, final_ratings):
             key = (row[f'{side}_team_key'], row['season'])
             latest[key] = row[f'{side}_postgame']
             counted[key] += 1
+    if rosters:
+        if retention is None:
+            raise ValueError('A carried rating needs the offseason retention')
+        for season, teams in rosters.items():
+            for team in teams:
+                if (team, season) in latest:
+                    continue
+                latest[(team, season)] = carried_rating(
+                    latest, team, season, retention)
     return [(team, season, rating, counted[(team, season)])
             for (team, season), rating in sorted(latest.items())]
+
+
+def carried_rating(latest, team, season, retention, *, initial=INITIAL_RATING):
+    """What the model says about a team that has not played this season.
+
+    The most recent season it DID play, regressed once -- not once per season
+    skipped. A team returning after a year away is not twice as average as one
+    returning after none; the model has one offseason step and this applies
+    it once. A team with no history at all starts where every team starts.
+    """
+    previous = [key[1] for key in latest
+                if key[0] == team and key[1] < season]
+    if not previous:
+        return initial
+    return regress(latest[(team, max(previous))], retention, initial=initial)
+
+
+def division_one_rosters(connection):
+    """The Division I teams the provider lists for each season.
+
+    Read from `team_season`, which is the provider's own answer to "who is
+    Division I this year", so a team is never invented into a season it is not
+    in.
+    """
+    rosters = {}
+    for row in connection.execute(
+            'SELECT season, team_key FROM team_season WHERE division_one = 1'
+            ' ORDER BY season, team_key'):
+        rosters.setdefault(row['season'], []).append(row['team_key'])
+    return rosters
 
 
 def build(connection, config, *, model_name=MODEL_NAME, report=None,
@@ -157,7 +208,9 @@ def build(connection, config, *, model_name=MODEL_NAME, report=None,
         holdout_brier=(report or {}).get('holdout', {}).get('brier'),
         holdout_games=(report or {}).get('holdout', {}).get('games'),
         snapshot_id=snapshot_id)
-    ratings = season_ratings(rows, final)
+    ratings = season_ratings(rows, final,
+                             rosters=division_one_rosters(connection),
+                             retention=elo['offseason_retention'])
     stored_ratings = upsert_team_ratings(connection, model_id, ratings)
     stored_games = upsert_rating_games(connection, model_id, rows)
     seasons = sorted({row['season'] for row in rows})

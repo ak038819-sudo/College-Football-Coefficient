@@ -14,11 +14,11 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .coverage import classify_game
-from .games import game_day
+from .coverage import classify_game, recorded_points
+from .games import game_day, playing_day, start_moment
 from .identity import entity_key, season_label
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 DEFAULT_PATH = Path('db/ncaambb.db')
 SCHEMA_SQL = Path(__file__).with_name('schema.sql')
 
@@ -42,12 +42,15 @@ def connect(path=None):
 def migrate(connection):
     """Apply the schema. Idempotent: every statement is CREATE IF NOT EXISTS.
 
-    Every version so far has only ADDED tables, so running the script brings
-    an older database forward and the stored version is then stamped. A
-    database from a FUTURE version is refused rather than written to, because
+    CREATE IF NOT EXISTS brings a missing TABLE forward but not a missing
+    COLUMN, so a column added to an existing table is added here by hand.
+    Version 3 added `game.playing_date` and `game.start_at_utc`.
+
+    A database from a FUTURE version is refused rather than written to, because
     this code cannot know what that version changed.
     """
     connection.executescript(SCHEMA_SQL.read_text(encoding='utf-8'))
+    add_missing_columns(connection)
     row = connection.execute('SELECT version FROM schema_version').fetchone()
     if row is None:
         connection.execute('INSERT INTO schema_version (version) VALUES (?)',
@@ -60,6 +63,29 @@ def migrate(connection):
                            (SCHEMA_VERSION,))
     connection.commit()
     return SCHEMA_VERSION
+
+
+# Columns added to a table that already existed, with the version that added
+# them. The values are left NULL: a reload from the raw cache fills them, and
+# inventing a day for a row this code has not read is exactly the kind of guess
+# the rest of this module refuses to make.
+ADDED_COLUMNS = {'game': (('playing_date', 'TEXT'), ('start_at_utc', 'TEXT'))}
+
+
+def add_missing_columns(connection):
+    """Add any column the schema declares and an older database lacks."""
+    added = []
+    for table, columns in ADDED_COLUMNS.items():
+        present = {row['name'] for row in
+                   connection.execute(f'PRAGMA table_info({table})')}
+        if not present:
+            continue
+        for name, kind in columns:
+            if name not in present:
+                connection.execute(
+                    f'ALTER TABLE {table} ADD COLUMN {name} {kind}')
+                added.append(f'{table}.{name}')
+    return added
 
 
 def record_snapshot(connection, kind, retrieved_at, *, season=None,
@@ -162,19 +188,27 @@ def upsert_games(connection, games, division_one_ids, *, snapshot_id=None):
         day = game_day(game)
         if day is None:
             raise ValueError(f'Game {game.get("id")} has no usable start date')
+        night = playing_day(game)
+        moment = start_moment(game)
+        # A 0 from the provider on a game nobody has played is an absence, and
+        # it is turned back into one here rather than at every reader.
+        home_points, away_points = recorded_points(game)
         season = game['season']
         connection.execute(
             'INSERT INTO game (game_key, provider_id, season, season_label,'
             ' season_type, tournament, status, start_date, start_date_utc,'
+            ' playing_date, start_at_utc,'
             ' start_time_tbd, neutral_site, conference_game, home_team_key,'
             ' away_team_key, home_points, away_points, home_period_points,'
             ' away_period_points, venue_id, venue, city, state, attendance,'
             ' rateable, division_one, exclusions, snapshot_id)'
             ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,'
-            ' ?, ?, ?, ?, ?, ?, ?, ?)'
+            ' ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             ' ON CONFLICT(game_key) DO UPDATE SET'
             '   status = excluded.status, start_date = excluded.start_date,'
             '   start_date_utc = excluded.start_date_utc,'
+            '   playing_date = excluded.playing_date,'
+            '   start_at_utc = excluded.start_at_utc,'
             '   start_time_tbd = excluded.start_time_tbd,'
             '   neutral_site = excluded.neutral_site,'
             '   conference_game = excluded.conference_game,'
@@ -193,13 +227,21 @@ def upsert_games(connection, games, division_one_ids, *, snapshot_id=None):
              season_label(season), game['seasonType'],
              _text(game.get('tournament')), game['status'],
              game['startDate'], day.isoformat(),
+             night.isoformat() if night is not None else None,
+             # NULL while the tip-off time is undecided. The provider's
+             # placeholder for an undecided time is midnight Eastern, a real
+             # timestamp, so the flag is what tells them apart -- not the
+             # timestamp looking suspicious.
+             None if game.get('startTimeTbd') is True
+             else (moment.isoformat().replace('+00:00', 'Z')
+                   if moment is not None else None),
              1 if game.get('startTimeTbd') is True else 0,
              1 if game.get('neutralSite') is True else 0,
              None if game.get('conferenceGame') is None
              else (1 if game['conferenceGame'] else 0),
              entity_key('team', game['homeTeamId']),
              entity_key('team', game['awayTeamId']),
-             game.get('homePoints'), game.get('awayPoints'),
+             home_points, away_points,
              json.dumps(game['homePeriodPoints'])
              if isinstance(game.get('homePeriodPoints'), list) else None,
              json.dumps(game['awayPeriodPoints'])
