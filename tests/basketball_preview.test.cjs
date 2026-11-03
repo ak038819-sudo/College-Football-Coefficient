@@ -204,6 +204,18 @@ function writePeople(root, payload, overrides) {
   ((overrides && overrides.extraSeasons) || []).forEach(year => {
     seasons[year] = seasons[2026];
   });
+  // Which seasons the manifest CLAIMS people for, when that has to differ
+  // from the one whose files are on disk. The only way to describe a rated
+  // season with no player files, which is the ordinary state of the season
+  // being played: it is rated from its first game and its rosters are
+  // fetched last.
+  const claimed = overrides && overrides.peopleSeasonKeys;
+  if (claimed) {
+    const only = {};
+    claimed.forEach(year => { only[year] = seasons[2026]; });
+    Object.keys(seasons).forEach(key => { delete seasons[key]; });
+    Object.assign(seasons, only);
+  }
   payload.files.people = {
     version: (overrides && overrides.peopleVersion) || 2,
     shards: SHARDS,
@@ -232,6 +244,7 @@ function site(overrides, schedule) {
   // into it.
   const people = { lines: rules.lines, people: rules.people,
                    extraSeasons: rules.extraSeasons,
+                   peopleSeasonKeys: rules.peopleSeasonKeys,
                    peopleVersion: rules.peopleVersion };
   // `at` freezes the PAGE's clock, so a test can put it at a named moment.
   // The export's age is measured against that same instant, or a page opened
@@ -241,6 +254,7 @@ function site(overrides, schedule) {
   delete rules.board;
   delete rules.lines;
   delete rules.extraSeasons;
+  delete rules.peopleSeasonKeys;
   delete rules.peopleVersion;
   delete rules.at;
   overrides = rules;
@@ -1667,3 +1681,23 @@ test('a club page in a season with no people shows no roster at all',
       /Roster/);
     dom.window.close();
   });
+
+test('a club in the season being played says where its squad is', async () => {
+  // Player files cover the most recent few seasons and the season in
+  // progress is fetched last, so the season every link lands on is routinely
+  // the one with no roster. Drawing nothing there left a reader with a
+  // schedule, no squad, and no hint that a squad exists anywhere.
+  // The rated season on disk is 2026; the manifest claims people for 2025
+  // only, which is a rated season with no player files.
+  // TWO claimed seasons, so "the most recent" is a different answer from
+  // "the first one listed" -- with one, naming either passes.
+  const dom = await open({ peopleSeasonKeys: [2024, 2025] }, undefined,
+    '#league=ncaambb&section=teams&team=1');
+  const doc = dom.window.document;
+  await settle(dom, () => doc.querySelector('#team-body .clubhead'));
+  const text = doc.querySelector('#team-body').textContent;
+  assert.match(text, /Players are not published for 2025-26/);
+  assert.match(text, /most recent squad on record is 2024-25/);
+  assert.equal(doc.querySelector('#team-body table.roster'), null);
+  dom.window.close();
+});

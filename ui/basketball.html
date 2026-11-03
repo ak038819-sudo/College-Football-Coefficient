@@ -1292,7 +1292,20 @@
    * an absent roster is said so rather than drawn as a club with no players.
    */
   function renderRoster(host, teamKey) {
-    if (!hasPeople(state.season)) return;
+    if (!hasPeople(state.season)) {
+      // Saying nothing was worse than saying this. A reader landing on a
+      // club in the season being played -- which is where every link lands
+      // them -- saw a schedule, no squad, and no hint that a squad exists
+      // anywhere, because player files are published for the most recent few
+      // seasons only and the season in progress is fetched last.
+      var seasons = peopleSeasons();
+      if (!seasons.length) return;
+      host.appendChild(heading('h3', 'Roster'));
+      emptyLine(host, 'Players are not published for '
+        + app.seasonLabel(state.season) + ' yet. The most recent squad on'
+        + ' record is ' + app.seasonLabel(seasons[seasons.length - 1]) + '.');
+      return;
+    }
     if (needPeople([indexPath(), rosterPath(state.season)])) {
       host.appendChild(heading('h3', 'Roster'));
       return emptyLine(host, 'Loading the roster\u2026');
