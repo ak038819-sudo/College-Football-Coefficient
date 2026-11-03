@@ -145,7 +145,22 @@ jobs:
       # reads it from disk; and the active season's PEOPLE cache is never
       # committed (see the commit step), so a fresh checkout has none and
       # fetches it. Settled seasons are in the repository and cost nothing.
+      # BEST EFFORT, and it has to be. Before this step existed a provider
+      # failure could not stop the refresh; with it, a 429 on one season's box
+      # scores skipped the replay, the export and the publish, so the
+      # scoreboard and the ratings stopped refreshing because a roster feed
+      # was busy. MEASURED on run 41675786786, which was rate limited on
+      # 2026-27's /games/players nineteen minutes after a 446-request run and
+      # published nothing at all as a result.
+      #
+      # So the step may fail without failing the run. What it cannot do is
+      # fail silently: the warning below says so, the export states which
+      # seasons it carries people for, and the page says the same to a reader.
+      # Staleness is marked, never refused -- the same rule the publish gate
+      # follows.
       - name: Ingest the people
+        id: people
+        continue-on-error: true
         env:
           CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
           PEOPLE: ${{ steps.seasons.outputs.people }}
@@ -157,6 +172,21 @@ jobs:
           fi
           python -m src.ncaambb.ingest --seasons "$PEOPLE" \
             | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Say so when the people did not all arrive
+        if: steps.people.outcome != 'success'
+        run: |
+          echo "::warning::The people ingestion did not finish. The export is"\
+            " built and published from whatever people the database holds, so"\
+            " a season may carry no player files; the export states which"\
+            " seasons it carries and the page tells a reader the same. The"\
+            " seasons already fetched are cached, so the next run resumes."
+          {
+            echo
+            echo '> **The people ingestion did not finish.** The export below'
+            echo '> is built from whatever people the database holds. The'
+            echo '> seasons it did fetch are cached, so the next run resumes.'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Replay the archive with the committed model
         run: |
@@ -303,7 +333,12 @@ jobs:
 
   alert-failure:
     needs: refresh
-    if: always() && needs.refresh.result == 'failure' && github.event_name != 'pull_request'
+    # Only for the branch the site publishes from. A dispatch on a feature
+    # branch is a rehearsal, and lighting the production health light for one
+    # leaves a red light over a working pipeline -- which then has to be
+    # closed by hand, because a green run closes only one issue.
+    if: always() && needs.refresh.result == 'failure'
+      && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -324,7 +359,8 @@ jobs:
 
   alert-recovery:
     needs: refresh
-    if: always() && needs.refresh.result == 'success' && github.event_name != 'pull_request'
+    if: always() && needs.refresh.result == 'success'
+      && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       issues: write

@@ -417,3 +417,44 @@ def test_the_replay_needs_no_fit_report_on_a_fresh_runner():
     from src.ncaambb.build_ratings import load_config, report_from_config
     report = report_from_config(load_config())
     assert report['holdout_seasons'] and report['holdout']['games'] > 0
+
+
+# --- a busy roster feed must not stop the ratings ---------------------------
+
+def test_a_failed_people_ingestion_does_not_stop_the_refresh():
+    """MEASURED on run 41675786786: the provider refused 2026-27's
+    /games/players with 429, the people step failed, and the replay, the
+    export and the publish were all skipped -- so the scoreboard and the
+    ratings stopped refreshing because a roster feed was busy. Before the
+    people step existed no provider failure could do that, so making it fatal
+    was a regression in what the refresh guarantees."""
+    step = people_step()
+    assert step.get('continue-on-error') is True
+    assert step.get('id') == 'people', 'the report below is keyed on this id'
+    names = [s.get('name', '') for s in steps()]
+    assert names.index(step['name']) < names.index(
+        'Replay the archive with the committed model'), (
+        'the replay has to run after it, not instead of it')
+
+
+def test_a_failed_people_ingestion_is_reported_rather_than_swallowed():
+    """continue-on-error turns a red step green in the run's summary, so
+    without a step of its own a run that fetched no people at all looks
+    exactly like one that fetched them."""
+    reports = [s for s in steps()
+               if "steps.people.outcome != 'success'" in str(s.get('if', ''))]
+    assert len(reports) == 1, 'exactly one step reports it'
+    run = reports[0]['run']
+    assert '::warning::' in run, 'the run log has to carry it'
+    assert 'GITHUB_STEP_SUMMARY' in run, 'and so does the summary a person reads'
+
+
+def test_the_health_light_is_lit_only_for_the_branch_the_site_publishes():
+    """A dispatch on a feature branch is a rehearsal. Lighting the production
+    health light for one leaves a red light over a working pipeline, and a
+    green run closes only one issue, so the leftover has to be closed by
+    hand."""
+    jobs = workflow()['jobs']
+    for job in ('alert-failure', 'alert-recovery'):
+        condition = ' '.join(jobs[job]['if'].split())
+        assert "github.ref == 'refs/heads/main'" in condition, job
