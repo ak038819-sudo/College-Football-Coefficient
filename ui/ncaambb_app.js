@@ -330,8 +330,49 @@
    * Resolved on every call rather than once at load, so a page left open
    * overnight does not keep calling yesterday Today.
    */
-  function todayKey(now) {
-    return (now instanceof Date ? now : new Date()).toISOString().slice(0, 10);
+  /* The calendar a college basketball day is counted in.
+   *
+   * The same zone src/ncaambb/games.py writes `playing_date` with, and the
+   * measurement is recorded there: 2,140 of the 2026-27 season's 3,759 timed
+   * games fall on a different UTC date than the evening they are played on.
+   * The page's notion of today has to agree with the export's notion of a
+   * day, or an evening reader is shown tomorrow's card.
+   *
+   * Only the basketball page passes it. Football and the NFL state their
+   * days in their own exports' conventions and keep the UTC default.
+   */
+  var NCAAMBB_DAY_ZONE = 'America/New_York';
+
+  /* Today's date, in the calendar a league counts its game days in.
+   *
+   * `zone` is an IANA name and there is NO default, deliberately. The UTC
+   * date is right for a league whose export states its days in UTC and
+   * wrong for one that does not, and the same measurement that moved
+   * basketball's `playing_date` to Eastern applies here: between midnight
+   * UTC and midnight Eastern -- which is every evening a game is played --
+   * the UTC date is already tomorrow. Reading it as today opened the
+   * scoreboard on the next day's schedule while games were in progress.
+   *
+   * A browser without time zone data falls back to the UTC date, which is
+   * wrong for part of the evening and better than no date at all.
+   */
+  function todayKey(now, zone) {
+    var moment = now instanceof Date ? now : new Date();
+    if (zone) {
+      try {
+        var parts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit'
+        }).formatToParts(moment);
+        var found = {};
+        parts.forEach(function (part) { found[part.type] = part.value; });
+        if (found.year && found.month && found.day) {
+          return found.year + '-' + found.month + '-' + found.day;
+        }
+      } catch (error) {
+        // Fall through to the UTC date.
+      }
+    }
+    return moment.toISOString().slice(0, 10);
   }
 
   /* A compact date strip around `centre`. A week is both too coarse to
@@ -696,6 +737,7 @@
     dayOf: dayOf,
     gamesOn: gamesOn,
     dayStrip: dayStrip,
+    NCAAMBB_DAY_ZONE: NCAAMBB_DAY_ZONE,
     todayKey: todayKey,
     openingDay: openingDay,
     timeKnown: timeKnown,

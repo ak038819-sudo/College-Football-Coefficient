@@ -231,7 +231,7 @@
 <nav class="tabs" id="tabs" aria-label="Sections"></nav>
 
 <script src="ncaambb_loader.js?v=91399aa621e8"></script>
-<script src="ncaambb_app.js?v=0680179660de"></script>
+<script src="ncaambb_app.js?v=855ae1d79aa3"></script>
 <script>
 (function () {
   'use strict';
@@ -504,7 +504,13 @@
       // A club that has not played yet has no record to show. "0-0" would
       // read as a measurement, and its rating is last season's carried over
       // rather than anything this season has decided.
-      cell(row.rated_games ? row.wins + '-' + row.losses : '\u2014', 'num');
+      // Whether a RECORD exists, not whether a rating counted anything.
+      // The board's wins and losses count every opponent while the rating
+      // counts Division I games alone, so a club whose only final was
+      // against a non-Division I opponent is 1-0 with no rated game -- and
+      // keying this on rated_games put an em dash over a real record.
+      cell(row.wins || row.losses ? row.wins + '-' + row.losses : '\u2014',
+           'num');
       body.appendChild(tr);
     });
     carriedNote(rows);
@@ -519,9 +525,15 @@
     }
   }
 
-  /* How many of this board's clubs are yet to play, said once under the
-   * table. Early in a season most of it is last season's ratings carried
-   * over, and a ranked table that does not say so reads as results.
+  /* How many of this board's ratings are carried rather than earned, said
+   * once under the table. Early in a season most of them are last season's,
+   * and a ranked table that does not say so reads as results.
+   *
+   * The condition is a club with no RATED game, and the wording has to say
+   * that rather than "has not played": a club can have played a non-Division
+   * I opponent, and have a win to show for it, while its rating has still
+   * learned nothing. Saying it had not played contradicted its own record on
+   * the same row.
    */
   function carriedNote(rows) {
     var host = el('board-note');
@@ -532,10 +544,10 @@
     if (!waiting) { host.textContent = ''; host.hidden = true; return; }
     host.hidden = false;
     host.textContent = waiting === rows.length
-      ? 'No club has played yet. Every rating here is last season\u2019s, '
-        + 'carried over.'
-      : waiting + ' of these ' + rows.length + ' clubs have not played yet, '
-        + 'and carry last season\u2019s rating.';
+      ? 'No club has a Division I result yet. Every rating here is last '
+        + 'season\u2019s, carried over.'
+      : waiting + ' of these ' + rows.length + ' clubs have no Division I '
+        + 'result yet, and carry last season\u2019s rating.';
   }
 
   /* ---- the club directory, and a club's own page -------------------- */
@@ -751,7 +763,7 @@
     host.innerHTML = '';
     // The strip centres on the selected day; only the real today is
     // labelled Today, which is a different question from where the centre is.
-    app.dayStrip(state.day, 3, app.todayKey()).forEach(function (entry) {
+    app.dayStrip(state.day, 3, today()).forEach(function (entry) {
       var button = document.createElement('button');
       button.type = 'button';
       button.textContent = entry.today ? 'Today' : entry.day.slice(5);
@@ -857,12 +869,24 @@
     });
   }
 
+  /* Today, in the calendar this export states its game days in.
+   *
+   * NOT the UTC date. A 7pm Eastern tip-off is already midnight UTC, so for
+   * the whole of every evening the UTC date is tomorrow -- and reading it as
+   * today opened the scoreboard on the next day's schedule while the games
+   * on it were being played.
+   */
+  function today() {
+    return app.todayKey(undefined, app.NCAAMBB_DAY_ZONE);
+  }
+
   function openingDay(payload) {
     // Today, clamped into the loaded season. Not the last date in the
     // payload: a published schedule runs to April, so that opened on the
     // championship and the strip called it Today.
     return app.openingDay(
-      ((payload && payload.games) || []).map(app.dayOf).filter(Boolean));
+      ((payload && payload.games) || []).map(app.dayOf).filter(Boolean),
+      today());
   }
 
   function start() {

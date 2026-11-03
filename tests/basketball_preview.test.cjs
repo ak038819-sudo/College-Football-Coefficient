@@ -20,10 +20,24 @@ const UI = path.join(__dirname, '..', 'ui');
 // strip labels only the real today. A fixed past date would make every
 // scoreboard assertion here test the out-of-season fallback instead of the
 // case a reader meets. Out of season is tested on its own, below.
-const DAY = new Date().toISOString().slice(0, 10);
+// In EASTERN time, which is the calendar the export states a game day in and
+// therefore the one the page calls Today. Taking the UTC date here instead
+// made this whole file's scoreboard assertions depend on the hour it ran: for
+// the five hours after midnight UTC the fixture's games are dated tomorrow,
+// and every "the strip opens on today" assertion would be checking the wrong
+// day. See NCAAMBB_DAY_ZONE in ui/ncaambb_app.js.
+const ZONE = 'America/New_York';
+
+function easternDay(moment) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: ZONE, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(moment);
+}
+
+const DAY = easternDay(new Date());
 
 function daysFromToday(count) {
-  return new Date(Date.now() + count * 86400000).toISOString().slice(0, 10);
+  return easternDay(new Date(Date.now() + count * 86400000));
 }
 
 function teams() {
@@ -93,7 +107,13 @@ function site(overrides, schedule) {
   fs.mkdirSync(data, { recursive: true });
   const rules = Object.assign({}, overrides || {});
   const boardRows = rules.board || board();
+  // `at` freezes the PAGE's clock, so a test can put it at a named moment.
+  // The export's age is measured against that same instant, or a page opened
+  // at a fixed moment would badge a fresh export as months stale and draw a
+  // refusal instead of a scoreboard.
+  const at = rules.at ? Date.parse(rules.at) : null;
   delete rules.board;
+  delete rules.at;
   overrides = rules;
   const seasonText = 'window.NCAAMBB_SEASONS=(window.NCAAMBB_SEASONS||{});'
     + 'window.NCAAMBB_SEASONS[2026]='
@@ -103,6 +123,7 @@ function site(overrides, schedule) {
   fs.writeFileSync(path.join(data, '2026.js'), seasonText);
   fs.writeFileSync(path.join(root, 'data', 'ncaambb', 'teams.js'), teamsText);
   const payload = manifest(overrides);
+  if (at) payload.generated_at = new Date(at - 20 * 60000).toISOString();
   payload.seasons = { 2026: 'seasons/2026.js?v=' + stamp(seasonText) };
   payload.files = { teams: 'teams.js?v=' + stamp(teamsText) };
   fs.writeFileSync(path.join(root, 'data', 'ncaambb', 'manifest.json'),
@@ -111,7 +132,7 @@ function site(overrides, schedule) {
     'ncaambb_app.js']) {
     fs.copyFileSync(path.join(UI, name), path.join(root, name));
   }
-  return { root, manifest: payload };
+  return { root, manifest: payload, at };
 }
 
 async function open(overrides, schedule, hash) {
@@ -126,6 +147,20 @@ async function open(overrides, schedule, hash) {
     resources: 'usable',
     pretendToBeVisual: true,
     beforeParse(window) {
+      // A frozen clock, so a test can put the page at a named moment -- an
+      // evening after midnight UTC, say, which is the case that showed the
+      // page and the export disagreeing about which day it was.
+      if (built.at) {
+        const Real = window.Date;
+        const Frozen = function (...args) {
+          return args.length ? new Real(...args) : new Real(built.at);
+        };
+        Frozen.prototype = Real.prototype;
+        Frozen.now = () => built.at;
+        Frozen.parse = Real.parse;
+        Frozen.UTC = Real.UTC;
+        window.Date = Frozen;
+      }
       // jsdom has no fetch. The page's one fetch is its manifest, served
       // from the same directory the scripts are.
       window.fetch = function (url) {
@@ -201,9 +236,66 @@ test('a club yet to play shows no record, and the table says how many',
     assert.equal(table[1][3], '2211', 'its carried rating is still shown');
     const note = dom.window.document.getElementById('board-note');
     assert.equal(note.hidden, false);
-    assert.match(note.textContent, /2 of these 3 clubs have not played yet/);
+    assert.match(note.textContent,
+      /2 of these 3 clubs have no Division I result yet/);
     dom.window.close();
   });
+
+test('a record against a non-Division I opponent is still a record',
+  async () => {
+    // `records()` counts every opponent; the rating counts Division I games
+    // alone. So a club two days into November whose only final was against a
+    // Division II visitor is 1-0 with no rated game, and keying the record
+    // cell on rated_games put an em dash over it -- while the note under the
+    // table said it had not played, on the same screen as its own 1-0.
+    const early = board().map((row, index) => Object.assign({}, row, {
+      rated_games: 0, wins: index === 1 ? 1 : 0, losses: 0,
+      d1_wins: 0, d1_losses: 0
+    }));
+    const dom = await open({ board: early });
+    const table = rows(dom);
+    assert.equal(table[1][4], '1-0', 'the record it really has');
+    assert.equal(table[0][4], '\u2014', 'and none where there is none');
+    const note = dom.window.document.getElementById('board-note');
+    assert.match(note.textContent, /No club has a Division I result yet/);
+    assert.doesNotMatch(note.textContent, /has not played/);
+    dom.window.close();
+  });
+
+test('an evening reader gets tonight’s games, not tomorrow’s', async () => {
+  // 7:30pm on 14 November in New York is already 00:30 on the 15th in UTC, so
+  // for the whole of every evening the UTC date is tomorrow. The export
+  // states a game's day in Eastern time, and the page read today in UTC, so
+  // it opened on the NEXT day's schedule while the games on the strip were
+  // being played. The payload holds both days here, because a payload with
+  // only one would be clamped onto it whatever the page believed.
+  const dom = await open({ at: '2026-11-15T00:30:00Z' }, [
+    { id: 'ncaambb:cbbd:game:800', at: '2026-11-14',
+      tip: '2026-11-15T00:30:00Z', status: 'in_progress',
+      home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:2',
+      home_points: 31, away_points: 28 },
+    { id: 'ncaambb:cbbd:game:801', at: '2026-11-15',
+      tip: '2026-11-16T00:00:00Z', status: 'scheduled',
+      home: 'ncaambb:cbbd:team:2', away: 'ncaambb:cbbd:team:3',
+      home_points: null, away_points: null }
+  ]);
+  const doc = await scoreboard(dom);
+  // The strip labels only the real today, and the pressed day is the one the
+  // page opened on. Both have to be the 14th: the label alone would pass on a
+  // page that opened on the 15th and drew Today three buttons to the left.
+  const strip = [...doc.querySelectorAll('#days button')];
+  const marked = strip.filter(node => node.textContent === 'Today');
+  assert.equal(marked.length, 1, 'exactly one day is Today');
+  assert.equal(marked[0].getAttribute('aria-pressed'), 'true',
+    'and it is the day the page opened on');
+  assert.deepEqual(strip.filter(node => node.textContent !== 'Today')
+    .map(node => node.textContent).slice(3, 4), ['11-15'],
+    'the 15th is the day AFTER today on this strip');
+  assert.equal(doc.querySelectorAll('#cards .card').length, 1);
+  assert.match(doc.getElementById('cards').textContent, /Duke/,
+    'tonight’s game, which is the one being played');
+  dom.window.close();
+});
 
 test('a settled season says nothing about clubs yet to play', async () => {
   const dom = await open();
@@ -219,7 +311,7 @@ test('a board where nobody has played says exactly that', async () => {
   }));
   const dom = await open({ board: none });
   const note = dom.window.document.getElementById('board-note');
-  assert.match(note.textContent, /No club has played yet/);
+  assert.match(note.textContent, /No club has a Division I result yet/);
   dom.window.close();
 });
 

@@ -236,6 +236,30 @@ test('the strip falls back to the real date when none is given', () => {
   assert.equal(app.todayKey(), today);
 });
 
+test('today is the day the game is played on, not the UTC date', () => {
+  // The same measurement that moved the export's own `playing_date` to
+  // Eastern. 7:30pm on the 14th in New York is already the 15th in UTC, so
+  // for the whole of every evening the UTC date is tomorrow -- and the page
+  // opened on tomorrow's schedule while those games were being played.
+  const evening = new Date('2026-11-15T00:30:00Z');
+  assert.equal(app.todayKey(evening, app.NCAAMBB_DAY_ZONE), '2026-11-14');
+  assert.equal(app.todayKey(evening), '2026-11-15',
+    'the UTC default is unchanged, because other leagues state UTC days');
+
+  // Daylight saving, in both directions, and a moment where the two
+  // calendars agree so the zone cannot be doing nothing.
+  assert.equal(app.todayKey(new Date('2026-11-15T17:00:00Z'),
+    app.NCAAMBB_DAY_ZONE), '2026-11-15');
+  assert.equal(app.todayKey(new Date('2027-03-20T03:30:00Z'),
+    app.NCAAMBB_DAY_ZONE), '2027-03-19', 'EDT is four hours, not five');
+  assert.equal(app.todayKey(new Date('2026-11-15T04:30:00Z'),
+    app.NCAAMBB_DAY_ZONE), '2026-11-14', 'EST is five');
+
+  // A zone the browser cannot resolve falls back to the UTC date rather
+  // than throwing on the page's first paint.
+  assert.equal(app.todayKey(evening, 'Mars/Olympus'), '2026-11-15');
+});
+
 test('a scoreboard opens on today, or on the nearest end of the season',
   () => {
     // Not on the last date in the payload: a published schedule runs to

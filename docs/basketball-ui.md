@@ -94,6 +94,36 @@ false for every basketball game in every season and the whole scoreboard said
 the NFL, whose export states its instant in `at` instead, so `startInstant`
 reads either shape and only a payload with a `tip` gets a clock on its cards.
 
+### The page's today has to be the export's today
+
+`at` is an EASTERN date (see `EASTERN` in `src/ncaambb/games.py`), so the
+page's notion of today has to be one as well. It was the UTC date, which is
+the same bug one level up: between midnight UTC and midnight Eastern -- which
+is every evening a game is played -- the UTC date is already tomorrow, so an
+evening reader opened on the next day's schedule while the games on the strip
+were being played.
+
+`app.todayKey(now, zone)` takes an IANA zone and has NO default beyond UTC,
+because the right answer is a property of the league's export, not of the
+helper: basketball passes `app.NCAAMBB_DAY_ZONE`, and football and the NFL
+keep the UTC date their own exports state. A browser that cannot resolve the
+zone falls back to the UTC date, which is wrong for part of the evening and
+better than no date at all.
+
+The test fixture derives its own dates in Eastern for the same reason.
+Deriving them in UTC made the whole suite's scoreboard assertions depend on
+the hour it ran.
+
+### A record and a rated game are different counts
+
+The board's `wins`/`losses` count every opponent; `rated_games` counts the
+Division I games the rating learned from. A club whose only final was against
+a non-Division I opponent is therefore 1-0 with no rated game, which is
+ordinary in November. So the record cell asks whether a record exists, not
+whether a game was rated, and the note under the table says "no Division I
+result yet" rather than "has not played" -- which contradicted the club's own
+record on the same row.
+
 **There is no in-game clock for basketball yet.** The B02 archive holds final
 scores and period points, not a live half or clock, so `half/OT · clock` has
 no source. Until a basketball live feed exists, a basketball game card can
