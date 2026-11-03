@@ -75,9 +75,14 @@ def ingest_season(connection, season, *, raw_root=None, reuse_cache=False,
         connection, games_module.teams_from_schedule(schedule_rows, season),
         conferences=conferences, snapshot_id=snapshot_id)
     store_module.upsert_games(connection, parsed, snapshot_id=snapshot_id)
+    # The schedule just parsed is the whole truth about this season, so a
+    # stored game it does not name is gone from the archive. Without this the
+    # database is the union of every schedule ever ingested.
+    dropped = store_module.reconcile_season_games(
+        connection, season, [game['game_key'] for game in parsed])
     return dict(season=season, origin=origin, games=len(parsed),
                 exhibitions=skipped, conferences=len(conferences),
-                snapshot_id=snapshot_id)
+                dropped=dropped, snapshot_id=snapshot_id)
 
 
 def ingest(connection, seasons, *, raw_root=None, reuse_cache=False,
@@ -124,8 +129,12 @@ def main(argv=None):
                      reuse_cache=args.reuse_cache)
     games = sum(row['games'] for row in results)
     exhibitions = sum(row['exhibitions'] for row in results)
+    dropped = sum(len(row['dropped']) for row in results)
     print(f'{games} games across {len(results)} seasons '
           f'({exhibitions} exhibitions skipped)')
+    if dropped:
+        print(f'{dropped} stored games are no longer in the schedule and '
+              'were removed')
     for row in store_module.season_coverage(connection):
         print(f'  {row["label"]:>8}  games {row["games"]:>4}  '
               f'played {row["played"]:>4}  rateable {row["rateable"]:>4}  '

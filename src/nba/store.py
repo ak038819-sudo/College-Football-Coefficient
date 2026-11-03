@@ -228,6 +228,43 @@ def upsert_games(connection, games, *, snapshot_id=None):
     return len(games)
 
 
+def reconcile_season_games(connection, season, keys):
+    """Drop stored games of one season that the latest schedule no longer has.
+
+    An upsert alone makes the database the UNION of every schedule ever
+    ingested, not a copy of the current one. The source does revise a
+    schedule: a cancelled game disappears, and a postponed one can come back
+    under a new provider id. Either way the old row survives an upsert, and
+    if it was stored as completed it stays eligible for `rateable_games`, so
+    a replay counts a game that is no longer in the archive and every count
+    taken from the database is quietly wrong.
+
+    The refresh does not hit this, because it builds the database from
+    scratch on every run. That is exactly why it is worth fixing here: the
+    invariant "the stored games of a season are the schedule's games" should
+    hold because this function makes it hold, not because one caller happens
+    to start from an empty file.
+
+    Scoped to the one season, so a partial ingest cannot delete the seasons
+    it was not asked to look at. `rating_game` rows are removed first: a
+    game that is not in the archive has no rating, and the foreign key would
+    refuse the delete otherwise.
+    """
+    keys = list(keys)
+    stored = {row['game_key'] for row in connection.execute(
+        'SELECT game_key FROM game WHERE season = ?', (int(season),))}
+    stale = sorted(stored - set(keys))
+    if not stale:
+        return []
+    placeholders = ','.join('?' * len(stale))
+    connection.execute(
+        f'DELETE FROM rating_game WHERE game_key IN ({placeholders})', stale)
+    connection.execute(
+        f'DELETE FROM game WHERE game_key IN ({placeholders})', stale)
+    connection.commit()
+    return stale
+
+
 def rateable_games(connection, *, seasons=None):
     """Every rateable game in tip-off order, ready for a replay."""
     query = ('SELECT game_key, season, season_type, game_date, tipoff_utc,'

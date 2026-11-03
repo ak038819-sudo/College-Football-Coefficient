@@ -432,6 +432,58 @@ def test_the_ingest_stores_a_season_without_touching_the_network(connection):
     assert conference == 'Western Conference'
 
 
+def test_a_game_the_schedule_no_longer_has_is_removed_not_left_behind(
+        connection):
+    """An upsert alone makes the database the union of every schedule.
+
+    The source revises a schedule: a cancelled game disappears and a
+    postponed one can come back under a new provider id. Left behind, a
+    completed stale row stays eligible for the replay.
+    """
+    ingest_module.ingest_season(
+        connection, 2024, schedule_rows=[_row(id=1), _row(id=2)])
+    assert connection.execute('SELECT count(*) AS n FROM game') \
+        .fetchone()['n'] == 2
+    result = ingest_module.ingest_season(
+        connection, 2024, schedule_rows=[_row(id=1)])
+    assert result['dropped'] == ['nba:espn:game:2']
+    assert [row['provider_id'] for row in connection.execute(
+        'SELECT provider_id FROM game')] == ['1']
+    assert len(store_module.rateable_games(connection)) == 1
+
+
+def test_reconciling_one_season_leaves_every_other_season_alone(connection):
+    """A partial ingest must not delete the seasons it never looked at."""
+    for season in (2024, 2025):
+        ingest_module.ingest_season(
+            connection, season,
+            schedule_rows=[_row(id=season, season=season,
+                                game_date=f'{season}-01-10')])
+    ingest_module.ingest_season(
+        connection, 2025,
+        schedule_rows=[_row(id=99, season=2025, game_date='2025-01-11')])
+    stored = sorted(row['provider_id'] for row in connection.execute(
+        'SELECT provider_id FROM game'))
+    assert stored == ['2024', '99'], \
+        'the 2024 game must survive a 2025 refresh'
+
+
+def test_a_stale_game_is_removed_even_though_a_rating_points_at_it(
+        connection):
+    """The foreign key would refuse the delete if ratings were left behind."""
+    ingest_module.ingest_season(connection, 2024, schedule_rows=[_row(id=2)])
+    model_id = store_module.record_rating_model(connection, 'test', {})
+    connection.execute(
+        'INSERT INTO rating_game (game_key, model_id, home_pregame,'
+        ' away_pregame, home_expected, home_postgame, away_postgame,'
+        ' rating_change) VALUES (?, ?, 1500, 1500, 0.5, 1510, 1490, 10)',
+        ('nba:espn:game:2', model_id))
+    connection.commit()
+    ingest_module.ingest_season(connection, 2024, schedule_rows=[_row(id=1)])
+    assert connection.execute('SELECT count(*) AS n FROM rating_game') \
+        .fetchone()['n'] == 0
+
+
 def test_a_missing_standings_file_leaves_the_conference_null_not_the_season(
         connection):
     def refuse(*_args, **_kwargs):
