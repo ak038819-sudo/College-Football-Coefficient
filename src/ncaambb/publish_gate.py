@@ -93,6 +93,21 @@ def check_as_of(manifest, *, now=None):
     if moment > current + FUTURE_TOLERANCE:
         return [f'generated_at {manifest["generated_at"]} is in the future; '
                 'the clock or the pipeline is wrong']
+    # `data_as_of` is the age of the data, and it is what a reader's badge is
+    # drawn from. Being OLD is never a refusal -- staleness is marked, not
+    # hidden, and refusing a stale export is how a provider outage takes the
+    # whole page down. Being in the FUTURE is a refusal, because a page shows
+    # a future age as "updated just now" and that is the one way this field
+    # can lie about freshness rather than report it.
+    stated = manifest.get('data_as_of')
+    if stated is not None:
+        measured = _parse_time(stated)
+        if measured is None:
+            return [f'data_as_of {stated!r} is not an ISO 8601 time; a reader '
+                    'draws the age of the data from it']
+        if measured > current + FUTURE_TOLERANCE:
+            return [f'data_as_of {stated} is in the future; a page would '
+                    'show data of unknown age as freshly updated']
     return []
 
 

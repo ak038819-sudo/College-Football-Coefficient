@@ -322,3 +322,36 @@ decimal places: fitted on 2015-2025, held out on 2026, Brier 0.18656 over
 5,752 games. Five places is what the page displays and far more than the gate
 needs, which only asks that the Brier beat a coin flip; the exact floats are in
 that run's `elo_fit.json` artifact.
+
+## When the provider refuses, the bank publishes
+
+Measured 2026-11-03: the CBBD account's **monthly** allowance is about a
+thousand calls, two refresh dispatches spent it, and every request after that
+came back `{"message":"Monthly call quota exceeded."}` with no `Retry-After`.
+Nothing basketball could be fetched for the rest of the month.
+
+The refresh died on the first of those requests — the active season's schedule
+refetch — and so the replay, the export and the publish never ran. Every
+season's games and five seasons of rosters and box scores were sitting in
+`data/ncaambb/raw` in the repository the whole time.
+
+So a refused refetch of the season being played now **falls back to that
+season's committed cache** and the run carries on. Three bounds on it:
+
+- Only for a season this run asked to refetch, and only when a cache of it
+  exists. A blanket `--refetch` means "ignore the cache", so it is never
+  answered from the cache, and a refusal with nothing banked is still a
+  failure — reporting an empty season as stored would read as "no games were
+  played".
+- The run says which season it fell back on, in the step summary a person
+  reads.
+- The age is the **cache's**, not the run's. `data_as_of` in the manifest is
+  the time the provider last answered about that season, so the page badges
+  the real age and marks it stale. `generated_at` is the build time and is
+  always now, which is why it cannot answer this and why reading it badged an
+  export rebuilt from cache as freshly updated.
+
+The people ingestion is best effort for the same reason, and for one more: at
+roughly 450 calls for six seasons it is nearly half the month's allowance on
+its own, so it cannot run daily on this plan. Settled seasons are banked once
+precisely so they are never refetched.

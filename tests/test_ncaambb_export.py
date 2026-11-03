@@ -75,7 +75,9 @@ def national(connection, season=2026, teams=320, games_each=14, *,
                 ' rateable, division_one, exclusions)'
                 " VALUES (?, ?, ?, ?, 'regular', 'final', ?, ?, 0, 0, ?, ?,"
                 " ?, ?, 1, 1, '[]')",
-                (f'{season}-{count}', count, season,
+                # Offset by season: `provider_id` is UNIQUE, so two seasons
+                # built from this fixture collided on it.
+                (f'{season}-{count}', season * 100000 + count, season,
                  f'{season - 1}-{season % 100:02d}',
                  f'{season - 1}-11-{(step % 28) + 1:02d}',
                  f'{season - 1}-11-{(step % 28) + 1:02d}',
@@ -623,3 +625,85 @@ def test_two_games_on_one_night_come_out_in_the_order_they_tipped(db):
     order = [row['id'] for row in payloads[2026]['games']
              if row['id'] in ('2026-1', '2026-2')]
     assert order == ['2026-2', '2026-1']
+
+
+# --- how old the DATA is, as against when the export was built --------------
+
+def snapshot(connection, season, fetched, kind='schedule'):
+    from src.ncaambb.store import record_snapshot
+    return record_snapshot(connection, kind, NOW.isoformat(), season=season,
+                           data_fetched_at=fetched)
+
+
+def test_the_manifest_says_when_the_provider_last_answered(db):
+    """`generated_at` is the build time and is always now, so an export
+    rebuilt from a committed cache during a provider outage badged itself as
+    freshly updated. The age of the DATA is a separate fact and has to be
+    stated separately."""
+    national(db)
+    snapshot(db, 2026, '2026-08-20T03:00:00+00:00')
+    manifest, _, _, _ = exporter.build(db, now=NOW)
+    assert manifest['data_as_of'] == '2026-08-20T03:00:00+00:00'
+    assert manifest['generated_at'] == NOW.isoformat().replace('+00:00', 'Z')
+    assert manifest['data_as_of'] != manifest['generated_at']
+
+
+def test_an_unrecorded_fetch_leaves_the_age_unstated(db):
+    """Not guessed at, and not quietly set to the build time. A cache written
+    before the ingestion recorded its age has an unknown age, and the page
+    says 'last updated: unknown' and marks it stale."""
+    national(db)
+    snapshot(db, 2026, None)
+    manifest, _, _, _ = exporter.build(db, now=NOW)
+    assert manifest['data_as_of'] is None
+    assert gate.check_as_of(manifest, now=NOW) == []
+
+
+def test_the_age_comes_from_the_season_a_reader_is_watching(db):
+    """The scoreboard shows the season being played, so its schedule decides
+    how fresh the page may claim to be. A settled season refetched this
+    morning says nothing about tonight's scores."""
+    national(db, season=2025)
+    national(db, season=2026)
+    snapshot(db, 2025, '2026-08-31T12:00:00+00:00')
+    snapshot(db, 2026, '2026-08-01T12:00:00+00:00')
+    manifest, _, _, _ = exporter.build(db, now=NOW)
+    assert manifest['latest_season'] == 2026
+    assert manifest['data_as_of'] == '2026-08-01T12:00:00+00:00'
+
+
+def test_the_latest_fetch_of_that_season_is_the_one_that_counts(db):
+    """Every run writes a snapshot row. The newest recorded fetch is the age
+    of the data on disk; an older row is a previous run's."""
+    national(db)
+    snapshot(db, 2026, '2026-07-01T12:00:00+00:00')
+    snapshot(db, 2026, '2026-08-25T12:00:00+00:00')
+    snapshot(db, 2026, None)
+    manifest, _, _, _ = exporter.build(db, now=NOW)
+    assert manifest['data_as_of'] == '2026-08-25T12:00:00+00:00'
+
+
+def test_a_people_snapshot_does_not_date_the_scoreboard(db):
+    """Rosters and box scores are fetched separately and for fewer seasons.
+    A roster fetched today over a schedule from last month does not make the
+    scores current."""
+    national(db)
+    snapshot(db, 2026, '2026-08-01T12:00:00+00:00')
+    snapshot(db, 2026, '2026-08-30T12:00:00+00:00', kind='people')
+    manifest, _, _, _ = exporter.build(db, now=NOW)
+    assert manifest['data_as_of'] == '2026-08-01T12:00:00+00:00'
+
+
+def test_a_stale_export_publishes_and_a_future_dated_one_does_not(db):
+    """Staleness is marked, never refused: refusing an old export is how a
+    provider outage takes the whole page down. A FUTURE age is refused,
+    because a page draws a future moment as 'updated just now', which is the
+    one way this field lies instead of reporting."""
+    national(db)
+    snapshot(db, 2026, '2025-01-01T00:00:00+00:00')
+    manifest, _, _, _ = exporter.build(db, now=NOW)
+    assert gate.check_as_of(manifest, now=NOW) == [], 'old is publishable'
+    manifest['data_as_of'] = (NOW + timedelta(days=2)).isoformat()
+    assert gate.check_as_of(manifest, now=NOW)
+    manifest['data_as_of'] = 'the day before yesterday'
+    assert gate.check_as_of(manifest, now=NOW)

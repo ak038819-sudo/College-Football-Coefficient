@@ -16,6 +16,13 @@ CREATE TABLE IF NOT EXISTS snapshot (
     kind            TEXT    NOT NULL,
     season          INTEGER,
     retrieved_at    TEXT    NOT NULL,
+    -- When the PROVIDER answered, as against when this row was written.
+    -- A reload from the raw cache writes a row now over data fetched days
+    -- ago, and retrieved_at alone cannot tell the two apart, so an export
+    -- built from cache looked exactly as fresh as one built from a fetch.
+    -- NULL means the cache carries no record of its own age, which is true
+    -- of every file cached before this column existed.
+    data_fetched_at TEXT,
     source_revision TEXT,
     requests        INTEGER NOT NULL DEFAULT 0,
     retries         INTEGER NOT NULL DEFAULT 0,

@@ -99,6 +99,33 @@ def teams(connection):
     ) for row in rows}
 
 
+def data_as_of(connection, season):
+    """When the provider last answered about this season's schedule.
+
+    NOT when the export was built. A run that reloads a committed cache
+    because the provider refused builds a perfectly good export over data
+    that may be weeks old, and `generated_at` cannot say so: it is the build
+    time and it is always now. A reader's scoreboard depends on the season
+    being played, so that season's schedule snapshot is the one that decides
+    how fresh the page may claim to be.
+
+    None when no snapshot records it, which is true of any cache written
+    before the ingestion began recording it. An unknown age is reported as
+    unknown; the page then says 'last updated: unknown' and marks it stale,
+    which is the honest answer and the safe one.
+    """
+    row = connection.execute(
+        'SELECT data_fetched_at FROM snapshot'
+        " WHERE kind = 'schedule' AND season = ?"
+        # Belt and braces: DESC already sorts SQLite's NULLs last, and a
+        # season whose every row is NULL returns NULL either way. The clause
+        # states the intent so a later change to the ordering cannot start
+        # returning an unrecorded row as the answer.
+        ' AND data_fetched_at IS NOT NULL'
+        ' ORDER BY data_fetched_at DESC LIMIT 1', (season,)).fetchone()
+    return row['data_fetched_at'] if row else None
+
+
 def season_games(connection, season):
     rows = connection.execute(
         'SELECT game_key, provider_id, season_type, tournament, status,'
@@ -292,6 +319,9 @@ def build(connection, *, model_name=None, seasons=None, now=None,
         sport='ncaambb',
         sport_label="Men's Basketball",
         generated_at=moment.isoformat().replace('+00:00', 'Z'),
+        # The age of the DATA, which is what a reader's badge is about. See
+        # data_as_of above for why generated_at cannot answer that.
+        data_as_of=data_as_of(connection, wanted[-1]),
         model=model_section(model),
         coverage=coverage,
         latest_season=wanted[-1],

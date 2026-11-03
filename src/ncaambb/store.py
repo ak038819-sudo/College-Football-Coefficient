@@ -18,7 +18,7 @@ from .coverage import classify_game, recorded_points
 from .games import game_day, playing_day, start_moment
 from .identity import entity_key, season_label
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 DEFAULT_PATH = Path('db/ncaambb.db')
 SCHEMA_SQL = Path(__file__).with_name('schema.sql')
 
@@ -44,7 +44,8 @@ def migrate(connection):
 
     CREATE IF NOT EXISTS brings a missing TABLE forward but not a missing
     COLUMN, so a column added to an existing table is added here by hand.
-    Version 3 added `game.playing_date` and `game.start_at_utc`.
+    Version 3 added `game.playing_date` and `game.start_at_utc`;
+    version 4 added `snapshot.data_fetched_at`.
 
     A database from a FUTURE version is refused rather than written to, because
     this code cannot know what that version changed.
@@ -69,7 +70,8 @@ def migrate(connection):
 # them. The values are left NULL: a reload from the raw cache fills them, and
 # inventing a day for a row this code has not read is exactly the kind of guess
 # the rest of this module refuses to make.
-ADDED_COLUMNS = {'game': (('playing_date', 'TEXT'), ('start_at_utc', 'TEXT'))}
+ADDED_COLUMNS = {'game': (('playing_date', 'TEXT'), ('start_at_utc', 'TEXT')),
+                 'snapshot': (('data_fetched_at', 'TEXT'),)}
 
 
 def add_missing_columns(connection):
@@ -89,14 +91,20 @@ def add_missing_columns(connection):
 
 
 def record_snapshot(connection, kind, retrieved_at, *, season=None,
-                    source_revision=None, requests=0, retries=0, rows_seen=0,
-                    notes=None):
-    """Register an ingestion run and return its id."""
+                    data_fetched_at=None, source_revision=None, requests=0,
+                    retries=0, rows_seen=0, notes=None):
+    """Register an ingestion run and return its id.
+
+    `retrieved_at` is when this row was written. `data_fetched_at` is when the
+    provider actually answered, which is older whenever the run read the cache
+    instead of asking. Left NULL when the cache does not record its own age.
+    """
     cursor = connection.execute(
-        'INSERT INTO snapshot (kind, season, retrieved_at, source_revision,'
-        ' requests, retries, rows_seen, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        (kind, season, retrieved_at, source_revision, requests, retries,
-         rows_seen, notes))
+        'INSERT INTO snapshot (kind, season, retrieved_at, data_fetched_at,'
+        ' source_revision, requests, retries, rows_seen, notes)'
+        ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (kind, season, retrieved_at, data_fetched_at, source_revision,
+         requests, retries, rows_seen, notes))
     connection.commit()
     return cursor.lastrowid
 

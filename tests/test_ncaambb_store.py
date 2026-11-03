@@ -334,9 +334,15 @@ def test_each_ingestion_records_its_own_snapshot(tmp_path, db):
     second = ingest_season(db, 2026, raw_root=tmp_path, getter=getter,
                            revision='abc1234')
     assert first['snapshot_id'] != second['snapshot_id']
-    notes = [row['notes'] for row in
-             db.execute('SELECT notes FROM snapshot ORDER BY snapshot_id')]
-    assert notes == ['fetched from provider', 'reused cached responses']
+    rows = list(db.execute('SELECT notes, retrieved_at, data_fetched_at'
+                           ' FROM snapshot ORDER BY snapshot_id'))
+    assert rows[0]['notes'] == 'fetched from provider'
+    assert rows[1]['notes'].startswith('reused cached responses fetched ')
+    # The second run read the first run's files, so its DATA is the first
+    # run's data and has to be dated as such. Dating it to the second run is
+    # what made an export built entirely from cache look freshly fetched.
+    assert rows[1]['data_fetched_at'] == rows[0]['data_fetched_at']
+    assert rows[1]['data_fetched_at'] <= rows[1]['retrieved_at']
 
 
 def test_an_access_failure_exits_two_without_storing_a_season(tmp_path, monkeypatch):

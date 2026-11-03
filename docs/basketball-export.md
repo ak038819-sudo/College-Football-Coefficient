@@ -210,3 +210,29 @@ The ratings workflow runs both: the export to a temporary directory, then the
 standalone gate on what was written, because a check against a plan is not a
 check against a disk. The export is uploaded as an artifact and committed
 nowhere.
+
+## `data_as_of` — how old the data is, as against the export
+
+`generated_at` is when the export was built. It is always now, so on its own
+it says nothing about the data: a refresh that cannot reach the provider
+rebuilds from the committed cache and stamps today's time over games that may
+be weeks old.
+
+`data_as_of` is when the provider last answered about the **latest season**,
+the one a reader's scoreboard shows. A settled season refetched this morning
+says nothing about tonight's scores, and a roster fetched today over last
+month's schedule does not make the scores current, so only that season's
+`schedule` snapshot counts.
+
+- `null` when nothing records it, which is true of any cache written before
+  the ingestion began recording its own age. The page then says
+  `last updated: unknown` and marks it stale.
+- The publish gate never refuses an export for being **old** — staleness is
+  marked, not hidden, and refusing stale data is how a provider outage takes
+  the whole page down. It does refuse one dated in the **future**, because a
+  page draws a future moment as "updated just now", which is the one way this
+  field can lie about freshness instead of reporting it.
+- The age is recorded by the ingestion in `data/ncaambb/raw/<season>/fetched_at.json`,
+  committed beside the gzipped responses. A season is dated by its **stalest**
+  file, and a season only partly recorded has no age at all rather than a
+  wrong one.
