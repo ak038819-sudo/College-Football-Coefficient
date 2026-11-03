@@ -106,7 +106,15 @@ def store_model(connection, season, *, fitted=None, held=None, brier=0.1866,
 
 
 def built(connection, **kwargs):
-    return exporter.build(connection, now=NOW, **kwargs)
+    """The three parts of an export most of these tests care about.
+
+    `build` also returns the people payloads; the tests that are about people
+    call `exporter.build` directly rather than making every other test unpack
+    a value it ignores.
+    """
+    manifest, payloads, teams, _people = exporter.build(
+        connection, now=NOW, **kwargs)
+    return manifest, payloads, teams
 
 
 # --- the manifest the export describes --------------------------------------

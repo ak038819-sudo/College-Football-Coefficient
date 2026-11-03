@@ -41,11 +41,11 @@ test('a national export of a validated model is accepted', () => {
 
 test('a schema this build does not know is refused, and only that is said', () => {
   // Reading on would mean reading fields whose meaning is not agreed.
-  const verdict = loader.accept(manifest({ schema_version: 2, coverage: [] }),
+  const verdict = loader.accept(manifest({ schema_version: 99, coverage: [] }),
     NOW);
   assert.equal(verdict.ok, false);
   assert.equal(verdict.reasons.length, 1);
-  assert.match(verdict.reasons[0], /does not understand export schema 2/);
+  assert.match(verdict.reasons[0], /does not understand export schema 99/);
 });
 
 test('a football manifest is refused outright', () => {

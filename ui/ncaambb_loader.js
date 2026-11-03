@@ -22,7 +22,10 @@
   // The schemas this build understands. A manifest from a newer deploy is
   // refused rather than read optimistically: a field that moved would
   // otherwise be drawn as a number.
-  var SUPPORTED_SCHEMA_VERSIONS = [1];
+  // 2 added the people layer, the tip-off instant and the playing-day
+  // meaning of `at`. 1 is still read: the export on disk stays schema 1 until
+  // the next refresh rebuilds it, and this page must work in between.
+  var SUPPORTED_SCHEMA_VERSIONS = [1, 2];
 
   // Matches the build gate. A sample of one team, one conference or one
   // tournament field is far below this; every real season is far above.

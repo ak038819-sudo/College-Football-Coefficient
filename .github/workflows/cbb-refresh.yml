@@ -78,7 +78,8 @@ jobs:
         run: |
           python -m pytest tests/test_ncaambb_elo.py \
             tests/test_ncaambb_store.py tests/test_ncaambb_ingestion.py \
-            tests/test_ncaambb_export.py tests/test_ncaambb_publish.py -q
+            tests/test_ncaambb_export.py tests/test_ncaambb_export_people.py \
+            tests/test_ncaambb_publish.py -q
 
       - name: Work out which seasons to refresh
         id: seasons
@@ -104,6 +105,14 @@ jobs:
           active = current_season(now)
           asked = {int(part) for part in seasons.split(',') if part.strip()}
           print(f'active={active if active in asked else ""}')
+          # Which seasons get PEOPLE. Fewer than get ratings, and the number
+          # comes from the exporter rather than from a copy of it written
+          # here: a season is around 127,500 player-game lines, the export
+          # publishes the most recent DEFAULT_SEASONS of them, and fetching
+          # people for seasons the export will not carry would spend quota on
+          # data no page can read.
+          from src.ncaambb.export_people import recent
+          print('people=' + ','.join(str(year) for year in recent(asked)))
           PY
 
       - name: Ingest the schedules
@@ -124,6 +133,29 @@ jobs:
           # that had stopped moving.
           python -m src.ncaambb.ingest --seasons "$SEASONS" --schedule-only \
             ${ACTIVE:+--refetch-seasons "$ACTIVE"} \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # Rosters, player identities and box scores, for the seasons the export
+      # publishes player files for. A SECOND invocation rather than dropping
+      # --schedule-only above, because the two cover different seasons: every
+      # rated season gets a schedule, and only the recent ones get people.
+      #
+      # No --refetch-seasons here, deliberately. The step above has just
+      # refreshed the active season's schedule into the cache, so this run
+      # reads it from disk; and the active season's PEOPLE cache is never
+      # committed (see the commit step), so a fresh checkout has none and
+      # fetches it. Settled seasons are in the repository and cost nothing.
+      - name: Ingest the people
+        env:
+          CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
+          PEOPLE: ${{ steps.seasons.outputs.people }}
+        run: |
+          set -o pipefail
+          if [ -z "$PEOPLE" ]; then
+            echo "No season in this run gets people files."
+            exit 0
+          fi
+          python -m src.ncaambb.ingest --seasons "$PEOPLE" \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Replay the archive with the committed model
@@ -174,6 +206,7 @@ jobs:
         if: always() && steps.seasons.conclusion == 'success'
         env:
           ALLOWED: ${{ inputs.publish == null && 'true' || inputs.publish }}
+          ACTIVE: ${{ steps.seasons.outputs.active }}
         run: |
           # The raw cache is banked whatever else happened, and the `publish`
           # input does NOT govern it. "Do not replace what is published" and
@@ -197,6 +230,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add $PATHS
+          # The ACTIVE season's people cache is NOT banked. Its box scores
+          # change every night, so committing them writes a multi-megabyte
+          # blob into the repository every single day, for a file the next
+          # run would have to refetch anyway. Settled seasons are the
+          # opposite: they cannot change, so banking them once is what keeps
+          # this run inside the provider's allowance. The season's SCHEDULE
+          # cache is still committed -- it is one file and the export reads
+          # every season from it.
+          if [ -n "$ACTIVE" ]; then
+            git reset -q -- "data/ncaambb/raw/$ACTIVE/rosters.json.gz" \
+              "data/ncaambb/raw/$ACTIVE/box_scores.json.gz" || true
+          fi
           # Only these paths. A refresh must never carry a code change along
           # with it, whatever happens to be in the tree.
           git commit -m "Refresh the college basketball export

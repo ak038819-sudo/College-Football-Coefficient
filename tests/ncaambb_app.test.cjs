@@ -497,3 +497,149 @@ test('the limit is honoured', () => {
   assert.equal(app.searchTeams(board, clubs, 'tech').length, 25);
   assert.equal(app.searchTeams(board, clubs, 'tech', 5).length, 5);
 });
+
+// --- the people layer ------------------------------------------------------
+//
+// src/ncaambb/export_people.py writes the files these read, and its own tests
+// pin the Python side. They cannot pin the shard arithmetic: Python's `%` is
+// floored already, so the floored form and the bare form are the same
+// function there. On this side they are not, and a disagreement sends a
+// player page to a file that does not exist. These are the assertions that
+// can catch it.
+
+test('a shard is a floored modulo on this side too', () => {
+  assert.equal(app.peopleShard(0), 0);
+  assert.equal(app.peopleShard(101), 5);
+  assert.equal(app.peopleShard(16), 0);
+  assert.equal(app.peopleShard(4321), 1);
+  // The whole point. A bare `id % 16` gives -3 here and Python gives 13, so
+  // every negative provider id -- which the football archive really carries,
+  // and nothing promises basketball never will -- would 404.
+  assert.equal(app.peopleShard(-3), 13);
+  assert.equal(app.peopleShard(-16), 0);
+  assert.equal(app.peopleShard(-17), 15);
+});
+
+test('a shard count comes from the export, not from this file', () => {
+  // The manifest states `shards`. A page that ignored it and used its own
+  // constant would keep working until the export was ever resplit.
+  assert.equal(app.peopleShard(101, 8), 5);
+  assert.equal(app.peopleShard(101, 32), 5);
+  assert.equal(app.peopleShard(37, 8), 5);
+  assert.equal(app.peopleShard(37, 32), 5);
+  assert.equal(app.peopleShard(37), 5);
+  // And a count that is ignored would be invisible without a pair that
+  // disagrees: 21 is shard 5 of sixteen and shard 21 of thirty-two.
+  assert.equal(app.peopleShard(21, 16), 5);
+  assert.equal(app.peopleShard(21, 32), 21);
+});
+
+test('an id that is not a number is not shard zero', () => {
+  // `parseInt('')` is NaN and `NaN % 16` is NaN, which indexes nothing; the
+  // page has to be told so rather than fetching `people/2026/NaN.js`.
+  assert.equal(app.peopleShard(''), null);
+  assert.equal(app.peopleShard('nobody'), null);
+  assert.equal(app.peopleShard(undefined), null);
+});
+
+test('a bare provider id is turned back into a full key, and back', () => {
+  assert.equal(app.playerKey(101), 'ncaambb:cbbd:player:101');
+  assert.equal(app.providerIdOf('ncaambb:cbbd:player:101'), '101');
+  assert.equal(app.providerIdOf(app.playerKey(-3)), '-3');
+});
+
+const SHARD_2026 = {
+  season: 2026,
+  t: ['ncaambb:cbbd:team:1', 'ncaambb:cbbd:team:2'],
+  m: { 101: [[0, '3', 'G', 74, 190]] },
+  p: { 101: [[700, 0, 30, 22, 1], [701, 0, 28, 14, 0]],
+       102: [[700, 1, null, 0, 0]] }
+};
+const SHARD_2025 = {
+  season: 2025,
+  t: ['ncaambb:cbbd:team:2'],
+  m: {},
+  // A line with no roster snapshot behind it: 29 Division I players in
+  // 2025-26 are in exactly this position and their minutes are real.
+  p: { 101: [[600, 0, 12, 4, 0]] }
+};
+
+test('a player’s seasons come back newest first', () => {
+  const seasons = app.playerSeasons([SHARD_2025, SHARD_2026], 101);
+  assert.deepEqual(seasons.map(entry => entry.season), [2026, 2025]);
+  assert.equal(seasons[0].games.length, 2);
+  assert.equal(seasons[0].clubs[0].team, 'ncaambb:cbbd:team:1');
+  assert.equal(seasons[0].clubs[0].jersey, '3');
+});
+
+test('a season with a line and no roster row is still his season', () => {
+  const seasons = app.playerSeasons([SHARD_2025], 101);
+  assert.deepEqual(seasons.map(entry => entry.season), [2025]);
+  assert.deepEqual(seasons[0].clubs, []);
+  assert.equal(seasons[0].games[0].team, 'ncaambb:cbbd:team:2');
+});
+
+test('a player in no loaded shard has no seasons, and does not throw', () => {
+  assert.deepEqual(app.playerSeasons([SHARD_2025, SHARD_2026], 999), []);
+  assert.deepEqual(app.playerSeasons(undefined, 101), []);
+  assert.deepEqual(app.playerSeasons([null, {}], 101), []);
+});
+
+test('a total adds up only what was recorded', () => {
+  const totals = app.playerTotals(
+    app.playerSeasons([SHARD_2026], 101)[0].games);
+  assert.deepEqual(totals, { games: 2, minutes: 58, points: 36, starts: 1 });
+});
+
+test('nil is a measurement and nothing-recorded is not', () => {
+  const totals = app.playerTotals(
+    app.playerSeasons([SHARD_2026], 102)[0].games);
+  // One game, nobody wrote down his minutes, and he scored nothing. A zero
+  // minute total would claim a measurement that was never taken; a null
+  // points total would hide one that was.
+  assert.equal(totals.games, 1);
+  assert.equal(totals.minutes, null);
+  assert.equal(totals.points, 0);
+});
+
+test('a per-game average refuses to divide by no games', () => {
+  assert.equal(app.perGame(36, 2), 18);
+  assert.equal(app.perGame(0, 1), 0);
+  assert.equal(app.perGame(null, 2), null);
+  // The one that matters: 0 games would read as a player who played and
+  // scored nothing, which is a different player.
+  assert.equal(app.perGame(36, 0), null);
+});
+
+const PEOPLE = {
+  101: { n: 'Hal Guard', h: 'Provo', s: 'UT' },
+  205: { n: 'Otto Center' },
+  102: { n: 'Ivan Bench', h: 'Gary', s: 'IN' },
+  103: { n: "Sean O'Connell" }
+};
+
+test('a player search matches the way the club search does', () => {
+  assert.deepEqual(app.searchPlayers(PEOPLE, 'center').map(row => row.name),
+    ['Otto Center']);
+  assert.deepEqual(app.searchPlayers(PEOPLE, 'oconnell').map(row => row.name),
+    ["Sean O'Connell"]);
+  // An earlier match first: "Guard" ranks behind a name that starts with it.
+  assert.deepEqual(app.searchPlayers(PEOPLE, 'hal').map(row => row.id),
+    ['101']);
+});
+
+test('an empty player query finds nobody rather than everybody', () => {
+  assert.deepEqual(app.searchPlayers(PEOPLE, ''), []);
+  assert.deepEqual(app.searchPlayers(PEOPLE, '  '), []);
+  assert.deepEqual(app.searchPlayers(PEOPLE, 'nobodyatall'), []);
+  assert.deepEqual(app.searchPlayers(undefined, 'hal'), []);
+});
+
+test('a player search is capped', () => {
+  const many = {};
+  for (let index = 0; index < 40; index += 1) {
+    many[1000 + index] = { n: 'Guard ' + index };
+  }
+  assert.equal(app.searchPlayers(many, 'guard').length, 25);
+  assert.equal(app.searchPlayers(many, 'guard', 5).length, 5);
+});

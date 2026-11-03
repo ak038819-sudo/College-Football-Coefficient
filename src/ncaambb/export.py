@@ -23,6 +23,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+from . import export_people
 from .identity import current_season
 from .publish_gate import SCHEMA_VERSION, check, render
 from .store import connect
@@ -257,7 +258,8 @@ def coverage_row(connection, season, games, rows, *, complete=True):
     )
 
 
-def build(connection, *, model_name=None, seasons=None, now=None):
+def build(connection, *, model_name=None, seasons=None, now=None,
+          people_seasons=None):
     """Everything an export writes, and the manifest that describes it.
 
     Built whole before anything is written, so the gate can refuse it while the
@@ -279,6 +281,12 @@ def build(connection, *, model_name=None, seasons=None, now=None):
         payloads[season] = dict(season=season, board=rows, games=games)
         coverage.append(coverage_row(connection, season, games, rows,
                                      complete=season < in_progress))
+    # The people layer covers only the seasons whose rosters and box scores
+    # have been fetched, which is fewer than the seasons that have ratings.
+    # An absent season is said so in the manifest rather than guessed at by a
+    # page that finds no file.
+    people, people_summary = export_people.payloads(
+        connection, wanted, limit=people_seasons)
     manifest = dict(
         schema_version=SCHEMA_VERSION,
         sport='ncaambb',
@@ -289,11 +297,13 @@ def build(connection, *, model_name=None, seasons=None, now=None):
         latest_season=wanted[-1],
         seasons={},
         files={},
+        people_summary=people_summary,
     )
-    return manifest, payloads, teams(connection)
+    return manifest, payloads, teams(connection), people
 
 
-def write(manifest, payloads, team_index, out_dir=OUT_DIR, *, gate=check):
+def write(manifest, payloads, team_index, out_dir=OUT_DIR, *, people=None,
+          gate=check):
     """Write the export, but only if the gate passes.
 
     The manifest is completed first — the files it names, with the hash each
@@ -310,6 +320,8 @@ def write(manifest, payloads, team_index, out_dir=OUT_DIR, *, gate=check):
         staged[f'seasons/{season}.js'] = text
     staged['teams.js'] = ('window.NCAAMBB_TEAMS=' + json.dumps(
         team_index, separators=(',', ':'), sort_keys=True) + ';\n')
+    for path, (global_expr, payload) in (people or {}).items():
+        staged[path] = export_people.render(global_expr, payload)
 
     def stamp(text):
         return hashlib.sha256(text.encode('utf-8')).hexdigest()[:10]
@@ -320,6 +332,9 @@ def write(manifest, payloads, team_index, out_dir=OUT_DIR, *, gate=check):
         for season in payloads}
     manifest['files'] = dict(
         teams=f'teams.js?v={stamp(staged["teams.js"])}')
+    if people:
+        manifest['files']['people'] = export_people.manifest_section(
+            people, lambda path: stamp(staged[path]))
     reasons = gate(manifest, root=None)
     if reasons:
         raise PublishRefused(reasons)
@@ -359,6 +374,16 @@ def summarise(manifest, out_dir):
         lines.append(f'| {row["season_label"]} | {row["division_one_teams"]} | '
                      f'{row["rated_teams"]} | {row["games"]} | '
                      f'{row["finals"]} | {row["rateable"]} |')
+    people = manifest.get('people_summary') or []
+    if people:
+        lines += ['', '| season | players | clubs | game lines |',
+                  '| --- | --- | --- | --- |']
+        for row in people:
+            lines.append(f'| {row["season"]} | {row["players"]} | '
+                         f'{row["clubs"]} | {row["lines"]} |')
+    else:
+        lines += ['', 'No season in this export has people data; the People '
+                      'tab will say so rather than draw an empty panel.']
     lines += ['', 'Publish gate PASSED; this export describes national '
                   'coverage of a model scored on a season it never saw.']
     return '\n'.join(lines)
@@ -373,17 +398,25 @@ def main(argv=None):
     parser.add_argument('--seasons', default=None,
                         help='comma-separated ending years; every rated '
                              'season by default')
+    parser.add_argument('--people-seasons', type=int, default=None,
+                        help='how many of the most recent seasons get player '
+                             f'files (default {export_people.DEFAULT_SEASONS}, '
+                             '0 for every season that has people). A season is '
+                             'around 127,500 player-game lines, so this is '
+                             'what keeps the published payload bounded.')
     args = parser.parse_args(argv)
     seasons = ([int(part) for part in args.seasons.split(',') if part.strip()]
                if args.seasons else None)
     connection = connect()
     try:
-        manifest, payloads, team_index = build(connection, seasons=seasons,
-                                               model_name=args.model)
+        manifest, payloads, team_index, people = build(
+            connection, seasons=seasons, model_name=args.model,
+            people_seasons=args.people_seasons)
     finally:
         connection.close()
     try:
-        manifest = write(manifest, payloads, team_index, Path(args.out))
+        manifest = write(manifest, payloads, team_index, Path(args.out),
+                         people=people)
     except PublishRefused as refused:
         print(str(refused))
         return 1

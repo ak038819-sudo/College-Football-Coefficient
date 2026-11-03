@@ -59,8 +59,12 @@ def test_the_model_is_never_refitted_on_a_schedule():
 def test_the_export_is_built_somewhere_other_than_the_published_directory():
     """Building straight into ui/data/ncaambb would destroy the live export
     before knowing whether the new one is fit to publish."""
+    # Matched on the invocation, not on the module name: `src.ncaambb.export`
+    # is a prefix of `src.ncaambb.export_people`, which the seasons step
+    # imports, and a substring match picked that step instead and passed
+    # vacuously.
     build = next(step for step in steps()
-                 if 'src.ncaambb.export' in step.get('run', ''))
+                 if '-m src.ncaambb.export ' in step.get('run', ''))
     assert '--out' in build['run']
     assert 'ui/data/ncaambb' not in build['run']
 
@@ -246,6 +250,15 @@ def ingest_step():
                 if 'src.ncaambb.ingest' in step.get('run', ''))
 
 
+def people_step():
+    """The SECOND ingestion. Matched on the absence of --schedule-only rather
+    than on its position, so reordering the file cannot silently point these
+    assertions at the schedule step."""
+    return next(step for step in steps()
+                if 'src.ncaambb.ingest' in step.get('run', '')
+                and '--schedule-only' not in step['run'])
+
+
 def uncommented(text):
     return '\n'.join(line for line in text.splitlines()
                       if not line.strip().startswith('#'))
@@ -266,6 +279,51 @@ def test_the_ingestion_asks_again_about_the_season_being_played():
     step = ingest_step()
     assert '--refetch-seasons' in uncommented(step['run'])
     assert step['env'].get('ACTIVE') == '${{ steps.seasons.outputs.active }}'
+
+
+def test_the_refresh_ingests_people_as_well_as_schedules():
+    """Rosters, identities and box scores, or the People tab has no files and
+    every published export says the league carries no player data."""
+    step = people_step()
+    run = uncommented(step['run'])
+    assert '--seasons "$PEOPLE"' in run
+    assert step['env'].get('PEOPLE') == '${{ steps.seasons.outputs.people }}'
+    assert step['env'].get('CBBD_API_KEY') == '${{ secrets.CBBD_API_KEY }}'
+    assert 'set -o pipefail' in run, 'tee reports its own status'
+    # A run that asks for no people season must not invoke the ingestion with
+    # an empty --seasons, which it refuses.
+    assert 'if [ -z "$PEOPLE" ]' in run
+
+
+def test_the_people_ingestion_does_not_refetch_the_schedule_again():
+    """The step before it has just refreshed the active season's schedule
+    into the cache. Passing --refetch-seasons here would pay for those dozen
+    windows a second time, every day."""
+    assert '--refetch-seasons' not in uncommented(people_step()['run'])
+    assert '--refetch ' not in uncommented(people_step()['run'])
+
+
+def test_the_people_seasons_come_from_the_exporter():
+    """A season is ~127,500 player-game lines and the export publishes only
+    the most recent few, so fetching people for a season the export will not
+    carry spends quota on data no page can read. The number must come from
+    the exporter, not from a copy of it written into a workflow where no test
+    can reach it."""
+    step = next(s for s in steps() if s.get('id') == 'seasons')
+    assert 'from src.ncaambb.export_people import recent' in step['run']
+    assert 'people=' in step['run']
+
+
+def test_the_active_seasons_people_cache_is_not_committed():
+    """Its box scores change every night, so banking them writes a
+    multi-megabyte blob into the repository every day for a file the next run
+    refetches anyway. The season's SCHEDULE cache is still committed."""
+    commit = next(step for step in steps() if 'git commit' in step.get('run', ''))
+    run = uncommented(commit['run'])
+    assert 'git reset -q -- "data/ncaambb/raw/$ACTIVE/rosters.json.gz"' in run
+    assert '"data/ncaambb/raw/$ACTIVE/box_scores.json.gz"' in run
+    assert 'games.json.gz' not in run, 'the schedule cache is still banked'
+    assert commit['env'].get('ACTIVE') == '${{ steps.seasons.outputs.active }}'
 
 
 def test_the_active_season_comes_from_the_shared_helper_too():
@@ -305,6 +363,16 @@ def test_the_active_season_is_named_only_when_the_run_fetches_it():
         assert one['active'] == '', 'no active season is claimed'
         pair = run(f'2015,{current_season(now)}')
         assert pair['active'] == str(current_season(now))
+        # And the people list is the exporter's own window over what was
+        # asked for, not everything and not the first few.
+        from src.ncaambb.export_people import recent
+        assert every['people'] == ','.join(
+            str(year) for year in recent(
+                [int(part) for part in every['list'].split(',')]))
+        assert every['people'] != every['list'], (
+            'people cover fewer seasons than ratings')
+        assert pair['people'] == f'2015,{current_season(now)}', (
+            'a two-season run is inside the window, so both get people')
     finally:
         os.environ.pop('REQUESTED', None)
 

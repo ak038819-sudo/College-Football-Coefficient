@@ -32,7 +32,7 @@ downgrades a failure to a warning.
 
 | field | what it is for |
 | --- | --- |
-| `schema_version` | 1. A reader states which versions it understands and refuses the rest. |
+| `schema_version` | 2. A reader states which versions it understands and refuses the rest, and still reads 1: the export on disk stays schema 1 until the next refresh runs, so a page that dropped it would go blank between the merge and that run. |
 | `sport` | `ncaambb`. A manifest that does not say so is refused, in both gates, so this can never be read as football data. |
 | `generated_at` | The as-of time, UTC, `Z`-suffixed. Missing or unparseable is a refusal; in the future is a refusal; old is not. |
 | `model` | Name, the full fitted configuration, a sha256 of that configuration, which seasons it was fitted on, which were held out, and what it scored there. |
@@ -96,6 +96,61 @@ in for "no score" costs downstream, and a test drives it.
 Ratings are stored to one decimal and rounded to whole numbers only at display,
 the rule football settled on: a rounded value must never be what the next
 calculation reads.
+
+## The people files
+
+Who played, and what they did. The data was loaded nationally by B02 and
+nothing published it, so the People tab was drawn disabled from the day the
+league launched.
+
+Three kinds of file, because three screens ask three different questions and
+one file answering all of them would be downloaded by readers who wanted none
+of it:
+
+| file | answers | read by |
+| --- | --- | --- |
+| `people/index.js` | who exists, and which seasons have people at all | the People tab, for search |
+| `people/<season>/roster.js` | who is on this club, and their season line | a club's page |
+| `people/<season>/<shard>.js` | this player's membership and every game he played | a player's page |
+
+**The shards exist because a season is about 127,500 player-game lines.** A
+player page needs one player's, so each season's lines are split sixteen ways
+on the player's own id and a page fetches the one shard it needs. The split is
+a FLOORED modulo written out longhand on both sides: Python's `%` is floored
+and JavaScript's is not, so a negative provider id would land in shard -3 in
+the browser and 13 in the exporter, which is a file that does not exist. The
+Python test cannot tell the two forms apart — there they ARE the same
+function — so the guard that has teeth is in `tests/ncaambb_app.test.cjs`.
+
+**The manifest's `people` section nests under `files`**, which means the
+publish gate's own file walk hashes every people file without knowing anything
+about people: a missing, empty or stale one is refused for free. The shards
+are listed in numeric order, and a reader matches the one it wants by NAME
+rather than by position in that list.
+
+**NOTHING HERE IS A SUM OF SOMETHING ELSE.** A season line is the player's own
+box score lines added up, per club, so a mid-season transfer is two rows and
+never one merged player. It is never reconciled against the team's score: the
+pilot found 26 box scores that disagree with their game's final, and the right
+answer there is to report the disagreement rather than average it away. A
+total of nothing recorded is absent, not 0 — a player whose minutes nobody
+wrote down and one who sat on the bench are different things, and 0 merges
+them. A measured nil stays a measurement.
+
+A player with a line but no roster snapshot is still put on his club's roster,
+with no jersey. 29 Division I players in 2025-26 are in exactly that position
+and their minutes are real.
+
+**Only the most recent `export_people.DEFAULT_SEASONS` seasons get people
+files**, six at the time of writing. A bound, not a preference: thirteen
+seasons published in full is tens of megabytes added to a site already
+measured at 461 MB against GitHub Pages' 1 GB cap (see
+`docs/published-payload.md`), for seasons whose rosters nobody is looking up,
+and six covers every player now playing for his whole career. `--people-seasons
+0` publishes every season that has people; the manifest states which seasons
+are carried either way, and the page says so rather than drawing a blank for
+the rest. The refresh reads the same number from the exporter, so it does not
+spend provider quota fetching people the export would not publish.
 
 ## Provider Elo is still never read
 

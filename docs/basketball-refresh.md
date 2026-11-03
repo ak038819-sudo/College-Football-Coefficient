@@ -136,6 +136,25 @@ makes a cut-off run make progress instead of repeating itself; the job still
 fails, so the health light still lights. That makes the refresh resumable by
 construction, the same property `backfill-players.yml` has for football.
 
+**People are fetched for fewer seasons than schedules, and their cache is
+banked for fewer still.** A season's rosters are one request while its box
+scores are two dozen windows, and only the most recent
+`export_people.DEFAULT_SEASONS` seasons get published player files, so the
+`seasons` step emits a separate `people` list and the ingestion is invoked a
+second time with it. Fetching people for a season the export will not carry
+would spend quota on data no page can read, and the number is read from the
+exporter rather than copied into this workflow.
+
+The ACTIVE season's people cache is then deliberately NOT committed. Its box
+scores change every night, so banking them writes a multi-megabyte blob into
+the repository every day for a file the next run would have to refetch anyway.
+Settled seasons are the opposite — they cannot change, so banking them once is
+what keeps the run inside the allowance — and the season's schedule cache is
+still committed, because it is one file and every season's export reads from
+it. The second ingestion therefore passes no `--refetch-seasons`: the step
+before it has already refreshed the active schedule into the cache, and a fresh
+checkout has no people cache for that season to reuse.
+
 The `publish` input does **not** govern the cache. "Do not replace what is
 published" and "throw away the quota this run already spent" are different
 decisions, and a dispatcher asking for the first does not want the second —
@@ -267,7 +286,9 @@ browser would refuse in the reader's page what the gate had just accepted.
 The export is about 21 MB across twelve seasons, and a season's games file is
 about 1.8 MB. Past seasons serialise byte-identically from one run to the next,
 so a refresh adds only the current season's file to the repository — roughly
-1.8 MB a day while the season is on, plus the current season's raw cache. If that proves too heavy, the next step is
+1.8 MB a day while the season is on, plus the current season's schedule cache
+and its people files. The current season's people RAW cache is not committed,
+which is the single largest thing kept out of the daily commit. If that proves too heavy, the next step is
 to intern the team keys inside each payload, which are 23 bytes each and appear
 twice per game; it is a shape change to the export, the loader and the page,
 which is why it is written down here rather than done pre-emptively.

@@ -94,6 +94,30 @@ false for every basketball game in every season and the whole scoreboard said
 the NFL, whose export states its instant in `at` instead, so `startInstant`
 reads either shape and only a payload with a `tip` gets a clock on its cards.
 
+### The People tab
+
+Enabled by the manifest's `people` section and by nothing else: an export
+without one draws the tab, disabled, and says the export carries no player
+data yet. That is what every basketball export published before this change
+looks like, and a tab that vanished instead would read as a feature that was
+removed.
+
+The tab opens on the season's leading scorers by TOTAL points, with the
+per-game average beside it. A per-game board two days into a season is a list
+of players who have played once.
+
+A player page loads one shard per season — one file of sixteen — which is why
+the lines are sharded on the player's own id. The shard is found in the
+manifest by file NAME, not by position in the list. A season the page has not
+loaded cannot date a game, so the date falls back to an em dash and the line
+is still shown: the minutes were played either way. The per-game log is
+ordered by DATE and not by game id, because the archive's ids do not run in
+date order.
+
+Routes are `#section=people` for the tab and `#section=people&player=<id>`
+for a page. Leaving People takes the player out of the URL with it, or a
+reader pressing Standings and then Back would land on a player.
+
 ### The page's today has to be the export's today
 
 `at` is an EASTERN date (see `EASTERN` in `src/ncaambb/games.py`), so the

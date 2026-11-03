@@ -28,8 +28,13 @@ from pathlib import Path
 # The export contract's version, not the database's. A loader states which
 # versions it understands and refuses the rest; bumping this is a deliberate
 # break that requires the loader to be taught the new shape first.
-SCHEMA_VERSION = 1
-SUPPORTED_SCHEMA_VERSIONS = (1,)
+# 2 added the `people` section to `files`, the `tip` field to a game and
+# changed `at` from the UTC date to the date the game is played on.
+SCHEMA_VERSION = 2
+# 1 is still accepted when READING, because an export already on disk is
+# schema 1 until the next refresh rebuilds it, and the page must keep working
+# in between.
+SUPPORTED_SCHEMA_VERSIONS = (1, 2)
 
 # Division I measured 351 teams in 2015 and 365 in 2026. A floor of 300 passes
 # every real season and fails any sample: one team, one conference, or one

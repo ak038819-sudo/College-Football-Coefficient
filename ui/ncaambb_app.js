@@ -174,6 +174,140 @@
     return parts.length ? '#' + parts.join('&') : '#';
   }
 
+  /* ---- people ------------------------------------------------------- */
+
+  /* How many ways a season's player-game lines are split, and which shard a
+   * player's are in. MUST agree with src/ncaambb/export_people.py.
+   *
+   * The modulo is written out rather than left to the language: JavaScript's
+   * `%` keeps the sign, so a negative provider id -- which the football
+   * archive really carries -- gives -3 here and 13 in Python, and -3 is a
+   * file that does not exist. Python's is already floored, so its own tests
+   * cannot catch this and these are the assertions that can.
+   */
+  var PEOPLE_SHARDS = 16;
+
+  function peopleShard(providerId, shards) {
+    var count = shards || PEOPLE_SHARDS;
+    var id = parseInt(providerId, 10);
+    if (isNaN(id)) return null;
+    return ((id % count) + count) % count;
+  }
+
+  /* A player's full key, from the bare provider id the people files carry.
+   *
+   * The files leave the prefix off 13,000 keys because it is constant inside
+   * a file that exists only for basketball. It is put back here, in one
+   * place, so nothing downstream holds a bare integer that could be mistaken
+   * for a football id.
+   */
+  function playerKey(providerId) {
+    return 'ncaambb:cbbd:player:' + String(providerId);
+  }
+
+  function providerIdOf(key) {
+    var parts = String(key || '').split(':');
+    return parts[parts.length - 1];
+  }
+
+  /* A player's seasons, from the shards already loaded, newest first.
+   *
+   * `shards` is the pushed queue of shard payloads. A season is included when
+   * the player has a membership OR a game line in it: 29 Division I players
+   * in 2025-26 recorded a line without appearing in any roster snapshot, and
+   * their minutes are real.
+   */
+  function playerSeasons(shards, providerId) {
+    var id = String(providerId);
+    var found = {};
+    (shards || []).forEach(function (shard) {
+      if (!shard || typeof shard.season !== 'number') return;
+      var member = (shard.m || {})[id];
+      var lines = (shard.p || {})[id];
+      if (!member && !lines) return;
+      var entry = found[shard.season] || { season: shard.season,
+                                           clubs: [], games: [] };
+      (member || []).forEach(function (row) {
+        entry.clubs.push({
+          team: (shard.t || [])[row[0]] || null,
+          jersey: row[1], position: row[2], height: row[3], weight: row[4]
+        });
+      });
+      (lines || []).forEach(function (row) {
+        entry.games.push({
+          game: row[0], team: (shard.t || [])[row[1]] || null,
+          minutes: row[2], points: row[3], starter: row[4]
+        });
+      });
+      found[shard.season] = entry;
+    });
+    return Object.keys(found)
+      .map(function (key) { return found[key]; })
+      .sort(function (a, b) { return b.season - a.season; });
+  }
+
+  /* A season's totals for one player: games, and the minutes and points that
+   * were actually recorded.
+   *
+   * `minutes` and `points` are null when NOTHING was recorded, which is not
+   * the same as a measured zero -- and `games` counts every line either way,
+   * because a player with a line played.
+   */
+  function playerTotals(games) {
+    var rows = games || [];
+    var minutes = null;
+    var points = null;
+    rows.forEach(function (row) {
+      if (row.minutes !== null && row.minutes !== undefined) {
+        minutes = (minutes === null ? 0 : minutes) + row.minutes;
+      }
+      if (row.points !== null && row.points !== undefined) {
+        points = (points === null ? 0 : points) + row.points;
+      }
+    });
+    return {
+      games: rows.length,
+      minutes: minutes === null ? null : Math.round(minutes * 10) / 10,
+      points: points === null ? null : Math.round(points * 10) / 10,
+      starts: rows.filter(function (row) { return row.starter === 1; }).length
+    };
+  }
+
+  /* A per-game average, or null when there is nothing to average.
+   *
+   * Zero games is null and never 0.0, which would read as a player who
+   * played and scored nothing.
+   */
+  function perGame(total, games) {
+    if (total === null || total === undefined || !games) return null;
+    return Math.round((total / games) * 10) / 10;
+  }
+
+  /* The players a query finds, by name, best first.
+   *
+   * Reuses the same normalisation the club search uses, so "stjohns" finds
+   * St. John's and "oconnell" finds O'Connell.
+   */
+  function searchPlayers(index, query, limit) {
+    var wanted = normalizeName(query);
+    if (!wanted) return [];
+    var found = [];
+    Object.keys(index || {}).forEach(function (id) {
+      var entry = index[id] || {};
+      var name = normalizeName(entry.n || '');
+      if (!name) return;
+      var at = name.indexOf(wanted);
+      if (at < 0) return;
+      found.push({ id: id, name: entry.n, hometown: entry.h || null,
+                   state: entry.s || null, at: at });
+    });
+    found.sort(function (a, b) {
+      if (a.at !== b.at) return a.at - b.at;
+      return String(a.name).localeCompare(String(b.name));
+    });
+    return found.slice(0, limit || 25);
+  }
+
   function sections(slug) {
     return SECTIONS[slug] || [];
   }
@@ -740,6 +874,14 @@
     NCAAMBB_DAY_ZONE: NCAAMBB_DAY_ZONE,
     todayKey: todayKey,
     openingDay: openingDay,
+    PEOPLE_SHARDS: PEOPLE_SHARDS,
+    peopleShard: peopleShard,
+    playerKey: playerKey,
+    providerIdOf: providerIdOf,
+    playerSeasons: playerSeasons,
+    playerTotals: playerTotals,
+    perGame: perGame,
+    searchPlayers: searchPlayers,
     timeKnown: timeKnown,
     startInstant: startInstant,
     tipText: tipText,
