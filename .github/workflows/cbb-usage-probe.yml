@@ -16,6 +16,12 @@ name: College basketball provider usage
 
 on:
   workflow_dispatch:
+    inputs:
+      ask:
+        description: "usage: what the account has spent. refusal: that, plus ONE data call to read the refusal's own body."
+        type: choice
+        options: [usage, refusal]
+        default: usage
 
 permissions:
   contents: read
@@ -43,5 +49,18 @@ jobs:
           # `cmd | tee` reports tee's status, so without pipefail a crash in
           # the probe would pass this step.
           set -o pipefail
-          python scripts/probe_cbbd_limits.py --usage-only \
-            | tee -a "$GITHUB_STEP_SUMMARY"
+          # The usage endpoint reports a 7-day rolling count. It cannot say
+          # whether a fetch would be ALLOWED, and the two answers have been
+          # confused twice: on 2026-10-27 the window held 202 requests while
+          # the provider refused with "Monthly call quota exceeded", and on
+          # 2026-11-03 it held 1,010. Only a real data call carries the
+          # refusal's own words, so `refusal` makes exactly one and prints
+          # the body. One request, not the two dozen the full probe spends.
+          if [ "${{ inputs.ask }}" = "refusal" ]; then
+            python scripts/probe_cbbd_limits.py \
+              --burst 1 --paced 0 --cooldown 0 \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            python scripts/probe_cbbd_limits.py --usage-only \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
