@@ -308,3 +308,42 @@ def record_rating_model(connection, name, config, *, fitted_on=None,
     row = connection.execute('SELECT model_id FROM rating_model WHERE name = ?',
                              (name,)).fetchone()
     return row['model_id']
+
+
+def upsert_team_ratings(connection, model_id, rows, *, updated_at=None):
+    stamp = updated_at or datetime.now(timezone.utc).isoformat()
+    for row in rows:
+        connection.execute(
+            'INSERT INTO team_rating (team_key, season, model_id, rating,'
+            ' games_counted, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+            ' ON CONFLICT(team_key, season, model_id) DO UPDATE SET'
+            '   rating = excluded.rating,'
+            '   games_counted = excluded.games_counted,'
+            '   updated_at = excluded.updated_at',
+            (row['team_key'], row['season'], model_id, row['rating'],
+             row['games_counted'], stamp))
+    connection.commit()
+    return len(rows)
+
+
+def upsert_rating_games(connection, model_id, rows):
+    for row in rows:
+        connection.execute(
+            'INSERT INTO rating_game (game_key, model_id, home_pregame,'
+            ' away_pregame, home_expected, home_postgame, away_postgame,'
+            ' rating_change, multiplier, counted)'
+            ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            ' ON CONFLICT(game_key, model_id) DO UPDATE SET'
+            '   home_pregame = excluded.home_pregame,'
+            '   away_pregame = excluded.away_pregame,'
+            '   home_expected = excluded.home_expected,'
+            '   home_postgame = excluded.home_postgame,'
+            '   away_postgame = excluded.away_postgame,'
+            '   rating_change = excluded.rating_change,'
+            '   multiplier = excluded.multiplier, counted = excluded.counted',
+            (row['game_key'], model_id, row['home_pregame'],
+             row['away_pregame'], row['home_expected'], row['home_postgame'],
+             row['away_postgame'], row['rating_change'], row['multiplier'],
+             row['counted']))
+    connection.commit()
+    return len(rows)
