@@ -11,6 +11,7 @@ function src(name){
 }
 const ctx={
  esc:v=>String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'),
+ gameMatchupKeys:()=>'<div class="gp-keys">Summary</div>',
  renderMatchupMeters:(a,b)=>'<div class="stub">'+String(a)+' / '+String(b)+'</div>'
 };
 vm.runInNewContext(src('gameScoutingEligible')+'\n'+src('gameScoutingPanel')+'\nthis.eligible=gameScoutingEligible;this.panel=gameScoutingPanel;',ctx);
