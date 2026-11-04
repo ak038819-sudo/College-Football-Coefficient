@@ -14,7 +14,7 @@ const ctx={
  renderMatchupMeters:(a,b)=>'<div class="stub">'+String(a)+' / '+String(b)+'</div>'
 };
 vm.runInNewContext(src('gameScoutingEligible')+'\n'+src('gameScoutingPanel')+'\nthis.eligible=gameScoutingEligible;this.panel=gameScoutingPanel;',ctx);
-const fixture={id:12,away_id:1,home_id:2,kickoff_utc:'2026-11-07T18:30:00Z'};
+const fixture={game_id:12,away_id:1,home_id:2,kickoff_utc:'2026-11-07T18:30:00Z'};
 const team=id=>({team_id:id,metrics:{rush_success_rate:{status:'rated',sample_games:8,distinct_opponents:8,reliability:'moderate'}}});
 const bundle={schema_version:'elocast-descriptive-v1',season:2026,as_of_exclusive:'2026-11-02',teams:{'1':team(1),'2':team(2)}};
 test('only a same-season snapshot before kickoff can appear',()=>{
@@ -45,4 +45,24 @@ test('game route injects scouting only on archived upcoming games',()=>{
  assert.match(shell,/g\.completed \? '' : '<div id="gp-scouting-slot"/);
  assert.match(shell,/if \(!g\.completed\) hydrateGameScouting\(g, season, an, hn, version\)/);
  assert.match(shell,/version !== renderVersion \|\| state\.view !== 'game'/);
+});
+
+test('async hydration uses archived game_id, not nonexistent id', async()=>{
+ const target={outerHTML:'',removed:false,remove(){this.removed=true;}};
+ const context={
+   scoutingAsset:async()=>bundle,
+   renderVersion:3,
+   state:{view:'game',gameParam:12},
+   document:{getElementById:id=>id==='gp-scouting-slot'?target:null},
+   gameScoutingPanel:()=>'<section id="gp-scouting">Real data</section>'
+ };
+ vm.runInNewContext(src('hydrateGameScouting')+'\nthis.hydrate=hydrateGameScouting;',context);
+ context.hydrate(fixture,2026,'Miami','Notre Dame',3);
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.match(target.outerHTML,/Real data/);
+ target.outerHTML='';
+ context.state.gameParam=14;
+ context.hydrate(fixture,2026,'Miami','Notre Dame',3);
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(target.outerHTML,'');
 });
