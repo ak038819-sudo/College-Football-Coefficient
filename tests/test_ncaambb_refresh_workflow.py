@@ -295,12 +295,34 @@ def test_the_refresh_ingests_people_as_well_as_schedules():
     assert 'if [ -z "$PEOPLE" ]' in run
 
 
-def test_the_people_ingestion_does_not_refetch_the_schedule_again():
+def test_the_people_ingestion_does_not_refetch_by_default():
     """The step before it has just refreshed the active season's schedule
-    into the cache. Passing --refetch-seasons here would pay for those dozen
-    windows a second time, every day."""
-    assert '--refetch-seasons' not in uncommented(people_step()['run'])
-    assert '--refetch ' not in uncommented(people_step()['run'])
+    into the cache, and every settled season is banked. Refetching here by
+    default would pay for all of that a second time, every day.
+
+    It CAN be asked to, for one season at a time, because a season cached by
+    a partly refused run can only be repaired that way -- but the flag has to
+    come from an input that is blank on a schedule, never from the command
+    itself."""
+    run = uncommented(people_step()['run'])
+    assert '--refetch ' not in run, 'a blanket refetch is never right here'
+    # The flag appears only inside the guard, and the guard is on an input.
+    assert 'if [ -n "$REFETCH_PEOPLE" ]' in run
+    assert run.index('if [ -n "$REFETCH_PEOPLE" ]') \
+        < run.index('--refetch-seasons'), 'guarded, not unconditional'
+
+
+def test_a_people_refetch_is_asked_for_and_never_assumed():
+    step = people_step()
+    inputs = workflow()[True]['workflow_dispatch']['inputs']
+    assert inputs['refetch_people']['default'] == '', (
+        'a scheduled run must reuse every cached season')
+    assert step['env']['REFETCH_PEOPLE'] == '${{ inputs.refetch_people }}'
+    # `inputs.x` is empty on a schedule, which is what makes the guard above
+    # the whole safety of this. NOT compared against null: GitHub coerces
+    # both sides of == to a number, so `== null` also matches '' and false.
+    # See test_publish_false_actually_means_false.
+    assert 'inputs.refetch_people == null' not in REFRESH.read_text()
 
 
 def test_the_people_seasons_come_from_the_exporter():

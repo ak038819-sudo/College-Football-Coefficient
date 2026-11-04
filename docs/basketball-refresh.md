@@ -355,3 +355,17 @@ The people ingestion is best effort for the same reason, and for one more: at
 roughly 450 calls for six seasons it is nearly half the month's allowance on
 its own, so it cannot run daily on this plan. Settled seasons are banked once
 precisely so they are never refetched.
+
+### Repairing a season's people
+
+A cached season is never asked about again, which is what keeps a daily run
+cheap — and it means a season banked by a partly refused run stays wrong.
+2025-26 is in exactly that position: 5,643 roster memberships against 15,210
+for the season before it. Its box-score lines are complete, so the players and
+their minutes are all there; what is missing is jerseys and positions.
+
+Dispatch the refresh with `refetch_people: 2026` to fetch that season's
+rosters and box scores again. The input is blank on a schedule and blank on a
+dispatch unless asked for, the seasons named must be ones the run gets people
+for, and it refetches those seasons' schedules too (about 26 more calls each),
+because the flag ignores a season's whole cache.

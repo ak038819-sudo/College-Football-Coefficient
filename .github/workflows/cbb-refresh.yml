@@ -44,6 +44,10 @@ on:
         description: "Commit the export to main when the gate passes"
         type: boolean
         default: true
+      refetch_people:
+        description: "Ending years whose ROSTERS and BOX SCORES to fetch again, e.g. 2026. Must be seasons this run gets people for. Blank means reuse every cached season."
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -164,13 +168,32 @@ jobs:
         env:
           CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
           PEOPLE: ${{ steps.seasons.outputs.people }}
+          # Blank on a schedule, and blank on a dispatch unless someone asks.
+          # A cached season is never asked about again, which is what keeps a
+          # daily run cheap, so repairing one that was cached from a partly
+          # refused run needs this said out loud. MEASURED: 2025-26 was banked
+          # by such a run and holds 5,643 roster memberships against 15,210
+          # for the season before it -- the box-score lines are complete, so
+          # the players and their minutes are all there and what is missing is
+          # jerseys and positions.
+          #
+          # It also refetches those seasons' SCHEDULES, because the flag
+          # ignores a season's whole cache. That is about 26 more calls per
+          # season and the schedules are reloaded correctly, so it is a cost
+          # rather than a problem.
+          REFETCH_PEOPLE: ${{ inputs.refetch_people }}
         run: |
           set -o pipefail
           if [ -z "$PEOPLE" ]; then
             echo "No season in this run gets people files."
             exit 0
           fi
-          python -m src.ncaambb.ingest --seasons "$PEOPLE" \
+          args=""
+          if [ -n "$REFETCH_PEOPLE" ]; then
+            args="--refetch-seasons $REFETCH_PEOPLE"
+            echo "Fetching people again for: $REFETCH_PEOPLE"
+          fi
+          python -m src.ncaambb.ingest --seasons "$PEOPLE" $args \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Say so when the people did not all arrive
