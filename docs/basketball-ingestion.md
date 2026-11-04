@@ -45,14 +45,43 @@ has "elo" in its name. A provider rating must not be able to leak into ours.
 
 ## Absence is stored as absence
 
-- A missing score is `NULL`, never 0. 44% of the 2026-27 schedule has no
-  tip-off time, so `start_time_tbd` records that and the provider's own
-  timestamp is kept verbatim rather than zeroed.
+- A missing score is `NULL`, never 0. The provider does NOT help here: for a
+  game nobody has played, `/games` returns `homePoints: 0` and
+  `awayPoints: 0`. Stored as given, those published every upcoming game as
+  0-0, which is what this rule existed to prevent and what measuring the live
+  2026-27 export found. `coverage.recorded_points` keeps a score only once the
+  game's status says it has started, so a team that really is scoreless two
+  minutes in keeps its 0.
+- 37% of the 2026-27 schedule has no tip-off time, so `start_time_tbd` records
+  that, `start_at_utc` is NULL, and the provider's own timestamp is kept
+  verbatim rather than zeroed.
 - A missing text value is `NULL`, not `"None"`.
 - `minutes` on a player's game row is `NULL` when the provider recorded none,
   which is not the same as having played zero.
 - A game with no usable, timezone-aware start date is **refused**, because the
   date is what assigns it to a season and a window.
+
+## Which day a game is on
+
+A game is stored with THREE date fields, because they answer three questions
+and conflating them cost 2,140 games a season:
+
+| Column | What it is | Who reads it |
+| --- | --- | --- |
+| `start_date` | the provider's timestamp, verbatim | nothing; it is the record |
+| `start_date_utc` | the UTC date | the fetch-window check, which must match the provider's own UTC date filter |
+| `playing_date` | the date in the Eastern United States | the site: this is the evening a reader watched it |
+| `start_at_utc` | the instant it starts, or NULL while undecided | the tip-off time on a card |
+
+**MEASURED:** of the 3,759 games in 2026-27 whose tip-off time is decided,
+2,140 — 57% — fall on a different UTC date than the evening they are played,
+because a 7pm Eastern tip-off is already midnight UTC. Reading the UTC date as
+the day put more than half the scoreboard on the following day.
+
+The provider itself counts in Eastern time, which is how this is known rather
+than assumed: all 2,247 games whose time is undecided carry the placeholder
+`05:00Z`, exactly midnight Eastern Standard Time on the date they are
+scheduled for, and not one of them straddles a UTC date as a result.
 
 ## Non-Division I opponents are kept
 

@@ -22,7 +22,10 @@
   // The schemas this build understands. A manifest from a newer deploy is
   // refused rather than read optimistically: a field that moved would
   // otherwise be drawn as a number.
-  var SUPPORTED_SCHEMA_VERSIONS = [1];
+  // 2 added the people layer, the tip-off instant and the playing-day
+  // meaning of `at`. 1 is still read: the export on disk stays schema 1 until
+  // the next refresh rebuilds it, and this page must work in between.
+  var SUPPORTED_SCHEMA_VERSIONS = [1, 2];
 
   // Matches the build gate. A sample of one team, one conference or one
   // tournament field is far below this; every real season is far above.
@@ -118,7 +121,15 @@
    * useful thing to say than either half alone.
    */
   function freshness(manifest, now) {
-    var moment = parseMoment(manifest && manifest.generated_at);
+    /* `data_as_of` is when the provider last answered, `generated_at` is when
+     * the export was built -- and the second is always now, so on its own it
+     * badged an export rebuilt from a committed cache as freshly updated.
+     * That is the one claim this badge exists to make honestly, so the age of
+     * the DATA wins wherever the export states it. An export that does not
+     * (every one written before the field existed) still falls back to the
+     * build time rather than going blank. */
+    var moment = parseMoment(manifest && manifest.data_as_of);
+    if (moment === null) moment = parseMoment(manifest && manifest.generated_at);
     var current = isNumber(now) ? now : Date.now();
     if (moment === null) {
       return { known: false, stale: true, minutes: null,

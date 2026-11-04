@@ -40,6 +40,68 @@ def cache_paths(season, root=None):
     return {name: base / f'{name}.json.gz' for name in CACHE_FILES}
 
 
+# Beside the gzipped responses, one small JSON file per season recording when
+# each endpoint was actually fetched. It is committed with the cache, so a run
+# that reloads a season from the repository can say how old that season's data
+# is instead of dating it to the moment it was read off the disk. Without it
+# an export built entirely from cache looked exactly as fresh as one built
+# from a fetch, which is the difference between marking staleness and hiding
+# it.
+FETCHED_AT = 'fetched_at.json'
+
+
+def fetched_at_path(season, root=None):
+    base = (Path(root) if root is not None else RAW_ROOT) / str(season)
+    return base / FETCHED_AT
+
+
+def read_fetch_times(season, root=None):
+    """What the cache records about its own age. Missing or unreadable is {}."""
+    path = fetched_at_path(season, root)
+    try:
+        times = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return {}
+    return {name: value for name, value in times.items()
+            if isinstance(value, str) and value} if isinstance(times, dict) \
+        else {}
+
+
+def record_fetch_times(season, names, root=None, now=None):
+    """Note that these endpoints were just fetched. Merges, never replaces."""
+    moment = (now or datetime.now(timezone.utc)).isoformat()
+    times = read_fetch_times(season, root)
+    times.update({name: moment for name in names})
+    path = fetched_at_path(season, root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix('.tmp')
+    temporary.write_text(json.dumps(times, indent=2, sort_keys=True) + '\n',
+                         encoding='utf-8')
+    temporary.replace(path)
+    return times
+
+
+def fetched_at(season, names, root=None):
+    """The OLDEST recorded fetch among these endpoints, or None.
+
+    Oldest, because a season is only as fresh as the stalest file behind it.
+    None when any of them has no record at all: an unknown age must not be
+    reported as a known one, and a cache written before this existed has
+    none.
+    """
+    times = read_fetch_times(season, root)
+    recorded = [times.get(name) for name in names]
+    return min(recorded) if all(recorded) else None
+
+
+def cache_note(from_cache, age):
+    """What this snapshot is, in the words a person reads in the summary."""
+    if not from_cache:
+        return 'fetched from provider'
+    return (f'reused cached responses fetched {age}' if age
+            else 'reused cached responses of unrecorded age')
+
+
 def write_cache(path, payload):
     """Write atomically, so an interrupted run leaves no half file to reuse."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -65,20 +127,37 @@ def source_revision():
     return result.stdout.strip() or None if result.returncode == 0 else None
 
 
-def gather(season, *, raw_root=None, reuse_cache=True, getter=None, **kwargs):
+def gather(season, *, raw_root=None, reuse_cache=True, getter=None,
+           allow_cache_fallback=False, **kwargs):
     """Teams and games for one season, from the cache when it is already there.
 
     Returns (teams, games, from_cache). A cached season costs no requests,
     which is what makes a reload and a resume cheap.
+
+    `allow_cache_fallback` is for the season being played, the one season a
+    refresh asks about again every day. When the provider refuses that
+    request and a cache of it exists, falling back to the cache publishes
+    yesterday's games marked with yesterday's date, which is what the export
+    gate's own rule asks for: staleness is marked, never refused. Refusing
+    instead takes the whole page down over a quota that will recover, and
+    measured on 2026-11-03 it did exactly that. With no cache there is
+    nothing to fall back to and the error stands.
     """
     paths = cache_paths(season, raw_root)
-    if reuse_cache and paths['teams'].exists() and paths['games'].exists():
+    cached = paths['teams'].exists() and paths['games'].exists()
+    if reuse_cache and cached:
         return read_cache(paths['teams']), read_cache(paths['games']), True
     fetch = getter if getter is not None else get_json
-    teams = fetch('/teams', {'season': season}, **kwargs)
-    games, _ = fetch_season(season, getter=fetch, **kwargs)
+    try:
+        teams = fetch('/teams', {'season': season}, **kwargs)
+        games, _ = fetch_season(season, getter=fetch, **kwargs)
+    except CbbdRateLimitError:
+        if not (allow_cache_fallback and cached):
+            raise
+        return read_cache(paths['teams']), read_cache(paths['games']), True
     write_cache(paths['teams'], teams)
     write_cache(paths['games'], games)
+    record_fetch_times(season, ('teams', 'games'), raw_root)
     return teams, games, False
 
 
@@ -98,6 +177,7 @@ def gather_people(season, *, raw_root=None, reuse_cache=True, getter=None,
     boxes, _ = fetch_box_scores(season, getter=fetch, **kwargs)
     write_cache(paths['rosters'], rosters)
     write_cache(paths['box_scores'], boxes)
+    record_fetch_times(season, ('rosters', 'box_scores'), raw_root)
     return rosters, boxes, False
 
 
@@ -118,12 +198,13 @@ def ingest_people(connection, season, *, raw_root=None, reuse_cache=True,
         quota=counter, **kwargs)
     pairs = roster_players(rosters)
     people = [player for player, _ in pairs] + box_score_people(boxes)
+    age = fetched_at(season, ('rosters', 'box_scores'), raw_root)
     snapshot_id = record_snapshot(
         connection, 'people', datetime.now(timezone.utc).isoformat(),
-        season=season, source_revision=revision,
+        season=season, data_fetched_at=age, source_revision=revision,
         requests=counter.requests, retries=counter.retries,
         rows_seen=len(boxes),
-        notes='reused cached responses' if from_cache else 'fetched from provider')
+        notes=cache_note(from_cache, age))
     stored_people = upsert_players(connection, people, snapshot_id=snapshot_id)
     roster_only_teams = upsert_roster_teams(connection, season,
                                             roster_teams(rosters),
@@ -140,23 +221,31 @@ def ingest_people(connection, season, *, raw_root=None, reuse_cache=True,
 
 
 def ingest_season(connection, season, *, raw_root=None, reuse_cache=True,
-                  getter=None, quota=None, revision=None, **kwargs):
+                  getter=None, quota=None, revision=None,
+                  allow_cache_fallback=False, **kwargs):
     """Fetch or reuse one season, store it, and summarize what was stored."""
     counter = quota if quota is not None else Quota()
     teams, games, from_cache = gather(season, raw_root=raw_root,
                                       reuse_cache=reuse_cache, getter=getter,
-                                      quota=counter, **kwargs)
+                                      quota=counter,
+                                      allow_cache_fallback=allow_cache_fallback,
+                                      **kwargs)
+    age = fetched_at(season, ('teams', 'games'), raw_root)
     snapshot_id = record_snapshot(
         connection, 'schedule', datetime.now(timezone.utc).isoformat(),
-        season=season, source_revision=revision,
+        season=season, data_fetched_at=age, source_revision=revision,
         requests=counter.requests, retries=counter.retries,
         rows_seen=len(games),
-        notes='reused cached responses' if from_cache else 'fetched from provider')
+        notes=cache_note(from_cache, age))
     stored = load_season(connection, season, games, teams,
                          snapshot_id=snapshot_id)
     summary = summarize_season(season, games,
                                {team['id'] for team in teams})
+    # A run that ASKED for a refetch and got the cache anyway was refused.
+    # Inferred rather than passed back through another return value, so the
+    # two cannot drift apart.
     summary.update(from_cache=from_cache, snapshot_id=snapshot_id,
+                   refetch_refused=bool(from_cache and not reuse_cache),
                    stored_games=stored['games'],
                    placeholder_teams=stored['other_teams'])
     return summary
@@ -216,7 +305,12 @@ def main(argv=None):
                 summaries.append(ingest_season(
                     connection, season, raw_root=args.raw_root,
                     reuse_cache=reuse, quota=quota,
-                    revision=revision))
+                    revision=revision,
+                    # Only for a season this run asked to refetch, and only
+                    # when a cache of it exists. A blanket --refetch is a
+                    # deliberate "ignore the cache", so falling back to it
+                    # would answer the opposite question.
+                    allow_cache_fallback=not reuse and not args.refetch))
                 if not args.schedule_only:
                     people.append(ingest_people(
                         connection, season, raw_root=args.raw_root,
@@ -243,6 +337,16 @@ def main(argv=None):
     print('\n'.join(render(summaries)))
     for problem in failed:
         print(f'\n- season {problem["season"]} was not stored: {problem["error"]}')
+    refused = [row['season'] for row in summaries
+               if row.get('refetch_refused')]
+    if refused:
+        names = ', '.join(str(year) for year in refused)
+        print(f'\nThe provider refused a refetch of season(s) {names}, so'
+              ' each was loaded from its committed cache instead. The games'
+              ' are as of when that cache was fetched, NOT as of now, and'
+              ' every export built from this database says so in its'
+              ' `data_as_of` -- a reader sees the real age and a stale'
+              ' badge. Nothing here is a statement about coverage.')
     if rate_limited is not None:
         remaining = [year for year in seasons if year >= rate_limited]
         print(f'\nStopped at season {rate_limited}: the provider refused with'

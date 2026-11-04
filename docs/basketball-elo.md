@@ -182,3 +182,36 @@ model's.
   heavy favourite wins by less than its rating gap implied, and in Python that
   is a complex number rather than an error. The clamp before the power is load
   bearing; a test drives it.
+
+## A club that has not played yet
+
+A season in progress is the only season where this matters, and it is the one
+being played. Two days into 2026-27 the game chain knew **12 of 365** Division
+I teams, so the published standings were a table of twelve and a team page for
+anyone else said no such club existed.
+
+Those 353 clubs were not unrated, only unasked. The replay regresses every
+rating once at a season boundary, and those regressed numbers are exactly what
+it would have used for each club's first game. So `season_ratings` now records
+them, with `games_counted = 0`:
+
+- the carried rating is last season's **regressed once** by
+  `offseason_retention`, not once per season skipped, so a club returning after
+  a year away is not twice as average as one returning after none;
+- a club with no history at all starts at 1500, where every club starts;
+- a club that HAS played this season keeps its played rating — the fill never
+  overwrites the chain;
+- the roster comes from `team_season`, the provider's own answer to who is
+  Division I this year, so no club is invented into a season it is not in;
+- the fit harness replays without a roster and therefore sees only the chain:
+  a carried rating must never become a fitting target.
+
+A settled season is unaffected, because every Division I club has played one.
+The exception is **2020-21**, where nine clubs played no rateable game at all;
+they now appear carrying 2019-20's rating with zero games, which is what the
+model says about them and is marked as such.
+
+The page states this rather than leaving a ranked table to imply results:
+`#section=standings` shows the record as an em dash for a club with no games
+and says, under the table, how many of the clubs listed carry last season's
+rating.

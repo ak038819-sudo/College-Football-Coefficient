@@ -115,9 +115,19 @@ def report_usage(key):
         if limits:
             print(f'    limit headers: {json.dumps(limits)}')
     if headline:
-        print(f'\nThe window is what matters: a rolling count means capacity'
-              ' returns as the oldest requests age out of it, not at a monthly'
-              ' reset.')
+        # This sentence used to say the opposite -- that a rolling count means
+        # capacity returns as the oldest requests age out -- and it was wrong,
+        # and it misled two sessions into waiting for a recovery that was
+        # never coming. The window below is REPORTING. The allowance is
+        # monthly: measured 2026-11-03, 1,010 basketball requests in a day
+        # were followed by `{"message":"Monthly call quota exceeded."}` on the
+        # very next call, and on 2026-10-27 the same refusal arrived with only
+        # 202 requests in the window. Neither reading says anything about
+        # what the next request will be allowed to do.
+        print('\nThis window is a REPORT, not the allowance. The cap is'
+              ' monthly (measured around 1,000 calls) and nothing here can'
+              ' say whether the next request will be allowed -- only a real'
+              ' data call can, which is what `--burst 1` is for.')
     print(f'\n{asked} requests spent here.\n')
     return asked
 
@@ -187,6 +197,12 @@ def report_paced(key, interval, count):
         codes.append(status)
     ok = sum(1 for code in codes if code == 200)
     print(f'- {ok} of {count} succeeded; statuses {codes}')
+    if not count:
+        # `ok == count` is 0 == 0 here, so without this the probe reported
+        # that the interval "was enough" having never once tried it.
+        print('- No paced requests were asked for, so this measures nothing.')
+        print()
+        return codes
     if ok == count:
         print(f'- **{interval:.2f}s between requests was enough.**'
               f' That is {60 / interval:.0f} requests a minute.')

@@ -174,6 +174,164 @@
     return parts.length ? '#' + parts.join('&') : '#';
   }
 
+  /* ---- people ------------------------------------------------------- */
+
+  /* How many ways a season's player-game lines are split, and which shard a
+   * player's are in. MUST agree with src/ncaambb/export_people.py.
+   *
+   * The modulo is written out rather than left to the language: JavaScript's
+   * `%` keeps the sign, so a negative provider id -- which the football
+   * archive really carries -- gives -3 here and 13 in Python, and -3 is a
+   * file that does not exist. Python's is already floored, so its own tests
+   * cannot catch this and these are the assertions that can.
+   */
+  var PEOPLE_SHARDS = 16;
+
+  function peopleShard(providerId, shards) {
+    var count = shards || PEOPLE_SHARDS;
+    var id = parseInt(providerId, 10);
+    if (isNaN(id)) return null;
+    return ((id % count) + count) % count;
+  }
+
+  /* A player's full key, from the bare provider id the people files carry.
+   *
+   * The files leave the prefix off 13,000 keys because it is constant inside
+   * a file that exists only for basketball. It is put back here, in one
+   * place, so nothing downstream holds a bare integer that could be mistaken
+   * for a football id.
+   */
+  function playerKey(providerId) {
+    return 'ncaambb:cbbd:player:' + String(providerId);
+  }
+
+  function providerIdOf(key) {
+    var parts = String(key || '').split(':');
+    return parts[parts.length - 1];
+  }
+
+  /* A player's seasons, from the shards already loaded, newest first.
+   *
+   * `shards` is the pushed queue of shard payloads. A season is included when
+   * the player has a membership OR a game line in it: 29 Division I players
+   * in 2025-26 recorded a line without appearing in any roster snapshot, and
+   * their minutes are real.
+   */
+  function playerSeasons(shards, providerId) {
+    var id = String(providerId);
+    var found = {};
+    (shards || []).forEach(function (shard) {
+      if (!shard || typeof shard.season !== 'number') return;
+      var member = (shard.m || {})[id];
+      var lines = (shard.p || {})[id];
+      if (!member && !lines) return;
+      var entry = found[shard.season] || { season: shard.season,
+                                           clubs: [], games: [] };
+      (member || []).forEach(function (row) {
+        entry.clubs.push({
+          team: (shard.t || [])[row[0]] || null,
+          jersey: row[1], position: row[2], height: row[3], weight: row[4]
+        });
+      });
+      (lines || []).forEach(function (row) {
+        entry.games.push({
+          game: row[0], team: (shard.t || [])[row[1]] || null,
+          minutes: row[2], points: row[3], starter: row[4],
+          // The day and the opponent come from the LINE, not from the
+          // season's payload: a career page spans four or five seasons and
+          // loads one, so looking them up there dated one season and left
+          // the rest a table of em dashes.
+          day: row[5] || null,
+          opponent: row[6] === null || row[6] === undefined
+            ? null : ((shard.t || [])[row[6]] || null),
+          site: row[7] || null
+        });
+      });
+      found[shard.season] = entry;
+    });
+    return Object.keys(found)
+      .map(function (key) { return found[key]; })
+      .sort(function (a, b) { return b.season - a.season; });
+  }
+
+  /* A season's totals for one player: games, and the minutes and points that
+   * were actually recorded.
+   *
+   * `minutes` and `points` are null when NOTHING was recorded, which is not
+   * the same as a measured zero -- and `games` counts every line either way,
+   * because a player with a line played.
+   */
+  function playerTotals(games) {
+    var rows = games || [];
+    var minutes = null;
+    var points = null;
+    rows.forEach(function (row) {
+      if (row.minutes !== null && row.minutes !== undefined) {
+        minutes = (minutes === null ? 0 : minutes) + row.minutes;
+      }
+      if (row.points !== null && row.points !== undefined) {
+        points = (points === null ? 0 : points) + row.points;
+      }
+    });
+    return {
+      games: rows.length,
+      minutes: minutes === null ? null : Math.round(minutes * 10) / 10,
+      points: points === null ? null : Math.round(points * 10) / 10,
+      starts: rows.filter(function (row) { return row.starter === 1; }).length
+    };
+  }
+
+  /* A per-game average, or null when there is nothing to average.
+   *
+   * Zero games is null and never 0.0, which would read as a player who
+   * played and scored nothing.
+   */
+  function perGame(total, games) {
+    if (total === null || total === undefined || !games) return null;
+    return Math.round((total / games) * 10) / 10;
+  }
+
+  /* How to name a run of seasons in a sentence.
+   *
+   * `join(' and ')` is right for two and absurd for six: it read "2021-22 and
+   * 2022-23 and 2023-24 and 2024-25 and 2025-26 and 2026-27" on the People
+   * tab, which is how it looked in the browser.
+   */
+  function seasonRange(seasons) {
+    var rows = (seasons || []).slice().sort(function (a, b) { return a - b; });
+    if (!rows.length) return '';
+    if (rows.length > 2) {
+      return seasonLabel(rows[0]) + ' through '
+        + seasonLabel(rows[rows.length - 1]);
+    }
+    return rows.map(seasonLabel).join(' and ');
+  }
+
+  /* The players a query finds, by name, best first.
+   *
+   * Reuses the same normalisation the club search uses, so "stjohns" finds
+   * St. John's and "oconnell" finds O'Connell.
+   */
+  function searchPlayers(index, query, limit) {
+    var wanted = normalizeName(query);
+    if (!wanted) return [];
+    var found = [];
+    Object.keys(index || {}).forEach(function (id) {
+      var entry = index[id] || {};
+      var name = normalizeName(entry.n || '');
+      if (!name) return;
+      var at = name.indexOf(wanted);
+      if (at < 0) return;
+      found.push({ id: id, name: entry.n, hometown: entry.h || null,
+                   state: entry.s || null, at: at });
+    });
+    found.sort(function (a, b) {
+      if (a.at !== b.at) return a.at - b.at;
+      return String(a.name).localeCompare(String(b.name));
+    });
+    return found.slice(0, limit || 25);
+  }
+
   function sections(slug) {
     return SECTIONS[slug] || [];
   }
@@ -330,8 +488,49 @@
    * Resolved on every call rather than once at load, so a page left open
    * overnight does not keep calling yesterday Today.
    */
-  function todayKey(now) {
-    return (now instanceof Date ? now : new Date()).toISOString().slice(0, 10);
+  /* The calendar a college basketball day is counted in.
+   *
+   * The same zone src/ncaambb/games.py writes `playing_date` with, and the
+   * measurement is recorded there: 2,140 of the 2026-27 season's 3,759 timed
+   * games fall on a different UTC date than the evening they are played on.
+   * The page's notion of today has to agree with the export's notion of a
+   * day, or an evening reader is shown tomorrow's card.
+   *
+   * Only the basketball page passes it. Football and the NFL state their
+   * days in their own exports' conventions and keep the UTC default.
+   */
+  var NCAAMBB_DAY_ZONE = 'America/New_York';
+
+  /* Today's date, in the calendar a league counts its game days in.
+   *
+   * `zone` is an IANA name and there is NO default, deliberately. The UTC
+   * date is right for a league whose export states its days in UTC and
+   * wrong for one that does not, and the same measurement that moved
+   * basketball's `playing_date` to Eastern applies here: between midnight
+   * UTC and midnight Eastern -- which is every evening a game is played --
+   * the UTC date is already tomorrow. Reading it as today opened the
+   * scoreboard on the next day's schedule while games were in progress.
+   *
+   * A browser without time zone data falls back to the UTC date, which is
+   * wrong for part of the evening and better than no date at all.
+   */
+  function todayKey(now, zone) {
+    var moment = now instanceof Date ? now : new Date();
+    if (zone) {
+      try {
+        var parts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit'
+        }).formatToParts(moment);
+        var found = {};
+        parts.forEach(function (part) { found[part.type] = part.value; });
+        if (found.year && found.month && found.day) {
+          return found.year + '-' + found.month + '-' + found.day;
+        }
+      } catch (error) {
+        // Fall through to the UTC date.
+      }
+    }
+    return moment.toISOString().slice(0, 10);
   }
 
   /* A compact date strip around `centre`. A week is both too coarse to
@@ -376,14 +575,68 @@
 
   /* Whether a game's tip-off time is known.
    *
-   * 2,669 of the 2026-27 season's 6,015 games carry startTimeTbd. Rendering an
+   * 2,247 of the 2026-27 season's 6,006 games carry startTimeTbd. Rendering an
    * unknown time as midnight would put them first and read as a real time, so
    * they get their own bucket at the end of the day, labelled as undecided.
+   *
+   * The time lives in `tip`, an instant, and the day in `at`. They were one
+   * field until the export was measured: `at` had always been a bare date, so
+   * this read every game in every season as having no time at all, and the
+   * whole scoreboard said "Scheduled" where it could have said when.
    */
+  /* THE INSTANT A GAME STARTS, whichever league's payload this is.
+   *
+   * This module is the shared registry for all three leagues, so it meets two
+   * payload shapes. The NFL export states the instant in `at` and the day in
+   * `date`. Basketball states the day in `at` and the instant in `tip`, and
+   * its `at` has only ever been a bare date -- which is the bug behind all of
+   * this: reading the instant out of `at` alone meant every basketball game
+   * in every season was a game with no known tip-off time.
+   *
+   * Ten characters is a date; longer is a timestamp.
+   */
+  function startInstant(game) {
+    if (!game) return null;
+    if (typeof game.tip === 'string' && game.tip.length > 10) return game.tip;
+    if (typeof game.at === 'string' && game.at.length > 10) return game.at;
+    return null;
+  }
+
   function timeKnown(game) {
     if (!game) return false;
     if (game.time_tbd) return false;
-    return typeof game.at === 'string' && game.at.length > 10;
+    return startInstant(game) !== null;
+  }
+
+  /* The tip-off time in the reader's own timezone, or null.
+   *
+   * Deliberately reads `tip` and not `startInstant`: a league whose export
+   * states a tip-off instant gets a time on the card, and one that does not
+   * keeps saying "Scheduled" rather than having a clock appear on its pages
+   * as a side effect of this change.
+   *
+   * The export states an instant and nothing else; which evening that is
+   * belongs to whoever is reading. A timestamp the browser cannot parse
+   * returns null rather than "Invalid Date".
+   */
+  function tipText(game, locale) {
+    if (!game || game.time_tbd) return null;
+    if (typeof game.tip !== 'string' || game.tip.length <= 10) return null;
+    var when = new Date(game.tip);
+    if (isNaN(when.getTime())) return null;
+    try {
+      return when.toLocaleTimeString(locale || undefined,
+        { hour: 'numeric', minute: '2-digit' });
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /* The instant a game is ordered by within its day. A game whose time is
+   * undecided has none, and callers put those last.
+   */
+  function tipKey(game) {
+    return timeKnown(game) ? startInstant(game) : null;
   }
 
   function sortGames(games, mode, favorites) {
@@ -401,7 +654,7 @@
       var kb = timeKnown(b) ? 0 : 1;
       if (ka !== kb) return ka - kb;
       if (ka === 1) return String(a.id).localeCompare(String(b.id));
-      if (a.at !== b.at) return a.at < b.at ? -1 : 1;
+      if (tipKey(a) !== tipKey(b)) return tipKey(a) < tipKey(b) ? -1 : 1;
       return String(a.id).localeCompare(String(b.id));
     });
     return rows;
@@ -426,13 +679,20 @@
    * and period points. So a card says scheduled, final, or a score with no
    * clock, and NEVER a zeroed clock, which reads as the period expiring.
    */
-  function statusLine(game) {
+  function statusLine(game, locale) {
     if (!game) return '';
     if (game.status === 'final') return 'Final';
     if (game.status === 'cancelled') return 'Cancelled';
     if (game.status === 'postponed') return 'Postponed';
+    // Under way, with no clock to show: the archive holds period points, not
+    // a running clock, so this says that it has started and no more.
+    if (game.status === 'in_progress') return 'In progress';
+    // "Time TBD" is for a game whose time nobody has decided. A league whose
+    // export states no tip-off instant keeps the old wording: it knows WHEN
+    // the game is, it just has no time to put on the card.
     if (!timeKnown(game)) return 'Time TBD';
-    return 'Scheduled';
+    var time = tipText(game, locale);
+    return time === null ? 'Scheduled' : time;
   }
 
   function scoreLine(game) {
@@ -496,8 +756,8 @@
       var ka = timeKnown(a.game) ? 0 : 1;
       var kb = timeKnown(b.game) ? 0 : 1;
       if (ka !== kb) return ka - kb;
-      if (ka === 0 && a.game.at !== b.game.at) {
-        return a.game.at < b.game.at ? -1 : 1;
+      if (ka === 0 && tipKey(a.game) !== tipKey(b.game)) {
+        return tipKey(a.game) < tipKey(b.game) ? -1 : 1;
       }
       return String(a.game.id).localeCompare(String(b.game.id));
     });
@@ -635,9 +895,22 @@
     dayOf: dayOf,
     gamesOn: gamesOn,
     dayStrip: dayStrip,
+    NCAAMBB_DAY_ZONE: NCAAMBB_DAY_ZONE,
     todayKey: todayKey,
     openingDay: openingDay,
+    PEOPLE_SHARDS: PEOPLE_SHARDS,
+    peopleShard: peopleShard,
+    playerKey: playerKey,
+    providerIdOf: providerIdOf,
+    playerSeasons: playerSeasons,
+    playerTotals: playerTotals,
+    perGame: perGame,
+    searchPlayers: searchPlayers,
+    seasonRange: seasonRange,
     timeKnown: timeKnown,
+    startInstant: startInstant,
+    tipText: tipText,
+    tipKey: tipKey,
     sortGames: sortGames,
     filterGames: filterGames,
     statusLine: statusLine,

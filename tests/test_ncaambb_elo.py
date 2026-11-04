@@ -801,3 +801,66 @@ def test_the_committed_configuration_passes_its_own_rule():
         holdout_brier=report['holdout']['brier'],
         holdout_games=report['holdout']['games']))
     assert publish_gate.check_model(manifest) == []
+
+
+# --- a season in progress, before most clubs have played --------------------
+
+def test_a_club_yet_to_play_this_season_carries_its_regressed_rating():
+    """Two days into 2026-27 the game chain knew 12 of 365 Division I teams,
+    so the published standings were a table of twelve. The replay regresses
+    every rating at the season boundary and would have used exactly these
+    numbers for each team's first game."""
+    from src.ncaambb.build_ratings import season_ratings
+    rows = [dict(counted=1, season=2026, home_team_key='A',
+                 away_team_key='B', home_postgame=1700.0,
+                 away_postgame=1300.0)]
+    out = season_ratings(rows, {}, rosters={2026: ['A', 'B'],
+                                            2027: ['A', 'B', 'C']},
+                         retention=0.8)
+    stored = {(team, season): (round(rating, 1), games)
+              for team, season, rating, games in out}
+    assert stored[('A', 2026)] == (1700.0, 1)
+    # 1500 + (1700 - 1500) * 0.8
+    assert stored[('A', 2027)] == (1660.0, 0)
+    assert stored[('B', 2027)] == (1340.0, 0)
+    # A club with no history at all starts where every club starts.
+    assert stored[('C', 2027)] == (1500.0, 0)
+
+
+def test_a_carried_rating_never_overwrites_a_played_one():
+    from src.ncaambb.build_ratings import season_ratings
+    rows = [dict(counted=1, season=2027, home_team_key='A',
+                 away_team_key='B', home_postgame=1900.0,
+                 away_postgame=1100.0)]
+    out = season_ratings(rows, {}, rosters={2027: ['A', 'B']}, retention=0.8)
+    assert {(t, s): round(r, 1) for t, s, r, _ in out} == {('A', 2027): 1900.0,
+                                                           ('B', 2027): 1100.0}
+
+
+def test_a_club_away_for_a_season_is_regressed_once_not_once_per_season():
+    """A club returning after a year away is not twice as average as one
+    returning after none. The model has one offseason step."""
+    from src.ncaambb.build_ratings import season_ratings
+    rows = [dict(counted=1, season=2025, home_team_key='A',
+                 away_team_key='B', home_postgame=2000.0,
+                 away_postgame=1000.0)]
+    out = season_ratings(rows, {}, rosters={2027: ['A']}, retention=0.8)
+    assert round(dict(((t, s), r) for t, s, r, _ in out)[('A', 2027)], 1) \
+        == 1900.0
+
+
+def test_filling_a_board_requires_being_told_the_retention():
+    """Carrying a rating forward without regressing it would publish last
+    season's number as this season's, which is a different claim."""
+    from src.ncaambb.build_ratings import season_ratings
+    with pytest.raises(ValueError, match='offseason retention'):
+        season_ratings([], {}, rosters={2027: ['A']})
+
+
+def test_a_board_is_not_filled_when_no_roster_is_given():
+    """The fit harness replays without a roster and must see only the chain."""
+    from src.ncaambb.build_ratings import season_ratings
+    rows = [dict(counted=1, season=2027, home_team_key='A',
+                 away_team_key='B', home_postgame=1900.0,
+                 away_postgame=1100.0)]
+    assert len(season_ratings(rows, {})) == 2

@@ -75,7 +75,9 @@ def national(connection, season=2026, teams=320, games_each=14, *,
                 ' rateable, division_one, exclusions)'
                 " VALUES (?, ?, ?, ?, 'regular', 'final', ?, ?, 0, 0, ?, ?,"
                 " ?, ?, 1, 1, '[]')",
-                (f'{season}-{count}', count, season,
+                # Offset by season: `provider_id` is UNIQUE, so two seasons
+                # built from this fixture collided on it.
+                (f'{season}-{count}', season * 100000 + count, season,
                  f'{season - 1}-{season % 100:02d}',
                  f'{season - 1}-11-{(step % 28) + 1:02d}',
                  f'{season - 1}-11-{(step % 28) + 1:02d}',
@@ -106,7 +108,15 @@ def store_model(connection, season, *, fitted=None, held=None, brier=0.1866,
 
 
 def built(connection, **kwargs):
-    return exporter.build(connection, now=NOW, **kwargs)
+    """The three parts of an export most of these tests care about.
+
+    `build` also returns the people payloads; the tests that are about people
+    call `exporter.build` directly rather than making every other test unpack
+    a value it ignores.
+    """
+    manifest, payloads, teams, _people = exporter.build(
+        connection, now=NOW, **kwargs)
+    return manifest, payloads, teams
 
 
 # --- the manifest the export describes --------------------------------------
@@ -534,3 +544,166 @@ def test_a_coverage_row_that_does_not_say_is_judged_as_a_finished_season():
     reasons = gate.check_coverage(dict(coverage=[dict(
         season=2027, division_one_teams=364, rated_teams=40, games=500)]))
     assert any('games is below' in reason for reason in reasons)
+
+
+# --- the day and the tip-off time a reader sees -----------------------------
+#
+# The payload contract these pin is read in JavaScript by ui/ncaambb_app.js:
+# `at` is a calendar day and `tip` is an instant. They were one field until
+# the live export was measured, and because `at` had only ever carried a date,
+# every game on the site read as having no known time.
+
+def test_a_game_states_its_playing_day_and_its_tip_off_instant(db):
+    national(db)
+    db.execute("UPDATE game SET playing_date = '2025-11-14',"
+               " start_at_utc = '2025-11-15T00:30:00Z',"
+               " start_date_utc = '2025-11-15' WHERE game_key = '2026-1'")
+    db.commit()
+    _, payloads, _ = built(db)
+    game = next(row for row in payloads[2026]['games']
+                if row['id'] == '2026-1')
+    assert game['at'] == '2025-11-14', 'the evening it was played'
+    assert game['tip'] == '2025-11-15T00:30:00Z'
+    assert len(game['at']) == 10, 'a day, never a timestamp'
+
+
+def test_a_game_whose_time_is_undecided_carries_no_tip(db):
+    national(db)
+    db.execute("UPDATE game SET playing_date = '2025-11-14',"
+               " start_time_tbd = 1, start_at_utc = NULL"
+               " WHERE game_key = '2026-1'")
+    db.commit()
+    _, payloads, _ = built(db)
+    game = next(row for row in payloads[2026]['games']
+                if row['id'] == '2026-1')
+    assert 'tip' not in game
+    assert game['time_tbd'] == 1
+    assert game['at'] == '2025-11-14'
+
+
+def test_a_stored_tip_is_withheld_while_the_time_is_flagged_undecided(db):
+    """Belt and braces: the flag wins. A leftover timestamp from before the
+    time was unset must not come back as a decided tip-off."""
+    national(db)
+    db.execute("UPDATE game SET start_time_tbd = 1,"
+               " start_at_utc = '2025-11-15T05:00:00Z'"
+               " WHERE game_key = '2026-1'")
+    db.commit()
+    _, payloads, _ = built(db)
+    game = next(row for row in payloads[2026]['games']
+                if row['id'] == '2026-1')
+    assert 'tip' not in game
+
+
+def test_a_game_loaded_before_schema_three_still_appears_on_its_utc_date(db):
+    """A row with no Eastern date is one loaded by older code. Dropping it
+    from the scoreboard would be worse than showing it a day late, and a
+    reload corrects it."""
+    national(db)
+    db.execute("UPDATE game SET playing_date = NULL, start_at_utc = NULL"
+               " WHERE game_key = '2026-1'")
+    db.commit()
+    _, payloads, _ = built(db)
+    game = next(row for row in payloads[2026]['games']
+                if row['id'] == '2026-1')
+    assert game['at'] == db.execute(
+        "SELECT start_date_utc FROM game WHERE game_key = '2026-1'"
+    ).fetchone()['start_date_utc']
+    assert 'tip' not in game
+
+
+def test_two_games_on_one_night_come_out_in_the_order_they_tipped(db):
+    national(db)
+    db.execute("UPDATE game SET playing_date = '2025-11-14',"
+               " start_at_utc = '2025-11-15T03:00:00Z'"
+               " WHERE game_key = '2026-1'")
+    db.execute("UPDATE game SET playing_date = '2025-11-14',"
+               " start_at_utc = '2025-11-14T18:00:00Z'"
+               " WHERE game_key = '2026-2'")
+    db.commit()
+    _, payloads, _ = built(db)
+    order = [row['id'] for row in payloads[2026]['games']
+             if row['id'] in ('2026-1', '2026-2')]
+    assert order == ['2026-2', '2026-1']
+
+
+# --- how old the DATA is, as against when the export was built --------------
+
+def snapshot(connection, season, fetched, kind='schedule'):
+    from src.ncaambb.store import record_snapshot
+    return record_snapshot(connection, kind, NOW.isoformat(), season=season,
+                           data_fetched_at=fetched)
+
+
+def test_the_manifest_says_when_the_provider_last_answered(db):
+    """`generated_at` is the build time and is always now, so an export
+    rebuilt from a committed cache during a provider outage badged itself as
+    freshly updated. The age of the DATA is a separate fact and has to be
+    stated separately."""
+    national(db)
+    snapshot(db, 2026, '2026-08-20T03:00:00+00:00')
+    manifest, _, _, _ = exporter.build(db, now=NOW)
+    assert manifest['data_as_of'] == '2026-08-20T03:00:00+00:00'
+    assert manifest['generated_at'] == NOW.isoformat().replace('+00:00', 'Z')
+    assert manifest['data_as_of'] != manifest['generated_at']
+
+
+def test_an_unrecorded_fetch_leaves_the_age_unstated(db):
+    """Not guessed at, and not quietly set to the build time. A cache written
+    before the ingestion recorded its age has an unknown age, and the page
+    says 'last updated: unknown' and marks it stale."""
+    national(db)
+    snapshot(db, 2026, None)
+    manifest, _, _, _ = exporter.build(db, now=NOW)
+    assert manifest['data_as_of'] is None
+    assert gate.check_as_of(manifest, now=NOW) == []
+
+
+def test_the_age_comes_from_the_season_a_reader_is_watching(db):
+    """The scoreboard shows the season being played, so its schedule decides
+    how fresh the page may claim to be. A settled season refetched this
+    morning says nothing about tonight's scores."""
+    national(db, season=2025)
+    national(db, season=2026)
+    snapshot(db, 2025, '2026-08-31T12:00:00+00:00')
+    snapshot(db, 2026, '2026-08-01T12:00:00+00:00')
+    manifest, _, _, _ = exporter.build(db, now=NOW)
+    assert manifest['latest_season'] == 2026
+    assert manifest['data_as_of'] == '2026-08-01T12:00:00+00:00'
+
+
+def test_the_latest_fetch_of_that_season_is_the_one_that_counts(db):
+    """Every run writes a snapshot row. The newest recorded fetch is the age
+    of the data on disk; an older row is a previous run's."""
+    national(db)
+    snapshot(db, 2026, '2026-07-01T12:00:00+00:00')
+    snapshot(db, 2026, '2026-08-25T12:00:00+00:00')
+    snapshot(db, 2026, None)
+    manifest, _, _, _ = exporter.build(db, now=NOW)
+    assert manifest['data_as_of'] == '2026-08-25T12:00:00+00:00'
+
+
+def test_a_people_snapshot_does_not_date_the_scoreboard(db):
+    """Rosters and box scores are fetched separately and for fewer seasons.
+    A roster fetched today over a schedule from last month does not make the
+    scores current."""
+    national(db)
+    snapshot(db, 2026, '2026-08-01T12:00:00+00:00')
+    snapshot(db, 2026, '2026-08-30T12:00:00+00:00', kind='people')
+    manifest, _, _, _ = exporter.build(db, now=NOW)
+    assert manifest['data_as_of'] == '2026-08-01T12:00:00+00:00'
+
+
+def test_a_stale_export_publishes_and_a_future_dated_one_does_not(db):
+    """Staleness is marked, never refused: refusing an old export is how a
+    provider outage takes the whole page down. A FUTURE age is refused,
+    because a page draws a future moment as 'updated just now', which is the
+    one way this field lies instead of reporting."""
+    national(db)
+    snapshot(db, 2026, '2025-01-01T00:00:00+00:00')
+    manifest, _, _, _ = exporter.build(db, now=NOW)
+    assert gate.check_as_of(manifest, now=NOW) == [], 'old is publishable'
+    manifest['data_as_of'] = (NOW + timedelta(days=2)).isoformat()
+    assert gate.check_as_of(manifest, now=NOW)
+    manifest['data_as_of'] = 'the day before yesterday'
+    assert gate.check_as_of(manifest, now=NOW)

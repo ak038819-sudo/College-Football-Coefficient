@@ -216,6 +216,10 @@
     <div id="team-body"></div>
   </section>
 
+  <section class="panel" id="people" hidden>
+    <div id="people-body"></div>
+  </section>
+
   <section class="panel" id="standings" hidden>
     <table>
       <thead>
@@ -224,13 +228,14 @@
       </thead>
       <tbody id="board"></tbody>
     </table>
+    <p class="empty" id="board-note" hidden></p>
   </section>
 </div>
 
 <nav class="tabs" id="tabs" aria-label="Sections"></nav>
 
-<script src="ncaambb_loader.js?v=91399aa621e8"></script>
-<script src="ncaambb_app.js?v=c75deb1cee90"></script>
+<script src="ncaambb_loader.js?v=35cff06570f1"></script>
+<script src="ncaambb_app.js?v=f0e25c0064e0"></script>
 <script>
 (function () {
   'use strict';
@@ -249,7 +254,7 @@
   // because Games had a tab of its own while drawing the scoreboard that
   // Home draws.
   var PANELS = { home: 'scoreboard', standings: 'standings',
-                 teams: 'teams' };
+                 teams: 'teams', people: 'people' };
   // Sections this page no longer names in a URL but must keep opening,
   // because links to them are published.
   var LEGACY = { games: 'home' };
@@ -259,7 +264,11 @@
   var DEFAULT_TAB = 'standings';
   var state = { manifest: null, verdict: null, season: null, day: null,
                 filter: 'all', sort: 'tipoff', tab: DEFAULT_TAB,
-                team: null, query: '' };
+                team: null, query: '', player: null, playerQuery: '',
+                // Which people files have been asked for, so a panel that
+                // re-renders does not re-fetch, and a file that failed is
+                // not retried forever on every keystroke.
+                people: {}, peopleError: null };
 
   /* A club in a URL is the provider's id and not the whole key:
    * `#league=ncaambb&section=teams&team=18`, not
@@ -331,6 +340,29 @@
     if (hash !== window.location.hash) window.location.hash = hash;
   }
 
+  function playerIdFromHash() {
+    var hash = String(window.location.hash || '').replace(/^#/, '');
+    if (!/(^|&)league=/.test(hash)) return null;
+    var route = app.readRoute(hash);
+    if (route.league !== app.BASKETBALL) return null;
+    if ((route.params.section || 'home') !== 'people') return null;
+    return route.params.player ? String(route.params.player) : null;
+  }
+
+  function writePlayer(id) {
+    var route = app.readRoute(window.location.hash);
+    var params = {};
+    Object.keys(route.params).forEach(function (key) {
+      if (key !== 'section' && key !== 'player') {
+        params[key] = route.params[key];
+      }
+    });
+    params.section = 'people';
+    if (id) params.player = id;
+    var hash = app.writeRoute({ league: app.BASKETBALL, params: params });
+    if (hash !== window.location.hash) window.location.hash = hash;
+  }
+
   function writeTab(name) {
     var route = app.readRoute(window.location.hash);
     var params = {};
@@ -343,6 +375,9 @@
     // takes the club out of the URL with it. Pressing Teams again keeps it,
     // which is what makes the tab a way back.
     if (name !== 'teams') delete params.team;
+    // A player page is open INSIDE the People section, the same way a club
+    // page is inside Teams.
+    if (name !== 'people') delete params.player;
     if (name !== 'home') params.section = name;
     var hash = app.writeRoute({ league: app.BASKETBALL, params: params });
     // Pressing the same tab twice must not cost a second Back to leave.
@@ -478,9 +513,12 @@
     return (team && (team.short || team.name)) || key;
   }
 
-  function seasonPayload() {
+  function seasonPayload(season) {
     var seasons = window.NCAAMBB_SEASONS || {};
-    return seasons[state.season] || null;
+    // A player's career crosses seasons, and only the season the page opened
+    // on is loaded. An absent season returns null and the dates fall back to
+    // an em dash rather than the page guessing at them.
+    return seasons[season === undefined ? state.season : season] || null;
   }
 
   function renderBoard() {
@@ -500,9 +538,19 @@
       cell(teamName(row.team));
       cell(row.conference);
       cell(app.ratingText(row.rating), 'num');
-      cell(row.wins + '-' + row.losses, 'num');
+      // A club that has not played yet has no record to show. "0-0" would
+      // read as a measurement, and its rating is last season's carried over
+      // rather than anything this season has decided.
+      // Whether a RECORD exists, not whether a rating counted anything.
+      // The board's wins and losses count every opponent while the rating
+      // counts Division I games alone, so a club whose only final was
+      // against a non-Division I opponent is 1-0 with no rated game -- and
+      // keying this on rated_games put an em dash over a real record.
+      cell(row.wins || row.losses ? row.wins + '-' + row.losses : '\u2014',
+           'num');
       body.appendChild(tr);
     });
+    carriedNote(rows);
     if (!rows.length) {
       var tr = document.createElement('tr');
       var td = document.createElement('td');
@@ -512,6 +560,31 @@
       tr.appendChild(td);
       body.appendChild(tr);
     }
+  }
+
+  /* How many of this board's ratings are carried rather than earned, said
+   * once under the table. Early in a season most of them are last season's,
+   * and a ranked table that does not say so reads as results.
+   *
+   * The condition is a club with no RATED game, and the wording has to say
+   * that rather than "has not played": a club can have played a non-Division
+   * I opponent, and have a win to show for it, while its rating has still
+   * learned nothing. Saying it had not played contradicted its own record on
+   * the same row.
+   */
+  function carriedNote(rows) {
+    var host = el('board-note');
+    if (!host) return;
+    var waiting = rows.filter(function (row) {
+      return !row.rated_games;
+    }).length;
+    if (!waiting) { host.textContent = ''; host.hidden = true; return; }
+    host.hidden = false;
+    host.textContent = waiting === rows.length
+      ? 'No club has a Division I result yet. Every rating here is last '
+        + 'season\u2019s, carried over.'
+      : waiting + ' of these ' + rows.length + ' clubs have no Division I '
+        + 'result yet, and carry last season\u2019s rating.';
   }
 
   /* ---- the club directory, and a club's own page -------------------- */
@@ -682,8 +755,12 @@
     head.appendChild(figure);
     host.appendChild(head);
     if (!rows.length) {
-      return emptyLine(host, 'This club has no games in '
+      emptyLine(host, 'This club has no games in '
         + app.seasonLabel(state.season) + '.');
+      // Still show who is on it. A club whose season has not started has a
+      // roster, and 353 of them were in exactly that position two days into
+      // 2026-27.
+      return renderRoster(host, row.team);
     }
     host.appendChild(heading('h3', 'Season'));
     var scroller = document.createElement('div');
@@ -720,6 +797,7 @@
     });
     scroller.appendChild(table);
     host.appendChild(scroller);
+    renderRoster(host, row.team);
   }
 
   function renderDays() {
@@ -727,7 +805,7 @@
     host.innerHTML = '';
     // The strip centres on the selected day; only the real today is
     // labelled Today, which is a different question from where the centre is.
-    app.dayStrip(state.day, 3, app.todayKey()).forEach(function (entry) {
+    app.dayStrip(state.day, 3, today()).forEach(function (entry) {
       var button = document.createElement('button');
       button.type = 'button';
       button.textContent = entry.today ? 'Today' : entry.day.slice(5);
@@ -804,18 +882,493 @@
     });
   }
 
+  /* ---- people: the index, a club's roster, a player's career -------- */
+
+  /* The people layer is OPTIONAL and per season. The manifest says which
+   * seasons have rosters and box scores at all, which is fewer than the
+   * seasons that have ratings: nothing published people until this change,
+   * and the archive was fetched for the two newest seasons first. A page that
+   * assumed every season had people would draw an empty roster for 2015 and
+   * call it a club with no players.
+   */
+  // Which people contracts this page can read. The payload's SHAPE is
+  // versioned separately from the manifest's, and a version this page does
+  // not know is treated as no people at all rather than decoded on a guess:
+  // version 1 carried no day and no opponent on a line, so reading it here
+  // would draw a career log of em dashes and call it the player's record.
+  var PEOPLE_VERSIONS = [2];
+
+  function peopleSection() {
+    var files = state.manifest && state.manifest.files;
+    var section = (files && files.people) || null;
+    if (!section) return null;
+    return PEOPLE_VERSIONS.indexOf(Number(section.version)) < 0
+      ? null : section;
+  }
+
+  function peopleSeasons() {
+    var section = peopleSection();
+    if (!section || !section.seasons) return [];
+    return Object.keys(section.seasons)
+      .map(function (key) { return parseInt(key, 10); })
+      .filter(function (value) { return !isNaN(value); })
+      .sort(function (a, b) { return a - b; });
+  }
+
+  function hasPeople(season) {
+    return peopleSeasons().indexOf(Number(season)) >= 0;
+  }
+
+  /* Fetch a people file once, and re-render when it lands.
+   *
+   * `state.people` remembers every path asked for, including the ones that
+   * failed: without that a failed fetch would be retried on every keystroke
+   * in the search box.
+   */
+  function needPeople(paths, after) {
+    var pending = (paths || []).filter(function (path) {
+      return path && !state.people[path];
+    });
+    if (!pending.length) return false;
+    pending.forEach(function (path) { state.people[path] = 'loading'; });
+    Promise.all(pending.map(function (path) {
+      return load(BASE + path).then(function () {
+        state.people[path] = 'loaded';
+      }, function () {
+        state.people[path] = 'failed';
+        state.peopleError = 'Some player data could not be loaded.';
+      });
+    })).then(function () {
+      // The page may be gone by the time a file lands -- a reader who
+      // switched leagues, or a test that closed its window. Touching the
+      // document then throws inside a promise, where nothing is watching.
+      if (typeof document === 'undefined' || !document) return;
+      if (after) after();
+      render();
+    });
+    return true;
+  }
+
+  function peoplePath(entry) {
+    // The manifest states the path with its version stamp; it is used
+    // verbatim, so a stale cached file cannot be served under a new export.
+    return typeof entry === 'string' ? entry : null;
+  }
+
+  function indexPath() {
+    var section = peopleSection();
+    return section ? peoplePath(section.index) : null;
+  }
+
+  function rosterPath(season) {
+    var section = peopleSection();
+    var entry = section && section.seasons
+      && section.seasons[String(season)];
+    return entry ? peoplePath(entry.roster) : null;
+  }
+
+  function shardPath(season, providerId) {
+    var section = peopleSection();
+    var entry = section && section.seasons
+      && section.seasons[String(season)];
+    if (!entry || !entry.shards) return null;
+    var shard = app.peopleShard(providerId, section.shards);
+    if (shard === null) return null;
+    // Matched by number rather than by position, because a manifest that
+    // listed the shards in another order would otherwise serve one player's
+    // games under another player's id.
+    for (var index = 0; index < entry.shards.length; index += 1) {
+      var path = entry.shards[index];
+      var name = String(path).split('/').pop().split('?')[0];
+      if (name === shard + '.js') return path;
+    }
+    return null;
+  }
+
+  function playerIndex() {
+    var people = window.NCAAMBB_PEOPLE;
+    return (people && people.players) || {};
+  }
+
+  function playerName(providerId) {
+    var entry = playerIndex()[String(providerId)];
+    return (entry && entry.n) || 'Player ' + providerId;
+  }
+
+  function rosterFor(season, teamKey) {
+    var rosters = window.NCAAMBB_ROSTERS || {};
+    var payload = rosters[season];
+    var teams = payload && payload.teams;
+    return (teams && teams[teamKey]) || null;
+  }
+
+  function playerLink(providerId, label) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'link';
+    button.textContent = label || playerName(providerId);
+    button.dataset.player = String(providerId);
+    button.addEventListener('click', function () {
+      state.player = String(providerId);
+      window.scrollTo(0, 0);
+      writePlayer(state.player);
+      render();
+    });
+    return button;
+  }
+
+  function renderPeople() {
+    var host = el('people-body');
+    host.innerHTML = '';
+    var seasons = peopleSeasons();
+    if (!seasons.length) {
+      return emptyLine(host, 'This export carries no player data yet.');
+    }
+    if (needPeople([indexPath()])) {
+      return emptyLine(host, 'Loading players\u2026');
+    }
+    if (state.player) return renderPlayer(host);
+    renderPlayerSearch(host, seasons);
+  }
+
+  function renderPlayerSearch(host, seasons) {
+    var newest = seasons[seasons.length - 1];
+    var note = document.createElement('p');
+    note.className = 'empty';
+    note.textContent = 'Players are loaded for '
+      + app.seasonRange(seasons) + '.';
+    host.appendChild(note);
+
+    var form = document.createElement('div');
+    form.className = 'filters';
+    var box = document.createElement('input');
+    box.type = 'search';
+    box.id = 'player-search';
+    box.placeholder = 'Search players\u2026';
+    box.value = state.playerQuery;
+    box.setAttribute('aria-label', 'Search players');
+    box.addEventListener('input', function () {
+      state.playerQuery = box.value;
+      renderPeople();
+      var again = el('player-search');
+      if (again) {
+        again.focus();
+        again.setSelectionRange(again.value.length, again.value.length);
+      }
+    });
+    form.appendChild(box);
+    host.appendChild(form);
+
+    if (app.normalizeName(state.playerQuery)) {
+      return renderPlayerResults(host);
+    }
+    renderLeaders(host, newest);
+  }
+
+  function renderPlayerResults(host) {
+    var found = app.searchPlayers(playerIndex(), state.playerQuery, 25);
+    var line = document.createElement('p');
+    line.className = 'empty';
+    line.textContent = found.length
+      ? found.length + (found.length === 1 ? ' player matches '
+                                           : ' players match ')
+        + '\u201c' + state.playerQuery + '\u201d.'
+      : 'No player matches \u201c' + state.playerQuery + '\u201d.';
+    host.appendChild(line);
+    if (!found.length) return;
+    var block = document.createElement('div');
+    block.className = 'directory';
+    var list = document.createElement('ul');
+    found.forEach(function (row) {
+      var item = document.createElement('li');
+      item.appendChild(playerLink(row.id, row.name));
+      var where = document.createElement('span');
+      where.className = 'rating';
+      where.textContent = [row.hometown, row.state].filter(Boolean).join(', ');
+      item.appendChild(where);
+      list.appendChild(item);
+    });
+    block.appendChild(list);
+    host.appendChild(block);
+  }
+
+  /* The season's leading scorers, so the tab opens on something to read
+   * rather than an empty search box.
+   *
+   * By TOTAL points, with the per-game average beside it. A per-game leader
+   * board this early in a season is a list of players who have played once.
+   */
+  function renderLeaders(host, season) {
+    if (needPeople([rosterPath(season)])) {
+      return emptyLine(host, 'Loading players\u2026');
+    }
+    var rosters = (window.NCAAMBB_ROSTERS || {})[season];
+    var teams = (rosters && rosters.teams) || {};
+    var rows = [];
+    Object.keys(teams).forEach(function (teamKey) {
+      teams[teamKey].forEach(function (row) {
+        if (!row[3]) return;
+        rows.push({ id: row[0], team: teamKey, games: row[3],
+                    minutes: row[4], points: row[5] });
+      });
+    });
+    rows = rows.filter(function (row) {
+      return row.points !== null && row.points !== undefined;
+    });
+    if (!rows.length) {
+      return emptyLine(host, 'No player has a recorded game in '
+        + app.seasonLabel(season) + ' yet.');
+    }
+    rows.sort(function (a, b) {
+      if (b.points !== a.points) return b.points - a.points;
+      return a.id - b.id;
+    });
+    host.appendChild(heading('h3', 'Most points, '
+      + app.seasonLabel(season)));
+    var scroller = document.createElement('div');
+    scroller.className = 'scroller';
+    var table = document.createElement('table');
+    table.innerHTML = '<thead><tr><th class="rk">#</th><th>Player</th>'
+      + '<th>Club</th><th class="num">G</th><th class="num">Pts</th>'
+      + '<th class="num">Pts/G</th></tr></thead><tbody></tbody>';
+    var body = table.querySelector('tbody');
+    rows.slice(0, 50).forEach(function (row, index) {
+      var tr = document.createElement('tr');
+      var rank = document.createElement('td');
+      rank.className = 'rk';
+      rank.textContent = index + 1;
+      tr.appendChild(rank);
+      var who = document.createElement('td');
+      who.appendChild(playerLink(row.id));
+      tr.appendChild(who);
+      var club = document.createElement('td');
+      club.appendChild(teamLink(row.team));
+      tr.appendChild(club);
+      [row.games, row.points, app.perGame(row.points, row.games)]
+        .forEach(function (value) {
+          var td = document.createElement('td');
+          td.className = 'num';
+          td.textContent = value === null || value === undefined
+            ? '\u2014' : value;
+          tr.appendChild(td);
+        });
+      body.appendChild(tr);
+    });
+    scroller.appendChild(table);
+    host.appendChild(scroller);
+  }
+
+  /* One player's career, over every season this export carries people for.
+   *
+   * Loads only that player's own shard per season -- one file of sixteen --
+   * which is why the lines are sharded on the player's id.
+   */
+  function renderPlayer(host) {
+    var seasons = peopleSeasons();
+    var paths = seasons.map(function (season) {
+      return shardPath(season, state.player);
+    }).filter(Boolean);
+    var back = document.createElement('p');
+    back.className = 'back';
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'link';
+    button.textContent = '\u2190 All players';
+    button.addEventListener('click', function () {
+      state.player = null;
+      writePlayer(null);
+      render();
+    });
+    back.appendChild(button);
+    host.appendChild(back);
+    if (needPeople(paths)) {
+      return emptyLine(host, 'Loading this player\u2026');
+    }
+    var entry = playerIndex()[String(state.player)];
+    var careers = app.playerSeasons(window.NCAAMBB_PLAYER_GAMES,
+                                    state.player);
+    var head = document.createElement('div');
+    head.className = 'clubhead';
+    var block = document.createElement('div');
+    block.appendChild(heading('h2', playerName(state.player)));
+    if (!entry && !careers.length) {
+      host.appendChild(head);
+      return emptyLine(host, 'No player in this export has that id.');
+    }
+    var sub = document.createElement('div');
+    sub.className = 'sub';
+    var newest = careers[0] || null;
+    var club = newest && newest.clubs.length ? newest.clubs[0] : null;
+    sub.textContent = [
+      club && club.position,
+      club && club.jersey ? '#' + club.jersey : null,
+      entry && entry.h ? [entry.h, entry.s].filter(Boolean).join(', ') : null
+    ].filter(Boolean).join(' \u00b7 ');
+    block.appendChild(sub);
+    head.appendChild(block);
+    host.appendChild(head);
+
+    if (!careers.length) {
+      return emptyLine(host, 'This player is on a roster but has no recorded '
+        + 'game.');
+    }
+    careers.forEach(function (career) {
+      renderPlayerSeason(host, career);
+    });
+  }
+
+  function renderPlayerSeason(host, career) {
+    var totals = app.playerTotals(career.games);
+    host.appendChild(heading('h3', app.seasonLabel(career.season)));
+    var line = document.createElement('p');
+    line.className = 'empty';
+    var clubs = career.clubs.map(function (entry) {
+      return entry.team ? teamName(entry.team) : null;
+    }).filter(Boolean);
+    line.textContent = [
+      clubs.length ? clubs.join(' and ') : null,
+      totals.games + (totals.games === 1 ? ' game' : ' games'),
+      totals.starts ? totals.starts + ' started' : null,
+      totals.points === null ? null
+        : totals.points + ' points (' + app.perGame(totals.points,
+                                                    totals.games) + ' a game)',
+      totals.minutes === null ? null
+        : totals.minutes + ' minutes'
+    ].filter(Boolean).join(' \u00b7 ');
+    host.appendChild(line);
+    if (!career.games.length) return;
+    var scroller = document.createElement('div');
+    scroller.className = 'scroller';
+    var table = document.createElement('table');
+    table.innerHTML = '<thead><tr><th>Date</th><th>Opponent</th>'
+      + '<th class="num">Min</th><th class="num">Pts</th></tr></thead>'
+      + '<tbody></tbody>';
+    var body = table.querySelector('tbody');
+    // Every line carries its own day and opponent, so a season whose
+    // schedule this page has not loaded is dated all the same. Looking them
+    // up in the season payload dated the one loaded season and left the rest
+    // of a four-season career a table of em dashes, which is how this was
+    // found -- in a browser, against the real export.
+    career.games.slice().sort(function (a, b) {
+      var da = a.day || '';
+      var db = b.day || '';
+      if (da !== db) return da < db ? -1 : 1;
+      return a.game - b.game;
+    }).forEach(function (row) {
+      var tr = document.createElement('tr');
+      var when = document.createElement('td');
+      // A line the provider gave no date for is still shown: the minutes
+      // were played either way.
+      when.textContent = row.day || '\u2014';
+      tr.appendChild(when);
+      var against = document.createElement('td');
+      if (row.opponent) {
+        var at = document.createElement('span');
+        at.className = 'sub';
+        at.textContent = row.site === 'N' ? 'N '
+          : (row.site === 'H' ? 'vs ' : '@ ');
+        against.appendChild(at);
+        against.appendChild(teamLink(row.opponent));
+      } else {
+        against.textContent = '\u2014';
+      }
+      tr.appendChild(against);
+      [row.minutes, row.points].forEach(function (value) {
+        var td = document.createElement('td');
+        td.className = 'num';
+        // An unrecorded minute count is absent, never 0: a player who sat on
+        // the bench and one whose minutes nobody wrote down are different.
+        td.textContent = value === null || value === undefined
+          ? '\u2014' : value;
+        tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    });
+    scroller.appendChild(table);
+    host.appendChild(scroller);
+  }
+
+  /* A club's roster, under its schedule. Only for a season that has people:
+   * an absent roster is said so rather than drawn as a club with no players.
+   */
+  function renderRoster(host, teamKey) {
+    if (!hasPeople(state.season)) {
+      // Saying nothing was worse than saying this. A reader landing on a
+      // club in the season being played -- which is where every link lands
+      // them -- saw a schedule, no squad, and no hint that a squad exists
+      // anywhere, because player files are published for the most recent few
+      // seasons only and the season in progress is fetched last.
+      var seasons = peopleSeasons();
+      if (!seasons.length) return;
+      host.appendChild(heading('h3', 'Roster'));
+      emptyLine(host, 'Players are not published for '
+        + app.seasonLabel(state.season) + ' yet. The most recent squad on'
+        + ' record is ' + app.seasonLabel(seasons[seasons.length - 1]) + '.');
+      return;
+    }
+    if (needPeople([indexPath(), rosterPath(state.season)])) {
+      host.appendChild(heading('h3', 'Roster'));
+      return emptyLine(host, 'Loading the roster\u2026');
+    }
+    host.appendChild(heading('h3', 'Roster'));
+    var rows = rosterFor(state.season, teamKey);
+    if (!rows || !rows.length) {
+      return emptyLine(host, 'No roster is published for this club in '
+        + app.seasonLabel(state.season) + '.');
+    }
+    var scroller = document.createElement('div');
+    scroller.className = 'scroller';
+    var table = document.createElement('table');
+    // Named, so a test (and a reader of the DOM) can tell a club's roster
+    // from its schedule: both are tables inside the same panel.
+    table.className = 'roster';
+    table.innerHTML = '<thead><tr><th>Player</th><th>Pos</th>'
+      + '<th class="num">G</th><th class="num">Min</th>'
+      + '<th class="num">Pts</th><th class="num">Pts/G</th></tr></thead>'
+      + '<tbody></tbody>';
+    var body = table.querySelector('tbody');
+    rows.forEach(function (row) {
+      var tr = document.createElement('tr');
+      var who = document.createElement('td');
+      if (row[1]) {
+        var jersey = document.createElement('span');
+        jersey.className = 'sub';
+        jersey.textContent = '#' + row[1] + ' ';
+        who.appendChild(jersey);
+      }
+      who.appendChild(playerLink(row[0]));
+      tr.appendChild(who);
+      var position = document.createElement('td');
+      position.textContent = row[2] || '\u2014';
+      tr.appendChild(position);
+      [row[3], row[4], row[5], app.perGame(row[5], row[3])]
+        .forEach(function (value) {
+          var td = document.createElement('td');
+          td.className = 'num';
+          td.textContent = value === null || value === undefined
+            ? '\u2014' : value;
+          tr.appendChild(td);
+        });
+      body.appendChild(tr);
+    });
+    scroller.appendChild(table);
+    host.appendChild(scroller);
+  }
+
   function render() {
     renderMeta();
     renderRefusal();
     var ok = state.verdict && state.verdict.ok;
     el('teams').hidden = !ok || state.tab !== 'teams';
     el('standings').hidden = !ok || state.tab !== 'standings';
+    el('people').hidden = !ok || state.tab !== 'people';
     el('scoreboard').hidden = !ok || !(state.tab === 'home'
                                        || state.tab === 'games');
     tabButtons();
     if (!ok) return;
     if (!el('teams').hidden) renderTeams();
     if (!el('standings').hidden) renderBoard();
+    if (!el('people').hidden) renderPeople();
     if (!el('scoreboard').hidden) {
       renderDays();
       renderFilters();
@@ -833,12 +1386,24 @@
     });
   }
 
+  /* Today, in the calendar this export states its game days in.
+   *
+   * NOT the UTC date. A 7pm Eastern tip-off is already midnight UTC, so for
+   * the whole of every evening the UTC date is tomorrow -- and reading it as
+   * today opened the scoreboard on the next day's schedule while the games
+   * on it were being played.
+   */
+  function today() {
+    return app.todayKey(undefined, app.NCAAMBB_DAY_ZONE);
+  }
+
   function openingDay(payload) {
     // Today, clamped into the loaded season. Not the last date in the
     // payload: a published schedule runs to April, so that opened on the
     // championship and the strip called it Today.
     return app.openingDay(
-      ((payload && payload.games) || []).map(app.dayOf).filter(Boolean));
+      ((payload && payload.games) || []).map(app.dayOf).filter(Boolean),
+      today());
   }
 
   function start() {
@@ -846,6 +1411,7 @@
     var opening = tabFromHash();
     if (opening) state.tab = opening;
     state.team = teamIdFromHash();
+    state.player = playerIdFromHash();
     window.addEventListener('hashchange', function () {
       var changed = false;
       var next = tabFromHash();
@@ -854,6 +1420,8 @@
       // back button cannot disagree about which club is open.
       var club = teamIdFromHash();
       if (club !== state.team) { state.team = club; changed = true; }
+      var person = playerIdFromHash();
+      if (person !== state.player) { state.player = person; changed = true; }
       if (changed) render();
     });
     fetch(BASE + 'manifest.json', { cache: 'no-store' })
