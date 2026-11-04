@@ -636,3 +636,194 @@ def test_refetch_seasons_must_be_years(tmp_path, capsys):
               '--raw-root', str(tmp_path / 'raw')])
     assert raised.value.code == 2
     assert 'integer ending years' in capsys.readouterr().err
+
+
+# --- the cache records how old it is ----------------------------------------
+
+def test_a_cached_season_is_dated_by_its_fetch_not_by_the_reload(tmp_path):
+    """The whole point. Two runs a week apart over one fetch must report the
+    same age for the data, or an export built from the committed cache claims
+    to be as fresh as one built from a live fetch -- which is how a scoreboard
+    weeks out of date would carry today's timestamp."""
+    from src.ncaambb.ingest import gather, fetched_at
+    getter = windowed([provider_game(2026, '2025-11-07T19:00:00Z')])
+    gather(2026, raw_root=tmp_path, getter=getter)
+    first = fetched_at(2026, ('teams', 'games'), tmp_path)
+    assert first, 'a fetch has to record when it happened'
+    _, _, from_cache = gather(2026, raw_root=tmp_path, getter=getter)
+    assert from_cache
+    assert fetched_at(2026, ('teams', 'games'), tmp_path) == first
+
+
+def test_an_unrecorded_cache_has_no_age_rather_than_a_wrong_one(tmp_path):
+    """Every file cached before this existed carries no record, and an
+    unknown age reported as a known one is worse than no answer."""
+    from src.ncaambb.ingest import fetched_at, read_fetch_times
+    cached_season(tmp_path, 2026)
+    assert read_fetch_times(2026, tmp_path) == {}
+    assert fetched_at(2026, ('teams', 'games'), tmp_path) is None
+
+
+def test_a_partly_recorded_season_has_no_age(tmp_path):
+    """A box score cache fetched today beside a roster cache of unknown age
+    is a season of unknown age. Taking the one time that IS recorded would
+    report a freshness no file behind it supports -- and that passes every
+    test where nothing at all is recorded, so this is the case that bites."""
+    from src.ncaambb.ingest import fetched_at, record_fetch_times
+    record_fetch_times(2026, ('box_scores',), tmp_path)
+    assert fetched_at(2026, ('box_scores',), tmp_path)
+    assert fetched_at(2026, ('rosters', 'box_scores'), tmp_path) is None
+
+
+def test_a_season_is_only_as_fresh_as_its_stalest_file(tmp_path):
+    """A schedule refetched today over team names from a year ago is a year
+    old for anything that joins the two."""
+    from datetime import datetime, timezone
+    from src.ncaambb.ingest import fetched_at, record_fetch_times
+    old = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    new = datetime(2026, 11, 3, tzinfo=timezone.utc)
+    record_fetch_times(2026, ('teams',), tmp_path, now=old)
+    record_fetch_times(2026, ('games',), tmp_path, now=new)
+    assert fetched_at(2026, ('teams', 'games'), tmp_path) == old.isoformat()
+    # And recording one endpoint must not erase the other.
+    assert fetched_at(2026, ('games',), tmp_path) == new.isoformat()
+
+
+def test_an_unreadable_fetch_record_is_no_record(tmp_path):
+    """A half-written or hand-edited file must not crash an ingestion whose
+    data is perfectly good."""
+    from src.ncaambb.ingest import fetched_at, fetched_at_path, read_fetch_times
+    path = fetched_at_path(2026, tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text('{not json', encoding='utf-8')
+    assert read_fetch_times(2026, tmp_path) == {}
+    assert fetched_at(2026, ('teams',), tmp_path) is None
+    path.write_text('["a list"]', encoding='utf-8')
+    assert read_fetch_times(2026, tmp_path) == {}
+
+
+def test_nothing_half_written_is_left_beside_the_fetch_record(tmp_path):
+    from src.ncaambb.ingest import fetched_at_path, record_fetch_times
+    record_fetch_times(2026, ('teams',), tmp_path)
+    folder = fetched_at_path(2026, tmp_path).parent
+    assert not list(folder.glob('*.tmp'))
+
+
+# --- a refused refetch falls back to the bank rather than taking the page down
+
+@pytest.fixture
+def db(tmp_path):
+    from src.ncaambb.store import connect
+    connection = connect(tmp_path / 'ncaambb.db')
+    yield connection
+    connection.close()
+
+
+def refusing(rows):
+    """A provider that answers nothing: every call is the 429 the account got
+    on 2026-11-03 once its monthly allowance was spent."""
+    from src.ncaambb.http import CbbdRateLimitError
+
+    def getter(path, params=None, **kwargs):
+        raise CbbdRateLimitError('CBBD refused ' + path + ' with HTTP 429')
+
+    return getter
+
+
+def test_a_refused_refetch_reloads_the_cache_and_says_how_old_it_is(tmp_path, db):
+    """MEASURED 2026-11-03: the monthly allowance was spent, the active
+    season's refetch was refused, and the run died before the replay, the
+    export and the publish. Everything needed to publish was sitting in the
+    repository. Staleness is marked, never refused."""
+    from src.ncaambb.ingest import ingest_season
+    from src.ncaambb.export import data_as_of
+    getter = windowed([provider_game(2027, '2026-11-07T19:00:00Z')])
+    first = ingest_season(db, 2027, raw_root=tmp_path, getter=getter)
+    assert not first['from_cache']
+    banked = data_as_of(db, 2027)
+    assert banked
+
+    summary = ingest_season(db, 2027, raw_root=tmp_path,
+                            getter=refusing([]), reuse_cache=False,
+                            allow_cache_fallback=True)
+    assert summary['from_cache'], 'the bank is there; use it'
+    assert summary['refetch_refused'], 'and say that it was used'
+    assert summary['stored_games'] == first['stored_games']
+    # The age reported is the FETCH's, not this run's. Without that the page
+    # badges weeks-old scores as freshly updated.
+    assert data_as_of(db, 2027) == banked
+
+
+def test_an_ordinary_cache_reuse_is_not_a_refusal(tmp_path, db, capsys):
+    """Reusing a settled season's cache is the DESIGN -- it is what keeps a
+    run inside the allowance -- and every run does it for a dozen seasons. If
+    that counted as a refusal the notice would fire on every healthy run and
+    mean nothing by the time one was actually refused."""
+    from src.ncaambb import ingest as ingest_module
+    from src.ncaambb.ingest import ingest_season
+    getter = windowed([provider_game(2027, '2026-11-07T19:00:00Z')])
+    ingest_season(db, 2027, raw_root=tmp_path, getter=getter)
+    again = ingest_season(db, 2027, raw_root=tmp_path, getter=getter)
+    assert again['from_cache'], 'the cache is reused, as intended'
+    assert not again['refetch_refused'], 'and nothing was refused'
+
+    capsys.readouterr()
+    code = ingest_module.main(['--seasons', '2027', '--schedule-only',
+                               '--database', str(tmp_path / 'y.db'),
+                               '--raw-root', str(tmp_path)])
+    assert code == 0
+    assert 'refused a refetch' not in capsys.readouterr().out
+
+
+def test_a_refusal_with_nothing_banked_is_still_a_failure(tmp_path, db):
+    """There is nothing to fall back to, and reporting an empty season as
+    stored would read as "no games were played"."""
+    from src.ncaambb.http import CbbdRateLimitError
+    from src.ncaambb.ingest import ingest_season
+    with pytest.raises(CbbdRateLimitError):
+        ingest_season(db, 2027, raw_root=tmp_path, getter=refusing([]),
+                      reuse_cache=False, allow_cache_fallback=True)
+
+
+def test_a_refusal_is_not_swallowed_when_the_caller_did_not_ask(tmp_path, db):
+    """The fallback is for the one season a refresh asks about daily. Every
+    other caller must still see the 429."""
+    from src.ncaambb.http import CbbdRateLimitError
+    from src.ncaambb.ingest import ingest_season
+    getter = windowed([provider_game(2027, '2026-11-07T19:00:00Z')])
+    ingest_season(db, 2027, raw_root=tmp_path, getter=getter)
+    with pytest.raises(CbbdRateLimitError):
+        ingest_season(db, 2027, raw_root=tmp_path, getter=refusing([]),
+                      reuse_cache=False)
+
+
+def test_a_blanket_refetch_is_not_quietly_answered_from_the_cache(tmp_path,
+                                                                 monkeypatch):
+    """`--refetch` means "ignore the cache". Falling back to it answers the
+    opposite question, and a run that asked to re-verify everything would
+    report success having verified nothing."""
+    from src.ncaambb import ingest as ingest_module
+    cached_season(tmp_path, 2027)
+    monkeypatch.setattr(ingest_module, 'get_json', refusing([]))
+    code = ingest_module.main(['--seasons', '2027', '--refetch',
+                               '--schedule-only',
+                               '--database', str(tmp_path / 'x.db'),
+                               '--raw-root', str(tmp_path)])
+    assert code != 0
+
+
+def test_the_refresh_keeps_going_and_names_the_season_it_fell_back_on(
+        tmp_path, capsys, monkeypatch):
+    """What the refresh's step summary shows a person: the run succeeded, and
+    which season's data is older than the run."""
+    from src.ncaambb import ingest as ingest_module
+    cached_season(tmp_path, 2027)
+    monkeypatch.setattr(ingest_module, 'get_json', refusing([]))
+    code = ingest_module.main(['--seasons', '2027', '--refetch-seasons', '2027',
+                               '--schedule-only',
+                               '--database', str(tmp_path / 'x.db'),
+                               '--raw-root', str(tmp_path)])
+    assert code == 0, 'the ratings and the scoreboard still rebuild'
+    said = capsys.readouterr().out
+    assert 'refused a refetch of season(s) 2027' in said
+    assert 'data_as_of' in said, 'and point at where the real age is stated'

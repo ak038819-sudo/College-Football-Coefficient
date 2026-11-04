@@ -171,7 +171,13 @@ jobs:
           # nothing downstream would notice a one-season layer replacing
           # twenty-eight. The input is for rehearsing a reduction, and this
           # is what keeps it to that.
-          ALLOWED: ${{ (inputs.publish == null && 'true' || inputs.publish)
+          # `inputs.publish == null` was the test here and it never worked:
+          # GitHub's `==` coerces both sides to a number, so `false == null`
+          # is 0 == 0, which is TRUE, and an explicit `publish: false`
+          # published anyway. The event name is the real question -- only a
+          # dispatch carries inputs at all.
+          ALLOWED: ${{ (github.event_name != 'workflow_dispatch'
+            || inputs.publish)
             && (inputs.pbp_seasons == null || inputs.pbp_seasons == '') }}
         run: |
           set -o pipefail

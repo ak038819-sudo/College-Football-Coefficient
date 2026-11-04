@@ -7,7 +7,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const loader = require('../ui/ncaambb_loader.js');
 
-const NOW = Date.parse('2026-10-20T12:00:00Z');
+const NOW_ISO = '2026-10-20T12:00:00Z';
+const NOW = Date.parse(NOW_ISO);
 
 function manifest(overrides) {
   const base = {
@@ -41,11 +42,11 @@ test('a national export of a validated model is accepted', () => {
 
 test('a schema this build does not know is refused, and only that is said', () => {
   // Reading on would mean reading fields whose meaning is not agreed.
-  const verdict = loader.accept(manifest({ schema_version: 2, coverage: [] }),
+  const verdict = loader.accept(manifest({ schema_version: 99, coverage: [] }),
     NOW);
   assert.equal(verdict.ok, false);
   assert.equal(verdict.reasons.length, 1);
-  assert.match(verdict.reasons[0], /does not understand export schema 2/);
+  assert.match(verdict.reasons[0], /does not understand export schema 99/);
 });
 
 test('a football manifest is refused outright', () => {
@@ -121,6 +122,45 @@ test('an unreadable as-of time is stale and says so, not zero minutes ago', () =
   assert.equal(verdict.known, false);
   assert.equal(verdict.stale, true);
   assert.equal(verdict.minutes, null);
+});
+
+test('the badge reports the age of the data, not of the build', () => {
+  // The whole point. A refresh that cannot reach the provider rebuilds the
+  // export from the committed cache, so generated_at is NOW over data that
+  // may be weeks old. Reading generated_at badged that as freshly updated,
+  // which is the one claim this badge exists to make honestly.
+  const verdict = loader.accept(manifest({
+    generated_at: NOW_ISO,
+    data_as_of: '2026-10-18T12:00:00Z'
+  }), NOW);
+  assert.equal(verdict.ok, true, 'stale is marked, never refused');
+  assert.equal(verdict.stale, true);
+  assert.equal(verdict.age.label, 'updated 2d ago');
+});
+
+test('an export that states no data age falls back to the build time', () => {
+  // Every export written before the field existed, and the page must not go
+  // blank over one.
+  const verdict = loader.freshness(
+    manifest({ generated_at: '2026-10-20T09:30:00Z' }), NOW);
+  assert.equal(verdict.known, true);
+  assert.equal(verdict.minutes, 150);
+});
+
+test('an unreadable data age falls back rather than reading as current', () => {
+  const verdict = loader.freshness(manifest({
+    generated_at: '2026-10-20T09:30:00Z',
+    data_as_of: 'the day before yesterday'
+  }), NOW);
+  assert.equal(verdict.minutes, 150, 'not 0, and not unknown');
+});
+
+test('a data age of null is no age at all, not the epoch', () => {
+  const verdict = loader.freshness(manifest({
+    generated_at: '2026-10-20T09:30:00Z',
+    data_as_of: null
+  }), NOW);
+  assert.equal(verdict.minutes, 150);
 });
 
 test('ages read the way a reader expects at each scale', () => {

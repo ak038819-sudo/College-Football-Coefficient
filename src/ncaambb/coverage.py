@@ -16,6 +16,30 @@ def _score(value):
     return type(value) is int and value >= 0
 
 
+# A game has to have started before it can have a score.
+STARTED = ('in_progress', 'final')
+
+
+def recorded_points(game):
+    """The (home, away) score a game actually has, as (None, None) when none.
+
+    MEASURED on the live 2026-27 feed: `/games` returns `homePoints: 0` and
+    `awayPoints: 0` for a game that has not been played. Stored as given, that
+    is indistinguishable from a real 0 and it published every upcoming game as
+    0-0 -- which is what the `game` table's own comment, "NULL means the
+    provider gave no score, never 0", exists to prevent.
+
+    A game in progress is the reason this reads the status rather than
+    rejecting every 0: a team really can be scoreless two minutes in, and that
+    0 is a measurement. So a score is kept exactly as the provider gave it
+    once the game has started, and is absent before that.
+    """
+    if game.get('status') not in STARTED:
+        return (None, None)
+    home, away = game.get('homePoints'), game.get('awayPoints')
+    return (home if _score(home) else None, away if _score(away) else None)
+
+
 def classify_game(game, division_one_ids):
     """Describe one game's usability without changing or filling it.
 

@@ -32,7 +32,7 @@ downgrades a failure to a warning.
 
 | field | what it is for |
 | --- | --- |
-| `schema_version` | 1. A reader states which versions it understands and refuses the rest. |
+| `schema_version` | 2. A reader states which versions it understands and refuses the rest, and still reads 1: the export on disk stays schema 1 until the next refresh runs, so a page that dropped it would go blank between the merge and that run. |
 | `sport` | `ncaambb`. A manifest that does not say so is refused, in both gates, so this can never be read as football data. |
 | `generated_at` | The as-of time, UTC, `Z`-suffixed. Missing or unparseable is a refusal; in the future is a refusal; old is not. |
 | `model` | Name, the full fitted configuration, a sha256 of that configuration, which seasons it was fitted on, which were held out, and what it scored there. |
@@ -97,6 +97,75 @@ Ratings are stored to one decimal and rounded to whole numbers only at display,
 the rule football settled on: a rounded value must never be what the next
 calculation reads.
 
+## The people files
+
+Who played, and what they did. The data was loaded nationally by B02 and
+nothing published it, so the People tab was drawn disabled from the day the
+league launched.
+
+Three kinds of file, because three screens ask three different questions and
+one file answering all of them would be downloaded by readers who wanted none
+of it:
+
+| file | answers | read by |
+| --- | --- | --- |
+| `people/index.js` | who exists, and which seasons have people at all | the People tab, for search |
+| `people/<season>/roster.js` | who is on this club, and their season line | a club's page |
+| `people/<season>/<shard>.js` | this player's membership and every game he played | a player's page |
+
+**The shards exist because a season is about 127,500 player-game lines.** A
+player page needs one player's, so each season's lines are split sixteen ways
+on the player's own id and a page fetches the one shard it needs. The split is
+a FLOORED modulo written out longhand on both sides: Python's `%` is floored
+and JavaScript's is not, so a negative provider id would land in shard -3 in
+the browser and 13 in the exporter, which is a file that does not exist. The
+Python test cannot tell the two forms apart — there they ARE the same
+function — so the guard that has teeth is in `tests/ncaambb_app.test.cjs`.
+
+**The manifest's `people` section nests under `files`**, which means the
+publish gate's own file walk hashes every people file without knowing anything
+about people: a missing, empty or stale one is refused for free. The shards
+are listed in numeric order, and a reader matches the one it wants by NAME
+rather than by position in that list.
+
+**A line carries its own day and opponent.** Measured in Chromium against the
+real export: a career spans four or five seasons and a player page loads one
+season's schedule, so dating each game by looking it up in the season payload
+dated one season and left the rest of the career a table of em dashes.
+Fetching four 1.8 MB season files to date forty games is the wrong trade; a
+date and two small integers per line cost a fraction of that and make a player
+page self-contained. The day is the EASTERN playing date, the same one the
+scoreboard groups by.
+
+That is what `people` version **2** is. The page states which versions it can
+read and treats an unknown one as no people at all, rather than decoding it on
+a guess: a version 1 payload read by this page would draw a career of em
+dashes and present it as the player's record.
+
+**NOTHING HERE IS A SUM OF SOMETHING ELSE.** A season line is the player's own
+box score lines added up, per club, so a mid-season transfer is two rows and
+never one merged player. It is never reconciled against the team's score: the
+pilot found 26 box scores that disagree with their game's final, and the right
+answer there is to report the disagreement rather than average it away. A
+total of nothing recorded is absent, not 0 — a player whose minutes nobody
+wrote down and one who sat on the bench are different things, and 0 merges
+them. A measured nil stays a measurement.
+
+A player with a line but no roster snapshot is still put on his club's roster,
+with no jersey. 29 Division I players in 2025-26 are in exactly that position
+and their minutes are real.
+
+**Only the most recent `export_people.DEFAULT_SEASONS` seasons get people
+files**, six at the time of writing. A bound, not a preference: thirteen
+seasons published in full is tens of megabytes added to a site already
+measured at 461 MB against GitHub Pages' 1 GB cap (see
+`docs/published-payload.md`), for seasons whose rosters nobody is looking up,
+and six covers every player now playing for his whole career. `--people-seasons
+0` publishes every season that has people; the manifest states which seasons
+are carried either way, and the page says so rather than drawing a blank for
+the rest. The refresh reads the same number from the exporter, so it does not
+spend provider quota fetching people the export would not publish.
+
 ## Provider Elo is still never read
 
 `/games` returns `homeTeamEloStart` and `homeTeamEloEnd`. They are not fetched,
@@ -141,3 +210,29 @@ The ratings workflow runs both: the export to a temporary directory, then the
 standalone gate on what was written, because a check against a plan is not a
 check against a disk. The export is uploaded as an artifact and committed
 nowhere.
+
+## `data_as_of` — how old the data is, as against the export
+
+`generated_at` is when the export was built. It is always now, so on its own
+it says nothing about the data: a refresh that cannot reach the provider
+rebuilds from the committed cache and stamps today's time over games that may
+be weeks old.
+
+`data_as_of` is when the provider last answered about the **latest season**,
+the one a reader's scoreboard shows. A settled season refetched this morning
+says nothing about tonight's scores, and a roster fetched today over last
+month's schedule does not make the scores current, so only that season's
+`schedule` snapshot counts.
+
+- `null` when nothing records it, which is true of any cache written before
+  the ingestion began recording its own age. The page then says
+  `last updated: unknown` and marks it stale.
+- The publish gate never refuses an export for being **old** — staleness is
+  marked, not hidden, and refusing stale data is how a provider outage takes
+  the whole page down. It does refuse one dated in the **future**, because a
+  page draws a future moment as "updated just now", which is the one way this
+  field can lie about freshness instead of reporting it.
+- The age is recorded by the ingestion in `data/ncaambb/raw/<season>/fetched_at.json`,
+  committed beside the gzipped responses. A season is dated by its **stalest**
+  file, and a season only partly recorded has no age at all rather than a
+  wrong one.

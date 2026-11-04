@@ -8,6 +8,11 @@
 // They also drive the refusal path, because that is the behaviour release gate
 // 4 asks for: a sample must produce no board at all, not a board with a
 // warning above it.
+// A tip-off time is rendered in the TIMEZONE the browser is set to, so an
+// assertion about one has to fix it. Pinned before the first Date is
+// formatted, or these expectations change with the machine running them.
+process.env.TZ = 'America/New_York';
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -20,11 +25,28 @@ const UI = path.join(__dirname, '..', 'ui');
 // strip labels only the real today. A fixed past date would make every
 // scoreboard assertion here test the out-of-season fallback instead of the
 // case a reader meets. Out of season is tested on its own, below.
-const DAY = new Date().toISOString().slice(0, 10);
+// In EASTERN time, which is the calendar the export states a game day in and
+// therefore the one the page calls Today. Taking the UTC date here instead
+// made this whole file's scoreboard assertions depend on the hour it ran: for
+// the five hours after midnight UTC the fixture's games are dated tomorrow,
+// and every "the strip opens on today" assertion would be checking the wrong
+// day. See NCAAMBB_DAY_ZONE in ui/ncaambb_app.js.
+const ZONE = 'America/New_York';
+
+function easternDay(moment) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: ZONE, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(moment);
+}
+
+const DAY = easternDay(new Date());
 
 function daysFromToday(count) {
-  return new Date(Date.now() + count * 86400000).toISOString().slice(0, 10);
+  return easternDay(new Date(Date.now() + count * 86400000));
 }
+
+const TEAM_KEYS = ['ncaambb:cbbd:team:1', 'ncaambb:cbbd:team:2',
+                   'ncaambb:cbbd:team:3'];
 
 function teams() {
   return {
@@ -34,29 +56,34 @@ function teams() {
   };
 }
 
+// As the export writes a game: `at` is the day it is played on and `tip` the
+// instant it starts, present only when the provider has decided one.
 function games() {
   return [
-    { id: 'g-timed', at: DAY + 'T19:00:00Z', status: 'scheduled',
-      home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:2',
-      home_points: null, away_points: null, venue: 'Crisler Center',
+    { id: 'ncaambb:cbbd:game:700', at: DAY, tip: DAY + 'T17:00:00Z',
+      status: 'final', home: TEAM_KEYS[0], away: TEAM_KEYS[1],
+      home_points: 78, away_points: 61, venue: 'Crisler Center',
       city: 'Ann Arbor', state: 'MI' },
-    { id: 'g-tbd', at: DAY, status: 'scheduled', time_tbd: 1,
-      home: 'ncaambb:cbbd:team:3', away: 'ncaambb:cbbd:team:1',
+    { id: 'ncaambb:cbbd:game:701', at: DAY, status: 'scheduled',
+      time_tbd: 1, home: TEAM_KEYS[0], away: TEAM_KEYS[2],
       home_points: null, away_points: null },
-    { id: 'g-final', at: DAY + 'T17:00:00Z', status: 'final',
-      home: 'ncaambb:cbbd:team:2', away: 'ncaambb:cbbd:team:3',
-      home_points: 78, away_points: 61 }
+    { id: 'ncaambb:cbbd:game:702', at: DAY, tip: DAY + 'T19:00:00Z',
+      status: 'scheduled', home: TEAM_KEYS[1], away: TEAM_KEYS[2],
+      home_points: null, away_points: null }
   ];
 }
 
 function board() {
   return [
     { team: 'ncaambb:cbbd:team:1', conference: 'Big Ten', rating: 2273.7,
-      rank: 1, wins: 30, losses: 4, d1_wins: 29, d1_losses: 4 },
+      rank: 1, wins: 30, losses: 4, d1_wins: 29, d1_losses: 4,
+      rated_games: 34 },
     { team: 'ncaambb:cbbd:team:2', conference: 'ACC', rating: 2211.3,
-      rank: 2, wins: 29, losses: 5, d1_wins: 29, d1_losses: 5 },
+      rank: 2, wins: 29, losses: 5, d1_wins: 29, d1_losses: 5,
+      rated_games: 34 },
     { team: 'ncaambb:cbbd:team:3', conference: 'Big 12', rating: 1788.4,
-      rank: 3, wins: 18, losses: 14, d1_wins: 17, d1_losses: 14 }
+      rank: 3, wins: 18, losses: 14, d1_wins: 17, d1_losses: 14,
+      rated_games: 32 }
   ];
 }
 
@@ -75,33 +102,181 @@ function manifest(overrides) {
   }, overrides || {});
 }
 
+// The people layer as the export writes it: an identity index, one roster per
+// club, and the player-game lines split sixteen ways on the player's own id.
+// Written with the same shapes src/ncaambb/export_people.py produces, and
+// tests/test_ncaambb_export_people.py pins those on the Python side.
+const SHARDS = 16;
+
+function peopleShard(id) {
+  return ((Number(id) % SHARDS) + SHARDS) % SHARDS;
+}
+
+const PLAYERS = {
+  101: { n: 'Hal Guard', h: 'Provo', s: 'UT' },
+  102: { n: 'Ivan Bench', h: 'Orem', s: 'UT' },
+  // Deliberately in another shard from 101, so a player page that loaded the
+  // wrong shard would find nothing.
+  205: { n: 'Otto Center', h: 'Durham', s: 'NC' }
+};
+
+// [team index, jersey, position, height, weight], per player.
+const MEMBERS = {
+  101: [[0, '3', 'G', 75, 185]],
+  102: [[0, '12', 'F', 79, 220]],
+  205: [[1, '21', 'C', 83, 250]]
+};
+
+// [game id, team index, minutes, points, starter, day, opponent index, site],
+// per player. The day and the opponent are IN the line because a career page
+// spans seasons and loads one schedule; see LINE_FIELDS in
+// src/ncaambb/export_people.py.
+const LINES = {
+  101: [[700, 0, 30, 22, 1, DAY, 1, 'H'],
+        [701, 0, 28, 14, 1, DAY, 2, 'H']],
+  // A line with no minutes recorded at all, which is not zero minutes.
+  102: [[700, 0, null, 0, 0, DAY, 1, 'H']],
+  205: [[700, 1, 33, 19, 1, DAY, 0, 'A']]
+};
+
+function writePeople(root, payload, overrides) {
+  const lines = (overrides && overrides.lines) || LINES;
+  const base = path.join(root, 'data', 'ncaambb', 'people');
+  fs.mkdirSync(path.join(base, '2026'), { recursive: true });
+  const indexText = 'window.NCAAMBB_PEOPLE=' + JSON.stringify({
+    v: 1, seasons: [2026], shards: SHARDS, players: PLAYERS }) + ';\n';
+  fs.writeFileSync(path.join(base, 'index.js'), indexText);
+
+  // All three, because a line names its OPPONENT by index into this list
+  // as well as its own club.
+  const teams = [TEAM_KEYS[0], TEAM_KEYS[1], TEAM_KEYS[2]];
+  const roster = {};
+  Object.keys(MEMBERS).forEach(id => {
+    MEMBERS[id].forEach(row => {
+      const own = lines[id] || [];
+      const minutes = own.reduce((total, line) => (
+        line[2] === null ? total : total + line[2]), null);
+      const points = own.reduce((total, line) => (
+        line[3] === null ? total : (total === null ? 0 : total) + line[3]), null);
+      roster[teams[row[0]]] = roster[teams[row[0]]] || [];
+      roster[teams[row[0]]].push([Number(id), row[1], row[2], own.length,
+        minutes, points]);
+    });
+  });
+  Object.values(roster).forEach(rows => rows.sort(
+    (a, b) => (b[5] || 0) - (a[5] || 0) || a[0] - b[0]));
+  const rosterText = 'window.NCAAMBB_ROSTERS=(window.NCAAMBB_ROSTERS||{});'
+    + 'window.NCAAMBB_ROSTERS[2026]=' + JSON.stringify({
+      v: 1, season: 2026,
+      fields: ['player', 'jersey', 'position', 'games', 'minutes', 'points'],
+      teams: roster }) + ';\n';
+  fs.writeFileSync(path.join(base, '2026', 'roster.js'), rosterText);
+
+  const shards = [];
+  for (let shard = 0; shard < SHARDS; shard += 1) {
+    const m = {};
+    const pl = {};
+    Object.keys(MEMBERS).forEach(id => {
+      if (peopleShard(id) === shard) m[id] = MEMBERS[id];
+    });
+    Object.keys(lines).forEach(id => {
+      if (peopleShard(id) === shard) pl[id] = lines[id];
+    });
+    const text = '(window.NCAAMBB_PLAYER_GAMES='
+      + 'window.NCAAMBB_PLAYER_GAMES||[]).push(' + JSON.stringify({
+        v: 1, season: 2026, shard, t: teams,
+        fields: ['game', 'team', 'minutes', 'points', 'starter'],
+        member_fields: ['team', 'jersey', 'position', 'height', 'weight'],
+        m, p: pl }) + ');\n';
+    const file = path.join(base, '2026', shard + '.js');
+    fs.writeFileSync(file, text);
+    shards.push(`people/2026/${shard}.js?v=` + stamp(text));
+  }
+  // Listed newest-numbered first, deliberately. The order of this list means
+  // nothing -- a reader looks up the shard it wants by NAME -- and writing it
+  // in shard order would let a page that matched by array position pass.
+  shards.reverse();
+  const seasons = { 2026: {
+    roster: 'people/2026/roster.js?v=' + stamp(rosterText), shards } };
+  // Extra season KEYS, pointing at the same files. The page takes the list of
+  // seasons it has people for from these keys, so this is how a test gets a
+  // multi-season export without writing six seasons of fixtures.
+  ((overrides && overrides.extraSeasons) || []).forEach(year => {
+    seasons[year] = seasons[2026];
+  });
+  // Which seasons the manifest CLAIMS people for, when that has to differ
+  // from the one whose files are on disk. The only way to describe a rated
+  // season with no player files, which is the ordinary state of the season
+  // being played: it is rated from its first game and its rosters are
+  // fetched last.
+  const claimed = overrides && overrides.peopleSeasonKeys;
+  if (claimed) {
+    const only = {};
+    claimed.forEach(year => { only[year] = seasons[2026]; });
+    Object.keys(seasons).forEach(key => { delete seasons[key]; });
+    Object.assign(seasons, only);
+  }
+  payload.files.people = {
+    version: (overrides && overrides.peopleVersion) || 2,
+    shards: SHARDS,
+    index: 'people/index.js?v=' + stamp(indexText),
+    seasons
+  };
+}
+
 function stamp(text) {
   return require('node:crypto').createHash('sha256')
     .update(text).digest('hex').slice(0, 10);
 }
 
 /* A whole export on disk, next to a copy of the page and its scripts. */
+// `overrides` goes into the manifest, EXCEPT `board`, which is the season
+// payload's rating board. It is pulled out here so a test can describe a
+// season in progress without a fourth positional argument.
 function site(overrides, schedule) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cbb-preview-'));
   const data = path.join(root, 'data', 'ncaambb', 'seasons');
   fs.mkdirSync(data, { recursive: true });
+  const rules = Object.assign({}, overrides || {});
+  const boardRows = rules.board || board();
+  // `board`, `lines`, `people` and `at` describe the EXPORT and the page's
+  // clock, not the manifest, so they are taken out before the rest is merged
+  // into it.
+  const people = { lines: rules.lines, people: rules.people,
+                   extraSeasons: rules.extraSeasons,
+                   peopleSeasonKeys: rules.peopleSeasonKeys,
+                   peopleVersion: rules.peopleVersion };
+  // `at` freezes the PAGE's clock, so a test can put it at a named moment.
+  // The export's age is measured against that same instant, or a page opened
+  // at a fixed moment would badge a fresh export as months stale and draw a
+  // refusal instead of a scoreboard.
+  const at = rules.at ? Date.parse(rules.at) : null;
+  delete rules.board;
+  delete rules.lines;
+  delete rules.extraSeasons;
+  delete rules.peopleSeasonKeys;
+  delete rules.peopleVersion;
+  delete rules.at;
+  overrides = rules;
   const seasonText = 'window.NCAAMBB_SEASONS=(window.NCAAMBB_SEASONS||{});'
     + 'window.NCAAMBB_SEASONS[2026]='
-    + JSON.stringify({ season: 2026, board: board(),
+    + JSON.stringify({ season: 2026, board: boardRows,
       games: schedule || games() }) + ';\n';
   const teamsText = 'window.NCAAMBB_TEAMS=' + JSON.stringify(teams()) + ';\n';
   fs.writeFileSync(path.join(data, '2026.js'), seasonText);
   fs.writeFileSync(path.join(root, 'data', 'ncaambb', 'teams.js'), teamsText);
   const payload = manifest(overrides);
+  if (at) payload.generated_at = new Date(at - 20 * 60000).toISOString();
   payload.seasons = { 2026: 'seasons/2026.js?v=' + stamp(seasonText) };
   payload.files = { teams: 'teams.js?v=' + stamp(teamsText) };
+  if (people.people !== false) writePeople(root, payload, people);
   fs.writeFileSync(path.join(root, 'data', 'ncaambb', 'manifest.json'),
     JSON.stringify(payload));
   for (const name of ['basketball.html', 'ncaambb_loader.js',
     'ncaambb_app.js']) {
     fs.copyFileSync(path.join(UI, name), path.join(root, name));
   }
-  return { root, manifest: payload };
+  return { root, manifest: payload, at };
 }
 
 async function open(overrides, schedule, hash) {
@@ -116,6 +291,20 @@ async function open(overrides, schedule, hash) {
     resources: 'usable',
     pretendToBeVisual: true,
     beforeParse(window) {
+      // A frozen clock, so a test can put the page at a named moment -- an
+      // evening after midnight UTC, say, which is the case that showed the
+      // page and the export disagreeing about which day it was.
+      if (built.at) {
+        const Real = window.Date;
+        const Frozen = function (...args) {
+          return args.length ? new Real(...args) : new Real(built.at);
+        };
+        Frozen.prototype = Real.prototype;
+        Frozen.now = () => built.at;
+        Frozen.parse = Real.parse;
+        Frozen.UTC = Real.UTC;
+        window.Date = Frozen;
+      }
       // jsdom has no fetch. The page's one fetch is its manifest, served
       // from the same directory the scripts are.
       window.fetch = function (url) {
@@ -130,10 +319,14 @@ async function open(overrides, schedule, hash) {
   });
   // Rendered means whichever panel this route asks for has content in it: a
   // page opened on Home draws cards and no board at all, so waiting for a
-  // board row there would call a correct page "never rendered".
+  // board row there would call a correct page "never rendered". Every panel a
+  // route can open on has to be listed here, People included -- leaving it
+  // out made every direct link to a player page fail in this helper, before
+  // the test that was meant to check the page had run a single assertion.
   await settle(dom, () => dom.window.document.querySelector(
     '#board tr, #refusal-list li, #cards .card, #team-body .directory, '
-    + '#team-body .clubhead, #team-body .empty'));
+    + '#team-body .clubhead, #team-body .empty, #people-body h2, '
+    + '#people-body p, #people-body .directory, #people-body tbody tr'));
   return dom;
 }
 
@@ -172,6 +365,101 @@ test('the board renders, ranked, with ratings as whole numbers', async () => {
   assert.equal(table.length, 3);
   assert.deepEqual(table[0], ['1', 'Michigan', 'Big Ten', '2274', '30-4']);
   assert.deepEqual(table[2].slice(0, 2), ['3', 'BYU']);
+  dom.window.close();
+});
+
+test('a club yet to play shows no record, and the table says how many',
+  async () => {
+    // Two days into 2026-27 the chain knew twelve teams. The other 353 carry
+    // last season's rating, and a ranked table that does not say so reads as
+    // results nobody has played for.
+    const early = board().map((row, index) => (
+      index === 0 ? row : Object.assign({}, row, {
+        rated_games: 0, wins: 0, losses: 0, d1_wins: 0, d1_losses: 0
+      })));
+    const dom = await open({ board: early });
+    const table = rows(dom);
+    assert.equal(table[0][4], '30-4', 'a club that has played shows its record');
+    assert.equal(table[1][4], '\u2014', 'and one that has not shows none');
+    assert.equal(table[1][3], '2211', 'its carried rating is still shown');
+    const note = dom.window.document.getElementById('board-note');
+    assert.equal(note.hidden, false);
+    assert.match(note.textContent,
+      /2 of these 3 clubs have no Division I result yet/);
+    dom.window.close();
+  });
+
+test('a record against a non-Division I opponent is still a record',
+  async () => {
+    // `records()` counts every opponent; the rating counts Division I games
+    // alone. So a club two days into November whose only final was against a
+    // Division II visitor is 1-0 with no rated game, and keying the record
+    // cell on rated_games put an em dash over it -- while the note under the
+    // table said it had not played, on the same screen as its own 1-0.
+    const early = board().map((row, index) => Object.assign({}, row, {
+      rated_games: 0, wins: index === 1 ? 1 : 0, losses: 0,
+      d1_wins: 0, d1_losses: 0
+    }));
+    const dom = await open({ board: early });
+    const table = rows(dom);
+    assert.equal(table[1][4], '1-0', 'the record it really has');
+    assert.equal(table[0][4], '\u2014', 'and none where there is none');
+    const note = dom.window.document.getElementById('board-note');
+    assert.match(note.textContent, /No club has a Division I result yet/);
+    assert.doesNotMatch(note.textContent, /has not played/);
+    dom.window.close();
+  });
+
+test('an evening reader gets tonight’s games, not tomorrow’s', async () => {
+  // 7:30pm on 14 November in New York is already 00:30 on the 15th in UTC, so
+  // for the whole of every evening the UTC date is tomorrow. The export
+  // states a game's day in Eastern time, and the page read today in UTC, so
+  // it opened on the NEXT day's schedule while the games on the strip were
+  // being played. The payload holds both days here, because a payload with
+  // only one would be clamped onto it whatever the page believed.
+  const dom = await open({ at: '2026-11-15T00:30:00Z' }, [
+    { id: 'ncaambb:cbbd:game:800', at: '2026-11-14',
+      tip: '2026-11-15T00:30:00Z', status: 'in_progress',
+      home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:2',
+      home_points: 31, away_points: 28 },
+    { id: 'ncaambb:cbbd:game:801', at: '2026-11-15',
+      tip: '2026-11-16T00:00:00Z', status: 'scheduled',
+      home: 'ncaambb:cbbd:team:2', away: 'ncaambb:cbbd:team:3',
+      home_points: null, away_points: null }
+  ]);
+  const doc = await scoreboard(dom);
+  // The strip labels only the real today, and the pressed day is the one the
+  // page opened on. Both have to be the 14th: the label alone would pass on a
+  // page that opened on the 15th and drew Today three buttons to the left.
+  const strip = [...doc.querySelectorAll('#days button')];
+  const marked = strip.filter(node => node.textContent === 'Today');
+  assert.equal(marked.length, 1, 'exactly one day is Today');
+  assert.equal(marked[0].getAttribute('aria-pressed'), 'true',
+    'and it is the day the page opened on');
+  assert.deepEqual(strip.filter(node => node.textContent !== 'Today')
+    .map(node => node.textContent).slice(3, 4), ['11-15'],
+    'the 15th is the day AFTER today on this strip');
+  assert.equal(doc.querySelectorAll('#cards .card').length, 1);
+  assert.match(doc.getElementById('cards').textContent, /Duke/,
+    'tonight’s game, which is the one being played');
+  dom.window.close();
+});
+
+test('a settled season says nothing about clubs yet to play', async () => {
+  const dom = await open();
+  const note = dom.window.document.getElementById('board-note');
+  assert.equal(note.hidden, true);
+  assert.equal(note.textContent, '');
+  dom.window.close();
+});
+
+test('a board where nobody has played says exactly that', async () => {
+  const none = board().map(row => Object.assign({}, row, {
+    rated_games: 0, wins: 0, losses: 0
+  }));
+  const dom = await open({ board: none });
+  const note = dom.window.document.getElementById('board-note');
+  assert.match(note.textContent, /No club has a Division I result yet/);
   dom.window.close();
 });
 
@@ -231,16 +519,16 @@ test('the Stats tab is present and disabled, not silently missing', async () => 
 
 test('every enabled tab has a panel, and clicking one never empties the page',
   async () => {
-    // Teams and People are real basketball sections -- the league holds
-    // both, and switchLeague is right to carry them -- but this page draws
-    // no People panel. It was enabled anyway, so clicking it hid every
-    // panel and left a blank page: the exact thing Stats is disabled to
-    // avoid. Teams has a panel now and is expected to be live.
+    // Teams and People are real basketball sections and both now have a
+    // panel. Stats still does not, and is disabled for exactly the reason
+    // People used to be: an enabled tab with no panel hid every panel and
+    // left a blank page.
     const dom = await open();
     const document = dom.window.document;
     const tabs = [...document.querySelectorAll('#tabs button')];
     const drawn = () => !document.getElementById('standings').hidden
       || !document.getElementById('scoreboard').hidden
+      || !document.getElementById('people').hidden
       || !document.getElementById('teams').hidden;
     assert.ok(drawn(), 'something is drawn to begin with');
     for (const button of tabs) {
@@ -248,7 +536,8 @@ test('every enabled tab has a panel, and clicking one never empties the page',
       button.click();
       assert.ok(drawn(), `${button.textContent} leaves the page empty`);
     }
-    for (const [name, live] of [['Teams', true], ['People', false]]) {
+    for (const [name, live] of [['Teams', true], ['People', true],
+                                ['Stats', false]]) {
       const button = tabs.find(b => b.textContent === name);
       assert.ok(button, `${name} is still listed rather than vanishing`);
       assert.equal(button.disabled, !live,
@@ -316,11 +605,25 @@ test('a one-team sample draws no board at all', async () => {
 });
 
 test('an unknown schema refuses, and says only that', async () => {
-  const dom = await open({ schema_version: 2 });
+  // 2 is now a schema this build reads, so the unknown one has to be a
+  // version nothing understands. A test pinned to the next version number
+  // starts asserting the opposite of its name the day that version ships.
+  const dom = await open({ schema_version: 99 });
   const list = dom.window.document.querySelectorAll('#refusal-list li');
   assert.equal(list.length, 1);
-  assert.match(list[0].textContent, /does not understand export schema 2/);
+  assert.match(list[0].textContent, /does not understand export schema 99/);
   dom.window.close();
+});
+
+test('both published schemas are read', async () => {
+  // An export already on disk is schema 1 until the next refresh rebuilds it,
+  // and the page has to work in between.
+  for (const version of [1, 2]) {
+    const dom = await open({ schema_version: version });
+    assert.equal(dom.window.document.querySelectorAll('#board tr').length, 3,
+      `schema ${version} draws the board`);
+    dom.window.close();
+  }
 });
 
 test('a stale export is still drawn, and badged red', async () => {
@@ -357,7 +660,9 @@ test('a day of games renders, undecided tip-offs last', async () => {
   assert.equal(cards.length, 3);
   const statuses = cards.map(card =>
     card.querySelector('.status').textContent);
-  assert.deepEqual(statuses, ['Final', 'Scheduled', 'Time TBD']);
+  // 19:00Z is 2pm where this file pins the timezone. A game whose time is
+  // undecided says so instead, and goes last.
+  assert.deepEqual(statuses, ['Final', '2:00 PM', 'Time TBD']);
   dom.window.close();
 });
 
@@ -373,12 +678,19 @@ test('a scheduled game shows no score, and a final one shows both', async () => 
   dom.window.close();
 });
 
-test('no card anywhere shows a clock', async () => {
-  // There is no basketball live feed. A 0:00 would read as a period expiring.
+test('no card anywhere shows a game clock', async () => {
+  // There is no basketball live feed. A 0:00 would read as a period
+  // expiring. A tip-off TIME is a different thing and is now shown, so this
+  // asserts the absence of a clock rather than of every colon.
   const dom = await open();
   const document = await scoreboard(dom);
-  assert.doesNotMatch(document.getElementById('cards').textContent,
-    /\d+:\d\d/);
+  const statuses = [...document.querySelectorAll('#cards .status')]
+    .map(node => node.textContent);
+  assert.ok(statuses.includes('2:00 PM'), 'a tip-off time is shown');
+  for (const status of statuses) {
+    assert.doesNotMatch(status, /0:00/);
+    assert.doesNotMatch(status, /\d(st|nd|rd|th)|OT|Half/);
+  }
   dom.window.close();
 });
 
@@ -890,29 +1202,31 @@ test('a link to a club opens its page cold', async () => {
 test('a club page lists its season, with a neutral game called neither',
   async () => {
     const slate = [
-      { id: 'g-home', at: DAY + 'T19:00:00Z', status: 'final',
+      { id: 'g-home', at: DAY, tip: DAY + 'T19:00:00Z', status: 'final',
         home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:2',
         home_points: 70, away_points: 60 },
-      { id: 'g-away', at: daysFromToday(1) + 'T19:00:00Z', status: 'final',
+      { id: 'g-away', at: daysFromToday(1), tip: daysFromToday(1) + 'T19:00:00Z', status: 'final',
         home: 'ncaambb:cbbd:team:3', away: 'ncaambb:cbbd:team:1',
         home_points: 80, away_points: 71 },
-      { id: 'g-neutral', at: daysFromToday(2) + 'T19:00:00Z', status: 'final',
+      { id: 'g-neutral', at: daysFromToday(2), tip: daysFromToday(2) + 'T19:00:00Z', status: 'final',
         neutral: 1, home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:3',
         home_points: 66, away_points: 64 },
-      { id: 'g-later', at: daysFromToday(3) + 'T19:00:00Z',
+      { id: 'g-later', at: daysFromToday(3), tip: daysFromToday(3) + 'T19:00:00Z',
         status: 'scheduled', home: 'ncaambb:cbbd:team:1',
         away: 'ncaambb:cbbd:team:2', home_points: null, away_points: null }
     ];
     const dom = await open(undefined, slate,
       '#league=ncaambb&section=teams&team=1');
     const doc = dom.window.document;
-    await settle(dom, () => doc.querySelector('#team-body tbody tr'));
-    const table = [...doc.querySelectorAll('#team-body tbody tr')]
+    await settle(dom, () => doc.querySelector('#team-body table:not(.roster) tbody tr'));
+    const table = [...doc.querySelectorAll('#team-body table:not(.roster) tbody tr')]
       .map(tr => [...tr.children].map(td => td.textContent));
     assert.deepEqual(table.map(row => row[1]),
       ['vs Duke', '@ BYU', 'N BYU', 'vs Duke']);
+    // A game still to be played says when, not "Scheduled": 19:00Z is 2pm
+    // where this file pins the timezone.
     assert.deepEqual(table.map(row => row[2]),
-      ['W 70\u201360', 'L 71\u201380', 'W 66\u201364', 'Scheduled']);
+      ['W 70\u201360', 'L 71\u201380', 'W 66\u201364', '2:00 PM']);
     dom.window.close();
   });
 
@@ -920,7 +1234,7 @@ test('an opponent on a club page opens that club', async () => {
   const dom = await open(undefined, undefined,
     '#league=ncaambb&section=teams&team=1');
   const doc = dom.window.document;
-  await settle(dom, () => doc.querySelector('#team-body tbody tr'));
+  await settle(dom, () => doc.querySelector('#team-body table:not(.roster) tbody tr'));
   clubLink(dom, 'Duke').click();
   await settle(dom, () => /Duke/.test(
     doc.querySelector('#team-body .clubhead').textContent));
@@ -960,15 +1274,15 @@ test('a level score is reported without a verdict', async () => {
   // reports as level is bad data. Calling it a loss would be the page
   // inventing a result; the score is shown and the verdict withheld.
   const slate = [
-    { id: 'g-level', at: DAY + 'T19:00:00Z', status: 'final',
+    { id: 'g-level', at: DAY, tip: DAY + 'T19:00:00Z', status: 'final',
       home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:2',
       home_points: 70, away_points: 70 }
   ];
   const dom = await open(undefined, slate,
     '#league=ncaambb&section=teams&team=1');
   const doc = dom.window.document;
-  await settle(dom, () => doc.querySelector('#team-body tbody tr'));
-  const cells = [...doc.querySelectorAll('#team-body tbody tr td')]
+  await settle(dom, () => doc.querySelector('#team-body table:not(.roster) tbody tr'));
+  const cells = [...doc.querySelectorAll('#team-body table:not(.roster) tbody tr td')]
     .map(td => td.textContent);
   assert.equal(cells[2], '70\u201370');
   dom.window.close();
@@ -981,7 +1295,8 @@ test('a club\u2019s season is ordered by date, not by whether a tip-off is set',
     // it. Over a season that put a November game still to be scheduled
     // after a December game that has a time.
     const slate = [
-      { id: 'g-dec', at: '2025-12-01T19:00:00Z', status: 'scheduled',
+      { id: 'g-dec', at: '2025-12-01', tip: '2025-12-01T19:00:00Z',
+        status: 'scheduled',
         home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:2',
         home_points: null, away_points: null },
       { id: 'g-nov-tbd', at: '2025-11-01', time_tbd: 1, status: 'scheduled',
@@ -990,24 +1305,26 @@ test('a club\u2019s season is ordered by date, not by whether a tip-off is set',
       // The ids sort the OTHER way from the tip-offs on purpose: with the
       // early game named 'a' the id fallback produces the right order by
       // itself, and the test passes with the tip-off comparison deleted.
-      { id: 'g-nov-a', at: '2025-11-01T23:00:00Z', status: 'final',
+      { id: 'g-nov-a', at: '2025-11-01', tip: '2025-11-01T23:00:00Z',
+        status: 'final',
         home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:2',
         home_points: 81, away_points: 70 },
-      { id: 'g-nov-z', at: '2025-11-01T17:00:00Z', status: 'final',
+      { id: 'g-nov-z', at: '2025-11-01', tip: '2025-11-01T17:00:00Z',
+        status: 'final',
         home: 'ncaambb:cbbd:team:1', away: 'ncaambb:cbbd:team:3',
         home_points: 77, away_points: 60 }
     ];
     const dom = await open(undefined, slate,
       '#league=ncaambb&section=teams&team=1');
     const doc = dom.window.document;
-    await settle(dom, () => doc.querySelector('#team-body tbody tr'));
-    const dates = [...doc.querySelectorAll('#team-body tbody tr')]
+    await settle(dom, () => doc.querySelector('#team-body table:not(.roster) tbody tr'));
+    const dates = [...doc.querySelectorAll('#team-body table:not(.roster) tbody tr')]
       .map(tr => tr.children[0].textContent);
     assert.deepEqual(dates,
       ['2025-11-01', '2025-11-01', '2025-11-01', '2025-12-01']);
     // Within the one day, the known tip-offs come in order and the
     // undecided one is last -- which is the rule the scoreboard has.
-    const against = [...doc.querySelectorAll('#team-body tbody tr')]
+    const against = [...doc.querySelectorAll('#team-body table:not(.roster) tbody tr')]
       .map(tr => tr.children[1].textContent);
     assert.deepEqual(against, ['vs BYU', 'vs Duke', 'vs BYU', 'vs Duke']);
     dom.window.close();
@@ -1093,5 +1410,301 @@ test('typing while a club is open replaces it with the results', async () => {
   assert.equal(doc.querySelectorAll('#team-body .clubhead').length, 0,
     'the club stayed drawn over its own search results');
   assert.equal(dom.window.location.hash, '#league=ncaambb&section=teams');
+  dom.window.close();
+});
+
+// --- people: the tab, a player's career, a club's roster -------------------
+//
+// The data layer for these was loaded nationally by B02 and never published,
+// so the People tab was drawn disabled from the day the league launched.
+// tests/test_ncaambb_export_people.py pins the files these read.
+
+function peopleTab(dom, hash) {
+  const doc = dom.window.document;
+  const button = [...doc.querySelectorAll('#tabs button')]
+    .find(b => b.textContent === 'People');
+  button.click();
+  return doc;
+}
+
+test('the People tab is enabled only when the export carries people',
+  async () => {
+    const withPeople = await open();
+    const enabled = [...withPeople.window.document
+      .querySelectorAll('#tabs button')].find(b => b.textContent === 'People');
+    assert.equal(enabled.disabled, false);
+    withPeople.window.close();
+
+    // An export with no people at all -- which is every basketball export
+    // published before this change. The tab must say so, not draw an empty
+    // panel and not vanish.
+    const without = await open({ people: false });
+    const doc = peopleTab(without, '');
+    await settle(without, () => doc.getElementById('people-body').textContent);
+    assert.match(doc.getElementById('people-body').textContent,
+      /no player data yet/);
+    without.window.close();
+  });
+
+test('a people payload this page cannot read counts as no people',
+  async () => {
+    // The payload's shape is versioned apart from the manifest's. Version 1
+    // carried no day and no opponent on a line, so decoding it with this
+    // page's reader would draw a career log of em dashes and present it as
+    // the player's record. Better to say there is no player data.
+    const dom = await open({ peopleVersion: 1 });
+    const doc = peopleTab(dom, '');
+    await settle(dom, () => doc.getElementById('people-body').textContent);
+    assert.match(doc.getElementById('people-body').textContent,
+      /no player data yet/);
+    // And nothing is half-drawn: no leaders board, no search box.
+    assert.equal(doc.querySelector('#people-body tbody tr'), null);
+    assert.equal(doc.getElementById('player-search'), null);
+    dom.window.close();
+  });
+
+test('a run of seasons is named rather than listed with "and"', async () => {
+  // Six seasons read "2021-22 and 2022-23 and 2023-24 and ..." on the real
+  // export. One season and two are still listed, which is why this needs
+  // three to say anything at all.
+  const dom = await open({ extraSeasons: [2024, 2025] });
+  const doc = peopleTab(dom, '');
+  await settle(dom, () => doc.querySelector('#people-body .filters'));
+  assert.match(doc.getElementById('people-body').textContent,
+    /Players are loaded for 2023-24 through 2025-26\./);
+  dom.window.close();
+});
+
+test('the People tab opens on the season’s leading scorers', async () => {
+  const dom = await open();
+  const doc = peopleTab(dom, '');
+  await settle(dom, () => doc.querySelector('#people-body tbody tr'));
+  const table = [...doc.querySelectorAll('#people-body tbody tr')]
+    .map(tr => [...tr.children].map(td => td.textContent));
+  // 101 scored 36 over two games, 205 scored 19 over one. Ordered by total
+  // points: a per-game board this early in a season ranks players who have
+  // played once.
+  assert.deepEqual(table.map(row => row[1]),
+    ['Hal Guard', 'Otto Center', 'Ivan Bench']);
+  assert.deepEqual(table[0].slice(3), ['2', '36', '18']);
+  dom.window.close();
+});
+
+test('a player with no recorded points is still listed, with no average',
+  async () => {
+    const dom = await open();
+    const doc = peopleTab(dom, '');
+    await settle(dom, () => doc.querySelector('#people-body tbody tr'));
+    const row = [...doc.querySelectorAll('#people-body tbody tr')]
+      .map(tr => [...tr.children].map(td => td.textContent))
+      .find(cells => cells[1] === 'Ivan Bench');
+    // One game, no minutes recorded at all, nil points. The minutes column
+    // is an em dash and the nil is a measurement.
+    assert.equal(row[3], '1');
+    assert.equal(row[4], '0');
+    dom.window.close();
+  });
+
+test('searching finds a player by name', async () => {
+  const dom = await open();
+  const doc = peopleTab(dom, '');
+  await settle(dom, () => doc.getElementById('player-search'));
+  const box = doc.getElementById('player-search');
+  box.value = 'center';
+  box.dispatchEvent(new dom.window.Event('input'));
+  await settle(dom, () => doc.getElementById('people-body')
+    .textContent.includes('matches'));
+  const names = [...doc.querySelectorAll('#people-body .directory li button')]
+    .map(node => node.textContent);
+  assert.deepEqual(names, ['Otto Center']);
+  box.value = 'nobody at all';
+  box.dispatchEvent(new dom.window.Event('input'));
+  await settle(dom, () => doc.getElementById('people-body')
+    .textContent.includes('No player matches'));
+  dom.window.close();
+});
+
+test('a player page lists every game of his season', async () => {
+  const dom = await open(undefined, undefined,
+    '#league=ncaambb&section=people&player=101');
+  const doc = dom.window.document;
+  await settle(dom, () => doc.querySelector('#people-body tbody tr'));
+  assert.match(doc.querySelector('#people-body h2').textContent, /Hal Guard/);
+  assert.match(doc.querySelector('#people-body .sub').textContent,
+    /G · #3 · Provo, UT/);
+  const table = [...doc.querySelectorAll('#people-body tbody tr')]
+    .map(tr => [...tr.children].map(td => td.textContent));
+  assert.equal(table.length, 2, 'both games, and only his');
+  assert.deepEqual(table[0].slice(2), ['30', '22']);
+  dom.window.close();
+});
+
+test('a player page lists his games oldest first, not by game id', async () => {
+  // The archive's game ids do not run in date order -- CFBD numbers some
+  // postseason games as though they were week one, which zeroed 1,353
+  // football season Elo changes before anyone noticed -- so a career log
+  // ordered by id puts games in the wrong order. Here game 703 was played
+  // YESTERDAY and carries the higher id.
+  const yesterday = daysFromToday(-1);
+  const dom = await open({
+    lines: { 101: [[700, 0, 30, 22, 1, DAY, 1, 'H'],
+                   [703, 0, 24, 9, 0, yesterday, 1, 'H']] }
+  }, [
+    { id: 'ncaambb:cbbd:game:700', at: DAY, tip: DAY + 'T17:00:00Z',
+      status: 'final', home: TEAM_KEYS[0], away: TEAM_KEYS[1],
+      home_points: 78, away_points: 61 },
+    { id: 'ncaambb:cbbd:game:703', at: yesterday,
+      tip: yesterday + 'T17:00:00Z', status: 'final', home: TEAM_KEYS[0],
+      away: TEAM_KEYS[2], home_points: 70, away_points: 66 }
+  ], '#league=ncaambb&section=people&player=101');
+  const doc = dom.window.document;
+  await settle(dom, () => doc.querySelector('#people-body tbody tr'));
+  const table = [...doc.querySelectorAll('#people-body tbody tr')]
+    .map(tr => [...tr.children].map(td => td.textContent));
+  assert.deepEqual(table.map(row => row[2]), ['24', '30'],
+    'yesterday’s game first, though its id is higher');
+  dom.window.close();
+});
+
+test('a player page says who he played and whether it was at home',
+  async () => {
+    const dom = await open(undefined, undefined,
+      '#league=ncaambb&section=people&player=101');
+    const doc = dom.window.document;
+    await settle(dom, () => doc.querySelector('#people-body tbody tr'));
+    const against = [...doc.querySelectorAll('#people-body tbody tr')]
+      .map(tr => tr.children[1].textContent);
+    // Game 700 is Michigan at home to Duke, 701 Michigan at home to BYU.
+    assert.deepEqual(against, ['vs Duke', 'vs BYU']);
+    dom.window.close();
+  });
+
+test('a season whose schedule is not loaded is still dated', async () => {
+  // THE BUG THIS CARRIES ITS OWN DATE FOR. A career spans four or five
+  // seasons and the page loads one schedule, so dating a game by looking it
+  // up in the season payload dated one season and left the rest a table of
+  // em dashes. Found in Chromium against the real export, not here.
+  //
+  // Game 650 is in no loaded season payload at all, which is what every game
+  // of a previous season looks like to this page.
+  const dom = await open({
+    lines: { 101: [[650, 0, 26, 18, 1, '2025-12-19', 1, 'A']] }
+  }, undefined, '#league=ncaambb&section=people&player=101');
+  const doc = dom.window.document;
+  await settle(dom, () => doc.querySelector('#people-body tbody tr'));
+  const row = [...doc.querySelector('#people-body tbody tr').children]
+    .map(td => td.textContent);
+  assert.equal(row[0], '2025-12-19', 'the line’s own day');
+  assert.equal(row[1], '@ Duke', 'and its own opponent, away');
+  dom.window.close();
+});
+
+test('a player page sums only what was measured', async () => {
+  const dom = await open(undefined, undefined,
+    '#league=ncaambb&section=people&player=102');
+  const doc = dom.window.document;
+  await settle(dom, () => doc.querySelector('#people-body tbody tr'));
+  const line = doc.querySelector('#people-body p.empty').textContent;
+  assert.match(line, /1 game/);
+  assert.match(line, /0 points/);
+  // Nobody recorded his minutes, so no minute total is claimed.
+  assert.doesNotMatch(line, /minutes/);
+  assert.equal(doc.querySelector('#people-body tbody tr').children[2]
+    .textContent, '—');
+  dom.window.close();
+});
+
+test('a player id nobody published says so rather than drawing a blank',
+  async () => {
+    const dom = await open(undefined, undefined,
+      '#league=ncaambb&section=people&player=999999');
+    const doc = dom.window.document;
+    await settle(dom, () => doc.getElementById('people-body')
+      .textContent.includes('No player'));
+    assert.match(doc.getElementById('people-body').textContent,
+      /No player in this export has that id/);
+    dom.window.close();
+  });
+
+test('a player page is a link: the URL names him and Back leaves him',
+  async () => {
+    const dom = await open();
+    const doc = peopleTab(dom, '');
+    await settle(dom, () => doc.querySelector('#people-body tbody tr'));
+    doc.querySelector('#people-body tbody tr button').click();
+    await settle(dom, () => doc.querySelector('#people-body h2'));
+    assert.match(dom.window.location.hash, /player=101/);
+    assert.match(dom.window.location.hash, /section=people/);
+    doc.querySelector('#people-body .back button').click();
+    await settle(dom, () => doc.getElementById('player-search'));
+    assert.doesNotMatch(dom.window.location.hash, /player=/);
+    dom.window.close();
+  });
+
+test('leaving People takes the player out of the URL with it', async () => {
+  const dom = await open(undefined, undefined,
+    '#league=ncaambb&section=people&player=101');
+  const doc = dom.window.document;
+  await settle(dom, () => doc.querySelector('#people-body h2'));
+  [...doc.querySelectorAll('#tabs button')]
+    .find(b => b.textContent === 'Standings').click();
+  assert.doesNotMatch(dom.window.location.hash, /player=/);
+  dom.window.close();
+});
+
+test('a club page carries its roster under its season', async () => {
+  const dom = await open(undefined, undefined,
+    '#league=ncaambb&section=teams&team=1');
+  const doc = dom.window.document;
+  await settle(dom, () => doc.querySelector('#team-body table.roster tbody tr'));
+  const table = [...doc.querySelectorAll('#team-body table.roster tbody tr')]
+    .map(tr => [...tr.children].map(td => td.textContent));
+  assert.deepEqual(table.map(row => row[0]), ['#3 Hal Guard',
+                                              '#12 Ivan Bench']);
+  assert.deepEqual(table[0].slice(1), ['G', '2', '58', '36', '18']);
+  dom.window.close();
+});
+
+test('a roster name opens that player’s page', async () => {
+  const dom = await open(undefined, undefined,
+    '#league=ncaambb&section=teams&team=1');
+  const doc = dom.window.document;
+  await settle(dom, () => doc.querySelector('#team-body table.roster tbody tr'));
+  doc.querySelector('#team-body table.roster tbody tr button').click();
+  await settle(dom, () => doc.querySelector('#people-body h2'));
+  assert.match(dom.window.location.hash, /section=people/);
+  assert.match(doc.querySelector('#people-body h2').textContent, /Hal Guard/);
+  dom.window.close();
+});
+
+test('a club page in a season with no people shows no roster at all',
+  async () => {
+    const dom = await open({ people: false }, undefined,
+      '#league=ncaambb&section=teams&team=1');
+    const doc = dom.window.document;
+    await settle(dom, () => doc.querySelector('#team-body tbody tr'));
+    assert.equal(doc.querySelector('#team-body table.roster'), null);
+    assert.doesNotMatch(doc.getElementById('team-body').textContent,
+      /Roster/);
+    dom.window.close();
+  });
+
+test('a club in the season being played says where its squad is', async () => {
+  // Player files cover the most recent few seasons and the season in
+  // progress is fetched last, so the season every link lands on is routinely
+  // the one with no roster. Drawing nothing there left a reader with a
+  // schedule, no squad, and no hint that a squad exists anywhere.
+  // The rated season on disk is 2026; the manifest claims people for 2025
+  // only, which is a rated season with no player files.
+  // TWO claimed seasons, so "the most recent" is a different answer from
+  // "the first one listed" -- with one, naming either passes.
+  const dom = await open({ peopleSeasonKeys: [2024, 2025] }, undefined,
+    '#league=ncaambb&section=teams&team=1');
+  const doc = dom.window.document;
+  await settle(dom, () => doc.querySelector('#team-body .clubhead'));
+  const text = doc.querySelector('#team-body').textContent;
+  assert.match(text, /Players are not published for 2025-26/);
+  assert.match(text, /most recent squad on record is 2024-25/);
+  assert.equal(doc.querySelector('#team-body table.roster'), null);
   dom.window.close();
 });

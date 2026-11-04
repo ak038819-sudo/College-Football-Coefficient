@@ -59,8 +59,12 @@ def test_the_model_is_never_refitted_on_a_schedule():
 def test_the_export_is_built_somewhere_other_than_the_published_directory():
     """Building straight into ui/data/ncaambb would destroy the live export
     before knowing whether the new one is fit to publish."""
+    # Matched on the invocation, not on the module name: `src.ncaambb.export`
+    # is a prefix of `src.ncaambb.export_people`, which the seasons step
+    # imports, and a substring match picked that step instead and passed
+    # vacuously.
     build = next(step for step in steps()
-                 if 'src.ncaambb.export' in step.get('run', ''))
+                 if '-m src.ncaambb.export ' in step.get('run', ''))
     assert '--out' in build['run']
     assert 'ui/data/ncaambb' not in build['run']
 
@@ -246,6 +250,15 @@ def ingest_step():
                 if 'src.ncaambb.ingest' in step.get('run', ''))
 
 
+def people_step():
+    """The SECOND ingestion. Matched on the absence of --schedule-only rather
+    than on its position, so reordering the file cannot silently point these
+    assertions at the schedule step."""
+    return next(step for step in steps()
+                if 'src.ncaambb.ingest' in step.get('run', '')
+                and '--schedule-only' not in step['run'])
+
+
 def uncommented(text):
     return '\n'.join(line for line in text.splitlines()
                       if not line.strip().startswith('#'))
@@ -266,6 +279,102 @@ def test_the_ingestion_asks_again_about_the_season_being_played():
     step = ingest_step()
     assert '--refetch-seasons' in uncommented(step['run'])
     assert step['env'].get('ACTIVE') == '${{ steps.seasons.outputs.active }}'
+
+
+def test_the_refresh_ingests_people_as_well_as_schedules():
+    """Rosters, identities and box scores, or the People tab has no files and
+    every published export says the league carries no player data."""
+    step = people_step()
+    run = uncommented(step['run'])
+    assert '--seasons "$PEOPLE"' in run
+    assert step['env'].get('PEOPLE') == '${{ steps.seasons.outputs.people }}'
+    assert step['env'].get('CBBD_API_KEY') == '${{ secrets.CBBD_API_KEY }}'
+    assert 'set -o pipefail' in run, 'tee reports its own status'
+    # A run that asks for no people season must not invoke the ingestion with
+    # an empty --seasons, which it refuses.
+    assert 'if [ -z "$PEOPLE" ]' in run
+
+
+def test_the_people_ingestion_does_not_refetch_by_default():
+    """The step before it has just refreshed the active season's schedule
+    into the cache, and every settled season is banked. Refetching here by
+    default would pay for all of that a second time, every day.
+
+    It CAN be asked to, for one season at a time, because a season cached by
+    a partly refused run can only be repaired that way -- but the flag has to
+    come from an input that is blank on a schedule, never from the command
+    itself."""
+    run = uncommented(people_step()['run'])
+    assert '--refetch ' not in run, 'a blanket refetch is never right here'
+    # The flag appears only inside the guard, and the guard is on an input.
+    assert 'if [ -n "$REFETCH_PEOPLE" ]' in run
+    assert run.index('if [ -n "$REFETCH_PEOPLE" ]') \
+        < run.index('--refetch-seasons'), 'guarded, not unconditional'
+
+
+def test_a_people_refetch_is_asked_for_and_never_assumed():
+    step = people_step()
+    inputs = workflow()[True]['workflow_dispatch']['inputs']
+    assert inputs['refetch_people']['default'] == '', (
+        'a scheduled run must reuse every cached season')
+    assert step['env']['REFETCH_PEOPLE'] == '${{ inputs.refetch_people }}'
+    # `inputs.x` is empty on a schedule, which is what makes the guard above
+    # the whole safety of this. NOT compared against null: GitHub coerces
+    # both sides of == to a number, so `== null` also matches '' and false.
+    # See test_publish_false_actually_means_false.
+    assert 'inputs.refetch_people == null' not in REFRESH.read_text()
+
+
+def test_the_people_seasons_come_from_the_exporter():
+    """A season is ~127,500 player-game lines and the export publishes only
+    the most recent few, so fetching people for a season the export will not
+    carry spends quota on data no page can read. The number must come from
+    the exporter, not from a copy of it written into a workflow where no test
+    can reach it."""
+    step = next(s for s in steps() if s.get('id') == 'seasons')
+    assert 'from src.ncaambb.export_people import recent' in step['run']
+    assert 'people=' in step['run']
+
+
+@pytest.mark.parametrize('path', [
+    '.github/workflows/cbb-refresh.yml',
+    '.github/workflows/nfl-refresh.yml',
+])
+def test_publish_false_actually_means_false(path):
+    """MEASURED on cbb run 41671313813, dispatched with publish: false, which
+    replaced the published export anyway.
+
+    `inputs.publish == null && 'true' || inputs.publish` reads as "default to
+    true when no input was given", and it is not: GitHub's `==` coerces both
+    sides to a number, so `false == null` is `0 == 0`, which is TRUE. An
+    explicit false was therefore indistinguishable from no input at all, and
+    the one thing the input exists to prevent was the one thing it could not
+    prevent. The event name is the real question, because only a dispatch
+    carries inputs."""
+    # Read from the PARSED workflow, not the file's text: the comment above
+    # the expression names the broken form, and a text search would find it
+    # there and call the fix the bug.
+    parsed = yaml.safe_load((ROOT / path).read_text(encoding='utf-8'))
+    allowed = [step['env']['ALLOWED']
+               for job in parsed['jobs'].values()
+               for step in job.get('steps', [])
+               if 'ALLOWED' in (step.get('env') or {})]
+    assert allowed, 'no step decides whether it may publish'
+    for expression in allowed:
+        assert 'inputs.publish == null' not in expression
+        assert "github.event_name != 'workflow_dispatch'" in expression
+
+
+def test_the_active_seasons_people_cache_is_not_committed():
+    """Its box scores change every night, so banking them writes a
+    multi-megabyte blob into the repository every day for a file the next run
+    refetches anyway. The season's SCHEDULE cache is still committed."""
+    commit = next(step for step in steps() if 'git commit' in step.get('run', ''))
+    run = uncommented(commit['run'])
+    assert 'git reset -q -- "data/ncaambb/raw/$ACTIVE/rosters.json.gz"' in run
+    assert '"data/ncaambb/raw/$ACTIVE/box_scores.json.gz"' in run
+    assert 'games.json.gz' not in run, 'the schedule cache is still banked'
+    assert commit['env'].get('ACTIVE') == '${{ steps.seasons.outputs.active }}'
 
 
 def test_the_active_season_comes_from_the_shared_helper_too():
@@ -305,6 +414,16 @@ def test_the_active_season_is_named_only_when_the_run_fetches_it():
         assert one['active'] == '', 'no active season is claimed'
         pair = run(f'2015,{current_season(now)}')
         assert pair['active'] == str(current_season(now))
+        # And the people list is the exporter's own window over what was
+        # asked for, not everything and not the first few.
+        from src.ncaambb.export_people import recent
+        assert every['people'] == ','.join(
+            str(year) for year in recent(
+                [int(part) for part in every['list'].split(',')]))
+        assert every['people'] != every['list'], (
+            'people cover fewer seasons than ratings')
+        assert pair['people'] == f'2015,{current_season(now)}', (
+            'a two-season run is inside the window, so both get people')
     finally:
         os.environ.pop('REQUESTED', None)
 
@@ -320,3 +439,44 @@ def test_the_replay_needs_no_fit_report_on_a_fresh_runner():
     from src.ncaambb.build_ratings import load_config, report_from_config
     report = report_from_config(load_config())
     assert report['holdout_seasons'] and report['holdout']['games'] > 0
+
+
+# --- a busy roster feed must not stop the ratings ---------------------------
+
+def test_a_failed_people_ingestion_does_not_stop_the_refresh():
+    """MEASURED on run 41675786786: the provider refused 2026-27's
+    /games/players with 429, the people step failed, and the replay, the
+    export and the publish were all skipped -- so the scoreboard and the
+    ratings stopped refreshing because a roster feed was busy. Before the
+    people step existed no provider failure could do that, so making it fatal
+    was a regression in what the refresh guarantees."""
+    step = people_step()
+    assert step.get('continue-on-error') is True
+    assert step.get('id') == 'people', 'the report below is keyed on this id'
+    names = [s.get('name', '') for s in steps()]
+    assert names.index(step['name']) < names.index(
+        'Replay the archive with the committed model'), (
+        'the replay has to run after it, not instead of it')
+
+
+def test_a_failed_people_ingestion_is_reported_rather_than_swallowed():
+    """continue-on-error turns a red step green in the run's summary, so
+    without a step of its own a run that fetched no people at all looks
+    exactly like one that fetched them."""
+    reports = [s for s in steps()
+               if "steps.people.outcome != 'success'" in str(s.get('if', ''))]
+    assert len(reports) == 1, 'exactly one step reports it'
+    run = reports[0]['run']
+    assert '::warning::' in run, 'the run log has to carry it'
+    assert 'GITHUB_STEP_SUMMARY' in run, 'and so does the summary a person reads'
+
+
+def test_the_health_light_is_lit_only_for_the_branch_the_site_publishes():
+    """A dispatch on a feature branch is a rehearsal. Lighting the production
+    health light for one leaves a red light over a working pipeline, and a
+    green run closes only one issue, so the leftover has to be closed by
+    hand."""
+    jobs = workflow()['jobs']
+    for job in ('alert-failure', 'alert-recovery'):
+        condition = ' '.join(jobs[job]['if'].split())
+        assert "github.ref == 'refs/heads/main'" in condition, job

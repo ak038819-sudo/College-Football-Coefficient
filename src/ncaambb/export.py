@@ -23,6 +23,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+from . import export_people
 from .identity import current_season
 from .publish_gate import SCHEMA_VERSION, check, render
 from .store import connect
@@ -98,19 +99,55 @@ def teams(connection):
     ) for row in rows}
 
 
+def data_as_of(connection, season):
+    """When the provider last answered about this season's schedule.
+
+    NOT when the export was built. A run that reloads a committed cache
+    because the provider refused builds a perfectly good export over data
+    that may be weeks old, and `generated_at` cannot say so: it is the build
+    time and it is always now. A reader's scoreboard depends on the season
+    being played, so that season's schedule snapshot is the one that decides
+    how fresh the page may claim to be.
+
+    None when no snapshot records it, which is true of any cache written
+    before the ingestion began recording it. An unknown age is reported as
+    unknown; the page then says 'last updated: unknown' and marks it stale,
+    which is the honest answer and the safe one.
+    """
+    row = connection.execute(
+        'SELECT data_fetched_at FROM snapshot'
+        " WHERE kind = 'schedule' AND season = ?"
+        # Belt and braces: DESC already sorts SQLite's NULLs last, and a
+        # season whose every row is NULL returns NULL either way. The clause
+        # states the intent so a later change to the ordering cannot start
+        # returning an unrecorded row as the answer.
+        ' AND data_fetched_at IS NOT NULL'
+        ' ORDER BY data_fetched_at DESC LIMIT 1', (season,)).fetchone()
+    return row['data_fetched_at'] if row else None
+
+
 def season_games(connection, season):
     rows = connection.execute(
         'SELECT game_key, provider_id, season_type, tournament, status,'
-        '       start_date_utc, start_time_tbd, neutral_site, conference_game,'
+        '       start_date_utc, playing_date, start_at_utc, start_time_tbd,'
+        '       neutral_site, conference_game,'
         '       home_team_key, away_team_key, home_points, away_points,'
         '       venue, city, state, rateable, division_one'
-        '  FROM game WHERE season = ? ORDER BY start_date_utc, game_key',
+        '  FROM game WHERE season = ?'
+        # Ordered by the instant, so two games on one night come out in the
+        # order they were played rather than in the order of their keys.
+        ' ORDER BY COALESCE(start_at_utc, playing_date, start_date_utc),'
+        ' game_key',
         (season,)).fetchall()
     out = []
     for row in rows:
         game = dict(
             id=row['game_key'],
-            at=row['start_date_utc'],
+            # The night it is played, not the UTC date. A game with no
+            # Eastern date stored is one loaded before schema 3; falling back
+            # to the UTC date keeps it on the scoreboard rather than dropping
+            # it, and a reload puts it right.
+            at=row['playing_date'] or row['start_date_utc'],
             status=row['status'],
             home=row['home_team_key'],
             away=row['away_team_key'],
@@ -126,6 +163,11 @@ def season_games(connection, season):
             game['neutral'] = 1
         if row['start_time_tbd']:
             game['time_tbd'] = 1
+        # The tip-off time, as an instant, only when one has been decided. A
+        # reader's browser turns it into their own local time; the export does
+        # not pick a timezone on their behalf.
+        if row['start_at_utc'] and not row['start_time_tbd']:
+            game['tip'] = row['start_at_utc']
         if row['conference_game']:
             game['conference_game'] = 1
         if row['tournament']:
@@ -243,7 +285,8 @@ def coverage_row(connection, season, games, rows, *, complete=True):
     )
 
 
-def build(connection, *, model_name=None, seasons=None, now=None):
+def build(connection, *, model_name=None, seasons=None, now=None,
+          people_seasons=None):
     """Everything an export writes, and the manifest that describes it.
 
     Built whole before anything is written, so the gate can refuse it while the
@@ -265,21 +308,32 @@ def build(connection, *, model_name=None, seasons=None, now=None):
         payloads[season] = dict(season=season, board=rows, games=games)
         coverage.append(coverage_row(connection, season, games, rows,
                                      complete=season < in_progress))
+    # The people layer covers only the seasons whose rosters and box scores
+    # have been fetched, which is fewer than the seasons that have ratings.
+    # An absent season is said so in the manifest rather than guessed at by a
+    # page that finds no file.
+    people, people_summary = export_people.payloads(
+        connection, wanted, limit=people_seasons)
     manifest = dict(
         schema_version=SCHEMA_VERSION,
         sport='ncaambb',
         sport_label="Men's Basketball",
         generated_at=moment.isoformat().replace('+00:00', 'Z'),
+        # The age of the DATA, which is what a reader's badge is about. See
+        # data_as_of above for why generated_at cannot answer that.
+        data_as_of=data_as_of(connection, wanted[-1]),
         model=model_section(model),
         coverage=coverage,
         latest_season=wanted[-1],
         seasons={},
         files={},
+        people_summary=people_summary,
     )
-    return manifest, payloads, teams(connection)
+    return manifest, payloads, teams(connection), people
 
 
-def write(manifest, payloads, team_index, out_dir=OUT_DIR, *, gate=check):
+def write(manifest, payloads, team_index, out_dir=OUT_DIR, *, people=None,
+          gate=check):
     """Write the export, but only if the gate passes.
 
     The manifest is completed first — the files it names, with the hash each
@@ -296,6 +350,8 @@ def write(manifest, payloads, team_index, out_dir=OUT_DIR, *, gate=check):
         staged[f'seasons/{season}.js'] = text
     staged['teams.js'] = ('window.NCAAMBB_TEAMS=' + json.dumps(
         team_index, separators=(',', ':'), sort_keys=True) + ';\n')
+    for path, (global_expr, payload) in (people or {}).items():
+        staged[path] = export_people.render(global_expr, payload)
 
     def stamp(text):
         return hashlib.sha256(text.encode('utf-8')).hexdigest()[:10]
@@ -306,6 +362,9 @@ def write(manifest, payloads, team_index, out_dir=OUT_DIR, *, gate=check):
         for season in payloads}
     manifest['files'] = dict(
         teams=f'teams.js?v={stamp(staged["teams.js"])}')
+    if people:
+        manifest['files']['people'] = export_people.manifest_section(
+            people, lambda path: stamp(staged[path]))
     reasons = gate(manifest, root=None)
     if reasons:
         raise PublishRefused(reasons)
@@ -345,6 +404,16 @@ def summarise(manifest, out_dir):
         lines.append(f'| {row["season_label"]} | {row["division_one_teams"]} | '
                      f'{row["rated_teams"]} | {row["games"]} | '
                      f'{row["finals"]} | {row["rateable"]} |')
+    people = manifest.get('people_summary') or []
+    if people:
+        lines += ['', '| season | players | clubs | game lines |',
+                  '| --- | --- | --- | --- |']
+        for row in people:
+            lines.append(f'| {row["season"]} | {row["players"]} | '
+                         f'{row["clubs"]} | {row["lines"]} |')
+    else:
+        lines += ['', 'No season in this export has people data; the People '
+                      'tab will say so rather than draw an empty panel.']
     lines += ['', 'Publish gate PASSED; this export describes national '
                   'coverage of a model scored on a season it never saw.']
     return '\n'.join(lines)
@@ -359,17 +428,25 @@ def main(argv=None):
     parser.add_argument('--seasons', default=None,
                         help='comma-separated ending years; every rated '
                              'season by default')
+    parser.add_argument('--people-seasons', type=int, default=None,
+                        help='how many of the most recent seasons get player '
+                             f'files (default {export_people.DEFAULT_SEASONS}, '
+                             '0 for every season that has people). A season is '
+                             'around 127,500 player-game lines, so this is '
+                             'what keeps the published payload bounded.')
     args = parser.parse_args(argv)
     seasons = ([int(part) for part in args.seasons.split(',') if part.strip()]
                if args.seasons else None)
     connection = connect()
     try:
-        manifest, payloads, team_index = build(connection, seasons=seasons,
-                                               model_name=args.model)
+        manifest, payloads, team_index, people = build(
+            connection, seasons=seasons, model_name=args.model,
+            people_seasons=args.people_seasons)
     finally:
         connection.close()
     try:
-        manifest = write(manifest, payloads, team_index, Path(args.out))
+        manifest = write(manifest, payloads, team_index, Path(args.out),
+                         people=people)
     except PublishRefused as refused:
         print(str(refused))
         return 1

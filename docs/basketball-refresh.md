@@ -136,6 +136,25 @@ makes a cut-off run make progress instead of repeating itself; the job still
 fails, so the health light still lights. That makes the refresh resumable by
 construction, the same property `backfill-players.yml` has for football.
 
+**People are fetched for fewer seasons than schedules, and their cache is
+banked for fewer still.** A season's rosters are one request while its box
+scores are two dozen windows, and only the most recent
+`export_people.DEFAULT_SEASONS` seasons get published player files, so the
+`seasons` step emits a separate `people` list and the ingestion is invoked a
+second time with it. Fetching people for a season the export will not carry
+would spend quota on data no page can read, and the number is read from the
+exporter rather than copied into this workflow.
+
+The ACTIVE season's people cache is then deliberately NOT committed. Its box
+scores change every night, so banking them writes a multi-megabyte blob into
+the repository every day for a file the next run would have to refetch anyway.
+Settled seasons are the opposite — they cannot change, so banking them once is
+what keeps the run inside the allowance — and the season's schedule cache is
+still committed, because it is one file and every season's export reads from
+it. The second ingestion therefore passes no `--refetch-seasons`: the step
+before it has already refreshed the active schedule into the cache, and a fresh
+checkout has no people cache for that season to reuse.
+
 The `publish` input does **not** govern the cache. "Do not replace what is
 published" and "throw away the quota this run already spent" are different
 decisions, and a dispatcher asking for the first does not want the second —
@@ -267,7 +286,9 @@ browser would refuse in the reader's page what the gate had just accepted.
 The export is about 21 MB across twelve seasons, and a season's games file is
 about 1.8 MB. Past seasons serialise byte-identically from one run to the next,
 so a refresh adds only the current season's file to the repository — roughly
-1.8 MB a day while the season is on, plus the current season's raw cache. If that proves too heavy, the next step is
+1.8 MB a day while the season is on, plus the current season's schedule cache
+and its people files. The current season's people RAW cache is not committed,
+which is the single largest thing kept out of the daily commit. If that proves too heavy, the next step is
 to intern the team keys inside each payload, which are 23 bytes each and appear
 twice per game; it is a shape change to the export, the loader and the page,
 which is why it is written down here rather than done pre-emptively.
@@ -301,3 +322,50 @@ decimal places: fitted on 2015-2025, held out on 2026, Brier 0.18656 over
 5,752 games. Five places is what the page displays and far more than the gate
 needs, which only asks that the Brier beat a coin flip; the exact floats are in
 that run's `elo_fit.json` artifact.
+
+## When the provider refuses, the bank publishes
+
+Measured 2026-11-03: the CBBD account's **monthly** allowance is about a
+thousand calls, two refresh dispatches spent it, and every request after that
+came back `{"message":"Monthly call quota exceeded."}` with no `Retry-After`.
+Nothing basketball could be fetched for the rest of the month.
+
+The refresh died on the first of those requests — the active season's schedule
+refetch — and so the replay, the export and the publish never ran. Every
+season's games and five seasons of rosters and box scores were sitting in
+`data/ncaambb/raw` in the repository the whole time.
+
+So a refused refetch of the season being played now **falls back to that
+season's committed cache** and the run carries on. Three bounds on it:
+
+- Only for a season this run asked to refetch, and only when a cache of it
+  exists. A blanket `--refetch` means "ignore the cache", so it is never
+  answered from the cache, and a refusal with nothing banked is still a
+  failure — reporting an empty season as stored would read as "no games were
+  played".
+- The run says which season it fell back on, in the step summary a person
+  reads.
+- The age is the **cache's**, not the run's. `data_as_of` in the manifest is
+  the time the provider last answered about that season, so the page badges
+  the real age and marks it stale. `generated_at` is the build time and is
+  always now, which is why it cannot answer this and why reading it badged an
+  export rebuilt from cache as freshly updated.
+
+The people ingestion is best effort for the same reason, and for one more: at
+roughly 450 calls for six seasons it is nearly half the month's allowance on
+its own, so it cannot run daily on this plan. Settled seasons are banked once
+precisely so they are never refetched.
+
+### Repairing a season's people
+
+A cached season is never asked about again, which is what keeps a daily run
+cheap — and it means a season banked by a partly refused run stays wrong.
+2025-26 is in exactly that position: 5,643 roster memberships against 15,210
+for the season before it. Its box-score lines are complete, so the players and
+their minutes are all there; what is missing is jerseys and positions.
+
+Dispatch the refresh with `refetch_people: 2026` to fetch that season's
+rosters and box scores again. The input is blank on a schedule and blank on a
+dispatch unless asked for, the seasons named must be ones the run gets people
+for, and it refetches those seasons' schedules too (about 26 more calls each),
+because the flag ignores a season's whole cache.

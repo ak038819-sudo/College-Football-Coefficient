@@ -44,6 +44,10 @@ on:
         description: "Commit the export to main when the gate passes"
         type: boolean
         default: true
+      refetch_people:
+        description: "Ending years whose ROSTERS and BOX SCORES to fetch again, e.g. 2026. Must be seasons this run gets people for. Blank means reuse every cached season."
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -78,7 +82,8 @@ jobs:
         run: |
           python -m pytest tests/test_ncaambb_elo.py \
             tests/test_ncaambb_store.py tests/test_ncaambb_ingestion.py \
-            tests/test_ncaambb_export.py tests/test_ncaambb_publish.py -q
+            tests/test_ncaambb_export.py tests/test_ncaambb_export_people.py \
+            tests/test_ncaambb_publish.py -q
 
       - name: Work out which seasons to refresh
         id: seasons
@@ -104,6 +109,14 @@ jobs:
           active = current_season(now)
           asked = {int(part) for part in seasons.split(',') if part.strip()}
           print(f'active={active if active in asked else ""}')
+          # Which seasons get PEOPLE. Fewer than get ratings, and the number
+          # comes from the exporter rather than from a copy of it written
+          # here: a season is around 127,500 player-game lines, the export
+          # publishes the most recent DEFAULT_SEASONS of them, and fetching
+          # people for seasons the export will not carry would spend quota on
+          # data no page can read.
+          from src.ncaambb.export_people import recent
+          print('people=' + ','.join(str(year) for year in recent(asked)))
           PY
 
       - name: Ingest the schedules
@@ -126,6 +139,78 @@ jobs:
             ${ACTIVE:+--refetch-seasons "$ACTIVE"} \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # Rosters, player identities and box scores, for the seasons the export
+      # publishes player files for. A SECOND invocation rather than dropping
+      # --schedule-only above, because the two cover different seasons: every
+      # rated season gets a schedule, and only the recent ones get people.
+      #
+      # No --refetch-seasons here, deliberately. The step above has just
+      # refreshed the active season's schedule into the cache, so this run
+      # reads it from disk; and the active season's PEOPLE cache is never
+      # committed (see the commit step), so a fresh checkout has none and
+      # fetches it. Settled seasons are in the repository and cost nothing.
+      # BEST EFFORT, and it has to be. Before this step existed a provider
+      # failure could not stop the refresh; with it, a 429 on one season's box
+      # scores skipped the replay, the export and the publish, so the
+      # scoreboard and the ratings stopped refreshing because a roster feed
+      # was busy. MEASURED on run 41675786786, which was rate limited on
+      # 2026-27's /games/players nineteen minutes after a 446-request run and
+      # published nothing at all as a result.
+      #
+      # So the step may fail without failing the run. What it cannot do is
+      # fail silently: the warning below says so, the export states which
+      # seasons it carries people for, and the page says the same to a reader.
+      # Staleness is marked, never refused -- the same rule the publish gate
+      # follows.
+      - name: Ingest the people
+        id: people
+        continue-on-error: true
+        env:
+          CBBD_API_KEY: ${{ secrets.CBBD_API_KEY }}
+          PEOPLE: ${{ steps.seasons.outputs.people }}
+          # Blank on a schedule, and blank on a dispatch unless someone asks.
+          # A cached season is never asked about again, which is what keeps a
+          # daily run cheap, so repairing one that was cached from a partly
+          # refused run needs this said out loud. MEASURED: 2025-26 was banked
+          # by such a run and holds 5,643 roster memberships against 15,210
+          # for the season before it -- the box-score lines are complete, so
+          # the players and their minutes are all there and what is missing is
+          # jerseys and positions.
+          #
+          # It also refetches those seasons' SCHEDULES, because the flag
+          # ignores a season's whole cache. That is about 26 more calls per
+          # season and the schedules are reloaded correctly, so it is a cost
+          # rather than a problem.
+          REFETCH_PEOPLE: ${{ inputs.refetch_people }}
+        run: |
+          set -o pipefail
+          if [ -z "$PEOPLE" ]; then
+            echo "No season in this run gets people files."
+            exit 0
+          fi
+          args=""
+          if [ -n "$REFETCH_PEOPLE" ]; then
+            args="--refetch-seasons $REFETCH_PEOPLE"
+            echo "Fetching people again for: $REFETCH_PEOPLE"
+          fi
+          python -m src.ncaambb.ingest --seasons "$PEOPLE" $args \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Say so when the people did not all arrive
+        if: steps.people.outcome != 'success'
+        run: |
+          echo "::warning::The people ingestion did not finish. The export is"\
+            " built and published from whatever people the database holds, so"\
+            " a season may carry no player files; the export states which"\
+            " seasons it carries and the page tells a reader the same. The"\
+            " seasons already fetched are cached, so the next run resumes."
+          {
+            echo
+            echo '> **The people ingestion did not finish.** The export below'
+            echo '> is built from whatever people the database holds. The'
+            echo '> seasons it did fetch are cached, so the next run resumes.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Replay the archive with the committed model
         run: |
           set -o pipefail
@@ -141,7 +226,18 @@ jobs:
         id: publish
         env:
           BUILT: ${{ runner.temp }}/ncaambb-export
-          ALLOWED: ${{ inputs.publish == null && 'true' || inputs.publish }}
+          # NOT `inputs.publish == null && 'true' || inputs.publish`,
+          # which this was and which never worked: GitHub's `==`
+          # coerces both sides to a number, so `false == null` is 0 == 0,
+          # which is TRUE -- an explicit `publish: false` was
+          # indistinguishable from giving no input at all and published
+          # anyway. Measured on run 41671313813, dispatched with
+          # publish: false, which replaced the export regardless.
+          # The event name is the thing actually being asked about: only
+          # a dispatch carries inputs, and on a dispatch the declared
+          # default means inputs.publish is always a real boolean.
+          ALLOWED: ${{ github.event_name != 'workflow_dispatch'
+            || inputs.publish }}
         run: |
           set -o pipefail
           python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
@@ -173,7 +269,19 @@ jobs:
       - name: Commit the raw cache and, if the gate allowed it, the export
         if: always() && steps.seasons.conclusion == 'success'
         env:
-          ALLOWED: ${{ inputs.publish == null && 'true' || inputs.publish }}
+          # NOT `inputs.publish == null && 'true' || inputs.publish`,
+          # which this was and which never worked: GitHub's `==`
+          # coerces both sides to a number, so `false == null` is 0 == 0,
+          # which is TRUE -- an explicit `publish: false` was
+          # indistinguishable from giving no input at all and published
+          # anyway. Measured on run 41671313813, dispatched with
+          # publish: false, which replaced the export regardless.
+          # The event name is the thing actually being asked about: only
+          # a dispatch carries inputs, and on a dispatch the declared
+          # default means inputs.publish is always a real boolean.
+          ALLOWED: ${{ github.event_name != 'workflow_dispatch'
+            || inputs.publish }}
+          ACTIVE: ${{ steps.seasons.outputs.active }}
         run: |
           # The raw cache is banked whatever else happened, and the `publish`
           # input does NOT govern it. "Do not replace what is published" and
@@ -197,6 +305,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add $PATHS
+          # The ACTIVE season's people cache is NOT banked. Its box scores
+          # change every night, so committing them writes a multi-megabyte
+          # blob into the repository every single day, for a file the next
+          # run would have to refetch anyway. Settled seasons are the
+          # opposite: they cannot change, so banking them once is what keeps
+          # this run inside the provider's allowance. The season's SCHEDULE
+          # cache is still committed -- it is one file and the export reads
+          # every season from it.
+          if [ -n "$ACTIVE" ]; then
+            git reset -q -- "data/ncaambb/raw/$ACTIVE/rosters.json.gz" \
+              "data/ncaambb/raw/$ACTIVE/box_scores.json.gz" || true
+          fi
           # Only these paths. A refresh must never carry a code change along
           # with it, whatever happens to be in the tree.
           git commit -m "Refresh the college basketball export
@@ -236,7 +356,12 @@ jobs:
 
   alert-failure:
     needs: refresh
-    if: always() && needs.refresh.result == 'failure' && github.event_name != 'pull_request'
+    # Only for the branch the site publishes from. A dispatch on a feature
+    # branch is a rehearsal, and lighting the production health light for one
+    # leaves a red light over a working pipeline -- which then has to be
+    # closed by hand, because a green run closes only one issue.
+    if: always() && needs.refresh.result == 'failure'
+      && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -257,7 +382,8 @@ jobs:
 
   alert-recovery:
     needs: refresh
-    if: always() && needs.refresh.result == 'success' && github.event_name != 'pull_request'
+    if: always() && needs.refresh.result == 'success'
+      && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       issues: write
