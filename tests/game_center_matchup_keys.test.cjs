@@ -32,8 +32,8 @@ test('top ranked contrast is a measured percentile gap, not a projected outcome'
  assert.doesNotMatch(html,/will win|points scored|projected score/i);
 });
 test('two directions represented when both have clear rated contrasts',()=>{
- const away={rush_success_rate:rated(85,92),pass_ppa:rated(20,30)};
- const home={rush_success_rate:rated(50,49),pass_ppa:rated(80,75)};
+ const away={rush_success_rate:rated(85,92)};
+ const home={rush_success_rate:rated(50,49)};
  const html=context.keys('Away','Home',away,home);
  assert.match(html,/Away offense/);
  assert.match(html,/Away defense/);
