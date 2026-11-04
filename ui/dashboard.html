@@ -1504,6 +1504,7 @@
 .gp-intel-note{color:var(--ink-dim);font-size:12px;margin-bottom:0}
 @media(max-width:760px){.gp-pregame-insights{grid-template-columns:1fr}}
 
+.gp-scouting .tm-match-compare{margin-top:18px}
 #game-page > * + * { margin-top: 24px; }
 .live-player-team { min-width: 0; }
 .column-options { display:flex; flex-wrap:wrap; gap:12px 20px; padding:16px 0; }
@@ -9893,6 +9894,51 @@ function findGameSeason(id) {
 }
 
 
+
+function gameScoutingEligible(g, season, bundle) {
+  // The as-of-exclusive boundary prevents stats from later games leaking
+  // into old pregame pages. Never infer a missing date.
+  // Prefer the source game date: UTC kickoff can roll into the next day for late games.
+  const date = String(g.date || g.kickoff_utc || '').slice(0, 10);
+  return !!(bundle && bundle.schema_version === 'elocast-descriptive-v1' &&
+    Number(bundle.season) === Number(season) &&
+    /^\d{4}-\d{2}-\d{2}$/.test(String(bundle.as_of_exclusive || '')) &&
+    /^\d{4}-\d{2}-\d{2}$/.test(date) && bundle.as_of_exclusive <= date);
+}
+function gameScoutingPanel(g, season, an, hn, bundle) {
+  if (!gameScoutingEligible(g, season, bundle)) return '';
+  const away = bundle.teams?.[String(g.away_id)], home = bundle.teams?.[String(g.home_id)];
+  if (!away?.metrics || !home?.metrics) return '';
+  const meta = (name, record) => {
+    const sample = record.metrics.rush_success_rate || record.metrics.success_rate;
+    return '<p class="gp-intel-note"><strong>' + esc(name) + '</strong>: ' +
+      (sample ? esc(String(sample.sample_games)) + ' eligible games; ' +
+        esc(String(sample.distinct_opponents)) + ' opponents; ' +
+        esc(String(sample.reliability)) + ' reliability' : 'Sample unavailable') + '</p>';
+  };
+  return '<section class="panel gp-scouting" id="gp-scouting">' +
+    '<span class="gp-intel-label">03 / Unit scouting</span><h2 class="gp-intel-heading">Offense vs. defense</h2>' +
+    '<p class="section-note">Verified FBS observations before ' + esc(bundle.as_of_exclusive) +
+    '. Unit percentiles are descriptive, not game predictions.</p>' +
+    meta(an, away) + meta(hn, home) +
+    '<div class="tm-match-compare"><h3>' + esc(an) + ' offense vs. ' + esc(hn) + ' defense</h3>' +
+      renderMatchupMeters(an, hn, away.metrics, home.metrics, 'offense') + '</div>' +
+    '<div class="tm-match-compare"><h3>' + esc(hn) + ' offense vs. ' + esc(an) + ' defense</h3>' +
+      renderMatchupMeters(hn, an, home.metrics, away.metrics, 'offense') + '</div>' +
+    '<p class="tm-scout-foot">Higher percentiles indicate stronger units. The split metrics use equal-game ' +
+      'weighting when eligible play denominators are unavailable; the evidence is not a projected score.</p></section>';
+}
+function hydrateGameScouting(g, season, an, hn, version) {
+  scoutingAsset(season).then(bundle => {
+    if (version !== renderVersion || state.view !== 'game' || state.gameParam !== g.game_id) return;
+    const target = document.getElementById('gp-scouting-slot');
+    if (!target) return;
+    const html = gameScoutingPanel(g, season, an, hn, bundle);
+    if (html) target.outerHTML = html;
+    else target.remove();
+  });
+}
+
 function gamePregameIntelligence(g, an, hn) {
   // Archived fixture values only: no research-data promotion or predictions.
   const pct = Number.isFinite(g.p_home) ? probPct(g.p_home) : null;
@@ -10094,11 +10140,13 @@ function hydrateGamePage(version) {
         esc(coverageReason('game_advanced', season) || 'Available for this season.') + '</div>' +
         (g.completed ? '<div class="gp-fact"><b>Highlights</b><a href="https://www.youtube.com/results?search_query=' + q + '" target="_blank" rel="noopener noreferrer">Search YouTube &rarr;</a></div>' : '') +
         '<div class="gp-fact"><b>Teams</b>' + (away ? teamLink(an, 'xs', season) : esc(an)) + ' ' + (home ? teamLink(hn, 'xs', season) : esc(hn)) + '</div></div></div>';
-      target().innerHTML = hero + (g.completed ? '' : gamePregameIntelligence(g, an, hn)) + matchupPanel +
+      target().innerHTML = hero + (g.completed ? '' : gamePregameIntelligence(g, an, hn)) +
+        (g.completed ? '' : '<div id="gp-scouting-slot" aria-live="polite"></div>') + matchupPanel +
         gameStory(g, d, season, an, hn) + gameVenuePanel(g, hn) +
         (g.completed && driveArchiveEntry(season) ? '<div id="gp-drives" class="panel"><h2 class="section-title">Scoring summary</h2><p class="empty-note">Loading drives…</p></div>' : '') +
         (g.completed ? '<div id="gp-players" class="panel"><h2 class="section-title">Player box score</h2><p class="empty-note">Loading player stats…</p></div>' : '') +
         '<div class="panel" id="gp-series"><h2 class="section-title">Series history</h2><p class="empty-note">Loading meetings…</p></div>' + more;
+      if (!g.completed) hydrateGameScouting(g, season, an, hn, version);
       if (g.completed) Promise.all([loadPlayerArchive(season, id), loadRoster(season).catch(() => null)])
         .then(([archive, rosterData]) => {
         if (version !== renderVersion) return;
