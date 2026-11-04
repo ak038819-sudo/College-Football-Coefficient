@@ -42,7 +42,7 @@ test('two directions represented when both have clear rated contrasts',()=>{
 test('no fabricated key when sample ratings are missing, weak or nonfinite',()=>{
  const away={rush_ppa:rated(83,30),pass_ppa:rated(NaN,91),pass_success_rate:rated(50,50)};
  const home={rush_ppa:{status:'insufficient_sample',offense_percentile:10,defense_percentile:22},
-   pass_ppa:rated(5,5),pass_success_rate:rated(51,51)};
+   pass_ppa:{status:'insufficient_sample',offense_percentile:5,defense_percentile:5},pass_success_rate:rated(51,51)};
  const html=context.keys('Away','Home',away,home);
  assert.match(html,/No clear, fully rated/);
  assert.doesNotMatch(html,/class="gp-key"/);
