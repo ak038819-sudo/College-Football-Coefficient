@@ -225,21 +225,43 @@ jobs:
           # than pinning an ID that will become final after Saturday.
           GAME_ID=$(python3 - <<'PY'
           import json
+          from datetime import datetime, timezone
           from pathlib import Path
+          decoder = json.JSONDecoder()
           raw = Path("ui/data/games/2026.js").read_text()
-          payload, _ = json.JSONDecoder().raw_decode(raw[raw.index("={") + 1:])
-          fields = payload["fields"]
-          for row in payload["games"]:
-              game = dict(zip(fields, row))
-              if not game["completed"] and game["p_home"] is not None:
-                  print(game["game_id"])
-                  break
+          games, _ = decoder.raw_decode(raw[raw.index("={") + 1:])
+          scouting_line = Path("ui/data/scouting/2026.js").read_text().splitlines()[1]
+          scouting, _ = decoder.raw_decode(scouting_line.split(" = ", 1)[1])
+          live = json.loads(Path("ui/data/live_scores.json").read_text())
+          live_ids = {int(g["id"]) for g in live.get("games", [])}
+          now = datetime.now(timezone.utc)
+          fields = games["fields"]
+          candidates = []
+          for row in games["games"]:
+              g = dict(zip(fields, row))
+              if g["completed"] or g["p_home"] is None or int(g["game_id"]) in live_ids:
+                  continue
+              if str(g.get("date") or "") < scouting["as_of_exclusive"]:
+                  continue
+              if any(str(g[key]) not in scouting["teams"] for key in ("home_id", "away_id")):
+                  continue
+              try:
+                  kickoff = datetime.fromisoformat(g["kickoff_utc"].replace("Z", "+00:00"))
+              except (AttributeError, ValueError):
+                  continue
+              if kickoff <= now:
+                  continue
+              candidates.append((kickoff, g["game_id"]))
+          if candidates:
+              print(min(candidates)[1])
           PY
           )
           if test -n "$GAME_ID"; then
             for width in 390 1280; do
               $SHOT --url "$SITE#game=$GAME_ID&season=2026" --width "$width" --height 950 \
                 --selector ".gp-pregame-insights" --out "/tmp/elocast-visual-qa/real-pregame-${width}.png"
+              $SHOT --url "$SITE#game=$GAME_ID&season=2026" --width "$width" --height 1100 --full \
+                --selector "#gp-scouting" --out "/tmp/elocast-visual-qa/real-scouting-${width}.png"
             done
           else
             echo "No scheduled rated games remain; real pregame screenshot unavailable."
