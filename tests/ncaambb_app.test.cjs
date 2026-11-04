@@ -657,3 +657,102 @@ test('a run of seasons is named, not listed with "and" six times', () => {
   assert.equal(app.seasonRange([]), '');
   assert.equal(app.seasonRange(undefined), '');
 });
+
+// ---- which game a night's card opens with ---------------------------------
+//
+// A Division I evening holds three hundred games. Ordering them by tip-off
+// alone puts two winless clubs at noon above a top-ten meeting at nine, and
+// the first screen is the only screen most readers look at.
+
+test('a game is worth about what its weaker side is worth', () => {
+  const ratings = { A: 2000, B: 2000, C: 1200 };
+  const even = app.gameInterest({ home: 'A', away: 'B' }, ratings);
+  const mismatch = app.gameInterest({ home: 'A', away: 'C' }, ratings);
+  assert.equal(even, 2000);
+  // Not the mean (1600), which would rank a 2000-v-1200 blowout above an
+  // even game between two 1700s.
+  assert.equal(mismatch, 1400);
+  assert.ok(app.gameInterest({ home: 'A', away: 'C' }, ratings)
+            < app.gameInterest({ home: 'D', away: 'E' },
+                               { D: 1700, E: 1700 }));
+});
+
+test('a stronger favourite still lifts a game over an evener, weaker one', () => {
+  // #1 against #40 should beat #35 against #36; the credit for the gap is
+  // what makes that true, so a rule of "the weaker side alone" is wrong.
+  const top = app.gameInterest({ home: 'one', away: 'forty' },
+                               { one: 2120, forty: 1800 });
+  const middling = app.gameInterest({ home: 'a', away: 'b' },
+                                    { a: 1810, b: 1805 });
+  assert.ok(top > middling, `${top} should beat ${middling}`);
+});
+
+test('an unrated side leaves a game unscored rather than scoring it zero', () => {
+  // Every non-Division I opponent is unrated. Zero would read as a measured
+  // "worst game of the night" and sort below nothing.
+  assert.equal(app.gameInterest({ home: 'A', away: 'nobody' }, { A: 2000 }),
+               null);
+  assert.equal(app.gameInterest({ home: 'A', away: 'B' },
+                                { A: 2000, B: null }), null);
+  assert.equal(app.gameInterest(null, { A: 1 }), null);
+  assert.equal(app.gameInterest({ home: 'A', away: 'B' }, null), null);
+});
+
+test('the board states the ratings the ordering reads', () => {
+  const ratings = app.ratingsOf([
+    { team: 'A', rating: 2000 },
+    { team: 'B', rating: null },
+    { team: 'C' },
+    null
+  ]);
+  assert.deepEqual(ratings, { A: 2000 });
+  assert.deepEqual(app.ratingsOf(null), {});
+});
+
+test('best puts the better game first, whatever time it tips', () => {
+  // The tip-off order is deliberately the OPPOSITE of the interest order,
+  // so a sort that ignored the ratings would fail rather than pass by luck.
+  const ratings = { top1: 2100, top2: 2080, low1: 1300, low2: 1290 };
+  const rows = app.sortGames([
+    game({ id: 'noon-mismatch', home: 'low1', away: 'low2',
+           tip: DAY + 'T17:00:00Z' }),
+    game({ id: 'night-classic', home: 'top1', away: 'top2',
+           tip: DAY + 'T23:00:00Z' })
+  ], 'best', null, ratings);
+  assert.deepEqual(rows.map(row => row.id),
+                   ['night-classic', 'noon-mismatch']);
+});
+
+test('best buries a game it cannot score under every game it can', () => {
+  const ratings = { low1: 1300, low2: 1290 };
+  const rows = app.sortGames([
+    game({ id: 'unrated', home: 'low1', away: 'nobody',
+           tip: DAY + 'T17:00:00Z' }),
+    game({ id: 'rated', home: 'low1', away: 'low2',
+           tip: DAY + 'T23:00:00Z' })
+  ], 'best', null, ratings);
+  assert.deepEqual(rows.map(row => row.id), ['rated', 'unrated']);
+});
+
+test('two equally good games keep the chronological order', () => {
+  // Interest decides between games, not within a pair of them: a reader
+  // reading down a column of equals wants the evening in order.
+  const ratings = { a: 1800, b: 1800, c: 1800, d: 1800 };
+  const rows = app.sortGames([
+    game({ id: 'late', home: 'a', away: 'b', tip: DAY + 'T23:00:00Z' }),
+    game({ id: 'early', home: 'c', away: 'd', tip: DAY + 'T17:00:00Z' })
+  ], 'best', null, ratings);
+  assert.deepEqual(rows.map(row => row.id), ['early', 'late']);
+});
+
+test('tip-off order ignores the ratings entirely', () => {
+  const ratings = { top1: 2100, top2: 2080, low1: 1300, low2: 1290 };
+  const rows = app.sortGames([
+    game({ id: 'noon-mismatch', home: 'low1', away: 'low2',
+           tip: DAY + 'T17:00:00Z' }),
+    game({ id: 'night-classic', home: 'top1', away: 'top2',
+           tip: DAY + 'T23:00:00Z' })
+  ], 'tipoff', null, ratings);
+  assert.deepEqual(rows.map(row => row.id),
+                   ['noon-mismatch', 'night-classic']);
+});

@@ -657,10 +657,57 @@
     return timeKnown(game) ? startInstant(game) : null;
   }
 
-  function sortGames(games, mode, favorites) {
+  /* How good a game is, for ordering a night that holds three hundred of
+   * them. A Division I card is not a queue: ordering by tip-off alone puts
+   * two winless clubs at noon above a top-ten meeting at nine, and the
+   * first screen is the only screen most readers look at.
+   *
+   * A game is worth about what its WEAKER side is worth, because a mismatch
+   * is not a game however good the favourite is. It takes a quarter of the
+   * gap as credit for the stronger side: enough that #1 against #40 beats
+   * #35 against #36, not enough that #1 against #300 beats either.
+   *
+   * A side this export does not rate -- a non-Division I opponent -- makes
+   * the game unscored rather than scoring it zero, and callers put those
+   * last. Zero would read as a measured "worst game of the night", and it
+   * is not a measurement at all.
+   */
+  var INTEREST_GAP_CREDIT = 0.25;
+
+  function gameInterest(game, ratings) {
+    if (!game || !ratings) return null;
+    var home = ratings[game.home];
+    var away = ratings[game.away];
+    if (typeof home !== 'number' || typeof away !== 'number') return null;
+    if (!isFinite(home) || !isFinite(away)) return null;
+    var weaker = Math.min(home, away);
+    var stronger = Math.max(home, away);
+    return weaker + INTEREST_GAP_CREDIT * (stronger - weaker);
+  }
+
+  /* The ratings a board states, as a lookup for gameInterest. A row with no
+   * rating is left out rather than carried as null, so one `typeof` check
+   * covers both "club not on the board" and "club not rated".
+   */
+  function ratingsOf(board) {
+    var ratings = {};
+    (board || []).forEach(function (row) {
+      if (!row || typeof row.rating !== 'number') return;
+      ratings[row.team] = row.rating;
+    });
+    return ratings;
+  }
+
+  function sortGames(games, mode, favorites, ratings) {
     var following = favorites || [];
     var rows = (games || []).slice();
     rows.sort(function (a, b) {
+      if (mode === 'best') {
+        var ia = gameInterest(a, ratings);
+        var ib = gameInterest(b, ratings);
+        if ((ia === null) !== (ib === null)) return ia === null ? 1 : -1;
+        if (ia !== null && ia !== ib) return ib - ia;
+      }
       if (mode === 'featured') {
         var fa = (following.indexOf(a.home) >= 0
                   || following.indexOf(a.away) >= 0) ? 0 : 1;
@@ -929,6 +976,9 @@
     startInstant: startInstant,
     tipText: tipText,
     tipKey: tipKey,
+    INTEREST_GAP_CREDIT: INTEREST_GAP_CREDIT,
+    gameInterest: gameInterest,
+    ratingsOf: ratingsOf,
     sortGames: sortGames,
     filterGames: filterGames,
     statusLine: statusLine,
