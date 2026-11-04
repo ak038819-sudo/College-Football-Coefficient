@@ -9928,7 +9928,7 @@ function gameScoutingPanel(g, season, an, hn, bundle) {
 }
 function hydrateGameScouting(g, season, an, hn, version) {
   scoutingAsset(season).then(bundle => {
-    if (version !== renderVersion || state.view !== 'game' || state.gameParam !== g.id) return;
+    if (version !== renderVersion || state.view !== 'game' || state.gameParam !== g.game_id) return;
     const target = document.getElementById('gp-scouting-slot');
     if (!target) return;
     const html = gameScoutingPanel(g, season, an, hn, bundle);
