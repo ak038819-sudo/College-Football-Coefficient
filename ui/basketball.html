@@ -230,7 +230,7 @@
 <nav class="tabs" id="tabs" aria-label="Sections"></nav>
 
 <script src="ncaambb_loader.js?v=91399aa621e8"></script>
-<script src="ncaambb_app.js?v=c75deb1cee90"></script>
+<script src="ncaambb_app.js?v=635ac3493e70"></script>
 <script>
 (function () {
   'use strict';
@@ -365,14 +365,20 @@
       var button = document.createElement('button');
       button.type = 'button';
       button.textContent = entry.picker;
+      // The tab says NCAAF, NCAAM, NFL, NBA. An abbreviation is a poor
+      // accessible name on its own, so the spelled-out league comes with it.
+      button.title = entry.pickerTitle;
+      button.setAttribute('aria-label', entry.pickerTitle);
       button.dataset.league = entry.slug;
-      // Football lives on dashboard.html; this preview is basketball only, so
-      // the football option navigates rather than pretending to switch here.
+      // Each league lives on its own page, so the other options navigate
+      // rather than pretending to switch here. WHERE they navigate comes
+      // from the registry: this read `dashboard.html` for every league but
+      // basketball, so tapping NFL here opened college football.
       button.setAttribute('aria-pressed',
         entry.slug === app.BASKETBALL ? 'true' : 'false');
       button.addEventListener('click', function () {
         if (entry.slug === app.BASKETBALL) return;
-        window.location.href = 'dashboard.html';
+        window.location.href = app.pageFor(entry.slug);
       });
       host.appendChild(button);
     });

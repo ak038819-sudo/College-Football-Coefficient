@@ -178,15 +178,22 @@ test('the board renders, ranked, with ratings as whole numbers', async () => {
 test('the league selector is there, with basketball selected', async () => {
   const dom = await open();
   const buttons = [...dom.window.document.querySelectorAll('#leagues button')];
-  // The registry gained the NFL, so the selector offers three leagues. The
-  // assertion is the full list rather than a membership check: a league
-  // appearing here that has no page behind it is exactly the kind of thing
-  // this file exists to catch.
+  // The registry gained the NFL and then the NBA, so the selector offers
+  // four leagues. The assertion is the full list rather than a membership
+  // check: a league appearing here that has no page behind it is exactly
+  // the kind of thing this file exists to catch.
+  //
+  // The tabs are abbreviations since 2026-11-04 (Austin). The spelled-out
+  // league stays reachable as the accessible name, so both are asserted: a
+  // bare "NCAAM" with no accessible name is the defect this guards.
   assert.deepEqual(buttons.map(b => b.textContent),
-    ['College Football', "Men's Basketball", 'NFL']);
+    ['NCAAF', 'NCAAM', 'NFL', 'NBA']);
+  assert.deepEqual(buttons.map(b => b.getAttribute('aria-label')),
+    ['College Football', "Men's College Basketball",
+      'National Football League', 'National Basketball Association']);
   const pressed = buttons.filter(b => b.getAttribute('aria-pressed') === 'true');
   assert.equal(pressed.length, 1);
-  assert.equal(pressed[0].textContent, "Men's Basketball");
+  assert.equal(pressed[0].textContent, 'NCAAM');
   dom.window.close();
 });
 

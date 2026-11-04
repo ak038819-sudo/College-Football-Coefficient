@@ -47,10 +47,47 @@ test('basketball states its league, first in the hash', () => {
 });
 
 test('an unknown league opens football rather than a dead page', () => {
-  assert.equal(app.readRoute('#league=nba&section=teams').league, 'cfb');
-  assert.equal(app.writeRoute({ league: 'nba', params: { section: 'teams' } }),
+  // `nba` used to stand in for an unknown league here and is a real one
+  // since 2026-11-04, which is the whole hazard: a slug picked because it
+  // was fictional stops testing anything the day it ships. `wnba` is not a
+  // league of this site, and the assertion below pins that.
+  assert.equal(app.known('wnba'), false);
+  assert.equal(app.readRoute('#league=wnba&section=teams').league, 'cfb');
+  assert.equal(app.writeRoute({ league: 'wnba', params: { section: 'teams' } }),
     '#section=teams');
 });
+
+test('the NBA is a league of its own, not an unknown one', () => {
+  assert.equal(app.known('nba'), true);
+  assert.equal(app.readRoute('#league=nba&section=standings').league, 'nba');
+  assert.equal(app.writeRoute({ league: 'nba', params: { section: 'standings' } }),
+    '#league=nba&section=standings');
+  // Its own favorites key: following the Lakers is not following the Rams.
+  assert.equal(app.favoritesKey('nba'), 'elocast.favorites.nba.v1');
+  assert.notEqual(app.favoritesKey('nba'), app.favoritesKey('nfl'));
+});
+
+test('every league knows the page it lives on, and they are all different',
+  () => {
+    const pages = app.LEAGUES.map((entry) => app.pageFor(entry.slug));
+    assert.deepEqual(pages,
+      ['dashboard.html', 'basketball.html', 'nfl.html', 'nba.html']);
+    assert.equal(new Set(pages).size, pages.length);
+    // An unknown slug lands on football rather than nowhere.
+    assert.equal(app.pageFor('wnba'), 'dashboard.html');
+  });
+
+test('every league tab carries a spelled-out name behind its abbreviation',
+  () => {
+    app.LEAGUES.forEach((entry) => {
+      assert.ok(entry.picker, entry.slug + ' has no tab label');
+      assert.ok(entry.pickerTitle, entry.slug + ' has no accessible name');
+    });
+    assert.deepEqual(app.LEAGUES.map((entry) => entry.picker),
+      ['NCAAF', 'NCAAM', 'NFL', 'NBA']);
+    assert.equal(app.league('nba').pickerTitle,
+      'National Basketball Association');
+  });
 
 test('a player route with no section survives, because football has one', () => {
   // #player=<id> with no section is a real football route; a league-aware

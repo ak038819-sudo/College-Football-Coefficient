@@ -527,7 +527,7 @@
 
 
 <script src="nfl_loader.js?v=4ad39c8c1b77"></script>
-<script src="ncaambb_app.js?v=c75deb1cee90"></script>
+<script src="ncaambb_app.js?v=635ac3493e70"></script>
 <script src="nfl_app.js?v=9b983b2ded47"></script>
 <script>
 (function () {
@@ -914,13 +914,19 @@
       var button = document.createElement('button');
       button.type = 'button';
       button.textContent = entry.picker;
+      // The tab says NCAAF, NCAAM, NFL, NBA. An abbreviation is a poor
+      // accessible name on its own, so the spelled-out league comes with it.
+      button.title = entry.pickerTitle;
+      button.setAttribute('aria-label', entry.pickerTitle);
       button.dataset.league = entry.slug;
       button.setAttribute('aria-pressed',
         entry.slug === leagues.NFL ? 'true' : 'false');
       button.addEventListener('click', function () {
         if (entry.slug === leagues.NFL) return;
-        window.location.href = entry.slug === leagues.BASKETBALL
-          ? 'basketball.html' : 'dashboard.html';
+        // The registry says where a league lives. This page used to carry
+        // its own two-way map, which could only ever name the leagues that
+        // existed when it was written.
+        window.location.href = leagues.pageFor(entry.slug);
       });
       host.appendChild(button);
     });

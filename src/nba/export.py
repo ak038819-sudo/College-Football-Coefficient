@@ -230,13 +230,25 @@ def expect_upcoming(games, rows, config):
         game['wp_estimated'] = 1
 
 
-def board(connection, season, model_id, games, names=None):
+def board(connection, season, model_id, games, names=None, index=None):
     """The season's rating board: one row a franchise, ranked.
 
     Ranked here rather than in the page, so every view of this season agrees
     on what #7 is.
+
+    THE CONFERENCE FALLS BACK TO THE FRANCHISE'S CURRENT ONE. The standings
+    feed for a season IN PROGRESS has not been published yet — measured
+    2026-11-04: all thirty 2026-27 rows carry a NULL conference while every
+    earlier season carries one — so a board built from the per-season rows
+    alone put the whole league in one unnamed group on the only season a
+    reader came to look at. The franchise's conference now is a fact, and
+    `conference_from` says which of the two a row used so that nothing
+    claims the feed recorded something it did not. `conference_history` does
+    NOT fall back: a trend may not be drawn from today's alignment applied
+    backwards.
     """
     names = names or {}
+    index = index or {}
     ratings = connection.execute(
         'SELECT team_key, rating, games_counted FROM team_rating'
         ' WHERE season = ? AND model_id = ?', (season, model_id)).fetchall()
@@ -246,11 +258,16 @@ def board(connection, season, model_id, games, names=None):
         key = rating['team_key']
         record = tally.get(key, dict(w=0, l=0))
         named = names.get(key, {})
+        current = index.get(key, {})
+        conference = named.get('conference')
         rows.append(dict(
             team=key,
             name=named.get('name'),
             abbr=named.get('abbr'),
-            conference=named.get('conference'),
+            conference=conference or current.get('conference'),
+            conference_from=('season' if conference
+                             else ('franchise' if current.get('conference')
+                                   else None)),
             # Stored to one decimal: the display rounds to a whole number, and
             # a rounded value must never be what the next calculation reads.
             rating=round(rating['rating'], 1),
@@ -395,11 +412,15 @@ def build(connection, *, model_name=None, seasons=None, now=None):
         raise ValueError('No season has a stored rating for this model')
     moment = (now or datetime.now(timezone.utc)).replace(microsecond=0)
     in_progress = current_season(moment)
+    # Read once: every season's board falls back to it for a franchise whose
+    # season row has no conference.
+    index = teams(connection)
     payloads, coverage = {}, []
     for season in wanted:
         games = season_games(connection, season, model['model_id'])
         names = season_names(connection, season)
-        rows = board(connection, season, model['model_id'], games, names)
+        rows = board(connection, season, model['model_id'], games, names,
+                     index)
         # `rating_model.config` IS the elo block, not the whole file:
         # build_ratings stores `config['elo']`. Reaching for an 'elo' key here
         # would find nothing and quietly play every game at a home advantage
@@ -424,7 +445,7 @@ def build(connection, *, model_name=None, seasons=None, now=None):
         seasons={},
         files={},
     )
-    return manifest, payloads, teams(connection), history
+    return manifest, payloads, index, history
 
 
 def write(manifest, payloads, team_index, history=None, out_dir=OUT_DIR, *,

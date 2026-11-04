@@ -1,0 +1,1468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elocast — NBA</title>
+<!--
+  The NBA league page.
+
+  It draws nothing until ui/nba_loader.js accepts the manifest. A manifest
+  for another sport, an unknown schema, a model with no held-out score, a
+  season missing a franchise or a manifest naming a file that is not there
+  all produce the refusal panel and no board.
+
+  Four NBA-specific rules are visible here and nowhere else in Elocast:
+
+  - A game's day is its LOCAL DATE. Almost half an NBA night tips after
+    midnight UTC, so grouping a scoreboard by the UTC timestamp would put a
+    Los Angeles game on tomorrow's slate.
+  - The NBA Cup final is a real, rated game that the league keeps out of the
+    standings, so it is shown, badged, and not counted in a record.
+  - There are no divisions in this source. Standings are by conference and
+    the page says so rather than inventing six groups.
+  - A franchise is not its name: team 25 is the SuperSonics in 2007 and the
+    Thunder now, and two different franchises have been the Charlotte
+    Hornets. Every lookup is by franchise key.
+
+  The CSS below is ui/nfl.html's, token for token, because the contract is
+  that the look carries across leagues without a redesign.
+-->
+<link rel="icon" href="brand/mark.svg" type="image/svg+xml">
+<link rel="icon" href="brand/icon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@600;700;800&family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+
+  /* The same tokens as ui/dashboard_shell.html: the contract is that the look
+     carries across sports without a redesign. */
+  :root {
+    --bg: #0e1512;
+    --panel: #161f1a;
+    --panel-2: #1c2621;
+    --line: #2a352e;
+    --ink: #eef1ec;
+    --ink-dim: #a8b3ac;
+    --amber: #e8a33d;
+    --amber-dim: #7a5a26;
+    --red: #c4453c;
+    --red-ink: #d16e67;
+    --green-hl: #6fae5a;
+    --font-display: 'Roboto Slab', Georgia, serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f2f0e8; --panel: #ffffff; --panel-2: #eae7dc; --line: #d8d4c6;
+      --ink: #1a1f1b; --ink-dim: #5c6259; --amber: #8f5c15;
+      --amber-dim: #e8c68f; --red: #a3352c; --red-ink: #a3352c; --green-hl: #3b732d;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f2f0e8; --panel: #ffffff; --panel-2: #eae7dc; --line: #d8d4c6;
+    --ink: #1a1f1b; --ink-dim: #5c6259; --amber: #8f5c15;
+    --amber-dim: #e8c68f; --red: #a3352c; --red-ink: #a3352c; --green-hl: #3b732d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--font-body); -webkit-font-smoothing: antialiased;
+  }
+  /* The foot of the page only needs clearing where the tab bar is fixed
+     over it, which is phone width alone. */
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
+  @media (max-width: 719px) { .wrap { padding-bottom: 96px; } }
+  h1 {
+    font-family: var(--font-display); font-weight: 800; margin: 0;
+    font-size: clamp(26px, 5vw, 40px); letter-spacing: 0.5px;
+  }
+  .preview-note {
+    font-size: 12px; color: var(--amber); text-transform: uppercase;
+    letter-spacing: 1.2px; margin: 6px 0 0;
+  }
+
+  /* 1. The league selector, directly beneath the wordmark. A segmented
+        control while there are two choices. */
+  .leagues {
+    display: inline-flex; margin: 14px 0 0; border: 1px solid var(--line);
+    border-radius: 999px; overflow: hidden; background: var(--panel);
+  }
+  .leagues button {
+    appearance: none; border: 0; background: transparent; color: var(--ink-dim);
+    font: inherit; font-size: 14px; padding: 8px 16px; cursor: pointer;
+  }
+  .leagues button[aria-pressed="true"] {
+    background: var(--amber); color: var(--bg); font-weight: 600;
+  }
+  /* The wordmark and the league selector on one side, the controls that
+     change what is shown on the other. Stacked, these six elements ate
+     nearly 300px before the first game card. */
+  header { display: grid; gap: 14px 24px; align-items: start;
+           grid-template-columns: auto minmax(0, 1fr); }
+  header .meta { grid-column: 1 / -1; margin: 0; }
+  .head-controls { display: flex; flex-direction: column; gap: 10px;
+                   align-items: flex-end; }
+  @media (max-width: 719px) {
+    header { grid-template-columns: minmax(0, 1fr); }
+    .head-controls { align-items: stretch; }
+  }
+  .search { margin: 0; }
+  .search input {
+    width: 100%; max-width: 420px; padding: 9px 12px; font: inherit;
+    color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+
+  .meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+          margin: 14px 0 0; font-size: 13px; color: var(--ink-dim); }
+  .badge {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.6px;
+    text-transform: uppercase; padding: 3px 8px; border-radius: 4px;
+    border: 1px solid var(--line);
+  }
+  /* Stale is a badge that cannot be mistaken for a timestamp. */
+  .badge.stale { background: var(--red); border-color: var(--red);
+                 color: #fff; font-weight: 600; }
+  .badge.fresh { color: var(--green-hl); border-color: var(--green-hl); }
+
+  /* `hidden` is an attribute, and any rule that sets `display` beats it.
+     `.cards` is `display: grid` and `.days` is `display: flex`, so hiding
+     the week strip and the card grid to show one game left both of them on
+     screen -- the panel was drawn below a full week of cards. One rule
+     rather than a class on each, so the next element with a display of its
+     own does not reopen the same hole. */
+  [hidden] { display: none !important; }
+
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px; margin: 18px 0 0;
+  }
+  .refusal { border-color: var(--red); }
+  .refusal h2 { margin: 0 0 8px; font-size: 16px; color: var(--red-ink); }
+  .refusal ul { margin: 0; padding-left: 20px; font-size: 14px; }
+
+  .days { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+  .days button {
+    appearance: none; border: 1px solid var(--line); background: var(--panel-2);
+    color: var(--ink-dim); font: inherit; font-size: 12px; padding: 6px 10px;
+    border-radius: 8px; white-space: nowrap; cursor: pointer;
+  }
+  .days button[aria-pressed="true"] {
+    border-color: var(--amber); color: var(--ink); font-weight: 600;
+  }
+  .filters { display: flex; gap: 6px; margin: 10px 0 0; flex-wrap: wrap; }
+  .filters button {
+    appearance: none; border: 1px solid var(--line); background: transparent;
+    color: var(--ink-dim); font: inherit; font-size: 12px; padding: 5px 10px;
+    border-radius: 999px; cursor: pointer;
+  }
+  .filters button[aria-pressed="true"] { color: var(--ink);
+                                         border-color: var(--ink); }
+
+  /* The slate and the Elo rail. One column on a phone, where the rail
+     follows the games; two from 980px, where there is room for both. The
+     rail is a fixed 240px rather than a fraction, so the cards keep their
+     own auto-fill grid instead of being squeezed a little at every width. */
+  .slate { display: grid; gap: 18px; align-items: start; }
+  @media (min-width: 980px) {
+    .slate { grid-template-columns: minmax(0, 1fr) 240px; }
+  }
+  .rail h3 { margin: 12px 0 8px; font-size: 11px; text-transform: uppercase;
+             letter-spacing: 0.8px; color: var(--ink-dim); font-weight: 600; }
+  .rail ol { list-style: none; margin: 0; padding: 0; }
+  .rail li { display: grid; grid-template-columns: 1.6em 20px minmax(0, 1fr) auto auto;
+             align-items: center; gap: 8px; padding: 5px 0;
+             border-bottom: 1px dotted var(--line); font-size: 13px; }
+  .rail li:last-child { border-bottom: 0; }
+  .rail .rk { font-family: var(--font-mono); color: var(--ink-dim);
+              font-size: 12px; text-align: right; }
+  .rail .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rail .num { font-family: var(--font-mono); font-size: 12px; }
+  .rail .empty { color: var(--ink-dim); font-size: 13px; margin: 0; }
+
+  /* Following a team. A button, never a bare glyph: it is a control, and a
+     reader on a keyboard or a screen reader has to be able to reach it and
+     be told what it does. `aria-pressed` carries the state, so the star is
+     decoration and the label does the talking. */
+  .star {
+    appearance: none; background: none; border: 0; cursor: pointer;
+    color: var(--ink-dim); font-size: 14px; line-height: 1; padding: 2px 4px;
+    border-radius: 6px;
+  }
+  .star:hover { color: var(--ink); }
+  /* A heading the column needs for a screen reader and the eye does not. */
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
+  }
+  td.fav-cell, th.fav-cell { width: 1%; text-align: right; }
+  .star[aria-pressed="true"] { color: var(--amber); }
+  .star:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+  /* On a card the star is NOT a control: a card can itself be a <button>
+     that opens the game, and a button inside a button is invalid markup
+     whose clicks would fire both. The slate shows that a team is followed
+     and the rail and the full board are where following happens. */
+  .card .side .fav { color: var(--amber); font-size: 11px; }
+
+  .cards { display: grid; gap: 10px; margin: 12px 0 0;
+           grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+          background: var(--panel-2); }
+  .card .status { font-size: 11px; text-transform: uppercase;
+                  letter-spacing: 0.8px; color: var(--ink-dim); }
+  .card .side { display: grid;
+                grid-template-columns: 22px minmax(0, 1fr) auto auto;
+                align-items: center; column-gap: 10px; font-size: 15px;
+                margin-top: 6px; }
+  /* A club with no mark keeps the column, so the names in a slate stay in
+     one line whether or not every logo resolved. */
+  .card .side.nomark { grid-template-columns: 22px minmax(0, 1fr) auto auto; }
+  .card .side.nomark .nm { grid-column: 2; }
+  /* A mark sits on the page, not on a disc. Where the archive publishes a
+     light-ink cut the dark theme gets that one and the light theme the
+     colour mark, which is what makes a backdrop unnecessary. But the
+     archive serves ONE image for both variants on 24 of the 32 clubs, so a
+     mark can still be close to the page's own colour with no better cut to
+     fall back to -- Carolina on the dark theme, Pittsburgh on the light
+     one. Those get the quiet plate below, which is a wash of the page's own
+     ink rather than a brand colour, exactly as the college shell does it.
+     Which clubs is MEASURED at fetch time; see src/logo_contrast.py. */
+  img.mark { object-fit: contain; display: block;
+             background: var(--plate, transparent);
+             border-radius: 18%; box-sizing: border-box; }
+  /* Padding only where there is a plate to hold it: a bare mark should fill
+     its box, and shrinking every logo to make room for a backdrop that 26
+     of the 32 do not have would be paying for the exception everywhere. */
+  img.mark.dim-dark, img.mark.dim-light { padding: 2px; }
+  img.mark.dim-dark { --plate: rgba(238, 241, 236, 0.13); }
+  img.mark.dim-light { --plate: transparent; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) img.mark.dim-dark { --plate: transparent; }
+    :root:not([data-theme="dark"]) img.mark.dim-light { --plate: rgba(26, 31, 27, 0.09); }
+  }
+  :root[data-theme="light"] img.mark.dim-dark { --plate: transparent; }
+  :root[data-theme="light"] img.mark.dim-light { --plate: rgba(26, 31, 27, 0.09); }
+  .card .side.lost img.mark { opacity: 0.55; }
+  .card .side .pts { font-family: var(--font-mono); min-width: 2ch;
+                     text-align: right; }
+  /* The win probability sits in its own column so the percentages line up
+     down the card whatever the team names are. */
+  .card .side .wp { font-family: var(--font-mono); font-size: 13px;
+                    color: var(--ink-dim); min-width: 4ch; text-align: right; }
+  .card .side .wp.lead { color: var(--amber); }
+  .card .side .nm { display: flex; flex-direction: column; min-width: 0; }
+  .card .side .nm-line { display: flex; align-items: baseline; gap: 4px;
+                         min-width: 0; }
+  .card .side .nm b { font-weight: 600; overflow: hidden;
+                      text-overflow: ellipsis; white-space: nowrap; }
+  /* The second line under a team name: seed in the ratings, record, rating.
+     It is deliberately quiet — it is context for the matchup, not the
+     matchup. */
+  .card .side .sub { font-size: 11px; color: var(--ink-dim);
+                     font-family: var(--font-mono); }
+  .card .side.lost .nm b { color: var(--ink-dim); font-weight: 400; }
+  .card .side.lost .pts { color: var(--ink-dim); }
+  .card .foot { font-size: 11px; color: var(--ink-dim); margin-top: 6px; }
+  .undecided { color: var(--amber); }
+
+  /* A club's name is a link wherever it is drawn, but a link is not always
+     amber. In a table the name is one value among several and takes the
+     page's link ink; on a card and in the rail the name IS the line, so it
+     keeps that line's own size and colour and reads as text that happens
+     to be tappable. The loser on a card still dims. */
+  .card .side .nm b .expand, .rail .nm .expand {
+    font-size: inherit; color: inherit; font-weight: inherit;
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .card .side.lost .nm b .expand { color: var(--ink-dim); }
+  .card.open { cursor: pointer; width: 100%; text-align: left; font: inherit;
+               color: inherit; }
+  .card.open:hover { border-color: var(--ink-dim); }
+  /* The club directory, and a franchise's own header. A tile is a button so
+     the whole tile is the target, which is what a reader on a phone aims
+     at, and the marks sit bare on it exactly as they do on a card. */
+  .clubs { display: grid; gap: 10px; margin: 12px 0 0;
+           grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .club { display: flex; align-items: center; gap: 10px; text-align: left;
+          border: 1px solid var(--line); border-radius: 8px;
+          padding: 10px 12px; background: var(--panel-2); color: var(--ink);
+          font: inherit; cursor: pointer; }
+  .club:hover { border-color: var(--amber); }
+  .club .nm { display: flex; flex-direction: column; min-width: 0; }
+  .club .nm b { font-weight: 600; overflow: hidden;
+                text-overflow: ellipsis; white-space: nowrap; }
+  .club .sub, .clubhead .sub { font-size: 11px; color: var(--ink-dim);
+                               font-family: var(--font-mono); }
+  .clubhead { display: flex; align-items: center; gap: 12px;
+              margin: 14px 0 4px; }
+  .clubhead .nm { min-width: 0; }
+  .clubhead h3 { margin: 0; }
+  /* The home-or-away marker before an opponent's name, in the same quiet
+     ink as the rest of a sub line. */
+  .teamcell .with-mark .sub { font-size: 11px; color: var(--ink-dim);
+                              font-family: var(--font-mono); }
+  .gamehead { display: flex; justify-content: space-between; gap: 12px;
+              align-items: baseline; margin: 10px 0 4px; }
+  .gamehead .score { font-family: var(--font-mono); font-size: 20px; }
+  .wpchart { width: 100%; height: 110px; display: block;
+             border: 1px solid var(--line); border-radius: 8px;
+             background: var(--panel-2); }
+  .wpchart .line { fill: none; stroke: var(--accent, currentColor);
+                   stroke-width: 2; }
+  .wpchart .mid { stroke: var(--line); stroke-width: 1; }
+  .wpchart .tick { fill: var(--ink-dim); font-size: 11px;
+                   font-family: var(--font-mono); }
+  .wpkey { font-size: 11px; color: var(--ink-dim); margin: 4px 0 0; }
+  /* A scroller only scrolls what is wider than it. `table { width: 100% }`
+     shrinks instead, so a seven-column drive table squeezed every cell to
+     four wrapped lines rather than overflowing; `wide` gives it a floor to
+     overflow past. The scoring table is deliberately NOT wide: its play
+     descriptions are prose and should wrap. */
+  .scroller { overflow-x: auto; }
+  .scroller.wide table { min-width: 560px; }
+  /* The injury table's reason is prose, not a number: everything else in
+     the row stays on one line and the reason wraps, so a name is never
+     broken across two lines to make room for "gameday concussion protocol
+     evaluation". */
+  .scroller.injury table { min-width: 460px; }
+  .scroller.injury td.reason { white-space: normal; min-width: 10em; }
+  .scroller.wide td, .scroller th, .scroller td.num { white-space: nowrap; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 8px;
+           border-bottom: 1px solid var(--line); }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
+       color: var(--ink-dim); }
+  td.num, th.num { text-align: right; font-family: var(--font-mono); }
+  td.rk { text-align: center; width: 44px; color: var(--ink-dim); }
+
+  /* 4. The tabs keep their names and change their contents.
+     They are a row under the wordmark on a screen with room for one, and a
+     fixed bar at the foot of a phone, which is where a thumb is. The page
+     was built phone-first and shipped with the fixed bar at EVERY width:
+     on a desktop that strands eight items edge to edge across the bottom of
+     the window, a long way from the content they switch. */
+  nav.tabs {
+    display: flex; gap: 2px; margin: 14px 0 0;
+    border-bottom: 1px solid var(--line);
+  }
+  nav.tabs button {
+    appearance: none; border: 0; background: transparent;
+    color: var(--ink-dim); font: inherit; font-size: 14px;
+    padding: 8px 12px; cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  nav.tabs button:hover:not([disabled]) { color: var(--ink); }
+  nav.tabs button[aria-pressed="true"] { color: var(--amber);
+                                         font-weight: 600;
+                                         border-bottom-color: var(--amber); }
+  nav.tabs button[disabled] { opacity: 0.35; cursor: default; }
+
+  @media (max-width: 719px) {
+    nav.tabs {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+      margin: 0; gap: 0; border-bottom: 0;
+      background: var(--panel); border-top: 1px solid var(--line);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    nav.tabs button {
+      flex: 1; font-size: 12px; padding: 10px 4px;
+      border-bottom: 0; margin-bottom: 0;
+    }
+    nav.tabs button[aria-pressed="true"] { border-bottom-color: transparent; }
+  }
+  .empty { color: var(--ink-dim); font-size: 14px; }
+
+  /* NFL additions. The week strip reuses the day strip's shape: an NFL
+     schedule is weekly, so there is no date strip to centre on a day. */
+  .group { margin: 18px 0 0; }
+  .group h3 {
+    font-family: var(--font-display); font-size: 14px; margin: 0 0 6px;
+    letter-spacing: 0.6px; color: var(--ink-dim); text-transform: uppercase;
+  }
+  .seasons { display: flex; gap: 6px; flex-wrap: wrap; margin: 0; }
+  .seasons select {
+    font: inherit; font-size: 13px; padding: 6px 10px; color: var(--ink);
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+  .note { font-size: 12px; color: var(--ink-dim); margin: 8px 0 0; }
+
+  /* The game context line: three or four short facts under a card, which is
+     where weather, rest and the posted line belong. Dim, because the score is
+     still the thing being read. */
+  .card .ctx { font-size: 11px; color: var(--ink-dim); margin-top: 4px;
+               line-height: 1.5; }
+
+  /* The playoff field. A seed row is a table row and nothing more: a bracket
+     drawing would claim to know the matchups, and seeding is all this
+     computes. */
+  .seeds td.seed { width: 34px; text-align: center; font-family: var(--font-mono); }
+  .seeds tr.bye td.seed { color: var(--amber); font-weight: 600; }
+  .seeds td.tag { font-size: 11px; color: var(--ink-dim); }
+  .seeds tr.out td { color: var(--ink-dim); font-style: italic; }
+  .pair { display: grid; gap: 18px; margin: 12px 0 0;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .better { color: var(--green-hl); }
+  .worse { color: var(--red-ink); }
+  .bio { color: var(--ink-dim); font-size: 13px; margin: 4px 0 0; }
+  .back { margin: 0 0 10px; }
+  tr.total td { font-weight: 600; border-top: 1px solid var(--line); }
+  .expand {
+    appearance: none; border: 0; background: transparent; color: var(--amber);
+    font: inherit; font-size: 13px; padding: 0; cursor: pointer;
+    text-align: left;
+  }
+  /* A nine-column track record does not fit a 430px phone, and a table that
+     does not fit pushes the whole PAGE sideways rather than scrolling
+     itself. The scroller is what keeps the horizontal scroll inside the
+     table where it belongs. */
+  .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .scroll table { min-width: 100%; }
+  /* The flex box is the WRAPPER, never the <td>. `display: flex` on a
+     table cell takes it out of the table layout, which is what
+     `td.rk { display: inline-block }` once did to every ranked
+     table on the college side. */
+  td.teamcell > span.with-mark { display: flex; align-items: center;
+                                 gap: 8px; }
+  .legend { font-size: 11px; color: var(--ink-dim); margin: 0 0 6px; }
+  /* The NBA's own: the badge on a game the league does not count in the
+     standings. Quiet, because it is on one row of 1,320. */
+  .tag { font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase;
+         color: var(--ink-dim); border: 1px solid var(--line);
+         border-radius: 3px; padding: 1px 5px; margin-left: 6px;
+         white-space: nowrap; }
+  .tag.cup { color: var(--amber); border-color: var(--amber-dim); }
+  /* Short records and rating columns must not wrap: without this "53–29"
+     breaks after the dash and a record reads as two numbers. The table
+     already scrolls; wrapping is what stops that being used. */
+  .nowrap, td.num, th.num { white-space: nowrap; }
+  .sparkbar { height: 6px; background: var(--amber-dim); border-radius: 3px; }
+  /* A schedule row the league does not count in the standings. Dimmed, not
+     hidden: it happened. */
+  tr.uncounted td { color: var(--ink-dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>Elocast</h1>
+      <p class="preview-note">v0.1 · Every NBA game since 2001-02</p>
+      <div class="leagues" id="leagues" role="group" aria-label="League"></div>
+    </div>
+    <div class="head-controls">
+      <div class="search">
+        <input id="search" type="search" aria-label="Search">
+      </div>
+      <div class="seasons">
+        <select id="season" aria-label="Season"></select>
+      </div>
+    </div>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <nav class="tabs" id="tabs" aria-label="Sections"></nav>
+  <nav class="days subnav" id="subnav" aria-label="Views" hidden></nav>
+
+  <div class="panel refusal" id="refusal" hidden>
+    <h2>These ratings are not being shown</h2>
+    <ul id="refusal-list"></ul>
+  </div>
+
+  <section class="panel" id="scoreboard" hidden>
+    <div class="days" id="days"></div>
+    <div class="filters" id="slate-filters"></div>
+    <!-- The slate and the rail sit side by side on a wide screen and stack
+         on a narrow one. The rail is SECOND in the markup so that reading
+         order and tab order both reach the games first. -->
+    <div class="slate" id="slate">
+      <div>
+        <div class="cards" id="cards"></div>
+      </div>
+      <aside class="rail" id="rail" aria-label="Elo top 10"></aside>
+    </div>
+  </section>
+
+  <section class="panel" id="standings" hidden>
+    <div id="groups"></div>
+    <p class="note">Ordered by record, with the rating as the tiebreak. The
+      league's own tiebreakers (head to head, then conference record, and
+      several more) are not applied here. There are no divisions: this
+      source's standings feed groups by conference only, and writing the six
+      divisions down would be inventing a fact it does not carry.</p>
+  </section>
+
+  <section class="panel" id="rankings" hidden>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th class="rk">#</th><th>Club</th><th>Conference</th>
+              <th class="num">Rating</th><th class="num">Record</th>
+              <th class="num">Rated games</th></tr>
+        </thead>
+        <tbody id="board"></tbody>
+      </table>
+    </div>
+    <p class="note">The rating, not the record. A club can sit above another
+      it finished behind: the model is measuring how well each played, not
+      how often it won.</p>
+  </section>
+
+  <section class="panel" id="teams" hidden>
+    <div id="teams-body"></div>
+  </section>
+
+  <section class="panel" id="history" hidden>
+    <div id="track-record"></div>
+    <div id="conference-history"></div>
+    <div id="champions"></div>
+  </section>
+</div>
+
+<script src="nba_loader.js?v=fe43063049a2"></script>
+<script src="ncaambb_app.js?v=635ac3493e70"></script>
+<script src="nba_app.js?v=bb705ef52a1f"></script>
+<script>
+(function () {
+  'use strict';
+  var loader = window.nbaLoader;
+  var leagues = window.ncaambbApp;   // the shared league registry
+  var app = window.nbaApp;           // the NBA's own rules
+  var BASE = 'data/nba/';
+
+  /* FOUR TABS of the shared five. No People: the NBA export is schema 1 and
+   * carries no people layer, and an empty tab is worse than an absent one.
+   * Stats draws what this export can honestly fill — the model's own track
+   * record, conference ratings over time, and the champions — rather than
+   * standing empty waiting for box scores. */
+  var VIEWS = {
+    standings: [['conferences', 'Conferences'], ['elo', 'Elo']]
+  };
+
+  function panelFor(tab, view) {
+    if (tab === 'home') return 'scoreboard';
+    if (tab === 'stats') return 'history';
+    if (tab === 'teams') return 'teams';
+    if (tab === 'standings') {
+      return view === 'elo' ? 'rankings' : 'standings';
+    }
+    return null;
+  }
+
+  /* The sections an NBA URL may name that are not tabs, and where each one
+   * is. A link somebody shared is not ours to break, and these are the
+   * section names the other three leagues use for the same material. */
+  var LEGACY = {
+    games: { tab: 'home', view: null },
+    rankings: { tab: 'standings', view: 'elo' },
+    history: { tab: 'stats', view: null }
+  };
+
+  function defaultView(tab) {
+    var views = VIEWS[tab];
+    return views && views.length ? views[0][0] : null;
+  }
+
+  function viewsFor(tab) {
+    return (VIEWS[tab] || []).filter(function (pair) {
+      return Boolean(panelFor(tab, pair[0]));
+    });
+  }
+
+  var state = { manifest: null, verdict: null, season: null, day: null,
+                tab: 'home', view: null, team: null, query: '',
+                mine: false, history: null, loadedSeason: null };
+
+  function el(id) { return document.getElementById(id); }
+
+  function text(node, value) {
+    node.textContent = value === null || value === undefined ? '' : value;
+  }
+
+  function routableTab(name) {
+    return leagues.tabLabel(name) !== null
+      && Boolean(panelFor(name, defaultView(name)));
+  }
+
+  /* The tab and view a hash names, or null where it names neither. The hash
+   * is the shared one `ncaambb_app` writes, so a section link here is the
+   * same string `switchLeague` produces when a reader crosses from another
+   * league: `#league=nba&section=standings`, with home stating no section. */
+  function placeFromHash() {
+    var raw = String(window.location.hash || '').replace(/^#/, '');
+    // No hash at all is this page's own default rather than a claim about a
+    // league. It matters on the way BACK: a reader who pressed a tab and
+    // then pressed Back returns to the bare URL they arrived on.
+    if (!raw) return routableTab('home') ? { tab: 'home', view: null } : null;
+    var route = leagues.readRoute(raw);
+    if (route.league !== leagues.NBA) return null;
+    var section = route.params.section || 'home';
+    var view = route.params.view || null;
+    if (LEGACY[section]) {
+      view = LEGACY[section].view;
+      section = LEGACY[section].tab;
+    }
+    if (!routableTab(section)) return null;
+    var known = viewsFor(section).some(function (pair) {
+      return pair[0] === view;
+    });
+    return { tab: section, view: known ? view : defaultView(section) };
+  }
+
+  function writeParams(changes) {
+    var route = leagues.readRoute(window.location.hash);
+    var params = {};
+    Object.keys(route.params).forEach(function (key) {
+      params[key] = route.params[key];
+    });
+    Object.keys(changes).forEach(function (key) {
+      if (changes[key] === null) delete params[key];
+      else params[key] = changes[key];
+    });
+    var hash = leagues.writeRoute({ league: leagues.NBA, params: params });
+    // Pressing the tab already open must not cost the reader a second Back
+    // to leave it.
+    if (hash !== window.location.hash) window.location.hash = hash;
+  }
+
+  function writeTab(name, view) {
+    var chosen = view || defaultView(name);
+    var changes = { section: name === 'home' ? null : name };
+    changes.view = chosen && chosen !== defaultView(name) ? chosen : null;
+    // A club page is only ever open inside Teams, so leaving that section
+    // takes the club out of the URL with it.
+    if (name !== 'teams') changes.team = null;
+    writeParams(changes);
+  }
+
+  function teamFromHash() {
+    var route = leagues.readRoute(window.location.hash);
+    if (route.league !== leagues.NBA) return null;
+    var key = route.params.team;
+    return key ? String(key) : null;
+  }
+
+  function seasonFromHash() {
+    var route = leagues.readRoute(window.location.hash);
+    if (route.league !== leagues.NBA) return null;
+    var season = Number(route.params.season);
+    return isFinite(season) && season > 0 ? season : null;
+  }
+
+  // ---------------------------------------------------------------- loading
+
+  function fetchJson(url) {
+    return fetch(url, { cache: 'no-cache' }).then(function (response) {
+      if (!response.ok) throw new Error(url + ': ' + response.status);
+      return response.json();
+    });
+  }
+
+  /* A payload file is a script that assigns a global, so it is loaded as a
+   * script rather than parsed here. One <script> per file, appended once:
+   * the manifest's version stamp is in the URL, so a cached file can never
+   * be served against a newer manifest. */
+  var loaded = {};
+  function fetchScript(url) {
+    if (loaded[url]) return loaded[url];
+    loaded[url] = new Promise(function (resolve, reject) {
+      var node = document.createElement('script');
+      node.src = url;
+      node.onload = function () { resolve(); };
+      node.onerror = function () { reject(new Error(url)); };
+      document.head.appendChild(node);
+    });
+    return loaded[url];
+  }
+
+  function seasonPayload(season) {
+    return (window.NBA_SEASONS || {})[season] || null;
+  }
+
+  function loadSeason(season) {
+    var url = loader.seasonSource(state.manifest, season, BASE);
+    if (!url) return Promise.reject(new Error('season ' + season));
+    return fetchScript(url).then(function () {
+      state.loadedSeason = season;
+    });
+  }
+
+  function loadTeams() {
+    var url = loader.fileSource(state.manifest, 'teams', BASE);
+    return url ? fetchScript(url) : Promise.resolve();
+  }
+
+  function loadHistory() {
+    if (state.history) return Promise.resolve();
+    var url = loader.fileSource(state.manifest, 'history', BASE);
+    if (!url) return Promise.resolve();
+    return fetchScript(url).then(function () {
+      state.history = window.NBA_HISTORY || null;
+    });
+  }
+
+  function teamIndex() { return window.NBA_TEAMS || {}; }
+
+  /* A club's name for the season being looked at, falling back to its
+   * current one. Team 25 is the SuperSonics in 2007 and the Thunder now, so
+   * the season's own row wins where there is one. */
+  function nameFor(key, payload) {
+    var named = payload && payload.names && payload.names[key];
+    if (named && named.name) return named.name;
+    var entry = teamIndex()[key];
+    return (entry && entry.name) || key;
+  }
+
+  function abbrFor(key, payload) {
+    var named = payload && payload.names && payload.names[key];
+    if (named && named.abbr) return named.abbr;
+    var entry = teamIndex()[key];
+    return (entry && entry.abbr) || '';
+  }
+
+  // -------------------------------------------------------------- favorites
+
+  function storage() {
+    try { return window.localStorage; } catch (err) { return null; }
+  }
+
+  /* A per-league key. The leagues must never read each other's list: a
+   * reader following the Lakers has not asked to follow the Rams. */
+  function favorites() {
+    return leagues.readFavorites(storage(), 'nba');
+  }
+
+  function toggleFavorite(team) {
+    leagues.toggleFavorite(storage(), 'nba', team);
+  }
+
+  // ----------------------------------------------------------------- render
+
+  function node(tag, className, content) {
+    var made = document.createElement(tag);
+    if (className) made.className = className;
+    if (content !== undefined && content !== null) made.textContent = content;
+    return made;
+  }
+
+  /* A name that is a control. `.expand` is the class ui/nfl.html uses for
+   * the same thing, so a club name reads as the line it sits in rather than
+   * as a button. */
+  function linkTo(label, onClick) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'expand';
+    button.textContent = label;
+    button.addEventListener('click', onClick);
+    return button;
+  }
+
+  function formatTime(value) {
+    var parsed = Date.parse(value);
+    if (isNaN(parsed)) return '';
+    return new Date(parsed).toLocaleTimeString([], {
+      hour: 'numeric', minute: '2-digit'
+    });
+  }
+
+  function dayLabel(day) {
+    var parsed = Date.parse(day + 'T12:00:00Z');
+    if (isNaN(parsed)) return day;
+    return new Date(parsed).toLocaleDateString([], {
+      month: 'short', day: 'numeric', timeZone: 'UTC'
+    });
+  }
+
+  function leagueButtons() {
+    var host = el('leagues');
+    host.innerHTML = '';
+    leagues.launchedLeagues(leagues.NBA).forEach(function (entry) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = entry.picker;
+      // The tab says NCAAF, NCAAM, NFL, NBA. An abbreviation is a poor
+      // accessible name on its own, so the spelled-out league comes with it.
+      button.title = entry.pickerTitle;
+      button.setAttribute('aria-label', entry.pickerTitle);
+      button.dataset.league = entry.slug;
+      button.setAttribute('aria-pressed',
+        entry.slug === leagues.NBA ? 'true' : 'false');
+      button.addEventListener('click', function () {
+        if (entry.slug === leagues.NBA) return;
+        window.location.href = leagues.pageFor(entry.slug);
+      });
+      host.appendChild(button);
+    });
+    el('search').placeholder = leagues.searchPlaceholder(leagues.NBA);
+    el('search').addEventListener('input', function () {
+      state.query = el('search').value;
+      // Typing moves the reader to Teams, so it is a section change like any
+      // other and goes through the same route.
+      if (state.verdict && state.verdict.ok && state.query) {
+        state.team = null;
+        state.tab = 'teams';
+        writeTab('teams');
+      }
+      render();
+    });
+  }
+
+  function tabs() {
+    var host = el('tabs');
+    host.innerHTML = '';
+    leagues.tabs().forEach(function (pair) {
+      if (!routableTab(pair[0])) return;
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = pair[1];
+      button.dataset.tab = pair[0];
+      button.setAttribute('aria-pressed',
+        pair[0] === state.tab ? 'true' : 'false');
+      button.addEventListener('click', function () {
+        state.tab = pair[0];
+        state.view = defaultView(pair[0]);
+        if (pair[0] !== 'teams') state.team = null;
+        writeTab(pair[0], state.view);
+        render();
+      });
+      host.appendChild(button);
+    });
+  }
+
+  function subnav() {
+    var host = el('subnav');
+    var views = viewsFor(state.tab);
+    host.innerHTML = '';
+    if (views.length < 2) {
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    views.forEach(function (pair) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = pair[1];
+      button.setAttribute('aria-pressed',
+        pair[0] === state.view ? 'true' : 'false');
+      button.addEventListener('click', function () {
+        state.view = pair[0];
+        writeTab(state.tab, pair[0]);
+        render();
+      });
+      host.appendChild(button);
+    });
+  }
+
+  function seasonSelect() {
+    var host = el('season');
+    var seasons = loader.seasons(state.manifest);
+    host.innerHTML = '';
+    seasons.forEach(function (season) {
+      var option = document.createElement('option');
+      option.value = String(season);
+      option.textContent = loader.seasonLabel(season);
+      host.appendChild(option);
+    });
+    // AFTER the options are in the document, not `option.selected` while
+    // building: a select rebuilt from a deep link kept showing the latest
+    // season while the board below it drew the season the link asked for.
+    if (state.season !== null) host.value = String(state.season);
+    host.onchange = function () {
+      var season = Number(host.value);
+      state.season = season;
+      state.day = null;
+      writeParams({ season: String(season) });
+      loadSeason(season).then(render, failed);
+    };
+  }
+
+  /* The select says which season the panels below it are showing.
+   *
+   * Called from `render`, because the season can change without the select
+   * being touched: a hash change (the Back button, or a shared link opened
+   * in a page already loaded) does not reload the document, so the board
+   * redrew for 2009-10 while the control still read 2026-27.
+   */
+  function syncSeason() {
+    var host = el('season');
+    if (state.season !== null && host.options.length) {
+      host.value = String(state.season);
+    }
+  }
+
+  function meta() {
+    var verdict = state.verdict;
+    var host = el('meta');
+    host.innerHTML = '';
+    if (!verdict) return;
+    var age = verdict.age || {};
+    // STALENESS IS NOT A REFUSAL. An export hours old is still the last good
+    // snapshot; it is marked, not withheld.
+    host.appendChild(node('span', verdict.stale ? 'stale' : '', age.label));
+    var model = verdict.model;
+    if (model) {
+      host.appendChild(node('span', '', '·'));
+      host.appendChild(node('span', '',
+        'held out ' + (model.held_out || []).length + ' seasons, Brier '
+        + app.brierText(model.holdout_brier) + ' on '
+        + (model.holdout_games || 0).toLocaleString() + ' games'));
+    }
+  }
+
+  function refusal() {
+    var verdict = state.verdict;
+    var panel = el('refusal');
+    if (!verdict || verdict.ok) {
+      panel.hidden = true;
+      return;
+    }
+    panel.hidden = false;
+    var list = el('refusal-list');
+    list.innerHTML = '';
+    verdict.reasons.forEach(function (reason) {
+      list.appendChild(node('li', '', reason));
+    });
+  }
+
+  function showPanel(name) {
+    ['scoreboard', 'standings', 'rankings', 'teams', 'history'].forEach(
+      function (id) {
+        el(id).hidden = id !== name;
+      });
+  }
+
+  // ------------------------------------------------------------- scoreboard
+
+  function days(payload) {
+    var host = el('days');
+    host.innerHTML = '';
+    var all = app.daysIn(payload.games);
+    if (!all.length) return;
+    if (!state.day || all.indexOf(state.day) < 0) {
+      state.day = leagues.openingDay(all);
+    }
+    var centre = all.indexOf(state.day);
+    // A window of nine days around the one being looked at. A whole season
+    // is 170 nights, which is not a strip.
+    var from = Math.max(0, centre - 4);
+    all.slice(from, from + 9).forEach(function (day) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = dayLabel(day);
+      button.setAttribute('aria-pressed',
+        day === state.day ? 'true' : 'false');
+      button.addEventListener('click', function () {
+        state.day = day;
+        render();
+      });
+      host.appendChild(button);
+    });
+  }
+
+  function slateFilters() {
+    var host = el('slate-filters');
+    host.innerHTML = '';
+    var mine = document.createElement('button');
+    mine.type = 'button';
+    mine.textContent = 'My clubs first';
+    mine.setAttribute('aria-pressed', state.mine ? 'true' : 'false');
+    mine.addEventListener('click', function () {
+      state.mine = !state.mine;
+      render();
+    });
+    host.appendChild(mine);
+  }
+
+  function gameCard(game, payload) {
+    var card = node('div', 'card');
+    card.appendChild(node('div', 'status', app.statusLine(game, formatTime)));
+    var winner = app.winnerOf(game);
+    // Away over home, the way a scoreboard is read.
+    [['away', game.away], ['home', game.home]].forEach(function (pair) {
+      var key = pair[1];
+      // `nomark` keeps the logo column empty but present, so the names in a
+      // slate stay on one line. The NBA export carries a logo per franchise;
+      // drawing it is a later change, and the column is already here.
+      var row = node('div', 'side nomark');
+      if (winner && winner !== key) row.className = 'side nomark lost';
+      var name = node('div', 'nm');
+      var line = node('div', 'nm-line');
+      var bold = document.createElement('b');
+      bold.appendChild(linkTo(nameFor(key, payload), function () {
+        openTeam(key);
+      }));
+      line.appendChild(bold);
+      name.appendChild(line);
+      var sub = abbrFor(key, payload);
+      var elo = game[pair[0] + '_elo'];
+      var parts = [];
+      if (sub) parts.push(sub);
+      if (typeof elo === 'number') parts.push(app.ratingText(elo));
+      if (parts.length) name.appendChild(node('div', 'sub', parts.join(' · ')));
+      row.appendChild(name);
+      // The model's chance for THIS side. The payload states the home side's,
+      // so the away row is one minus it -- and only where there is one.
+      var chance = typeof game.home_wp === 'number'
+        ? (pair[0] === 'home' ? game.home_wp : 1 - game.home_wp) : null;
+      var wp = node('span', 'wp', chance === null
+        ? '' : app.percentText(chance, 0));
+      if (chance !== null && chance >= 0.5) wp.className = 'wp lead';
+      if (game.wp_estimated) wp.title = 'An estimate: this game has not been '
+        + 'played, and both clubs play before it.';
+      row.appendChild(wp);
+      // A SCORE ONLY WHERE THERE IS ONE. The source writes an unplayed game
+      // 0-0 and the loader has already turned that into nothing; putting a
+      // zero back here is the whole trap.
+      row.appendChild(node('span', 'pts',
+        app.isFinal(game) ? String(game[pair[0] + '_points']) : ''));
+      card.appendChild(row);
+    });
+    var foot = node('div', 'foot');
+    var label = app.typeLabel(game);
+    if (label) {
+      var tag = node('span', game.type === 'cup_final' ? 'tag cup' : 'tag',
+        label);
+      var note = app.typeNote(game);
+      if (note) tag.title = note;
+      foot.appendChild(tag);
+    }
+    if (game.neutral) foot.appendChild(node('span', 'tag', 'Neutral'));
+    if (game.venue) {
+      foot.appendChild(node('span', '', ' ' + game.venue
+        + (game.city ? ', ' + game.city : '')));
+    }
+    if (foot.childNodes.length) card.appendChild(foot);
+    return card;
+  }
+
+  function scoreboard(payload) {
+    days(payload);
+    slateFilters();
+    var host = el('cards');
+    host.innerHTML = '';
+    var slate = app.sortGames(app.gamesOn(payload.games, state.day),
+      state.mine ? 'featured' : null, favorites());
+    if (!slate.length) {
+      host.appendChild(node('p', 'note', 'No game on this date.'));
+    }
+    slate.forEach(function (game) {
+      host.appendChild(gameCard(game, payload));
+    });
+    rail(payload);
+  }
+
+  function rail(payload) {
+    var host = el('rail');
+    host.innerHTML = '';
+    host.appendChild(node('h3', '', 'Elo top 10'));
+    var list = document.createElement('ol');
+    (payload.board || []).slice(0, 10).forEach(function (row) {
+      var item = document.createElement('li');
+      item.appendChild(node('span', 'rk', String(row.rank)));
+      // The empty cell is the logo column the CSS declares. Keeping it means
+      // the names line up here as they do on a card.
+      item.appendChild(node('span', '', ''));
+      var name = node('span', 'nm');
+      name.appendChild(linkTo(nameFor(row.team, payload), function () {
+        openTeam(row.team);
+      }));
+      item.appendChild(name);
+      item.appendChild(node('span', 'num', app.ratingText(row.rating)));
+      item.appendChild(node('span', 'num', app.recordText(row)));
+      list.appendChild(item);
+    });
+    host.appendChild(list);
+    if (!(payload.board || []).length) {
+      host.appendChild(node('p', 'empty', 'No rating for this season yet.'));
+    }
+  }
+
+  // -------------------------------------------------------------- standings
+
+  function standingsPanel(payload) {
+    var host = el('groups');
+    host.innerHTML = '';
+    app.standings(payload.board).forEach(function (group) {
+      var section = node('div', 'group');
+      section.appendChild(node('h3', '',
+        group.conference || 'Conference not recorded'));
+      var behind = app.gamesBehind(group.rows);
+      var table = document.createElement('table');
+      var head = document.createElement('thead');
+      head.innerHTML = '<tr><th class="rk">#</th><th>Club</th>'
+        + '<th class="num">W</th><th class="num">L</th>'
+        + '<th class="num">Pct</th><th class="num">GB</th>'
+        + '<th class="num">Rating</th></tr>';
+      table.appendChild(head);
+      var body = document.createElement('tbody');
+      group.rows.forEach(function (row, index) {
+        var tr = document.createElement('tr');
+        tr.appendChild(node('td', 'rk', String(index + 1)));
+        var cell = node('td', 'teamcell');
+        cell.appendChild(linkTo(nameFor(row.team, payload), function () {
+          openTeam(row.team);
+        }));
+        tr.appendChild(cell);
+        tr.appendChild(node('td', 'num', String(row.wins)));
+        tr.appendChild(node('td', 'num', String(row.losses)));
+        var pct = app.winPct(row);
+        tr.appendChild(node('td', 'num',
+          pct === null ? '' : pct.toFixed(3).replace(/^0/, '')));
+        tr.appendChild(node('td', 'num',
+          behind[index] ? behind[index].toFixed(1) : '—'));
+        tr.appendChild(node('td', 'num', app.ratingText(row.rating)));
+        body.appendChild(tr);
+      });
+      table.appendChild(body);
+      var scroll = node('div', 'scroll');
+      scroll.appendChild(table);
+      section.appendChild(scroll);
+      host.appendChild(section);
+    });
+  }
+
+  function boardPanel(payload) {
+    var body = el('board');
+    body.innerHTML = '';
+    (payload.board || []).forEach(function (row) {
+      var tr = document.createElement('tr');
+      tr.appendChild(node('td', 'rk', String(row.rank)));
+      var cell = node('td', 'teamcell');
+      cell.appendChild(linkTo(nameFor(row.team, payload), function () {
+        openTeam(row.team);
+      }));
+      tr.appendChild(cell);
+      tr.appendChild(node('td', '', row.conference || ''));
+      tr.appendChild(node('td', 'num', app.ratingText(row.rating)));
+      tr.appendChild(node('td', 'num', app.recordText(row)));
+      tr.appendChild(node('td', 'num', String(row.rated_games)));
+      body.appendChild(tr);
+    });
+  }
+
+  // ------------------------------------------------------------------ teams
+
+  function openTeam(key) {
+    state.team = key;
+    state.tab = 'teams';
+    state.view = null;
+    writeParams({ section: 'teams', team: key, view: null });
+    render();
+  }
+
+  function teamsPanel(payload) {
+    var host = el('teams-body');
+    host.innerHTML = '';
+    if (state.team) {
+      teamPage(host, state.team, payload);
+      return;
+    }
+    var index = teamIndex();
+    var results = state.query
+      ? app.searchTeams(index, state.query, 30)
+      : Object.keys(index).map(function (key) {
+        return { key: key, entry: index[key] };
+      }).sort(function (a, b) {
+        return String(a.entry.name).localeCompare(String(b.entry.name));
+      });
+    if (!results.length) {
+      host.appendChild(node('p', 'note', 'No club matches that.'));
+      return;
+    }
+    var list = node('div', 'cards');
+    results.forEach(function (found) {
+      var card = node('div', 'card');
+      var line = node('div', 'nm-line');
+      var bold = document.createElement('b');
+      bold.appendChild(linkTo(found.entry.name, function () {
+        openTeam(found.key);
+      }));
+      line.appendChild(bold);
+      card.appendChild(line);
+      if (found.entry.conference) {
+        card.appendChild(node('div', 'sub', found.entry.conference));
+      }
+      list.appendChild(card);
+    });
+    host.appendChild(list);
+  }
+
+  function teamPage(host, key, payload) {
+    var back = node('p', 'back');
+    back.appendChild(linkTo('← All clubs', function () {
+      state.team = null;
+      state.query = '';
+      el('search').value = '';
+      writeParams({ team: null });
+      render();
+    }));
+    host.appendChild(back);
+    host.appendChild(node('h2', '', nameFor(key, payload)));
+    var row = (payload.board || []).filter(function (entry) {
+      return entry.team === key;
+    })[0];
+    var rows = app.teamSchedule(payload.games, key);
+    var summary = node('p', 'note');
+    if (row) {
+      summary.textContent = app.recordText(row) + ' · rating '
+        + app.ratingText(row.rating) + ' · ranked #' + row.rank
+        + ' of ' + payload.board.length
+        + (row.conference ? ' · ' + row.conference : '');
+    } else {
+      summary.textContent = 'This club has no rating for '
+        + loader.seasonLabel(payload.season) + '.';
+    }
+    host.appendChild(summary);
+    var titles = app.titleCount(state.history, key);
+    if (titles) {
+      host.appendChild(node('p', 'note',
+        titles + (titles === 1 ? ' title' : ' titles')
+        + ' in the loaded archive.'));
+    }
+    host.appendChild(linkTo(
+      favorites().indexOf(key) >= 0 ? 'Following' : 'Follow', function () {
+        toggleFavorite(key);
+        render();
+      }));
+    var table = document.createElement('table');
+    var head = document.createElement('thead');
+    head.innerHTML = '<tr><th>Date</th><th>Opponent</th><th></th>'
+      + '<th class="num">Score</th><th class="num">Win chance</th>'
+      + '<th class="num">Rating</th></tr>';
+    table.appendChild(head);
+    var body = document.createElement('tbody');
+    rows.forEach(function (entry) {
+      var tr = document.createElement('tr');
+      // A game the league does not count in the standings is dimmed, so a
+      // reader adding the W column up and getting 83 can see which row is
+      // the reason. The badge beside the opponent says what it is.
+      if (!entry.counts) tr.className = 'uncounted';
+      tr.appendChild(node('td', 'nowrap', dayLabel(entry.day)));
+      var cell = node('td', 'teamcell');
+      cell.appendChild(node('span', '',
+        (entry.home ? 'vs ' : 'at ') + nameFor(entry.opponent, payload)));
+      var label = app.typeLabel(entry.game);
+      if (label) {
+        var tag = node('span',
+          entry.game.type === 'cup_final' ? 'tag cup' : 'tag', label);
+        var note = app.typeNote(entry.game);
+        if (note) tag.title = note;
+        cell.appendChild(tag);
+      }
+      tr.appendChild(cell);
+      tr.appendChild(node('td', '', entry.result || ''));
+      tr.appendChild(node('td', 'num',
+        entry.result ? entry.points + '–' + entry.against : ''));
+      tr.appendChild(node('td', 'num',
+        entry.chance === null ? '' : app.percentText(entry.chance, 0)
+          + (entry.estimated ? ' est.' : '')));
+      tr.appendChild(node('td', 'num', app.ratingText(entry.elo)));
+      body.appendChild(tr);
+    });
+    table.appendChild(body);
+    var scroll = node('div', 'scroll');
+    scroll.appendChild(table);
+    host.appendChild(scroll);
+    var counted = app.scheduleRecord(rows);
+    var uncounted = rows.filter(function (entry) {
+      return entry.result && !entry.counts;
+    }).length;
+    if (uncounted) {
+      host.appendChild(node('p', 'note',
+        counted.wins + '\u2013' + counted.losses + ' counts in the '
+        + 'standings. ' + uncounted + (uncounted === 1
+          ? ' game below does not' : ' games below do not')
+        + ', and is dimmed: the NBA leaves the Cup final out of a record '
+        + 'while keeping it in the history.'));
+    }
+    host.appendChild(node('p', 'note',
+      'The rating column is what the model thought BEFORE each game, stored '
+      + 'at the time rather than recomputed from today’s ratings. A win '
+      + 'chance marked est. is for a game not yet played: both clubs play in '
+      + 'between, so it is an estimate from their current ratings.'));
+  }
+
+  // ---------------------------------------------------------------- history
+
+  function historyPanel() {
+    var track = el('track-record');
+    track.innerHTML = '';
+    var model = state.verdict && state.verdict.model;
+    if (model) {
+      track.appendChild(node('h2', '', 'Track record'));
+      track.appendChild(node('p', 'note',
+        'The model was fitted on ' + (model.fitted_on || []).length
+        + ' seasons and scored on ' + (model.held_out || []).length
+        + ' it had never seen: Brier ' + app.brierText(model.holdout_brier)
+        + ' on ' + (model.holdout_games || 0).toLocaleString()
+        + ' games, against 0.24694 for picking the home team every time. '
+        + 'Lower is better.'));
+    }
+    var host = el('conference-history');
+    host.innerHTML = '';
+    var series = app.conferenceSeries(state.history);
+    if (series.length) {
+      host.appendChild(node('h2', '', 'Conferences over time'));
+      var table = document.createElement('table');
+      var head = document.createElement('thead');
+      var names = series.map(function (entry) { return entry.conference; });
+      head.innerHTML = '<tr><th>Season</th>' + names.map(function (name) {
+        return '<th class="num">' + name + '</th>';
+      }).join('') + '</tr>';
+      table.appendChild(head);
+      var body = document.createElement('tbody');
+      // One row a season, newest first, each cell the conference's mean
+      // rating that season. The same team_rating rows the board reads.
+      var byseason = {};
+      series.forEach(function (entry) {
+        entry.points.forEach(function (point) {
+          if (!byseason[point.season]) byseason[point.season] = {};
+          byseason[point.season][entry.conference] = point;
+        });
+      });
+      Object.keys(byseason).map(Number).sort(function (a, b) {
+        return b - a;
+      }).forEach(function (season) {
+        var tr = document.createElement('tr');
+        tr.appendChild(node('td', 'nowrap', loader.seasonLabel(season)));
+        names.forEach(function (name) {
+          var point = byseason[season][name];
+          tr.appendChild(node('td', 'num',
+            point ? app.ratingText(point.mean) : ''));
+        });
+        body.appendChild(tr);
+      });
+      table.appendChild(body);
+      var scroll = node('div', 'scroll');
+      scroll.appendChild(table);
+      host.appendChild(scroll);
+      host.appendChild(node('p', 'note',
+        'Each cell is the mean rating of that conference’s clubs at the '
+        + 'end of that season. No new data: the same ratings the board '
+        + 'shows, grouped by the conference the standings feed recorded.'));
+    }
+    var champs = el('champions');
+    champs.innerHTML = '';
+    var titles = app.championList(state.history);
+    if (!titles.length) return;
+    champs.appendChild(node('h2', '', 'Champions'));
+    var list = document.createElement('table');
+    var thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Season</th><th>Champion</th>'
+      + '<th>Runner-up</th></tr>';
+    list.appendChild(thead);
+    var tbody = document.createElement('tbody');
+    titles.forEach(function (entry) {
+      var tr = document.createElement('tr');
+      tr.appendChild(node('td', 'nowrap', entry.label));
+      tr.appendChild(node('td', '', nameFor(entry.champion, null)));
+      tr.appendChild(node('td', '', nameFor(entry.runnerUp, null)));
+      tbody.appendChild(tr);
+    });
+    list.appendChild(tbody);
+    var wrap = node('div', 'scroll');
+    wrap.appendChild(list);
+    champs.appendChild(wrap);
+    champs.appendChild(node('p', 'note',
+      'Taken from the games rather than a list typed out here: the champion '
+      + 'is the club that won the last playoff game of a season. A season '
+      + 'still being played has none.'));
+  }
+
+  // ----------------------------------------------------------------- driver
+
+  function render() {
+    syncSeason();
+    meta();
+    refusal();
+    tabs();
+    subnav();
+    if (!state.verdict || !state.verdict.ok) {
+      showPanel(null);
+      return;
+    }
+    var payload = seasonPayload(state.season);
+    if (!payload) {
+      showPanel(null);
+      return;
+    }
+    var panel = panelFor(state.tab, state.view);
+    showPanel(panel);
+    if (panel === 'scoreboard') scoreboard(payload);
+    else if (panel === 'standings') standingsPanel(payload);
+    else if (panel === 'rankings') boardPanel(payload);
+    else if (panel === 'teams') teamsPanel(payload);
+    else if (panel === 'history') historyPanel();
+  }
+
+  function failed(error) {
+    state.verdict = {
+      ok: false,
+      reasons: ['the export could not be loaded: ' + error.message],
+      stale: true,
+      age: { label: 'last updated: unknown' }
+    };
+    render();
+  }
+
+  function applyHash() {
+    var place = placeFromHash();
+    if (place) {
+      state.tab = place.tab;
+      state.view = place.view;
+    }
+    state.team = teamFromHash();
+    var season = seasonFromHash();
+    if (season && season !== state.season
+        && loader.seasons(state.manifest).indexOf(season) >= 0) {
+      state.season = season;
+      state.day = null;
+      loadSeason(season).then(render, failed);
+      return;
+    }
+    render();
+  }
+
+  function start() {
+    leagueButtons();
+    fetchJson(BASE + 'manifest.json').then(function (manifest) {
+      state.manifest = manifest;
+      state.verdict = loader.accept(manifest);
+      if (!state.verdict.ok) {
+        render();
+        return;
+      }
+      state.season = seasonFromHash() || manifest.latest_season;
+      var place = placeFromHash();
+      if (place) {
+        state.tab = place.tab;
+        state.view = place.view;
+      }
+      state.team = teamFromHash();
+      seasonSelect();
+      return Promise.all([loadTeams(), loadSeason(state.season),
+        loadHistory()]).then(function () {
+        seasonSelect();
+        render();
+      });
+    }).catch(failed);
+    window.addEventListener('hashchange', applyHash);
+    // Remember the league, so another league's page can open on it. The key
+    // is the one ui/ncaambb_app.js reads.
+    leagues.rememberLeague(storage(), leagues.NBA);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
+  }
+}());
+</script>
+</body>
+</html>

@@ -35,7 +35,8 @@ from pathlib import Path
 # page left off this list is unstamped, which is the bug this script exists
 # to prevent.
 GENERATED = ('dashboard.html', 'dashboard_shell.html')
-PAGES = (Path('ui/basketball.html'), Path('ui/nfl.html'))
+PAGES = (Path('ui/basketball.html'), Path('ui/nfl.html'),
+         Path('ui/nba.html'))
 
 SCRIPT = re.compile(r'(<script src=")([A-Za-z0-9_.\-]+\.js)(\?v=[0-9a-f]+)?(")')
 
