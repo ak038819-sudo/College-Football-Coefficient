@@ -240,6 +240,8 @@ jobs:
             for width in 390 1280; do
               $SHOT --url "$SITE#game=$GAME_ID&season=2026" --width "$width" --height 950 \
                 --selector ".gp-pregame-insights" --out "/tmp/elocast-visual-qa/real-pregame-${width}.png"
+              $SHOT --url "$SITE#game=$GAME_ID&season=2026" --width "$width" --height 1100 --full \
+                --selector "#gp-scouting" --out "/tmp/elocast-visual-qa/real-scouting-${width}.png"
             done
           else
             echo "No scheduled rated games remain; real pregame screenshot unavailable."
