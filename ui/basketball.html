@@ -400,6 +400,10 @@
       var button = document.createElement('button');
       button.type = 'button';
       button.textContent = entry.picker;
+      // The tab says NCAAF, NCAAM, NFL. An abbreviation is a poor accessible
+      // name on its own, so the spelled-out league comes with it.
+      button.title = entry.pickerTitle;
+      button.setAttribute('aria-label', entry.pickerTitle);
       button.dataset.league = entry.slug;
       // Football lives on dashboard.html; this preview is basketball only, so
       // the football option navigates rather than pretending to switch here.

@@ -336,7 +336,7 @@ test('the league selector offers the launched leagues, with the NFL selected',
     const buttons = [
       ...dom.window.document.querySelectorAll('#leagues button')];
     assert.deepEqual(buttons.map(b => b.textContent), expected);
-    assert.ok(expected.includes('NFL') && expected.includes('College Football'),
+    assert.ok(expected.includes('NFL') && expected.includes('NCAAF'),
       'football and the NFL are both launched, so both are offered');
     const pressed = buttons.filter(
       b => b.getAttribute('aria-pressed') === 'true');
@@ -464,7 +464,10 @@ test('the football header offers the NFL, as running markup', () => {
   const shell = fs.readFileSync(
     path.join(UI, 'dashboard_shell.html'), 'utf8');
   const live = shell.replace(/<!--[\s\S]*?-->/g, '');
-  assert.match(live, /<a data-league="nfl" href="nfl\.html">NFL<\/a>/,
+  // Attributes beyond the two this cares about (the tab carries a title and
+  // an aria-label now that it reads as an abbreviation), so the text is
+  // matched rather than the whole tag.
+  assert.match(live, /<a data-league="nfl" href="nfl\.html"[^>]*>NFL<\/a>/,
     'the NFL entry must be live markup, not parked in a comment');
   // It belongs to the selector, not loose in the header: a link the nav does
   // not contain is not reached by the listener that remembers the choice.
