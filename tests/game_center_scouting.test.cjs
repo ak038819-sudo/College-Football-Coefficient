@@ -23,6 +23,7 @@ test('only a same-season snapshot before kickoff can appear',()=>{
  assert.equal(ctx.eligible(fixture,2025,bundle),false);
  assert.equal(ctx.eligible(fixture,2026,{...bundle,as_of_exclusive:'2026-11-08'}),false);
  assert.equal(ctx.eligible(fixture,2026,{...bundle,as_of_exclusive:null}),false);
+ assert.equal(ctx.eligible({...fixture,date:'2026-11-01',kickoff_utc:'2026-11-02T05:30:00Z'},2026,bundle),false);
  assert.equal(ctx.eligible({...fixture,kickoff_utc:null,date:null},2026,bundle),false);
 });
 test('displays both opposing units with time and evidence provenance',()=>{
