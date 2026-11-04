@@ -226,3 +226,6 @@ node_modules/
 # public file with no key and no request allowance, so a fresh copy costs
 # nothing while a 600 KB blob committed every morning would not.
 data/nfl/raw/
+# The NBA archive, for the same reason and more so: a season of play-by-play
+# is 22 MB and the whole archive is about 400 MB fetched.
+data/nba/raw/
