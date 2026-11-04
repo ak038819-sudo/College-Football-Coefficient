@@ -9896,7 +9896,8 @@ function findGameSeason(id) {
 function gameScoutingEligible(g, season, bundle) {
   // The as-of-exclusive boundary prevents stats from later games leaking
   // into old pregame pages. Never infer a missing date.
-  const date = String(g.kickoff_utc || g.date || '').slice(0, 10);
+  // Prefer the source game date: UTC kickoff can roll into the next day for late games.
+  const date = String(g.date || g.kickoff_utc || '').slice(0, 10);
   return !!(bundle && bundle.schema_version === 'elocast-descriptive-v1' &&
     Number(bundle.season) === Number(season) &&
     /^\d{4}-\d{2}-\d{2}$/.test(String(bundle.as_of_exclusive || '')) &&
