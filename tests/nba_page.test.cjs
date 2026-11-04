@@ -558,6 +558,24 @@ test('a hash change moves the season picker with the board', async () => {
   dom.window.close();
 });
 
+test('Back off a season link returns to the season the bare URL means',
+  async () => {
+    // A URL must mean one thing. Reading a missing season parameter as
+    // "keep what you have" made the bare URL show 2024-25 when it was
+    // reached by Back and 2025-26 when it was reloaded.
+    const dom = await open(null, null, null, null, true);
+    assert.equal(dom.window.document.getElementById('season').value, '2026');
+    dom.window.location.hash = '#league=nba&section=standings&view=elo'
+      + '&season=2025';
+    await settle(dom, () => dom.window.document.getElementById(
+      'season').value === '2025');
+    // Back, which is the bare URL this page opened on.
+    dom.window.location.hash = '';
+    await settle(dom, () => dom.window.document.getElementById(
+      'season').value === '2026');
+    assert.equal(dom.window.document.getElementById('season').value, '2026');
+  });
+
 // --- history ---------------------------------------------------------------
 
 test('the Stats tab draws the track record, the conferences and the titles',

@@ -345,3 +345,75 @@ def test_every_team_played_exactly_82_in_a_season_with_a_cup_final():
         assert set(played.values()) == {82}, (
             f'{season}: teams played {sorted(set(played.values()))} '
             'regular-season games, so the Cup final was misclassified')
+
+
+class TestReportGuard:
+    """`--report` may not attach one fit's score to another fit's parameters.
+
+    The configuration path has carried `measured_on_elo_sha256` since it was
+    written. This is the same guard on the other path into `build()`, which
+    was taken on trust: Codex found on PR #178 that replaying k=80 with a
+    report whose `chosen.k` is 20 produced an export the publish gate passed,
+    because the gate reads the claim rather than re-measuring it.
+    """
+
+    def _config(self):
+        return json.loads(CONFIG.read_text(encoding='utf-8'))
+
+    def _report(self, elo, **holdout):
+        return dict(fit_seasons=[2002], holdout_seasons=[2026],
+                    chosen=dict(elo),
+                    holdout=dict(dict(brier=0.218, games=6605), **holdout))
+
+    def test_a_report_measured_on_these_parameters_is_accepted(self):
+        elo = self._config()['elo']
+        report = self._report(elo)
+        assert build_ratings.check_report(report, elo) is report
+
+    def test_a_report_measured_on_other_parameters_is_refused(self):
+        elo = self._config()['elo']
+        report = self._report({**elo, 'k': 80})
+        with pytest.raises(ValueError) as raised:
+            build_ratings.check_report(report, elo)
+        assert "'k'" in str(raised.value)
+        assert 'never earned' in str(raised.value)
+
+    def test_a_report_that_names_no_parameters_is_refused(self):
+        elo = self._config()['elo']
+        report = self._report(elo)
+        del report['chosen']
+        with pytest.raises(ValueError) as raised:
+            build_ratings.check_report(report, elo)
+        assert 'which parameters it measured' in str(raised.value)
+
+    def test_a_report_short_of_a_parameter_is_refused(self):
+        elo = self._config()['elo']
+        partial = {key: value for key, value in elo.items()
+                   if key != 'home_advantage'}
+        with pytest.raises(ValueError) as raised:
+            build_ratings.check_report(self._report(partial), elo)
+        assert 'home_advantage' in str(raised.value)
+
+    def test_the_fits_own_bookkeeping_is_not_a_difference(self):
+        # `chosen` repeats the five search parameters alongside the derived
+        # ones and may carry keys the elo block does not. Those are the
+        # fit's record of its own search, not a disagreement.
+        elo = self._config()['elo']
+        report = self._report({**elo, 'grid_rank': 1, 'brier': 0.2})
+        assert build_ratings.check_report(report, elo) is report
+
+    def test_build_refuses_a_report_from_another_fit(self, tmp_path):
+        connection = store_module.connect(tmp_path / 'nba.db')
+        rows = [_row(id=1, season=2025, season_type=2,
+                     game_date='2025-01-05'),
+                _row(id=2, season=2026, season_type=2,
+                     game_date='2026-01-05')]
+        parsed, _ = games_module.parse(rows)
+        store_module.upsert_team_seasons(
+            connection, games_module.teams_from_schedule(rows, 2026))
+        store_module.upsert_games(connection, parsed)
+        config = self._config()
+        report = self._report({**config['elo'], 'k': 80})
+        with pytest.raises(ValueError) as raised:
+            build_ratings.build(connection, config, report=report)
+        assert 'never earned' in str(raised.value)

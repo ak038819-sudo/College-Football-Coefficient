@@ -22,7 +22,12 @@ CONFIG = dict(elo=dict(k=20, home_advantage=80, offseason_retention=0.6,
                        margin_min=0.25, margin_max=4.0,
                        reference_margin=11.04, points_per_elo=0.0328,
                        initial_rating=1500.0, scale=400.0))
+# `chosen` is the parameters the report MEASURED. It is required, not
+# decoration: without it `build_ratings.check_report` refuses the report
+# rather than let one fit's held-out score be attached to another fit's
+# parameters. Here it is CONFIG's own elo block, so the two agree.
 REPORT = dict(fit_seasons=[2025], holdout_seasons=[2026],
+              chosen=dict(CONFIG['elo']),
               holdout=dict(brier=0.218, games=6605))
 
 

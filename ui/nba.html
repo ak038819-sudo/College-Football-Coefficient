@@ -1417,7 +1417,12 @@
       state.view = place.view;
     }
     state.team = teamFromHash();
-    var season = seasonFromHash();
+    // A URL MUST MEAN ONE THING. A hash naming no season means the latest,
+    // which is what `start()` resolves it to, so Back off a season link has
+    // to come back to the latest as well. Reading a missing parameter as
+    // "keep what you have" made the bare URL show one season when it was
+    // reached by Back and another when it was reloaded.
+    var season = seasonFromHash() || defaultSeason();
     if (season && season !== state.season
         && loader.seasons(state.manifest).indexOf(season) >= 0) {
       state.season = season;
@@ -1426,6 +1431,12 @@
       return;
     }
     render();
+  }
+
+  /* The season a route that names none is about. */
+  function defaultSeason() {
+    var latest = state.manifest && state.manifest.latest_season;
+    return typeof latest === 'number' ? latest : null;
   }
 
   function start() {
