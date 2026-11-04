@@ -470,11 +470,17 @@ test('the league selector is there, with basketball selected', async () => {
   // assertion is the full list rather than a membership check: a league
   // appearing here that has no page behind it is exactly the kind of thing
   // this file exists to catch.
+  // The tabs are abbreviations since 2026-11-04 (Austin). The spelled-out
+  // league stays reachable as the accessible name, so both are asserted: a
+  // bare "NCAAM" with no accessible name is the defect this guards.
   assert.deepEqual(buttons.map(b => b.textContent),
-    ['College Football', "Men's Basketball", 'NFL']);
+    ['NCAAF', 'NCAAM', 'NFL']);
+  assert.deepEqual(buttons.map(b => b.getAttribute('aria-label')),
+    ['College Football', "Men's College Basketball",
+      'National Football League']);
   const pressed = buttons.filter(b => b.getAttribute('aria-pressed') === 'true');
   assert.equal(pressed.length, 1);
-  assert.equal(pressed[0].textContent, "Men's Basketball");
+  assert.equal(pressed[0].textContent, 'NCAAM');
   dom.window.close();
 });
 

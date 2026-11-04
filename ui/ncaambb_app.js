@@ -31,19 +31,37 @@
    * from the NFL page instead, which is a hole a per-page check cannot see.
    * One flag, read by every picker, is the only shape that holds.
    */
+  /* `picker` is the tab label and `pickerTitle` the spelled-out name behind
+   * it. Austin, 2026-11-04: the tabs read NCAAF, NCAAM, NFL and NBA. Four
+   * leagues in one segmented control leaves no room for "Men's Basketball",
+   * and the abbreviations are what a reader of this sport already uses.
+   *
+   * `pickerTitle` is not decoration: an abbreviation alone is a poor
+   * accessible name, so every picker sets it as the tab's aria-label and
+   * title. NCAAM stays qualified there -- the women's game is a different
+   * competition, and an unqualified name would claim something we are not.
+   *
+   * `label` and `short` are PROSE, used in sentences ("no stats for Men's
+   * Basketball yet", "Follow BYU Men's Basketball too?"), and they keep the
+   * full names. Do not fold them into the tab label.
+   *
+   * The NBA is not in this registry yet -- its archive landed, its pages have
+   * not. When it joins, its tab is `picker: 'NBA'` with
+   * `pickerTitle: 'National Basketball Association'`, and `launched` stays
+   * false until ui/data/nba is published.
+   */
   var LEAGUES = [
     { slug: FOOTBALL, label: 'College Football', short: 'Football',
-      picker: 'College Football', launched: true },
-    // "Men's Basketball" in the picker: the women's game is a different
-    // competition and an unqualified label would claim something we are not.
-    //
+      picker: 'NCAAF', pickerTitle: 'College Football', launched: true },
     // Launched 2026-11-01, with the export it waited for: ui/data/ncaambb
     // carries 2015-2026. It was held false for eleven days because the
     // provider's monthly quota was spent, and a league offered here with no
     // data behind it is the one thing this flag exists to prevent.
     { slug: BASKETBALL, label: 'College Basketball', short: "Men's Basketball",
-      picker: "Men's Basketball", launched: true },
-    { slug: NFL, label: 'NFL', short: 'NFL', picker: 'NFL', launched: true }
+      picker: 'NCAAM', pickerTitle: "Men's College Basketball",
+      launched: true },
+    { slug: NFL, label: 'NFL', short: 'NFL', picker: 'NFL',
+      pickerTitle: 'National Football League', launched: true }
   ];
 
   var LEAGUE_KEY = 'elocast.league.v1';
