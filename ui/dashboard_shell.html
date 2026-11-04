@@ -9899,8 +9899,8 @@ function gameScoutingEligible(g, season, bundle) {
   const date = String(g.kickoff_utc || g.date || '').slice(0, 10);
   return !!(bundle && bundle.schema_version === 'elocast-descriptive-v1' &&
     Number(bundle.season) === Number(season) &&
-    /^\\d{4}-\\d{2}-\\d{2}$/.test(String(bundle.as_of_exclusive || '')) &&
-    /^\\d{4}-\\d{2}-\\d{2}$/.test(date) && bundle.as_of_exclusive <= date);
+    /^\d{4}-\d{2}-\d{2}$/.test(String(bundle.as_of_exclusive || '')) &&
+    /^\d{4}-\d{2}-\d{2}$/.test(date) && bundle.as_of_exclusive <= date);
 }
 function gameScoutingPanel(g, season, an, hn, bundle) {
   if (!gameScoutingEligible(g, season, bundle)) return '';
