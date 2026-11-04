@@ -1505,6 +1505,14 @@
 @media(max-width:760px){.gp-pregame-insights{grid-template-columns:1fr}}
 
 .gp-scouting .tm-match-compare{margin-top:18px}
+.gp-keys{padding:16px 0;border-bottom:1px solid var(--line)}
+.gp-keys h3{margin:0 0 6px;font:700 19px var(--font-display)}
+.gp-keys-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:12px;margin-top:14px}
+.gp-key{background:var(--panel-2);border:1px solid var(--line);padding:14px;min-width:0}
+.gp-key h3{font:700 18px var(--font-display);margin:8px 0}
+.gp-key p{font-size:12px;color:var(--ink-dim);line-height:1.55;margin:5px 0}
+.gp-key .gp-key-delta{font-family:var(--font-mono);color:var(--ink)}
+.gp-keys-empty{font-size:13px;color:var(--ink-dim);padding:12px;background:var(--panel-2)}
 #game-page > * + * { margin-top: 24px; }
 .live-player-team { min-width: 0; }
 .column-options { display:flex; flex-wrap:wrap; gap:12px 20px; padding:16px 0; }
@@ -9905,6 +9913,52 @@ function gameScoutingEligible(g, season, bundle) {
     /^\d{4}-\d{2}-\d{2}$/.test(String(bundle.as_of_exclusive || '')) &&
     /^\d{4}-\d{2}-\d{2}$/.test(date) && bundle.as_of_exclusive <= date);
 }
+
+function gameMatchupKeys(an, hn, awayMetrics, homeMetrics) {
+  // A small editorial summary of the *same* rated percentile comparisons
+  // visible in the full scouting table. No new model or forecast.
+  const directions = [
+    {offense: an, defense: hn, offenseMetrics: awayMetrics, defenseMetrics: homeMetrics},
+    {offense: hn, defense: an, offenseMetrics: homeMetrics, defenseMetrics: awayMetrics},
+  ];
+  const options = directions.flatMap((pair, direction) => SCOUTING_TRAITS.flatMap(([metric, title]) => {
+    const offense = pair.offenseMetrics?.[metric], defense = pair.defenseMetrics?.[metric];
+    if (offense?.status !== 'rated' || defense?.status !== 'rated' ||
+        !Number.isFinite(offense.offense_percentile) ||
+        !Number.isFinite(defense.defense_percentile)) return [];
+    const gap = offense.offense_percentile - defense.defense_percentile;
+    if (Math.abs(gap) < MATCHUP_EDGE_CLEAR) return [];
+    const offenseLeads = gap > 0;
+    return [{
+      direction, metric, title, gap, strength: Math.abs(gap),
+      offense: pair.offense, defense: pair.defense,
+      winner: offenseLeads ? pair.offense + ' offense' : pair.defense + ' defense',
+      offensePct: offense.offense_percentile, defensePct: defense.defense_percentile,
+    }];
+  }));
+  // The primary contrast from each direction is more informative than three
+  // closely correlated traits all belonging to the same offense.
+  const rank = (a, b) => b.strength - a.strength ||
+    a.metric.localeCompare(b.metric) || a.direction - b.direction;
+  options.sort(rank);
+  const first = options[0];
+  if (!first) return '<div class="gp-keys-empty">No clear, fully rated unit contrasts yet. ' +
+    'See the scouting comparisons below for available evidence.</div>';
+  const picked = [first];
+  const other = options.find(x => x.direction !== first.direction);
+  if (other) picked.push(other);
+  const third = options.find(x => !picked.includes(x) &&
+    !picked.some(y => y.direction === x.direction && y.metric === x.metric));
+  if (third) picked.push(third);
+  return '<div class="gp-keys-grid">' + picked.map(x =>
+    '<article class="gp-key"><div class="gp-intel-label">' + esc(x.title) + '</div>' +
+      '<h3>' + esc(x.winner) + '</h3>' +
+      '<p>' + esc(x.offense) + ' offense: ' + scoutingOrdinal(x.offensePct) +
+      ' · ' + esc(x.defense) + ' defense: ' + scoutingOrdinal(x.defensePct) + '</p>' +
+      '<p class="gp-key-delta">' + Math.round(x.strength) +
+      '-point national percentile difference</p></article>').join('') + '</div>';
+}
+
 function gameScoutingPanel(g, season, an, hn, bundle) {
   if (!gameScoutingEligible(g, season, bundle)) return '';
   const away = bundle.teams?.[String(g.away_id)], home = bundle.teams?.[String(g.home_id)];
@@ -9921,6 +9975,10 @@ function gameScoutingPanel(g, season, an, hn, bundle) {
     '<p class="section-note">Verified FBS observations before ' + esc(bundle.as_of_exclusive) +
     '. Unit percentiles are descriptive, not game predictions.</p>' +
     meta(an, away) + meta(hn, home) +
+    '<div class="gp-keys"><h3>Keys to the Matchup</h3>' +
+      '<p class="section-note">Largest differences between rated national unit percentiles; ' +
+      'not a forecast or a direct head-to-head measurement.</p>' +
+      gameMatchupKeys(an, hn, away.metrics, home.metrics) + '</div>' +
     '<div class="tm-match-compare"><h3>' + esc(an) + ' offense vs. ' + esc(hn) + ' defense</h3>' +
       renderMatchupMeters(an, hn, away.metrics, home.metrics, 'offense') + '</div>' +
     '<div class="tm-match-compare"><h3>' + esc(hn) + ' offense vs. ' + esc(an) + ' defense</h3>' +
