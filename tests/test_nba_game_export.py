@@ -100,7 +100,7 @@ class TestMonthKey:
 
 class TestBuild:
     def test_a_month_payload_carries_the_game_by_its_key(self, league):
-        months = game_export.build(league, 2026, params=PARAMS)
+        months = game_export.build(league, 2026, model_id=1, params=PARAMS)
         assert list(months) == ['2026-01']
         payload = months['2026-01']
         assert payload['season'] == 2026
@@ -108,13 +108,13 @@ class TestBuild:
         assert list(payload['games']) == [KEY]
 
     def test_the_line_score_is_a_pair_per_period(self, league):
-        entry = game_export.build(league, 2026,
+        entry = game_export.build(league, 2026, model_id=1,
                                   params=PARAMS)['2026-01']['games'][KEY]
         assert entry['p'] == [[30, 24], [28, 26], [26, 30], [28, 24]]
 
     def test_the_curve_is_four_parallel_arrays_of_the_same_length(self,
                                                                  league):
-        entry = game_export.build(league, 2026,
+        entry = game_export.build(league, 2026, model_id=1,
                                   params=PARAMS)['2026-01']['games'][KEY]
         elapsed, home, away, chance = entry['c']
         assert elapsed == [0, 1800, 2760, 2880]
@@ -124,7 +124,7 @@ class TestBuild:
 
     def test_a_probability_is_an_integer_per_mille_and_rises_with_a_lead(
             self, league):
-        entry = game_export.build(league, 2026,
+        entry = game_export.build(league, 2026, model_id=1,
                                   params=PARAMS)['2026-01']['games'][KEY]
         chance = entry['c'][3]
         assert all(value is None or isinstance(value, int)
@@ -137,7 +137,7 @@ class TestBuild:
         # Regulation seconds remaining is 0 there, and the model answers 1 or
         # 0 by the score alone, which is not a probability the curve should
         # draw as if the model had made it.
-        entry = game_export.build(league, 2026,
+        entry = game_export.build(league, 2026, model_id=1,
                                   params=PARAMS)['2026-01']['games'][KEY]
         assert entry['c'][3][3] is None
 
@@ -147,13 +147,13 @@ class TestBuild:
             ' seconds_left, elapsed, home_score, away_score)'
             ' VALUES (?, 5, 5, "2:00", 0, 3060, 118, 114)', (KEY,))
         league.commit()
-        entry = game_export.build(league, 2026,
+        entry = game_export.build(league, 2026, model_id=1,
                                   params=PARAMS)['2026-01']['games'][KEY]
         assert entry['c'][3][-1] is None
 
     def test_the_shape_row_is_read_by_the_order_the_payload_states(self,
                                                                    league):
-        payload = game_export.build(league, 2026, params=PARAMS)['2026-01']
+        payload = game_export.build(league, 2026, model_id=1, params=PARAMS)['2026-01']
         entry = payload['games'][KEY]
         named = dict(zip(payload['shape_fields'], entry['sh']))
         assert named['lead_changes'] == 6
@@ -164,21 +164,21 @@ class TestBuild:
         assert named['scoring_plays'] == 120
 
     def test_a_key_play_names_its_side_and_its_reason_by_index(self, league):
-        payload = game_export.build(league, 2026, params=PARAMS)['2026-01']
+        payload = game_export.build(league, 2026, model_id=1, params=PARAMS)['2026-01']
         play = payload['games'][KEY]['k'][0]
         assert play[0] == 1                     # the home side
         assert play[1] == 4                     # the fourth period
         assert payload['reasons'][play[8]] == 'late'
 
     def test_a_reduction_that_adds_up_is_marked_ok(self, league):
-        entry = game_export.build(league, 2026,
+        entry = game_export.build(league, 2026, model_id=1,
                                   params=PARAMS)['2026-01']['games'][KEY]
         assert entry['ok'] == 1
 
     def test_a_reduction_that_does_not_add_up_is_marked_not_ok(self, league):
         league.execute('UPDATE game_shape SET reconciled = 0')
         league.commit()
-        entry = game_export.build(league, 2026,
+        entry = game_export.build(league, 2026, model_id=1,
                                   params=PARAMS)['2026-01']['games'][KEY]
         assert entry['ok'] == 0
 
@@ -186,12 +186,41 @@ class TestBuild:
                                                                  league):
         league.execute('UPDATE game_shape SET reconciled = NULL')
         league.commit()
-        entry = game_export.build(league, 2026,
+        entry = game_export.build(league, 2026, model_id=1,
                                   params=PARAMS)['2026-01']['games'][KEY]
         assert entry['ok'] is None
 
+    def test_a_second_rating_model_does_not_reach_the_game_page(self,
+                                                                league):
+        """The curve must come from the model the rest of the export used.
+
+        `rating_game` holds a row per model. Joining on the game alone
+        returned one row per model and kept whichever was visited last, so a
+        game page could draw a curve from a model the schedule and the
+        manifest know nothing about.
+        """
+        before = game_export.build(
+            league, 2026, model_id=1, params=PARAMS)['2026-01']['games'][KEY]
+        league.execute(
+            'INSERT INTO rating_model (model_id, name, config, created_at)'
+            ' VALUES (2, "other", "{}", "2026-01-02")')
+        league.execute(
+            'INSERT INTO rating_game (game_key, model_id, home_pregame,'
+            ' away_pregame, home_expected, home_postgame, away_postgame,'
+            ' rating_change) VALUES (?, 2, 1400, 1700, 0.1, 1405, 1695, 5)',
+            (KEY,))
+        league.commit()
+        after = game_export.build(
+            league, 2026, model_id=1, params=PARAMS)['2026-01']['games'][KEY]
+        assert after['wp'] == before['wp']
+        # And the other model is not simply ignored: asked for it, the
+        # builder answers with its number, which is a different one.
+        other = game_export.build(
+            league, 2026, model_id=2, params=PARAMS)['2026-01']['games'][KEY]
+        assert other['wp'] != before['wp']
+
     def test_a_season_with_no_reduced_game_builds_nothing(self, league):
-        assert game_export.build(league, 2025, params=PARAMS) is None
+        assert game_export.build(league, 2025, model_id=1, params=PARAMS) is None
 
     def test_a_database_with_no_game_layer_says_so(self, tmp_path):
         empty = store.connect(tmp_path / 'other.db')
@@ -236,7 +265,7 @@ class TestWiredIntoTheExport:
 
     def _write(self, league, tmp_path):
         from src.nba import export as export_module
-        months = game_export.build(league, 2026, params=PARAMS)
+        months = game_export.build(league, 2026, model_id=1, params=PARAMS)
         manifest = dict(schema_version=2, sport='nba', seasons={}, files={},
                         coverage=[], generated_at='2026-01-21T00:00:00Z')
         written = export_module.write(

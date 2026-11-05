@@ -98,7 +98,7 @@ Three rules worth keeping:
 
 `ui/data/nba` went from 11 MB to **56 MB** when the game layer landed: 45 MB
 of month files holding a line score, a game shape, a 54-point margin curve
-and the key plays for each of **31,216 games**. That is 1.5 KB a game, about
+and the key plays for each of **31,230 games**. That is 1.5 KB a game, about
 13.5 MB gzipped, which is what Pages actually serves.
 
 For scale, `ui/data/nfl/games` is 23 MB for 7,366 games — 3 KB each — so the

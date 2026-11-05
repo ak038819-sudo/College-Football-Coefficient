@@ -48,10 +48,16 @@ from .win_probability import (REGULATION_PERIODS, REGULATION_SECONDS,
 # legend. The payload carries the index, not the word.
 REASONS = ('lead', 'tie', 'late', 'final')
 
+# THE MODEL IS PART OF THE JOIN. `rating_game` holds a row per model, so
+# joining on the game alone returns one row per model and the last one
+# visited wins -- a game page would then draw a curve from one model under a
+# schedule and a manifest built from another. `export.season_games` scopes
+# its own join the same way.
 GAME_SQL = """
     SELECT g.game_key, g.game_date, g.home_team_key, g.away_team_key,
            g.home_points, g.away_points, r.home_expected
-      FROM game g LEFT JOIN rating_game r ON r.game_key = g.game_key
+      FROM game g LEFT JOIN rating_game r
+             ON r.game_key = g.game_key AND r.model_id = ?
      WHERE g.season = ?
 """
 PERIOD_SQL = """
@@ -183,12 +189,16 @@ def _curve(rows, diff, expected, params):
     return [elapsed, home, away, chance]
 
 
-def build(connection, season, *, params=None):
-    """A season's game detail as `{month key: payload}`, or None if it has none."""
+def build(connection, season, *, model_id, params=None):
+    """A season's game detail as `{month key: payload}`, or None if it has none.
+
+    `model_id` is the model the rest of the export was built from; the
+    probabilities here must come from the same one.
+    """
     if params is None:
         params = load_params()
     games = {}
-    for row in connection.execute(GAME_SQL, (season,)):
+    for row in connection.execute(GAME_SQL, (model_id, season)):
         games[row['game_key']] = dict(
             date=row['game_date'], home=row['home_team_key'],
             away=row['away_team_key'], home_points=row['home_points'],

@@ -204,6 +204,47 @@ class TestKeyPlays:
         _, _, _, kept = plays.reduce_game(PROVIDER, rows)
         assert [play['reason'] for play in kept] == ['final']
 
+    def test_overtime_lateness_is_read_off_the_period_clock(self):
+        """`late` means the closing two minutes, in overtime as in the fourth.
+
+        `seconds_left` is REGULATION remaining and pins at 0 through
+        overtime, so reading it here made every close overtime score `late`:
+        5,666 of them across the archive, one at 3:46 of a second overtime.
+        """
+        rows = [
+            row(1, 1, '12:00', 0, 0),
+            # The sides trade the lead all the way to the buzzer, so the
+            # game reaches overtime level and nothing before it is in doubt.
+            basket(2, 4, '0:02', 80, 80, team=HOME_ID, points=2),
+            # Four minutes of the overtime left: close, but not late.
+            basket(3, 5, '4:23', 82, 80, team=HOME_ID),
+            # Inside two minutes of the same overtime: late.
+            basket(4, 5, '1:12', 82, 82, team=AWAY_ID),
+            row(5, 5, '0:00', 82, 82, kind='End Game'),
+        ]
+        _, _, _, kept = plays.reduce_game(PROVIDER, rows)
+        reasons = {play['sequence']: play['reason'] for play in kept}
+        assert 3 not in reasons
+        # Play 4 tied it in an overtime, which is a key play for its own
+        # reason; what matters is that 3 was not kept and that the clock,
+        # not the period, is what separates them.
+        assert reasons[4] == 'tie'
+
+    def test_a_close_overtime_score_inside_two_minutes_is_late(self):
+        rows = [
+            row(1, 1, '12:00', 0, 0),
+            basket(2, 4, '0:02', 80, 80, team=HOME_ID, points=2),
+            basket(3, 5, '4:23', 82, 80, team=HOME_ID),
+            # Extends the lead rather than taking or tying it, so `late` is
+            # the only reason that can keep it.
+            basket(4, 5, '0:48', 84, 80, team=HOME_ID),
+            row(5, 5, '0:00', 84, 80, kind='End Game'),
+        ]
+        _, _, _, kept = plays.reduce_game(PROVIDER, rows)
+        reasons = {play['sequence']: play['reason'] for play in kept}
+        assert 3 not in reasons
+        assert reasons[4] == 'late'
+
     def test_no_game_keeps_more_than_the_cap(self):
         rows = [row(1, 1, '12:00', 0, 0)]
         home = away = 0

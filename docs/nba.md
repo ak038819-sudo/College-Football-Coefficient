@@ -313,12 +313,12 @@ over 2002-2027:
 | | |
 | --- | --- |
 | seasons | 26 |
-| plays read | 14,246,266 |
+| plays read | 14,253,464 |
 | fetched and discarded | 0.44 GB |
-| games reduced | 31,216 |
-| periods stored | 126,943 |
-| curve points stored | 1,684,983 (54 a game) |
-| key plays stored | 155,820 (5.0 a game) |
+| games reduced | 31,230 |
+| periods stored | 127,001 |
+| curve points stored | 1,685,752 (54 a game) |
+| key plays stored | 151,373 (4.8 a game) |
 
 **THERE IS NO NBA DRIVE.** The NFL reduction is "drives and scoring plays"
 because a drive is football's unit and the feed marks one. Basketball's unit
@@ -365,7 +365,7 @@ exactly this play's points is the side that scored.
 
 ### The plays that do not add up
 
-**1,390 of 31,216 games have a play log that does not reach the final score
+**1,390 of 31,230 games have a play log that does not reach the final score
 the box score states, and 1,317 of those are in 2002-2006.** Three read by
 hand each end one to three points light on one side: the early ESPN feed is
 simply short. `game_shape.reconciled` records it, and:
@@ -460,7 +460,7 @@ carry, and a page learns the game layer is absent from the missing
 `files.games` rather than from the version number.
 
 `ui/data/nba` is **56 MB**, 45 MB of it game detail (13.5 MB gzipped). For
-comparison `ui/data/nfl/games` is 23 MB for 7,366 games; this is 31,216
+comparison `ui/data/nfl/games` is 23 MB for 7,366 games; this is 31,230
 games at 1.5 KB each.
 
 ## The key plays, and why they are chosen without the model
@@ -473,6 +473,11 @@ A play is kept when any of these is true, and the `reason` column says which:
 | `tie` | it levelled the game, in the fourth period or an overtime |
 | `late` | it was scored in the last two minutes of the last period with the margin inside two possessions either side of it |
 | `final` | it was the last score of the game |
+
+`late` reads the **period** clock, not `seconds_left`. The two agree in the
+fourth period and part company in overtime, where `seconds_left` is pinned at
+0 by design: reading it there called every close overtime score late, 5,666 of
+them across the archive, one at 3:46 of a second overtime.
 
 Capped at twenty, keeping the latest. **Nothing here is chosen by the
 win-probability model**, which is fitted on these same games: selecting the

@@ -879,6 +879,43 @@ test('pressing a tab closes an open game', async () => {
   dom.window.close();
 });
 
+test('changing the season closes the game it was not played in', async () => {
+  // A GAME BELONGS TO ONE SEASON. The season select used to change the
+  // season and leave the game in the state and in the URL, so the reader
+  // asked for 2025 and got "that game is not in this season".
+  const dom = await open(undefined, undefined, undefined, undefined,
+    true, true);
+  await openGamePage(dom);
+  const select = dom.window.document.getElementById('season');
+  select.value = '2025';
+  select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+  await settle(dom, () =>
+    dom.window.document.getElementById('game').hidden === true);
+  assert.doesNotMatch(dom.window.location.hash, /game=/);
+  assert.doesNotMatch(
+    dom.window.document.getElementById('game-body').textContent || '',
+    /not in this season/);
+  dom.window.close();
+});
+
+test('a game this season does not have still offers the way back', async () => {
+  const dom = await open(undefined, undefined, undefined,
+    '#league=nba&game=nosuchgame&season=2026', undefined, true);
+  await settle(dom, () =>
+    dom.window.document.getElementById('game').hidden === false);
+  const host = dom.window.document.getElementById('game-body');
+  assert.match(host.textContent, /not in this season/);
+  const back = host.querySelector('p.back button');
+  assert.ok(back, 'a dead end with no way out of it');
+  // And the way out works: it closes the game rather than only looking
+  // like a link.
+  back.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settle(dom, () =>
+    dom.window.document.getElementById('game').hidden === true);
+  assert.doesNotMatch(dom.window.location.hash, /game=/);
+  dom.window.close();
+});
+
 test('a link straight to a game draws the game, not the slate', async () => {
   const dom = await open(undefined, undefined, undefined,
     '#league=nba&game=g1&season=2026', undefined, true);

@@ -894,7 +894,11 @@
       var season = Number(host.value);
       state.season = season;
       state.day = null;
-      writeParams({ season: String(season) });
+      // A GAME BELONGS TO ONE SEASON. Leaving it in the state and in the URL
+      // while the season moved under it took the reader to "that game is not
+      // in this season" instead of the season they had just asked for.
+      state.game = null;
+      writeParams({ season: String(season), game: null });
       loadSeason(season).then(render, failed);
     };
   }
@@ -1394,14 +1398,17 @@
   function gamePanel() {
     var host = el('game-body');
     host.innerHTML = '';
-    var game = currentGame();
-    if (!game) {
-      host.appendChild(node('p', 'empty', 'That game is not in this season.'));
-      return;
-    }
     var back = node('p', 'back');
     back.appendChild(linkTo('← Back to the schedule', closeGame));
     host.appendChild(back);
+
+    var game = currentGame();
+    if (!game) {
+      // The way out comes FIRST, so a link to a game this season does not
+      // have is a dead end the reader can walk back out of.
+      host.appendChild(node('p', 'empty', 'That game is not in this season.'));
+      return;
+    }
 
     var head = node('div', 'gamehead');
     var title = node('div', '');

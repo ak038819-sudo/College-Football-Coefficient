@@ -442,7 +442,9 @@ def build(connection, *, model_name=None, seasons=None, now=None):
     if game_export.has_plays(connection):
         params = win_probability.load_params()
         for season in wanted:
-            months = game_export.build(connection, season, params=params)
+            months = game_export.build(connection, season,
+                                       model_id=model['model_id'],
+                                       params=params)
             if months:
                 detail[season] = months
     manifest = dict(

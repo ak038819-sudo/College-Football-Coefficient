@@ -35,15 +35,15 @@ plays, 159,069 carry a score that already contains their own points. So a
 state read off a scoring play is the state AFTER it, which is what a curve
 wants, and no off-by-one correction is applied.
 
-Measured over the whole archive, 2002-2027 (31,216 games, 14,246,266 plays
+Measured over the whole archive, 2002-2027 (31,230 games, 14,253,464 plays
 read, 0.44 GB fetched and discarded):
 
 | | |
 | --- | --- |
-| periods stored | 126,943 |
-| curve points stored | 1,684,983 (54 a game) |
-| key plays stored | 155,820 (5.0 a game) |
-| overtime games | 1,848 (5.9%) |
+| periods stored | 127,001 |
+| curve points stored | 1,685,752 (54 a game) |
+| key plays stored | 151,373 (4.8 a game) |
+| overtime games | 1,850 (5.9%) |
 | lead changes a game | 6.5 mean, 5 median, 43 most |
 | games whose plays do not add up to the box score | 1,390 (4.5%) |
 | of those, in 2002-2006 | 1,317 |
@@ -400,10 +400,16 @@ def key_plays(scored, periods):
             elif margin == 0 and before:
                 reason = 'tie'
         if reason is None and play['period'] >= periods \
-                and play['seconds_left'] <= CLUTCH_SECONDS \
                 and (abs(margin) <= CLUTCH_MARGIN
                      or abs(before) <= CLUTCH_MARGIN):
-            reason = 'late'
+            # THE CLOSING MINUTES OF THE LAST PERIOD ARE READ OFF THE PERIOD
+            # CLOCK, not off `seconds_left`, which is REGULATION remaining
+            # and pins at 0 right through overtime. Reading it here called
+            # every close score in a deciding overtime "late", 5,666 of them
+            # across the archive, one of them at 3:46 of a second overtime.
+            inside = clock_seconds(play['clock'])
+            if inside is not None and inside <= CLUTCH_SECONDS:
+                reason = 'late'
         if reason:
             kept[play['sequence']] = dict(play, reason=reason)
         previous = margin
