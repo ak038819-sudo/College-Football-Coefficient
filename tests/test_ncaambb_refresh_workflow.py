@@ -115,10 +115,14 @@ def test_publishing_off_still_banks_the_raw_cache():
                   if step.get('name', '').startswith('Commit'))
     body = commit['run']
     # The cache path is set unconditionally; only the export is guarded.
-    assert 'PATHS="data/ncaambb/raw"' in body
-    guard = body.split('PATHS="data/ncaambb/raw"')[0]
+    # The club marks are set with it, and for the same reason: they are
+    # fetched whatever the publish input says, so leaving them uncommitted
+    # would mean refetching them every run.
+    unguarded = 'PATHS="data/ncaambb/raw ui/assets/ncaambb"'
+    assert unguarded in body
+    guard = body.split(unguarded)[0]
     assert 'exit 0' not in guard, 'the cache commit is short-circuited'
-    assert '$ALLOWED' in body.split('PATHS="data/ncaambb/raw"')[1]
+    assert '$ALLOWED' in body.split(unguarded)[1]
 
 
 def test_the_export_is_published_only_when_allowed_and_the_gate_passed():

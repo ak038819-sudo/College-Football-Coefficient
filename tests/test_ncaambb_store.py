@@ -837,3 +837,41 @@ def test_a_column_added_after_a_database_exists_is_added_to_it(db):
     db.execute('ALTER TABLE game DROP COLUMN playing_date')
     assert 'game.playing_date' in add_missing_columns(db)
     assert add_missing_columns(db) == []
+
+
+# ---- a school's mark -------------------------------------------------------
+#
+# The provider sends logo URLs with every team row, filed under the school's
+# ESPN id, which is NOT its id in this feed: Siena is team 264 and mark 2561.
+# So the id is read and stored rather than derived from anything.
+
+def test_the_mark_id_is_read_from_the_light_cut():
+    assert store_module.logo_id({'logos': [
+        'https://cdn.collegefootballdata.com/cbb-logos/500/2561.png',
+        'https://cdn.collegefootballdata.com/cbb-logos-dark/500/2561.png',
+    ]}) == 2561
+
+
+def test_a_dark_only_feed_records_no_mark():
+    # The two cuts carry the same id, so matching either would look harmless.
+    # It is not: this site fetches a LIGHT file for every id it records, and
+    # a school that has only a dark cut has no light file to fetch.
+    assert store_module.logo_id({'logos': [
+        'https://cdn.collegefootballdata.com/cbb-logos-dark/96/2561.png',
+    ]}) is None
+
+
+def test_a_school_with_no_logos_has_no_mark():
+    assert store_module.logo_id({}) is None
+    assert store_module.logo_id({'logos': []}) is None
+    assert store_module.logo_id({'logos': [None, 7]}) is None
+
+
+def test_a_mark_survives_a_feed_that_stopped_sending_it(db):
+    marked = team()
+    marked['logos'] = ['https://cdn.collegefootballdata.com/cbb-logos/96/99.png']
+    upsert_teams(db, [marked])
+    assert db.execute('SELECT logo_id FROM team').fetchone()['logo_id'] == 99
+
+    upsert_teams(db, [team()])  # the same school, this time with no logos
+    assert db.execute('SELECT logo_id FROM team').fetchone()['logo_id'] == 99

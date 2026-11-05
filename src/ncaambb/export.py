@@ -87,7 +87,7 @@ def teams(connection):
     """
     rows = connection.execute(
         'SELECT team_key, school, mascot, abbreviation, display_name,'
-        '       short_name, primary_color, secondary_color'
+        '       short_name, primary_color, secondary_color, logo_id'
         '  FROM team ORDER BY team_key').fetchall()
     return {row['team_key']: dict(
         name=row['display_name'] or row['school'],
@@ -96,6 +96,11 @@ def teams(connection):
         abbr=row['abbreviation'],
         short=row['short_name'],
         colors=[row['primary_color'], row['secondary_color']],
+        # The id of this school's mark, NOT a path: the files are named from
+        # it (`assets/ncaambb/2561.png`), the page has one place that builds
+        # that path, and a school with no mark carries no key at all rather
+        # than a null the page would have to test for separately.
+        **({'logo': row['logo_id']} if row['logo_id'] else {}),
     ) for row in rows}
 
 
