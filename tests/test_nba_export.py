@@ -94,6 +94,16 @@ NOW = datetime(2026, 10, 1, tzinfo=timezone.utc)
 
 
 def build(connection, **kwargs):
+    """The first four of `export.build`'s five returns.
+
+    The fifth is the game layer, which these fixtures have no play-by-play
+    for and which `build` therefore returns as None. `build_detail` below is
+    what the game-layer tests call.
+    """
+    return build_detail(connection, **kwargs)[:4]
+
+
+def build_detail(connection, **kwargs):
     kwargs.setdefault('now', NOW)
     return export_module.build(connection, **kwargs)
 

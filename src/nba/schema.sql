@@ -137,3 +137,104 @@ CREATE TABLE IF NOT EXISTS rating_game (
     counted       INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (game_key, model_id)
 );
+
+-- ----------------------------------------------------------------------
+-- The game layer (schema 2): what a game page shows, and nothing else.
+-- ----------------------------------------------------------------------
+-- The plays themselves are NEVER stored. A season of ESPN play-by-play is
+-- 642,472 rows and 22 MB of Parquet for 1,325 games — 485 plays a game, of
+-- which 120 score. `src/nba/plays.py` reduces each season to the four things
+-- below and deletes the file before the next season is fetched, exactly as
+-- `src/nfl/plays.py` does with the nflverse play-by-play.
+--
+-- There is no NBA drive. Basketball's unit is the possession and the feed
+-- does not mark one, so the reduction is not "drives and scores": it is the
+-- period line score, the shape of the game, a thinned margin curve and the
+-- handful of plays a game story would actually print.
+
+-- One row per period: the line score, including overtime periods.
+CREATE TABLE IF NOT EXISTS game_period (
+    game_key    TEXT    NOT NULL REFERENCES game(game_key),
+    period      INTEGER NOT NULL,
+    home_points INTEGER NOT NULL,
+    away_points INTEGER NOT NULL,
+    snapshot_id INTEGER REFERENCES snapshot(snapshot_id),
+    PRIMARY KEY (game_key, period)
+);
+
+-- One row per game: how the game went, in the quantities a box score prints.
+-- `home_time_leading` and its companions are seconds of elapsed game time,
+-- so the three of them add up to the length of the game.
+CREATE TABLE IF NOT EXISTS game_shape (
+    game_key          TEXT    PRIMARY KEY REFERENCES game(game_key),
+    plays             INTEGER NOT NULL DEFAULT 0,
+    scoring_plays     INTEGER NOT NULL DEFAULT 0,
+    periods           INTEGER NOT NULL DEFAULT 0,
+    overtime          INTEGER NOT NULL DEFAULT 0,
+    lead_changes      INTEGER NOT NULL DEFAULT 0,
+    ties              INTEGER NOT NULL DEFAULT 0,
+    home_biggest_lead INTEGER NOT NULL DEFAULT 0,
+    away_biggest_lead INTEGER NOT NULL DEFAULT 0,
+    home_biggest_run  INTEGER NOT NULL DEFAULT 0,
+    away_biggest_run  INTEGER NOT NULL DEFAULT 0,
+    home_time_leading INTEGER,
+    away_time_leading INTEGER,
+    time_tied         INTEGER,
+    -- Whether the period line score and the end of the margin curve agree
+    -- with the final score the box score carries. NULL for a game with no
+    -- final score yet. MEASURED, not assumed: 1 of 2,628 games across 2010
+    -- and 2026 does not reconcile — 401810102, whose published plays stop
+    -- six points short of the final. Three others did until the line score
+    -- was changed from a sum of per-play deltas to the step between
+    -- cumulative totals. A game page shows the period detail only
+    -- where this is 1, because a line score that contradicts the final is
+    -- worse than no line score.
+    reconciled        INTEGER,
+    snapshot_id       INTEGER REFERENCES snapshot(snapshot_id)
+);
+
+-- The thinned margin curve. Each row is a state the archive states — the
+-- score at a moment the clock really showed — sampled at most once per
+-- `plays.CURVE_SECONDS` of game clock so that one game is a few dozen rows
+-- rather than a few hundred. `seconds_left` is REGULATION seconds remaining
+-- and is 0 throughout overtime, which is what src/win_probability.py means
+-- by it; the period says which overtime it was.
+CREATE TABLE IF NOT EXISTS game_state (
+    game_key     TEXT    NOT NULL REFERENCES game(game_key),
+    sequence     INTEGER NOT NULL,
+    period       INTEGER NOT NULL,
+    clock        TEXT,
+    seconds_left INTEGER NOT NULL,
+    elapsed      INTEGER NOT NULL,
+    home_score   INTEGER NOT NULL,
+    away_score   INTEGER NOT NULL,
+    snapshot_id  INTEGER REFERENCES snapshot(snapshot_id),
+    PRIMARY KEY (game_key, sequence)
+);
+
+-- The plays worth printing. The rule is in `plays.key_plays` and is
+-- model-free on purpose: a play is kept when it changed the lead or tied the
+-- game late, or when it was scored in the closing minutes of a close game.
+-- Nothing here is chosen by a win-probability model, because the model is
+-- fitted on `game_state` and a selection made by it would be circular.
+CREATE TABLE IF NOT EXISTS game_play (
+    game_key     TEXT    NOT NULL REFERENCES game(game_key),
+    sequence     INTEGER NOT NULL,
+    period       INTEGER NOT NULL,
+    clock        TEXT,
+    seconds_left INTEGER NOT NULL,
+    team_key     TEXT    REFERENCES team(team_key),
+    points       INTEGER NOT NULL DEFAULT 0,
+    kind         TEXT,
+    scorer       TEXT,
+    scorer_id    INTEGER,
+    description  TEXT,
+    home_score   INTEGER NOT NULL,
+    away_score   INTEGER NOT NULL,
+    reason       TEXT    NOT NULL,
+    snapshot_id  INTEGER REFERENCES snapshot(snapshot_id),
+    PRIMARY KEY (game_key, sequence)
+);
+
+CREATE INDEX IF NOT EXISTS game_state_by_game ON game_state(game_key, sequence);
+CREATE INDEX IF NOT EXISTS game_play_by_game ON game_play(game_key, sequence);

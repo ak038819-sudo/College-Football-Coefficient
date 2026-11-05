@@ -26,8 +26,14 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 1
-SUPPORTED_SCHEMA_VERSIONS = (1,)
+# Schema 2 adds the game layer: `files.games`, and the month files under
+# `games/<season>/`. Version 1 is still SUPPORTED, because an export written
+# before the reduction ran is a complete export of everything it claims to
+# carry — it simply has no game detail, which a page learns from the absence
+# of `files.games` rather than from the version number. What the bump buys is
+# that the version says which shape a reader is holding.
+SCHEMA_VERSION = 2
+SUPPORTED_SCHEMA_VERSIONS = (1, 2)
 
 # The Charlotte expansion team arrived in 2004-05, taking the league from 29
 # franchises to 30. Measured from the archive, not recalled: every schedule

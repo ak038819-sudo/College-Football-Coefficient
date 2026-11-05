@@ -216,15 +216,26 @@ def fraction_remaining(secs: float, *, regulation: int = REGULATION_SECONDS) -> 
 
 
 def home_win_probability(elo_diff: float, margin: float, secs_left: float,
-                         params: WinProbabilityParams) -> float:
+                         params: WinProbabilityParams,
+                         regulation: int | None = None) -> float:
     """P(home team wins), from the venue-adjusted pregame Elo gap and the game state.
 
     `elo_diff` is home minus away INCLUDING whatever home-field term the rating
     engine applies, i.e. the same quantity the pregame expectation is built
     from. `margin` is home points minus away points right now. `secs_left` is
     regulation seconds remaining; overtime is 0.
+
+    `regulation` is how long a game of this sport is, in seconds. It exists
+    because the mathematics here is not football's: the NBA plays four twelve
+    minute periods, so 2880 seconds is a whole game there and 2880 seconds is
+    four fifths of one here, and a league passing its own length in is the
+    difference between this module being shared and being copied. It resolves
+    to football's 3600 inside the call rather than as a def-time default,
+    which is a trap this repository has fallen into five times.
     """
-    f = fraction_remaining(secs_left)
+    f = fraction_remaining(secs_left,
+                           regulation=REGULATION_SECONDS if regulation is None
+                           else regulation)
     expected = margin + params.points_per_elo * elo_diff * f
     if f <= 0:
         # Regulation is over. Nothing is left to the walk.
@@ -255,7 +266,8 @@ def tie_mass(expected: float, spread: float, params: WinProbabilityParams) -> fl
             - normal_cdf((-params.tie_half_width - expected) / spread))
 
 
-def pregame_home_win_probability(elo_diff: float, params: WinProbabilityParams) -> float:
+def pregame_home_win_probability(elo_diff: float, params: WinProbabilityParams,
+                                 regulation: int | None = None) -> float:
     """The same model at kickoff: no score, a whole game to play.
 
     Kept as its own name because it is what the fit is anchored on, and because
@@ -263,7 +275,8 @@ def pregame_home_win_probability(elo_diff: float, params: WinProbabilityParams) 
     calibration run checks that this model has not drifted away from the
     ratings it is built on.
     """
-    return home_win_probability(elo_diff, 0.0, REGULATION_SECONDS, params)
+    whole = REGULATION_SECONDS if regulation is None else regulation
+    return home_win_probability(elo_diff, 0.0, whole, params, whole)
 
 
 def live_probability_from_feed(elo_diff: float, home_points, away_points,

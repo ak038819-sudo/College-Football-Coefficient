@@ -21,7 +21,7 @@
    * refused the older ones would blank the page for anyone served this
    * script before the next refresh rewrites the export, and one that refused
    * the newest would blank it for everyone after. */
-  var SUPPORTED_SCHEMA_VERSIONS = [1];
+  var SUPPORTED_SCHEMA_VERSIONS = [1, 2];
 
   /* The NBA is a fixed-size league, so this is an equality, not a floor: 30
    * franchises from the 2004-05 Charlotte expansion and 29 before it. An
@@ -215,8 +215,41 @@
     return (year - 1) + '-' + (tail < 10 ? '0' + tail : String(tail));
   }
 
+  /* The file holding one game's line score, shape and margin curve.
+   *
+   * The path is DERIVED, not looked up: `games/<season>/<YYYY-MM>.js`, with
+   * the month taken from the date of the game the reader just clicked. The
+   * manifest states only a cache token per season, because naming all 175
+   * month files in a file every reader fetches would cost more than the one
+   * month file a reader who opens a game fetches. The token still has to be
+   * there: a URL with no version stamp is one a reader can be served from a
+   * cache a previous export wrote.
+   *
+   * A month the manifest does not list yields null rather than a URL that
+   * 404s, which is how a page knows to say "no play-by-play for this game"
+   * instead of showing a spinner that never stops. */
+  function gameMonthKey(game) {
+    var date = game && game.date;
+    if (typeof date !== 'string' || date.length < 7) return null;
+    return date.slice(0, 7);
+  }
+
+  function gameMonthSource(manifest, season, month, base) {
+    var games = manifest && manifest.files && manifest.files.games;
+    var listed = games && games.seasons;
+    var entry = listed && listed[String(season)];
+    if (!entry || typeof entry.v !== 'string' || !entry.v) return null;
+    if (!Array.isArray(entry.months) || entry.months.indexOf(month) < 0) {
+      return null;
+    }
+    return (base || 'data/nba/') + 'games/' + season + '/' + month +
+      '.js?v=' + entry.v;
+  }
+
   var api = {
     SUPPORTED_SCHEMA_VERSIONS: SUPPORTED_SCHEMA_VERSIONS,
+    gameMonthKey: gameMonthKey,
+    gameMonthSource: gameMonthSource,
     EXPANSION_SEASON: EXPANSION_SEASON,
     MAX_HOLDOUT_BRIER: MAX_HOLDOUT_BRIER,
     STALE_AFTER_MINUTES: STALE_AFTER_MINUTES,

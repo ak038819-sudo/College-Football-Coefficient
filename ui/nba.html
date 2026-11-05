@@ -308,6 +308,16 @@
   .gamehead { display: flex; justify-content: space-between; gap: 12px;
               align-items: baseline; margin: 10px 0 4px; }
   .gamehead .score { font-family: var(--font-mono); font-size: 20px; }
+  /* The chart sits between the line score and the shape table, so it needs
+     air above it or the three run together as one block of rules. */
+  #game-body svg.wpchart { margin-top: 14px; }
+  /* The SECTION headings only. An unscoped `#game-body h3` also caught the
+     game's own title and drew "Phoenix Suns at LA Clippers" as a dim
+     uppercase label above its own score. */
+  #game-body h3.section { margin: 18px 0 6px;
+                          font-family: var(--font-display); font-size: 14px;
+                          letter-spacing: 0.6px; text-transform: uppercase;
+                          color: var(--ink-dim); }
   .wpchart { width: 100%; height: 110px; display: block;
              border: 1px solid var(--line); border-radius: 8px;
              background: var(--panel-2); }
@@ -488,6 +498,10 @@
     </div>
   </section>
 
+  <section class="panel" id="game" hidden>
+    <div id="game-body"></div>
+  </section>
+
   <section class="panel" id="standings" hidden>
     <div id="groups"></div>
     <p class="note">Ordered by record, with the rating as the tiebreak. The
@@ -524,9 +538,9 @@
   </section>
 </div>
 
-<script src="nba_loader.js?v=fe43063049a2"></script>
+<script src="nba_loader.js?v=10c98c2cc1d0"></script>
 <script src="ncaambb_app.js?v=36a720e91128"></script>
-<script src="nba_app.js?v=bb705ef52a1f"></script>
+<script src="nba_app.js?v=ecb52b91fa41"></script>
 <script>
 (function () {
   'use strict';
@@ -575,7 +589,7 @@
   }
 
   var state = { manifest: null, verdict: null, season: null, day: null,
-                tab: 'home', view: null, team: null, query: '',
+                tab: 'home', view: null, team: null, game: null, query: '',
                 mine: false, history: null, loadedSeason: null };
 
   function el(id) { return document.getElementById(id); }
@@ -637,6 +651,10 @@
     // A club page is only ever open inside Teams, so leaving that section
     // takes the club out of the URL with it.
     if (name !== 'teams') changes.team = null;
+    // A game page is only ever open inside Home, so pressing any tab closes
+    // it — including Home itself, which is how the reader gets back to the
+    // slate.
+    changes.game = null;
     writeParams(changes);
   }
 
@@ -930,7 +948,8 @@
   }
 
   function showPanel(name) {
-    ['scoreboard', 'standings', 'rankings', 'teams', 'history'].forEach(
+    ['scoreboard', 'game', 'standings', 'rankings', 'teams',
+      'history'].forEach(
       function (id) {
         el(id).hidden = id !== name;
       });
@@ -980,6 +999,34 @@
 
   function gameCard(game, payload) {
     var card = node('div', 'card');
+    // A card opens a game page where there is one to open. The keydown is
+    // guarded on the event's own target: a press on a club name BUBBLES
+    // here, and acting on it would open the game from under a reader
+    // pressing Enter on a club. Asked of THIS game, never of the slate: a
+    // postponed game should not take the tap off every finished game beside
+    // it.
+    var clickable = gameOpenable(game);
+    if (clickable) {
+      card.className = 'card open';
+      card.setAttribute('role', 'button');
+      card.tabIndex = 0;
+      var openThis = function () { openGame(game); };
+      card.addEventListener('click', function (event) {
+        // A club name inside the card is its own control and has already
+        // acted; opening the game on top of it would take the reader
+        // somewhere they did not press.
+        if (event.target !== card && event.target.closest('button')) return;
+        openThis();
+      });
+      card.addEventListener('keydown', function (event) {
+        if (event.target !== card) return;
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        // Space scrolls the page by default, which is what a button
+        // suppresses and a div does not.
+        event.preventDefault();
+        openThis();
+      });
+    }
     card.appendChild(node('div', 'status', app.statusLine(game, formatTime)));
     var winner = app.winnerOf(game);
     // Away over home, the way a scoreboard is read.
@@ -1080,6 +1127,331 @@
     if (!(payload.board || []).length) {
       host.appendChild(node('p', 'empty', 'No rating for this season yet.'));
     }
+  }
+
+  /* ------------------------------------------------------------------
+   * One game: the line score, how the game went, the key plays and how the
+   * win probability moved. The month file behind it is fetched on the first
+   * tap and cached, so a reader browsing a week of the schedule downloads it
+   * once for every game in it.
+   * ---------------------------------------------------------------- */
+
+  var GAME_PREFIX = 'nba:espn:game:';
+
+  /* A club's name and code FOR THE SEASON BEING LOOKED AT. Team 25 is the
+   * SuperSonics in 2007 and the Thunder now, so a 2007 game page must not be
+   * drawn from the franchise index alone. */
+  function seasonName(key) { return nameFor(key, seasonPayload(state.season)); }
+
+  function seasonAbbr(key) { return abbrFor(key, seasonPayload(state.season)); }
+
+  function shortGameId(id) {
+    var text = String(id || '');
+    return text.indexOf(GAME_PREFIX) === 0
+      ? text.slice(GAME_PREFIX.length) : text;
+  }
+
+  /* The short game id a URL names, or null. Only outside Teams: a `game`
+   * left on a URL whose section is Teams would draw a game behind a club
+   * page.
+   *
+   * It is resolved against the season's own games rather than by putting the
+   * prefix back, because the prefix is the export's business and not a shape
+   * this page is entitled to assume. */
+  function gameFromHash() {
+    var route = leagues.readRoute(window.location.hash);
+    if (route.league !== leagues.NBA) return null;
+    var section = route.params.section || 'home';
+    if (section !== 'home') return null;
+    var id = route.params.game;
+    return id ? String(id) : null;
+  }
+
+  function currentGame() {
+    if (!state.game) return null;
+    var games = (seasonPayload(state.season) || {}).games || [];
+    for (var i = 0; i < games.length; i += 1) {
+      if (shortGameId(games[i].id) === state.game) return games[i];
+    }
+    return null;
+  }
+
+  function monthPayloadFor(game) {
+    var month = loader.gameMonthKey(game);
+    if (!month) return null;
+    return (window.NBA_GAMEMONTHS || {})[state.season + '/' + month] || null;
+  }
+
+  function monthSourceFor(game) {
+    return loader.gameMonthSource(state.manifest, state.season,
+      loader.gameMonthKey(game), BASE);
+  }
+
+  /* Make sure the month file this game's detail lives in has been fetched,
+   * and say which of four states we are in: `absent` (this export built no
+   * file for it), `pending` (on its way), `ready`, or `missing` (the file
+   * arrived and does not carry this game).
+   *
+   * A REQUEST IS MADE ONCE. Re-rendering is how the page shows the answer,
+   * so a render that re-fetched would re-render, which would re-fetch: the
+   * flag is what stops a game with no detail from spinning the network. */
+  var monthState = {};
+  function ensureMonth(game) {
+    var url = monthSourceFor(game);
+    if (!url) return 'absent';
+    if (monthPayloadFor(game)) return 'ready';
+    if (monthState[url] === 'done') return 'missing';
+    if (monthState[url]) return 'pending';
+    monthState[url] = 'asked';
+    fetchScript(url).then(function () {
+      monthState[url] = 'done';
+      render();
+    }, failed);
+    return 'pending';
+  }
+
+  /* Whether a game has a page behind it: it has to have been played, and the
+   * month file its page reads has to be one this export built. An export
+   * written before the reduction ran carries no `files.games` at all, and
+   * then no card is a link — which is the honest answer, not a link to a
+   * page that would say nothing. */
+  function gameOpenable(game) {
+    if (!game || !app.isFinal(game)) return false;
+    return Boolean(monthSourceFor(game));
+  }
+
+  function openGame(game) {
+    writeParams({
+      section: null, view: null, team: null,
+      game: shortGameId(game.id), season: String(state.season)
+    });
+    state.game = shortGameId(game.id);
+    render();
+  }
+
+  function closeGame() {
+    writeParams({ game: null });
+    state.game = null;
+    render();
+  }
+
+  function svg(name, attributes) {
+    var made = document.createElementNS('http://www.w3.org/2000/svg', name);
+    Object.keys(attributes || {}).forEach(function (key) {
+      made.setAttribute(key, attributes[key]);
+    });
+    return made;
+  }
+
+  function gameChart(host, entry, game, periods) {
+    var points = app.winProbabilityTrace(entry, periods);
+    if (points.length < 2) return;
+    var width = 600;
+    var height = 110;
+    var chart = svg('svg', {
+      'class': 'wpchart', viewBox: '0 0 ' + width + ' ' + height,
+      preserveAspectRatio: 'none', role: 'img',
+      'aria-label': 'Home win probability through the game'
+    });
+    chart.appendChild(svg('line', {
+      'class': 'mid', x1: 0, y1: height / 2, x2: width, y2: height / 2
+    }));
+    chart.appendChild(svg('path', {
+      'class': 'line', d: app.tracePath(points, width, height)
+    }));
+    // A line with no scale on it is a shape, not a measurement. Three ticks
+    // are enough to read it: the home club at the top, an even chance on the
+    // midline, the away club at the bottom.
+    [[14, seasonAbbr(game.home) || 'Home'],
+     [height / 2 - 4, '50%'],
+     [height - 6, seasonAbbr(game.away) || 'Away']]
+      .forEach(function (tick) {
+        var label = svg('text', { x: 6, y: tick[0], 'class': 'tick' });
+        label.textContent = tick[1];
+        chart.appendChild(label);
+      });
+    host.appendChild(chart);
+    var key = node('p', 'wpkey wplegend');
+    // Said on the page, not only in the docs: the curve knows the score, the
+    // clock and the pregame rating, and nothing about who has the ball, who
+    // is on the floor or who is in foul trouble.
+    key.textContent = seasonName(game.home) + ' win probability through the '
+      + 'game, from the pregame rating, the score and the clock. It does not '
+      + 'know possession, who is on the floor, fouls or timeouts.'
+      // Said where the gap is: the model's clock runs to the end of
+      // regulation, so a state inside overtime is one it cannot speak for
+      // and carries no number at all.
+      + (app.hasUnpricedStates(entry)
+        ? ' The line stops at the end of regulation: the model has nothing '
+          + 'to say inside overtime, where it would read every lead as a '
+          + 'certainty.'
+        : '');
+    host.appendChild(key);
+  }
+
+  function lineScoreTable(host, entry, game) {
+    var rows = app.lineScore(entry);
+    if (!rows.length) return;
+    var scroller = node('div', 'scroller');
+    var table = document.createElement('table');
+    var head = document.createElement('thead');
+    var headRow = document.createElement('tr');
+    headRow.appendChild(node('th', '', 'Club'));
+    rows.forEach(function (row) {
+      headRow.appendChild(node('th', 'num', app.periodLabel(row.period)));
+    });
+    headRow.appendChild(node('th', 'num', 'T'));
+    head.appendChild(headRow);
+    table.appendChild(head);
+    var body = document.createElement('tbody');
+    [['away', game.away], ['home', game.home]].forEach(function (pair) {
+      var tr = document.createElement('tr');
+      var cell = node('td', 'teamcell');
+      cell.appendChild(linkTo(seasonName(pair[1]), function () {
+        openTeam(pair[1]);
+      }));
+      tr.appendChild(cell);
+      rows.forEach(function (row) {
+        tr.appendChild(node('td', 'num', String(row[pair[0]])));
+      });
+      tr.appendChild(node('td', 'num',
+        app.isFinal(game) ? String(game[pair[0] + '_points']) : ''));
+      body.appendChild(tr);
+    });
+    table.appendChild(body);
+    scroller.appendChild(table);
+    host.appendChild(scroller);
+  }
+
+  function shapeList(host, entry, payload, game) {
+    var shape = app.unpackShape(entry, payload && payload.shape_fields);
+    if (!shape) return;
+    host.appendChild(node('h3', 'section', 'How the game went'));
+    var home = seasonAbbr(game.home) || seasonName(game.home);
+    var away = seasonAbbr(game.away) || seasonName(game.away);
+    var facts = [
+      ['Lead changes', String(shape.lead_changes)],
+      ['Times tied', String(shape.ties)],
+      ['Biggest lead', home + ' ' + shape.home_biggest_lead + ', '
+        + away + ' ' + shape.away_biggest_lead],
+      ['Biggest run', home + ' ' + shape.home_biggest_run + ', '
+        + away + ' ' + shape.away_biggest_run],
+      ['Time in front', home + ' ' + app.durationText(shape.home_time_leading)
+        + ', ' + away + ' ' + app.durationText(shape.away_time_leading)
+        + ', tied ' + app.durationText(shape.time_tied)],
+      ['Scoring plays', String(shape.scoring_plays)]
+    ];
+    var table = document.createElement('table');
+    var body = document.createElement('tbody');
+    facts.forEach(function (fact) {
+      var tr = document.createElement('tr');
+      tr.appendChild(node('td', '', fact[0]));
+      tr.appendChild(node('td', 'num', fact[1]));
+      body.appendChild(tr);
+    });
+    table.appendChild(body);
+    host.appendChild(table);
+  }
+
+  /* Why each kept play is on the page. The export states the reason; this is
+   * the word a reader sees. */
+  var REASON_LABELS = {
+    lead: 'Lead change', tie: 'Tied it', late: 'Late', final: 'Last score'
+  };
+
+  function keyPlayTable(host, entry, payload, game) {
+    var plays = app.unpackKeyPlays(entry, game, payload && payload.reasons);
+    if (!plays.length) return;
+    host.appendChild(node('h3', 'section', 'Key plays'));
+    var scroller = node('div', 'scroller');
+    var table = document.createElement('table');
+    var head = document.createElement('thead');
+    head.innerHTML = '<tr><th>Time</th><th>Club</th><th>Play</th>'
+      + '<th class="num">Score</th><th>Why</th></tr>';
+    table.appendChild(head);
+    var body = document.createElement('tbody');
+    plays.forEach(function (play) {
+      var tr = document.createElement('tr');
+      tr.appendChild(node('td', '', app.playTime(play)));
+      tr.appendChild(node('td', '', play.team ? seasonAbbr(play.team) : ''));
+      var what = [play.scorer, play.kind].filter(Boolean).join(' — ');
+      tr.appendChild(node('td', 'reason', what || play.description || ''));
+      tr.appendChild(node('td', 'num', play.away + '-' + play.home));
+      tr.appendChild(node('td', '', REASON_LABELS[play.reason] || ''));
+      body.appendChild(tr);
+    });
+    table.appendChild(body);
+    scroller.appendChild(table);
+    host.appendChild(scroller);
+    host.appendChild(node('p', 'note', 'The plays a game story would print: '
+      + 'a lead change or a tie in the fourth period or an overtime, a score '
+      + 'in the closing two minutes of a close game, and the last score of '
+      + 'the game. Chosen by that rule and not by the win-probability model, '
+      + 'which is fitted on the same games and would be marking its own '
+      + 'homework.'));
+  }
+
+  function gamePanel() {
+    var host = el('game-body');
+    host.innerHTML = '';
+    var game = currentGame();
+    if (!game) {
+      host.appendChild(node('p', 'empty', 'That game is not in this season.'));
+      return;
+    }
+    var back = node('p', 'back');
+    back.appendChild(linkTo('← Back to the schedule', closeGame));
+    host.appendChild(back);
+
+    var head = node('div', 'gamehead');
+    var title = node('div', '');
+    title.appendChild(node('h3', '',
+      seasonName(game.away) + ' at ' + seasonName(game.home)));
+    var when = [dayLabel(app.dayOf(game)), app.typeLabel(game), game.venue,
+      game.city].filter(Boolean).join(' · ');
+    title.appendChild(node('div', 'sub', when));
+    head.appendChild(title);
+    head.appendChild(node('div', 'score',
+      app.isFinal(game)
+        ? game.away_points + '-' + game.home_points
+        : 'not played'));
+    host.appendChild(head);
+
+    var ready = ensureMonth(game);
+    if (ready === 'pending') {
+      host.appendChild(node('p', 'note', 'Loading the play-by-play…'));
+      return;
+    }
+    var payload = monthPayloadFor(game);
+    var entry = payload && payload.games ? payload.games[game.id] : null;
+    if (!entry) {
+      // Measured, not hypothetical: one completed game in the archive —
+      // 401810469, 2026-01-20 — has no published play-by-play at all, and
+      // four postponed games have none either. Saying so beats drawing an
+      // empty chart.
+      host.appendChild(node('p', 'note', 'No play-by-play is published for '
+        + 'this game, so there is no line score or flow to show. The score '
+        + 'above comes from the box score.'));
+      return;
+    }
+    // The chart's x-axis is the length of THIS game, so an overtime game
+    // is drawn wider rather than squeezing five periods into four.
+    var periods = app.lineScore(entry).length || app.REGULATION_PERIODS;
+    if (!app.detailReconciles(entry)) {
+      // SAID ABOUT EVERYTHING BELOW IT, not only the line score. The first
+      // version withheld the line score and then drew a flow that ended
+      // 109-102 under a header saying 111-102, which is the contradiction
+      // the withholding was for.
+      host.appendChild(node('p', 'note', 'The published plays for this game '
+        + 'stop short of the final score above, so the period line score is '
+        + 'left out and everything below ends where the plays do. The score '
+        + 'is the box score’s.'));
+    } else {
+      lineScoreTable(host, entry, game);
+    }
+    gameChart(host, entry, game, periods);
+    shapeList(host, entry, payload, game);
+    keyPlayTable(host, entry, payload, game);
   }
 
   // -------------------------------------------------------------- standings
@@ -1391,6 +1763,12 @@
       showPanel(null);
       return;
     }
+    // A game page sits inside Home and replaces the slate while it is open.
+    if (state.tab === 'home' && state.game) {
+      showPanel('game');
+      gamePanel();
+      return;
+    }
     var panel = panelFor(state.tab, state.view);
     showPanel(panel);
     if (panel === 'scoreboard') scoreboard(payload);
@@ -1417,6 +1795,7 @@
       state.view = place.view;
     }
     state.team = teamFromHash();
+    state.game = gameFromHash();
     // A URL MUST MEAN ONE THING. A hash naming no season means the latest,
     // which is what `start()` resolves it to, so Back off a season link has
     // to come back to the latest as well. Reading a missing parameter as
@@ -1455,6 +1834,7 @@
         state.view = place.view;
       }
       state.team = teamFromHash();
+      state.game = gameFromHash();
       seasonSelect();
       return Promise.all([loadTeams(), loadSeason(state.season),
         loadHistory()]).then(function () {

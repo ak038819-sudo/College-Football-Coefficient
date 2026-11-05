@@ -294,3 +294,200 @@ The database is built from scratch on every run, so a two-season run builds a
 two-season export, which the gate would pass — it checks the seasons that are
 there. The input is for rehearsing an ingest, and that guard is what keeps it
 to that.
+
+---
+
+# The game layer (N3)
+
+A game page: the period line score, how the game went, how the win
+probability moved, and the plays a game story would print. Everything here
+comes from the ESPN play-by-play, and **not one play is stored or
+published.**
+
+## The reduction
+
+`src/nba/plays.py`. A season is fetched, reduced, and the file deleted
+before the next season is fetched, so peak disk is one 22 MB file. Measured
+over 2002-2027:
+
+| | |
+| --- | --- |
+| seasons | 26 |
+| plays read | 14,246,266 |
+| fetched and discarded | 0.44 GB |
+| games reduced | 31,216 |
+| periods stored | 126,943 |
+| curve points stored | 1,684,983 (54 a game) |
+| key plays stored | 155,820 (5.0 a game) |
+
+**THERE IS NO NBA DRIVE.** The NFL reduction is "drives and scoring plays"
+because a drive is football's unit and the feed marks one. Basketball's unit
+is the possession, and this feed does not mark possessions at all — there is
+no column saying who has the ball, only who made each play. A reduction built
+on a guessed possession boundary would be a derived quantity presented as a
+stated one. So four tables, each holding something the feed really states:
+
+- `game_period` — the line score, overtime periods included.
+- `game_shape` — lead changes, ties, biggest lead and biggest run each way,
+  and how long each side spent in front. The three times add up to the
+  length of the game, which is a test.
+- `game_state` — a thinned margin curve: the score at moments the clock
+  really showed, at most one per 48 seconds of game clock (two shot clocks),
+  which is 54 points for a regulation game.
+- `game_play` — the key plays, by the rule below.
+
+### Four traps, each measured
+
+**OVERTIME SECONDS ARE NOT PINNED BY THE FEED.**
+`start_game_seconds_remaining` counts 2880 down to 0 across regulation and
+then counts 300 down to 0 again in *each* overtime period, so a
+fourth-quarter state and a first-overtime state can both read 240.
+`seconds_left` here is REGULATION seconds remaining and is 0 throughout
+overtime, which is what `src/win_probability.py` means by it; `elapsed` is
+the quantity that keeps running, and it is the chart's x-axis.
+
+**THE LINE SCORE IS A DIFFERENCE OF TOTALS, NOT A SUM OF DELTAS.** Summing
+each scoring play's points looks equivalent and is not: one 2010 game's rows
+appear twice in the file, and summing deltas across them gave a 213-234 line
+score for a game that ended 127-141. Taking the step between consecutive
+periods' cumulative totals is right either way, and it also fixed two games
+whose per-play deltas landed four points on the wrong side.
+
+**A LEAD CHANGE PASSES THROUGH A TIE.** Counting a change whenever the sign
+of the margin differs from the *previous state's* missed every change of the
+shape 98-96, 98-98, 98-100 — which is most of them, and the archive-wide mean
+read 4.4 a game instead of 6.5. What is tracked is the last side that was in
+front.
+
+**THE SCOREBOARD IS THE AUTHORITY ON WHO SCORED**, not the play's `team_id`,
+for the same reason it is on the NFL side: the side whose total rose by
+exactly this play's points is the side that scored.
+
+### The plays that do not add up
+
+**1,390 of 31,216 games have a play log that does not reach the final score
+the box score states, and 1,317 of those are in 2002-2006.** Three read by
+hand each end one to three points light on one side: the early ESPN feed is
+simply short. `game_shape.reconciled` records it, and:
+
+- a game page shows the box score's final, leaves the period line score out,
+  and says everything below it ends where the plays do;
+- `fit_win_probability.py` fits on none of them.
+
+Separately, **five games of 2026 have no play-by-play at all** — four
+postponed, and 401810469 (2026-01-20, a completed 110-138) which simply has
+none published. Its page says so rather than drawing an empty flow.
+
+## The win-probability curve
+
+`src/nba/win_probability.py` and `src/nba/fit_win_probability.py`. The model
+is the shared `src/win_probability.py` — the remaining margin as a random
+walk the pregame rating tilts, with an exact-tie term — and what the NBA
+passes in is **its own clock: 2880 seconds of regulation, where football
+plays 3600.** That is the one mistake worth guarding: a state with 1440
+seconds left would otherwise read as 40% of a game remaining instead of half
+of one, and every number on every game page would be wrong by an amount no
+reader could spot. A test asserts it.
+
+**The parameters are the NBA's own.** `config/nba_win_probability.json`:
+
+| parameter | value | how |
+| --- | --- | --- |
+| `points_per_elo` | 0.032804 | NOT fitted here — read from `config/nba_model.json`, the Elo model's own answer |
+| `sigma` | 12.1823 points | the residual spread of the REGULATION margin about the rating's call |
+| `overtime_home_win` | 0.5394 | counted, not fitted: 1,420 fit games ended regulation level, 6.1% |
+| `tie_half_width` | 1.0418 points | solved so the model's tip-off tie mass matches that 6.1% |
+| `time_exponent` | 0.2820 | FITTED, on real in-game states |
+
+Fitted on 1,222,348 states over 2002-2021 (23,121 games); **held out on
+352,034 states over 2022-2026**:
+
+| | Brier |
+| --- | --- |
+| this model | **0.15981** |
+| the pregame chance, never updated | 0.21708 |
+| the same model at a pure random walk (0.5) | 0.16203 |
+| calibration error | 0.02774 |
+
+The exponent is well below the random walk's 0.5 and is not at a grid edge.
+**The overtime share is 0.5394 across twenty seasons and 0.600 on 2026
+alone** — a reminder, again, that a measurement on one season is not a claim
+about the archive.
+
+The search is coarse-to-fine (0.02 then 0.002) rather than one flat grid:
+there are ten times as many states here as on the NFL side, because
+basketball has no drives and the curve is sampled on the clock, and 161
+passes over 1.2 million states is twenty minutes of work for an answer three
+decimal places wide. The edge check is against the coarse grid, because that
+is the boundary a fit can be pinned against.
+
+## The export
+
+`src/nba/game_export.py` writes **one file a month**,
+`games/<season>/<YYYY-MM>.js`, fetched lazily when a reader opens a game.
+The page derives the path with `date.slice(0, 7)` — arithmetic neither side
+can get wrong — so no index is downloaded to find a game. A season in one
+file would be 1.4 MB to read one game of it; a day would be 4,250 files
+across the archive for an 8 KB saving on a fetch nobody makes twice. A month
+is about 190 games, 1.5 KB each, 220 KB, which Pages serves gzipped at about
+100 KB.
+
+The manifest states **one cache token per season**, not one per file: 175
+hashes in a file every reader fetches would cost more than the one month file
+a reader who opens a game fetches.
+
+The curve is **four parallel arrays** — elapsed, home, away, probability in
+per mille — because the same points as objects would repeat four key names
+1.68 million times. The shape row is read by the order `shape_fields` states,
+so the page never hard-codes an index.
+
+**The win probability is computed at build time, not in the browser.** Every
+NBA game in this archive is finished, so there is nothing for a page to
+recompute, and one implementation of a fitted curve is better than two.
+
+**An overtime state is not priced.** Regulation seconds remaining is 0 there
+and the model would answer 1 or 0 by the score alone, which in the middle of
+a five-minute period is not an answer. Those points carry a null probability
+— the same rule the fit applies to the same states — and the page says the
+line stops at the end of regulation. It says it *only* where it is true:
+every game's last point is the buzzer and carries no price either, and the
+first browser check caught that sentence on a game that never went to
+overtime.
+
+The export is **schema 2**. Schema 1 is still supported: an export written
+before the reduction ran is a complete export of everything it claims to
+carry, and a page learns the game layer is absent from the missing
+`files.games` rather than from the version number.
+
+`ui/data/nba` is **56 MB**, 45 MB of it game detail (13.5 MB gzipped). For
+comparison `ui/data/nfl/games` is 23 MB for 7,366 games; this is 31,216
+games at 1.5 KB each.
+
+## The key plays, and why they are chosen without the model
+
+A play is kept when any of these is true, and the `reason` column says which:
+
+| reason | rule |
+| --- | --- |
+| `lead` | it put a side in front that was not the side in front, in the fourth period or an overtime |
+| `tie` | it levelled the game, in the fourth period or an overtime |
+| `late` | it was scored in the last two minutes of the last period with the margin inside two possessions either side of it |
+| `final` | it was the last score of the game |
+
+Capped at twenty, keeping the latest. **Nothing here is chosen by the
+win-probability model**, which is fitted on these same games: selecting the
+plays by it and then drawing its own curve through them would be the model
+marking its own homework. The page says so.
+
+## The refresh
+
+`python -m src.nba.plays` runs on every refresh, **before** the replay,
+reducing the whole archive rather than only the season in progress: nothing
+here is stateful, the database is built from scratch each run, and the
+alternative is committing derived data and keeping it in step with the
+source. A failure fails the run, because an export with no game layer would
+be refused by `src/nba/publish.py` anyway — it may not drop a `files` key the
+published manifest carries.
+
+A dispatch with `pbp_seasons` set reduces only those seasons and **may not
+publish**, for the same reason `seasons` may not.

@@ -1,5 +1,11 @@
 """NBA database: connection, migration and idempotent loaders.
 
+Schema 2 adds the game layer — `game_period`, `game_shape`, `game_state` and
+`game_play` — which `src/nba/plays.py` reduces the play-by-play into. The
+version is bumped rather than left alone because a database at version 1 is a
+database without those tables, and a reader that cannot tell the two apart
+reports "no plays for this game" for every game ever played.
+
 Every loader is safe to run twice. A refresh re-reads the whole archive each
 time, so "load it again and nothing changes" is not a nicety here, it is the
 normal path.
@@ -14,7 +20,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 DEFAULT_PATH = Path('db/nba.db')
 SCHEMA_SQL = Path(__file__).with_name('schema.sql')
 
