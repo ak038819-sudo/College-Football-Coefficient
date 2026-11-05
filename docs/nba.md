@@ -143,3 +143,154 @@ the playoffs, so any ordering by the name or number of a round puts it in the
 wrong place. Ordering a season by round once put a bowl game first in the
 football archive and zeroed 1,353 season rating changes; the same shape of
 mistake is available here.
+
+## The rating
+
+`config/nba_model.json` holds the fitted parameters and what they scored on
+seasons they were never fitted on. `src/nba/fit_elo.py` chooses them;
+`src/nba/build_ratings.py` replays with them and writes nothing else. A
+refresh never refits.
+
+| | value |
+| --- | --- |
+| k | 20 |
+| home advantage | 80 |
+| offseason retention | 0.6 |
+| margin model | margin of victory, exponent 0.75 |
+| reference margin | 11.039 points (MEASURED, the mean winning margin) |
+| fitted on | 2001-02 to 2020-21, 25,585 games |
+| held out | 2021-22 to 2025-26, 6,605 games |
+| held-out Brier | **0.21809** |
+| held-out accuracy | 0.65405 |
+| home win rate on those games | 0.55534 |
+
+**The floor it had to clear is measured on this league, not borrowed.** NBA
+home teams won 55.53% of those 6,605 games, which puts "pick the home team
+every time" at a Brier of 0.24694. That is the number `MAX_HOLDOUT_BRIER`
+(0.246) comes from in both gates. Its closeness to the NFL's 0.245 is a
+coincidence of two sports having a similar home edge, not a copied constant.
+
+It also beats carrying over any model this repository already had, scored on
+the same held-out games:
+
+| settings carried over from | held-out Brier |
+| --- | --- |
+| **this fit** | **0.21809** |
+| college football (k=45, home 50, retention 0.8, result only) | 0.22192 |
+| NFL (k=48, home 50, retention 0.5, mov) | 0.22385 |
+| college basketball (k=45, home 100, retention 0.8, mov) | 0.22714 |
+
+No chosen parameter sits at the edge of its grid, so each is a fit rather
+than a boundary; `fit_elo.py` reports `grid_edges` on every run and the fit
+that produced this configuration reported none.
+
+**It is over-confident at the top of its range.** In the held-out seasons
+the most confident bucket predicted 0.846 and observed 0.782. That is
+recorded in the configuration's own `note` rather than left for a reader to
+find, and the calibration error (0.04173) is part of the committed
+validation.
+
+**The held-out claim is pinned to the parameters by hash.** A refresh runs on
+a fresh runner with no fit report, so the committed `validation` block is the
+only honest source for what the model scored. `measured_on_elo_sha256` is the
+sha256 of the canonical `elo` block, and `check_validation` refuses a
+configuration whose parameters have been edited since the score was measured.
+Without the committed claim the gate would refuse every refresh, which is how
+the basketball refresh once shipped unable to publish anything.
+
+### The NBA Cup final
+
+**The in-season tournament's championship game does not count in the
+standings, and the source says it is a regular-season game.** Every other
+game of the tournament does count: the group games and the knockout rounds
+are scheduled regular-season games. The final alone is not, which is why the
+two finalists end a season having played 83 while everybody else played 82 —
+measured across the archive, exactly two teams exceed 82 in each of 2024,
+2025 and 2026, and none in any other season.
+
+Left as the source has it, a standings page shows two franchises one win or
+loss ahead of the record the NBA credits them with.
+
+It is rateable all the same. It is a real game between two teams trying to
+win, and the NBA excludes it from the standings, not from history. So it is
+replayed, exported and drawn, with its own season type `cup_final`, and kept
+out of every won-lost record.
+
+**Two spellings, because the event was renamed.** 2023-24 says "NBA In-Season
+Tournament Championship" and the two seasons after it say "NBA Cup
+Championship"; a search for "Cup" alone finds only two of the three. The
+string is the source's and could change again, so `tests/test_nba_rating.py`
+asserts the invariant behind it: in a season with a final, every team played
+exactly 82 regular-season games.
+
+## The export and the gate
+
+`src/nba/export.py` writes `ui/data/nba/` and nothing else:
+
+| file | what it is |
+| --- | --- |
+| `manifest.json` | the model, its held-out score, per-season coverage, and a version stamp for every file below |
+| `teams.js` | the thirty franchises under their CURRENT names |
+| `seasons/<season>.js` | one season's board, games and per-season names, about 440 KB, fetched one at a time |
+| `history.js` | conference ratings season by season, and the champions |
+
+The gate in `src/nba/publish_gate.py` runs BEFORE the first byte is written
+and again against the directory afterwards. `ui/nba_loader.js` is the same
+refusal in the browser, against whatever manifest the network returned: the
+build gate stops a bad export being written, and the reader's gate stops a
+stale deploy, a cached manifest from before a schema change or a half-served
+directory being drawn as a rating.
+
+Both are stricter than the college ones in one way: **the league is a fixed
+size**, so the team check is an equality rather than a floor — 29 franchises
+before 2004-05 and 30 after — and an export missing one franchise fails
+instead of clearing a floor by a comfortable margin.
+
+**Staleness is not a gate.** An export hours old is still the last good
+snapshot and stays publishable, marked stale, which is what the page does. An
+as-of time in the FUTURE is refused, because it means the clock or the
+pipeline is wrong.
+
+## The page
+
+`ui/nba.html`, with `ui/nba_loader.js` (the refusal) and `ui/nba_app.js` (the
+NBA's own rules). Four tabs of the shared five: Home, Stats, Standings,
+Teams. No People, because schema 1 carries no people layer and an empty tab
+is worse than an absent one.
+
+Three rules live on this page and nowhere else in Elocast.
+
+**A game's day is its LOCAL DATE.** A 7:30pm tip in Los Angeles is 03:30Z the
+next day, and almost half an NBA night tips after midnight UTC. The
+basketball page's `dayOf` reads the UTC timestamp, which is right for a noon
+Saturday college game and wrong for most of this league, so the NBA has its
+own.
+
+**Standings are by conference, and say so.** There are no divisions in this
+source. Where the standings feed has not published a season yet — which is
+every season in progress — the board falls back to the franchise's current
+conference and records which of the two it used in `conference_from`. The
+conference HISTORY does not fall back: a trend may not be drawn from today's
+alignment applied backwards.
+
+**A franchise is not its name.** Team 25 is the SuperSonics in 2007 and the
+Thunder now; team 3 and team 30 have both been the Charlotte Hornets. Every
+lookup is by franchise key, and a season's own names come from that season's
+payload.
+
+## The refresh
+
+`.github/workflows/nba-refresh.yml`, every morning through the season
+(October to June) and on dispatch. Its own concurrency group, its own health
+light, and no secret: the source is a set of public release assets with no
+key and no cap, so the raw archive is refetched rather than committed.
+
+pyarrow is installed by name in the workflow rather than left to
+`requirements-dev.txt`: the source publishes Parquet and nothing else, so an
+edit to that file could otherwise take this refresh offline silently.
+
+A dispatch with `seasons` set ingests only those seasons and MAY NOT PUBLISH.
+The database is built from scratch on every run, so a two-season run builds a
+two-season export, which the gate would pass — it checks the seasons that are
+there. The input is for rehearsing an ingest, and that guard is what keeps it
+to that.

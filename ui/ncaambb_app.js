@@ -20,6 +20,7 @@
   var FOOTBALL = 'cfb';
   var BASKETBALL = 'ncaambb';
   var NFL = 'nfl';
+  var NBA = 'nba';
 
   /* `launched` is whether a league's export is published yet, and it is the
    * one thing that decides whether a league may appear in a picker. A league
@@ -45,23 +46,31 @@
    * Basketball yet", "Follow BYU Men's Basketball too?"), and they keep the
    * full names. Do not fold them into the tab label.
    *
-   * The NBA is not in this registry yet -- its archive landed, its pages have
-   * not. When it joins, its tab is `picker: 'NBA'` with
-   * `pickerTitle: 'National Basketball Association'`, and `launched` stays
-   * false until ui/data/nba is published.
+   * `page` is where the league lives. It is here rather than in each picker
+   * because each picker used to carry its own map and they did not agree:
+   * ui/basketball.html sent EVERY other league to dashboard.html, so a
+   * reader on basketball who tapped NFL landed on college football.
    */
   var LEAGUES = [
     { slug: FOOTBALL, label: 'College Football', short: 'Football',
-      picker: 'NCAAF', pickerTitle: 'College Football', launched: true },
+      picker: 'NCAAF', pickerTitle: 'College Football', launched: true,
+      page: 'dashboard.html' },
     // Launched 2026-11-01, with the export it waited for: ui/data/ncaambb
     // carries 2015-2026. It was held false for eleven days because the
     // provider's monthly quota was spent, and a league offered here with no
     // data behind it is the one thing this flag exists to prevent.
     { slug: BASKETBALL, label: 'College Basketball', short: "Men's Basketball",
       picker: 'NCAAM', pickerTitle: "Men's College Basketball",
-      launched: true },
+      launched: true, page: 'basketball.html' },
     { slug: NFL, label: 'NFL', short: 'NFL', picker: 'NFL',
-      pickerTitle: 'National Football League', launched: true }
+      pickerTitle: 'National Football League', launched: true,
+      page: 'nfl.html' },
+    // Launched with the export it names: ui/data/nba carries 2001-02
+    // onward, committed in the same change as this page, so the flag and
+    // the data land together rather than the tab waiting on a refresh.
+    { slug: NBA, label: 'NBA', short: 'NBA', picker: 'NBA',
+      pickerTitle: 'National Basketball Association', launched: true,
+      page: 'nba.html' }
   ];
 
   var LEAGUE_KEY = 'elocast.league.v1';
@@ -82,7 +91,12 @@
     // own section, because the NFL's coach records come from the game
     // archive rather than from a people feed.
     nfl: ['home', 'standings', 'teams', 'people', 'games', 'rankings',
-          'coaches', 'history']
+          'coaches', 'history'],
+    // The NBA export (schema 1) carries games, ratings, franchise records
+    // and conference history, and no people layer: N2 is the rating and the
+    // tab, and the box scores are a later stage. No `people`, therefore,
+    // and no `stats`: an empty tab is worse than an absent one.
+    nba: ['home', 'standings', 'teams', 'games', 'history']
   };
 
   /* THE FIVE TABS, in one order, under one set of names, for every league.
@@ -879,13 +893,23 @@
   function searchPlaceholder(slug) {
     if (slug === BASKETBALL) return 'Search college basketball…';
     if (slug === NFL) return 'Search the NFL…';
+    if (slug === NBA) return 'Search the NBA…';
     return 'Search college football…';
+  }
+
+  /* The page a league lives on; see `page` in the registry above. One map,
+   * read by all four pickers, is the only shape where a tap cannot send a
+   * reader to the wrong league. */
+  function pageFor(slug) {
+    var entry = league(slug);
+    return entry && entry.page ? entry.page : 'dashboard.html';
   }
 
   var api = {
     FOOTBALL: FOOTBALL,
     BASKETBALL: BASKETBALL,
     NFL: NFL,
+    NBA: NBA,
     LEAGUES: LEAGUES,
     LEAGUE_KEY: LEAGUE_KEY,
     FOOTBALL_FAVORITES_KEY: FOOTBALL_FAVORITES_KEY,
@@ -939,7 +963,8 @@
     recordText: recordText,
     normalizeName: normalizeName,
     searchTeams: searchTeams,
-    searchPlaceholder: searchPlaceholder
+    searchPlaceholder: searchPlaceholder,
+    pageFor: pageFor
   };
 
   if (typeof module === 'object' && module.exports) {
