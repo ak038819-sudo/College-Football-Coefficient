@@ -43,6 +43,12 @@ CREATE TABLE IF NOT EXISTS team (
     current_venue   TEXT,
     current_city    TEXT,
     current_state   TEXT,
+    -- The id the provider's own logo CDN files a school's mark under, read
+    -- out of the `logos` URLs it sends with every team. It is the school's
+    -- ESPN id, which is NOT this provider's team id -- Siena is team 264 and
+    -- mark 2561 -- so it is stored rather than derived. NULL for a school
+    -- the feed sends no mark for, and for every placeholder opponent.
+    logo_id         INTEGER,
     first_seen_snapshot INTEGER REFERENCES snapshot(snapshot_id),
     last_seen_snapshot  INTEGER REFERENCES snapshot(snapshot_id)
 );

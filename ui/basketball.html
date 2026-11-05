@@ -56,7 +56,10 @@
     margin: 0; background: var(--bg); color: var(--ink);
     font-family: var(--font-body); -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 96px; }
+  /* The foot of the page only needs clearing where the tab bar is fixed
+     over it, which is phone width alone. */
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
+  @media (max-width: 719px) { .wrap { padding-bottom: 96px; } }
   h1 {
     font-family: var(--font-display); font-weight: 800; margin: 0;
     font-size: clamp(26px, 5vw, 40px); letter-spacing: 0.5px;
@@ -144,20 +147,57 @@
   td.num, th.num { text-align: right; font-family: var(--font-mono); }
   td.rk { text-align: center; width: 44px; color: var(--ink-dim); }
 
-  /* 4. The bottom tabs keep their names and change their contents. */
+  /* 4. The tabs keep their names and change their contents. They sit under
+        the wordmark on a desktop, as college football's and the NFL's do,
+        and become the phone's bottom bar below 720px. This page was built
+        phone-first and shipped with the fixed bar and NO media query, so a
+        2000px window wore a row of five stranded across the foot of the
+        screen -- the same defect the NFL page had, fixed the same way. */
   nav.tabs {
-    position: fixed; left: 0; right: 0; bottom: 0; display: flex;
-    background: var(--panel); border-top: 1px solid var(--line);
+    display: flex; gap: 2px; margin: 14px 0 0;
+    border-bottom: 1px solid var(--line);
   }
   nav.tabs button {
-    flex: 1; appearance: none; border: 0; background: transparent;
-    color: var(--ink-dim); font: inherit; font-size: 12px; padding: 10px 4px;
-    cursor: pointer;
+    appearance: none; border: 0; background: transparent;
+    color: var(--ink-dim); font: inherit; font-size: 14px;
+    padding: 8px 12px; cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
   }
+  nav.tabs button:hover:not([disabled]) { color: var(--ink); }
   nav.tabs button[aria-pressed="true"] { color: var(--amber);
-                                         font-weight: 600; }
+                                         font-weight: 600;
+                                         border-bottom-color: var(--amber); }
   nav.tabs button[disabled] { opacity: 0.35; cursor: default; }
+
+  @media (max-width: 719px) {
+    nav.tabs {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+      margin: 0; gap: 0; border-bottom: 0;
+      background: var(--panel); border-top: 1px solid var(--line);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    nav.tabs button {
+      flex: 1; font-size: 12px; padding: 10px 4px;
+      border-bottom: 0; margin-bottom: 0;
+    }
+    nav.tabs button[aria-pressed="true"] { border-bottom-color: transparent; }
+  }
   .empty { color: var(--ink-dim); font-size: 14px; }
+
+  /* A school's mark sits in a fixed box in front of its name, so a row of
+     clubs has its names on one left edge whether a mark exists or not. The
+     box is sized in px rather than in percent: a percentage padding would
+     resolve against the containing block and give one logo twenty pixels in
+     a wide table cell and two in a narrow one, which is a trap the football
+     side already fell into. */
+  .named { display: inline-flex; align-items: center; gap: 8px;
+           min-width: 0; }
+  .logo-mark {
+    width: 20px; height: 20px; flex: 0 0 20px; object-fit: contain;
+    display: inline-block;
+  }
+  .clubtitle .logo-mark { width: 28px; height: 28px; flex-basis: 28px; }
+  .card .side .named { gap: 6px; }
 
   /* 5. A club's own page: a directory to reach it and a header over its
         season. `link` is a button that reads as a link, so a club name is
@@ -192,7 +232,7 @@
 <div class="wrap">
   <header>
     <h1>Elocast</h1>
-    <p class="preview-note">Men's Basketball — unlinked preview</p>
+    <p class="preview-note">Men's Basketball</p>
     <div class="leagues" id="leagues" role="group"
          aria-label="League"></div>
     <div class="search">
@@ -200,6 +240,8 @@
     </div>
     <div class="meta" id="meta"></div>
   </header>
+
+  <nav class="tabs" id="tabs" aria-label="Sections"></nav>
 
   <div class="panel refusal" id="refusal" hidden>
     <h2>These ratings are not being shown</h2>
@@ -209,6 +251,7 @@
   <section class="panel" id="scoreboard" hidden>
     <div class="days" id="days"></div>
     <div class="filters" id="filters"></div>
+    <div class="filters" id="sorts" aria-label="Order"></div>
     <div class="cards" id="cards"></div>
   </section>
 
@@ -232,10 +275,8 @@
   </section>
 </div>
 
-<nav class="tabs" id="tabs" aria-label="Sections"></nav>
-
 <script src="ncaambb_loader.js?v=35cff06570f1"></script>
-<script src="ncaambb_app.js?v=36a720e91128"></script>
+<script src="ncaambb_app.js?v=4828bd5e0199"></script>
 <script>
 (function () {
   'use strict';
@@ -263,7 +304,7 @@
   // state have to agree about it -- see tabFromHash.
   var DEFAULT_TAB = 'standings';
   var state = { manifest: null, verdict: null, season: null, day: null,
-                filter: 'all', sort: 'tipoff', tab: DEFAULT_TAB,
+                filter: 'all', sort: 'best', tab: DEFAULT_TAB,
                 team: null, query: '', player: null, playerQuery: '',
                 // Which people files have been asked for, so a panel that
                 // re-renders does not re-fetch, and a file that failed is
@@ -400,20 +441,18 @@
       var button = document.createElement('button');
       button.type = 'button';
       button.textContent = entry.picker;
-      // The tab says NCAAF, NCAAM, NFL, NBA. An abbreviation is a poor
-      // accessible name on its own, so the spelled-out league comes with it.
+      // The tab says NCAAF, NCAAM, NFL. An abbreviation is a poor accessible
+      // name on its own, so the spelled-out league comes with it.
       button.title = entry.pickerTitle;
       button.setAttribute('aria-label', entry.pickerTitle);
       button.dataset.league = entry.slug;
-      // Each league lives on its own page, so the other options navigate
-      // rather than pretending to switch here. WHERE they navigate comes
-      // from the registry: this read `dashboard.html` for every league but
-      // basketball, so tapping NFL here opened college football.
+      // Football lives on dashboard.html; this preview is basketball only, so
+      // the football option navigates rather than pretending to switch here.
       button.setAttribute('aria-pressed',
         entry.slug === app.BASKETBALL ? 'true' : 'false');
       button.addEventListener('click', function () {
         if (entry.slug === app.BASKETBALL) return;
-        window.location.href = app.pageFor(entry.slug);
+        window.location.href = 'dashboard.html';
       });
       host.appendChild(button);
     });
@@ -519,6 +558,70 @@
     return (team && (team.short || team.name)) || key;
   }
 
+  /* A school's mark, drawn beside its name.
+   *
+   * The file is named from the id the export carries and nothing else, so
+   * there is one path in this page and no manifest to keep in step. The two
+   * cuts are the provider's: the plain one is dark ink for a light page, the
+   * `-dark` one is light ink for this page's own dark theme, which is why
+   * the <img> -- what a browser falls back to -- is the dark cut.
+   *
+   * A club with no mark gets an EMPTY box of the same size, not its
+   * initials: a cell holding a mark and a name should read as the name
+   * alone when it is copied or spoken, and "BYUBYU" is what initials in
+   * front of a name actually produce. That covers every non-Division I
+   * opponent, which the provider sends no logo for, and any school whose
+   * file has not been banked yet -- an <img> that fails is replaced in
+   * place, so a page served before the marks are fetched reads exactly as
+   * it did before this existed rather than showing 365 broken images.
+   */
+  var LOGO_BASE = 'assets/ncaambb/';
+
+  function blankMark() {
+    var span = document.createElement('span');
+    span.className = 'logo-mark blank';
+    span.setAttribute('aria-hidden', 'true');
+    return span;
+  }
+
+  function logoMark(key) {
+    var teams = window.NCAAMBB_TEAMS || {};
+    var team = teams[key];
+    var id = team && team.logo;
+    if (!id) return blankMark();
+    var picture = document.createElement('picture');
+    var light = document.createElement('source');
+    light.media = '(prefers-color-scheme: light)';
+    light.srcset = LOGO_BASE + id + '.png';
+    var img = document.createElement('img');
+    img.className = 'logo-mark';
+    img.src = LOGO_BASE + id + '-dark.png';
+    img.alt = '';
+    img.loading = 'lazy';
+    img.addEventListener('error', function () {
+      if (picture.parentNode) {
+        picture.parentNode.replaceChild(blankMark(), picture);
+      }
+    });
+    picture.appendChild(light);
+    picture.appendChild(img);
+    return picture;
+  }
+
+  /* A club's name with its mark in front of it, as one element. Every screen
+   * that names a club uses this, so a logo cannot appear on one board and
+   * not on another.
+   */
+  function named(key, label) {
+    var span = document.createElement('span');
+    span.className = 'named';
+    span.appendChild(logoMark(key));
+    var text = document.createElement('span');
+    text.textContent = label === undefined ? teamName(key) : label;
+    span.appendChild(text);
+    return span;
+  }
+
   function seasonPayload(season) {
     var seasons = window.NCAAMBB_SEASONS || {};
     // A player's career crosses seasons, and only the season the page opened
@@ -541,7 +644,9 @@
         tr.appendChild(td);
       }
       cell(row.rank, 'rk');
-      cell(teamName(row.team));
+      var nameCell = document.createElement('td');
+      nameCell.appendChild(named(row.team));
+      tr.appendChild(nameCell);
       cell(row.conference);
       cell(app.ratingText(row.rating), 'num');
       // A club that has not played yet has no record to show. "0-0" would
@@ -599,7 +704,7 @@
     var button = document.createElement('button');
     button.type = 'button';
     button.className = 'link';
-    button.textContent = teamName(key);
+    button.appendChild(named(key));
     button.dataset.team = shortTeamId(key);
     button.addEventListener('click', function () {
       state.team = shortTeamId(key);
@@ -743,7 +848,10 @@
     var head = document.createElement('div');
     head.className = 'clubhead';
     var block = document.createElement('div');
-    block.appendChild(heading('h2', teamName(row.team)));
+    var title = heading('h2', '');
+    title.appendChild(named(row.team, teamName(row.team)));
+    title.classList.add('clubtitle');
+    block.appendChild(title);
     var sub = document.createElement('div');
     sub.className = 'sub';
     sub.textContent = [row.conference, app.seasonLabel(state.season),
@@ -841,6 +949,28 @@
     });
   }
 
+  /* The order of a night's card. Default is the best games, because a
+   * Division I evening holds three hundred of them and tip-off order puts
+   * the ones nobody chose to watch at the top. Tip-off order stays one tap
+   * away: a reader following a particular game wants the clock, not a
+   * ranking. Both are the same games -- this control never filters.
+   */
+  function renderSorts() {
+    var host = el('sorts');
+    host.innerHTML = '';
+    [['best', 'Best games'], ['tipoff', 'Tip-off']].forEach(function (pair) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = pair[1];
+      button.setAttribute('aria-pressed', String(state.sort === pair[0]));
+      button.addEventListener('click', function () {
+        state.sort = pair[0];
+        render();
+      });
+      host.appendChild(button);
+    });
+  }
+
   function renderCards() {
     var host = el('cards');
     host.innerHTML = '';
@@ -848,7 +978,7 @@
     var games = app.sortGames(
       app.filterGames(app.gamesOn((payload && payload.games) || [],
                                   state.day), state.filter),
-      state.sort);
+      state.sort, null, app.ratingsOf((payload && payload.board) || []));
     if (!games.length) {
       var empty = document.createElement('p');
       empty.className = 'empty';
@@ -868,8 +998,7 @@
        ['home', game.home, game.home_points]].forEach(function (side) {
         var row = document.createElement('div');
         row.className = 'side';
-        var name = document.createElement('span');
-        name.textContent = teamName(side[1]);
+        var name = named(side[1]);
         var points = document.createElement('span');
         points.className = 'pts';
         // A missing score is absent, never a zero and never a clock.
@@ -1378,6 +1507,7 @@
     if (!el('scoreboard').hidden) {
       renderDays();
       renderFilters();
+      renderSorts();
       renderCards();
     }
   }

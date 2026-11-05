@@ -211,6 +211,26 @@ jobs:
             echo '> seasons it did fetch are cached, so the next run resumes.'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # Marks for schools this site has not banked one for yet, which is
+      # every school on the first run and a new or rebranded one after
+      # that. A file already on disk is left alone, so this asks the CDN
+      # for nothing on an ordinary night. BEST EFFORT, like the people:
+      # the page draws a blank box where a mark is missing, and a logo
+      # CDN having a bad minute must never stop the ratings refreshing.
+      - name: Bank any club mark not already here
+        id: marks
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python -m src.ncaambb.fetch_logos | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Say so when a mark did not arrive
+        if: steps.marks.outcome != 'success'
+        run: |
+          echo "::warning::Some club marks could not be fetched. The page"\
+            " draws a blank box where one is missing and the next run tries"\
+            " again; nothing else is affected."
+
       - name: Replay the archive with the committed model
         run: |
           set -o pipefail
@@ -289,7 +309,9 @@ jobs:
           # decisions, and a dispatcher asking for the first does not want the
           # second. It also makes `publish: false` the safe way to warm the
           # cache for a season without touching the live export.
-          PATHS="data/ncaambb/raw"
+          # The marks go with it: they are fetched above and a mark that
+          # arrived and was not committed would be refetched every run.
+          PATHS="data/ncaambb/raw ui/assets/ncaambb"
           # The export only when the gate passed -- a refused export is not in
           # the tree at all -- and only when this run is allowed to publish.
           if [ "${{ steps.publish.outputs.published }}" = "true" ] \

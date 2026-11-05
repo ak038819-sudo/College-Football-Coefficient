@@ -10,6 +10,7 @@ an absence is not.
 """
 
 import json
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,7 +19,7 @@ from .coverage import classify_game, recorded_points
 from .games import game_day, playing_day, start_moment
 from .identity import entity_key, season_label
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 DEFAULT_PATH = Path('db/ncaambb.db')
 SCHEMA_SQL = Path(__file__).with_name('schema.sql')
 
@@ -71,7 +72,8 @@ def migrate(connection):
 # inventing a day for a row this code has not read is exactly the kind of guess
 # the rest of this module refuses to make.
 ADDED_COLUMNS = {'game': (('playing_date', 'TEXT'), ('start_at_utc', 'TEXT')),
-                 'snapshot': (('data_fetched_at', 'TEXT'),)}
+                 'snapshot': (('data_fetched_at', 'TEXT'),),
+                 'team': (('logo_id', 'INTEGER'),)}
 
 
 def add_missing_columns(connection):
@@ -114,6 +116,33 @@ def _text(value):
     return value if isinstance(value, str) and value else None
 
 
+# The provider serves a school's mark from its own CDN, at several sizes, in a
+# light and a dark cut:
+#   https://cdn.collegefootballdata.com/cbb-logos/96/2561.png
+#   https://cdn.collegefootballdata.com/cbb-logos-dark/96/2561.png
+# Only the id is stored. The size this site wants is a decision for the fetch
+# (src/ncaambb/fetch_logos.py), and banking a 96px URL here would freeze that
+# choice into every row of the database.
+LOGO_URL = re.compile(r'/cbb-logos/\d+/(\d+)\.png$')
+
+
+def logo_id(team):
+    """The id the provider files this school's mark under, or None.
+
+    Read from the LIGHT cut alone. The dark URL carries the same id, but
+    matching either would mean a feed that one day sends only a dark mark
+    records an id this site then fetches a light file for and does not find.
+    Measured 2026-11-04: all 365 Division I schools carry both cuts.
+    """
+    for url in team.get('logos') or []:
+        if not isinstance(url, str):
+            continue
+        found = LOGO_URL.search(url)
+        if found:
+            return int(found.group(1))
+    return None
+
+
 def upsert_teams(connection, teams, *, snapshot_id=None):
     """Store team identities. Re-running updates names and leaves keys alone."""
     stored = 0
@@ -123,8 +152,8 @@ def upsert_teams(connection, teams, *, snapshot_id=None):
             'INSERT INTO team (team_key, provider_id, school, mascot,'
             ' abbreviation, display_name, short_name, primary_color,'
             ' secondary_color, current_venue, current_city, current_state,'
-            ' first_seen_snapshot, last_seen_snapshot)'
-            ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            ' logo_id, first_seen_snapshot, last_seen_snapshot)'
+            ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             ' ON CONFLICT(team_key) DO UPDATE SET'
             '   school = excluded.school, mascot = excluded.mascot,'
             '   abbreviation = excluded.abbreviation,'
@@ -135,13 +164,15 @@ def upsert_teams(connection, teams, *, snapshot_id=None):
             '   current_venue = excluded.current_venue,'
             '   current_city = excluded.current_city,'
             '   current_state = excluded.current_state,'
+            '   logo_id = COALESCE(excluded.logo_id, team.logo_id),'
             '   last_seen_snapshot = excluded.last_seen_snapshot',
             (key, team['id'], _text(team.get('school')) or str(team['id']),
              _text(team.get('mascot')), _text(team.get('abbreviation')),
              _text(team.get('displayName')), _text(team.get('shortDisplayName')),
              _text(team.get('primaryColor')), _text(team.get('secondaryColor')),
              _text(team.get('currentVenue')), _text(team.get('currentCity')),
-             _text(team.get('currentState')), snapshot_id, snapshot_id))
+             _text(team.get('currentState')), logo_id(team),
+             snapshot_id, snapshot_id))
         stored += 1
     connection.commit()
     return stored
