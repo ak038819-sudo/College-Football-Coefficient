@@ -6840,7 +6840,8 @@ function liveDetail(g) {
       : 'Pending', 'Official Elo and game efficiency follow the model rebuild.') +
     '</div><div class="story-leaders">' + storyPlayerLeaders(liveSnapshot?.player_boxscores?.[String(g.id)] || []) +
     '</div></section>';
-  const hero = '<div class="panel gp-hero"><div class="gl-top"><span class="gbadge ' +
+  const archivedPregame = g.status === 'scheduled' && archive && !archive.completed;
+  const hero = '<div class="panel gp-hero' + (archivedPregame ? ' gp-pregame-hero' : '') + '"><div class="gl-top"><span class="gbadge ' +
     (g.status === 'completed' ? 'final' : 'upcoming') + '">' + esc(liveLabel(g)) + '</span>' +
     '<span>' + esc(String(g.tv || '')) + esc(freshness) + '</span></div><div class="gp-board">' +
     [g.away, g.home].map(t => {
@@ -6851,11 +6852,19 @@ function liveDetail(g) {
         '<span class="gp-score">' + (Number.isInteger(t?.points) ? t.points :
           chance != null ? chance + '%' : '—') + '</span></div>';
     }).join('<div class="gp-mid">' + (g.neutral_site ? 'vs.' : 'at') + '</div>') + '</div></div>';
-  return hero + story + '<div class="grid-2">' + liveEloPanel(g) +
-    '<div class="panel"><h2 class="section-title">Game information</h2><p>' +
+  // The home scoreboard's scheduled games use this live-feed renderer, not
+  // hydrateGamePage(). Share the archival pregame analytics instead of showing
+  // the old live-only table while the archived fixture is available.
+  const pregame = archivedPregame
+    ? gamePregameIntelligence(archive, an, hn) +
+      '<div id="gp-scouting-slot" aria-live="polite"></div>'
+    : '';
+  const info = '<div class="panel"><h2 class="section-title">Game information</h2><p>' +
     esc(liveLabel(g)) + (g.tv ? ' · ' + esc(g.tv) : '') +
     ((g.venue || UPCOMING_BY_ID.get(g.id)?.venue) ? ' · ' + esc(g.venue || UPCOMING_BY_ID.get(g.id).venue) : '') +
-    '</p></div></div>' +
+    '</p></div>';
+  return hero + pregame + story +
+    (archivedPregame ? info : '<div class="grid-2">' + liveEloPanel(g) + info + '</div>') +
     livePlayerPanel(g);
 }
 function hydrateLiveGamePage(version) {
@@ -6877,7 +6886,14 @@ function hydrateLiveGamePage(version) {
       return true;
     }
     const target = document.getElementById('game-page');
-    if (target) target.innerHTML = liveDetail(g);
+    if (target) {
+      target.innerHTML = liveDetail(g);
+      if (g.status === 'scheduled' && archived && !archived.completed) {
+        const an = liveTeamId(g.away)?.name || String(g.away?.name || 'Away');
+        const hn = liveTeamId(g.home)?.name || String(g.home?.name || 'Home');
+        hydrateGameScouting(archived, liveSeason(), an, hn, version);
+      }
+    }
     return true;
   };
   // Show cached data immediately, then always request the latest snapshot.
