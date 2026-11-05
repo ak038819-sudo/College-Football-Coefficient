@@ -707,3 +707,24 @@ def test_a_stale_export_publishes_and_a_future_dated_one_does_not(db):
     assert gate.check_as_of(manifest, now=NOW)
     manifest['data_as_of'] = 'the day before yesterday'
     assert gate.check_as_of(manifest, now=NOW)
+
+
+# --- a school's mark --------------------------------------------------------
+
+def test_a_team_carries_the_id_of_its_mark_and_nothing_more(db):
+    names = national(db)
+    # A path would freeze the size and the folder into every row; the page
+    # builds one from the id instead.
+    db.execute('UPDATE team SET logo_id = 2561 WHERE team_key = ?',
+               (names[0],))
+    db.commit()
+    _manifest, _payloads, teams = built(db)
+    assert teams[names[0]]['logo'] == 2561
+
+
+def test_a_school_with_no_mark_carries_no_key_for_one(db):
+    # Not `logo: null`. The page tests for the key, and a null would make a
+    # placeholder opponent look like a school whose file failed to arrive.
+    names = national(db)
+    _manifest, _payloads, teams = built(db)
+    assert 'logo' not in teams[names[0]]
