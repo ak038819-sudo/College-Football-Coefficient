@@ -79,6 +79,47 @@ SEASON_TYPES = {
 # that lists "the regular season" should list neither.
 AFTER_REGULAR_SEASON = frozenset({'postseason', 'playin'})
 
+# THE NBA CUP FINAL DOES NOT COUNT IN THE STANDINGS, AND THE SOURCE SAYS IT
+# IS A REGULAR-SEASON GAME.
+#
+# Every other game of the in-season tournament counts: the group games and
+# the knockout rounds are scheduled regular-season games. The championship
+# alone is not, which is why the two finalists end a season having played 83
+# games while everybody else played 82. Measured across the archive: exactly
+# two teams exceed 82 in each of 2024, 2025 and 2026, and none in any other
+# season.
+#
+# Left as the source has it, a standings page would show the two finalists
+# with one more win or loss than the NBA credits them, and the page would
+# simply disagree with every other source about their record.
+#
+# It is rateable all the same. It is a real game between two teams trying to
+# win, and the NBA excludes it from the standings, not from history.
+#
+# TWO SPELLINGS, because the event was renamed. 2023-24 says "NBA In-Season
+# Tournament Championship" and the two seasons after it say "NBA Cup
+# Championship" — a search for "Cup" alone finds only two of the three. The
+# string is the source's and could change again, so
+# `tests/test_nba_rating.py` asserts the invariant behind it: in a season
+# with a final, every team played exactly 82 regular-season games.
+CUP_FINAL_NOTES = frozenset({
+    'nba cup championship',
+    'nba in-season tournament championship',
+})
+
+
+def season_type_of(value, notes=None):
+    """The season type of a game, reading its note as well as its type.
+
+    The note is what separates the one tournament game that does not count
+    from the hundreds that do.
+    """
+    kind = season_type(value)
+    if kind == 'regular' and notes \
+            and ' '.join(str(notes).split()).lower() in CUP_FINAL_NOTES:
+        return 'cup_final'
+    return kind
+
 
 def is_franchise(team_id):
     """Whether this id is one of the thirty, rather than an All-Star side."""

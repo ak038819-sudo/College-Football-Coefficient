@@ -338,6 +338,14 @@ test('the league selector offers the launched leagues, with the NFL selected',
     assert.deepEqual(buttons.map(b => b.textContent), expected);
     assert.ok(expected.includes('NFL') && expected.includes('NCAAF'),
       'football and the NFL are both launched, so both are offered');
+    // An abbreviation is a poor accessible name on its own, so every tab
+    // carries the spelled-out league as well.
+    assert.deepEqual(buttons.map(b => b.getAttribute('aria-label')),
+      leagues.launchedLeagues(leagues.NFL).map(entry => entry.pickerTitle));
+    // The other leagues navigate to their own pages, and WHERE comes from
+    // the registry. This page used to carry a two-way map that could only
+    // name the leagues that existed when it was written.
+    assert.equal(leagues.pageFor(leagues.NBA), 'nba.html');
     const pressed = buttons.filter(
       b => b.getAttribute('aria-pressed') === 'true');
     assert.equal(pressed.length, 1);
@@ -469,12 +477,15 @@ test('the football header offers the NFL, as running markup', () => {
   // matched rather than the whole tag.
   assert.match(live, /<a data-league="nfl" href="nfl\.html"[^>]*>NFL<\/a>/,
     'the NFL entry must be live markup, not parked in a comment');
+  assert.match(live, /<a data-league="nba" href="nba\.html"[^>]*>NBA<\/a>/,
+    'and the NBA, which shipped with its export');
   // It belongs to the selector, not loose in the header: a link the nav does
   // not contain is not reached by the listener that remembers the choice.
   const nav = live.match(
     /<nav class="leagues" id="league-selector"[\s\S]*?<\/nav>/);
   assert.ok(nav, 'the league selector is live');
   assert.ok(nav[0].includes('href="nfl.html"'), 'and contains the NFL');
+  assert.ok(nav[0].includes('href="nba.html"'), 'and the NBA');
 });
 
 // --- the game card carries the model's own numbers -------------------------

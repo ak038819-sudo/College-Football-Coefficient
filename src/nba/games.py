@@ -28,7 +28,7 @@ import json
 from datetime import date as date_type, datetime
 
 from .identity import (EXHIBITION_IDS, AFTER_REGULAR_SEASON, FRANCHISE_IDS,
-                       game_key, is_franchise, season_label, season_type,
+                       game_key, is_franchise, season_label, season_type_of,
                        team_key)
 
 # Refuse the file outright if any of these is gone: a missing column would
@@ -126,7 +126,10 @@ def parse_row(row):
     game_date = _date(row.get('game_date')) or _date(row.get('date'))
     if not game_date:
         raise ArchiveError(f'{provider_id}: no date')
-    kind = season_type(_int(row.get('season_type')))
+    # The note matters as well as the type: the NBA Cup final is sent as
+    # a regular-season game and does not count in the standings.
+    kind = season_type_of(_int(row.get('season_type')),
+                          row.get('notes_headline'))
     completed = bool(row.get('status_type_completed'))
     # THE 0-0 TRAP. Both score columns are filled with zero for a game that
     # has not been played, so the completion flag decides whether there is a
@@ -233,8 +236,8 @@ def coverage(games):
     for game in games:
         row = seasons.setdefault(game['season'], dict(
             season=game['season'], label=game['season_label'], games=0,
-            played=0, rateable=0, postseason=0, playin=0, neutral=0,
-            no_tipoff_time=0, teams=set()))
+            played=0, rateable=0, postseason=0, playin=0, cup_final=0,
+            neutral=0, no_tipoff_time=0, teams=set()))
         row['games'] += 1
         row['teams'].add(game['home_team_id'])
         row['teams'].add(game['away_team_id'])
@@ -246,6 +249,8 @@ def coverage(games):
             row['postseason'] += 1
         elif game['season_type'] == 'playin':
             row['playin'] += 1
+        elif game['season_type'] == 'cup_final':
+            row['cup_final'] += 1
     for row in seasons.values():
         row['teams'] = len(row['teams'])
     return [seasons[key] for key in sorted(seasons)]
