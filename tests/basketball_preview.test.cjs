@@ -48,13 +48,23 @@ function daysFromToday(count) {
 const TEAM_KEYS = ['ncaambb:cbbd:team:1', 'ncaambb:cbbd:team:2',
                    'ncaambb:cbbd:team:3'];
 
+// `logo` is the id the school's mark is filed under, as src/ncaambb/export.py
+// writes it -- never a path. Michigan's two files are written to the fixture
+// below and Duke's are NOT, which is how the fallback for a mark that has not
+// been banked yet gets driven. BYU carries no id at all, standing in for a
+// non-Division I opponent, which the provider sends no logo for.
 function teams() {
   return {
-    'ncaambb:cbbd:team:1': { name: 'Michigan', short: 'Michigan' },
-    'ncaambb:cbbd:team:2': { name: 'Duke', short: 'Duke' },
+    'ncaambb:cbbd:team:1': { name: 'Michigan', short: 'Michigan', logo: 130 },
+    'ncaambb:cbbd:team:2': { name: 'Duke', short: 'Duke', logo: 150 },
     'ncaambb:cbbd:team:3': { name: 'BYU', short: 'BYU' }
   };
 }
+
+// The smallest real PNG, so an <img> in jsdom loads rather than erroring.
+const PIXEL = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKm'
+  + 'MIQAAAABJRU5ErkJggg==', 'base64');
 
 // As the export writes a game: `at` is the day it is played on and `tip` the
 // instant it starts, present only when the provider has decided one.
@@ -272,6 +282,11 @@ function site(overrides, schedule) {
   if (people.people !== false) writePeople(root, payload, people);
   fs.writeFileSync(path.join(root, 'data', 'ncaambb', 'manifest.json'),
     JSON.stringify(payload));
+  // Michigan's mark only. Duke's id points at a file that is not here.
+  const marks = path.join(root, 'assets', 'ncaambb');
+  fs.mkdirSync(marks, { recursive: true });
+  fs.writeFileSync(path.join(marks, '130.png'), PIXEL);
+  fs.writeFileSync(path.join(marks, '130-dark.png'), PIXEL);
   for (const name of ['basketball.html', 'ncaambb_loader.js',
     'ncaambb_app.js']) {
     fs.copyFileSync(path.join(UI, name), path.join(root, name));
@@ -653,16 +668,56 @@ async function scoreboard(dom) {
   return document;
 }
 
-test('a day of games renders, undecided tip-offs last', async () => {
+function statuses(document) {
+  return [...document.querySelectorAll('#cards .card')].map(card =>
+    card.querySelector('.status').textContent);
+}
+
+function order(document, label) {
+  return [...document.querySelectorAll('#sorts button')]
+    .find(button => button.textContent === label);
+}
+
+test('a day of games renders, best first', async () => {
+  // The page opens on the best games, because a Division I evening holds
+  // three hundred of them. The fixture's best game is Michigan-Duke, which
+  // is also the one that has already finished, so the ordering is visible
+  // in the statuses: by tip-off it would be second.
   const dom = await open();
   const document = await scoreboard(dom);
   const cards = [...document.querySelectorAll('#cards .card')];
   assert.equal(cards.length, 3);
-  const statuses = cards.map(card =>
-    card.querySelector('.status').textContent);
-  // 19:00Z is 2pm where this file pins the timezone. A game whose time is
-  // undecided says so instead, and goes last.
-  assert.deepEqual(statuses, ['Final', '2:00 PM', 'Time TBD']);
+  // Michigan-BYU (TBD) beats Duke-BYU on the stronger side's credit.
+  assert.deepEqual(statuses(document), ['Final', 'Time TBD', '2:00 PM']);
+  dom.window.close();
+});
+
+test('tip-off order is one tap away, and undecided tip-offs go last',
+  async () => {
+    const dom = await open();
+    const document = await scoreboard(dom);
+    order(document, 'Tip-off').click();
+    // 19:00Z is 2pm where this file pins the timezone. A game whose time is
+    // undecided says so instead, and goes last.
+    assert.deepEqual(statuses(document), ['Final', '2:00 PM', 'Time TBD']);
+    assert.equal(order(document, 'Tip-off').getAttribute('aria-pressed'),
+                 'true');
+    assert.equal(order(document, 'Best games').getAttribute('aria-pressed'),
+                 'false');
+    dom.window.close();
+  });
+
+test('changing the order never changes which games are shown', async () => {
+  // It is an ordering, not a filter. A reader who taps it to find a game
+  // must not lose one.
+  const dom = await open();
+  const document = await scoreboard(dom);
+  const ids = () => [...document.querySelectorAll('#cards .card')]
+    .map(card => card.textContent).sort();
+  const best = ids();
+  order(document, 'Tip-off').click();
+  assert.deepEqual(ids(), best);
+  assert.equal(best.length, 3);
   dom.window.close();
 });
 
@@ -1707,4 +1762,109 @@ test('a club in the season being played says where its squad is', async () => {
   assert.match(text, /most recent squad on record is 2024-25/);
   assert.equal(doc.querySelector('#team-body table.roster'), null);
   dom.window.close();
+});
+
+// --- a school's mark beside its name ---------------------------------------
+
+test('a club on the board carries its mark, in both cuts', async () => {
+  const dom = await open();
+  const cell = dom.window.document.querySelector('#board tr td:nth-child(2)');
+  const img = cell.querySelector('img.logo-mark');
+  // The <img> is the DARK cut, because this page's own theme is dark and a
+  // browser that ignores the <source> falls back to the <img>.
+  assert.equal(img.getAttribute('src'), 'assets/ncaambb/130-dark.png');
+  const source = cell.querySelector('picture source');
+  assert.equal(source.getAttribute('srcset'), 'assets/ncaambb/130.png');
+  assert.equal(source.getAttribute('media'), '(prefers-color-scheme: light)');
+  // The mark is decoration beside a name that is already there.
+  assert.equal(img.getAttribute('alt'), '');
+  dom.window.close();
+});
+
+test('the name is still the only text in the cell', async () => {
+  // A mark drawn as initials would make this cell read "MMichigan" when it
+  // is copied or spoken.
+  const dom = await open();
+  const cell = dom.window.document.querySelector('#board tr td:nth-child(2)');
+  assert.equal(cell.textContent, 'Michigan');
+  dom.window.close();
+});
+
+test('a club with no mark keeps its place in the row', async () => {
+  const dom = await open();
+  const cells = [...dom.window.document.querySelectorAll(
+    '#board tr td:nth-child(2)')];
+  const byu = cells[2];
+  assert.equal(byu.textContent, 'BYU');
+  assert.equal(byu.querySelector('img'), null);
+  assert.ok(byu.querySelector('.logo-mark.blank'),
+            'a blank box of the same size keeps the names aligned');
+  dom.window.close();
+});
+
+test('a mark that has not been banked yet leaves no broken image', async () => {
+  // The marks are fetched by a workflow of their own, so a deploy can carry
+  // an export naming an id whose file is not there yet. 365 broken images
+  // would be worse than the page as it was before marks existed.
+  //
+  // The event is dispatched rather than awaited: jsdom only fetches an <img>
+  // when the optional canvas package is installed, so a missing file never
+  // fails on its own here. A browser fires exactly this event, and the
+  // Chromium pass over the real export is what proves it end to end.
+  const dom = await open();
+  const document = dom.window.document;
+  const duke = () => [...document.querySelectorAll('#board tr')][1]
+    .querySelector('td:nth-child(2)');
+  const img = duke().querySelector('img.logo-mark');
+  assert.equal(img.getAttribute('src'), 'assets/ncaambb/150-dark.png');
+  img.dispatchEvent(new dom.window.Event('error'));
+  assert.equal(duke().querySelector('img'), null);
+  assert.ok(duke().querySelector('.logo-mark.blank'));
+  assert.equal(duke().textContent, 'Duke');
+  dom.window.close();
+});
+
+test('the marks are drawn on the cards and the club page too', async () => {
+  // One helper draws every one of them, so a logo cannot appear on one
+  // board and not on another.
+  const dom = await open();
+  const document = await scoreboard(dom);
+  assert.ok(document.querySelector('#cards .card img.logo-mark'),
+            'a game card names its clubs with their marks');
+  const teams = [...document.querySelectorAll('#tabs button')]
+    .find(button => button.textContent === 'Teams');
+  teams.click();
+  await settle(dom, () => document.querySelector('#team-body button.link'));
+  assert.ok(document.querySelector('#team-body button.link .logo-mark'),
+            'the club directory names its clubs with their marks');
+  dom.window.close();
+});
+
+test('the tab bar is only fixed to the foot at phone width', () => {
+  // This page shipped with `position: fixed; bottom: 0` and NO media query,
+  // so a desktop window wore a row of five stranded across the foot of the
+  // screen while college football and the NFL put theirs under the wordmark.
+  //
+  // A stylesheet assertion, because jsdom evaluates no media query: it reads
+  // the rule that was wrong rather than the layout, and the Chromium pass at
+  // 1400px and 430px is what proves the layout. Keeping it anyway, because
+  // the rule is the thing that regressed.
+  const page = fs.readFileSync(path.join(UI, 'basketball.html'), 'utf8');
+  const start = page.indexOf('nav.tabs {');
+  // From the tab rules onwards: the page carries an earlier 719px query of
+  // its own, for the foot padding the fixed bar needs.
+  const phoneAt = page.indexOf('@media (max-width: 719px)', start);
+  assert.ok(start > 0 && phoneAt > start);
+  assert.doesNotMatch(page.slice(start, phoneAt), /position:\s*fixed/);
+  assert.match(page.slice(phoneAt, phoneAt + 400),
+               /nav\.tabs\s*{[^}]*position:\s*fixed/);
+});
+
+test('the tabs sit inside the page wrap, where a desktop reads them', () => {
+  // Under the wordmark, as both football pages have them. Outside the wrap
+  // they can only ever be the phone's bottom bar.
+  const page = fs.readFileSync(path.join(UI, 'basketball.html'), 'utf8');
+  const wrap = page.slice(page.indexOf('<div class="wrap">'),
+                          page.indexOf('</div>\n\n<script'));
+  assert.match(wrap, /<\/header>\s*<nav class="tabs"/);
 });

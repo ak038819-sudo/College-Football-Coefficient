@@ -1,0 +1,70 @@
+name: Fetch college basketball club marks
+
+# Banks each Division I school's mark in ui/assets/ncaambb/ and commits it.
+#
+# Dispatch only. The marks change about as often as a school rebrands, and a
+# run that fetched 730 files every night would spend the deploy's time and the
+# repository's history on files that did not change. The ids come from the
+# basketball database, so this loads it from the committed raw cache first --
+# which costs NO provider API quota, and does not need the API key at all.
+#
+# The CDN this fetches from is blocked in the development container, so this
+# workflow is the only place the fetch can run.
+
+on:
+  workflow_dispatch:
+    inputs:
+      refetch:
+        description: "Fetch marks already banked again (e.g. after a rebrand)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  marks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: cbb-logos
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Load the database from the committed cache
+        run: |
+          set -o pipefail
+          # Every banked season, read off the cache itself. No --refetch:
+          # this must read the bank and never the provider.
+          SEASONS=$(ls data/ncaambb/raw | tr '\n' ',' | sed 's/,$//')
+          echo "Loading seasons $SEASONS from the committed cache."
+          python -m src.ncaambb.ingest --schedule-only --seasons "$SEASONS" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Fetch the marks
+        env:
+          REFETCH: ${{ inputs.refetch }}
+        run: |
+          set -o pipefail
+          args=""
+          if [ "$REFETCH" = "true" ]; then args="--refetch"; fi
+          python -m src.ncaambb.fetch_logos $args \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Commit what arrived
+        run: |
+          if [ -z "$(git status --porcelain ui/assets/ncaambb)" ]; then
+            echo "No new marks; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ui/assets/ncaambb
+          git commit -m "Bank the college basketball club marks [skip ci]"
+          # The branch this ran on, never main by name: a dispatch on a
+          # feature branch is a rehearsal and must stay on it.
+          git push origin "HEAD:$GITHUB_REF_NAME"
