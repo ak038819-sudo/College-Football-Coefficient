@@ -266,6 +266,37 @@ jobs:
           else
             echo "No scheduled rated games remain; real pregame screenshot unavailable."
           fi
+          # Crucial: the Home scoreboard opens *scheduled* feed games using
+          # liveDetail(), NOT the archived hydrateGamePage() that was already
+          # covered by real-pregame screenshots. Capture that actual path.
+          LIVE_PREGAME_ID=$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          raw = Path("ui/data/games/2026.js").read_text()
+          data, _ = json.JSONDecoder().raw_decode(raw[raw.index("={") + 1:])
+          fields = data["fields"]
+          games = {g["game_id"]: g for g in (dict(zip(fields, row)) for row in data["games"])}
+          feed = json.loads(Path("ui/data/live_scores.json").read_text())
+          scouting = json.loads(Path("ui/data/scouting/2026.js").read_text().splitlines()[1].split(" = ", 1)[1].rstrip(";"))
+          for item in feed.get("games", []):
+              g = games.get(item.get("id"))
+              if (item.get("status") == "scheduled" and g and not g["completed"] and
+                  g.get("p_home") is not None and g.get("date", "") >= scouting["as_of_exclusive"] and
+                  str(g["home_id"]) in scouting["teams"] and str(g["away_id"]) in scouting["teams"]):
+                  print(item["id"])
+                  break
+          PY
+          )
+          if test -n "$LIVE_PREGAME_ID"; then
+            for width in 390 1280; do
+              $SHOT --url "$SITE#game=$LIVE_PREGAME_ID&season=2026" --width "$width" --height 1100 --full \
+                --selector ".gp-pregame-insights" --out "/tmp/elocast-visual-qa/live-feed-pregame-${width}.png"
+              $SHOT --url "$SITE#game=$LIVE_PREGAME_ID&season=2026" --width "$width" --height 1100 --full \
+                --selector ".gp-keys" --out "/tmp/elocast-visual-qa/live-feed-keys-${width}.png"
+            done
+          else
+            echo "No eligible scheduled game in live feed; live pregame screenshots skipped."
+          fi
           for shot in /tmp/elocast-visual-qa/*.png; do test -s "$shot"; done
       - name: Upload Modern visual QA screenshots
         if: always() && github.event_name == 'pull_request'
