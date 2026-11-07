@@ -2008,9 +2008,11 @@
     kept.forEach(function (row) {
       var line = document.createElement('tr');
       var season = loader.seasonLabel(row.season);
-      // THE FEED'S COUNT IS SHOWN, NOT CHOSEN BETWEEN. It disagrees with
-      // the archive for 1,231 of 14,500 regular-season rows, nearly all of
-      // them before 2015 and nearly all by one or two games.
+      // THE FEED'S COUNT IS SHOWN, NOT CHOSEN BETWEEN. It disagrees for
+      // 1,006 of the 12,819 regular seasons it has a number for -- 966
+      // where it counts more games than the archive carries a line for and
+      // 40 where it counts fewer -- 876 of them before 2015, and 870 of
+      // them by one or two games.
       var cell = node('td', '', season);
       line.appendChild(cell);
       line.appendChild(node('td', '', abbrFor(teamKeyOf(row.team))
@@ -2074,7 +2076,8 @@
   function logTables(host, groups) {
     groups.forEach(function (group) {
       var label = loader.seasonLabel(group.season) + ' '
-        + (['regular season', 'playoffs', 'play-in'][group.type]
+        + (['regular season', 'playoffs', 'play-in',
+            'NBA Cup final'][group.type]
             || 'games');
       host.appendChild(node('h3', 'section', label));
       var wrap = node('div', 'scroll');
@@ -2186,7 +2189,11 @@
     }
     var seasons = app.playerSeasons(payload);
     var starred = false;
-    [[0, 'Regular season'], [1, 'Playoffs'], [2, 'Play-in']]
+    // The Cup final is its OWN table, never a row of the regular season:
+    // the archive keeps it out of won-lost records, so a career line that
+    // folded it in would disagree with the standings on the same screen.
+    [[0, 'Regular season'], [1, 'Playoffs'], [2, 'Play-in'],
+      [3, 'NBA Cup final']]
       .forEach(function (pair) {
         var built = seasonTable(seasons, pair[0]);
         if (!built) return;
@@ -2203,11 +2210,13 @@
     }
     if (starred) {
       host.appendChild(node('p', 'note', 'A starred count of games is one '
-        + 'the league’s own season statistics disagree with: it counts '
-        + 'more games than this archive carries a line for. That happens '
-        + 'for 1,231 of 14,500 player-seasons, almost all of them before '
-        + '2015 and almost always by a game or two. The count here is the '
-        + 'games the archive can show you.'));
+        + 'the league’s own season statistics disagree with. They do that '
+        + 'for 1,006 of the 12,819 regular seasons they carry a count for, '
+        + 'usually counting more games than this archive has a line for '
+        + 'and sometimes fewer, almost always by a game or two and mostly '
+        + 'before 2015. Nothing here reconciles them: the count shown is '
+        + 'the games the archive can show you, and the tooltip says what '
+        + 'each side claims.'));
     }
     var log = app.playerLog(payload);
     if (log.length) {

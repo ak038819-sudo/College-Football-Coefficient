@@ -13,7 +13,7 @@ the archive runs 24 of them. That is small enough that a player page can
 carry every game he played rather than a sample, which is the whole reason
 this layer is shaped the way it is.
 
-FOUR TRAPS, each measured before it was written down:
+FIVE TRAPS, each measured before it was written down:
 
 1. THE ALL-STAR GAME IS FILED AS A REGULAR-SEASON GAME. LeBron James has 83
    rows for 2017-18 under `season_type` 2, and the 83rd is for "Team LeBron".
@@ -34,12 +34,24 @@ FOUR TRAPS, each measured before it was written down:
    of 441 in 2010. So the rollups here keep the season type, and the feed's
    numbers are used as a CHECK rather than as the source.
 
-4. THE FEED SAYS SOME MEN PLAYED MORE GAMES THAN IT CARRIES LINES FOR. In
-   2009-2012 the count disagrees for about one player in six — 43 lines with
-   minutes against 54 games played for one 2009-10 Clipper. The count of
-   lines is what is stored, the feed's count is kept beside it in
+4. THE FEED'S COUNT OF GAMES PLAYED DISAGREES, IN BOTH DIRECTIONS. For
+   1,006 of the 12,819 regular seasons it carries a number for it does not
+   match the lines stored: 966 where it counts more — 43 lines with minutes
+   against 54 games played for one 2009-10 Clipper — and 40 where it counts
+   fewer, which is not the same defect and is not corrected either. 876 of
+   the 1,006 are before 2015 and 870 of them are by one or two games. The
+   count of lines is what is stored, the feed's count is kept beside it in
    `feed_games`, and `matches_feed` states whether the two agree. Nothing is
    reconciled behind the reader's back.
+
+5. THE BOX FEED CALLS THE NBA CUP FINAL A REGULAR-SEASON GAME. The
+   schedule calls it `cup_final` and the export already keeps it out of
+   won-lost records, so the feed's numeric type would have put a game in a
+   man's regular season that the rest of the archive leaves out of it: 86
+   lines across the three finals, 69 of them played, and LeBron James's
+   2023-24 at 72 games and 1,846 points instead of 71 and 1,822. A stored
+   line takes its season type from the SCHEDULE, for every type rather than
+   only for this one. See `known_games`.
 
 THE DRAFT FEED IS A DIFFERENT ID SPACE, so it is not read here. Its
 `athlete_id` shares not one value with the player ids: 0 of 60 picks join in
@@ -345,14 +357,25 @@ def roll_up(lines, *, feed=None):
 
 
 def known_games(connection):
-    """Every game key the schedule carries.
+    """`{game key: season type}` for every game the schedule carries.
 
     A box-score line for a game the schedule does not have is dropped. The
     alternative is a per-game line that no page can reach, because every
     route into one goes through a game or a season the schedule defines.
+
+    THE TYPE COMES BACK WITH THE KEY BECAUSE THE SCHEDULE IS RIGHT ABOUT IT
+    AND THE BOX FEED IS NOT. The box feed's numeric season type calls the
+    NBA Cup final a regular-season game — 86 lines across the three finals
+    the archive has, 69 of them played — while the schedule classifies it
+    `cup_final` and `src/nba/export.py` already keeps it out of won-lost
+    records. Taking the feed's word put LeBron James's 2023-24 regular
+    season at 72 games and 1,846 points where it is 71 and 1,822. So a
+    stored line's season type is the schedule's, for every type, not only
+    for this one: a second feed disagreeing again is then a fact the
+    archive already has an answer for.
     """
-    return {row[0] for row in
-            connection.execute('SELECT game_key FROM game')}
+    return {row[0]: row[1] for row in
+            connection.execute('SELECT game_key, season_type FROM game')}
 
 
 def replace_season(connection, season, people, lines, *, feed=None,
@@ -370,9 +393,12 @@ def replace_season(connection, season, people, lines, *, feed=None,
     his whole career, not to one season of it — and his archive span is
     recomputed from the lines afterwards.
     """
-    keys = known_games(connection)
-    kept = [line for line in lines if line['game_key'] in keys]
+    types = known_games(connection)
+    kept = [line for line in lines if line['game_key'] in types]
     unknown = len(lines) - len(kept)
+    # The schedule's classification wins: see `known_games`.
+    for line in kept:
+        line['season_type'] = types[line['game_key']]
     known_people = {person['person_key'] for person in people}
     # A line whose man has no `player_core` row cannot be stored: the table
     # has a foreign key to `person`, and a page would have a game log with
@@ -576,8 +602,8 @@ def main(argv=None):
     print(f'  dropped: {exhibition} exhibition rows, {no_person} with no '
           f'player, {unknown} for games the schedule does not have')
     print(f'  {final["aliases"] // 2} players hold two provider ids')
-    print(f'  {mismatched} player-seasons where the feed counts more games '
-          'than the archive carries lines for')
+    print(f'  {mismatched} player-seasons where the feed\'s count of games '
+          'played and the lines stored disagree, in either direction')
     for row in per_season:
         print(f'  {row["season"]:>6}  people {row["people"]:>4}  '
               f'lines {row["lines"]:>6}  played {row["played"]:>6}  '

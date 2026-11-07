@@ -19,10 +19,12 @@ so that a page can be honest about the archive rather than about the sport:
   playing, which for a man who debuted in 1996 is 2002. The page says "in
   this archive" rather than implying a rookie year.
 - `fg` on a season row is the feed's own count of games played, and `mf`
-  whether it agrees with the number of lines stored. They disagree for 1,231
-  of 14,500 regular-season rows, almost all of them before 2015, and almost
-  always by one or two games. A page shows the archive's count and says the
-  feed counts more, rather than quietly choosing one.
+  whether it agrees with the number of lines stored. They disagree for 1,006
+  of the 12,819 regular seasons the feed carries a count for — 966 where it
+  counts more and 40 where it counts fewer, 876 of them before 2015 and 870
+  by one or two games. A page shows the archive's count and says the feed
+  disagrees, rather than quietly choosing one or claiming the disagreement
+  runs one way.
 - `al` holds the other provider ids that belong to the same man. Six players
   have one. Nothing is summed across it: the page links the two careers and
   says the record is split.
@@ -32,9 +34,13 @@ import json
 from collections import defaultdict
 
 # The season types a line can carry, in the order a page prints them. The
-# payload holds the index, not the word, and the play-in is its own type
-# because the archive's own schedule treats it as one.
-SEASON_TYPES = ('regular', 'postseason', 'playin')
+# payload holds the index, not the word. The play-in is its own type because
+# the archive's own schedule treats it as one, and the Cup final is its own
+# for the same reason: the archive keeps it out of won-lost records, so a
+# page may not fold it into a man's regular season either. A line's type is
+# the SCHEDULE's and not the box feed's, which calls the Cup final a
+# regular-season game -- see `people.known_games`.
+SEASON_TYPES = ('regular', 'postseason', 'playin', 'cup_final')
 
 # The counted columns, in the order both the season rows and the game rows
 # carry them. THIS TUPLE IS THE CONTRACT: the page reads them by position, so

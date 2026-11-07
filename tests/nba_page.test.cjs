@@ -210,7 +210,10 @@ function peopleFixture() {
           .concat([72, 0]),
         [2026, 0, 24, 70, 68, 2400].concat(counts(1650, 540, 520))
           .concat([70, 1]),
-        [2026, 1, 24, 5, 5, 180].concat(counts(120, 40, 40)).concat([5, 1])
+        [2026, 1, 24, 5, 5, 180].concat(counts(120, 40, 40)).concat([5, 1]),
+        // The NBA Cup final is its own season type, the way the archive's
+        // own schedule has it: never a row of the regular season.
+        [2026, 3, 24, 1, 1, 38].concat(counts(24, 9, 7)).concat([null, null])
       ],
       g: [
         [2026, 0, [
@@ -219,6 +222,9 @@ function peopleFixture() {
         ]],
         [2026, 1, [
           ['g9', '2026-04-20', 24, 25, 1, 1, 40].concat(counts(33, 10, 8))
+        ]],
+        [2026, 3, [
+          ['g8', '2025-12-17', 24, 18, 0, 1, 38].concat(counts(24, 9, 7))
         ]]
       ],
       al: [1967]
@@ -1365,3 +1371,27 @@ test('pressing a tab closes an open player', async () => {
   assert.doesNotMatch(dom.window.location.hash, /player=/);
   dom.window.close();
 });
+
+test('the NBA Cup final is its own table, not a row of the regular season',
+  async () => {
+    // The archive keeps the Cup final out of won-lost records, so a career
+    // line that folded it into the regular season would disagree with the
+    // standings on the same screen.
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, undefined, true);
+    const host = await openPlayerPage(dom, 'LeBron James');
+    const headings = [...host.querySelectorAll('h3.section')]
+      .map(node => node.textContent);
+    assert.deepEqual(headings.slice(0, 3),
+      ['Regular season', 'Playoffs', 'NBA Cup final']);
+    assert.ok(headings.includes('2025-26 NBA Cup final'), headings.join('|'));
+    // One game and its own career line, and the regular season untouched by
+    // it: two seasons, 140 games.
+    const cup = host.querySelectorAll('table')[2];
+    assert.equal(cup.querySelectorAll('tbody tr').length, 1);
+    assert.equal([...cup.querySelectorAll('tfoot th')][2].textContent, '1');
+    const regular = [...host.querySelectorAll('table')[0]
+      .querySelectorAll('tfoot th')].map(node => node.textContent);
+    assert.deepEqual(regular.slice(0, 3), ['2 seasons', '', '140']);
+    dom.window.close();
+  });

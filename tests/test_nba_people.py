@@ -214,7 +214,7 @@ class TestRollingUp:
         assert people.feed_games(rows) == {PLAYER_ID: 5}
 
 
-def _store(tmp_path, *, games=(GAME,)):
+def _store(tmp_path, *, games=(GAME,), types=None):
     connection = store.connect(tmp_path / 'nba.db')
     for key, team_id, name in ((HOME, HOME_ID, 'Home Club'),
                                (AWAY, AWAY_ID, 'Away Club')):
@@ -226,9 +226,10 @@ def _store(tmp_path, *, games=(GAME,)):
             'INSERT INTO game (game_key, provider_id, season, season_label,'
             ' season_type, game_date, home_team_key, away_team_key,'
             ' home_team_id, away_team_id, home_points, away_points)'
-            ' VALUES (?, ?, 2026, "2025-26", "regular", "2026-01-20", ?, ?,'
+            ' VALUES (?, ?, 2026, "2025-26", ?, "2026-01-20", ?, ?,'
             ' ?, ?, 112, 104)',
-            (identity.game_key(provider), provider, HOME, AWAY, HOME_ID,
+            (identity.game_key(provider), provider,
+             (types or {}).get(provider, 'regular'), HOME, AWAY, HOME_ID,
              AWAY_ID))
     connection.commit()
     return connection
@@ -457,3 +458,68 @@ class TestSeasonsArgument:
                                                           expected):
         from src.nba.ingest import parse_seasons
         assert parse_seasons(text) == expected
+
+
+class TestWhichKindOfGameItWas:
+    """The SCHEDULE says what kind of game a line is for, not the box feed.
+
+    The feed's numeric season type calls the NBA Cup final a regular-season
+    game. The schedule calls it `cup_final` and the export already keeps it
+    out of won-lost records, so taking the feed's word put a game into a
+    man's regular season that the rest of the archive leaves out of it --
+    LeBron James's 2023-24 at 72 games and 1,846 points where it is 71 and
+    1,822.
+    """
+
+    def test_the_schedule_carries_the_type_back_with_the_key(self, tmp_path):
+        connection = _store(tmp_path, games=(GAME, SECOND),
+                            types={SECOND: 'cup_final'})
+        assert people.known_games(connection) == {
+            identity.game_key(GAME): 'regular',
+            identity.game_key(SECOND): 'cup_final'}
+
+    def test_a_stored_line_takes_its_type_from_the_schedule(self, tmp_path):
+        connection = _store(tmp_path, games=(SECOND,),
+                            types={SECOND: 'cup_final'})
+        # `season_type='2'` is what the box feed says, and it means the
+        # regular season.
+        lines, _ = people.parse_games(
+            [box_row(game_id=SECOND, season_type='2')], 2026)
+        assert lines[0]['season_type'] == 'regular'
+        people.replace_season(connection, 2026,
+                              people.parse_people([core_row()]), lines)
+        assert connection.execute(
+            'SELECT season_type FROM person_game').fetchone()[0] \
+            == 'cup_final'
+
+    def test_a_cup_final_is_its_own_rollup_and_not_a_regular_season_game(
+            self, tmp_path):
+        connection = _store(tmp_path, games=(GAME, SECOND),
+                            types={SECOND: 'cup_final'})
+        lines, _ = people.parse_games(
+            [box_row(game_id=GAME, points='20'),
+             box_row(game_id=SECOND, points='24')], 2026)
+        people.replace_season(connection, 2026,
+                              people.parse_people([core_row()]), lines)
+        rows = {row['season_type']: (row['games'], row['points'])
+                for row in connection.execute(
+                    'SELECT season_type, games, points FROM person_season')}
+        # One game and 20 points in the regular season, and the final's 24
+        # points in a row of its own. Nothing is summed across them.
+        assert rows == {'regular': (1, 20), 'cup_final': (1, 24)}
+
+    def test_the_feed_count_is_compared_against_the_regular_season_alone(
+            self, tmp_path):
+        """The feed's `gamesPlayed` has no Cup final in it, so comparing it
+        against a count that did would star a season that agrees."""
+        connection = _store(tmp_path, games=(GAME, SECOND),
+                            types={SECOND: 'cup_final'})
+        lines, _ = people.parse_games(
+            [box_row(game_id=GAME), box_row(game_id=SECOND)], 2026)
+        people.replace_season(connection, 2026,
+                              people.parse_people([core_row()]), lines,
+                              feed={PLAYER_ID: 1})
+        row = connection.execute(
+            'SELECT feed_games, matches_feed FROM person_season'
+            ' WHERE season_type = "regular"').fetchone()
+        assert (row['feed_games'], row['matches_feed']) == (1, 1)
