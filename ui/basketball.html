@@ -446,13 +446,17 @@
       button.title = entry.pickerTitle;
       button.setAttribute('aria-label', entry.pickerTitle);
       button.dataset.league = entry.slug;
-      // Football lives on dashboard.html; this preview is basketball only, so
-      // the football option navigates rather than pretending to switch here.
+      // Each league lives on its own page, so the other options navigate
+      // rather than pretending to switch here. WHERE they navigate comes from
+      // the registry: this read `dashboard.html` for every league but
+      // basketball, so tapping NFL here opened college football. Austin hit
+      // that on 2026-11-05, and it came back when this branch was merged
+      // over the fix, which is why a test now drives the click.
       button.setAttribute('aria-pressed',
         entry.slug === app.BASKETBALL ? 'true' : 'false');
       button.addEventListener('click', function () {
         if (entry.slug === app.BASKETBALL) return;
-        window.location.href = 'dashboard.html';
+        window.location.href = app.pageFor(entry.slug);
       });
       host.appendChild(button);
     });
