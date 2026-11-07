@@ -16,6 +16,7 @@ Measured on `main` at `ffb4cea`:
 | `ui/data/game_logs` | 102 MB | the same lines turned the other way up, by player |
 | `ui/data/people` | 91 MB | player and coach pages |
 | `ui/data/nfl` | 40 MB | the NFL export |
+| `ui/data/nba` | 56 MB | the NBA export, 45 MB of it per-game detail (added 2026-11-04) |
 | `ui/data/drives` | 20 MB | drive-by-drive records |
 | `ui/data/team_pages` | 16 MB | team pages, sharded in #157 |
 
@@ -91,3 +92,20 @@ Three rules worth keeping:
 4. **`.git` is 255 MB**, which is not the Pages limit but is the clone. Most of
    the growth is the live-scoreboard refresh committing `ui/data/live_scores.json`
    every few minutes and the per-season data commits.
+
+
+## The NBA game layer, added 2026-11-04
+
+`ui/data/nba` went from 11 MB to **56 MB** when the game layer landed: 45 MB
+of month files holding a line score, a game shape, a 54-point margin curve
+and the key plays for each of **31,230 games**. That is 1.5 KB a game, about
+13.5 MB gzipped, which is what Pages actually serves.
+
+For scale, `ui/data/nfl/games` is 23 MB for 7,366 games — 3 KB each — so the
+NBA layer is half the size per game and there are four times as many games.
+Nothing was cut to fit it: the plays themselves, 0.44 GB of Parquet, are
+fetched and discarded on every refresh and never published at all.
+
+The daily cost is small. Past seasons' month files are byte-identical from
+one run to the next, so git stores no new object for them; only the current
+month changes, at about 300 KB a day.

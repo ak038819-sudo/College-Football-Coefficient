@@ -48,6 +48,11 @@ on:
           not publish."
         type: string
         default: ""
+      pbp_seasons:
+        description: "Only reduce the play-by-play for these seasons. For
+          rehearsing a reduction; a partial one may not publish."
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -64,7 +69,8 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The reduction fetches and discards 0.44 GB, which is most of this.
+    timeout-minutes: 90
     outputs:
       published: ${{ steps.publish.outputs.published }}
     steps:
@@ -80,7 +86,9 @@ jobs:
       - name: Validate before touching anything published
         run: |
           python -m pytest tests/test_nba_data.py tests/test_nba_rating.py \
-            tests/test_nba_export.py -q
+            tests/test_nba_export.py tests/test_nba_plays.py \
+            tests/test_nba_game_export.py \
+            tests/test_nba_win_probability.py -q
 
       - name: Ingest the archive
         run: |
@@ -89,6 +97,32 @@ jobs:
           set -o pipefail
           python -m src.nba.ingest \
             ${{ inputs.seasons && format('--seasons {0}', inputs.seasons) || '' }} \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Reduce the play-by-play to the game layer
+        run: |
+          # 0.44 GB of Parquet across 26 seasons, fetched one season at a
+          # time, reduced, and DELETED before the next one is fetched. Not
+          # one play is stored or committed: what comes out is 127,000
+          # periods, 1.68 million curve points and 156,000 key plays, which
+          # is what a game page draws.
+          #
+          # The whole archive is re-reduced on every run rather than only
+          # the season in progress, because nothing here is stateful: the
+          # database is built from scratch each time, exactly as the games
+          # are refetched each time. The alternative is committing derived
+          # data and keeping it in step with the source, which is the
+          # failure this pipeline is shaped to avoid.
+          #
+          # BEFORE the replay, because `fit_win_probability` is not run here
+          # but `export` reads `game_shape` to decide whether there is a
+          # game layer at all, and an export built without one would drop a
+          # `files` key the published manifest has -- which src/nba/publish.py
+          # refuses. A failure here fails the run, which says the same thing
+          # earlier and more clearly.
+          set -o pipefail
+          python -m src.nba.plays --work-dir "$RUNNER_TEMP/nba-pbp" \
+            ${{ inputs.pbp_seasons && format('--seasons {0}', inputs.pbp_seasons) || '' }} \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Replay the archive with the committed model
@@ -111,9 +145,13 @@ jobs:
           # run, so a two-season run would build a two-season export. The
           # gate checks the seasons that ARE there and would pass it. The
           # input is for rehearsing an ingest, and this is what keeps it to
-          # that.
+          # that. `pbp_seasons` is the same hazard one layer down: a
+          # one-season reduction would build a game layer covering one
+          # season, and nothing downstream would notice it replacing
+          # twenty-six.
           ALLOWED: ${{ (inputs.publish == null && 'true' || inputs.publish)
-            && (inputs.seasons == null || inputs.seasons == '') }}
+            && (inputs.seasons == null || inputs.seasons == '')
+            && (inputs.pbp_seasons == null || inputs.pbp_seasons == '') }}
         run: |
           set -o pipefail
           python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
@@ -128,8 +166,8 @@ jobs:
               publish.apply(decision, built, live)
           elif decision['publish']:
               print('\nNot committed: this run was dispatched with '
-                    'publishing off, or with only some seasons ingested, '
-                    'which may not replace the whole archive.')
+                    'publishing off, or with only some seasons ingested '
+                    'or reduced, which may not replace the whole archive.')
           with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
               out.write(f"published={'true' if decision['publish'] and allowed else 'false'}\n")
           # A refusal is a failed run, not a quiet one: the health light below

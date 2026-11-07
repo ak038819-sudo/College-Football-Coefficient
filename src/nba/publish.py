@@ -78,10 +78,10 @@ def plan(new_dir, live_dir, *, now=None, gate=check):
                     reason='nothing is published yet; this is the first '
                            'NBA export')
     # A layer the live site has and the new export lacks is a REGRESSION, not
-    # an update. Today an NBA export always carries the same two files, so
-    # this cannot fire; it is here so that the later stages of this tab —
-    # game detail, people — cannot be added and then silently dropped by a
-    # refresh that half-failed.
+    # an update. Since the game layer landed this is live rather than
+    # anticipatory: an export built on a database whose play-by-play
+    # reduction did not run carries no `games` key, and without this a
+    # half-failed refresh would quietly take every game page off the site.
     live_files = live.get('files') or {}
     new_files = incoming.get('files') or {}
     dropped = sorted(name for name in live_files if name not in new_files)

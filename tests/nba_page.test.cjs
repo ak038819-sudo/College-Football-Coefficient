@@ -128,7 +128,54 @@ function stamp(text) {
     .update(text).digest('hex').slice(0, 10);
 }
 
-function site(overrides, schedule, standings, past) {
+/* One month of game detail, in the shape `src/nba/game_export.py` writes:
+ * four parallel arrays for the curve, a shape row read by index, a line
+ * score, and the key plays. */
+function detailMonth(options) {
+  const opts = options || {};
+  const shapeFields = ['lead_changes', 'ties', 'home_biggest_lead',
+    'away_biggest_lead', 'home_biggest_run', 'away_biggest_run',
+    'home_time_leading', 'away_time_leading', 'time_tied', 'scoring_plays',
+    'plays'];
+  return {
+    season: 2026,
+    month: '2025-12',
+    reasons: ['lead', 'tie', 'late', 'final'],
+    shape_fields: shapeFields,
+    games: {
+      g1: {
+        wp: 623,
+        ok: opts.unreconciled ? 0 : 1,
+        ot: 0,
+        sh: [6, 4, 14, 7, 9, 8, 1700, 1000, 180, 118, 476],
+        p: [[30, 24], [28, 26], [34, 30], [32, 33]],
+        c: [[0, 720, 1440, 2160, 2880],
+            [0, 30, 58, 92, 124],
+            [0, 24, 50, 80, 113],
+            [623, 640, 712, 860, null]],
+        k: [[1, 4, '1:12', 2, 'J. Brunson', 'Driving Layup Shot', 120, 111,
+             2, 'Driving Layup Shot'],
+            [0, 4, '0:21', 3, 'V. Wembanyama', 'Jump Shot', 120, 113, 2,
+             'Jump Shot']]
+      },
+      g2: {
+        wp: 440,
+        ok: 1,
+        ot: 1,
+        sh: [11, 9, 5, 6, 7, 7, 1400, 1300, 180, 96, 452],
+        p: [[24, 22], [26, 25], [22, 24], [20, 21], [9, 7]],
+        c: [[0, 1440, 2880, 3100],
+            [0, 50, 94, 101],
+            [0, 47, 92, 99],
+            [440, 470, null, null]],
+        k: [[1, 5, '0:04', 2, 'V. Wembanyama', 'Tip Shot', 101, 99, 3,
+             'Tip Shot']]
+      }
+    }
+  };
+}
+
+function site(overrides, schedule, standings, past, detail) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nba-page-'));
   const data = path.join(root, 'data', 'nba', 'seasons');
   fs.mkdirSync(data, { recursive: true });
@@ -158,6 +205,20 @@ function site(overrides, schedule, standings, past) {
   }
   payload.files = { teams: 'teams.js?v=' + stamp(teamsText),
     history: 'history.js?v=' + stamp(historyText) };
+  // The game layer is OPTIONAL in the manifest: an export written before the
+  // reduction ran carries no `files.games` at all, and then no card is a
+  // link. Both cases are driven below.
+  if (detail) {
+    const month = detailMonth(detail === true ? {} : detail);
+    const monthText = 'window.NBA_GAMEMONTHS=(window.NBA_GAMEMONTHS||{});'
+      + 'window.NBA_GAMEMONTHS["2026/2025-12"]='
+      + JSON.stringify(month) + ';\n';
+    const dir = path.join(root, 'data', 'nba', 'games', '2026');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, '2025-12.js'), monthText);
+    payload.files.games = { seasons: { 2026: { v: stamp(monthText),
+      months: ['2025-12'] } } };
+  }
   fs.writeFileSync(path.join(root, 'data', 'nba', 'manifest.json'),
     JSON.stringify(payload));
   for (const name of ['nba.html', 'nba_loader.js', 'nba_app.js',
@@ -183,8 +244,8 @@ function settle(dom, ready, tries = 500) {
   });
 }
 
-async function open(overrides, schedule, standings, hash, past) {
-  const built = site(overrides, schedule, standings, past);
+async function open(overrides, schedule, standings, hash, past, detail) {
+  const built = site(overrides, schedule, standings, past, detail);
   const file = path.join(built.root, 'nba.html');
   const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
     // The hash is part of the URL the reader arrived with, so it is set here
@@ -223,7 +284,7 @@ async function open(overrides, schedule, standings, hash, past) {
   // card there would call a correct page "never rendered".
   await settle(dom, () => dom.window.document.querySelector(
     '#cards .card, #refusal-list li, #board tr, #groups tr,'
-    + ' #teams-body *, #track-record *'));
+    + ' #teams-body *, #track-record *, #game-body *'));
   dom.store = built;
   return dom;
 }
@@ -659,3 +720,283 @@ test('a season is labelled for the two years it spans', () => {
   assert.equal(loader.seasonLabel(2010), '2009-10');
   assert.equal(app.seasonLabel(2027), loader.seasonLabel(2027));
 });
+
+// --- the game page ---------------------------------------------------------
+
+/* Open the finished game on the 16th and wait for its month file.
+ *
+ * SETTLED ON THE LOADING NOTE BEING GONE, not on a `.note` appearing: the
+ * "Loading the play-by-play…" line IS a `.note`, so waiting for one resolved
+ * before the file arrived and five tests then read an empty page and failed
+ * on the page they had not waited for. */
+async function openGamePage(dom, day = 16) {
+  await goToDay(dom, day);
+  const card = dom.window.document.querySelector('#cards .card.open');
+  assert.ok(card, 'the finished game is not a link');
+  card.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settleGame(dom);
+  return dom.window.document.getElementById('game-body');
+}
+
+function settleGame(dom) {
+  return settle(dom, () => {
+    const host = dom.window.document.getElementById('game-body');
+    if (!host || !host.textContent) return false;
+    return !/Loading the play-by-play/.test(host.textContent);
+  });
+}
+
+test('a finished game is a link and an unplayed one is not', async () => {
+  const dom = await open(undefined, undefined, undefined, undefined,
+    undefined, true);
+  await goToDay(dom, 16);
+  assert.ok(dom.window.document.querySelector('#cards .card.open'));
+  // The same slate, on a day whose game has not been played.
+  await goToDay(dom, 20);
+  assert.equal(dom.window.document.querySelector('#cards .card.open'), null);
+  dom.window.close();
+});
+
+test('no card is a link when the export carries no game layer', async () => {
+  // An export written before the reduction ran names no `files.games` at
+  // all, and a link to a page that would say nothing is worse than no link.
+  const dom = await open();
+  await goToDay(dom, 16);
+  assert.ok(dom.window.document.querySelector('#cards .card'));
+  assert.equal(dom.window.document.querySelector('#cards .card.open'), null);
+  dom.window.close();
+});
+
+test('opening a game puts it in the URL and draws its line score',
+  async () => {
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, true);
+    const host = await openGamePage(dom);
+    assert.match(dom.window.location.hash, /game=g1/);
+    assert.equal(dom.window.document.getElementById('game').hidden, false);
+    assert.equal(dom.window.document.getElementById('scoreboard').hidden,
+      true);
+    const headers = [...host.querySelectorAll('table th')]
+      .map(node => node.textContent);
+    // Four periods and a total, labelled the way the NBA labels them.
+    assert.deepEqual(headers.slice(0, 6), ['Club', '1', '2', '3', '4', 'T']);
+    const row = host.querySelector('tbody tr');
+    assert.match(row.textContent, /San Antonio Spurs/);
+    dom.window.close();
+  });
+
+test('a game that ended in regulation does not claim the line stopped early',
+  async () => {
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, true);
+    const host = await openGamePage(dom);
+    assert.doesNotMatch(host.querySelector('.wplegend').textContent,
+      /stops at the end of regulation/);
+    dom.window.close();
+  });
+
+test('the win probability chart is drawn with a legend that states its '
+  + 'limits', async () => {
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, true);
+    const host = await openGamePage(dom);
+    const chart = host.querySelector('svg.wpchart');
+    assert.ok(chart, 'no chart');
+    const line = chart.querySelector('path.line').getAttribute('d');
+    // Tip-off plus the four priced points: the fifth carries no probability.
+    assert.equal(line.split('L').length, 5);
+    const legend = host.querySelector('.wplegend').textContent;
+    assert.match(legend, /New York Knicks win probability/);
+    assert.match(legend, /does not know possession/);
+    dom.window.close();
+  });
+
+test('an overtime game says the curve stops at the end of regulation',
+  async () => {
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, true);
+    const host = await openGamePage(dom, 18);
+    assert.match(host.querySelector('.wplegend').textContent,
+      /stops at the end of regulation/);
+    // Five periods, the fifth labelled OT.
+    const headers = [...host.querySelectorAll('table th')]
+      .map(node => node.textContent);
+    assert.deepEqual(headers.slice(0, 7),
+      ['Club', '1', '2', '3', '4', 'OT', 'T']);
+    dom.window.close();
+  });
+
+test('the shape of the game is printed in the quantities a box score uses',
+  async () => {
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, true);
+    const host = await openGamePage(dom);
+    const text = host.textContent;
+    assert.match(text, /How the game went/);
+    assert.match(text, /Lead changes/);
+    assert.match(text, /Times tied/);
+    assert.match(text, /Biggest run/);
+    // Time in front is a duration, not a count of seconds.
+    assert.match(text, /28:20/);
+    dom.window.close();
+  });
+
+test('the key plays are listed with why each one is there', async () => {
+  const dom = await open(undefined, undefined, undefined, undefined,
+    undefined, true);
+  const host = await openGamePage(dom);
+  assert.match(host.textContent, /Key plays/);
+  assert.match(host.textContent, /J\. Brunson/);
+  assert.match(host.textContent, /Late/);
+  // Said on the page: the plays are chosen by a stated rule, not by the
+  // model that draws the curve above them.
+  assert.match(host.textContent, /marking its own homework/);
+  dom.window.close();
+});
+
+test('a game whose plays do not add up shows no line score and says so',
+  async () => {
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, { unreconciled: true });
+    const host = await openGamePage(dom);
+    assert.match(host.textContent, /stop short of the final score/);
+    const headers = [...host.querySelectorAll('table th')]
+      .map(node => node.textContent);
+    assert.equal(headers.indexOf('1'), -1);
+    dom.window.close();
+  });
+
+test('pressing a tab closes an open game', async () => {
+  const dom = await open(undefined, undefined, undefined, undefined,
+    undefined, true);
+  await openGamePage(dom);
+  const tabs = [...dom.window.document.querySelectorAll('nav.tabs button')];
+  const standings = tabs.find(node => /Standings/.test(node.textContent));
+  standings.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settle(dom, () => dom.window.document.querySelector('#groups tr'));
+  assert.equal(dom.window.document.getElementById('game').hidden, true);
+  assert.doesNotMatch(dom.window.location.hash, /game=/);
+  dom.window.close();
+});
+
+test('changing the season closes the game it was not played in', async () => {
+  // A GAME BELONGS TO ONE SEASON. The season select used to change the
+  // season and leave the game in the state and in the URL, so the reader
+  // asked for 2025 and got "that game is not in this season".
+  const dom = await open(undefined, undefined, undefined, undefined,
+    true, true);
+  await openGamePage(dom);
+  const select = dom.window.document.getElementById('season');
+  select.value = '2025';
+  select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+  await settle(dom, () =>
+    dom.window.document.getElementById('game').hidden === true);
+  assert.doesNotMatch(dom.window.location.hash, /game=/);
+  assert.doesNotMatch(
+    dom.window.document.getElementById('game-body').textContent || '',
+    /not in this season/);
+  dom.window.close();
+});
+
+test('a game this season does not have still offers the way back', async () => {
+  const dom = await open(undefined, undefined, undefined,
+    '#league=nba&game=nosuchgame&season=2026', undefined, true);
+  await settle(dom, () =>
+    dom.window.document.getElementById('game').hidden === false);
+  const host = dom.window.document.getElementById('game-body');
+  assert.match(host.textContent, /not in this season/);
+  const back = host.querySelector('p.back button');
+  assert.ok(back, 'a dead end with no way out of it');
+  // And the way out works: it closes the game rather than only looking
+  // like a link.
+  back.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settle(dom, () =>
+    dom.window.document.getElementById('game').hidden === true);
+  assert.doesNotMatch(dom.window.location.hash, /game=/);
+  dom.window.close();
+});
+
+test('a link straight to a game draws the game, not the slate', async () => {
+  const dom = await open(undefined, undefined, undefined,
+    '#league=nba&game=g1&season=2026', undefined, true);
+  await settleGame(dom);
+  assert.equal(dom.window.document.getElementById('game').hidden, false);
+  assert.match(dom.window.document.getElementById('game-body').textContent,
+    /New York Knicks/);
+  dom.window.close();
+});
+
+// --- the game layer, as a module ------------------------------------------
+
+test('a month file is addressed by the game\'s own date', () => {
+  assert.equal(loader.gameMonthKey({ date: '2026-01-20' }), '2026-01');
+  assert.equal(loader.gameMonthKey({ date: null }), null);
+  assert.equal(loader.gameMonthKey({}), null);
+});
+
+test('a month the manifest does not list has no URL', () => {
+  // Null rather than a URL that 404s: that is how the page knows to say "no
+  // play-by-play for this game" instead of spinning.
+  const listed = { files: { games: { seasons: { 2026: { v: 'abcdef0123',
+    months: ['2026-01'] } } } } };
+  assert.equal(loader.gameMonthSource(listed, 2026, '2026-01'),
+    'data/nba/games/2026/2026-01.js?v=abcdef0123');
+  assert.equal(loader.gameMonthSource(listed, 2026, '2025-12'), null);
+  assert.equal(loader.gameMonthSource(listed, 2025, '2026-01'), null);
+  assert.equal(loader.gameMonthSource({ files: {} }, 2026, '2026-01'), null);
+});
+
+test('an overtime period is labelled the way the NBA labels it', () => {
+  assert.equal(app.periodLabel(4), '4');
+  assert.equal(app.periodLabel(5), 'OT');
+  assert.equal(app.periodLabel(6), '2OT');
+  assert.equal(app.periodLabel(0), '');
+});
+
+test('a game is as long as the periods it took', () => {
+  assert.equal(app.gameLength(4), 2880);
+  assert.equal(app.gameLength(5), 3180);
+  assert.equal(app.gameLength(6), 3480);
+});
+
+test('the curve unpacks from four parallel arrays, nulls included', () => {
+  const entry = detailMonth().games.g1;
+  const points = app.unpackCurve(entry);
+  assert.equal(points.length, 5);
+  assert.deepEqual(points[1], { elapsed: 720, home: 30, away: 24, margin: 6,
+    wp: 640 });
+  assert.equal(points[4].wp, null);
+  // The buzzer carries no probability in EVERY game, so it is not what
+  // "unpriced" means: g1 ended in regulation and must not claim the line
+  // stopped early, while g2 went to overtime and must.
+  assert.equal(app.hasUnpricedStates(entry), false);
+  assert.equal(app.hasUnpricedStates(detailMonth().games.g2), true);
+});
+
+test('a shape row is read by the order the payload states', () => {
+  const month = detailMonth();
+  const shape = app.unpackShape(month.games.g1, month.shape_fields);
+  assert.equal(shape.lead_changes, 6);
+  assert.equal(shape.home_time_leading, 1700);
+  assert.equal(app.unpackShape({}, month.shape_fields), null);
+});
+
+test('a reduction with nothing to reconcile against is not a failure', () => {
+  // `ok` is null for a game with no final score: nothing disagreed, there
+  // was nothing to disagree with.
+  assert.equal(app.detailReconciles({ ok: 1 }), true);
+  assert.equal(app.detailReconciles({ ok: 0 }), false);
+  assert.equal(app.detailReconciles({ ok: null }), true);
+  assert.equal(app.detailReconciles(null), true);
+});
+
+test('a clock under ten seconds is padded so a column of times reads',
+  () => {
+    // The feed writes `0:9.5`, which in a column above `0:41.1` does not
+    // sort by eye.
+    assert.equal(app.padClock('0:9.5'), '0:09.5');
+    assert.equal(app.padClock('0:41.1'), '0:41.1');
+    assert.equal(app.padClock('11:45'), '11:45');
+    assert.equal(app.padClock(null), '');
+    assert.equal(app.playTime({ period: 5, clock: '0:4.0' }), '0:04.0 OT');
+  });

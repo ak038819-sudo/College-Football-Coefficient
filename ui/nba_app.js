@@ -415,7 +415,246 @@
     return found.slice(0, limit || 10);
   }
 
+  /* ------------------------------------------------------------------
+   * The game layer. `src/nba/game_export.py` writes these payloads and the
+   * rules for reading them live here, not in the page: a packed row read by
+   * index in one place and by another index in a second place is the defect
+   * this file exists to make impossible.
+   * ---------------------------------------------------------------- */
+
+  // Regulation is 2880 seconds — four twelve-minute periods — and an
+  // overtime is 300. Football's 3600 is not a number that belongs anywhere
+  // on this page.
+  var REGULATION_SECONDS = 2880;
+  var OVERTIME_SECONDS = 300;
+  var REGULATION_PERIODS = 4;
+
+  /* `1`, `2`, `3`, `4`, then `OT`, `2OT`. The NBA writes a second overtime
+   * `2OT`, not `OT2`. */
+  function periodLabel(period) {
+    var number = Number(period);
+    if (!isFiniteNumber(number) || number < 1) return '';
+    if (number <= REGULATION_PERIODS) return String(number);
+    var overtime = number - REGULATION_PERIODS;
+    return overtime === 1 ? 'OT' : overtime + 'OT';
+  }
+
+  /* How long a game of this many periods ran, in seconds. Used as the
+   * x-axis of the curve, so an overtime game's chart is wider than a
+   * regulation one rather than compressing five periods into four. */
+  function gameLength(periods) {
+    var count = Number(periods);
+    if (!isFiniteNumber(count) || count <= REGULATION_PERIODS) {
+      return REGULATION_SECONDS;
+    }
+    return REGULATION_SECONDS
+      + (count - REGULATION_PERIODS) * OVERTIME_SECONDS;
+  }
+
+  /* The margin curve as objects. `entry.c` is four PARALLEL arrays —
+   * elapsed, home, away, win probability in per mille — because the same
+   * points as objects would repeat four key names a million times across the
+   * archive. A probability of null is a state the model cannot price, which
+   * is every state inside overtime. */
+  function unpackCurve(entry) {
+    var packed = entry && entry.c;
+    if (!Array.isArray(packed) || packed.length < 3) return [];
+    var elapsed = packed[0] || [];
+    var home = packed[1] || [];
+    var away = packed[2] || [];
+    var chance = packed[3] || [];
+    var out = [];
+    for (var i = 0; i < elapsed.length; i += 1) {
+      out.push({
+        elapsed: elapsed[i],
+        home: home[i],
+        away: away[i],
+        margin: home[i] - away[i],
+        wp: isFiniteNumber(chance[i]) ? chance[i] : null
+      });
+    }
+    return out;
+  }
+
+  /* The shape row as a named object. `payload.shape_fields` states the
+   * order, so the page never hard-codes an index: the export may add a
+   * field and this keeps reading the right ones. */
+  function unpackShape(entry, fields) {
+    var packed = entry && entry.sh;
+    if (!Array.isArray(packed) || !Array.isArray(fields)) return null;
+    var out = {};
+    fields.forEach(function (name, index) {
+      out[name] = packed[index];
+    });
+    return out;
+  }
+
+  /* The line score as `[{period, home, away}, ...]`. */
+  function lineScore(entry) {
+    var packed = entry && entry.p;
+    if (!Array.isArray(packed)) return [];
+    return packed.map(function (pair, index) {
+      return { period: index + 1, home: pair[0], away: pair[1] };
+    });
+  }
+
+  /* The key plays as objects, with the side resolved to the game's own team
+   * key and the reason to its word. */
+  function unpackKeyPlays(entry, game, reasons) {
+    var packed = entry && entry.k;
+    if (!Array.isArray(packed)) return [];
+    var words = Array.isArray(reasons) ? reasons : [];
+    return packed.map(function (row) {
+      return {
+        side: row[0],
+        team: row[0] === 1 ? (game && game.home)
+          : (row[0] === 0 ? (game && game.away) : null),
+        period: row[1],
+        clock: row[2],
+        points: row[3],
+        scorer: row[4],
+        description: row[5],
+        home: row[6],
+        away: row[7],
+        reason: words[row[8]] || null,
+        kind: row[9]
+      };
+    });
+  }
+
+  /* The trace the chart draws: tip-off, every priced state, and the result.
+   *
+   * `at` is a fraction of the GAME's own length, so an overtime game's
+   * regulation occupies the first 90% of the chart and the overtime the
+   * rest. The curve stops where the model does: an overtime state carries no
+   * probability, so the line ends at the end of regulation and the page says
+   * why rather than drawing a flat certainty across five minutes the model
+   * never looked at. */
+  function winProbabilityTrace(entry, periods) {
+    var length = gameLength(periods);
+    var points = [];
+    if (entry && isFiniteNumber(entry.wp)) {
+      points.push({ at: 0, value: entry.wp / 1000, label: 'Tip-off' });
+    }
+    unpackCurve(entry).forEach(function (point) {
+      if (point.wp === null || !isFiniteNumber(point.elapsed)) return;
+      points.push({
+        at: point.elapsed / length,
+        value: point.wp / 1000,
+        label: point.home + '-' + point.away
+      });
+    });
+    return points;
+  }
+
+  /* An SVG path through a trace, in a box the caller scales.
+   *
+   * Straight segments, not a curve: the model says nothing about what
+   * happened between two states, and a smoothed line would say it did. */
+  function tracePath(points, width, height) {
+    if (!points || points.length < 2) return '';
+    return points.map(function (point, index) {
+      var x = (point.at * width).toFixed(2);
+      var y = ((1 - point.value) * height).toFixed(2);
+      return (index ? 'L' : 'M') + x + ' ' + y;
+    }).join(' ');
+  }
+
+  /* A path through the margin, scaled to the biggest lead either side held.
+   * Returns null where there is nothing to draw. */
+  function marginPath(points, width, height) {
+    if (!points || points.length < 2) return null;
+    var peak = 0;
+    points.forEach(function (point) {
+      if (isFiniteNumber(point.margin) && Math.abs(point.margin) > peak) {
+        peak = Math.abs(point.margin);
+      }
+    });
+    if (!peak) return null;
+    var last = points[points.length - 1].elapsed || 1;
+    return points.map(function (point, index) {
+      var x = ((point.elapsed / last) * width).toFixed(2);
+      var y = ((0.5 - (point.margin / (peak * 2))) * height).toFixed(2);
+      return (index ? 'L' : 'M') + x + ' ' + y;
+    }).join(' ');
+  }
+
+  /* Whether the reduction adds up to the final score the archive states.
+   *
+   * `ok` is 1 when it does, 0 when it does not and null when there was
+   * nothing to check against — a game not yet played. A page must not read
+   * null as a failure: nothing disagreed, there was nothing to disagree
+   * with. */
+  function detailReconciles(entry) {
+    if (!entry || entry.ok === null || entry.ok === undefined) return true;
+    return entry.ok === 1;
+  }
+
+  /* Whether this game has states INSIDE OVERTIME that the model cannot
+   * price.
+   *
+   * Not simply "a point with no probability": the last point of every game
+   * is the buzzer, where regulation seconds remaining is 0 and the model
+   * would answer 1 or 0 by the score alone, so every game has one. Saying
+   * "the line stops at the end of regulation" on a game that ended in
+   * regulation is a sentence about nothing, and it was on the first game
+   * drawn in a browser. */
+  function hasUnpricedStates(entry) {
+    return unpackCurve(entry).some(function (point) {
+      return point.wp === null && point.elapsed > REGULATION_SECONDS;
+    });
+  }
+
+  /* `0:09.5 Q4`, from a key play's period and clock.
+   *
+   * The seconds are padded. The feed writes them unpadded — `0:9.5` — and a
+   * column of times where one row reads 0:9.5 and the next 0:41.1 does not
+   * sort by eye. The tenths are kept, because under a minute is where the
+   * NBA itself shows them. */
+  function playTime(play) {
+    var label = periodLabel(play && play.period);
+    if (!label) return '';
+    var clock = padClock(play && play.clock);
+    return (clock ? clock + ' ' : '') + (label.length > 1 ? label : 'Q' + label);
+  }
+
+  function padClock(clock) {
+    if (typeof clock !== 'string') return '';
+    var parts = clock.split(':');
+    if (parts.length !== 2) return clock;
+    var seconds = parts[1];
+    var whole = seconds.split('.')[0];
+    if (whole.length !== 1) return clock;
+    return parts[0] + ':0' + seconds;
+  }
+
+  /* `6:42` of game time as a readable duration, for "time in front". */
+  function durationText(seconds) {
+    var value = Number(seconds);
+    if (!isFiniteNumber(value) || value < 0) return '';
+    var minutes = Math.floor(value / 60);
+    var rest = Math.round(value % 60);
+    return minutes + ':' + (rest < 10 ? '0' + rest : String(rest));
+  }
+
   var api = {
+    REGULATION_SECONDS: REGULATION_SECONDS,
+    OVERTIME_SECONDS: OVERTIME_SECONDS,
+    REGULATION_PERIODS: REGULATION_PERIODS,
+    periodLabel: periodLabel,
+    gameLength: gameLength,
+    unpackCurve: unpackCurve,
+    unpackShape: unpackShape,
+    lineScore: lineScore,
+    unpackKeyPlays: unpackKeyPlays,
+    winProbabilityTrace: winProbabilityTrace,
+    tracePath: tracePath,
+    marginPath: marginPath,
+    detailReconciles: detailReconciles,
+    hasUnpricedStates: hasUnpricedStates,
+    playTime: playTime,
+    padClock: padClock,
+    durationText: durationText,
     TYPE_LABELS: TYPE_LABELS,
     TYPE_NOTES: TYPE_NOTES,
     seasonLabel: seasonLabel,

@@ -30,8 +30,9 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import elo
+from . import elo, game_export
 from .identity import current_season, season_label
+from . import win_probability
 from .publish_gate import SCHEMA_VERSION, check, render
 from .store import connect
 
@@ -434,6 +435,18 @@ def build(connection, *, model_name=None, seasons=None, now=None):
     history = dict(conferences=conference_history(connection,
                                                   model['model_id']),
                    champions=champions(connection))
+    # The game layer, one payload per month, or nothing at all where the
+    # reduction has never run. Absent is said out loud rather than published
+    # as a directory of empty files: see game_export.has_plays.
+    detail = {}
+    if game_export.has_plays(connection):
+        params = win_probability.load_params()
+        for season in wanted:
+            months = game_export.build(connection, season,
+                                       model_id=model['model_id'],
+                                       params=params)
+            if months:
+                detail[season] = months
     manifest = dict(
         schema_version=SCHEMA_VERSION,
         sport='nba',
@@ -445,11 +458,11 @@ def build(connection, *, model_name=None, seasons=None, now=None):
         seasons={},
         files={},
     )
-    return manifest, payloads, index, history
+    return manifest, payloads, index, history, detail or None
 
 
 def write(manifest, payloads, team_index, history=None, out_dir=OUT_DIR, *,
-          gate=check):
+          gate=check, games=None):
     """Write the export, but only if the gate passes, then check the disk."""
     out_dir = Path(out_dir)
     staged = {}
@@ -462,6 +475,12 @@ def write(manifest, payloads, team_index, history=None, out_dir=OUT_DIR, *,
         team_index, separators=(',', ':'), sort_keys=True) + ';\n')
     staged['history.js'] = ('window.NBA_HISTORY=' + json.dumps(
         history or {}, separators=(',', ':'), sort_keys=True) + ';\n')
+    for season, months in (games or {}).items():
+        for month, payload in months.items():
+            body = json.dumps(payload, separators=(',', ':'), sort_keys=True)
+            staged[f'games/{season}/{month}.js'] = (
+                'window.NBA_GAMEMONTHS=(window.NBA_GAMEMONTHS||{});'
+                f'window.NBA_GAMEMONTHS["{season}/{month}"]={body};\n')
 
     def stamp(text):
         return hashlib.sha256(text.encode('utf-8')).hexdigest()[:10]
@@ -474,6 +493,21 @@ def write(manifest, payloads, team_index, history=None, out_dir=OUT_DIR, *,
     manifest['files'] = dict(
         teams=f'teams.js?v={stamp(staged["teams.js"])}',
         history=f'history.js?v={stamp(staged["history.js"])}')
+    if games:
+        # ONE cache token per season, not one per file. A month file's path
+        # is derived by the page from the game's own date, so the manifest
+        # does not have to name 175 of them, and naming them all would make
+        # the manifest — which every reader fetches — heavier than the one
+        # month file a reader who opens a game fetches. The token still has
+        # to be there: a URL with no version stamp is one a reader can be
+        # served from a cache a previous export wrote.
+        manifest['files']['games'] = dict(seasons={
+            str(season): dict(
+                v=stamp(''.join(staged[f'games/{season}/{month}.js']
+                                for month in game_export.month_order(
+                                    list(months)))),
+                months=game_export.month_order(list(months)))
+            for season, months in games.items()})
     reasons = gate(manifest, root=None)
     if reasons:
         raise PublishRefused(reasons)
@@ -505,6 +539,19 @@ def summarise(manifest, out_dir):
         lines.append(f'| {row["season_label"]} | {row["teams"]} | '
                      f'{row["rated_teams"]} | {row["games"]} | '
                      f'{row["finals"]} |')
+    games = manifest.get('files', {}).get('games')
+    if games:
+        seasons = games.get('seasons', {})
+        months = sum(len(entry.get('months', [])) for entry in seasons.values())
+        lines += ['', f'Game layer: {len(seasons)} seasons in {months} month '
+                      f'files.']
+    else:
+        # Said out loud. An export with no game layer is a complete export of
+        # everything else, and a page learns it from the absent key — but a
+        # run that was meant to build one and did not should not look
+        # identical to a run that was not.
+        lines += ['', 'Game layer: ABSENT. This database carries no reduced '
+                      'play-by-play; run `python -m src.nba.plays`.']
     lines += ['', 'Publish gate PASSED.']
     return '\n'.join(lines)
 
@@ -524,13 +571,13 @@ def main(argv=None):
                if args.seasons else None)
     connection = connect(args.database)
     try:
-        manifest, payloads, team_index, history = build(
+        manifest, payloads, team_index, history, detail = build(
             connection, seasons=seasons, model_name=args.model)
     finally:
         connection.close()
     try:
         manifest = write(manifest, payloads, team_index, history,
-                         Path(args.out))
+                         Path(args.out), games=detail)
     except PublishRefused as refused:
         print(str(refused))
         return 1
