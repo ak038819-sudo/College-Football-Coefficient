@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[2193]={"b":{"b":"1982-09-21T07:00Z","c":[null,null,"Iceland"],"h":77,"i":2193,"n":"Jon Stefansson","p":"Not Available","pa":"NA","s":"J. Stefansson","w":200},"s":[]};

@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[2021]={"b":{"b":"1985-06-22T07:00Z","c":[null,null,"Cameroon"],"d":[2003,2,34],"h":82,"i":2021,"j":"99","n":"Sofoklis Schortsanitis","p":"Center","pa":"C","s":"S. Schortsanitis","w":344,"x":0},"s":[]};

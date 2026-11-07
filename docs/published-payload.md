@@ -16,7 +16,7 @@ Measured on `main` at `ffb4cea`:
 | `ui/data/game_logs` | 102 MB | the same lines turned the other way up, by player |
 | `ui/data/people` | 91 MB | player and coach pages |
 | `ui/data/nfl` | 40 MB | the NFL export |
-| `ui/data/nba` | 56 MB | the NBA export, 45 MB of it per-game detail (added 2026-11-04) |
+| `ui/data/nba` | 109 MB | the NBA export: 55 MB of player careers (added 2026-11-07) and 44 MB of per-game detail (added 2026-11-04) |
 | `ui/data/drives` | 20 MB | drive-by-drive records |
 | `ui/data/team_pages` | 16 MB | team pages, sharded in #157 |
 
@@ -109,3 +109,25 @@ fetched and discarded on every refresh and never published at all.
 The daily cost is small. Past seasons' month files are byte-identical from
 one run to the next, so git stores no new object for them; only the current
 month changes, at about 300 KB a day.
+
+
+## The NBA people layer, added 2026-11-07
+
+`ui/data/nba` went from 56 MB to **109 MB** when the careers landed: **55
+MB** across 2,635 files, one per player, holding his seasons and every game
+of his career the archive carries a line with minutes for. Mean 19 KB,
+median 9 KB, largest 144 KB; about **15 MB gzipped**, which is what Pages
+serves. The search index is a 119 KB file that gzips to 46 KB, and it is the
+only one a reader fetches before knowing which player he wants.
+
+**A file per player is the cheap shape here, and the measurement says so.**
+A reader who opens a career fetches 19 KB on average, 5 KB over the wire.
+The football archive sharded its 99,813 people into 32 files an axis because
+a file each was out of the question; at 2,635 players the same sharding
+would mean fetching about a megabyte to read one career — fifty times the
+cost of the thing asked for. The cost of not sharding is 2,635 files in the
+tree and one more cache token in the manifest.
+
+The daily cost is small for the same reason the game layer's is: a career
+that ended changes never, so git stores no new object for it. Only the
+players in the current season have a file that moves.

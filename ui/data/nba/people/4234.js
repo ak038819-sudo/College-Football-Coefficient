@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4234]={"b":{"b":"1984-12-22T08:00Z","c":["Appleton","WI",null],"h":83,"i":4234,"j":"31","n":"Brian Butch","p":"Center","pa":"C","s":"B. Butch","w":240,"x":0},"s":[]};

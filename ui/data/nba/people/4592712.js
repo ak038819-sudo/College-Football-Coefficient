@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4592712]={"b":{"b":"1999-12-07T08:00Z","c":["Albany","NY","USA"],"h":74,"i":4592712,"n":"Boo Buie","p":"Guard","pa":"G","s":"B. Buie","w":180,"x":0},"s":[]};

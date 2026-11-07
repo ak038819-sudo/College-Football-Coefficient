@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4036]={"b":{"b":"1987-09-08T07:00Z","h":79,"i":4036,"j":"20","n":"Diamon Simpson","p":"Small Forward","pa":"SF","s":"D. Simpson","w":230,"x":0},"s":[]};

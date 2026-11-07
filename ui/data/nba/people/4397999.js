@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4397999]={"b":{"b":"1998-12-16T08:00Z","c":["Portland","OR","USA"],"h":74,"i":4397999,"n":"Cameron Parker","p":"Guard","pa":"G","s":"C. Parker","w":180,"x":0},"s":[]};

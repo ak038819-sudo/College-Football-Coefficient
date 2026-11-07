@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[3138206]={"b":{"b":"1996-02-02T08:00Z","c":["Detroit","MI","USA"],"h":80,"i":3138206,"j":"23","n":"Justin Tillman","p":"Forward","pa":"F","s":"J. Tillman","w":220},"s":[]};

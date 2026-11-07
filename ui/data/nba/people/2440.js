@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[2440]={"b":{"b":"1981-04-18T08:00Z","c":["Daytona Beach","FL",null],"d":[2004,2,44],"h":76,"i":2440,"n":"Tim Pickett","p":"Not Available","pa":"NA","s":"T. Pickett","w":207,"x":0},"s":[]};

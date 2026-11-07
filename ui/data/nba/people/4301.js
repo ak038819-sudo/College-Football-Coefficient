@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4301]={"b":{"b":"1988-06-22T07:00Z","c":["Watertown","MN",null],"h":76,"i":4301,"j":"12","n":"Matt Janning","p":"Shooting Guard","pa":"SG","s":"M. Janning","w":198,"x":0},"s":[]};

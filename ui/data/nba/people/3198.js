@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[3198]={"b":{"b":"1986-01-07T08:00Z","d":[2007,2,51],"h":75,"i":3198,"j":"44","n":"JamesOn Curry","p":"Point Guard","pa":"PG","s":"J. Curry","w":190,"x":1},"s":[]};

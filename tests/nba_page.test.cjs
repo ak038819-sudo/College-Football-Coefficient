@@ -175,7 +175,69 @@ function detailMonth(options) {
   };
 }
 
-function site(overrides, schedule, standings, past, detail) {
+/* The people layer as `src/nba/people_export.py` writes it: a search index
+ * of positional rows, and one file per player holding his seasons and every
+ * game of his career.
+ *
+ * TWO MEN, because one of them is not enough to drive what the panel owes a
+ * reader: 1966 has two season types, a season the feed counts more games in
+ * than the archive carries lines for, a game log and a second id holding
+ * part of the same career; 4066 has one season and nothing unusual. */
+function peopleFixture() {
+  const counts = (points, rebounds, assists) => [
+    points, rebounds, Math.round(rebounds / 7), rebounds
+    - Math.round(rebounds / 7), assists, 70, 40, 230, 110,
+    Math.round(points / 2.7), Math.round(points / 1.4), 130, 390, 340, 460,
+    150];
+  const index = {
+    count: 3,
+    types: ['regular', 'postseason', 'playin'],
+    players: [
+      [1966, 'LeBron James', 'SF', 2025, 2026, 140, 3400],
+      [9001, 'Nobody Atall', 'G', null, null, 0, 0],
+      [4066, 'Victor Wembanyama', 'C', 2026, 2026, 70, 1500]
+    ]
+  };
+  const detail = {
+    1966: {
+      b: { i: 1966, n: 'LeBron James', s: 'L. James', p: 'Small Forward',
+        pa: 'SF', j: '23', h: 81, w: 250, b: '1984-12-30T00:00Z', x: 22,
+        first: 2025, last: 2026, c: ['Akron', 'OH', 'USA'], d: [2003, 1, 1] },
+      s: [
+        // The feed counts 72 games in 2024-25 and the archive carries 70
+        // lines, which is the star and the note under the table.
+        [2025, 0, 18, 70, 70, 2450].concat(counts(1750, 560, 560))
+          .concat([72, 0]),
+        [2026, 0, 24, 70, 68, 2400].concat(counts(1650, 540, 520))
+          .concat([70, 1]),
+        [2026, 1, 24, 5, 5, 180].concat(counts(120, 40, 40)).concat([5, 1])
+      ],
+      g: [
+        [2026, 0, [
+          ['g1', '2025-12-16', 24, 18, 0, 1, 38].concat(counts(30, 9, 11)),
+          ['g2', '2025-12-18', 24, 25, 1, 1, 36].concat(counts(27, 8, 9))
+        ]],
+        [2026, 1, [
+          ['g9', '2026-04-20', 24, 25, 1, 1, 40].concat(counts(33, 10, 8))
+        ]]
+      ],
+      al: [1967]
+    },
+    4066: {
+      b: { i: 4066, n: 'Victor Wembanyama', s: 'V. Wembanyama', p: 'Center',
+        pa: 'C', j: '1', h: 88, w: 235, first: 2026, last: 2026 },
+      s: [[2026, 0, 24, 70, 70, 2300].concat(counts(1500, 700, 250))
+        .concat([70, 1])]
+    },
+    // A man on the archive's player list who took the floor in none of its
+    // games: seasons and log both absent, which the panel must say rather
+    // than draw an empty table.
+    9001: { b: { i: 9001, n: 'Nobody Atall', pa: 'G' }, s: [] }
+  };
+  return { index, detail };
+}
+
+function site(overrides, schedule, standings, past, detail, folk) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nba-page-'));
   const data = path.join(root, 'data', 'nba', 'seasons');
   fs.mkdirSync(data, { recursive: true });
@@ -219,6 +281,26 @@ function site(overrides, schedule, standings, past, detail) {
     payload.files.games = { seasons: { 2026: { v: stamp(monthText),
       months: ['2025-12'] } } };
   }
+  // The PEOPLE layer is optional in the same way and for the same reason:
+  // an export written before the people loader ran names no `files.people`,
+  // and then the tab is absent rather than empty.
+  if (folk) {
+    const people = folk === true ? peopleFixture() : folk;
+    const dir = path.join(root, 'data', 'nba', 'people');
+    fs.mkdirSync(dir, { recursive: true });
+    const indexText = 'window.NBA_PEOPLE='
+      + JSON.stringify(people.index) + ';\n';
+    fs.writeFileSync(path.join(dir, 'index.js'), indexText);
+    const token = stamp(indexText);
+    for (const id of Object.keys(people.detail)) {
+      fs.writeFileSync(path.join(dir, id + '.js'),
+        'window.NBA_PLAYER=(window.NBA_PLAYER||{});'
+        + 'window.NBA_PLAYER[' + id + ']='
+        + JSON.stringify(people.detail[id]) + ';\n');
+    }
+    payload.files.people = { index: 'people/index.js?v=' + token,
+      count: people.index.count, v: token };
+  }
   fs.writeFileSync(path.join(root, 'data', 'nba', 'manifest.json'),
     JSON.stringify(payload));
   for (const name of ['nba.html', 'nba_loader.js', 'nba_app.js',
@@ -244,8 +326,9 @@ function settle(dom, ready, tries = 500) {
   });
 }
 
-async function open(overrides, schedule, standings, hash, past, detail) {
-  const built = site(overrides, schedule, standings, past, detail);
+async function open(overrides, schedule, standings, hash, past, detail,
+  folk) {
+  const built = site(overrides, schedule, standings, past, detail, folk);
   const file = path.join(built.root, 'nba.html');
   const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
     // The hash is part of the URL the reader arrived with, so it is set here
@@ -284,7 +367,8 @@ async function open(overrides, schedule, standings, hash, past, detail) {
   // card there would call a correct page "never rendered".
   await settle(dom, () => dom.window.document.querySelector(
     '#cards .card, #refusal-list li, #board tr, #groups tr,'
-    + ' #teams-body *, #track-record *, #game-body *'));
+    + ' #teams-body *, #track-record *, #game-body *,'
+    + ' #people-body *, #player-body table, #player-body .empty'));
   dom.store = built;
   return dom;
 }
@@ -1000,3 +1084,284 @@ test('a clock under ten seconds is padded so a column of times reads',
     assert.equal(app.padClock(null), '');
     assert.equal(app.playTime({ period: 5, clock: '0:4.0' }), '0:04.0 OT');
   });
+
+// --- the people layer, on the page ----------------------------------------
+
+/* Open People and wait for the index to arrive.
+ *
+ * SETTLED ON THE LOADING NOTE BEING GONE rather than on anything appearing,
+ * for the reason `settleGame` is: "Loading the players…" is itself content
+ * in `#people-body`, so waiting for content resolved before the index had
+ * loaded and the assertions then read an empty list. */
+async function openPeople(dom) {
+  const tabs = [...dom.window.document.querySelectorAll('nav.tabs button')];
+  const people = tabs.find(node => /People/.test(node.textContent));
+  assert.ok(people, 'there is no People tab to press');
+  people.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settlePeople(dom, 'people-body', /Loading the players/);
+  return dom.window.document.getElementById('people-body');
+}
+
+function settlePeople(dom, id, loading) {
+  return settle(dom, () => {
+    const host = dom.window.document.getElementById(id);
+    if (!host || !host.textContent) return false;
+    return !loading.test(host.textContent);
+  });
+}
+
+async function openPlayerPage(dom, name) {
+  const host = await openPeople(dom);
+  const link = [...host.querySelectorAll('tbody tr td button')]
+    .find(node => node.textContent.trim() === name);
+  assert.ok(link, 'no link for ' + name + ' among '
+    + allText(dom, '#people-body tbody tr td button').join(', '));
+  link.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settlePeople(dom, 'player-body', /Loading the career/);
+  return dom.window.document.getElementById('player-body');
+}
+
+test('People is a tab only where the export carries players', async () => {
+  const bare = await open();
+  assert.deepEqual(
+    [...bare.window.document.querySelectorAll('#tabs button')]
+      .map(node => node.dataset.tab),
+    ['home', 'stats', 'standings', 'teams']);
+  bare.window.close();
+  const dom = await open(undefined, undefined, undefined, undefined,
+    undefined, undefined, true);
+  assert.deepEqual(
+    [...dom.window.document.querySelectorAll('#tabs button')]
+      .map(node => [node.dataset.tab, node.textContent]),
+    [['home', 'Home'], ['stats', 'Stats'], ['standings', 'Standings'],
+      ['teams', 'Teams'], ['people', 'People']]);
+  dom.window.close();
+});
+
+test('the players open on the archive\'s own leading scorers', async () => {
+  const dom = await open(undefined, undefined, undefined, undefined,
+    undefined, undefined, true);
+  const host = await openPeople(dom);
+  assert.match(host.textContent, /Most points in this archive/);
+  const rows = [...host.querySelectorAll('tbody tr')]
+    .map(row => [...row.querySelectorAll('td')].map(cell => cell.textContent));
+  // Most points first, which is not the order the index is in: the index is
+  // sorted by name so that a search can scan it.
+  assert.deepEqual(rows.map(cells => cells[0].replace(/(\d)([A-Z2])/, '$1 $2')),
+    ['LeBron James2024-25 to 2025-26', 'Victor Wembanyama2025-26',
+      'Nobody Atallno games in this archive']
+      .map(text => text.replace(/(\d)([A-Z2])/, '$1 $2')));
+  assert.deepEqual(rows[0].slice(1), ['SF', '140', '3400']);
+  // And the totals are named for what they are rather than left to read as
+  // a career record.
+  assert.match(host.textContent, /rather than a career record/);
+  dom.window.close();
+});
+
+test('two letters find a player and one letter does not', async () => {
+  const dom = await open(undefined, undefined, undefined, undefined,
+    undefined, undefined, true);
+  await openPeople(dom);
+  const box = dom.window.document.getElementById('person-search');
+  box.value = 'w';
+  box.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  // One letter is still the leading-scorers list: 2,635 names behind one
+  // letter is not a search result.
+  assert.match(textOf(dom, '#people-body'), /Most points in this archive/);
+  box.value = 'wemb';
+  box.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  assert.deepEqual(allText(dom, '#people-body tbody tr td button'),
+    ['Victor Wembanyama']);
+  assert.match(textOf(dom, '#people-body'), /1 player match/);
+  box.value = 'zzzz';
+  box.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  assert.match(textOf(dom, '#people-body'),
+    /No player in this archive is called that/);
+  dom.window.close();
+});
+
+test('opening a player puts him in the URL and draws his bio', async () => {
+  const dom = await open(undefined, undefined, undefined, undefined,
+    undefined, undefined, true);
+  const host = await openPlayerPage(dom, 'LeBron James');
+  assert.match(dom.window.location.hash, /section=people/);
+  assert.match(dom.window.location.hash, /player=1966/);
+  assert.equal(dom.window.document.getElementById('player').hidden, false);
+  assert.equal(dom.window.document.getElementById('people').hidden, true);
+  const facts = [...host.querySelectorAll('.facts li')]
+    .map(node => node.textContent);
+  assert.deepEqual(facts, ['Position Small Forward', 'Jersey #23',
+    'Size 6\' 9", 250 lb', 'Born 1984-12-30', 'From Akron, OH, USA',
+    'Drafted 1st round, 1st pick, 2003',
+    'In this archive 2024-25 to 2025-26']);
+  dom.window.close();
+});
+
+test('a player\'s seasons are one table a season type, each with its own '
+  + 'career line', async () => {
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, undefined, true);
+    const host = await openPlayerPage(dom, 'LeBron James');
+    const headings = [...host.querySelectorAll('h3.section')]
+      .map(node => node.textContent);
+    assert.deepEqual(headings.slice(0, 2), ['Regular season', 'Playoffs']);
+    const regular = host.querySelector('table');
+    const rows = [...regular.querySelectorAll('tbody tr')]
+      .map(row => [...row.children].map(cell => cell.textContent));
+    assert.equal(rows.length, 2);
+    // NEWEST FIRST, the way the game log is: a career is read from the
+    // season a reader just watched backwards.
+    assert.deepEqual(rows[0].slice(0, 5), ['2025-26', 'SA', '70', '68',
+      '2400']);
+    assert.deepEqual(rows[1].slice(0, 5), ['2024-25', 'NY', '70*', '70',
+      '2450']);
+    // The career line sums THIS man's rows: two seasons, 140 games, the
+    // points of both.
+    const foot = [...regular.querySelectorAll('tfoot th')]
+      .map(node => node.textContent);
+    assert.deepEqual(foot.slice(0, 5), ['2 seasons', '', '140', '138',
+      '4850']);
+    assert.equal(foot[8], '3400');
+    // The playoffs are their own table and their own career line, not rows
+    // added into the one above.
+    const playoffs = host.querySelectorAll('table')[1];
+    assert.equal(playoffs.querySelectorAll('tbody tr').length, 1);
+    assert.equal([...playoffs.querySelectorAll('tfoot th')][2].textContent,
+      '5');
+    dom.window.close();
+  });
+
+test('a season the feed counts more games in is starred and explained',
+  async () => {
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, undefined, true);
+    const host = await openPlayerPage(dom, 'LeBron James');
+    const starred = [...host.querySelectorAll('tbody td')]
+      .find(cell => cell.textContent === '70*');
+    assert.ok(starred, 'the disagreement is not marked');
+    assert.match(starred.title, /counts 72 games/);
+    assert.match(starred.title, /carries 70 lines/);
+    assert.match(host.textContent, /A starred count of games/);
+    // And a player whose seasons all agree carries no such note.
+    const plain = await open(undefined, undefined, undefined, undefined,
+      undefined, undefined, true);
+    const other = await openPlayerPage(plain, 'Victor Wembanyama');
+    assert.doesNotMatch(other.textContent, /A starred count of games/);
+    assert.equal([...other.querySelectorAll('tbody td')]
+      .filter(cell => /\*/.test(cell.textContent)).length, 0);
+    plain.window.close();
+    dom.window.close();
+  });
+
+test('a split career is linked and never added up', async () => {
+  const dom = await open(undefined, undefined, undefined, undefined,
+    undefined, undefined, true);
+  const host = await openPlayerPage(dom, 'LeBron James');
+  assert.match(host.textContent, /under a second id/);
+  assert.match(host.textContent, /nothing is added across the two/);
+  const link = [...host.querySelectorAll('p.note button')]
+    .find(node => /the other record/.test(node.textContent));
+  assert.ok(link, 'the other record is named but not reachable');
+  link.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settlePeople(dom, 'player-body', /Loading the career/);
+  assert.match(dom.window.location.hash, /player=1967/);
+  // This export has no file for 1967, which is an answer rather than a
+  // broken page.
+  assert.match(textOf(dom, '#player-body'),
+    /no player with that id/);
+  dom.window.close();
+});
+
+test('a player\'s game log is one table a season and its date opens the '
+  + 'game', async () => {
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, true, true);
+    const host = await openPlayerPage(dom, 'LeBron James');
+    const headings = [...host.querySelectorAll('h3.section')]
+      .map(node => node.textContent);
+    assert.ok(headings.includes('2025-26 regular season'), headings.join('|'));
+    assert.ok(headings.includes('2025-26 playoffs'), headings.join('|'));
+    assert.match(host.textContent, /minutes are what say he played/);
+    // The log's own cells: home or away, the opponent, the shot lines and a
+    // signed plus-minus.
+    const log = [...host.querySelectorAll('table')].find(table => [
+      ...table.querySelectorAll('thead th')].some(
+      cell => cell.textContent === '+/-'));
+    const row = [...log.querySelectorAll('tbody tr')[0].children]
+      .map(cell => cell.textContent);
+    assert.deepEqual(row.slice(0, 8),
+      ['12-16', '@', 'NY', '38', '11-21', '130-390', '340-460', '30']);
+    assert.equal(row[row.length - 1], '+150');
+    // And the date is the link to the game's own page.
+    const date = log.querySelector('tbody tr td button');
+    date.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    await settleGame(dom);
+    assert.match(dom.window.location.hash, /game=g1/);
+    assert.equal(dom.window.document.getElementById('game').hidden, false);
+    assert.equal(dom.window.document.getElementById('player').hidden, true);
+    assert.match(dom.window.document.getElementById('game-body').textContent,
+      /New York Knicks/);
+    dom.window.close();
+  });
+
+test('a man with no games says so instead of drawing an empty table',
+  async () => {
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, undefined, true);
+    const host = await openPlayerPage(dom, 'Nobody Atall');
+    assert.match(host.textContent, /took the floor in none of its games/);
+    assert.equal(host.querySelectorAll('table').length, 0);
+    dom.window.close();
+  });
+
+test('a player page offers the way back to the players', async () => {
+  const dom = await open(undefined, undefined, undefined, undefined,
+    undefined, undefined, true);
+  const host = await openPlayerPage(dom, 'Victor Wembanyama');
+  const back = host.querySelector('p.back button');
+  assert.ok(back, 'a dead end with no way out of it');
+  back.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settle(dom, () =>
+    dom.window.document.getElementById('player').hidden === true);
+  assert.doesNotMatch(dom.window.location.hash, /player=/);
+  assert.match(textOf(dom, '#people-body'), /Most points in this archive/);
+  dom.window.close();
+});
+
+test('a link straight to a player draws the career, not the list', async () => {
+  const dom = await open(undefined, undefined, undefined,
+    '#league=nba&section=people&player=4066', undefined, undefined, true);
+  await settlePeople(dom, 'player-body', /Loading the career/);
+  assert.equal(dom.window.document.getElementById('player').hidden, false);
+  assert.match(dom.window.document.getElementById('player-body').textContent,
+    /Victor Wembanyama/);
+  dom.window.close();
+});
+
+test('a player id on a URL whose section is not People draws no player',
+  async () => {
+    // The rule the game id follows inside Home: a stale param from a shared
+    // link must not put a career behind a club page. TWO guards enforce it
+    // -- `playerFromHash` reads nothing outside People, and `render` draws
+    // the panel only on that tab -- so breaking either one alone leaves
+    // this green. It is the pair that is asserted here.
+    const dom = await open(undefined, undefined, undefined,
+      '#league=nba&section=teams&player=4066', undefined, undefined, true);
+    await settle(dom, () => dom.window.document.querySelector('#teams-body *'));
+    assert.equal(dom.window.document.getElementById('player').hidden, true);
+    assert.equal(dom.window.document.getElementById('teams').hidden, false);
+    dom.window.close();
+  });
+
+test('pressing a tab closes an open player', async () => {
+  const dom = await open(undefined, undefined, undefined, undefined,
+    undefined, undefined, true);
+  await openPlayerPage(dom, 'Victor Wembanyama');
+  const tabs = [...dom.window.document.querySelectorAll('nav.tabs button')];
+  const standings = tabs.find(node => /Standings/.test(node.textContent));
+  standings.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settle(dom, () => dom.window.document.querySelector('#groups tr'));
+  assert.equal(dom.window.document.getElementById('player').hidden, true);
+  assert.doesNotMatch(dom.window.location.hash, /player=/);
+  dom.window.close();
+});

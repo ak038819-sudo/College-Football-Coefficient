@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[5176517]={"b":{"b":"2003-05-23T07:00Z","c":["Kent","WA","USA"],"h":79,"i":5176517,"j":"10","n":"Michael Ajayi","p":"Forward","pa":"F","s":"M. Ajayi","w":228,"x":0},"s":[]};

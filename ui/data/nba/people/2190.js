@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[2190]={"b":{"b":"1978-07-03T07:00Z","c":["Racine","WI",null],"h":76,"i":2190,"n":"Alex Scales","p":"Shooting Guard","pa":"SG","s":"A. Scales","w":185,"x":1},"s":[]};
