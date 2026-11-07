@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4029]={"b":{"b":"1984-11-14T08:00Z","c":["Boston","MA",null],"h":80,"i":4029,"j":"24","n":"Tony Gaffney","p":"Small Forward","pa":"SF","s":"T. Gaffney","w":215,"x":0},"s":[]};

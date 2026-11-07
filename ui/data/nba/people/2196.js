@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[2196]={"b":{"b":"1979-12-11T08:00Z","c":["Chicago","IL","USA"],"h":85,"i":2196,"n":"Chris Marcus","p":"Not Available","pa":"NA","s":"C. Marcus","w":300},"s":[]};

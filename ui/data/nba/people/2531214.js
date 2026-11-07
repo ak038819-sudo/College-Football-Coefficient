@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[2531214]={"b":{"b":"1992-06-18T07:00Z","c":["Los Angeles","CA","USA"],"h":83,"i":2531214,"j":"8","n":"Richard Solomon","p":"Forward","pa":"F","s":"R. Solomon","w":235,"x":1},"s":[]};

@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4278527]={"b":{"b":"1999-12-24T08:00Z","c":["Chicago","IL","USA"],"h":81,"i":4278527,"j":"0","n":"Chris Smith","p":"Small Forward","pa":"SF","s":"C. Smith","w":215,"x":0},"s":[]};

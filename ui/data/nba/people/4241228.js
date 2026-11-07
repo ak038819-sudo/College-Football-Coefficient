@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4241228]={"b":{"b":"1992-01-24T08:00Z","c":[null,null,"Ghana"],"h":75,"i":4241228,"j":"00","n":"Yakuba Ouattara","p":"Shooting Guard","pa":"SG","s":"Y. Ouattara","w":185},"s":[]};

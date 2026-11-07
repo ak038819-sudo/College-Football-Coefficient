@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[593]={"b":{"b":"1973-12-12T08:00Z","c":[null,null,"Senegal"],"h":82,"i":593,"j":"40","n":"Makhtar Ndiaye","p":"Forward","pa":"F","s":"M. Ndiaye","w":231,"x":1},"s":[]};

@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[540]={"b":{"b":"1975-11-17T08:00Z","c":["Jersey City","NJ",null],"d":[1998,1,20],"h":80,"i":540,"j":"5","n":"Roshown McLeod","p":"Forward","pa":"F","s":"R. McLeod","w":221,"x":3},"s":[]};

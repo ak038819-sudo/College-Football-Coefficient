@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[3938916]={"b":{"b":"1996-08-17T07:00Z","c":["Voorhees","NJ","USA"],"h":78,"i":3938916,"n":"Malik Ellison","p":"Guard","pa":"G","s":"M. Ellison","w":215,"x":0},"s":[]};

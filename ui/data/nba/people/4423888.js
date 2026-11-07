@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4423888]={"b":{"b":"1996-07-04T07:00Z","c":["Lynden","WA","USA"],"h":80,"i":4423888,"j":"34","n":"Daulton Hommes","p":"Small Forward","pa":"SF","s":"D. Hommes","w":215,"x":0},"s":[]};

@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[3133629]={"b":{"b":"1996-08-23T07:00Z","c":["Richardson","TX","USA"],"h":75,"i":3133629,"j":"12","n":"Keenan Evans","p":"Guard","pa":"G","s":"K. Evans","w":190,"x":0},"s":[]};

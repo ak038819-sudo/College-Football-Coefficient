@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4280181]={"b":{"b":"1998-12-28T08:00Z","c":["Houston","TX","USA"],"h":76,"i":4280181,"j":"11","n":"Sir'Jabari Rice","p":"Guard","pa":"G","s":"S. Rice","w":180,"x":0},"s":[]};

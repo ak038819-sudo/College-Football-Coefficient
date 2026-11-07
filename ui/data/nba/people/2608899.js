@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[2608899]={"b":{"b":"1992-05-06T07:00Z","c":["Detroit","MI","USA"],"d":[2015,2,53],"h":78,"i":2608899,"j":"15","n":"Sir'Dominic Pointer","p":"Guard","pa":"G","s":"S. Pointer","w":196,"x":1},"s":[]};

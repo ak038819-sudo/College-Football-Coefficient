@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[2846]={"b":{"b":"1983-03-29T08:00Z","c":[null,null,"Brazil"],"h":81,"i":2846,"n":"Lucas Tischer","p":"Not Available","pa":"NA","s":"L. Tischer","w":230,"x":0},"s":[]};

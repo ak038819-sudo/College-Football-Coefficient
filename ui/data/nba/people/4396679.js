@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4396679]={"b":{"b":"1999-04-28T07:00Z","c":["Lacey","WA","USA"],"h":76,"i":4396679,"j":"10","n":"Erik Stevenson","p":"Guard","pa":"G","s":"E. Stevenson","w":205},"s":[]};

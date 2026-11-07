@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[3136481]={"b":{"b":"1994-11-04T08:00Z","c":["Indianapolis","IN","USA"],"h":77,"i":3136481,"j":"33","n":"Trevon Bluiett","p":"Guard","pa":"G","s":"T. Bluiett","w":198,"x":0},"s":[]};

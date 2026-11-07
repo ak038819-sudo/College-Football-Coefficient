@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[5114350]={"b":{"b":"2003-07-02T07:00Z","c":["Clovis","CA","USA"],"h":79,"i":5114350,"j":"31","n":"AK Okereke","p":"Forward","pa":"F","s":"A. Okereke","w":244,"x":0},"s":[]};

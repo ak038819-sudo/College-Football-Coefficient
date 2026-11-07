@@ -30,7 +30,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import elo, game_export
+from . import elo, game_export, people_export
 from .identity import current_season, season_label
 from . import win_probability
 from .publish_gate import SCHEMA_VERSION, check, render
@@ -458,11 +458,15 @@ def build(connection, *, model_name=None, seasons=None, now=None):
         seasons={},
         files={},
     )
-    return manifest, payloads, index, history, detail or None
+    # The people layer, an index and a file per player, or nothing where the
+    # loader has never run. Absent is said out loud for the same reason the
+    # game layer's absence is: see people_export.has_people.
+    people = people_export.build(connection)
+    return manifest, payloads, index, history, detail or None, people
 
 
 def write(manifest, payloads, team_index, history=None, out_dir=OUT_DIR, *,
-          gate=check, games=None):
+          gate=check, games=None, people=None):
     """Write the export, but only if the gate passes, then check the disk."""
     out_dir = Path(out_dir)
     staged = {}
@@ -481,6 +485,16 @@ def write(manifest, payloads, team_index, history=None, out_dir=OUT_DIR, *,
             staged[f'games/{season}/{month}.js'] = (
                 'window.NBA_GAMEMONTHS=(window.NBA_GAMEMONTHS||{});'
                 f'window.NBA_GAMEMONTHS["{season}/{month}"]={body};\n')
+
+    if people:
+        index, players = people
+        staged['people/index.js'] = (
+            'window.NBA_PEOPLE=' + people_export.body(index) + ';\n')
+        for athlete_id, payload in players.items():
+            staged[f'people/{athlete_id}.js'] = (
+                'window.NBA_PLAYER=(window.NBA_PLAYER||{});'
+                f'window.NBA_PLAYER[{athlete_id}]='
+                f'{people_export.body(payload)};\n')
 
     def stamp(text):
         return hashlib.sha256(text.encode('utf-8')).hexdigest()[:10]
@@ -508,6 +522,18 @@ def write(manifest, payloads, team_index, history=None, out_dir=OUT_DIR, *,
                                     list(months)))),
                 months=game_export.month_order(list(months)))
             for season, months in games.items()})
+    if people:
+        # ONE token for 2,635 player files, and a second for the index. The
+        # path of a player's file is derived by the page from his own id, so
+        # naming every file here would make the manifest every reader fetches
+        # heavier than the one file a reader who opens a player fetches. The
+        # token is still required: an unversioned URL is one a reader can be
+        # served from the cache a previous export wrote.
+        manifest['files']['people'] = dict(
+            index=f'people/index.js?v={stamp(staged["people/index.js"])}',
+            count=len(people[1]),
+            v=stamp(''.join(staged[f'people/{athlete_id}.js']
+                            for athlete_id in sorted(people[1]))))
     reasons = gate(manifest, root=None)
     if reasons:
         raise PublishRefused(reasons)
@@ -539,6 +565,7 @@ def summarise(manifest, out_dir):
         lines.append(f'| {row["season_label"]} | {row["teams"]} | '
                      f'{row["rated_teams"]} | {row["games"]} | '
                      f'{row["finals"]} |')
+    folk = manifest.get('files', {}).get('people')
     games = manifest.get('files', {}).get('games')
     if games:
         seasons = games.get('seasons', {})
@@ -552,6 +579,11 @@ def summarise(manifest, out_dir):
         # identical to a run that was not.
         lines += ['', 'Game layer: ABSENT. This database carries no reduced '
                       'play-by-play; run `python -m src.nba.plays`.']
+    if folk:
+        lines += ['', f'People layer: {folk["count"]} players.']
+    else:
+        lines += ['', 'People layer: ABSENT. This database carries no '
+                      'player box scores; run `python -m src.nba.people`.']
     lines += ['', 'Publish gate PASSED.']
     return '\n'.join(lines)
 
@@ -571,13 +603,13 @@ def main(argv=None):
                if args.seasons else None)
     connection = connect(args.database)
     try:
-        manifest, payloads, team_index, history, detail = build(
+        manifest, payloads, team_index, history, detail, folk = build(
             connection, seasons=seasons, model_name=args.model)
     finally:
         connection.close()
     try:
         manifest = write(manifest, payloads, team_index, history,
-                         Path(args.out), games=detail)
+                         Path(args.out), games=detail, people=folk)
     except PublishRefused as refused:
         print(str(refused))
         return 1

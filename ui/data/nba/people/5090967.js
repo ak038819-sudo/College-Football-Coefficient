@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[5090967]={"b":{"b":"2002-12-21T08:00Z","h":79,"i":5090967,"j":"6","n":"Jaylin Galloway","p":"Forward","pa":"F","s":"J. Galloway","w":190},"s":[]};

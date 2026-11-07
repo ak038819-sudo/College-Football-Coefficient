@@ -496,3 +496,152 @@ published manifest carries.
 
 A dispatch with `pbp_seasons` set reduces only those seasons and **may not
 publish**, for the same reason `seasons` may not.
+
+# The people layer (N4)
+
+Every man who has taken the floor in the archive, his seasons, and every
+game of his career the archive carries a line for: **2,635 players**,
+**850,950 box-score lines** across seasons 2001-02 to 2026-27, **670,667**
+of them with minutes, and **20,132 season rollups** derived from them.
+
+Loaded by `python -m src.nba.people`, which fetches one season of
+`player_box` and `player_core` at a time and discards it, the way the
+play-by-play reduction does. Nothing raw is stored and nothing raw is
+committed.
+
+## Five traps, each of which produces data that looks right
+
+### The box feed calls the NBA Cup final a regular-season game
+
+The schedule classifies it `cup_final` and the export already keeps it out
+of won-lost records, so the box feed's numeric season type put a game into a
+man's regular season that the rest of the archive leaves out of it: **86
+lines** across the three finals the archive has, 69 of them played, and
+LeBron James's 2023-24 at 72 games and 1,846 points where it is **71 and
+1,822**.
+
+**A stored line's season type is the schedule's, for every type rather than
+only for this one.** `known_games` returns `{game key: season type}` and the
+line adopts it, so a second feed disagreeing about a third type is a fact
+the archive already has an answer for. The Cup final is then its own season
+type end to end — its own rollup row, its own table and its own game-log
+heading on a player page — rather than dropped, because it is a game of the
+man's career.
+
+### An All-Star game is filed as a regular-season game
+
+`player_box` carries the All-Star game, the Rising Stars game and, in some
+seasons, pre-season exhibitions, with `season_type` set to the regular
+season's value. Left alone, an All-Star starter's regular-season line gains
+a night played against nobody's defence, and his points per game with it.
+
+**A line whose team is not one of the thirty franchises is dropped**, which
+is `identity.is_franchise`, the same rule the schedule applies to itself:
+"Team LeBron" is not a franchise. 479 lines go this way, and the derived
+totals then agree with the feed's own where the naive sum does not. A
+second filter keeps only lines for games **the schedule already has**
+(`known_games`), which catches anything an exhibition's team id does not.
+
+Neither filter removes the Cup final, and it should not: that is a real game
+between two franchises and the schedule has it. What the Cup final needed
+was the fix above — taking its type from the schedule.
+
+### `did_not_play` is unreliable, and minutes are not
+
+The feed's own "did not play" flag is absent or wrong through the early
+seasons. **Minutes are what say he played**: `played = 1` where the line
+carries minutes and 0 where it does not. 180,283 lines are on the roster and
+off the floor, and a page shows none of them — a game a man did not play is
+not a game of his career.
+
+### The season-statistics feed covers the regular season only
+
+`player_season_stats` has no postseason and no play-in rows at all, so a
+rollup taken from it would lose every playoff career in the archive. The
+rollups here are derived from **the stored per-game lines**, which is the one
+source of truth the layer has, and the feed's own count of games played is
+kept beside them as a stated check rather than as an alternative.
+
+### The feed's count of games played disagrees, in both directions
+
+For **1,006 of the 12,819** regular seasons the feed carries a count for,
+`gamesPlayed` does not match the number of lines stored: **966** where the
+feed counts more and **40** where it counts fewer. 876 of the 1,006 are
+before 2015 and 870 of them are by one or two games. The two directions are
+not the same defect and neither is corrected.
+
+Nothing reconciles them. `person_season.feed_games` holds the feed's number
+and `matches_feed` whether it agrees; a player page stars the count, says in
+a tooltip what each side claims, and prints a note under the table. **The
+count shown is the games the archive can show you.**
+
+The first version of this section claimed the feed always counted more. It
+does not, and the claim survived because the measurement behind it counted
+`person_season` rows rather than man-seasons and looked only for the
+direction it expected.
+
+### And one that removed a table rather than inventing a join
+
+The draft feed was going to carry draft position. It is a **separate id
+space**: none of the 60 picks in the season sampled joined to a player in
+that season's `player_core`. The table and its loader were deleted rather than
+joined on a name. Draft year, round and pick come from `player_core` itself,
+which has them for the men it has them for.
+
+## Two ids, one man
+
+Six players appear under two provider ids, each id holding part of one
+career with the same name and the same date of birth. `person_alias` links
+them **symmetrically** — neither id is primary — and **nothing is summed
+across the link**. A player page says the archive holds the career under a
+second id as well, links it, and prints only the seasons filed under the id
+on screen. A doubled career is worse than a split one, and the archive
+cannot say which id holds a given game without reading the game.
+
+## What the page fetches
+
+**One file per player, not a shard holding dozens.** At 2,635 players a file
+each is 2,635 files, mean 19 KB, median 9 KB, largest 144 KB, and a reader
+who opens a player page fetches exactly his own. The football archive
+sharded its 99,813 people because a file each was out of the question; at
+this size sharding would mean fetching a megabyte to read one career.
+
+`people/index.js` is 119 KB and holds a **search list** — id, name,
+position, the span the archive has him playing, games and points — not a
+statistics table. It is sorted by name so a search can scan it; the page
+sorts it by points to open on the leading scorers.
+
+**One cache token covers every player file**, for the reason the game layer
+has one per season: the path is derived by the page from the player's own id,
+so the manifest does not name 2,635 files. The index carries its own token,
+because it is the one file a reader fetches before knowing which player he
+wants.
+
+`files.people` is **optional** in the manifest. An export built before this
+loader has run carries no such key, and then the People tab is absent rather
+than empty — a page learns the layer is missing from the manifest, not from
+a file it has already fetched.
+
+## What a page may say, and what it may not
+
+- `first` and `last` are the first and last season **the archive** has him
+  playing, which for a man who debuted in 1996 is 2002. The page says "in
+  this archive", never a rookie year.
+- The career line under a season table sums **that man's rows of that season
+  type** and nothing else. The regular season, the playoffs and the play-in
+  are three tables with three career lines.
+- The leading-scorers list says what its totals are: the archive's own count
+  of each man's regular season, not a career record.
+
+## The refresh
+
+`python -m src.nba.people` runs on every refresh, **after** the ingest and
+**before** the export: a box-score line for a game the schedule does not
+carry is dropped rather than invented, and the export decides from
+`person_game` whether there is a people layer to write at all. A failure
+fails the run, because an export with no people layer would be refused by
+`src/nba/publish.py` anyway — it may not drop a `files` key the published
+manifest carries.
+
+A dispatch with `people_seasons` set loads only those seasons and publishes
+a partial archive of careers, for the same reason `seasons` does.

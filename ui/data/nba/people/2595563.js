@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[2595563]={"b":{"b":"1992-10-03T07:00Z","c":["Madison","AL","USA"],"h":78,"i":2595563,"j":"6","n":"Levi Randolph","p":"Guard","pa":"G","s":"L. Randolph","w":210,"x":0},"s":[]};

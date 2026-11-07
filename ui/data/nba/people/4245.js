@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4245]={"b":{"b":"1990-03-07T08:00Z","c":["Memphis","TN","USA"],"d":[2010,2,36],"h":77,"i":4245,"j":"23","n":"Terrico White","p":"Guard","pa":"G","s":"T. White","w":203,"x":0},"s":[]};
