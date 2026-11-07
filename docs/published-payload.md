@@ -131,3 +131,16 @@ tree and one more cache token in the manifest.
 The daily cost is small for the same reason the game layer's is: a career
 that ended changes never, so git stores no new object for it. Only the
 players in the current season have a file that moves.
+
+
+## The NBA playoff bracket, added 2026-11-07
+
+**123 KB, and no new file.** The bracket rides in the season payloads that
+were already being fetched, at about 5 KB a season across 25 seasons, and
+it is derived from games the export had already read rather than from
+anything new. A reader who opens a season and then opens the bracket
+downloads nothing for it.
+
+This is the cheapest layer the NBA export has: the game layer cost 44 MB and
+the careers 55 MB, and this one cost a tenth of a megabyte, because the data
+was already published and only the derivation was missing.

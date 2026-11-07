@@ -645,3 +645,89 @@ manifest carries.
 
 A dispatch with `people_seasons` set loads only those seasons and publishes
 a partial archive of careers, for the same reason `seasons` does.
+
+# The playoff bracket (N5)
+
+Every playoff series the archive has, 2002-2026, drawn under
+**Standings > Playoffs**, plus the play-in listed beneath it.
+
+**NO NEW DATA, AND NO NEW FILE.** The schedule already carries every
+postseason game: 2,094 of them, which group into **375 series**, exactly
+**15 a season in all 25 seasons** — a 16-team bracket with nothing missing.
+`src/nba/series.py` is pure functions over the games and the board the
+export has already built, it adds no query, and the result rides in the
+season's own payload at about **5 KB a season**, in a file a reader who
+opens a season has already fetched.
+
+A series is a season and an **unordered pair of clubs**. Two clubs can meet
+at most once in a bracket, so the pair identifies the series and no round
+label is needed to group the games.
+
+## Three traps, each of which produces a bracket that looks right
+
+### The 2020 bubble left phantom rows
+
+Games that were scheduled, postponed and never played are still in the
+schedule with no score, sitting beside the game that replaced them: **nine
+such rows**, which made three series look eight or nine games long. A game
+with no score is not part of a series here, which also keeps a season in
+progress from drawing a bracket out of fixtures nobody has played.
+
+### The 2002 first round was best-of-five
+
+**Eight** of that season's series were won with three wins, and a 3-0 sweep
+is three games; from 2003 on every series is best-of-seven. So a series'
+result is **read off the games** rather than assumed to be first-to-four,
+which would call the 2002 first round unfinished. The page says so.
+
+### The feed's own round labels cannot be used
+
+`notes` is absent for all of 2002 and 2003, says only "PLAYOFFS" for **316
+games**, and spells the same round four ways — "WEST 1ST ROUND", "WESTERN
+CONFERENCE 1ST ROUND", and the same pair for the East.
+
+The round is derived **structurally** instead: the k-th series a club plays
+in a postseason is round k, because the winner of a round plays in the next
+one. Checked across the archive — every one of the 25 seasons comes out
+**8/4/2/1**, and the two clubs of a series never disagree about which round
+it is.
+
+## Seeds are derived, and ties are not broken
+
+Nothing in the feed says a club was the fourth seed. A seed here is its rank
+by **regular-season record within its conference**, which is the quantity
+the real seeding is built on — and not the rank by rating, which would put
+a club the standings had seventh at number two.
+
+**Clubs level on record share a seed.** The NBA's tiebreakers are a cascade
+of head-to-head, division and conference records that this archive cannot
+reproduce, so a tie is left as one and the next seed is skipped. In 2025-26
+that is two fifth seeds and two sevenths in the East, which is what the
+records say. A club with no conference in a season is left unseeded rather
+than filed under a guess, and the page prints a blank, never "(0)".
+
+## A bracket of the wrong shape is refused, not drawn
+
+A season that does not hold 8, 4, 2 and 1 series is reported: the payload
+carries `ok: 0` and the reasons, and the page says the archive cannot draw
+that bracket. If the league changes the format, a reader is told the archive
+no longer knows the shape instead of being shown a picture with a series
+quietly missing.
+
+## The play-in is games, not a bracket
+
+**Two formats, not one:** a **single** game in the 2019-20 bubble, and
+**six a season** since 2020-21, four clubs a conference. So the play-in is
+listed as games with what each decided left unsaid, rather than fitted to a
+shape the archive has held for only part of its span. Each date opens that
+game's own page.
+
+## A note on class names
+
+The bracket's CSS classes all carry a `bk` prefix. `.club` is the club
+directory's tile — a bordered, padded, filled box — and an unprefixed
+`.club` inside a series drew every club name in a tile inside the series
+box. Scoping the new rule to `#bracket-body` does not help, because the
+*other* rule is unscoped and applies anyway. `tests/nba_page.test.cjs` has a
+test that fails if a bracket element ever carries a class the rest of the
+page styles.
