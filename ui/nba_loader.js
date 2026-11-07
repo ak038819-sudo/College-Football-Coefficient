@@ -21,7 +21,7 @@
    * refused the older ones would blank the page for anyone served this
    * script before the next refresh rewrites the export, and one that refused
    * the newest would blank it for everyone after. */
-  var SUPPORTED_SCHEMA_VERSIONS = [1, 2];
+  var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3];
 
   /* The NBA is a fixed-size league, so this is an equality, not a floor: 30
    * franchises from the 2004-05 Charlotte expansion and 29 before it. An
@@ -246,10 +246,44 @@
       '.js?v=' + entry.v;
   }
 
+  /* THE PEOPLE LAYER: an index, and a file for each of 2,635 players.
+   *
+   * One token covers every player file and a second covers the index, for
+   * the reason the game layer has one token a season: a player's path is
+   * derived here from his own id, so the manifest does not name 2,635 files,
+   * and the one file a reader fetches when he opens a player is smaller than
+   * a manifest that named them all would be.
+   *
+   * An export written before the loader ran carries no `files.people`, and
+   * both of these then yield null rather than a URL that 404s — which is how
+   * the page knows to leave the People tab out instead of drawing an empty
+   * one. */
+  function peopleIndexSource(manifest, base) {
+    var people = manifest && manifest.files && manifest.files.people;
+    if (!people || typeof people.index !== 'string' || !people.index) {
+      return null;
+    }
+    return (base || 'data/nba/') + people.index;
+  }
+
+  function playerSource(manifest, athleteId, base) {
+    var people = manifest && manifest.files && manifest.files.people;
+    if (!people || typeof people.v !== 'string' || !people.v) return null;
+    var id = String(athleteId === null || athleteId === undefined
+      ? '' : athleteId).trim();
+    // A PLAYER ID IS DIGITS. The id reaches here off the URL, where a reader
+    // may have typed anything, and it is about to become a path: anything
+    // else is refused rather than fetched.
+    if (!/^[0-9]+$/.test(id)) return null;
+    return (base || 'data/nba/') + 'people/' + id + '.js?v=' + people.v;
+  }
+
   var api = {
     SUPPORTED_SCHEMA_VERSIONS: SUPPORTED_SCHEMA_VERSIONS,
     gameMonthKey: gameMonthKey,
     gameMonthSource: gameMonthSource,
+    peopleIndexSource: peopleIndexSource,
+    playerSource: playerSource,
     EXPANSION_SEASON: EXPANSION_SEASON,
     MAX_HOLDOUT_BRIER: MAX_HOLDOUT_BRIER,
     STALE_AFTER_MINUTES: STALE_AFTER_MINUTES,

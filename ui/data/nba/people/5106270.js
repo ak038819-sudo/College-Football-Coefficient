@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[5106270]={"b":{"b":"2003-06-21T07:00Z","c":["Newark","NJ","USA"],"d":[2026,2,41],"h":76,"i":5106270,"j":"13","n":"Otega Oweh","p":"Guard","pa":"G","s":"O. Oweh","w":217,"x":0},"s":[]};

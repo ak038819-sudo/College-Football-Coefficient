@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[1008]={"al":[1972],"b":{"b":"1978-02-01T08:00Z","c":["Detroit","MI","USA"],"h":83,"i":1008,"n":"Ken Johnson","p":"Not Available","pa":"NA","s":"K. Johnson","w":240},"s":[]};

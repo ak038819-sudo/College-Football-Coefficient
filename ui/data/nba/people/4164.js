@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4164]={"b":{"b":"1987-02-05T08:00Z","c":["Austin","TX",null],"h":73,"i":4164,"n":"Curtis Jerrells","p":"Not Available","pa":"NA","s":"C. Jerrells","w":195,"x":0},"s":[]};

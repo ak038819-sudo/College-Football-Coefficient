@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4433599]={"b":{"b":"2002-03-01T08:00Z","c":["Glendale","AZ","USA"],"h":78,"i":4433599,"j":"47","n":"Arthur Kaluma","p":"Forward","pa":"F","s":"A. Kaluma","w":223,"x":2},"s":[]};

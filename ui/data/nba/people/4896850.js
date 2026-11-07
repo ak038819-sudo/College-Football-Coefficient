@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4896850]={"b":{"b":"2002-01-15T08:00Z","c":["Burnie","TAS","Australia"],"h":77,"i":4896850,"j":"1","n":"Taran Armstrong","p":"Guard","pa":"G","s":"T. Armstrong","w":190,"x":1},"s":[]};

@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[3899663]={"b":{"b":"1994-12-20T08:00Z","c":["Athens",null,"Greece"],"d":[2015,2,59],"h":82,"i":3899663,"n":"Dimitrios Agravanis","p":"Power Forward","pa":"PF","s":"D. Agravanis","w":229,"x":0},"s":[]};

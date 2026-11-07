@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4683933]={"b":{"b":"2003-02-21T08:00Z","c":["Kansas City","KS","USA"],"h":76,"i":4683933,"n":"Tamar Bates","p":"Guard","pa":"G","s":"T. Bates","w":195,"x":0},"s":[]};

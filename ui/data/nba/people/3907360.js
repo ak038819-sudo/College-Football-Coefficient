@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[3907360]={"b":{"b":"1997-07-11T07:00Z","c":["Owensboro","KY","USA"],"h":81,"i":3907360,"j":"35","n":"Aric Holman","p":"Forward","pa":"F","s":"A. Holman","w":225,"x":0},"s":[]};

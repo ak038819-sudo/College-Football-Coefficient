@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4271]={"b":{"b":"1988-01-25T08:00Z","c":["Jersey City","NJ",null],"d":[2010,2,42],"h":79,"i":4271,"n":"Da'Sean Butler","p":"Not Available","pa":"NA","s":"D. Butler","w":230,"x":0},"s":[]};

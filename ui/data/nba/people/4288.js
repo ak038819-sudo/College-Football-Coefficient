@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4288]={"b":{"b":"1986-02-03T08:00Z","c":[null,null,"Bahamas"],"d":[2010,2,51],"h":83,"i":4288,"n":"Magnum Rolle","p":"Not Available","pa":"NA","s":"M. Rolle","w":235,"x":0},"s":[]};

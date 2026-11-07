@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4028211]={"b":{"b":"1993-12-02T08:00Z","c":["Elk Grove","CA","USA"],"h":76,"i":4028211,"j":"22","n":"Cody Demps","p":"Forward","pa":"F","s":"C. Demps","w":195,"x":0},"s":[]};

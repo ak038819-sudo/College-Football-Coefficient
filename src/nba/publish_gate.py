@@ -27,13 +27,15 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # Schema 2 adds the game layer: `files.games`, and the month files under
-# `games/<season>/`. Version 1 is still SUPPORTED, because an export written
-# before the reduction ran is a complete export of everything it claims to
-# carry — it simply has no game detail, which a page learns from the absence
-# of `files.games` rather than from the version number. What the bump buys is
-# that the version says which shape a reader is holding.
-SCHEMA_VERSION = 2
-SUPPORTED_SCHEMA_VERSIONS = (1, 2)
+# `games/<season>/`. Schema 3 adds the people layer: `files.people`, and the
+# shards under `people/`. Both earlier versions are still SUPPORTED, because
+# an export written before a loader ran is a complete export of everything it
+# claims to carry — it simply has no game or no player detail, which a page
+# learns from the absence of the `files` entry rather than from the version
+# number. What a bump buys is that the version says which shape a reader is
+# holding.
+SCHEMA_VERSION = 3
+SUPPORTED_SCHEMA_VERSIONS = (1, 2, 3)
 
 # The Charlotte expansion team arrived in 2004-05, taking the league from 29
 # franchises to 30. Measured from the archive, not recalled: every schedule

@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4160]={"b":{"b":"1987-09-14T07:00Z","c":["Atlanta","GA",null],"h":82,"i":4160,"n":"Alade Aminu","p":"Not Available","pa":"NA","s":"A. Aminu","w":235,"x":0},"s":[]};

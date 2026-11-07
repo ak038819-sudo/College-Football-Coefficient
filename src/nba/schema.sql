@@ -238,3 +238,166 @@ CREATE TABLE IF NOT EXISTS game_play (
 
 CREATE INDEX IF NOT EXISTS game_state_by_game ON game_state(game_key, sequence);
 CREATE INDEX IF NOT EXISTS game_play_by_game ON game_play(game_key, sequence);
+
+-- ---------------------------------------------------------------------------
+-- THE PEOPLE LAYER (N4)
+--
+-- 2,635 players hold a line in this archive, 2002 to the season in progress,
+-- against college football's 99,813: an NBA roster is fifteen names and the
+-- league is thirty clubs, so the whole of it is smaller than one football
+-- conference's rosters. That is why a person here carries every game of his
+-- career rather than a sample of it.
+--
+-- FOUR THINGS THE FEED DOES THAT THESE TABLES UNDO, each measured before it
+-- was written down:
+--
+-- 0. THE DRAFT FEED IS A DIFFERENT ID SPACE and is not stored at all: 0 of
+--    60 picks join to a player id in each of 2010, 2018 and 2019, and its
+--    names drop the suffixes the player feed keeps (Robert Williams for
+--    Robert Williams III), so a name join would attribute picks to the wrong
+--    men. A player's draft round and pick come from his own `player_core`
+--    row below, which joins by construction.
+-- 1. THE ALL-STAR GAME IS FILED AS A REGULAR-SEASON GAME. LeBron James has 83
+--    rows for 2017-18 with `season_type` 2, and the 83rd is for "Team
+--    LeBron". Every row whose team is not one of the thirty franchises is
+--    dropped on the way in, the same rule `identity.is_franchise` already
+--    applies to the schedule.
+-- 2. MINUTES, NOT `did_not_play`, SAY WHETHER A MAN PLAYED. The flag is true
+--    for 4,800-6,800 rows in most seasons and for 299 in 2009-10, while
+--    11,000 rows that season carry no minutes at all. `played` here is
+--    whether the line carries minutes, which is consistent across all 26
+--    seasons.
+-- 3. THE FEED'S OWN SEASON STATISTICS ARE REGULAR SEASON ONLY. Summing every
+--    season type against them makes a mess of every comparison, so
+--    `person_season` keeps the season type and the rollups stay separate.
+-- 4. SIX PLAYERS HOLD TWO PROVIDER IDS EACH. Same name, same date of birth,
+--    careers that split across the two records -- Corey Brewer's 2019 is in
+--    both. They are linked, never merged, and nothing is summed across the
+--    link: see `person_alias` and the football archive's split careers, which
+--    were settled the same way.
+-- ---------------------------------------------------------------------------
+
+-- One human, as the provider knows him. `person_key` is
+-- `nba:espn:player:<athlete id>`; the id is the provider's and is stable
+-- across seasons, which was measured rather than assumed: every one of the
+-- 851,463 box-score lines joins to a player_core row for its own season.
+CREATE TABLE IF NOT EXISTS person (
+    person_key       TEXT PRIMARY KEY,
+    athlete_id       INTEGER NOT NULL UNIQUE,
+    full_name        TEXT    NOT NULL,
+    display_name     TEXT,
+    short_name       TEXT,
+    first_name       TEXT,
+    last_name        TEXT,
+    position         TEXT,
+    position_short   TEXT,
+    jersey           TEXT,
+    height_inches    INTEGER,
+    weight_pounds    INTEGER,
+    date_of_birth    TEXT,
+    birth_city       TEXT,
+    birth_state      TEXT,
+    birth_country    TEXT,
+    college_id       INTEGER,
+    draft_year       INTEGER,
+    draft_round      INTEGER,
+    draft_selection  INTEGER,
+    experience_years INTEGER,
+    -- The span the ARCHIVE carries, derived from the lines stored below, not
+    -- a biography: a career that began in 1996 begins in 2002 here, and the
+    -- page says so rather than implying the man was a rookie.
+    first_season     INTEGER,
+    last_season      INTEGER,
+    snapshot_id      INTEGER REFERENCES snapshot(snapshot_id)
+);
+
+-- Two provider ids that are one man. Stored BOTH WAYS round, so neither id is
+-- the primary one and a page reached by either shows the other. Nothing is
+-- summed across it: the two records' statistics stay apart, because the
+-- archive cannot say which of the two holds a given game without reading the
+-- game, and a doubled season is worse than a split one.
+CREATE TABLE IF NOT EXISTS person_alias (
+    person_key  TEXT NOT NULL REFERENCES person(person_key),
+    other_key   TEXT NOT NULL REFERENCES person(person_key),
+    basis       TEXT NOT NULL,
+    snapshot_id INTEGER REFERENCES snapshot(snapshot_id),
+    PRIMARY KEY (person_key, other_key)
+);
+
+-- One line per man per game. `played` is whether the line carries minutes
+-- (rule 2 above); a row with no minutes is kept because the archive carries
+-- it, and the published career log shows only played games.
+CREATE TABLE IF NOT EXISTS person_game (
+    person_key   TEXT    NOT NULL REFERENCES person(person_key),
+    game_key     TEXT    NOT NULL REFERENCES game(game_key),
+    season       INTEGER NOT NULL,
+    season_type  TEXT    NOT NULL,
+    game_date    TEXT,
+    team_key     TEXT    REFERENCES team(team_key),
+    opponent_key TEXT    REFERENCES team(team_key),
+    home_away    TEXT,
+    played       INTEGER NOT NULL,
+    started      INTEGER,
+    minutes      REAL,
+    points       INTEGER,
+    rebounds     INTEGER,
+    offensive_rebounds INTEGER,
+    defensive_rebounds INTEGER,
+    assists      INTEGER,
+    steals       INTEGER,
+    blocks       INTEGER,
+    turnovers    INTEGER,
+    fouls        INTEGER,
+    field_goals_made      INTEGER,
+    field_goals_attempted INTEGER,
+    threes_made           INTEGER,
+    threes_attempted      INTEGER,
+    free_throws_made      INTEGER,
+    free_throws_attempted INTEGER,
+    plus_minus   INTEGER,
+    snapshot_id  INTEGER REFERENCES snapshot(snapshot_id),
+    PRIMARY KEY (person_key, game_key)
+);
+
+-- A man's season with one club, DERIVED from the lines above rather than
+-- taken from the feed's own season statistics: one source of truth, and the
+-- two agree on the countable stats for 99.5% of players in 2002 and 2010.
+-- Where they part company is the COUNT OF GAMES in 2009-2012, where the feed
+-- says a man played more games than it carries lines for, so `feed_games`
+-- keeps its number and `matches_feed` states whether the two agree. Nothing
+-- is quietly reconciled.
+CREATE TABLE IF NOT EXISTS person_season (
+    person_key   TEXT    NOT NULL REFERENCES person(person_key),
+    season       INTEGER NOT NULL,
+    season_type  TEXT    NOT NULL,
+    team_key     TEXT    NOT NULL REFERENCES team(team_key),
+    games        INTEGER NOT NULL,
+    starts       INTEGER NOT NULL,
+    minutes      REAL,
+    points       INTEGER,
+    rebounds     INTEGER,
+    offensive_rebounds INTEGER,
+    defensive_rebounds INTEGER,
+    assists      INTEGER,
+    steals       INTEGER,
+    blocks       INTEGER,
+    turnovers    INTEGER,
+    fouls        INTEGER,
+    field_goals_made      INTEGER,
+    field_goals_attempted INTEGER,
+    threes_made           INTEGER,
+    threes_attempted      INTEGER,
+    free_throws_made      INTEGER,
+    free_throws_attempted INTEGER,
+    plus_minus   INTEGER,
+    feed_games   INTEGER,
+    matches_feed INTEGER,
+    snapshot_id  INTEGER REFERENCES snapshot(snapshot_id),
+    PRIMARY KEY (person_key, season, season_type, team_key)
+);
+
+CREATE INDEX IF NOT EXISTS person_game_by_person
+    ON person_game(person_key, season, game_date);
+CREATE INDEX IF NOT EXISTS person_game_by_game ON person_game(game_key);
+CREATE INDEX IF NOT EXISTS person_season_by_season
+    ON person_season(season, season_type);

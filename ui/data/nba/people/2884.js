@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[2884]={"b":{"b":"1985-01-20T08:00Z","c":["New York","NY",null],"h":80,"i":2884,"n":"Sean Banks","p":"Not Available","pa":"NA","s":"S. Banks","w":210,"x":0},"s":[]};

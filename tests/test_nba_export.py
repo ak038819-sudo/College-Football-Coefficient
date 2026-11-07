@@ -94,11 +94,12 @@ NOW = datetime(2026, 10, 1, tzinfo=timezone.utc)
 
 
 def build(connection, **kwargs):
-    """The first four of `export.build`'s five returns.
+    """The first four of `export.build`'s six returns.
 
-    The fifth is the game layer, which these fixtures have no play-by-play
-    for and which `build` therefore returns as None. `build_detail` below is
-    what the game-layer tests call.
+    The fifth is the game layer and the sixth the people layer, which these
+    fixtures have no play-by-play and no box scores for and which `build`
+    therefore returns as None. `build_detail` below is what the game-layer
+    and people-layer tests call.
     """
     return build_detail(connection, **kwargs)[:4]
 

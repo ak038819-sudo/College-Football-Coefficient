@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[2530574]={"b":{"b":"1991-08-05T07:00Z","c":["Bayonne","NJ","USA"],"h":80,"i":2530574,"j":"13","n":"Ronald Roberts Jr.","p":"Power Forward","pa":"PF","s":"R. Roberts Jr.","w":225,"x":0},"s":[]};

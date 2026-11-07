@@ -637,6 +637,214 @@
     return minutes + ':' + (rest < 10 ? '0' + rest : String(rest));
   }
 
+  /* ---------------------------------------------------------------------
+   * THE PEOPLE LAYER (N4)
+   *
+   * The payload is positional, because every one of these arrays appears
+   * 2,635 times: a season row and a game row both carry the counted columns
+   * in the order `src/nba/people_export.COUNTS` states, and these unpackers
+   * are the only place that order is read. A page that indexed into them
+   * itself would be a page that breaks the day a column is added.
+   * ------------------------------------------------------------------- */
+
+  var COUNTS = ['points', 'rebounds', 'offensive_rebounds',
+    'defensive_rebounds', 'assists', 'steals', 'blocks', 'turnovers',
+    'fouls', 'field_goals_made', 'field_goals_attempted', 'threes_made',
+    'threes_attempted', 'free_throws_made', 'free_throws_attempted',
+    'plus_minus'];
+
+  /* The totals a career or season table prints, in the order it prints
+   * them, with the label each one carries. */
+  var STAT_COLUMNS = [
+    ['points', 'PTS'], ['rebounds', 'REB'], ['assists', 'AST'],
+    ['steals', 'STL'], ['blocks', 'BLK'], ['turnovers', 'TO'],
+    ['fouls', 'PF']
+  ];
+
+  function unpackSeason(row) {
+    if (!Array.isArray(row)) return null;
+    var out = { season: row[0], type: row[1], team: row[2], games: row[3],
+      starts: row[4], minutes: row[5] };
+    COUNTS.forEach(function (name, index) { out[name] = row[6 + index]; });
+    out.feed_games = row[6 + COUNTS.length];
+    out.matches_feed = row[7 + COUNTS.length];
+    return out;
+  }
+
+  function unpackGame(row) {
+    if (!Array.isArray(row)) return null;
+    var out = { game: row[0], date: row[1], team: row[2], opponent: row[3],
+      home: row[4] === 1, started: row[5] === 1, minutes: row[6] };
+    COUNTS.forEach(function (name, index) { out[name] = row[7 + index]; });
+    return out;
+  }
+
+  /* Every season row a player's file carries, newest first, which is the
+   * order a career table reads in. */
+  function playerSeasons(payload) {
+    var rows = (payload && payload.s) || [];
+    return rows.map(unpackSeason).filter(Boolean).sort(function (one, two) {
+      return two.season - one.season || one.type - two.type;
+    });
+  }
+
+  /* His game log as `[{season, type, games: [...]}, ...]`, newest season
+   * first and, within a season, the games in the order they were played. */
+  function playerLog(payload) {
+    var groups = (payload && payload.g) || [];
+    return groups.map(function (group) {
+      return { season: group[0], type: group[1],
+        games: (group[2] || []).map(unpackGame).filter(Boolean) };
+    }).sort(function (one, two) {
+      return two.season - one.season || one.type - two.type;
+    });
+  }
+
+  /* A career total over the rows of ONE season type. Nothing is summed
+   * across a split record: a player's own file holds only his own id's
+   * seasons, and the other id's are a link, not an addend. */
+  function careerTotals(rows, type) {
+    var totals = { games: 0, starts: 0, minutes: 0, seasons: 0 };
+    COUNTS.forEach(function (name) { totals[name] = 0; });
+    var known = {};
+    (rows || []).forEach(function (row) {
+      if (type !== undefined && type !== null && row.type !== type) return;
+      totals.games += row.games || 0;
+      totals.starts += row.starts || 0;
+      totals.minutes += row.minutes || 0;
+      known[row.season] = true;
+      COUNTS.forEach(function (name) {
+        if (isFiniteNumber(row[name])) totals[name] += row[name];
+      });
+    });
+    totals.seasons = Object.keys(known).length;
+    return totals;
+  }
+
+  /* A per-game average, to one decimal, or null where there are no games.
+   * Zero games must not read as 0.0 points a game. */
+  function perGame(total, games) {
+    if (!isFiniteNumber(total) || !isFiniteNumber(games) || games <= 0) {
+      return null;
+    }
+    return Math.round((total / games) * 10) / 10;
+  }
+
+  function perGameText(total, games) {
+    var value = perGame(total, games);
+    return value === null ? '—' : value.toFixed(1);
+  }
+
+  /* `11-20` for made and attempted, and `—` where the archive has neither.
+   * A made-attempted pair with no attempts is printed, because 0-0 is a
+   * fact about a game a man played. */
+  function shotLine(made, attempted) {
+    if (!isFiniteNumber(made) && !isFiniteNumber(attempted)) return '—';
+    return String(made || 0) + '-' + String(attempted || 0);
+  }
+
+  /* A shooting percentage from the two counts, never from a stored
+   * percentage: the export deliberately carries neither, so there is one
+   * place the quotient is taken. */
+  function shotPct(made, attempted) {
+    if (!isFiniteNumber(made) || !isFiniteNumber(attempted)
+        || attempted <= 0) {
+      return null;
+    }
+    return made / attempted;
+  }
+
+  function shotPctText(made, attempted) {
+    var value = shotPct(made, attempted);
+    return value === null ? '—' : (value * 100).toFixed(1) + '%';
+  }
+
+  /* `6' 9"` from inches. */
+  function heightText(inches) {
+    if (!isFiniteNumber(inches) || inches <= 0) return null;
+    return Math.floor(inches / 12) + "' " + (inches % 12) + '"';
+  }
+
+  /* The birthplace as one line, with the parts the archive has. */
+  function birthplaceText(parts) {
+    if (!Array.isArray(parts)) return null;
+    var kept = parts.filter(function (part) {
+      return typeof part === 'string' && part.trim();
+    });
+    return kept.length ? kept.join(', ') : null;
+  }
+
+  /* `1st round, 1st pick, 2003`, or null for a man the feed has no draft
+   * for — which is 16-26% of players a season, undrafted men among them, so
+   * the page says nothing rather than "undrafted". */
+  function draftText(draft) {
+    if (!Array.isArray(draft) || !isFiniteNumber(draft[0])) return null;
+    var parts = [];
+    if (isFiniteNumber(draft[1])) parts.push(ordinal(draft[1]) + ' round');
+    if (isFiniteNumber(draft[2])) parts.push(ordinal(draft[2]) + ' pick');
+    parts.push(String(draft[0]));
+    return parts.join(', ');
+  }
+
+  function ordinal(value) {
+    var n = Math.abs(Math.round(value));
+    var last = n % 100;
+    if (last >= 11 && last <= 13) return n + 'th';
+    if (n % 10 === 1) return n + 'st';
+    if (n % 10 === 2) return n + 'nd';
+    if (n % 10 === 3) return n + 'rd';
+    return n + 'th';
+  }
+
+  /* The seasons the ARCHIVE has him playing, which for a man who debuted in
+   * 1996 is 2002 onwards. The wording is the page's business; what this
+   * returns is null where he never played a minute in it. */
+  function archiveSpan(bio) {
+    if (!bio || !isFiniteNumber(bio.first) || !isFiniteNumber(bio.last)) {
+      return null;
+    }
+    return { first: bio.first, last: bio.last };
+  }
+
+  /* The players an index search matches, by name. Two characters at least,
+   * for the reason the club search has the same floor: one letter matches a
+   * third of the league. */
+  function searchPeople(index, query, limit) {
+    var needle = normalizeName(query);
+    if (needle.length < 2) return [];
+    var rows = (index && index.players) || [];
+    var found = [];
+    for (var i = 0; i < rows.length; i += 1) {
+      if (normalizeName(rows[i][1]).indexOf(needle) >= 0) {
+        found.push(indexEntry(rows[i]));
+      }
+    }
+    found.sort(function (one, two) {
+      // The men with the most minutes on the floor first: a reader typing
+      // "james" wants LeBron before a man who played four games in 2004.
+      return (two.points || 0) - (one.points || 0);
+    });
+    return limit ? found.slice(0, limit) : found;
+  }
+
+  function indexEntry(row) {
+    if (!Array.isArray(row)) return null;
+    return { id: row[0], name: row[1], position: row[2], first: row[3],
+      last: row[4], games: row[5], points: row[6] };
+  }
+
+  /* The index as entries, for a list that is not a search: the most
+   * prolific scorers the archive carries, which is what the People tab
+   * shows a reader who has typed nothing. */
+  function topScorers(index, limit) {
+    var rows = ((index && index.players) || []).map(indexEntry)
+      .filter(Boolean);
+    rows.sort(function (one, two) {
+      return (two.points || 0) - (one.points || 0);
+    });
+    return limit ? rows.slice(0, limit) : rows;
+  }
+
   var api = {
     REGULATION_SECONDS: REGULATION_SECONDS,
     OVERTIME_SECONDS: OVERTIME_SECONDS,
@@ -687,7 +895,27 @@
     titleCount: titleCount,
     brierText: brierText,
     normalizeName: normalizeName,
-    searchTeams: searchTeams
+    searchTeams: searchTeams,
+    COUNTS: COUNTS,
+    STAT_COLUMNS: STAT_COLUMNS,
+    unpackSeason: unpackSeason,
+    unpackGame: unpackGame,
+    playerSeasons: playerSeasons,
+    playerLog: playerLog,
+    careerTotals: careerTotals,
+    perGame: perGame,
+    perGameText: perGameText,
+    shotLine: shotLine,
+    shotPct: shotPct,
+    shotPctText: shotPctText,
+    heightText: heightText,
+    birthplaceText: birthplaceText,
+    draftText: draftText,
+    ordinal: ordinal,
+    archiveSpan: archiveSpan,
+    searchPeople: searchPeople,
+    indexEntry: indexEntry,
+    topScorers: topScorers
   };
 
   if (typeof module === 'object' && module.exports) {

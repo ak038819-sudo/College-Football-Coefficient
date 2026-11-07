@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[5106261]={"b":{"b":"2004-01-08T08:00Z","c":["Orlando","FL","USA"],"h":81,"i":5106261,"j":"88","n":"Ernest Udeh Jr.","p":"Center","pa":"C","s":"E. Udeh Jr.","w":266,"x":0},"s":[]};

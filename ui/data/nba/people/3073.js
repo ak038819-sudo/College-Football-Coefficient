@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[3073]={"b":{"b":"1981-10-08T07:00Z","c":["Washington","DC",null],"h":70,"i":3073,"n":"Brian Chase","p":"Not Available","pa":"NA","s":"B. Chase","w":170,"x":0},"s":[]};

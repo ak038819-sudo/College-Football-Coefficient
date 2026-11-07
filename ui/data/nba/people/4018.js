@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4018]={"b":{"b":"1985-03-03T08:00Z","c":["Indianapolis","IN",null],"d":[2009,2,54],"h":77,"i":4018,"j":"99","n":"Robert Vaden","p":"Shooting Guard","pa":"SG","s":"R. Vaden","w":205,"x":0},"s":[]};

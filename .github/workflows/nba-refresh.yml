@@ -53,6 +53,12 @@ on:
           rehearsing a reduction; a partial one may not publish."
         type: string
         default: ""
+      people_seasons:
+        description: "Only load the people layer for these seasons. For
+          rehearsing it; a partial one publishes a partial archive of
+          careers."
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -88,6 +94,7 @@ jobs:
           python -m pytest tests/test_nba_data.py tests/test_nba_rating.py \
             tests/test_nba_export.py tests/test_nba_plays.py \
             tests/test_nba_game_export.py \
+            tests/test_nba_people.py \
             tests/test_nba_win_probability.py -q
 
       - name: Ingest the archive
@@ -123,6 +130,25 @@ jobs:
           set -o pipefail
           python -m src.nba.plays --work-dir "$RUNNER_TEMP/nba-pbp" \
             ${{ inputs.pbp_seasons && format('--seasons {0}', inputs.pbp_seasons) || '' }} \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Load the players and their box-score lines
+        run: |
+          # 2,635 players, 850,950 box-score lines (670,667 of them with
+          # minutes) and the 20,132 season rollups derived from them.
+          # Fetched one season at a time and discarded like the
+          # play-by-play: nothing raw is stored or committed.
+          #
+          # AFTER the schedule, because a box-score line for a game the
+          # schedule does not carry is dropped rather than invented, and
+          # BEFORE the export, which decides from `person_game` whether
+          # there is a people layer to write at all. An export built
+          # without one would drop a `files` key the published manifest
+          # has, which src/nba/publish.py refuses -- so a failure here
+          # fails the run, which says the same thing earlier.
+          set -o pipefail
+          python -m src.nba.people \
+            ${{ inputs.people_seasons && format('--seasons {0}', inputs.people_seasons) || '' }} \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Replay the archive with the committed model

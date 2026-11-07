@@ -110,6 +110,9 @@
     .head-controls { align-items: stretch; }
   }
   .search { margin: 0; }
+  /* The People tab's own box sits over the list it filters, not in the
+     header row, so it takes the panel's full width. */
+  .search.wide { margin: 0 0 12px; }
   .search input {
     width: 100%; max-width: 420px; padding: 9px 12px; font: inherit;
     color: var(--ink); background: var(--panel); border: 1px solid var(--line);
@@ -311,6 +314,21 @@
   /* The chart sits between the line score and the shape table, so it needs
      air above it or the three run together as one block of rules. */
   #game-body svg.wpchart { margin-top: 14px; }
+  /* A player's own details, as a run of label-and-value pairs rather than a
+     two-column table: on a phone a table of two columns is a table of one. */
+  /* Scoped the same way, and for the same reason the game panel's is: an
+     unscoped `#player-body h3` would turn a player's own name into a dim
+     uppercase label. */
+  #player-body h3.section { margin: 18px 0 6px;
+                            font-family: var(--font-display); font-size: 14px;
+                            letter-spacing: 0.6px; text-transform: uppercase;
+                            color: var(--ink-dim); }
+  #player-body .facts { display: flex; flex-wrap: wrap; gap: 4px 18px;
+                        margin: 6px 0 0; padding: 0; list-style: none; }
+  #player-body .facts li { font-size: 13px; color: var(--ink-dim); }
+  #player-body .facts b { color: var(--ink); font-weight: 600; }
+  #people-body .who { display: flex; flex-direction: column; gap: 1px; }
+  #people-body .who .sub { font-size: 12px; color: var(--ink-dim); }
   /* The SECTION headings only. An unscoped `#game-body h3` also caught the
      game's own title and drew "Phoenix Suns at LA Clippers" as a dim
      uppercase label above its own score. */
@@ -536,11 +554,25 @@
     <div id="conference-history"></div>
     <div id="champions"></div>
   </section>
+
+  <section class="panel" id="people" hidden>
+    <!-- The box is OUTSIDE the list it filters, because the list is rebuilt
+         on every keystroke and an input inside it would lose the cursor. -->
+    <div class="search wide">
+      <input id="person-search" type="search" aria-label="Find a player"
+             placeholder="Find a player">
+    </div>
+    <div id="people-body"></div>
+  </section>
+
+  <section class="panel" id="player" hidden>
+    <div id="player-body"></div>
+  </section>
 </div>
 
-<script src="nba_loader.js?v=10c98c2cc1d0"></script>
+<script src="nba_loader.js?v=21577e47dd24"></script>
 <script src="ncaambb_app.js?v=4828bd5e0199"></script>
-<script src="nba_app.js?v=ecb52b91fa41"></script>
+<script src="nba_app.js?v=589ac1056265"></script>
 <script>
 (function () {
   'use strict';
@@ -549,19 +581,28 @@
   var app = window.nbaApp;           // the NBA's own rules
   var BASE = 'data/nba/';
 
-  /* FOUR TABS of the shared five. No People: the NBA export is schema 1 and
-   * carries no people layer, and an empty tab is worse than an absent one.
-   * Stats draws what this export can honestly fill — the model's own track
-   * record, conference ratings over time, and the champions — rather than
-   * standing empty waiting for box scores. */
+  /* ALL FIVE of the shared tabs, since schema 3 carries the people layer.
+   * People is drawn only where the export has one: an export written before
+   * the loader ran names no `files.people`, and an empty tab is worse than
+   * an absent one. Stats draws what this export can honestly fill — the
+   * model's own track record, conference ratings over time, and the
+   * champions. */
   var VIEWS = {
     standings: [['conferences', 'Conferences'], ['elo', 'Elo']]
   };
+
+  /* Whether this export carries players at all. Asked of the manifest and
+   * not of a flag we set once, because the manifest arrives after the first
+   * render and a flag read too early would hide the tab for good. */
+  function hasPeople() {
+    return Boolean(loader.peopleIndexSource(state.manifest, BASE));
+  }
 
   function panelFor(tab, view) {
     if (tab === 'home') return 'scoreboard';
     if (tab === 'stats') return 'history';
     if (tab === 'teams') return 'teams';
+    if (tab === 'people') return hasPeople() ? 'people' : null;
     if (tab === 'standings') {
       return view === 'elo' ? 'rankings' : 'standings';
     }
@@ -590,7 +631,8 @@
 
   var state = { manifest: null, verdict: null, season: null, day: null,
                 tab: 'home', view: null, team: null, game: null, query: '',
-                mine: false, history: null, loadedSeason: null };
+                mine: false, history: null, loadedSeason: null,
+                player: null, personQuery: '' };
 
   function el(id) { return document.getElementById(id); }
 
@@ -653,8 +695,9 @@
     if (name !== 'teams') changes.team = null;
     // A game page is only ever open inside Home, so pressing any tab closes
     // it — including Home itself, which is how the reader gets back to the
-    // slate.
+    // slate. A player page is the same inside People.
     changes.game = null;
+    if (name !== 'people') changes.player = null;
     writeParams(changes);
   }
 
@@ -817,6 +860,12 @@
       host.appendChild(button);
     });
     el('search').placeholder = leagues.searchPlaceholder(leagues.NBA);
+    // The People tab's own box. Only the list is redrawn, because the input
+    // is outside it: rebuilding the input would take the cursor with it.
+    el('person-search').addEventListener('input', function () {
+      state.personQuery = el('person-search').value;
+      if (state.tab === 'people' && !state.player) peoplePanel();
+    });
     el('search').addEventListener('input', function () {
       state.query = el('search').value;
       // Typing moves the reader to Teams, so it is a section change like any
@@ -953,7 +1002,7 @@
 
   function showPanel(name) {
     ['scoreboard', 'game', 'standings', 'rankings', 'teams',
-      'history'].forEach(
+      'history', 'people', 'player'].forEach(
       function (id) {
         el(id).hidden = id !== name;
       });
@@ -1753,6 +1802,433 @@
       + 'still being played has none.'));
   }
 
+  // ----------------------------------------------------------------- people
+
+  /* The people layer is TWO fetches, never more: the index, once, when the
+   * reader opens the tab, and one player's own file when he opens a player.
+   * Each is asked for ONCE — a render is how the answer is shown, so a
+   * render that re-fetched would re-render, which would re-fetch. */
+  var peopleState = {};
+
+  function peopleIndex() { return window.NBA_PEOPLE || null; }
+
+  function ensurePeopleIndex() {
+    var url = loader.peopleIndexSource(state.manifest, BASE);
+    if (!url) return 'absent';
+    if (peopleIndex()) return 'ready';
+    if (peopleState[url] === 'done') return 'missing';
+    if (peopleState[url]) return 'pending';
+    peopleState[url] = 'asked';
+    fetchScript(url).then(function () {
+      peopleState[url] = 'done';
+      render();
+    }, failed);
+    return 'pending';
+  }
+
+  function playerPayload(id) {
+    var all = window.NBA_PLAYER || {};
+    return all[Number(id)] || null;
+  }
+
+  function ensurePlayer(id) {
+    var url = loader.playerSource(state.manifest, id, BASE);
+    if (!url) return 'absent';
+    if (playerPayload(id)) return 'ready';
+    if (peopleState[url] === 'done') return 'missing';
+    if (peopleState[url]) return 'pending';
+    peopleState[url] = 'asked';
+    fetchScript(url).then(function () {
+      peopleState[url] = 'done';
+      render();
+    }, function () {
+      // A player id off a shared URL that this export has no file for is a
+      // 404, which is the reader's answer and not a broken page: it is
+      // recorded as answered so the panel can say so.
+      peopleState[url] = 'done';
+      render();
+    });
+    return 'pending';
+  }
+
+  /* The player id a URL names, or null. Only inside People, so a `player`
+   * left on a URL whose section is Teams does not draw a man behind a club
+   * page — the rule the game id follows inside Home. */
+  function playerFromHash() {
+    var route = leagues.readRoute(window.location.hash);
+    if (route.league !== leagues.NBA) return null;
+    if ((route.params.section || 'home') !== 'people') return null;
+    var id = route.params.player;
+    return id ? String(id) : null;
+  }
+
+  function openPlayer(id) {
+    writeParams({ section: 'people', view: null, team: null, game: null,
+                  player: String(id) });
+    state.player = String(id);
+    render();
+  }
+
+  function closePlayer() {
+    writeParams({ player: null });
+    state.player = null;
+    render();
+  }
+
+  function spanText(bio) {
+    var span = app.archiveSpan(bio);
+    if (!span) return null;
+    var first = loader.seasonLabel(span.first);
+    if (span.first === span.last) return first;
+    return first + ' to ' + loader.seasonLabel(span.last);
+  }
+
+  function personRow(entry) {
+    var row = document.createElement('tr');
+    var who = node('td', '');
+    var box = node('div', 'who');
+    box.appendChild(linkTo(entry.name, function () { openPlayer(entry.id); }));
+    // The two season labels in full. Abbreviating the second to its last
+    // two digits read as "2003-04–27", which is not a span of anything.
+    var span = entry.first
+      ? loader.seasonLabel(entry.first)
+        + (entry.last && entry.last !== entry.first
+            ? ' to ' + loader.seasonLabel(entry.last) : '')
+      : 'no games in this archive';
+    box.appendChild(node('div', 'sub', span));
+    who.appendChild(box);
+    row.appendChild(who);
+    row.appendChild(node('td', '', entry.position || '—'));
+    row.appendChild(node('td', 'num', entry.games || 0));
+    row.appendChild(node('td', 'num', entry.points || 0));
+    return row;
+  }
+
+  function peopleTable(rows) {
+    var wrap = node('div', 'scroll');
+    var table = document.createElement('table');
+    var head = document.createElement('thead');
+    var headRow = document.createElement('tr');
+    [['Player', ''], ['Pos', ''], ['G', 'num'], ['PTS', 'num']]
+      .forEach(function (pair) {
+        headRow.appendChild(node('th', pair[1], pair[0]));
+      });
+    head.appendChild(headRow);
+    table.appendChild(head);
+    var body = document.createElement('tbody');
+    rows.forEach(function (entry) { body.appendChild(personRow(entry)); });
+    table.appendChild(body);
+    wrap.appendChild(table);
+    return wrap;
+  }
+
+  var PEOPLE_SHOWN = 50;
+
+  function peoplePanel() {
+    var host = el('people-body');
+    host.innerHTML = '';
+    var status = ensurePeopleIndex();
+    if (status === 'pending') {
+      host.appendChild(node('p', 'note', 'Loading the players…'));
+      return;
+    }
+    if (status !== 'ready') {
+      host.appendChild(node('p', 'empty', 'This export carries no players.'));
+      return;
+    }
+    var index = peopleIndex();
+    var query = state.personQuery || '';
+    var found = query.trim().length >= 2
+      ? app.searchPeople(index, query, PEOPLE_SHOWN) : null;
+    if (found) {
+      if (!found.length) {
+        host.appendChild(node('p', 'empty',
+          'No player in this archive is called that.'));
+        return;
+      }
+      host.appendChild(peopleTable(found));
+      host.appendChild(node('p', 'note', found.length >= PEOPLE_SHOWN
+        ? 'The first ' + PEOPLE_SHOWN + ' matches, most prolific first.'
+        : found.length + (found.length === 1 ? ' player' : ' players')
+          + ' match.'));
+      return;
+    }
+    host.appendChild(node('h3', 'section', 'Most points in this archive'));
+    host.appendChild(peopleTable(app.topScorers(index, PEOPLE_SHOWN)));
+    host.appendChild(node('p', 'note', 'Every player who has taken the floor '
+      + 'since ' + loader.seasonLabel(2002) + ': ' + (index.count || 0)
+      + ' of them. Type two letters to find one. The totals are the regular '
+      + 'season, and they are the archive’s own count of what each man '
+      + 'did in it rather than a career record — a man who played '
+      + 'before ' + loader.seasonLabel(2002) + ' did that elsewhere.'));
+  }
+
+  // ----------------------------------------------------------------- player
+
+  function factList(bio) {
+    var list = node('ul', 'facts');
+    function add(label, value) {
+      if (value === null || value === undefined || value === '') return;
+      var item = document.createElement('li');
+      item.appendChild(node('b', '', label + ' '));
+      item.appendChild(document.createTextNode(String(value)));
+      list.appendChild(item);
+    }
+    var size = [app.heightText(bio.h), bio.w ? bio.w + ' lb' : null]
+      .filter(Boolean).join(', ');
+    add('Position', bio.p);
+    add('Jersey', bio.j ? '#' + bio.j : null);
+    add('Size', size || null);
+    add('Born', bio.b ? String(bio.b).slice(0, 10) : null);
+    add('From', app.birthplaceText(bio.c));
+    add('Drafted', app.draftText(bio.d));
+    add('In this archive', spanText(bio));
+    return list;
+  }
+
+  /* One table of seasons for one season type, with a career line under it.
+   * The career line sums THIS man's rows and nothing else: a split record
+   * is linked, never added. */
+  function seasonTable(rows, type) {
+    var kept = rows.filter(function (row) { return row.type === type; });
+    if (!kept.length) return null;
+    var wrap = node('div', 'scroll');
+    var table = document.createElement('table');
+    var head = document.createElement('thead');
+    var headRow = document.createElement('tr');
+    [['Season', ''], ['Club', ''], ['G', 'num'], ['GS', 'num'],
+      ['MIN', 'num'], ['FG', 'num'], ['3P', 'num'], ['FT', 'num'],
+      ['PTS', 'num'], ['REB', 'num'], ['AST', 'num'], ['STL', 'num'],
+      ['BLK', 'num'], ['TO', 'num']].forEach(function (pair) {
+        headRow.appendChild(node('th', pair[1], pair[0]));
+      });
+    head.appendChild(headRow);
+    table.appendChild(head);
+    var body = document.createElement('tbody');
+    kept.forEach(function (row) {
+      var line = document.createElement('tr');
+      var season = loader.seasonLabel(row.season);
+      // THE FEED'S COUNT IS SHOWN, NOT CHOSEN BETWEEN. It disagrees for
+      // 1,006 of the 12,819 regular seasons it has a number for -- 966
+      // where it counts more games than the archive carries a line for and
+      // 40 where it counts fewer -- 876 of them before 2015, and 870 of
+      // them by one or two games.
+      var cell = node('td', '', season);
+      line.appendChild(cell);
+      line.appendChild(node('td', '', abbrFor(teamKeyOf(row.team))
+        || nameFor(teamKeyOf(row.team))));
+      var games = node('td', 'num', row.games);
+      if (row.matches_feed === 0 && row.feed_games !== null) {
+        games.title = 'The season statistics feed counts ' + row.feed_games
+          + ' games; this archive carries ' + row.games + ' lines.';
+        games.textContent = row.games + '*';
+      }
+      line.appendChild(games);
+      line.appendChild(node('td', 'num', row.starts));
+      line.appendChild(node('td', 'num',
+        row.minutes === null ? '—' : Math.round(row.minutes)));
+      line.appendChild(node('td', 'num',
+        app.shotLine(row.field_goals_made, row.field_goals_attempted)));
+      line.appendChild(node('td', 'num',
+        app.shotLine(row.threes_made, row.threes_attempted)));
+      line.appendChild(node('td', 'num',
+        app.shotLine(row.free_throws_made, row.free_throws_attempted)));
+      ['points', 'rebounds', 'assists', 'steals', 'blocks', 'turnovers']
+        .forEach(function (name) {
+          line.appendChild(node('td', 'num',
+            row[name] === null || row[name] === undefined ? '—' : row[name]));
+        });
+      body.appendChild(line);
+    });
+    table.appendChild(body);
+    var totals = app.careerTotals(kept, type);
+    var foot = document.createElement('tfoot');
+    var footRow = document.createElement('tr');
+    footRow.appendChild(node('th', '', totals.seasons
+      + (totals.seasons === 1 ? ' season' : ' seasons')));
+    footRow.appendChild(node('th', '', ''));
+    footRow.appendChild(node('th', 'num', totals.games));
+    footRow.appendChild(node('th', 'num', totals.starts));
+    footRow.appendChild(node('th', 'num', Math.round(totals.minutes)));
+    footRow.appendChild(node('th', 'num',
+      app.shotLine(totals.field_goals_made, totals.field_goals_attempted)));
+    footRow.appendChild(node('th', 'num',
+      app.shotLine(totals.threes_made, totals.threes_attempted)));
+    footRow.appendChild(node('th', 'num',
+      app.shotLine(totals.free_throws_made, totals.free_throws_attempted)));
+    ['points', 'rebounds', 'assists', 'steals', 'blocks', 'turnovers']
+      .forEach(function (name) {
+        footRow.appendChild(node('th', 'num', totals[name]));
+      });
+    foot.appendChild(footRow);
+    table.appendChild(foot);
+    wrap.appendChild(table);
+    return { node: wrap, totals: totals };
+  }
+
+  function teamKeyOf(shortId) {
+    return 'nba:espn:team:' + String(shortId);
+  }
+
+  /* A player's game log, one table a season, newest first. 82 rows is a
+   * season and 24 of them is a career, so the tables are in the order a
+   * reader cares about and each one says which season it is. */
+  function logTables(host, groups) {
+    groups.forEach(function (group) {
+      var label = loader.seasonLabel(group.season) + ' '
+        + (['regular season', 'playoffs', 'play-in',
+            'NBA Cup final'][group.type]
+            || 'games');
+      host.appendChild(node('h3', 'section', label));
+      var wrap = node('div', 'scroll');
+      var table = document.createElement('table');
+      var head = document.createElement('thead');
+      var headRow = document.createElement('tr');
+      [['Date', ''], ['', ''], ['Opponent', ''], ['MIN', 'num'],
+        ['FG', 'num'], ['3P', 'num'], ['FT', 'num'], ['PTS', 'num'],
+        ['REB', 'num'], ['AST', 'num'], ['STL', 'num'], ['BLK', 'num'],
+        ['TO', 'num'], ['+/-', 'num']].forEach(function (pair) {
+          headRow.appendChild(node('th', pair[1], pair[0]));
+        });
+      head.appendChild(headRow);
+      table.appendChild(head);
+      var body = document.createElement('tbody');
+      group.games.forEach(function (game) {
+        var row = document.createElement('tr');
+        var when = node('td', '');
+        // The date opens the game's own page, which is the one link a game
+        // log owes a reader.
+        when.appendChild(linkTo(String(game.date || '').slice(5),
+          function () { openGameById(game.game, group.season); }));
+        row.appendChild(when);
+        row.appendChild(node('td', '', game.home ? 'vs' : '@'));
+        row.appendChild(node('td', '',
+          abbrFor(teamKeyOf(game.opponent))
+            || nameFor(teamKeyOf(game.opponent))));
+        row.appendChild(node('td', 'num',
+          game.minutes === null ? '—' : Math.round(game.minutes)));
+        row.appendChild(node('td', 'num',
+          app.shotLine(game.field_goals_made, game.field_goals_attempted)));
+        row.appendChild(node('td', 'num',
+          app.shotLine(game.threes_made, game.threes_attempted)));
+        row.appendChild(node('td', 'num',
+          app.shotLine(game.free_throws_made, game.free_throws_attempted)));
+        ['points', 'rebounds', 'assists', 'steals', 'blocks', 'turnovers']
+          .forEach(function (name) {
+            row.appendChild(node('td', 'num',
+              game[name] === null || game[name] === undefined
+                ? '—' : game[name]));
+          });
+        row.appendChild(node('td', 'num',
+          game.plus_minus === null || game.plus_minus === undefined
+            ? '—'
+            : (game.plus_minus > 0 ? '+' : '') + game.plus_minus));
+        body.appendChild(row);
+      });
+      table.appendChild(body);
+      wrap.appendChild(table);
+      host.appendChild(wrap);
+    });
+  }
+
+  /* A game log's date opens the game page, which lives in another season
+   * than the one on screen as often as not. */
+  function openGameById(gameId, season) {
+    writeParams({ section: null, view: null, team: null, player: null,
+                  game: String(gameId), season: String(season) });
+    state.player = null;
+    state.game = String(gameId);
+    state.tab = 'home';
+    if (season !== state.season) {
+      state.season = season;
+      state.day = null;
+      seasonSelect();
+      loadSeason(season).then(render, failed);
+      return;
+    }
+    render();
+  }
+
+  function playerPanel() {
+    var host = el('player-body');
+    host.innerHTML = '';
+    // The way out comes FIRST, so a stale link is a dead end a reader can
+    // walk back out of — the lesson the game panel learned.
+    var back = node('p', 'back');
+    back.appendChild(linkTo('← Back to the players', closePlayer));
+    host.appendChild(back);
+    var status = ensurePlayer(state.player);
+    if (status === 'pending') {
+      host.appendChild(node('p', 'note', 'Loading the career…'));
+      return;
+    }
+    if (status !== 'ready') {
+      host.appendChild(node('p', 'empty',
+        'This export has no player with that id.'));
+      return;
+    }
+    var payload = playerPayload(state.player);
+    var bio = payload.b || {};
+    host.appendChild(node('h3', '', bio.n || 'Unnamed player'));
+    host.appendChild(factList(bio));
+    if (Array.isArray(payload.al) && payload.al.length) {
+      // SIX MEN HOLD TWO IDS. The two records are linked and never summed:
+      // the archive cannot say which of them holds a given game without
+      // reading the game, and a doubled career is worse than a split one.
+      var split = node('p', 'note', 'The archive holds this career under '
+        + (payload.al.length === 1 ? 'a second id' : 'other ids')
+        + ' as well, with the same name and date of birth. The seasons '
+        + 'below are the ones filed under this id only, and nothing is '
+        + 'added across the two: ');
+      payload.al.forEach(function (other, index) {
+        if (index) split.appendChild(document.createTextNode(', '));
+        split.appendChild(linkTo('the other record',
+          function () { openPlayer(other); }));
+      });
+      host.appendChild(split);
+    }
+    var seasons = app.playerSeasons(payload);
+    var starred = false;
+    // The Cup final is its OWN table, never a row of the regular season:
+    // the archive keeps it out of won-lost records, so a career line that
+    // folded it in would disagree with the standings on the same screen.
+    [[0, 'Regular season'], [1, 'Playoffs'], [2, 'Play-in'],
+      [3, 'NBA Cup final']]
+      .forEach(function (pair) {
+        var built = seasonTable(seasons, pair[0]);
+        if (!built) return;
+        host.appendChild(node('h3', 'section', pair[1]));
+        host.appendChild(built.node);
+        starred = starred || seasons.some(function (row) {
+          return row.type === pair[0] && row.matches_feed === 0;
+        });
+      });
+    if (!seasons.length) {
+      host.appendChild(node('p', 'empty', 'This man is in the archive’s '
+        + 'player list but took the floor in none of its games.'));
+      return;
+    }
+    if (starred) {
+      host.appendChild(node('p', 'note', 'A starred count of games is one '
+        + 'the league’s own season statistics disagree with. They do that '
+        + 'for 1,006 of the 12,819 regular seasons they carry a count for, '
+        + 'usually counting more games than this archive has a line for '
+        + 'and sometimes fewer, almost always by a game or two and mostly '
+        + 'before 2015. Nothing here reconciles them: the count shown is '
+        + 'the games the archive can show you, and the tooltip says what '
+        + 'each side claims.'));
+    }
+    var log = app.playerLog(payload);
+    if (log.length) {
+      logTables(host, log);
+      host.appendChild(node('p', 'note', 'Every game of this career the '
+        + 'archive carries a line with minutes for. A game a man was on the '
+        + 'roster for and did not play is not here: the feed’s own '
+        + '"did not play" flag is unreliable before 2013, so minutes are '
+        + 'what say he played.'));
+    }
+  }
+
   // ----------------------------------------------------------------- driver
 
   function render() {
@@ -1776,6 +2252,13 @@
       gamePanel();
       return;
     }
+    // A player page sits inside People and replaces the list, the way a
+    // game page sits inside Home.
+    if (state.tab === 'people' && state.player && hasPeople()) {
+      showPanel('player');
+      playerPanel();
+      return;
+    }
     var panel = panelFor(state.tab, state.view);
     showPanel(panel);
     if (panel === 'scoreboard') scoreboard(payload);
@@ -1783,6 +2266,7 @@
     else if (panel === 'rankings') boardPanel(payload);
     else if (panel === 'teams') teamsPanel(payload);
     else if (panel === 'history') historyPanel();
+    else if (panel === 'people') peoplePanel();
   }
 
   function failed(error) {
@@ -1803,6 +2287,7 @@
     }
     state.team = teamFromHash();
     state.game = gameFromHash();
+    state.player = playerFromHash();
     // A URL MUST MEAN ONE THING. A hash naming no season means the latest,
     // which is what `start()` resolves it to, so Back off a season link has
     // to come back to the latest as well. Reading a missing parameter as
@@ -1842,6 +2327,7 @@
       }
       state.team = teamFromHash();
       state.game = gameFromHash();
+      state.player = playerFromHash();
       seasonSelect();
       return Promise.all([loadTeams(), loadSeason(state.season),
         loadHistory()]).then(function () {

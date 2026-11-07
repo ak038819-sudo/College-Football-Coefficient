@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4233]={"b":{"b":"1986-08-14T07:00Z","c":["Washington","DC",null],"h":75,"i":4233,"n":"Kenny Hasbrouck","p":"Not Available","pa":"NA","s":"K. Hasbrouck","w":195,"x":0},"s":[]};

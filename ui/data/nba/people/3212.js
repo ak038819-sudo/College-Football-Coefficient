@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[3212]={"b":{"b":"1984-10-01T07:00Z","c":[null,null,"West Germany"],"d":[2007,2,55],"h":82,"i":3212,"n":"Herbert Hill","p":"Not Available","pa":"NA","s":"H. Hill","w":240,"x":0},"s":[]};

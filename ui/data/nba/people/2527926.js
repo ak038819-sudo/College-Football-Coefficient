@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[2527926]={"b":{"b":"1992-02-01T08:00Z","c":["Jacksonville","FL",null],"h":81,"i":2527926,"j":"4","n":"Patric Young","p":"Power Forward","pa":"PF","s":"P. Young","w":240,"x":0},"s":[]};

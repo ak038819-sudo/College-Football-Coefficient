@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4565203]={"b":{"b":"2002-03-10T08:00Z","c":["Brampton","ON","Canada"],"h":83,"i":4565203,"j":"27","n":"Charles Bediako","p":"Center","pa":"C","s":"C. Bediako","w":255,"x":0},"s":[]};
