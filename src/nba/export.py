@@ -30,7 +30,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import elo, game_export, people_export
+from . import elo, game_export, people_export, series
 from .identity import current_season, season_label
 from . import win_probability
 from .publish_gate import SCHEMA_VERSION, check, render
@@ -430,6 +430,18 @@ def build(connection, *, model_name=None, seasons=None, now=None):
         payloads[season] = dict(season=season,
                                 season_label=season_label(season),
                                 board=rows, games=games, names=names)
+        # THE BRACKET AND THE PLAY-IN ride in the season's own payload
+        # rather than a file of their own, and derive from the games just
+        # read and the board just built -- no query, no fetch, about 2 KB in
+        # a file a reader who opens a season has already got. Absent where
+        # the season has no postseason, which is every season in progress:
+        # see src/nba/series.py.
+        bracket = series.build(games, rows)
+        if bracket:
+            payloads[season]['playoffs'] = bracket
+        rounds = series.playin(games)
+        if rounds:
+            payloads[season]['playin'] = rounds
         coverage.append(coverage_row(connection, season, games, rows,
                                      complete=season < in_progress))
     history = dict(conferences=conference_history(connection,
