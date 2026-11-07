@@ -319,6 +319,34 @@
   /* Scoped the same way, and for the same reason the game panel's is: an
      unscoped `#player-body h3` would turn a player's own name into a dim
      uppercase label. */
+  /* A series as two lines rather than a row of a wide table: a bracket read
+     on a phone is eight of these, and a table of seven columns would scroll
+     sideways for every one of them.
+
+     EVERY CLASS HERE CARRIES A `bk` PREFIX because the obvious names are
+     taken. `.club` is the club directory's tile — a bordered, padded,
+     filled box — and an unprefixed `.club` inside a series drew every
+     club name in a tile inside the series box. Scoping the rule to
+     `#bracket-body` does not help: the OTHER rule is unscoped, so it
+     applies here too. Grep before naming a class, the way
+     tests/no_shadowed_helpers.test.cjs makes us grep before naming a
+     function. */
+  #bracket-body h3.section { margin: 18px 0 8px;
+                             font-size: 12px; letter-spacing: 0.08em;
+                             text-transform: uppercase;
+                             color: var(--ink-dim); font-weight: 600; }
+  .bkseries { border: 1px solid var(--line); border-radius: 8px;
+              padding: 8px 10px; margin: 0 0 8px; }
+  .bkside { display: flex; align-items: baseline; gap: 8px;
+            font-size: 14px; color: var(--ink-dim); }
+  .bkside + .bkside { margin-top: 3px; }
+  .bkside.won { color: var(--ink); font-weight: 600; }
+  .bkseed { min-width: 2.1em; font-size: 12px; color: var(--ink-dim);
+            font-variant-numeric: tabular-nums; }
+  .bkclub { flex: 1; min-width: 0; }
+  .bkwins { font-variant-numeric: tabular-nums; }
+  .bkwhen { font-size: 12px; color: var(--ink-dim); margin: 5px 0 0; }
+
   #player-body h3.section { margin: 18px 0 6px;
                             font-family: var(--font-display); font-size: 14px;
                             letter-spacing: 0.6px; text-transform: uppercase;
@@ -529,6 +557,10 @@
       divisions down would be inventing a fact it does not carry.</p>
   </section>
 
+  <section class="panel" id="bracket" hidden>
+    <div id="bracket-body"></div>
+  </section>
+
   <section class="panel" id="rankings" hidden>
     <div class="scroll">
       <table>
@@ -588,7 +620,8 @@
    * model's own track record, conference ratings over time, and the
    * champions. */
   var VIEWS = {
-    standings: [['conferences', 'Conferences'], ['elo', 'Elo']]
+    standings: [['conferences', 'Conferences'], ['elo', 'Elo'],
+                ['bracket', 'Playoffs']]
   };
 
   /* Whether this export carries players at all. Asked of the manifest and
@@ -604,7 +637,12 @@
     if (tab === 'teams') return 'teams';
     if (tab === 'people') return hasPeople() ? 'people' : null;
     if (tab === 'standings') {
-      return view === 'elo' ? 'rankings' : 'standings';
+      if (view === 'elo') return 'rankings';
+      // Playoffs is a view of the standings rather than a tab of its own:
+      // the bracket is what the standings turned into, and a tab that
+      // repeated the season picker would be navigation twice over.
+      if (view === 'bracket') return 'bracket';
+      return 'standings';
     }
     return null;
   }
@@ -1001,7 +1039,7 @@
   }
 
   function showPanel(name) {
-    ['scoreboard', 'game', 'standings', 'rankings', 'teams',
+    ['scoreboard', 'game', 'standings', 'rankings', 'bracket', 'teams',
       'history', 'people', 'player'].forEach(
       function (id) {
         el(id).hidden = id !== name;
@@ -2229,6 +2267,123 @@
     }
   }
 
+  // ---------------------------------------------------------------- bracket
+
+  /* The playoff bracket, drawn from the season payload the page already
+   * has. Nothing is fetched for it: see src/nba/series.py, which derives it
+   * from the same games the scoreboard draws.
+   */
+  function seriesBlock(entry, payload) {
+    var box = node('div', 'bkseries');
+    var seeds = entry.seeds || [null, null];
+    entry.teams.forEach(function (team, index) {
+      var side = node('div', 'bkside'
+        + (entry.won && entry.won === team ? ' won' : ''));
+      // The seed is blank rather than zero where the archive has none: a
+      // club with no conference in a season is unseeded, not seeded 0.
+      side.appendChild(node('span', 'bkseed',
+        seeds[index] ? '(' + seeds[index] + ')' : ''));
+      var club = node('span', 'bkclub');
+      club.appendChild(linkTo(nameFor(team, payload), function () {
+        openTeam(team);
+      }));
+      side.appendChild(club);
+      side.appendChild(node('span', 'bkwins', entry.wins[index]));
+      box.appendChild(side);
+    });
+    var dates = entry.dates || [];
+    if (dates[0]) {
+      box.appendChild(node('p', 'bkwhen', dates[0] === dates[1]
+        ? dayLabel(dates[0])
+        : dayLabel(dates[0]) + ' to ' + dayLabel(dates[1])));
+    }
+    return box;
+  }
+
+  function bracketPanel(payload) {
+    var host = el('bracket-body');
+    host.innerHTML = '';
+    var bracket = payload && payload.playoffs;
+    if (!bracket) {
+      host.appendChild(node('p', 'empty', 'No playoff game has been played '
+        + 'in ' + loader.seasonLabel(state.season) + ' yet. The bracket is '
+        + 'drawn from games, so it appears as they are played.'));
+      playinBlock(host, payload);
+      return;
+    }
+    if (!bracket.ok) {
+      // THE SHAPE IS CHECKED, NOT ASSUMED. A season that is not eight, four,
+      // two and one series is said to be unreadable rather than drawn with
+      // a series quietly missing.
+      host.appendChild(node('p', 'empty', 'This archive cannot draw '
+        + loader.seasonLabel(state.season) + '’s bracket: '
+        + (bracket.why || []).join('; ') + '.'));
+      playinBlock(host, payload);
+      return;
+    }
+    (bracket.rounds || []).forEach(function (rows, index) {
+      var name = (bracket.names || [])[index] || ('round ' + (index + 1));
+      host.appendChild(node('h3', 'section', name));
+      rows.forEach(function (entry) {
+        host.appendChild(seriesBlock(entry, payload));
+      });
+    });
+    host.appendChild(node('p', 'note', 'Each series is the games the '
+      + 'archive carries for it, and the winner is the club that won more '
+      + 'of them rather than the first to four: the 2002 first round was '
+      + 'best-of-five. The round a series belongs to is worked out from the '
+      + 'bracket itself, because this source’s own round labels are missing '
+      + 'for two seasons and say only “Playoffs” for 316 games. The seed in '
+      + 'brackets is the club’s rank by record inside its conference, and '
+      + 'clubs level on record share one: the league’s tiebreakers are a '
+      + 'cascade this archive cannot reproduce, so a shared seed is said '
+      + 'rather than broken.'));
+    playinBlock(host, payload);
+  }
+
+  function playinBlock(host, payload) {
+    var rounds = payload && payload.playin;
+    if (!rounds || !rounds.length) return;
+    host.appendChild(node('h3', 'section', 'Play-in'));
+    var wrap = node('div', 'scroll');
+    var table = document.createElement('table');
+    var head = document.createElement('thead');
+    var headRow = document.createElement('tr');
+    [['Date', ''], ['Club', ''], ['', 'num'], ['Club', ''], ['', 'num']]
+      .forEach(function (pair) {
+        headRow.appendChild(node('th', pair[1], pair[0]));
+      });
+    head.appendChild(headRow);
+    table.appendChild(head);
+    var body = document.createElement('tbody');
+    rounds.forEach(function (entry) {
+      var row = document.createElement('tr');
+      var when = node('td', '');
+      when.appendChild(linkTo(dayLabel(entry.date), function () {
+        openGameById(entry.id, state.season);
+      }));
+      row.appendChild(when);
+      entry.teams.forEach(function (team, index) {
+        var cell = node('td', '');
+        cell.appendChild(linkTo(abbrFor(team, payload)
+          || nameFor(team, payload), function () { openTeam(team); }));
+        row.appendChild(cell);
+        row.appendChild(node('td', 'num',
+          (entry.points || [])[index] === null
+            || (entry.points || [])[index] === undefined
+            ? '—' : entry.points[index]));
+      });
+      body.appendChild(row);
+    });
+    table.appendChild(body);
+    wrap.appendChild(table);
+    host.appendChild(wrap);
+    host.appendChild(node('p', 'note', 'The play-in is listed as games and '
+      + 'not drawn as a bracket, because it has had two formats: a single '
+      + 'game in the ' + loader.seasonLabel(2020) + ' bubble, and six a '
+      + 'season since ' + loader.seasonLabel(2021) + '.'));
+  }
+
   // ----------------------------------------------------------------- driver
 
   function render() {
@@ -2266,6 +2421,7 @@
     else if (panel === 'rankings') boardPanel(payload);
     else if (panel === 'teams') teamsPanel(payload);
     else if (panel === 'history') historyPanel();
+    else if (panel === 'bracket') bracketPanel(payload);
     else if (panel === 'people') peoplePanel();
   }
 

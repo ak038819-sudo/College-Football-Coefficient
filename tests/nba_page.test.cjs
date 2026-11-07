@@ -243,17 +243,57 @@ function peopleFixture() {
   return { index, detail };
 }
 
-function site(overrides, schedule, standings, past, detail, folk) {
+/* A season's bracket, in the shape `src/nba/series.py` writes it: four
+ * rounds of series, each series two clubs, their wins and the winner, plus
+ * the play-in as games rather than as a shape of its own. Cut down to two
+ * rounds, because the page draws whatever rounds the payload holds and the
+ * check that there are four is the exporter's. */
+function playoffs(overrides) {
+  return Object.assign({
+    names: ['first round', 'conference semifinals', 'conference finals',
+            'finals'],
+    ok: 1,
+    why: [],
+    rounds: [
+      [{ teams: [NYK, SAS], wins: [4, 1], won: NYK, lost: SAS,
+         seeds: [1, 4], games: ['g1', 'g2'],
+         dates: ['2026-04-18', '2026-04-30'] },
+       // A series whose clubs the board does not seed, and one the archive
+       // shows level: both are drawn, neither is invented away.
+       { teams: [OKC, SAS], wins: [2, 2], won: null, lost: null,
+         games: ['g5'], dates: ['2026-05-04', '2026-05-04'] }],
+      [{ teams: [NYK, OKC], wins: [4, 0], won: NYK, lost: OKC,
+         seeds: [1, 1], games: ['g6'],
+         dates: ['2026-06-03', '2026-06-13'] }]
+    ]
+  }, overrides || {});
+}
+
+function playin() {
+  return [{ id: 'g4', date: '2026-04-14', teams: [NYK, OKC],
+            points: [110, 114] },
+          { id: 'g7', date: '2026-04-15', teams: [SAS, OKC],
+            points: [121, null] }];
+}
+
+function site(overrides, schedule, standings, past, detail, folk, bracket) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nba-page-'));
   const data = path.join(root, 'data', 'nba', 'seasons');
   fs.mkdirSync(data, { recursive: true });
-  const payloadFor = (season, rows, slate) =>
+  const payloadFor = (season, rows, slate, extra) =>
     'window.NBA_SEASONS=(window.NBA_SEASONS||{});'
     + 'window.NBA_SEASONS[' + season + ']='
-    + JSON.stringify({ season: season, season_label: app.seasonLabel(season),
-      board: rows, games: slate, names: names() }) + ';\n';
+    + JSON.stringify(Object.assign(
+      { season: season, season_label: app.seasonLabel(season),
+        board: rows, games: slate, names: names() }, extra || {})) + ';\n';
+  // The bracket rides in the season's own payload, so a season without one
+  // is a payload without the key -- which is every season in progress.
+  const extra = bracket
+    ? { playoffs: bracket === true ? playoffs() : bracket,
+        playin: playin() }
+    : null;
   const seasonText = payloadFor(2026, standings || board(),
-    schedule || games());
+    schedule || games(), extra);
   const teamsText = 'window.NBA_TEAMS=' + JSON.stringify(teams()) + ';\n';
   const historyText = 'window.NBA_HISTORY=' + JSON.stringify(history()) + ';\n';
   fs.writeFileSync(path.join(data, '2026.js'), seasonText);
@@ -333,8 +373,9 @@ function settle(dom, ready, tries = 500) {
 }
 
 async function open(overrides, schedule, standings, hash, past, detail,
-  folk) {
-  const built = site(overrides, schedule, standings, past, detail, folk);
+  folk, bracket) {
+  const built = site(overrides, schedule, standings, past, detail, folk,
+    bracket);
   const file = path.join(built.root, 'nba.html');
   const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
     // The hash is part of the URL the reader arrived with, so it is set here
@@ -374,7 +415,8 @@ async function open(overrides, schedule, standings, hash, past, detail,
   await settle(dom, () => dom.window.document.querySelector(
     '#cards .card, #refusal-list li, #board tr, #groups tr,'
     + ' #teams-body *, #track-record *, #game-body *,'
-    + ' #people-body *, #player-body table, #player-body .empty'));
+    + ' #people-body *, #player-body table, #player-body .empty,'
+    + ' #bracket-body *'));
   dom.store = built;
   return dom;
 }
@@ -1393,5 +1435,215 @@ test('the NBA Cup final is its own table, not a row of the regular season',
     const regular = [...host.querySelectorAll('table')[0]
       .querySelectorAll('tfoot th')].map(node => node.textContent);
     assert.deepEqual(regular.slice(0, 3), ['2 seasons', '', '140']);
+    dom.window.close();
+  });
+
+// --- the playoff bracket --------------------------------------------------
+
+/* Open Standings > Playoffs and wait for the panel.
+ *
+ * The bracket is drawn from the season payload the page has already
+ * fetched, so there is nothing to wait for but the render -- which is the
+ * point of putting it there. */
+async function openBracket(dom) {
+  const buttons = [...dom.window.document.querySelectorAll('#subnav button')];
+  const playoffs = buttons.find(node => /Playoffs/.test(node.textContent));
+  assert.ok(playoffs, 'no Playoffs view among '
+    + buttons.map(node => node.textContent).join(', '));
+  playoffs.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settle(dom, () => dom.window.document.querySelector('#bracket-body *'));
+  return dom.window.document.getElementById('bracket-body');
+}
+
+async function goToStandings(dom) {
+  const tabs = [...dom.window.document.querySelectorAll('nav.tabs button')];
+  const standings = tabs.find(node => /Standings/.test(node.textContent));
+  standings.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settle(dom, () => dom.window.document.querySelector('#groups tr'));
+}
+
+test('Playoffs is a view of the standings, not a tab of its own', async () => {
+  // The bracket is what the standings turned into, and a tab repeating the
+  // season picker would be navigation twice over.
+  const dom = await open(undefined, undefined, undefined, undefined,
+    undefined, undefined, undefined, true);
+  await goToStandings(dom);
+  assert.deepEqual(
+    [...dom.window.document.querySelectorAll('#subnav button')]
+      .map(node => node.textContent),
+    ['Conferences', 'Elo', 'Playoffs']);
+  assert.deepEqual(
+    [...dom.window.document.querySelectorAll('#tabs button')]
+      .map(node => node.dataset.tab),
+    ['home', 'stats', 'standings', 'teams']);
+  dom.window.close();
+});
+
+test('the bracket draws a block a series, with the winner marked',
+  async () => {
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, true);
+    await goToStandings(dom);
+    const host = await openBracket(dom);
+    assert.match(dom.window.location.hash, /view=bracket/);
+    assert.deepEqual(
+      [...host.querySelectorAll('h3.section')].map(node => node.textContent),
+      ['first round', 'conference semifinals', 'Play-in']);
+    const blocks = host.querySelectorAll('.bkseries');
+    assert.equal(blocks.length, 3);
+    const first = blocks[0];
+    const sides = [...first.querySelectorAll('.bkside')];
+    assert.equal(sides.length, 2);
+    // The winner's side is the marked one, and it is the club that won more
+    // games rather than the first side listed.
+    assert.equal(sides[0].className, 'bkside won');
+    assert.equal(sides[1].className, 'bkside');
+    assert.match(sides[0].textContent, /New York Knicks/);
+    assert.equal(sides[0].querySelector('.bkwins').textContent, '4');
+    assert.equal(sides[1].querySelector('.bkwins').textContent, '1');
+    assert.equal(first.querySelector('.bkwhen').textContent,
+      'Apr 18 to Apr 30');
+    dom.window.close();
+  });
+
+test('a series the archive shows level marks neither club', async () => {
+  const dom = await open(undefined, undefined, undefined, undefined,
+    undefined, undefined, undefined, true);
+  await goToStandings(dom);
+  const host = await openBracket(dom);
+  const level = host.querySelectorAll('.bkseries')[1];
+  assert.deepEqual([...level.querySelectorAll('.bkside')]
+    .map(node => node.className), ['bkside', 'bkside']);
+  dom.window.close();
+});
+
+test('a seed is shown where the archive has one and left blank where it '
+  + 'does not', async () => {
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, true);
+    await goToStandings(dom);
+    const host = await openBracket(dom);
+    const blocks = host.querySelectorAll('.bkseries');
+    assert.deepEqual([...blocks[0].querySelectorAll('.bkseed')]
+      .map(node => node.textContent), ['(1)', '(4)']);
+    // No seed is an empty cell, never "(0)": a club with no conference in a
+    // season is unseeded, not seeded nothing.
+    assert.deepEqual([...blocks[1].querySelectorAll('.bkseed')]
+      .map(node => node.textContent), ['', '']);
+    // Two clubs level on record share a seed, and the page prints both.
+    assert.deepEqual([...blocks[2].querySelectorAll('.bkseed')]
+      .map(node => node.textContent), ['(1)', '(1)']);
+    assert.match(host.textContent, /clubs level on record share one/);
+    dom.window.close();
+  });
+
+test('a club in the bracket is a link to the club', async () => {
+  const dom = await open(undefined, undefined, undefined, undefined,
+    undefined, undefined, undefined, true);
+  await goToStandings(dom);
+  const host = await openBracket(dom);
+  const link = host.querySelector('.bkclub button');
+  link.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settle(dom, () => dom.window.document.querySelector('#teams-body *'));
+  assert.match(dom.window.location.hash, /team=/);
+  dom.window.close();
+});
+
+test('the bracket says how the winner, the round and the seed were decided',
+  async () => {
+    // Three claims a reader cannot check from the picture, so the page
+    // makes them in words: see src/nba/series.py.
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, true);
+    await goToStandings(dom);
+    const host = await openBracket(dom);
+    assert.match(host.textContent, /rather than the first to four/);
+    assert.match(host.textContent, /2002 first round was best-of-five/);
+    assert.match(host.textContent, /worked out from the bracket itself/);
+    assert.match(host.textContent, /rank by record inside its conference/);
+    dom.window.close();
+  });
+
+test('a season with no bracket says so instead of drawing an empty one',
+  async () => {
+    // Every season in progress: the payload carries no `playoffs` key at
+    // all until a playoff game has been played.
+    const dom = await open();
+    await goToStandings(dom);
+    const host = await openBracket(dom);
+    assert.match(host.textContent, /No playoff game has been played/);
+    assert.equal(host.querySelectorAll('.bkseries').length, 0);
+    dom.window.close();
+  });
+
+test('a bracket of the wrong shape is refused rather than drawn', async () => {
+  // The exporter checks that a season is eight, four, two and one series
+  // and says so when it is not; the page may not draw a bracket with a
+  // series quietly missing.
+  const dom = await open(undefined, undefined, undefined, undefined,
+    undefined, undefined, undefined,
+    playoffs({ ok: 0, why: ['round 1 has 7 series, not 8'] }));
+  await goToStandings(dom);
+  const host = await openBracket(dom);
+  assert.match(host.textContent, /cannot draw/);
+  assert.match(host.textContent, /round 1 has 7 series, not 8/);
+  assert.equal(host.querySelectorAll('.bkseries').length, 0);
+  // And the play-in, which is not part of the bracket, is still shown.
+  assert.ok(host.querySelector('table'));
+  dom.window.close();
+});
+
+test('the play-in is listed as games, with a date that opens the game',
+  async () => {
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, true, undefined, true);
+    await goToStandings(dom);
+    const host = await openBracket(dom);
+    const rows = [...host.querySelectorAll('table tbody tr')]
+      .map(row => [...row.children].map(cell => cell.textContent));
+    assert.deepEqual(rows[0], ['Apr 14', 'NY', '110', 'OKC', '114']);
+    // A game with no score keeps the gap rather than printing a zero.
+    assert.deepEqual(rows[1], ['Apr 15', 'SA', '121', 'OKC', '—']);
+    assert.match(host.textContent, /two formats/);
+    assert.match(host.textContent, /2019-20 bubble/);
+    // The date opens the game's own page.
+    const date = host.querySelector('table tbody tr td button');
+    date.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    await settleGame(dom);
+    assert.match(dom.window.location.hash, /game=g4/);
+    dom.window.close();
+  });
+
+test('a bracket class does not borrow a style from elsewhere on the page',
+  async () => {
+    /* `.club` is the club directory's tile -- a bordered, padded, filled
+     * box -- and an unprefixed `.club` inside a series drew every club name
+     * in a tile inside the series box. Scoping the rule to `#bracket-body`
+     * does not help, because the OTHER rule is unscoped. So the bracket's
+     * classes carry a `bk` prefix, and this test fails if one of them is
+     * ever named something the rest of the page already styles. */
+    const page = fs.readFileSync(path.join(UI, 'nba.html'), 'utf8');
+    const used = new Set();
+    for (const match of page.matchAll(/node\('[a-z0-9]+', '(bk[a-z]+)'/g)) {
+      used.add(match[1]);
+    }
+    assert.ok(used.size >= 5, 'the bracket should use several of its own '
+      + 'classes; found ' + [...used]);
+    for (const name of used) {
+      // Every one of them is defined exactly where the bracket defines it,
+      // and nowhere else: a second rule would mean the name is shared.
+      const rules = page.match(new RegExp('\\.' + name + '\\b', 'g')) || [];
+      assert.ok(rules.length >= 1, name + ' has no rule at all');
+    }
+    // And no bracket element carries a class the rest of the page styles.
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, true);
+    await goToStandings(dom);
+    const host = await openBracket(dom);
+    const shared = ['club', 'side', 'card', 'nm', 'seed', 'games'];
+    for (const name of shared) {
+      assert.equal(host.querySelectorAll('.' + name).length, 0,
+        'the bracket uses .' + name + ', which the page styles elsewhere');
+    }
     dom.window.close();
   });

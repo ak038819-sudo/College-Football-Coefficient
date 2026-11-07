@@ -95,6 +95,7 @@ jobs:
             tests/test_nba_export.py tests/test_nba_plays.py \
             tests/test_nba_game_export.py \
             tests/test_nba_people.py \
+            tests/test_nba_series.py \
             tests/test_nba_win_probability.py -q
 
       - name: Ingest the archive
