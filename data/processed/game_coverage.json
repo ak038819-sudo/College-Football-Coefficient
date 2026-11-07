@@ -323,10 +323,10 @@
       "player_source_supported": true
     },
     "2026": {
-      "completed_fbs_games": 512,
-      "both_team_success_rates": 512,
-      "verified_venue_id": 512,
-      "player_boxscores": 512,
+      "completed_fbs_games": 526,
+      "both_team_success_rates": 526,
+      "verified_venue_id": 526,
+      "player_boxscores": 526,
       "player_source_supported": true
     }
   },
