@@ -923,8 +923,11 @@
         entry.slug === leagues.NFL ? 'true' : 'false');
       button.addEventListener('click', function () {
         if (entry.slug === leagues.NFL) return;
-        window.location.href = entry.slug === leagues.BASKETBALL
-          ? 'basketball.html' : 'dashboard.html';
+        // The registry says where a league lives. This page used to carry
+        // its own two-way map, which could only ever name the leagues that
+        // existed when it was written -- the NBA tab it cannot name opened
+        // college football instead.
+        window.location.href = leagues.pageFor(entry.slug);
       });
       host.appendChild(button);
     });
