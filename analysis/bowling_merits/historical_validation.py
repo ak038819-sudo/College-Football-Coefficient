@@ -60,6 +60,28 @@ def run(root=ROOT,output_dir=None):
         with (output_dir/"bowling_merits_rank_movers.csv").open("w",newline="",encoding="utf-8") as f:
             writer=csv.DictWriter(f,fieldnames=["season","comparison","team","old_rank","new_rank","delta"])
             writer.writeheader();writer.writerows(summary)
+
+        diagnostic=[]
+        for year in YEARS:
+            season=[r for r in rows if r["season"]==year]
+            for challenger,baseline in (("challenger_k3","control_k3"),("challenger_k4","challenger_k3")):
+                shifts=[abs(r[challenger+"_rank"]-r[baseline+"_rank"]) for r in season]
+                diagnostic.append({"season":year,"comparison":baseline+" vs "+challenger,
+                    "teams":len(season),"mean_abs_rank_change":round(sum(shifts)/len(shifts),4),
+                    "max_abs_rank_change":max(shifts),
+                    "top10_overlap":len({r["team"] for r in season if r[baseline+"_rank"]<=10}&
+                                         {r["team"] for r in season if r[challenger+"_rank"]<=10}),
+                    "top25_overlap":len({r["team"] for r in season if r[baseline+"_rank"]<=25}&
+                                         {r["team"] for r in season if r[challenger+"_rank"]<=25})})
+        with (output_dir/"bowling_merits_model_diagnostics.csv").open("w",newline="",encoding="utf-8") as f:
+            writer=csv.DictWriter(f,fieldnames=list(diagnostic[0]))
+            writer.writeheader();writer.writerows(diagnostic)
+        for comparison in sorted({r["comparison"] for r in diagnostic}):
+            subset=[r for r in diagnostic if r["comparison"]==comparison]
+            print(json.dumps({"comparison":comparison,"seasons":len(subset),
+                "mean_abs_rank_change":round(sum(r["mean_abs_rank_change"] for r in subset)/len(subset),4),
+                "mean_top10_overlap":round(sum(r["top10_overlap"] for r in subset)/len(subset),3),
+                "mean_top25_overlap":round(sum(r["top25_overlap"] for r in subset)/len(subset),3)}))
     return rows
 
 if __name__=="__main__":
