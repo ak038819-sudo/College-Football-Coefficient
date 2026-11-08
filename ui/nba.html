@@ -302,6 +302,11 @@
                                font-family: var(--font-mono); }
   .clubhead { display: flex; align-items: center; gap: 12px;
               margin: 14px 0 4px; }
+  .clubhead h2 { margin: 0; }
+  /* A tile in the club directory: the mark, then the name over the
+     conference, which is the shape a card on the scoreboard already has. */
+  .card.clubcard { display: flex; align-items: center; gap: 10px; }
+  .card.clubcard .nm { display: flex; flex-direction: column; min-width: 0; }
   .clubhead .nm { min-width: 0; }
   .clubhead h3 { margin: 0; }
   /* The home-or-away marker before an opponent's name, in the same quiet
@@ -337,7 +342,7 @@
                              color: var(--ink-dim); font-weight: 600; }
   .bkseries { border: 1px solid var(--line); border-radius: 8px;
               padding: 8px 10px; margin: 0 0 8px; }
-  .bkside { display: flex; align-items: baseline; gap: 8px;
+  .bkside { display: flex; align-items: center; gap: 8px;
             font-size: 14px; color: var(--ink-dim); }
   .bkside + .bkside { margin-top: 3px; }
   .bkside.won { color: var(--ink); font-weight: 600; }
@@ -485,6 +490,11 @@
      table on the college side. */
   td.teamcell > span.with-mark { display: flex; align-items: center;
                                  gap: 8px; }
+  /* The two clubs of a game, each behind its mark, in the game page's own
+     heading. Wrapping, because two full club names and two marks do not fit
+     a phone on one line. */
+  h3.with-mark { display: flex; align-items: center; gap: 8px;
+                 flex-wrap: wrap; }
   .legend { font-size: 11px; color: var(--ink-dim); margin: 0 0 6px; }
   /* The NBA's own: the badge on a game the league does not count in the
      standings. Quiet, because it is on one row of 1,320. */
@@ -1088,6 +1098,98 @@
     host.appendChild(mine);
   }
 
+  /* ------------------------------------------------------------------
+   * The club marks.
+   *
+   * `ui/nba_logo_assets.json` lives OUTSIDE `ui/data/nba/`, because the
+   * refresh replaces that directory wholesale and would delete it. It is
+   * fetched lazily and the page re-renders when it lands: two megabytes of
+   * inlined PNG has no business on the path to the first score.
+   *
+   * It carries no `?v=` stamp and does not need one. A stale JSON of logos
+   * draws last month's mark; a stale JS MODULE is missing a function the
+   * fresh HTML calls, which is why the scripts are stamped and this is not.
+   * ---------------------------------------------------------------- */
+
+  var logoState = { marks: null, loading: false, failed: false };
+
+  function ensureLogos() {
+    if (logoState.marks || logoState.loading || logoState.failed) return;
+    logoState.loading = true;
+    fetch('nba_logo_assets.json').then(function (response) {
+      if (!response.ok) throw new Error(String(response.status));
+      return response.json();
+    }).then(function (marks) {
+      logoState.loading = false;
+      logoState.marks = marks;
+      render();
+    }).catch(function () {
+      // A page without marks is the page as it was before them. Nothing
+      // says so, because nothing is missing that the reader asked for --
+      // and until the fetch job has run once, that file is not there.
+      logoState.loading = false;
+      logoState.failed = true;
+    });
+  }
+
+  /* Which cut to draw. The CSS picks its palette the same way: dark unless
+   * the OS asks for light, and an explicit data-theme beats both. */
+  function themeNow() {
+    var set = document.documentElement.getAttribute('data-theme');
+    if (set === 'light' || set === 'dark') return set;
+    return window.matchMedia
+      && window.matchMedia('(prefers-color-scheme: light)').matches
+      ? 'light' : 'dark';
+  }
+
+  /* The CSS repaints itself when the OS theme flips; the marks do not,
+   * because their src was chosen at render time. A reader who switches to
+   * light mode with the page open would be left with the light-ink cut on a
+   * light background, which is an invisible logo rather than a dim one. */
+  function watchTheme() {
+    if (!window.matchMedia) return;
+    var query = window.matchMedia('(prefers-color-scheme: light)');
+    var onChange = function () { if (logoState.marks) render(); };
+    if (query.addEventListener) query.addEventListener('change', onChange);
+    else if (query.addListener) query.addListener(onChange);  // Safari < 14
+  }
+
+  /* An <img> for a club, or null where there is no mark for it.
+   * Null rather than a placeholder: a blank square in a row of logos reads
+   * as a broken image, and an absent one reads as nothing at all. */
+  function teamMark(key, size) {
+    var marks = logoState.marks && logoState.marks[key];
+    if (!marks) return null;
+    var src = marks[themeNow()] || marks.light || marks.dark;
+    if (!src) return null;
+    var img = document.createElement('img');
+    // A club measured dim on a theme takes a plate there. The flags come
+    // from the assets file, so a file fetched before they existed simply
+    // has none and every mark draws bare, as it did before.
+    var dim = marks.dim || [];
+    img.className = 'mark'
+      + (dim.indexOf('dark') >= 0 ? ' dim-dark' : '')
+      + (dim.indexOf('light') >= 0 ? ' dim-light' : '');
+    img.src = src;
+    img.alt = '';
+    img.width = img.height = size || 22;
+    img.loading = 'lazy';
+    return img;
+  }
+
+  /* A club's name with its mark in front, for a table cell. The flex box is
+   * the WRAPPER and never the <td>: `display: flex` on a table cell takes
+   * it out of the table layout. */
+  function markedName(key, payload, size) {
+    var wrap = node('span', 'with-mark');
+    var mark = teamMark(key, size || 20);
+    if (mark) wrap.appendChild(mark);
+    wrap.appendChild(linkTo(nameFor(key, payload), function () {
+      openTeam(key);
+    }));
+    return wrap;
+  }
+
   function gameCard(game, payload) {
     var card = node('div', 'card');
     // A card opens a game page where there is one to open. The keydown is
@@ -1123,11 +1225,15 @@
     // Away over home, the way a scoreboard is read.
     [['away', game.away], ['home', game.home]].forEach(function (pair) {
       var key = pair[1];
-      // `nomark` keeps the logo column empty but present, so the names in a
-      // slate stay on one line. The NBA export carries a logo per franchise;
-      // drawing it is a later change, and the column is already here.
-      var row = node('div', 'side nomark');
-      if (winner && winner !== key) row.className = 'side nomark lost';
+      // `nomark` keeps the logo column empty but present, so the names in
+      // a slate stay on one line whether or not the marks have landed --
+      // which they have not on the first render, and never will where the
+      // fetch job has not run.
+      var row = node('div', 'side');
+      if (winner && winner !== key) row.className = 'side lost';
+      var mark = teamMark(key);
+      if (mark) row.appendChild(mark);
+      else row.classList.add('nomark');
       var name = node('div', 'nm');
       var line = node('div', 'nm-line');
       var bold = document.createElement('b');
@@ -1202,9 +1308,10 @@
     (payload.board || []).slice(0, 10).forEach(function (row) {
       var item = document.createElement('li');
       item.appendChild(node('span', 'rk', String(row.rank)));
-      // The empty cell is the logo column the CSS declares. Keeping it means
-      // the names line up here as they do on a card.
-      item.appendChild(node('span', '', ''));
+      // The logo column the CSS declares. An empty span where there is no
+      // mark, so the names line up here as they do on a card.
+      var railMark = teamMark(row.team, 20);
+      item.appendChild(railMark || node('span', '', ''));
       var name = node('span', 'nm');
       name.appendChild(linkTo(nameFor(row.team, payload), function () {
         openTeam(row.team);
@@ -1398,9 +1505,13 @@
     [['away', game.away], ['home', game.home]].forEach(function (pair) {
       var tr = document.createElement('tr');
       var cell = node('td', 'teamcell');
-      cell.appendChild(linkTo(seasonName(pair[1]), function () {
+      var lineWrap = node('span', 'with-mark');
+      var lineMark = teamMark(pair[1], 20);
+      if (lineMark) lineWrap.appendChild(lineMark);
+      lineWrap.appendChild(linkTo(seasonName(pair[1]), function () {
         openTeam(pair[1]);
       }));
+      cell.appendChild(lineWrap);
       tr.appendChild(cell);
       rows.forEach(function (row) {
         tr.appendChild(node('td', 'num', String(row[pair[0]])));
@@ -1499,8 +1610,14 @@
 
     var head = node('div', 'gamehead');
     var title = node('div', '');
-    title.appendChild(node('h3', '',
-      seasonName(game.away) + ' at ' + seasonName(game.home)));
+    var heading = node('h3', 'with-mark');
+    var awayMark = teamMark(game.away, 22);
+    if (awayMark) heading.appendChild(awayMark);
+    heading.appendChild(node('span', '', seasonName(game.away) + ' at '));
+    var homeMark = teamMark(game.home, 22);
+    if (homeMark) heading.appendChild(homeMark);
+    heading.appendChild(node('span', '', seasonName(game.home)));
+    title.appendChild(heading);
     var when = [dayLabel(app.dayOf(game)), app.typeLabel(game), game.venue,
       game.city].filter(Boolean).join(' · ');
     title.appendChild(node('div', 'sub', when));
@@ -1570,9 +1687,7 @@
         var tr = document.createElement('tr');
         tr.appendChild(node('td', 'rk', String(index + 1)));
         var cell = node('td', 'teamcell');
-        cell.appendChild(linkTo(nameFor(row.team, payload), function () {
-          openTeam(row.team);
-        }));
+        cell.appendChild(markedName(row.team, payload));
         tr.appendChild(cell);
         tr.appendChild(node('td', 'num', String(row.wins)));
         tr.appendChild(node('td', 'num', String(row.losses)));
@@ -1599,9 +1714,7 @@
       var tr = document.createElement('tr');
       tr.appendChild(node('td', 'rk', String(row.rank)));
       var cell = node('td', 'teamcell');
-      cell.appendChild(linkTo(nameFor(row.team, payload), function () {
-        openTeam(row.team);
-      }));
+      cell.appendChild(markedName(row.team, payload));
       tr.appendChild(cell);
       tr.appendChild(node('td', '', row.conference || ''));
       tr.appendChild(node('td', 'num', app.ratingText(row.rating)));
@@ -1642,16 +1755,20 @@
     }
     var list = node('div', 'cards');
     results.forEach(function (found) {
-      var card = node('div', 'card');
+      var card = node('div', 'card clubcard');
+      var tileMark = teamMark(found.key, 26);
+      if (tileMark) card.appendChild(tileMark);
+      var block = node('div', 'nm');
       var line = node('div', 'nm-line');
       var bold = document.createElement('b');
       bold.appendChild(linkTo(found.entry.name, function () {
         openTeam(found.key);
       }));
       line.appendChild(bold);
-      card.appendChild(line);
+      block.appendChild(line);
+      card.appendChild(block);
       if (found.entry.conference) {
-        card.appendChild(node('div', 'sub', found.entry.conference));
+        block.appendChild(node('div', 'sub', found.entry.conference));
       }
       list.appendChild(card);
     });
@@ -1668,7 +1785,11 @@
       render();
     }));
     host.appendChild(back);
-    host.appendChild(node('h2', '', nameFor(key, payload)));
+    var clubhead = node('div', 'clubhead');
+    var headMark = teamMark(key, 44);
+    if (headMark) clubhead.appendChild(headMark);
+    clubhead.appendChild(node('h2', '', nameFor(key, payload)));
+    host.appendChild(clubhead);
     var row = (payload.board || []).filter(function (entry) {
       return entry.team === key;
     })[0];
@@ -1710,8 +1831,12 @@
       if (!entry.counts) tr.className = 'uncounted';
       tr.appendChild(node('td', 'nowrap', dayLabel(entry.day)));
       var cell = node('td', 'teamcell');
-      cell.appendChild(node('span', '',
-        (entry.home ? 'vs ' : 'at ') + nameFor(entry.opponent, payload)));
+      var against = node('span', 'with-mark');
+      against.appendChild(node('span', 'sub', entry.home ? 'vs' : 'at'));
+      var opponentMark = teamMark(entry.opponent, 20);
+      if (opponentMark) against.appendChild(opponentMark);
+      against.appendChild(node('span', '', nameFor(entry.opponent, payload)));
+      cell.appendChild(against);
       var label = app.typeLabel(entry.game);
       if (label) {
         var tag = node('span',
@@ -2283,6 +2408,8 @@
       // club with no conference in a season is unseeded, not seeded 0.
       side.appendChild(node('span', 'bkseed',
         seeds[index] ? '(' + seeds[index] + ')' : ''));
+      var seriesMark = teamMark(team, 18);
+      if (seriesMark) side.appendChild(seriesMark);
       var club = node('span', 'bkclub');
       club.appendChild(linkTo(nameFor(team, payload), function () {
         openTeam(team);
@@ -2387,6 +2514,9 @@
   // ----------------------------------------------------------------- driver
 
   function render() {
+    // Asked for on the first render and never again: ensureLogos returns at
+    // once once the marks are in hand, loading, or known to be absent.
+    ensureLogos();
     syncSeason();
     meta();
     refusal();
@@ -2492,6 +2622,7 @@
       });
     }).catch(failed);
     window.addEventListener('hashchange', applyHash);
+    watchTheme();
     // Remember the league, so another league's page can open on it. The key
     // is the one ui/ncaambb_app.js reads.
     leagues.rememberLeague(storage(), leagues.NBA);

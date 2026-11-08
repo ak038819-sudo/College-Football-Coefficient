@@ -67,6 +67,20 @@ function games() {
   ];
 }
 
+/* The club marks, as the fetch job writes them: one data URI a theme, and
+ * a `dim` list only where the artwork was measured to disappear. The bytes
+ * are not images here -- nothing decodes them, and a real PNG in a fixture
+ * would say that the page checks something it does not. */
+function logoMarks() {
+  return {
+    [NYK]: { light: 'data:image/png;base64,NYKLIGHT',
+             dark: 'data:image/png;base64,NYKDARK' },
+    [SAS]: { light: 'data:image/png;base64,SASLIGHT',
+             dark: 'data:image/png;base64,SASDARK', dim: ['dark'] }
+    // OKC has none: a club the archive does not carry yet.
+  };
+}
+
 function board() {
   return [
     { team: NYK, abbr: 'NY', name: 'New York Knicks', rank: 1,
@@ -276,7 +290,8 @@ function playin() {
             points: [121, null] }];
 }
 
-function site(overrides, schedule, standings, past, detail, folk, bracket) {
+function site(overrides, schedule, standings, past, detail, folk, bracket,
+  marks) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nba-page-'));
   const data = path.join(root, 'data', 'nba', 'seasons');
   fs.mkdirSync(data, { recursive: true });
@@ -349,6 +364,13 @@ function site(overrides, schedule, standings, past, detail, folk, bracket) {
   }
   fs.writeFileSync(path.join(root, 'data', 'nba', 'manifest.json'),
     JSON.stringify(payload));
+  // The club marks are a file of their own OUTSIDE data/nba, because the
+  // refresh replaces that directory wholesale. A site without one is the
+  // ordinary case until the fetch job has run, and the page must draw.
+  if (marks) {
+    fs.writeFileSync(path.join(root, 'nba_logo_assets.json'),
+      JSON.stringify(marks === true ? logoMarks() : marks));
+  }
   for (const name of ['nba.html', 'nba_loader.js', 'nba_app.js',
     'ncaambb_app.js']) {
     fs.copyFileSync(path.join(UI, name), path.join(root, name));
@@ -373,9 +395,9 @@ function settle(dom, ready, tries = 500) {
 }
 
 async function open(overrides, schedule, standings, hash, past, detail,
-  folk, bracket) {
+  folk, bracket, marks) {
   const built = site(overrides, schedule, standings, past, detail, folk,
-    bracket);
+    bracket, marks);
   const file = path.join(built.root, 'nba.html');
   const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
     // The hash is part of the URL the reader arrived with, so it is set here
@@ -1647,3 +1669,113 @@ test('a bracket class does not borrow a style from elsewhere on the page',
     }
     dom.window.close();
   });
+
+// --- the club marks --------------------------------------------------------
+
+test('a page with no marks file draws exactly the page as it was', async () => {
+  // Until the fetch job has run once there is no such file, and a 404 on it
+  // is not a failure the reader should hear about.
+  const dom = await open();
+  await goToDay(dom, 16);
+  assert.equal(dom.window.document.querySelectorAll('img.mark').length, 0);
+  assert.equal(
+    dom.window.document.querySelectorAll('#cards .card .side.nomark').length,
+    2, 'the logo column is kept so the names stay on one line');
+  assert.match(textOf(dom, '#cards .card'), /New York Knicks/);
+  dom.window.close();
+});
+
+test('a card draws each club behind its mark once the file lands', async () => {
+  const dom = await open(undefined, undefined, undefined, undefined, undefined,
+    undefined, undefined, undefined, true);
+  await goToDay(dom, 16);
+  const sides = [...dom.window.document.querySelectorAll('#cards .card .side')];
+  assert.equal(sides.length, 2);
+  for (const side of sides) {
+    assert.ok(side.querySelector('img.mark'), 'a side with no mark drawn');
+    assert.equal(side.classList.contains('nomark'), false);
+  }
+  dom.window.close();
+});
+
+test('a club the archive has no mark for keeps the empty column', async () => {
+  // OKC is absent from the fixture, which is what a club added to the league
+  // between two runs of the fetch job looks like.
+  const dom = await open(undefined, undefined, undefined, undefined, undefined,
+    undefined, undefined, undefined, true);
+  await goToDay(dom, 18);
+  const sides = [...dom.window.document.querySelectorAll('#cards .card .side')];
+  const bare = sides.filter(side => side.classList.contains('nomark'));
+  assert.equal(bare.length, 1, 'one of the two clubs has no mark');
+  assert.match(bare[0].textContent, /Oklahoma City/);
+  assert.equal(bare[0].querySelector('img.mark'), null);
+  dom.window.close();
+});
+
+test('the dark cut is the one drawn on the dark page', async () => {
+  // jsdom reports no light preference, which is this page's own default.
+  const dom = await open(undefined, undefined, undefined, undefined, undefined,
+    undefined, undefined, undefined, true);
+  await goToDay(dom, 16);
+  const marks = [...dom.window.document.querySelectorAll('#cards img.mark')]
+    .map(node => node.getAttribute('src'));
+  assert.ok(marks.length > 0);
+  for (const src of marks) {
+    assert.match(src, /DARK$/, 'the light cut would be invisible here');
+  }
+  dom.window.close();
+});
+
+test('only a club measured dim on this theme takes a plate', async () => {
+  const dom = await open(undefined, undefined, undefined, undefined, undefined,
+    undefined, undefined, undefined, true);
+  await goToDay(dom, 16);
+  const byClub = {};
+  for (const side of dom.window.document.querySelectorAll('#cards .side')) {
+    const mark = side.querySelector('img.mark');
+    if (mark) byClub[side.textContent.trim().slice(0, 3)] = mark.className;
+  }
+  const classes = Object.values(byClub).join(' | ');
+  assert.match(classes, /dim-dark/, 'the club measured dim takes its plate');
+  assert.equal((classes.match(/dim-dark/g) || []).length, 1,
+    'and the club that reads fine does not: ' + classes);
+  dom.window.close();
+});
+
+test('the marks reach the board, the bracket and a game page too', async () => {
+  const dom = await open(undefined, undefined, undefined, undefined, undefined,
+    true, undefined, undefined, true);
+  await goToDay(dom, 16);
+  // A game page.
+  await openGamePage(dom);
+  assert.ok(dom.window.document.querySelector('#game-body img.mark'),
+    'no mark on the game page');
+  // The Elo board.
+  await goToStandings(dom);
+  const buttons = [...dom.window.document.querySelectorAll('#subnav button')];
+  buttons.find(node => /Elo/.test(node.textContent))
+    .dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  await settle(dom, () => dom.window.document.querySelector('#board tr'));
+  assert.ok(dom.window.document.querySelector('#board td.teamcell img.mark'),
+    'no mark on the Elo board');
+  dom.window.close();
+});
+
+test('the bracket draws its clubs behind their marks', async () => {
+  const dom = await open(undefined, undefined, undefined, undefined, undefined,
+    undefined, undefined, true, true);
+  await goToStandings(dom);
+  const host = await openBracket(dom);
+  assert.ok(host.querySelector('.bkside img.mark'), 'no mark in the bracket');
+  dom.window.close();
+});
+
+test('the marks file is asked for unstamped and outside the data '
+  + 'directory', () => {
+  // `?v=` is for a MODULE, whose staleness breaks the page. A stale JSON of
+  // logos draws last month's mark and nothing else. And data/nba is replaced
+  // wholesale by the refresh, which would delete the marks with it.
+  const page = fs.readFileSync(path.join(UI, 'nba.html'), 'utf8');
+  const asked = page.match(/fetch\('([^']*logo[^']*)'\)/g) || [];
+  assert.deepEqual(asked, ["fetch('nba_logo_assets.json')"]);
+});
