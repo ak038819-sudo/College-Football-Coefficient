@@ -2045,3 +2045,53 @@ test('the meetings panel says it covers this season only', async () => {
   assert.match(panel.textContent, /This season only/);
   dom.window.close();
 });
+
+/* Every status the export can carry is a different claim, and the game page
+   has to make the same one the card the reader came from makes. A page that
+   badges a postponed game "Scheduled" says LESS than the scoreboard did, and
+   one that hides an in-progress game's scores behind the pregame layout
+   throws away numbers it has. src/ncaambb/coverage.py names the five. */
+test('a game page names every status, and only an unplayed game hides its score',
+  async () => {
+    const [final, , third] = ratedGames();
+    const statuses = {
+      final: { status: 'final', home_points: 78, away_points: 61 },
+      in_progress: { status: 'in_progress', home_points: 41, away_points: 38 },
+      postponed: { status: 'postponed', home_points: null, away_points: null },
+      cancelled: { status: 'cancelled', home_points: null, away_points: null },
+      scheduled: { status: 'scheduled', home_points: null, away_points: null }
+    };
+    const want = {
+      final: 'Final', in_progress: 'In progress', postponed: 'Postponed',
+      cancelled: 'Cancelled', scheduled: 'Scheduled'
+    };
+    // Only a game that has not started hides its scores. A cancelled or
+    // postponed game has none to hide, so the layout is right either way;
+    // an in-progress one does, which is what this measures.
+    const shows = { final: true, in_progress: true, postponed: false,
+                    cancelled: false, scheduled: false };
+    for (const [key, fields] of Object.entries(statuses)) {
+      const dom = await openGame(GAME_ROUTE,
+        [Object.assign({}, final, fields), third]);
+      const doc = dom.window.document;
+      const badges = [...doc.querySelectorAll('#game-page .gp-hero .gbadge')]
+        .map(node => node.textContent);
+      assert.ok(badges.includes(want[key]),
+        key + ' is badged ' + JSON.stringify(badges) + ', not "'
+        + want[key] + '"');
+      // The page and the card must not disagree: whatever the scoreboard
+      // says about a game, the page it opens says the same.
+      const line = dom.window.ncaambbApp.statusLine(
+        Object.assign({}, final, fields));
+      if (key !== 'scheduled') {
+        assert.ok(badges.includes(line),
+          key + ': the card says "' + line + '" and the page '
+          + JSON.stringify(badges));
+      }
+      const hero = doc.querySelector('#game-page .gp-hero');
+      assert.equal(hero.classList.contains('gp-pregame-hero'), !shows[key],
+        key + ': the pregame layout is '
+        + (shows[key] ? 'hiding scores it has' : 'not applied'));
+      dom.window.close();
+    }
+  });

@@ -1215,8 +1215,8 @@
     side.appendChild(text);
     var score = document.createElement('span');
     score.className = 'gp-score';
-    // A missing score is an em dash, never a zero. For a game not yet
-    // played the hero hides this cell entirely (gp-pregame-hero), so the
+    // A missing score is an em dash, never a zero. For a game that has not
+    // started the hero hides this cell entirely (gp-pregame-hero), so the
     // win chance below is what the reader sees.
     score.textContent = points === null || points === undefined
       ? '—' : String(points);
@@ -1229,7 +1229,13 @@
   function gameBadges(game) {
     var done = game.status === 'final';
     var list = [];
+    // Every status the export can carry is named. "Scheduled" is the badge
+    // for a game that has not started, NOT a fallback: a postponed game
+    // badged "Scheduled" tells the reader less than the card they came from,
+    // which says so through app.statusLine().
     if (done) list.push({ text: 'Final', kind: 'final' });
+    else if (game.status === 'in_progress') list.push({ text: 'In progress' });
+    else if (game.status === 'postponed') list.push({ text: 'Postponed' });
     else if (game.status === 'cancelled') list.push({ text: 'Cancelled' });
     else list.push({ text: 'Scheduled', kind: 'upcoming' });
     if (game.tournament) list.push({ text: game.tournament, kind: 'post' });
@@ -1273,6 +1279,9 @@
         + ' has that id.');
     }
     var done = row.status === 'final';
+    // A game under way has real scores, so the hero shows them. Only a game
+    // that has not started hides the score cells.
+    var started = done || row.status === 'in_progress';
     var tie = done && row.home_points === row.away_points;
     var homeWon = done && !tie && row.home_points > row.away_points;
     document.title = teamName(row.away) + (row.neutral ? ' vs. ' : ' at ')
@@ -1281,7 +1290,7 @@
 
     /* ---- the hero ---- */
     var hero = document.createElement('div');
-    hero.className = 'panel gp-hero' + (done ? '' : ' gp-pregame-hero');
+    hero.className = 'panel gp-hero' + (started ? '' : ' gp-pregame-hero');
     var top = document.createElement('div');
     top.className = 'gl-top';
     top.innerHTML = gp.badges(gameBadges(row));
