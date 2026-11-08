@@ -731,3 +731,66 @@ box. Scoping the new rule to `#bracket-body` does not help, because the
 *other* rule is unscoped and applies anyway. `tests/nba_page.test.cjs` has a
 test that fails if a bracket element ever carries a class the rest of the
 page styles.
+
+# The club marks (N6)
+
+Every other league on this site draws its clubs behind their logos; the NBA
+tab drew bare names with an empty column beside them, which is what the
+`nomark` class in `ui/nba.html` was holding open.
+
+## The source is not the one the archive names
+
+Every `team` row already carries ESPN's own logo URL, fetched with the club
+— and `a.espncdn.com` is refused by the build container's egress proxy,
+measured again while this was written. So the images come from
+`sportsdataverse/sdv-assets`, whose manifest is on
+`raw.githubusercontent.com`: the archive the college marks have come from
+since 2026-10 and the NFL's since 2026-10-29. It carries 486 NBA rows, 30
+clubs in sixteen variants.
+
+## The join is ESPN's own id
+
+The NFL side matches on the club name, because that is all its rows agree
+on. Here the manifest's `entity_id` **is** the ESPN team id, which is the
+number inside every team key (`nba:espn:team:1`), so the join is an identity
+rather than a string match. Measured 2026-11-08: all 30 clubs resolve by id,
+each with a `default` and a `dark` cut, each 500x500, with no duplicated
+rows to disambiguate. The name beside each id is **checked** against the
+name the database holds and a disagreement fails the run, because an id the
+provider has reassigned would otherwise publish another club's mark in
+silence.
+
+## Thirty clubs cover twenty-five seasons
+
+The archive stores a franchise, not a club-era: Seattle's rows and Oklahoma
+City's share one key, as New Jersey's and Brooklyn's do. So a 2008 game
+draws today's mark for the club that played it. That is a statement about
+the franchise, which is what the rating is about too, and it is why this
+needs no dated set like the college side's.
+
+## Banked, not hotlinked
+
+`python -m src.nba.logos` writes `ui/nba_logo_assets.json`: one shrunk
+256 px data URI a theme, plus a `dim` list naming the themes the artwork was
+measured to disappear on (`src/logo_contrast.py`, the same rule and the same
+two backgrounds as the other leagues). Committing the images rather than
+pointing at a CDN is what keeps a deploy from depending on somebody else's
+service, keeps the installed app working offline, and keeps that CDN from
+being told who reads the site.
+
+The file lives **outside** `ui/data/nba/`, which the refresh replaces
+wholesale, and it carries **no `?v=` stamp**: a stale module is missing a
+function the fresh HTML calls, while a stale JSON of logos draws last
+month's mark and nothing else.
+
+`.github/workflows/fetch-nba-logos.yml` is dispatch-only and fetches it, for
+the three reasons the NFL's job is separate — it is the only NBA job that
+reaches the mark archive, it needs Pillow where the nightly refresh is
+standard-library only, and a club redraws its mark about once a decade. The
+page fetches the file lazily and re-renders when it lands; where it is
+absent, every name draws exactly as it did before, and so does a club the
+archive has no mark for.
+
+**This is not a licence.** The archive grants nothing and claims nothing.
+The marks belong to their clubs and are used nominatively, to identify the
+club that played the game.
