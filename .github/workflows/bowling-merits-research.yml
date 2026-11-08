@@ -36,3 +36,11 @@ jobs:
         with:
           name: bowling-merits-historical-study
           path: /tmp/bowling-merits-study/*.csv
+
+      - name: Step 2 evidence review for rank movers
+        run: python analysis/bowling_merits/rank_mover_review.py --output /tmp/bowling-merits-study/bowling_merits_rank_mover_evidence.csv
+      - name: Upload rank mover evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: bowling-merits-rank-mover-evidence
+          path: /tmp/bowling-merits-study/bowling_merits_rank_mover_evidence.csv
