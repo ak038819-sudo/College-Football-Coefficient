@@ -1496,7 +1496,7 @@
 .gp-intel-pair>div:last-child{text-align:right}
 .gp-intel-number{display:block;font:700 clamp(26px,4vw,42px) var(--font-display)}
 .gp-intel-meter{display:flex;height:12px;gap:2px;overflow:hidden;margin-top:12px;border-radius:3px;background:var(--line)}
-.gp-intel-meter span:first-child{background:var(--amber)}.gp-intel-meter span:last-child{background:var(--ink-dim)}
+.gp-intel-meter span:first-child{background:var(--gp-away-color,var(--amber))}.gp-intel-meter span:last-child{background:var(--gp-home-color,var(--ink-dim))}
 .gp-intel-trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .gp-intel-stat{padding:12px 8px;background:var(--panel-2);border:1px solid var(--line);min-width:0}
 .gp-intel-stat b{display:block;font:700 clamp(17px,2.5vw,25px) var(--font-display);margin-top:8px}
@@ -9994,9 +9994,11 @@ function gameScoutingPanel(g, season, an, hn, bundle) {
       '<p class="section-note">Largest differences between rated national unit percentiles; ' +
       'not a forecast or a direct head-to-head measurement.</p>' +
       gameMatchupKeys(an, hn, away.metrics, home.metrics) + '</div>' +
-    '<div class="tm-match-compare"><h3>' + esc(an) + ' offense vs. ' + esc(hn) + ' defense</h3>' +
+    '<div class="tm-match-compare" style="--tm-team-color:' + matchupBrandColor(an, '#7fe3bc') +
+      ';--tm-opp-color:' + matchupBrandColor(hn, '#ffb4a8') + '"><h3>' + esc(an) + ' offense vs. ' + esc(hn) + ' defense</h3>' +
       renderMatchupMeters(an, hn, away.metrics, home.metrics, 'offense') + '</div>' +
-    '<div class="tm-match-compare"><h3>' + esc(hn) + ' offense vs. ' + esc(an) + ' defense</h3>' +
+    '<div class="tm-match-compare" style="--tm-team-color:' + matchupBrandColor(hn, '#7fe3bc') +
+      ';--tm-opp-color:' + matchupBrandColor(an, '#ffb4a8') + '"><h3>' + esc(hn) + ' offense vs. ' + esc(an) + ' defense</h3>' +
       renderMatchupMeters(hn, an, home.metrics, away.metrics, 'offense') + '</div>' +
     '<p class="tm-scout-foot">Higher percentiles indicate stronger units. The split metrics use equal-game ' +
       'weighting when eligible play denominators are unavailable; the evidence is not a projected score.</p></section>';
@@ -10012,6 +10014,11 @@ function hydrateGameScouting(g, season, an, hn, version) {
   });
 }
 
+// Use team-specific ink on the game screen, while retaining the existing
+// verified national color overrides and a safe muted fallback.
+function gameBarColor(name) {
+  return name === 'LSU' ? '#461D7C' : teamProfileColor(name);
+}
 function gamePregameIntelligence(g, an, hn) {
   // Archived fixture values only: no research-data promotion or predictions.
   const pct = Number.isFinite(g.p_home) ? probPct(g.p_home) : null;
@@ -10028,7 +10035,8 @@ function gamePregameIntelligence(g, an, hn) {
     : pct.away === pct.home ? 'The matchup is even according to the model.'
     : (pct.away > pct.home ? an : hn) + ' is favored by ' +
       Math.abs(pct.away-pct.home) + ' percentage points.';
-  return '<div class="gp-pregame-insights" aria-label="Pregame analytics">' +
+  return '<div class="gp-pregame-insights" aria-label="Pregame analytics" style="--gp-away-color:' +
+    gameBarColor(an) + ';--gp-home-color:' + gameBarColor(hn) + '">' +
     '<section class="panel" aria-label="Win probability">' +
     '<span class="gp-intel-label">01 / Model projection</span><h2 class="gp-intel-heading">Win probability</h2>' +
     '<div class="gp-intel-pair">' + item(an,pct ? pct.away+'%' : '—') +
