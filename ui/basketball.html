@@ -158,6 +158,13 @@
                 font-size: 15px; margin-top: 4px; }
   .card .side .pts { font-family: var(--font-mono); }
   .card .foot { font-size: 11px; color: var(--ink-dim); margin-top: 6px; }
+  /* A card is a <button> now, so it needs the element reset a button brings
+     with it undone: a button is centre-aligned, inherits no font and draws
+     its own background. */
+  button.card { display: block; width: 100%; text-align: left; cursor: pointer;
+                font: inherit; color: inherit; }
+  button.card:hover, button.card:focus-visible { border-color: var(--amber); }
+  .gamepage .back { margin: 0 0 14px; }
   .undecided { color: var(--amber); }
 
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -248,6 +255,10 @@
   .directory .rating { font-family: var(--font-mono); color: var(--ink-dim); }
   .scroller { overflow-x: auto; }
 </style>
+<!-- The game-page design, shared with every league page and with
+     ui/dashboard_shell.html. Linked after this page's own rules because it
+     introduces classes rather than overriding any: see ui/game_page.css. -->
+<link rel="stylesheet" href="game_page.css?v=f695c92f914e">
 </head>
 <body>
 <div class="wrap">
@@ -274,6 +285,7 @@
     <div class="filters" id="filters"></div>
     <div class="filters" id="sorts" aria-label="Order"></div>
     <div class="cards" id="cards"></div>
+    <div id="game-page" hidden></div>
   </section>
 
   <section class="panel" id="teams" hidden>
@@ -296,13 +308,16 @@
   </section>
 </div>
 
-<script src="ncaambb_loader.js?v=35cff06570f1"></script>
+<script src="ncaambb_loader.js?v=242334498c5f"></script>
 <script src="ncaambb_app.js?v=4828bd5e0199"></script>
+<script src="game_page.js?v=fb1a02a0b1c5"></script>
 <script>
 (function () {
   'use strict';
   var loader = window.ncaambbLoader;
   var app = window.ncaambbApp;
+  // The shared game-page helpers, the same module every league page reads.
+  var gp = window.gamePage;
   var BASE = 'data/ncaambb/';
   // Which panel each tab shows. A league having a section is not the same as
   // this page having a panel for it: basketball genuinely holds teams and
@@ -327,6 +342,7 @@
   var state = { manifest: null, verdict: null, season: null, day: null,
                 filter: 'all', sort: 'best', tab: DEFAULT_TAB,
                 team: null, query: '', player: null, playerQuery: '',
+                game: null, gameSeason: null, seasonsAsked: {},
                 // Which people files have been asked for, so a panel that
                 // re-renders does not re-fetch, and a file that failed is
                 // not retried forever on every keystroke.
@@ -425,6 +441,51 @@
     if (hash !== window.location.hash) window.location.hash = hash;
   }
 
+  /* The game a link names, or null. Only inside the scoreboard: a `game`
+   * left on a URL whose section is Standings would draw a game behind the
+   * board, which is the bug the club and player parameters already guard
+   * against. The section is `home` or `games` here because the scoreboard
+   * answers to both. */
+  function gameIdFromHash() {
+    var hash = String(window.location.hash || '').replace(/^#/, '');
+    if (!/(^|&)league=/.test(hash)) return null;
+    var route = app.readRoute(hash);
+    if (route.league !== app.BASKETBALL) return null;
+    var section = route.params.section || 'home';
+    if (LEGACY[section]) section = LEGACY[section];
+    if (section !== 'home' && section !== 'games') return null;
+    return route.params.game ? String(route.params.game) : null;
+  }
+
+  /* The season a game link names, or null for the season the page loaded.
+   *
+   * A game id alone is not a stable link: the page opens on
+   * `manifest.latest_season`, so a link to a 2015 game would resolve against
+   * 2027's games and find nothing -- and would start finding the WRONG game
+   * the day the provider reuses an id. Only a game link carries a season;
+   * every other screen is about the season the page is on.
+   */
+  function gameSeasonFromHash() {
+    var hash = String(window.location.hash || '').replace(/^#/, '');
+    if (!/(^|&)league=/.test(hash)) return null;
+    var route = app.readRoute(hash);
+    if (route.league !== app.BASKETBALL) return null;
+    var season = parseInt(route.params.season, 10);
+    return isNaN(season) ? null : season;
+  }
+
+  function writeGame(id, season) {
+    var route = app.readRoute(window.location.hash);
+    var params = {};
+    Object.keys(route.params).forEach(function (key) {
+      if (key !== 'game' && key !== 'season') params[key] = route.params[key];
+    });
+    if (id) params.game = id;
+    if (id && season) params.season = season;
+    var hash = app.writeRoute({ league: app.BASKETBALL, params: params });
+    if (hash !== window.location.hash) window.location.hash = hash;
+  }
+
   function writeTab(name) {
     var route = app.readRoute(window.location.hash);
     var params = {};
@@ -440,6 +501,10 @@
     // A player page is open INSIDE the People section, the same way a club
     // page is inside Teams.
     if (name !== 'people') delete params.player;
+    // A game page is open inside the scoreboard, and pressing any tab closes
+    // it -- including the scoreboard's own tab, which is how a reader gets
+    // back to the slate they came from.
+    delete params.game;
     if (name !== 'home') params.section = name;
     var hash = app.writeRoute({ league: app.BASKETBALL, params: params });
     // Pressing the same tab twice must not cost a second Back to leave.
@@ -743,6 +808,56 @@
   /* The board row for the club a short id names, or null. The board is the
    * list of Division I teams this season, so a club that did not play --
    * or an id nobody published -- simply has no page. */
+  /* A game in a URL is the provider's id, not the whole key, for the same
+   * reason a club is: `...&game=27`, not `...&game=ncaambb%3Acbbd%3Agame%3A27`.
+   */
+  function shortGameId(key) {
+    var parts = String(key || '').split(':');
+    return parts[parts.length - 1];
+  }
+
+  /* Which season a game page is about: the one its link names, falling back
+   * to the season the page loaded. Everything inside renderGame reads this
+   * and not `state.season`. */
+  function openGameSeason() {
+    return state.gameSeason || state.season;
+  }
+
+  /* Ask for a season's file once, and redraw when it lands. Returns whether
+   * something is still in flight.
+   *
+   * `state.seasonsAsked` remembers the seasons that FAILED as well as the
+   * ones that loaded: without that a season the deploy does not carry would
+   * be re-fetched on every render, which is the mistake the people layer
+   * already made and fixed.
+   */
+  function needSeason(season) {
+    var key = String(season);
+    if (seasonPayload(season)) return false;
+    if (state.seasonsAsked[key] === 'failed') return false;
+    if (state.seasonsAsked[key] === 'loading') return true;
+    var source = loader.seasonSource(state.manifest, season, BASE);
+    if (!source) { state.seasonsAsked[key] = 'failed'; return false; }
+    state.seasonsAsked[key] = 'loading';
+    load(source).then(function () {
+      state.seasonsAsked[key] = 'loaded';
+      render();
+    }, function () {
+      state.seasonsAsked[key] = 'failed';
+      render();
+    });
+    return true;
+  }
+
+  function gameRow(id) {
+    var payload = seasonPayload(openGameSeason());
+    var games = (payload && payload.games) || [];
+    for (var index = 0; index < games.length; index += 1) {
+      if (shortGameId(games[index].id) === id) return games[index];
+    }
+    return null;
+  }
+
   function boardRow(id) {
     var payload = seasonPayload();
     var rows = (payload && payload.board) || [];
@@ -811,7 +926,9 @@
     host.appendChild(block);
   }
 
-  function backButton(host, label) {
+  /* `action` is what the button undoes; without one it closes a club page,
+   * which is what every caller wanted before a game page existed. */
+  function backButton(host, label, action) {
     var paragraph = document.createElement('p');
     paragraph.className = 'back';
     var button = document.createElement('button');
@@ -819,8 +936,8 @@
     button.className = 'link';
     button.textContent = label;
     button.addEventListener('click', function () {
-      state.team = null;
-      writeTeam(null);
+      if (action) action();
+      else { state.team = null; writeTeam(null); }
       render();
     });
     paragraph.appendChild(button);
@@ -1012,8 +1129,19 @@
       return;
     }
     games.forEach(function (game) {
-      var card = document.createElement('div');
-      card.className = 'card';
+      // A BUTTON, not a div with a click handler: the card opens a page, so
+      // it has to be reachable by keyboard and announced as something that
+      // can be pressed. Every game gets one -- a game still to be played has
+      // a page too, which is where its pregame win chance is.
+      var card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'card open';
+      card.addEventListener('click', function () {
+        state.game = shortGameId(game.id);
+        state.gameSeason = state.season;
+        writeGame(state.game, state.season);
+        render();
+      });
       var status = document.createElement('div');
       status.className = 'status';
       if (!app.timeKnown(game)) status.classList.add('undecided');
@@ -1040,6 +1168,277 @@
       card.appendChild(foot);
       host.appendChild(card);
     });
+  }
+
+  /* ---- a game ------------------------------------------------------- */
+
+  /* One game, in the design every league's game page uses: the scoreboard
+   * hero, the matchup table, the season's meetings between these two clubs,
+   * and the facts about the fixture itself.
+   *
+   * What is NOT here, and why: there is no line score, because the provider
+   * sends no period scores for college basketball -- a half-by-half table
+   * would have to be invented. There is no player box score yet either: the
+   * raw box scores are rich, but the loader keeps only points and minutes, so
+   * the panel would be two columns wide and would read as the whole of what
+   * was recorded. Both are absent rather than approximated.
+   */
+  function gameMark(key, size) {
+    var mark = logoMark(key);
+    var img = mark.tagName === 'PICTURE' ? mark.querySelector('img') : mark;
+    if (img) img.classList.add(size);
+    // The error fallback replaces the <picture> with a blank box, which has
+    // to be the same size or the hero jumps when a mark fails to load.
+    if (mark.tagName === 'PICTURE') {
+      img.addEventListener('error', function () {
+        var blank = document.querySelector('.gp-side .logo-mark.blank.' + size);
+        if (blank) blank.classList.add(size);
+      });
+    } else {
+      mark.classList.add(size);
+    }
+    return mark;
+  }
+
+  function gameSide(key, points, role, outcome) {
+    var side = document.createElement('div');
+    side.className = 'gp-side' + (outcome ? ' ' + outcome : '');
+    var label = document.createElement('span');
+    label.className = 'gp-role';
+    label.textContent = role;
+    side.appendChild(label);
+    var mark = gameMark(key, 'lg');
+    side.appendChild(mark);
+    var text = document.createElement('span');
+    text.className = 'gp-team';
+    text.textContent = teamName(key);
+    side.appendChild(text);
+    var score = document.createElement('span');
+    score.className = 'gp-score';
+    // A missing score is an em dash, never a zero. For a game not yet
+    // played the hero hides this cell entirely (gp-pregame-hero), so the
+    // win chance below is what the reader sees.
+    score.textContent = points === null || points === undefined
+      ? '—' : String(points);
+    side.appendChild(score);
+    return side;
+  }
+
+  /* What is true of this game, as badges. Status first, because that is what
+   * a reader looks for, then the things that distinguish this fixture. */
+  function gameBadges(game) {
+    var done = game.status === 'final';
+    var list = [];
+    if (done) list.push({ text: 'Final', kind: 'final' });
+    else if (game.status === 'cancelled') list.push({ text: 'Cancelled' });
+    else list.push({ text: 'Scheduled', kind: 'upcoming' });
+    if (game.tournament) list.push({ text: game.tournament, kind: 'post' });
+    else if (game.type && game.type !== 'regular') list.push({ text: game.type, kind: 'post' });
+    if (game.neutral) list.push({ text: 'Neutral site' });
+    if (game.conference_game) list.push({ text: 'Conference' });
+    if (!game.d1) list.push({ text: 'Non-Division I' });
+    // An upset is judged against the model's own pregame number, and only
+    // where there is one: a game with no stored chance is not an upset, it
+    // is a game the model said nothing about.
+    var chance = gp.percents(game.home_wp);
+    if (done && chance && game.home_points !== null
+        && game.away_points !== null && game.home_points !== game.away_points) {
+      var winnerChance = game.home_points > game.away_points
+        ? Number(chance.home) : Number(chance.away);
+      if (winnerChance < 35) list.push({ text: 'Upset', kind: 'upset' });
+    }
+    return list;
+  }
+
+  function renderGame(host) {
+    var season = openGameSeason();
+    backButton(host, '← Back to the scoreboard', function () {
+      state.game = null;
+      state.gameSeason = null;
+      writeGame(null);
+    });
+    // A link to a season the page did not open on: the file is asked for
+    // once and the page redraws when it lands. The wait is said out loud
+    // rather than shown as a game that does not exist.
+    if (!seasonPayload(season)) {
+      if (needSeason(season)) {
+        return emptyLine(host, 'Loading ' + app.seasonLabel(season) + '…');
+      }
+      return emptyLine(host, 'The ' + app.seasonLabel(season)
+        + ' season could not be loaded.');
+    }
+    var row = gameRow(state.game);
+    if (!row) {
+      return emptyLine(host, 'No game in ' + app.seasonLabel(season)
+        + ' has that id.');
+    }
+    var done = row.status === 'final';
+    var tie = done && row.home_points === row.away_points;
+    var homeWon = done && !tie && row.home_points > row.away_points;
+    document.title = teamName(row.away) + (row.neutral ? ' vs. ' : ' at ')
+      + teamName(row.home) + ', ' + app.seasonLabel(season)
+      + ' · Men’s Basketball';
+
+    /* ---- the hero ---- */
+    var hero = document.createElement('div');
+    hero.className = 'panel gp-hero' + (done ? '' : ' gp-pregame-hero');
+    var top = document.createElement('div');
+    top.className = 'gl-top';
+    top.innerHTML = gp.badges(gameBadges(row));
+    var when = document.createElement('span');
+    when.className = 'gl-when';
+    when.textContent = app.timeKnown(row)
+      ? app.tipText(row) : (app.dayOf(row) || 'Date to be decided');
+    top.appendChild(when);
+    hero.appendChild(top);
+    var meta = document.createElement('p');
+    meta.className = 'gp-meta';
+    meta.textContent = [app.seasonLabel(season) + ' season',
+                        row.venue, [row.city, row.state].filter(Boolean).join(', ')]
+      .filter(Boolean).join(' · ');
+    hero.appendChild(meta);
+    var board = document.createElement('div');
+    board.className = 'gp-board';
+    var outcome = function (isHome) {
+      if (!done || tie) return '';
+      return (isHome === homeWon) ? 'won' : 'lost';
+    };
+    board.appendChild(gameSide(row.away, row.away_points,
+      row.neutral ? 'Neutral' : 'Away', outcome(false)));
+    var mid = document.createElement('div');
+    mid.className = 'gp-mid';
+    mid.textContent = row.neutral ? 'vs.' : 'at';
+    board.appendChild(mid);
+    board.appendChild(gameSide(row.home, row.home_points,
+      row.neutral ? 'Neutral' : 'Home', outcome(true)));
+    hero.appendChild(board);
+    host.appendChild(hero);
+
+    /* ---- the matchup ---- */
+    var group = gp.eloGroup(row, { completed: done });
+    var matchup = document.createElement('div');
+    matchup.className = 'panel';
+    var title = document.createElement('h2');
+    title.className = 'section-title';
+    title.textContent = 'Matchup';
+    matchup.appendChild(title);
+    if (group) {
+      var scroll = document.createElement('div');
+      scroll.className = 'table-scroll';
+      scroll.tabIndex = 0;
+      scroll.setAttribute('role', 'region');
+      scroll.setAttribute('aria-label', 'The two clubs across every model');
+      scroll.innerHTML = gp.matchupTable([group], {
+        away: teamName(row.away), home: teamName(row.home)
+      });
+      matchup.appendChild(scroll);
+      var note = document.createElement('p');
+      note.className = 'section-note';
+      note.textContent = (done
+        ? 'Recorded before tip-off and never recomputed. '
+        : row.wp_live
+          ? 'Where the two clubs stand today; this will change as games are '
+            + 'played. '
+          : 'Current ratings; they will change as games are played. ')
+        + 'Win chance includes home court exactly as the Elo model applies it'
+        + (row.neutral ? ', and this game is at a neutral site, so it does not.'
+          : '.');
+      matchup.appendChild(note);
+    } else {
+      // The two reasons are different facts and are told apart.
+      emptyLine(matchup, row.rateable
+        ? 'The model has no stored rating for this game.'
+        : 'This game is not rated: ' + (row.d1
+          ? 'the model declined to learn from it.'
+          : 'one side is not a Division I club, so the model leaves it out.'));
+    }
+    host.appendChild(matchup);
+
+    /* ---- the meetings ---- */
+    var meetings = app.teamSchedule((seasonPayload(season) || {}).games || [],
+      row.home).filter(function (entry) {
+        return entry.opponent === row.away;
+      });
+    var series = document.createElement('div');
+    series.className = 'panel';
+    var seriesTitle = document.createElement('h2');
+    seriesTitle.className = 'section-title';
+    seriesTitle.textContent = 'Meetings';
+    series.appendChild(seriesTitle);
+    if (meetings.length > 1) {
+      var list = document.createElement('ul');
+      list.className = 'gp-list';
+      meetings.forEach(function (entry) {
+        var item = document.createElement('li');
+        if (entry.game.id === row.id) item.className = 'current';
+        var day = document.createElement('span');
+        day.className = 'yr';
+        day.textContent = app.dayOf(entry.game) || '—';
+        item.appendChild(day);
+        var what = document.createElement('span');
+        what.textContent = app.scoreLine(entry.game) || 'Still to be played';
+        item.appendChild(what);
+        var aux = document.createElement('span');
+        aux.className = 'aux';
+        aux.textContent = [entry.neutral ? 'Neutral' : entry.home
+          ? teamName(row.home) + ' home' : teamName(row.away) + ' home',
+          entry.game.venue].filter(Boolean).join(' · ');
+        item.appendChild(aux);
+        list.appendChild(item);
+      });
+      series.appendChild(list);
+    } else {
+      emptyLine(series, 'These two clubs meet once in '
+        + app.seasonLabel(season) + '.');
+    }
+    var seriesNote = document.createElement('p');
+    seriesNote.className = 'section-note';
+    // Said plainly rather than left to be assumed: only the open season is
+    // loaded, so this is not the all-time series and must not read as one.
+    seriesNote.textContent = 'This season only. Earlier meetings are in each '
+      + 'club’s own season, which this page does not load.';
+    series.appendChild(seriesNote);
+    host.appendChild(series);
+
+    /* ---- the fixture ---- */
+    var facts = document.createElement('div');
+    facts.className = 'panel';
+    var factsTitle = document.createElement('h2');
+    factsTitle.className = 'section-title';
+    factsTitle.textContent = 'More';
+    facts.appendChild(factsTitle);
+    var wrap = document.createElement('div');
+    wrap.innerHTML = gp.facts([
+      { label: 'Venue', value: [row.venue, row.city, row.state]
+        .filter(Boolean).join(' · ') },
+      { label: 'Tip-off', value: app.timeKnown(row)
+        ? app.tipText(row) : 'Not yet decided' },
+      { label: 'Counts toward the ratings',
+        value: row.rateable ? 'Yes' : 'No' }
+    ]);
+    facts.appendChild(wrap);
+    var clubs = document.createElement('p');
+    clubs.className = 'section-note';
+    // Labelled, because this page draws a link as plain text until it is
+    // hovered: two bare club names under a facts grid read as a caption.
+    clubs.appendChild(document.createTextNode('Clubs: '));
+    [row.away, row.home].forEach(function (key, index) {
+      if (index) clubs.appendChild(document.createTextNode(' · '));
+      var link = document.createElement('button');
+      link.type = 'button';
+      link.className = 'link';
+      link.textContent = teamName(key);
+      link.addEventListener('click', function () {
+        state.game = null;
+        state.team = shortTeamId(key);
+        writeTeam(state.team);
+        state.tab = 'teams';
+        render();
+      });
+      clubs.appendChild(link);
+    });
+    facts.appendChild(clubs);
+    host.appendChild(facts);
   }
 
   /* ---- people: the index, a club's roster, a player's career -------- */
@@ -1530,10 +1929,29 @@
     if (!el('standings').hidden) renderBoard();
     if (!el('people').hidden) renderPeople();
     if (!el('scoreboard').hidden) {
-      renderDays();
-      renderFilters();
-      renderSorts();
-      renderCards();
+      // A game page REPLACES the slate rather than appearing under it. The
+      // day strip, the filters and the cards are all hidden together, and
+      // `[hidden]` only wins because ui/game_page.css makes it `!important`:
+      // `.cards` is a grid and `.days` is a flex row, so either display rule
+      // would otherwise beat the attribute and leave a whole day of cards on
+      // screen beneath the open game.
+      var open = Boolean(state.game);
+      el('days').hidden = open;
+      el('filters').hidden = open;
+      el('sorts').hidden = open;
+      el('cards').hidden = open;
+      el('game-page').hidden = !open;
+      if (open) {
+        var page = el('game-page');
+        page.className = 'gamepage';
+        page.innerHTML = '';
+        renderGame(page);
+      } else {
+        renderDays();
+        renderFilters();
+        renderSorts();
+        renderCards();
+      }
     }
   }
 
@@ -1573,6 +1991,8 @@
     if (opening) state.tab = opening;
     state.team = teamIdFromHash();
     state.player = playerIdFromHash();
+    state.game = gameIdFromHash();
+    state.gameSeason = state.game ? gameSeasonFromHash() : null;
     window.addEventListener('hashchange', function () {
       var changed = false;
       var next = tabFromHash();
@@ -1583,6 +2003,15 @@
       if (club !== state.team) { state.team = club; changed = true; }
       var person = playerIdFromHash();
       if (person !== state.player) { state.player = person; changed = true; }
+      // The open game comes from the URL and nowhere else, so a link, the
+      // back button and a pressed card cannot disagree about it.
+      var game = gameIdFromHash();
+      if (game !== state.game) { state.game = game; changed = true; }
+      var gameSeason = game ? gameSeasonFromHash() : null;
+      if (gameSeason !== state.gameSeason) {
+        state.gameSeason = gameSeason;
+        changed = true;
+      }
       if (changed) render();
     });
     fetch(BASE + 'manifest.json', { cache: 'no-store' })

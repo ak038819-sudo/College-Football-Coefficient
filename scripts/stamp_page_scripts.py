@@ -39,6 +39,11 @@ PAGES = (Path('ui/basketball.html'), Path('ui/nfl.html'),
          Path('ui/nba.html'))
 
 SCRIPT = re.compile(r'(<script src=")([A-Za-z0-9_.\-]+\.js)(\?v=[0-9a-f]+)?(")')
+# A stylesheet needs the same stamp for the same reason: the service worker
+# serves an unversioned asset stale-while-revalidate, so a cached
+# game_page.css can outlive the page that depends on it and the reader sees
+# an unstyled panel. ui/game_page.css is shared by all three pages here.
+STYLE = re.compile(r'(<link rel="stylesheet" href=")([A-Za-z0-9_.\-]+\.css)(\?v=[0-9a-f]+)?(")')
 
 
 def stamp(path):
@@ -62,7 +67,7 @@ def rewrite(page):
             changes.append((name, match.group(3), want))
         return match.group(1) + name + want + match.group(4)
 
-    return SCRIPT.sub(one, text), changes
+    return STYLE.sub(one, SCRIPT.sub(one, text)), changes
 
 
 def main(argv=None):
@@ -79,7 +84,7 @@ def main(argv=None):
         if changes and not args.check:
             page.write_text(text)
     if not stale:
-        print('every script stamp is current')
+        print('every script and stylesheet stamp is current')
         return 0
     if args.check:
         print('\nRun scripts/stamp_page_scripts.py to bring these up to date.',

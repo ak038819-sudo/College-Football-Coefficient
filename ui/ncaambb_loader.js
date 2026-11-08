@@ -23,9 +23,12 @@
   // refused rather than read optimistically: a field that moved would
   // otherwise be drawn as a number.
   // 2 added the people layer, the tip-off instant and the playing-day
-  // meaning of `at`. 1 is still read: the export on disk stays schema 1 until
-  // the next refresh rebuilds it, and this page must work in between.
-  var SUPPORTED_SCHEMA_VERSIONS = [1, 2];
+  // meaning of `at`. 3 adds the model's own per-game chain, which is what a
+  // game page's matchup table reads. 1 is still read: the export on disk
+  // stays schema 1 until the next refresh rebuilds it, and this page must
+  // work in between -- a game page then shows the game with no matchup table
+  // rather than refusing to open.
+  var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3];
 
   // Matches the build gate. A sample of one team, one conference or one
   // tournament field is far below this; every real season is far above.

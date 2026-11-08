@@ -37,6 +37,9 @@ GEOGRAPHY_PATH = Path("ui/geography.js")
 LIVE_TEAMS_PATH = Path("ui/live_teams.js")
 FAVORITES_PATH = Path("ui/favorites.js")
 TEAM_MODERN_CSS_PATH = Path("ui/team-modern.css")
+# The game-page design, shared with ui/nfl.html, ui/nba.html and
+# ui/basketball.html so the four leagues cannot drift apart.
+GAME_PAGE_CSS_PATH = Path("ui/game_page.css")
 SCOUTING_PATH = Path("ui/data/scouting")
 
 
@@ -62,6 +65,25 @@ def live_feed_url() -> str:
     return url
 
 
+# The order is the order they are linked in: game_page.css carries the design
+# shared with the other league pages, and team-modern.css may refine it, which
+# is the order they had when both were inline in the shell.
+STYLESHEETS = (GAME_PAGE_CSS_PATH, TEAM_MODERN_CSS_PATH)
+
+
+def stylesheet_links() -> str:
+    """Every stylesheet, linked with the hash of its own bytes.
+
+    The hash is not decoration. The service worker serves an unversioned
+    asset stale-while-revalidate, so a cached stylesheet can outlive the page
+    that depends on it and the reader gets an unstyled panel.
+    """
+    return "\n".join(
+        f'<link rel="stylesheet" href="{path.name}'
+        f'?v={hashlib.sha256(path.read_bytes()).hexdigest()[:12]}">'
+        for path in STYLESHEETS)
+
+
 def render_from_exports() -> None:
     """Render the template from existing exports, without touching model data."""
     from src.export_team_identities import export
@@ -69,7 +91,7 @@ def render_from_exports() -> None:
     required = [SHELL_PATH, DATA_PATH, CONFERENCE_PAGES_PATH, LOGO_MANIFEST_PATH,
                 TEAM_BRAND_COLORS_PATH,
                 STATIC_MANIFEST_PATH, NAVIGATION_PATH, SEARCH_PATH, STATS_PATH, GEOGRAPHY_PATH, LIVE_TEAMS_PATH,
-                FAVORITES_PATH, TEAM_MODERN_CSS_PATH]
+                FAVORITES_PATH, TEAM_MODERN_CSS_PATH, GAME_PAGE_CSS_PATH]
     missing = [str(path) for path in required if not path.exists()]
     if missing:
         raise SystemExit("Missing dashboard inputs: " + ", ".join(missing) +
@@ -89,10 +111,7 @@ def render_from_exports() -> None:
              # Empty unless a deployment sets it, which keeps the page on the
              # committed snapshot. See docs/live-score-delivery.md.
              .replace("__LIVE_FEED_URL__", live_feed_url()))
-    # Hash the team-page visual layer so installed app caches refresh safely.
-    version = hashlib.sha256(TEAM_MODERN_CSS_PATH.read_bytes()).hexdigest()[:12]
-    style_link = f'<link rel="stylesheet" href="team-modern.css?v={version}">'
-    final = final.replace("</head>", style_link + "\n</head>", 1)
+    final = final.replace("</head>", stylesheet_links() + "\n</head>", 1)
     versions = ({p.stem: hashlib.sha256(p.read_bytes()).hexdigest()[:12]
                  for p in SCOUTING_PATH.glob("*.js")}
                 if SCOUTING_PATH.exists() else {})
