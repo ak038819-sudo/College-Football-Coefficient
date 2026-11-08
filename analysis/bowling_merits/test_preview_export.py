@@ -32,6 +32,21 @@ class PreviewExportTests(unittest.TestCase):
         self.assertEqual(exported,build_preview(self.db,2025))
         self.assertEqual(exported["status"],"research_preview")
         self.assertTrue(exported["production_merits_unchanged"])
+    def test_full_export_includes_every_team_and_reconciles_awards(self):
+        data=build_preview(self.db,2025)
+        self.assertEqual({row["team"] for row in data["standings"]},{"A","B"})
+        self.assertEqual(data["teams"],len(data["standings"]))
+        self.assertEqual(sum(row["games"] for row in data["standings"]),2*len(GAMES))
+        self.assertEqual(sum(len(row["awards"]) for row in data["standings"]),2*len(GAMES))
+        self.assertEqual(data["standings"],build_preview(self.db,2025,limit=None)["standings"])
+        self.assertEqual(len(build_preview(self.db,2025,limit=1)["standings"]),1)
+    def test_cli_default_is_full_export(self):
+        subprocess.run([sys.executable,str(ROOT/"preview.py"),"--shadow-db",str(self.db),
+                        "--season","2025","--output",str(self.output)],
+                       check=True,capture_output=True,text=True)
+        data=json.loads(self.output.read_text())
+        self.assertEqual(len(data["standings"]),data["teams"])
+        self.assertEqual(sum(len(row["awards"]) for row in data["standings"]),2*len(GAMES))
     def test_export_is_deterministic(self):
         args=[sys.executable,str(ROOT/"preview.py"),"--shadow-db",str(self.db),
               "--season","2025","--output",str(self.output)]
