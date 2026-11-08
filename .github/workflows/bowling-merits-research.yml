@@ -1,0 +1,23 @@
+name: Bowling Merits research checks
+on:
+  push:
+    branches:
+      - research/bowling-merits-step1-ot
+  pull_request:
+    paths:
+      - 'analysis/bowling_merits/**'
+      - 'data/raw/games_2019.csv'
+      - 'data/raw/games_2026.csv'
+      - '.github/workflows/bowling-merits-research.yml'
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run research regression suite
+        run: python -m unittest discover -s analysis/bowling_merits -p 'test_*.py' -v
+      - name: Run historical reference replay
+        run: python analysis/bowling_merits/engine.py data/raw/games_2019.csv data/raw/games_2026.csv
