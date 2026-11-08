@@ -28,3 +28,11 @@ jobs:
           fi
       - name: Run historical reference replay
         run: python analysis/bowling_merits/engine.py data/raw/games_2019.csv data/raw/games_2026.csv
+
+      - name: Step 2 historical model comparison
+        run: python analysis/bowling_merits/historical_validation.py --output-dir /tmp/bowling-merits-study
+      - name: Upload historical study tables
+        uses: actions/upload-artifact@v4
+        with:
+          name: bowling-merits-historical-study
+          path: /tmp/bowling-merits-study/*.csv
