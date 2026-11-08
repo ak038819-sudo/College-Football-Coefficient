@@ -78,9 +78,16 @@ jobs:
           # instead of rebasing onto it, and reports a failure instead of
           # leaving a conflicted tree behind an unchecked push.
           scripts/publish_to_main.sh 'Refresh live scoreboard [skip ci]' ui/data/live_scores.json
+      # DELIBERATELY SHORTER THAN THE SESSION WORKFLOW'S 600s. This job is
+      # capped at three minutes above, and it must stay that way: it runs off a
+      # five-minute cron, and a job held open for ten would block the refreshes
+      # behind it. So this call cannot characterise the publish leg's tail --
+      # live-score-session.yml is where that measurement lives. Raising this
+      # number without raising timeout-minutes would just have the job killed
+      # at the cap, which fails the run rather than reporting anything.
       - name: Measure delivery to GitHub Pages
         if: success()
         continue-on-error: true
         env:
           PAGES_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/ui/data/live_scores.json
-        run: python3 src/measure_live_delivery.py --url "$PAGES_URL" --timeout 120
+        run: python3 src/measure_live_delivery.py --url "$PAGES_URL" --timeout 100

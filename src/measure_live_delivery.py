@@ -4,6 +4,22 @@
 The Pages response is polled with a unique query string. This measures first
 observed availability, not GitHub's internal deployment timestamp or CFBD's
 own score update time. It makes no CFBD API requests.
+
+WHY THE TIMEOUT IS TEN MINUTES AND NOT TWO. It was 120s, and at that setting
+27 of the last 40 sessions reported "Pages visibility unconfirmed" while the
+confirmed ones landed at 74-112s -- that is, clustered just under the ceiling.
+A measurement whose window sits inside the distribution it is measuring cannot
+tell "slow" from "never", so two thirds of the samples carried no information.
+See docs/phase1-live-architecture-audit.md. The step runs once at the end of a
+job, so the cost of waiting longer is bounded and small against a four-hour
+session; the cost of not waiting is a blind spot in the only measurement of
+this leg that exists.
+
+The summary line is also emitted as one machine-readable LIVE_DELIVERY record
+so a run of sessions can be aggregated into the median/p95 the Phase 1 plan
+asks for, without parsing prose. A timed-out observation is reported with
+visible_after_s null and waited_s set, because "we stopped looking after N
+seconds" is evidence and must not be silently read as a delivery time.
 """
 from __future__ import annotations
 
@@ -45,7 +61,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--url', required=True, help='Public Pages URL of live_scores.json')
     parser.add_argument('--snapshot', type=Path, default=Path('ui/data/live_scores.json'))
-    parser.add_argument('--timeout', type=float, default=120)
+    parser.add_argument('--timeout', type=float, default=600)
     args = parser.parse_args()
     if args.timeout <= 0 or not args.url.startswith('https://'):
         parser.error('a positive timeout and HTTPS Pages URL are required')
@@ -59,16 +75,30 @@ def main() -> None:
         with urlopen(request, timeout=10) as response:
             return json.load(response)
 
+    pushed_after = (pushed - fetched).total_seconds()
+    record = {
+        'snapshot': expected,
+        'pushed_after_s': round(pushed_after, 1),
+        'timeout_s': args.timeout,
+        'visible_after_s': None,
+        'waited_s': None,
+        'checks': None,
+    }
     try:
         visible, attempts = wait_for_snapshot(expected, read, lambda: dt.datetime.now(dt.timezone.utc),
                                               time.monotonic, time.sleep, args.timeout)
-        line = (f'CFBD fetched {expected}; push finished about {(pushed - fetched).total_seconds():.0f}s later; '
-                f'Pages first showed this snapshot about {(visible - fetched).total_seconds():.0f}s after fetch '
+        visible_after = (visible - fetched).total_seconds()
+        record['visible_after_s'] = round(visible_after, 1)
+        record['checks'] = attempts
+        line = (f'CFBD fetched {expected}; push finished about {pushed_after:.0f}s later; '
+                f'Pages first showed this snapshot about {visible_after:.0f}s after fetch '
                 f'({attempts} check(s)).')
     except TimeoutError as exc:
-        line = (f'CFBD fetched {expected}; push finished about {(pushed - fetched).total_seconds():.0f}s later; '
+        record['waited_s'] = args.timeout
+        line = (f'CFBD fetched {expected}; push finished about {pushed_after:.0f}s later; '
                 f'Pages visibility unconfirmed: {exc}.')
     print(line)
+    print('LIVE_DELIVERY ' + json.dumps(record, sort_keys=True))
     if os.getenv('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
             summary.write('### Live score delivery\n\n' + line + '\n')

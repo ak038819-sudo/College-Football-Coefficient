@@ -41,7 +41,7 @@ on:
   workflow_dispatch:
     inputs:
       duration:
-        description: 'Minutes to keep polling (max 350; blank uses the default)'
+        description: 'Minutes to keep polling (max 340; blank uses the default)'
         required: false
         default: ''
       interval:
@@ -68,9 +68,14 @@ permissions:
 jobs:
   session:
     runs-on: ubuntu-latest
-    # The job's own ceiling is six hours. A scheduled session polls for four,
-    # and the timeout still allows the 350-minute maximum a dispatch can ask
-    # for, leaving room for checkout, the final publish and the measurement.
+    # GitHub kills a job at six hours, so 360 is a hard ceiling and this stays
+    # under it. The budget is: longest dispatch (340) + the delivery
+    # measurement's 600s window (10) + checkout and the final publish = 358.
+    # The dispatch maximum came down from 350 to 340 when that measurement's
+    # window went from 120s to 600s, because 350 + 10 does not fit under 360
+    # and the alternative was a maximum-length dispatch being killed at the cap
+    # mid-measurement. Scheduled sessions poll for 240, so nothing routine is
+    # affected; only a hand-dispatched marathon is 10 minutes shorter.
     timeout-minutes: 358
     # NOT the deploy's group, and not `live-scores.yml`'s either. Sharing the
     # deploy's group would park a six-hour job in front of every publish.
@@ -107,7 +112,7 @@ jobs:
           if [ -n "$DURATION" ]; then
             # Clamped here as well as in the script: a dispatch input is free
             # text, and a duration past the job timeout dies mid-publish.
-            if [ "$DURATION" -gt 350 ]; then DURATION=350; fi
+            if [ "$DURATION" -gt 340 ]; then DURATION=340; fi
             set -- "$@" --duration "$DURATION"
           fi
           if [ -n "$INTERVAL" ]; then set -- "$@" --interval "$INTERVAL"; fi
@@ -121,4 +126,4 @@ jobs:
         continue-on-error: true
         env:
           PAGES_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/ui/data/live_scores.json
-        run: python3 src/measure_live_delivery.py --url "$PAGES_URL" --timeout 120
+        run: python3 src/measure_live_delivery.py --url "$PAGES_URL" --timeout 600
