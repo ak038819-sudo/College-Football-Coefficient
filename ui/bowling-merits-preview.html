@@ -41,7 +41,7 @@ function render(data){
  for(const team of data.standings){
   const tr=node("tr");
   cell(tr,team.rank);const name=cell(tr,team.team);
-  if(team.provisional){name.append(" ");name.append(node("span","Provisional")).className="badge"}
+  if(team.provisional){name.append(" ");const badge=node("span","Provisional");badge.className="badge";name.append(badge)}
   [Number(team.merits).toFixed(3),team.games,team.wins,team.regulation_losses,team.ot_losses].forEach(v=>cell(tr,v));
   t.append(tr);
   const detailRow=node("tr"),td=node("td");td.colSpan=7;
