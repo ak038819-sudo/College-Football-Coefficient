@@ -1,0 +1,3831 @@
+{
+ "source": "CollegeFootballData.com",
+ "updated_at": "2026-11-08T07:15:11.395792Z",
+ "games": [
+  {
+   "id": 401866453,
+   "start_date": "2026-11-04T00:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN2",
+   "neutral_site": false,
+   "away": {
+    "id": 195,
+    "name": "Ohio Bobcats",
+    "points": 28,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2006,
+    "name": "Akron Zips",
+    "points": 20,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401866454,
+   "start_date": "2026-11-04T01:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN",
+   "neutral_site": false,
+   "away": {
+    "id": 2084,
+    "name": "Buffalo Bulls",
+    "points": 34,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 193,
+    "name": "Miami (OH) RedHawks",
+    "points": 31,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401866455,
+   "start_date": "2026-11-05T00:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPNU",
+   "neutral_site": false,
+   "away": {
+    "id": 2050,
+    "name": "Ball State Cardinals",
+    "points": 30,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 113,
+    "name": "Massachusetts Minutemen",
+    "points": 31,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401866457,
+   "start_date": "2026-11-05T00:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "CBSSN",
+   "neutral_site": false,
+   "away": {
+    "id": 2649,
+    "name": "Toledo Rockets",
+    "points": 20,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 16,
+    "name": "Sacramento State Hornets",
+    "points": 17,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401866456,
+   "start_date": "2026-11-05T00:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN2",
+   "neutral_site": true,
+   "away": {
+    "id": 2117,
+    "name": "Central Michigan Chippewas",
+    "points": 35,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2199,
+    "name": "Eastern Michigan Eagles",
+    "points": 7,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401862817,
+   "start_date": "2026-11-06T00:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN",
+   "neutral_site": false,
+   "away": {
+    "id": 2636,
+    "name": "UTSA Roadrunners",
+    "points": 29,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2226,
+    "name": "Florida Atlantic Owls",
+    "points": 60,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401869964,
+   "start_date": "2026-11-06T01:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN2",
+   "neutral_site": false,
+   "away": {
+    "id": 256,
+    "name": "James Madison Dukes",
+    "points": 54,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2572,
+    "name": "Southern Miss Golden Eagles",
+    "points": 23,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401858288,
+   "start_date": "2026-11-07T00:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN",
+   "neutral_site": false,
+   "away": {
+    "id": 259,
+    "name": "Virginia Tech Hokies",
+    "points": 28,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2567,
+    "name": "SMU Mustangs",
+    "points": 51,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401862818,
+   "start_date": "2026-11-07T00:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN2",
+   "neutral_site": false,
+   "away": {
+    "id": 58,
+    "name": "South Florida Bulls",
+    "points": 17,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 151,
+    "name": "East Carolina Pirates",
+    "points": 20,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401858510,
+   "start_date": "2026-11-07T01:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "Fox | FOX",
+   "neutral_site": false,
+   "away": {
+    "id": 158,
+    "name": "Nebraska Cornhuskers",
+    "points": 13,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 356,
+    "name": "Illinois Fighting Illini",
+    "points": 24,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401864533,
+   "start_date": "2026-11-07T02:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "CBSSN",
+   "neutral_site": false,
+   "away": {
+    "id": 167,
+    "name": "New Mexico Lobos",
+    "points": 31,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2440,
+    "name": "Nevada Wolf Pack",
+    "points": 3,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401856855,
+   "start_date": "2026-11-07T03:15:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN",
+   "neutral_site": false,
+   "away": {
+    "id": 2628,
+    "name": "TCU Horned Frogs",
+    "points": 28,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 12,
+    "name": "Arizona Wildcats",
+    "points": 29,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401856743,
+   "start_date": "2026-11-07T17:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN | Disney+",
+   "neutral_site": false,
+   "away": {
+    "id": 251,
+    "name": "Texas Longhorns",
+    "points": 34,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 142,
+    "name": "Missouri Tigers",
+    "points": 20,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401856849,
+   "start_date": "2026-11-07T17:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ABC",
+   "neutral_site": false,
+   "away": {
+    "id": 252,
+    "name": "BYU Cougars",
+    "points": 20,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 254,
+    "name": "Utah Utes",
+    "points": 28,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401856853,
+   "start_date": "2026-11-07T17:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "FS1",
+   "neutral_site": false,
+   "away": {
+    "id": 66,
+    "name": "Iowa State Cyclones",
+    "points": 31,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 239,
+    "name": "Baylor Bears",
+    "points": 42,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401858285,
+   "start_date": "2026-11-07T17:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN2",
+   "neutral_site": false,
+   "away": {
+    "id": 228,
+    "name": "Clemson Tigers",
+    "points": 18,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 183,
+    "name": "Syracuse Orange",
+    "points": 13,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401858289,
+   "start_date": "2026-11-07T17:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ACC Network",
+   "neutral_site": false,
+   "away": {
+    "id": 52,
+    "name": "Florida State Seminoles",
+    "points": 31,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 103,
+    "name": "Boston College Eagles",
+    "points": 24,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401858292,
+   "start_date": "2026-11-07T17:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "CBSSN",
+   "neutral_site": false,
+   "away": {
+    "id": 153,
+    "name": "North Carolina Tar Heels",
+    "points": 38,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 41,
+    "name": "UConn Huskies",
+    "points": 21,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401858512,
+   "start_date": "2026-11-07T17:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "Fox",
+   "neutral_site": false,
+   "away": {
+    "id": 26,
+    "name": "UCLA Bruins",
+    "points": 34,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 135,
+    "name": "Minnesota Golden Gophers",
+    "points": 20,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401862822,
+   "start_date": "2026-11-07T17:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPNU",
+   "neutral_site": false,
+   "away": {
+    "id": 202,
+    "name": "Tulsa Golden Hurricane",
+    "points": 60,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2655,
+    "name": "Tulane Green Wave",
+    "points": 10,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401858286,
+   "start_date": "2026-11-07T17:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "CW",
+   "neutral_site": false,
+   "away": {
+    "id": 150,
+    "name": "Duke Blue Devils",
+    "points": 41,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 152,
+    "name": "NC State Wolfpack",
+    "points": 3,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401858515,
+   "start_date": "2026-11-07T17:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "BTN",
+   "neutral_site": false,
+   "away": {
+    "id": 120,
+    "name": "Maryland Terrapins",
+    "points": 34,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2509,
+    "name": "Purdue Boilermakers",
+    "points": 29,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401856738,
+   "start_date": "2026-11-07T17:45:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "SEC Network",
+   "neutral_site": false,
+   "away": {
+    "id": 8,
+    "name": "Arkansas Razorbacks",
+    "points": 23,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2,
+    "name": "Auburn Tigers",
+    "points": 26,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401856854,
+   "start_date": "2026-11-07T18:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "TNT | HBO Max",
+   "neutral_site": false,
+   "away": {
+    "id": 197,
+    "name": "Oklahoma State Cowboys",
+    "points": 66,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2306,
+    "name": "Kansas State Wildcats",
+    "points": 28,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401869945,
+   "start_date": "2026-11-07T18:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN+",
+   "neutral_site": false,
+   "away": {
+    "id": 295,
+    "name": "Old Dominion Monarchs",
+    "points": 21,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 324,
+    "name": "Coastal Carolina Chanticleers",
+    "points": 8,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401869927,
+   "start_date": "2026-11-07T19:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN+",
+   "neutral_site": false,
+   "away": {
+    "id": 2247,
+    "name": "Georgia State Panthers",
+    "points": 39,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2026,
+    "name": "App State Mountaineers",
+    "points": 23,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401856744,
+   "start_date": "2026-11-07T20:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN | ESPN2",
+   "neutral_site": false,
+   "away": {
+    "id": 245,
+    "name": "Texas A&M Aggies",
+    "points": 9,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2579,
+    "name": "South Carolina Gamecocks",
+    "points": 17,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401869936,
+   "start_date": "2026-11-07T20:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN+",
+   "neutral_site": false,
+   "away": {
+    "id": 2433,
+    "name": "UL Monroe Warhawks",
+    "points": 19,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2032,
+    "name": "Arkansas State Red Wolves",
+    "points": 17,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401871073,
+   "start_date": "2026-11-07T20:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN+",
+   "neutral_site": false,
+   "away": {
+    "id": 48,
+    "name": "Delaware Blue Hens",
+    "points": 40,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 338,
+    "name": "Kennesaw State Owls",
+    "points": 42,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401856740,
+   "start_date": "2026-11-07T20:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ABC | ERADM | Disney+",
+   "neutral_site": false,
+   "away": {
+    "id": 333,
+    "name": "Alabama Crimson Tide",
+    "points": 31,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 99,
+    "name": "LSU Tigers",
+    "points": 13,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401856851,
+   "start_date": "2026-11-07T20:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "Fox",
+   "neutral_site": false,
+   "away": {
+    "id": 2132,
+    "name": "Cincinnati Bearcats",
+    "points": 24,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 248,
+    "name": "Houston Cougars",
+    "points": 31,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401858290,
+   "start_date": "2026-11-07T20:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ACC Network",
+   "neutral_site": false,
+   "away": {
+    "id": 2771,
+    "name": "Merrimack Warriors",
+    "points": 0,
+    "classification": "fcs"
+   },
+   "home": {
+    "id": 154,
+    "name": "Wake Forest Demon Deacons",
+    "points": 77,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401858514,
+   "start_date": "2026-11-07T20:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "CBS",
+   "neutral_site": false,
+   "away": {
+    "id": 2483,
+    "name": "Oregon Ducks",
+    "points": 41,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 194,
+    "name": "Ohio State Buckeyes",
+    "points": 28,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401858516,
+   "start_date": "2026-11-07T20:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "FS1",
+   "neutral_site": false,
+   "away": {
+    "id": 213,
+    "name": "Penn State Nittany Lions",
+    "points": 28,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 264,
+    "name": "Washington Huskies",
+    "points": 25,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401862819,
+   "start_date": "2026-11-07T20:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN+",
+   "neutral_site": false,
+   "away": {
+    "id": 2429,
+    "name": "Charlotte 49ers",
+    "points": 12,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 5,
+    "name": "UAB Blazers",
+    "points": 23,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401862820,
+   "start_date": "2026-11-07T20:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "CBSSN",
+   "neutral_site": false,
+   "away": {
+    "id": 218,
+    "name": "Temple Owls",
+    "points": 35,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2426,
+    "name": "Navy Midshipmen",
+    "points": 42,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401869951,
+   "start_date": "2026-11-07T20:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN+",
+   "neutral_site": false,
+   "away": {
+    "id": 276,
+    "name": "Marshall Thundering Herd",
+    "points": 13,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 290,
+    "name": "Georgia Southern Eagles",
+    "points": 49,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401871076,
+   "start_date": "2026-11-07T20:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN+",
+   "neutral_site": false,
+   "away": {
+    "id": 98,
+    "name": "Western Kentucky Hilltoppers",
+    "points": 42,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2393,
+    "name": "Middle Tennessee Blue Raiders",
+    "points": 51,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401856850,
+   "start_date": "2026-11-07T20:45:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN2",
+   "neutral_site": false,
+   "away": {
+    "id": 2116,
+    "name": "UCF Knights",
+    "points": 33,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2305,
+    "name": "Kansas Jayhawks",
+    "points": 32,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401862821,
+   "start_date": "2026-11-07T21:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPNU",
+   "neutral_site": false,
+   "away": {
+    "id": 242,
+    "name": "Rice Owls",
+    "points": 23,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 249,
+    "name": "North Texas Mean Green",
+    "points": 52,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401864534,
+   "start_date": "2026-11-07T21:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "MW+",
+   "neutral_site": false,
+   "away": {
+    "id": 2459,
+    "name": "Northern Illinois Huskies",
+    "points": 19,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 23,
+    "name": "San Jos\u00e9 State Spartans",
+    "points": 30,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401871074,
+   "start_date": "2026-11-07T21:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN+",
+   "neutral_site": false,
+   "away": {
+    "id": 2623,
+    "name": "Missouri State Bears",
+    "points": 20,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2229,
+    "name": "Florida International Panthers",
+    "points": 23,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401871098,
+   "start_date": "2026-11-07T21:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN+",
+   "neutral_site": false,
+   "away": {
+    "id": 2348,
+    "name": "Louisiana Tech Bulldogs",
+    "points": 41,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2653,
+    "name": "Troy Trojans",
+    "points": 17,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401856742,
+   "start_date": "2026-11-07T21:15:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "SEC Network",
+   "neutral_site": false,
+   "away": {
+    "id": 238,
+    "name": "Vanderbilt Commodores",
+    "points": 25,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 344,
+    "name": "Mississippi State Bulldogs",
+    "points": 23,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401858517,
+   "start_date": "2026-11-07T21:15:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "BTN",
+   "neutral_site": false,
+   "away": {
+    "id": 164,
+    "name": "Rutgers Scarlet Knights",
+    "points": 10,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 275,
+    "name": "Wisconsin Badgers",
+    "points": 31,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401869968,
+   "start_date": "2026-11-07T22:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN+",
+   "neutral_site": false,
+   "away": {
+    "id": 6,
+    "name": "South Alabama Jaguars",
+    "points": 26,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 309,
+    "name": "Louisiana Ragin' Cajuns",
+    "points": 28,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401860911,
+   "start_date": "2026-11-07T23:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "USA Net",
+   "neutral_site": false,
+   "away": {
+    "id": 68,
+    "name": "Boise State Broncos",
+    "points": 64,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 36,
+    "name": "Colorado State Rams",
+    "points": 38,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401856745,
+   "start_date": "2026-11-07T23:15:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN",
+   "neutral_site": false,
+   "away": {
+    "id": 96,
+    "name": "Kentucky Wildcats",
+    "points": 6,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2633,
+    "name": "Tennessee Volunteers",
+    "points": 34,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401871075,
+   "start_date": "2026-11-08T00:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "CBSSN",
+   "neutral_site": false,
+   "away": {
+    "id": 2534,
+    "name": "Sam Houston Bearkats",
+    "points": 14,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 55,
+    "name": "Jacksonville State Gamecocks",
+    "points": 47,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401856741,
+   "start_date": "2026-11-08T00:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ABC | ERADM",
+   "neutral_site": false,
+   "away": {
+    "id": 61,
+    "name": "Georgia Bulldogs",
+    "points": 42,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 145,
+    "name": "Ole Miss Rebels",
+    "points": 7,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401856852,
+   "start_date": "2026-11-08T00:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN2",
+   "neutral_site": false,
+   "away": {
+    "id": 38,
+    "name": "Colorado Buffaloes",
+    "points": 10,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 9,
+    "name": "Arizona State Sun Devils",
+    "points": 20,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401858287,
+   "start_date": "2026-11-08T00:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ACC Network",
+   "neutral_site": false,
+   "away": {
+    "id": 97,
+    "name": "Louisville Cardinals",
+    "points": 44,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 59,
+    "name": "Georgia Tech Yellow Jackets",
+    "points": 17,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401858291,
+   "start_date": "2026-11-08T00:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "NBC | Peacock",
+   "neutral_site": false,
+   "away": {
+    "id": 2390,
+    "name": "Miami Hurricanes",
+    "points": 24,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 87,
+    "name": "Notre Dame Fighting Irish",
+    "points": 31,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401858511,
+   "start_date": "2026-11-08T00:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "Peacock",
+   "neutral_site": false,
+   "away": {
+    "id": 127,
+    "name": "Michigan State Spartans",
+    "points": 15,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 130,
+    "name": "Michigan Wolverines",
+    "points": 6,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401858513,
+   "start_date": "2026-11-08T00:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "Fox",
+   "neutral_site": false,
+   "away": {
+    "id": 2294,
+    "name": "Iowa Hawkeyes",
+    "points": 24,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 77,
+    "name": "Northwestern Wildcats",
+    "points": 10,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401862823,
+   "start_date": "2026-11-08T00:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "CBS",
+   "neutral_site": false,
+   "away": {
+    "id": 2005,
+    "name": "Air Force Falcons",
+    "points": 24,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 349,
+    "name": "Army Black Knights",
+    "points": 21,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401856739,
+   "start_date": "2026-11-08T00:45:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "SEC Network",
+   "neutral_site": false,
+   "away": {
+    "id": 201,
+    "name": "Oklahoma Sooners",
+    "points": 23,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 57,
+    "name": "Florida Gators",
+    "points": 7,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401870795,
+   "start_date": "2026-11-08T01:00:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPNU",
+   "neutral_site": false,
+   "away": {
+    "id": 2335,
+    "name": "Liberty Flames",
+    "points": 30,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 166,
+    "name": "New Mexico State Aggies",
+    "points": 14,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401856856,
+   "start_date": "2026-11-08T02:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "ESPN",
+   "neutral_site": false,
+   "away": {
+    "id": 277,
+    "name": "West Virginia Mountaineers",
+    "points": 48,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2641,
+    "name": "Texas Tech Red Raiders",
+    "points": 53,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401860913,
+   "start_date": "2026-11-08T02:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "USA Net",
+   "neutral_site": false,
+   "away": {
+    "id": 278,
+    "name": "Fresno State Bulldogs",
+    "points": 10,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 328,
+    "name": "Utah State Aggies",
+    "points": 17,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401864532,
+   "start_date": "2026-11-08T02:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "FS1",
+   "neutral_site": false,
+   "away": {
+    "id": 62,
+    "name": "Hawai'i Rainbow Warriors",
+    "points": 17,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2638,
+    "name": "UTEP Miners",
+    "points": 14,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401860912,
+   "start_date": "2026-11-08T03:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "CW | The CW Network | ESPN Unlmtd",
+   "neutral_site": false,
+   "away": {
+    "id": 326,
+    "name": "Texas State Bobcats",
+    "points": 42,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 204,
+    "name": "Oregon State Beavers",
+    "points": 21,
+    "classification": "fbs"
+   }
+  },
+  {
+   "id": 401864535,
+   "start_date": "2026-11-08T03:30:00.000Z",
+   "venue": null,
+   "status": "completed",
+   "period": null,
+   "clock": null,
+   "tv": "CBSSN",
+   "neutral_site": false,
+   "away": {
+    "id": 2751,
+    "name": "Wyoming Cowboys",
+    "points": 41,
+    "classification": "fbs"
+   },
+   "home": {
+    "id": 2439,
+    "name": "UNLV Rebels",
+    "points": 35,
+    "classification": "fbs"
+   }
+  }
+ ],
+ "player_boxscores": {
+  "401866453": [
+   {
+    "name": "Ohio",
+    "home_away": "away",
+    "categories": [
+     {
+      "name": "passing",
+      "type": "C/ATT",
+      "lines": [
+       {
+        "name": "Nick Poulos",
+        "stat": "12/20"
+       }
+      ]
+     },
+     {
+      "name": "passing",
+      "type": "YDS",
+      "lines": [
+       {
+        "name": "Nick Poulos",
+        "stat": "197"
+       }
+      ]
+     },
+     {
+      "name": "passing",
+      "type": "AVG",
+      "lines": [
+       {
+        "name": "Nick Poulos",
+        "stat": "9.9"
+       }
+      ]
+     },
+     {
+      "name": "passing",
+      "type": "TD",
+      "lines": [
+       {
+        "name": "Nick Poulos",
+        "stat": "1"
+       }
+      ]
+     },
+     {
+      "name": "passing",
+      "type": "INT",
+      "lines": [
+       {
+        "name": "Nick Poulos",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "CAR",
+      "lines": [
+       {
+        "name": "Duncan Brune",
+        "stat": "10"
+       },
+       {
+        "name": "Nick Poulos",
+        "stat": "9"
+       },
+       {
+        "name": "Victor Rosa",
+        "stat": "5"
+       },
+       {
+        "name": "Irving Brown",
+        "stat": "1"
+       },
+       {
+        "name": "Levi Davis",
+        "stat": "1"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "YDS",
+      "lines": [
+       {
+        "name": "Duncan Brune",
+        "stat": "111"
+       },
+       {
+        "name": "Nick Poulos",
+        "stat": "45"
+       },
+       {
+        "name": "Victor Rosa",
+        "stat": "5"
+       },
+       {
+        "name": "Irving Brown",
+        "stat": "2"
+       },
+       {
+        "name": "Levi Davis",
+        "stat": "-2"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "AVG",
+      "lines": [
+       {
+        "name": "Duncan Brune",
+        "stat": "11.1"
+       },
+       {
+        "name": "Nick Poulos",
+        "stat": "5.0"
+       },
+       {
+        "name": "Victor Rosa",
+        "stat": "1.0"
+       },
+       {
+        "name": "Irving Brown",
+        "stat": "2.0"
+       },
+       {
+        "name": "Levi Davis",
+        "stat": "-2.0"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "TD",
+      "lines": [
+       {
+        "name": "Duncan Brune",
+        "stat": "1"
+       },
+       {
+        "name": "Nick Poulos",
+        "stat": "1"
+       },
+       {
+        "name": "Victor Rosa",
+        "stat": "0"
+       },
+       {
+        "name": "Irving Brown",
+        "stat": "0"
+       },
+       {
+        "name": "Levi Davis",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "LONG",
+      "lines": [
+       {
+        "name": "Duncan Brune",
+        "stat": "91"
+       },
+       {
+        "name": "Nick Poulos",
+        "stat": "17"
+       },
+       {
+        "name": "Victor Rosa",
+        "stat": "3"
+       },
+       {
+        "name": "Irving Brown",
+        "stat": "2"
+       },
+       {
+        "name": "Levi Davis",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "REC",
+      "lines": [
+       {
+        "name": "Dom Dorwart",
+        "stat": "4"
+       },
+       {
+        "name": "Riley Neer",
+        "stat": "4"
+       },
+       {
+        "name": "Preston Bowman",
+        "stat": "3"
+       },
+       {
+        "name": "Andrew Metzger",
+        "stat": "1"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "YDS",
+      "lines": [
+       {
+        "name": "Dom Dorwart",
+        "stat": "108"
+       },
+       {
+        "name": "Riley Neer",
+        "stat": "54"
+       },
+       {
+        "name": "Preston Bowman",
+        "stat": "36"
+       },
+       {
+        "name": "Andrew Metzger",
+        "stat": "-1"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "AVG",
+      "lines": [
+       {
+        "name": "Dom Dorwart",
+        "stat": "27.0"
+       },
+       {
+        "name": "Riley Neer",
+        "stat": "13.5"
+       },
+       {
+        "name": "Preston Bowman",
+        "stat": "12.0"
+       },
+       {
+        "name": "Andrew Metzger",
+        "stat": "-1.0"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "TD",
+      "lines": [
+       {
+        "name": "Dom Dorwart",
+        "stat": "1"
+       },
+       {
+        "name": "Riley Neer",
+        "stat": "0"
+       },
+       {
+        "name": "Preston Bowman",
+        "stat": "0"
+       },
+       {
+        "name": "Andrew Metzger",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "LONG",
+      "lines": [
+       {
+        "name": "Dom Dorwart",
+        "stat": "60"
+       },
+       {
+        "name": "Riley Neer",
+        "stat": "29"
+       },
+       {
+        "name": "Preston Bowman",
+        "stat": "24"
+       },
+       {
+        "name": "Andrew Metzger",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "fumbles",
+      "type": "FUM",
+      "lines": [
+       {
+        "name": "Nick Poulos",
+        "stat": "1"
+       },
+       {
+        "name": "Jack Fries",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "fumbles",
+      "type": "LOST",
+      "lines": [
+       {
+        "name": "Nick Poulos",
+        "stat": "1"
+       },
+       {
+        "name": "Jack Fries",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "fumbles",
+      "type": "REC",
+      "lines": [
+       {
+        "name": "Nick Poulos",
+        "stat": "0"
+       },
+       {
+        "name": "Jack Fries",
+        "stat": "1"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "TOT",
+      "lines": [
+       {
+        "name": "Michael Molnar",
+        "stat": "16"
+       },
+       {
+        "name": "Jack Fries",
+        "stat": "10"
+       },
+       {
+        "name": "Tyler Gillison",
+        "stat": "7"
+       },
+       {
+        "name": "DJ James-Hamilton",
+        "stat": "5"
+       },
+       {
+        "name": "Ronald Jackson Jr.",
+        "stat": "4"
+       },
+       {
+        "name": "DJ Walker",
+        "stat": "4"
+       },
+       {
+        "name": "Evan Herrmann",
+        "stat": "4"
+       },
+       {
+        "name": "Derek Reagans",
+        "stat": "4"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "SOLO",
+      "lines": [
+       {
+        "name": "Michael Molnar",
+        "stat": "7"
+       },
+       {
+        "name": "Jack Fries",
+        "stat": "6"
+       },
+       {
+        "name": "Tyler Gillison",
+        "stat": "2"
+       },
+       {
+        "name": "DJ James-Hamilton",
+        "stat": "2"
+       },
+       {
+        "name": "Ronald Jackson Jr.",
+        "stat": "2"
+       },
+       {
+        "name": "DJ Walker",
+        "stat": "2"
+       },
+       {
+        "name": "Evan Herrmann",
+        "stat": "2"
+       },
+       {
+        "name": "Derek Reagans",
+        "stat": "1"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "SACKS",
+      "lines": [
+       {
+        "name": "Michael Molnar",
+        "stat": "1"
+       },
+       {
+        "name": "Jack Fries",
+        "stat": "0"
+       },
+       {
+        "name": "Tyler Gillison",
+        "stat": "0"
+       },
+       {
+        "name": "DJ James-Hamilton",
+        "stat": "0"
+       },
+       {
+        "name": "Ronald Jackson Jr.",
+        "stat": "0"
+       },
+       {
+        "name": "DJ Walker",
+        "stat": "0"
+       },
+       {
+        "name": "Evan Herrmann",
+        "stat": "0"
+       },
+       {
+        "name": "Derek Reagans",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "TFL",
+      "lines": [
+       {
+        "name": "Michael Molnar",
+        "stat": "1.5"
+       },
+       {
+        "name": "Jack Fries",
+        "stat": "0"
+       },
+       {
+        "name": "Tyler Gillison",
+        "stat": "0"
+       },
+       {
+        "name": "DJ James-Hamilton",
+        "stat": "0"
+       },
+       {
+        "name": "Ronald Jackson Jr.",
+        "stat": "0"
+       },
+       {
+        "name": "DJ Walker",
+        "stat": "0"
+       },
+       {
+        "name": "Evan Herrmann",
+        "stat": "0"
+       },
+       {
+        "name": "Derek Reagans",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "PD",
+      "lines": [
+       {
+        "name": "Michael Molnar",
+        "stat": "1"
+       },
+       {
+        "name": "Jack Fries",
+        "stat": "0"
+       },
+       {
+        "name": "Tyler Gillison",
+        "stat": "0"
+       },
+       {
+        "name": "DJ James-Hamilton",
+        "stat": "1"
+       },
+       {
+        "name": "Ronald Jackson Jr.",
+        "stat": "0"
+       },
+       {
+        "name": "DJ Walker",
+        "stat": "0"
+       },
+       {
+        "name": "Evan Herrmann",
+        "stat": "0"
+       },
+       {
+        "name": "Derek Reagans",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "QB HUR",
+      "lines": [
+       {
+        "name": "Michael Molnar",
+        "stat": "0"
+       },
+       {
+        "name": "Jack Fries",
+        "stat": "0"
+       },
+       {
+        "name": "Tyler Gillison",
+        "stat": "0"
+       },
+       {
+        "name": "DJ James-Hamilton",
+        "stat": "0"
+       },
+       {
+        "name": "Ronald Jackson Jr.",
+        "stat": "0"
+       },
+       {
+        "name": "DJ Walker",
+        "stat": "0"
+       },
+       {
+        "name": "Evan Herrmann",
+        "stat": "0"
+       },
+       {
+        "name": "Derek Reagans",
+        "stat": "0"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Akron",
+    "home_away": "home",
+    "categories": [
+     {
+      "name": "passing",
+      "type": "C/ATT",
+      "lines": [
+       {
+        "name": "Cibastian Broughton",
+        "stat": "22/34"
+       },
+       {
+        "name": "Brayden Roggow",
+        "stat": "0/1"
+       }
+      ]
+     },
+     {
+      "name": "passing",
+      "type": "YDS",
+      "lines": [
+       {
+        "name": "Cibastian Broughton",
+        "stat": "232"
+       },
+       {
+        "name": "Brayden Roggow",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "passing",
+      "type": "AVG",
+      "lines": [
+       {
+        "name": "Cibastian Broughton",
+        "stat": "6.8"
+       },
+       {
+        "name": "Brayden Roggow",
+        "stat": "0.0"
+       }
+      ]
+     },
+     {
+      "name": "passing",
+      "type": "TD",
+      "lines": [
+       {
+        "name": "Cibastian Broughton",
+        "stat": "0"
+       },
+       {
+        "name": "Brayden Roggow",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "passing",
+      "type": "INT",
+      "lines": [
+       {
+        "name": "Cibastian Broughton",
+        "stat": "1"
+       },
+       {
+        "name": "Brayden Roggow",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "CAR",
+      "lines": [
+       {
+        "name": "Jordan Gant",
+        "stat": "16"
+       },
+       {
+        "name": "Sean Patrick",
+        "stat": "5"
+       },
+       {
+        "name": "Cibastian Broughton",
+        "stat": "20"
+       },
+       {
+        "name": "Marquese Williams",
+        "stat": "1"
+       },
+       {
+        "name": " Team",
+        "stat": "1"
+       },
+       {
+        "name": "Kyan Mason",
+        "stat": "1"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "YDS",
+      "lines": [
+       {
+        "name": "Jordan Gant",
+        "stat": "112"
+       },
+       {
+        "name": "Sean Patrick",
+        "stat": "34"
+       },
+       {
+        "name": "Cibastian Broughton",
+        "stat": "20"
+       },
+       {
+        "name": "Marquese Williams",
+        "stat": "1"
+       },
+       {
+        "name": " Team",
+        "stat": "-1"
+       },
+       {
+        "name": "Kyan Mason",
+        "stat": "-6"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "AVG",
+      "lines": [
+       {
+        "name": "Jordan Gant",
+        "stat": "7.0"
+       },
+       {
+        "name": "Sean Patrick",
+        "stat": "6.8"
+       },
+       {
+        "name": "Cibastian Broughton",
+        "stat": "1.0"
+       },
+       {
+        "name": "Marquese Williams",
+        "stat": "1.0"
+       },
+       {
+        "name": " Team",
+        "stat": "-1.0"
+       },
+       {
+        "name": "Kyan Mason",
+        "stat": "-6.0"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "TD",
+      "lines": [
+       {
+        "name": "Jordan Gant",
+        "stat": "1"
+       },
+       {
+        "name": "Sean Patrick",
+        "stat": "0"
+       },
+       {
+        "name": "Cibastian Broughton",
+        "stat": "0"
+       },
+       {
+        "name": "Marquese Williams",
+        "stat": "0"
+       },
+       {
+        "name": " Team",
+        "stat": "0"
+       },
+       {
+        "name": "Kyan Mason",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "LONG",
+      "lines": [
+       {
+        "name": "Jordan Gant",
+        "stat": "31"
+       },
+       {
+        "name": "Sean Patrick",
+        "stat": "18"
+       },
+       {
+        "name": "Cibastian Broughton",
+        "stat": "9"
+       },
+       {
+        "name": "Marquese Williams",
+        "stat": "1"
+       },
+       {
+        "name": " Team",
+        "stat": "0"
+       },
+       {
+        "name": "Kyan Mason",
+        "stat": "17"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "REC",
+      "lines": [
+       {
+        "name": "Kyan Mason",
+        "stat": "6"
+       },
+       {
+        "name": "Connor Cravaack",
+        "stat": "5"
+       },
+       {
+        "name": "Marcel Williams",
+        "stat": "3"
+       },
+       {
+        "name": "Miles Burris",
+        "stat": "4"
+       },
+       {
+        "name": "Jordan Gant",
+        "stat": "2"
+       },
+       {
+        "name": "Wyatt Hook",
+        "stat": "1"
+       },
+       {
+        "name": "Sean Patrick",
+        "stat": "1"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "YDS",
+      "lines": [
+       {
+        "name": "Kyan Mason",
+        "stat": "71"
+       },
+       {
+        "name": "Connor Cravaack",
+        "stat": "43"
+       },
+       {
+        "name": "Marcel Williams",
+        "stat": "42"
+       },
+       {
+        "name": "Miles Burris",
+        "stat": "38"
+       },
+       {
+        "name": "Jordan Gant",
+        "stat": "17"
+       },
+       {
+        "name": "Wyatt Hook",
+        "stat": "14"
+       },
+       {
+        "name": "Sean Patrick",
+        "stat": "7"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "AVG",
+      "lines": [
+       {
+        "name": "Kyan Mason",
+        "stat": "11.8"
+       },
+       {
+        "name": "Connor Cravaack",
+        "stat": "8.6"
+       },
+       {
+        "name": "Marcel Williams",
+        "stat": "14.0"
+       },
+       {
+        "name": "Miles Burris",
+        "stat": "9.5"
+       },
+       {
+        "name": "Jordan Gant",
+        "stat": "8.5"
+       },
+       {
+        "name": "Wyatt Hook",
+        "stat": "14.0"
+       },
+       {
+        "name": "Sean Patrick",
+        "stat": "7.0"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "TD",
+      "lines": [
+       {
+        "name": "Kyan Mason",
+        "stat": "0"
+       },
+       {
+        "name": "Connor Cravaack",
+        "stat": "0"
+       },
+       {
+        "name": "Marcel Williams",
+        "stat": "0"
+       },
+       {
+        "name": "Miles Burris",
+        "stat": "0"
+       },
+       {
+        "name": "Jordan Gant",
+        "stat": "0"
+       },
+       {
+        "name": "Wyatt Hook",
+        "stat": "0"
+       },
+       {
+        "name": "Sean Patrick",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "LONG",
+      "lines": [
+       {
+        "name": "Kyan Mason",
+        "stat": "23"
+       },
+       {
+        "name": "Connor Cravaack",
+        "stat": "12"
+       },
+       {
+        "name": "Marcel Williams",
+        "stat": "32"
+       },
+       {
+        "name": "Miles Burris",
+        "stat": "14"
+       },
+       {
+        "name": "Jordan Gant",
+        "stat": "13"
+       },
+       {
+        "name": "Wyatt Hook",
+        "stat": "14"
+       },
+       {
+        "name": "Sean Patrick",
+        "stat": "7"
+       }
+      ]
+     },
+     {
+      "name": "fumbles",
+      "type": "FUM",
+      "lines": [
+       {
+        "name": "Kyan Mason",
+        "stat": "2"
+       },
+       {
+        "name": " Team",
+        "stat": "1"
+       },
+       {
+        "name": "Cibastian Broughton",
+        "stat": "1"
+       },
+       {
+        "name": "Donelius Johnson",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "fumbles",
+      "type": "LOST",
+      "lines": [
+       {
+        "name": "Kyan Mason",
+        "stat": "1"
+       },
+       {
+        "name": " Team",
+        "stat": "0"
+       },
+       {
+        "name": "Cibastian Broughton",
+        "stat": "0"
+       },
+       {
+        "name": "Donelius Johnson",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "fumbles",
+      "type": "REC",
+      "lines": [
+       {
+        "name": "Kyan Mason",
+        "stat": "0"
+       },
+       {
+        "name": " Team",
+        "stat": "0"
+       },
+       {
+        "name": "Cibastian Broughton",
+        "stat": "0"
+       },
+       {
+        "name": "Donelius Johnson",
+        "stat": "1"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "TOT",
+      "lines": [
+       {
+        "name": "Donelius Johnson",
+        "stat": "9"
+       },
+       {
+        "name": "Tairan Davis",
+        "stat": "6"
+       },
+       {
+        "name": "Dwight Nunoo",
+        "stat": "6"
+       },
+       {
+        "name": "Rodrick Hunter",
+        "stat": "4"
+       },
+       {
+        "name": "Dahvon Frazier",
+        "stat": "4"
+       },
+       {
+        "name": "Cyrus Durham",
+        "stat": "2"
+       },
+       {
+        "name": "Daunte Curtis",
+        "stat": "2"
+       },
+       {
+        "name": "Jalen Williams",
+        "stat": "2"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "SOLO",
+      "lines": [
+       {
+        "name": "Donelius Johnson",
+        "stat": "6"
+       },
+       {
+        "name": "Tairan Davis",
+        "stat": "5"
+       },
+       {
+        "name": "Dwight Nunoo",
+        "stat": "1"
+       },
+       {
+        "name": "Rodrick Hunter",
+        "stat": "2"
+       },
+       {
+        "name": "Dahvon Frazier",
+        "stat": "1"
+       },
+       {
+        "name": "Cyrus Durham",
+        "stat": "1"
+       },
+       {
+        "name": "Daunte Curtis",
+        "stat": "1"
+       },
+       {
+        "name": "Jalen Williams",
+        "stat": "1"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "SACKS",
+      "lines": [
+       {
+        "name": "Donelius Johnson",
+        "stat": "0"
+       },
+       {
+        "name": "Tairan Davis",
+        "stat": "0"
+       },
+       {
+        "name": "Dwight Nunoo",
+        "stat": "0"
+       },
+       {
+        "name": "Rodrick Hunter",
+        "stat": "0"
+       },
+       {
+        "name": "Dahvon Frazier",
+        "stat": "0"
+       },
+       {
+        "name": "Cyrus Durham",
+        "stat": "1"
+       },
+       {
+        "name": "Daunte Curtis",
+        "stat": "0"
+       },
+       {
+        "name": "Jalen Williams",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "TFL",
+      "lines": [
+       {
+        "name": "Donelius Johnson",
+        "stat": "2"
+       },
+       {
+        "name": "Tairan Davis",
+        "stat": "0"
+       },
+       {
+        "name": "Dwight Nunoo",
+        "stat": "0.5"
+       },
+       {
+        "name": "Rodrick Hunter",
+        "stat": "0.5"
+       },
+       {
+        "name": "Dahvon Frazier",
+        "stat": "0"
+       },
+       {
+        "name": "Cyrus Durham",
+        "stat": "1"
+       },
+       {
+        "name": "Daunte Curtis",
+        "stat": "0"
+       },
+       {
+        "name": "Jalen Williams",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "PD",
+      "lines": [
+       {
+        "name": "Donelius Johnson",
+        "stat": "0"
+       },
+       {
+        "name": "Tairan Davis",
+        "stat": "0"
+       },
+       {
+        "name": "Dwight Nunoo",
+        "stat": "0"
+       },
+       {
+        "name": "Rodrick Hunter",
+        "stat": "0"
+       },
+       {
+        "name": "Dahvon Frazier",
+        "stat": "0"
+       },
+       {
+        "name": "Cyrus Durham",
+        "stat": "0"
+       },
+       {
+        "name": "Daunte Curtis",
+        "stat": "0"
+       },
+       {
+        "name": "Jalen Williams",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "QB HUR",
+      "lines": [
+       {
+        "name": "Donelius Johnson",
+        "stat": "0"
+       },
+       {
+        "name": "Tairan Davis",
+        "stat": "0"
+       },
+       {
+        "name": "Dwight Nunoo",
+        "stat": "0"
+       },
+       {
+        "name": "Rodrick Hunter",
+        "stat": "0"
+       },
+       {
+        "name": "Dahvon Frazier",
+        "stat": "0"
+       },
+       {
+        "name": "Cyrus Durham",
+        "stat": "1"
+       },
+       {
+        "name": "Daunte Curtis",
+        "stat": "0"
+       },
+       {
+        "name": "Jalen Williams",
+        "stat": "0"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "401866454": [
+   {
+    "name": "Miami (OH)",
+    "home_away": "home",
+    "categories": [
+     {
+      "name": "passing",
+      "type": "C/ATT",
+      "lines": [
+       {
+        "name": "Caleb Heavner",
+        "stat": "12/23"
+       }
+      ]
+     },
+     {
+      "name": "passing",
+      "type": "YDS",
+      "lines": [
+       {
+        "name": "Caleb Heavner",
+        "stat": "154"
+       }
+      ]
+     },
+     {
+      "name": "passing",
+      "type": "AVG",
+      "lines": [
+       {
+        "name": "Caleb Heavner",
+        "stat": "6.7"
+       }
+      ]
+     },
+     {
+      "name": "passing",
+      "type": "TD",
+      "lines": [
+       {
+        "name": "Caleb Heavner",
+        "stat": "1"
+       }
+      ]
+     },
+     {
+      "name": "passing",
+      "type": "INT",
+      "lines": [
+       {
+        "name": "Caleb Heavner",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "CAR",
+      "lines": [
+       {
+        "name": "D'Shawntae Jones",
+        "stat": "17"
+       },
+       {
+        "name": "Rodney Nelson",
+        "stat": "12"
+       },
+       {
+        "name": "Scoop Smith",
+        "stat": "3"
+       },
+       {
+        "name": "Lazaro Rogers",
+        "stat": "2"
+       },
+       {
+        "name": "Josh Ringer",
+        "stat": "1"
+       },
+       {
+        "name": "Caleb Heavner",
+        "stat": "13"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "YDS",
+      "lines": [
+       {
+        "name": "D'Shawntae Jones",
+        "stat": "112"
+       },
+       {
+        "name": "Rodney Nelson",
+        "stat": "45"
+       },
+       {
+        "name": "Scoop Smith",
+        "stat": "31"
+       },
+       {
+        "name": "Lazaro Rogers",
+        "stat": "8"
+       },
+       {
+        "name": "Josh Ringer",
+        "stat": "5"
+       },
+       {
+        "name": "Caleb Heavner",
+        "stat": "-5"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "AVG",
+      "lines": [
+       {
+        "name": "D'Shawntae Jones",
+        "stat": "6.6"
+       },
+       {
+        "name": "Rodney Nelson",
+        "stat": "3.8"
+       },
+       {
+        "name": "Scoop Smith",
+        "stat": "10.3"
+       },
+       {
+        "name": "Lazaro Rogers",
+        "stat": "4.0"
+       },
+       {
+        "name": "Josh Ringer",
+        "stat": "5.0"
+       },
+       {
+        "name": "Caleb Heavner",
+        "stat": "-0.4"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "TD",
+      "lines": [
+       {
+        "name": "D'Shawntae Jones",
+        "stat": "0"
+       },
+       {
+        "name": "Rodney Nelson",
+        "stat": "1"
+       },
+       {
+        "name": "Scoop Smith",
+        "stat": "1"
+       },
+       {
+        "name": "Lazaro Rogers",
+        "stat": "0"
+       },
+       {
+        "name": "Josh Ringer",
+        "stat": "0"
+       },
+       {
+        "name": "Caleb Heavner",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "LONG",
+      "lines": [
+       {
+        "name": "D'Shawntae Jones",
+        "stat": "18"
+       },
+       {
+        "name": "Rodney Nelson",
+        "stat": "13"
+       },
+       {
+        "name": "Scoop Smith",
+        "stat": "20"
+       },
+       {
+        "name": "Lazaro Rogers",
+        "stat": "8"
+       },
+       {
+        "name": "Josh Ringer",
+        "stat": "5"
+       },
+       {
+        "name": "Caleb Heavner",
+        "stat": "8"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "REC",
+      "lines": [
+       {
+        "name": "Braylon Isom",
+        "stat": "7"
+       },
+       {
+        "name": "Maleek Huggins",
+        "stat": "3"
+       },
+       {
+        "name": "Carl Jenkins Jr.",
+        "stat": "1"
+       },
+       {
+        "name": "Christian Ross",
+        "stat": "1"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "YDS",
+      "lines": [
+       {
+        "name": "Braylon Isom",
+        "stat": "89"
+       },
+       {
+        "name": "Maleek Huggins",
+        "stat": "42"
+       },
+       {
+        "name": "Carl Jenkins Jr.",
+        "stat": "13"
+       },
+       {
+        "name": "Christian Ross",
+        "stat": "10"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "AVG",
+      "lines": [
+       {
+        "name": "Braylon Isom",
+        "stat": "12.7"
+       },
+       {
+        "name": "Maleek Huggins",
+        "stat": "14.0"
+       },
+       {
+        "name": "Carl Jenkins Jr.",
+        "stat": "13.0"
+       },
+       {
+        "name": "Christian Ross",
+        "stat": "10.0"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "TD",
+      "lines": [
+       {
+        "name": "Braylon Isom",
+        "stat": "1"
+       },
+       {
+        "name": "Maleek Huggins",
+        "stat": "0"
+       },
+       {
+        "name": "Carl Jenkins Jr.",
+        "stat": "0"
+       },
+       {
+        "name": "Christian Ross",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "LONG",
+      "lines": [
+       {
+        "name": "Braylon Isom",
+        "stat": "21"
+       },
+       {
+        "name": "Maleek Huggins",
+        "stat": "18"
+       },
+       {
+        "name": "Carl Jenkins Jr.",
+        "stat": "13"
+       },
+       {
+        "name": "Christian Ross",
+        "stat": "10"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "TOT",
+      "lines": [
+       {
+        "name": "Malcolm Mccain",
+        "stat": "11"
+       },
+       {
+        "name": "Roosevelt Andrews III",
+        "stat": "7"
+       },
+       {
+        "name": "CJ Young",
+        "stat": "7"
+       },
+       {
+        "name": "Dillon Tatum",
+        "stat": "6"
+       },
+       {
+        "name": "Toney Coleman Jr.",
+        "stat": "5"
+       },
+       {
+        "name": "Amariyun Knighten",
+        "stat": "4"
+       },
+       {
+        "name": "Oyeka Alexander",
+        "stat": "4"
+       },
+       {
+        "name": "Brach Rice",
+        "stat": "4"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "SOLO",
+      "lines": [
+       {
+        "name": "Malcolm Mccain",
+        "stat": "6"
+       },
+       {
+        "name": "Roosevelt Andrews III",
+        "stat": "2"
+       },
+       {
+        "name": "CJ Young",
+        "stat": "2"
+       },
+       {
+        "name": "Dillon Tatum",
+        "stat": "3"
+       },
+       {
+        "name": "Toney Coleman Jr.",
+        "stat": "4"
+       },
+       {
+        "name": "Amariyun Knighten",
+        "stat": "3"
+       },
+       {
+        "name": "Oyeka Alexander",
+        "stat": "2"
+       },
+       {
+        "name": "Brach Rice",
+        "stat": "1"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "SACKS",
+      "lines": [
+       {
+        "name": "Malcolm Mccain",
+        "stat": "0"
+       },
+       {
+        "name": "Roosevelt Andrews III",
+        "stat": "1"
+       },
+       {
+        "name": "CJ Young",
+        "stat": "0"
+       },
+       {
+        "name": "Dillon Tatum",
+        "stat": "0"
+       },
+       {
+        "name": "Toney Coleman Jr.",
+        "stat": "0"
+       },
+       {
+        "name": "Amariyun Knighten",
+        "stat": "0"
+       },
+       {
+        "name": "Oyeka Alexander",
+        "stat": "0"
+       },
+       {
+        "name": "Brach Rice",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "TFL",
+      "lines": [
+       {
+        "name": "Malcolm Mccain",
+        "stat": "0"
+       },
+       {
+        "name": "Roosevelt Andrews III",
+        "stat": "1.5"
+       },
+       {
+        "name": "CJ Young",
+        "stat": "1"
+       },
+       {
+        "name": "Dillon Tatum",
+        "stat": "0"
+       },
+       {
+        "name": "Toney Coleman Jr.",
+        "stat": "0"
+       },
+       {
+        "name": "Amariyun Knighten",
+        "stat": "0"
+       },
+       {
+        "name": "Oyeka Alexander",
+        "stat": "0"
+       },
+       {
+        "name": "Brach Rice",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "PD",
+      "lines": [
+       {
+        "name": "Malcolm Mccain",
+        "stat": "0"
+       },
+       {
+        "name": "Roosevelt Andrews III",
+        "stat": "0"
+       },
+       {
+        "name": "CJ Young",
+        "stat": "1"
+       },
+       {
+        "name": "Dillon Tatum",
+        "stat": "0"
+       },
+       {
+        "name": "Toney Coleman Jr.",
+        "stat": "1"
+       },
+       {
+        "name": "Amariyun Knighten",
+        "stat": "2"
+       },
+       {
+        "name": "Oyeka Alexander",
+        "stat": "0"
+       },
+       {
+        "name": "Brach Rice",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "QB HUR",
+      "lines": [
+       {
+        "name": "Malcolm Mccain",
+        "stat": "2"
+       },
+       {
+        "name": "Roosevelt Andrews III",
+        "stat": "1"
+       },
+       {
+        "name": "CJ Young",
+        "stat": "2"
+       },
+       {
+        "name": "Dillon Tatum",
+        "stat": "0"
+       },
+       {
+        "name": "Toney Coleman Jr.",
+        "stat": "0"
+       },
+       {
+        "name": "Amariyun Knighten",
+        "stat": "0"
+       },
+       {
+        "name": "Oyeka Alexander",
+        "stat": "0"
+       },
+       {
+        "name": "Brach Rice",
+        "stat": "2"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "TD",
+      "lines": [
+       {
+        "name": "Malcolm Mccain",
+        "stat": "0"
+       },
+       {
+        "name": "Roosevelt Andrews III",
+        "stat": "0"
+       },
+       {
+        "name": "CJ Young",
+        "stat": "0"
+       },
+       {
+        "name": "Dillon Tatum",
+        "stat": "0"
+       },
+       {
+        "name": "Toney Coleman Jr.",
+        "stat": "0"
+       },
+       {
+        "name": "Amariyun Knighten",
+        "stat": "0"
+       },
+       {
+        "name": "Oyeka Alexander",
+        "stat": "0"
+       },
+       {
+        "name": "Brach Rice",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "interceptions",
+      "type": "INT",
+      "lines": [
+       {
+        "name": "CJ Young",
+        "stat": "1"
+       },
+       {
+        "name": "Toney Coleman Jr.",
+        "stat": "1"
+       }
+      ]
+     },
+     {
+      "name": "interceptions",
+      "type": "YDS",
+      "lines": [
+       {
+        "name": "CJ Young",
+        "stat": "10"
+       },
+       {
+        "name": "Toney Coleman Jr.",
+        "stat": "0"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Buffalo",
+    "home_away": "away",
+    "categories": [
+     {
+      "name": "passing",
+      "type": "C/ATT",
+      "lines": [
+       {
+        "name": "Jason Wright",
+        "stat": "22/46"
+       }
+      ]
+     },
+     {
+      "name": "passing",
+      "type": "YDS",
+      "lines": [
+       {
+        "name": "Jason Wright",
+        "stat": "358"
+       }
+      ]
+     },
+     {
+      "name": "passing",
+      "type": "AVG",
+      "lines": [
+       {
+        "name": "Jason Wright",
+        "stat": "7.8"
+       }
+      ]
+     },
+     {
+      "name": "passing",
+      "type": "TD",
+      "lines": [
+       {
+        "name": "Jason Wright",
+        "stat": "2"
+       }
+      ]
+     },
+     {
+      "name": "passing",
+      "type": "INT",
+      "lines": [
+       {
+        "name": "Jason Wright",
+        "stat": "2"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "CAR",
+      "lines": [
+       {
+        "name": "Messiah Burch",
+        "stat": "14"
+       },
+       {
+        "name": "Terrance Shelton Jr.",
+        "stat": "12"
+       },
+       {
+        "name": "Jason Wright",
+        "stat": "7"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "YDS",
+      "lines": [
+       {
+        "name": "Messiah Burch",
+        "stat": "56"
+       },
+       {
+        "name": "Terrance Shelton Jr.",
+        "stat": "41"
+       },
+       {
+        "name": "Jason Wright",
+        "stat": "4"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "AVG",
+      "lines": [
+       {
+        "name": "Messiah Burch",
+        "stat": "4.0"
+       },
+       {
+        "name": "Terrance Shelton Jr.",
+        "stat": "3.4"
+       },
+       {
+        "name": "Jason Wright",
+        "stat": "0.6"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "TD",
+      "lines": [
+       {
+        "name": "Messiah Burch",
+        "stat": "0"
+       },
+       {
+        "name": "Terrance Shelton Jr.",
+        "stat": "0"
+       },
+       {
+        "name": "Jason Wright",
+        "stat": "2"
+       }
+      ]
+     },
+     {
+      "name": "rushing",
+      "type": "LONG",
+      "lines": [
+       {
+        "name": "Messiah Burch",
+        "stat": "27"
+       },
+       {
+        "name": "Terrance Shelton Jr.",
+        "stat": "12"
+       },
+       {
+        "name": "Jason Wright",
+        "stat": "7"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "REC",
+      "lines": [
+       {
+        "name": "Chance Morrow",
+        "stat": "12"
+       },
+       {
+        "name": "Dwayne Early Jr.",
+        "stat": "4"
+       },
+       {
+        "name": "Jaylen Andrews",
+        "stat": "4"
+       },
+       {
+        "name": "Patrick Clacks III",
+        "stat": "1"
+       },
+       {
+        "name": "Jasaiah Gathings",
+        "stat": "1"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "YDS",
+      "lines": [
+       {
+        "name": "Chance Morrow",
+        "stat": "199"
+       },
+       {
+        "name": "Dwayne Early Jr.",
+        "stat": "80"
+       },
+       {
+        "name": "Jaylen Andrews",
+        "stat": "41"
+       },
+       {
+        "name": "Patrick Clacks III",
+        "stat": "28"
+       },
+       {
+        "name": "Jasaiah Gathings",
+        "stat": "10"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "AVG",
+      "lines": [
+       {
+        "name": "Chance Morrow",
+        "stat": "16.6"
+       },
+       {
+        "name": "Dwayne Early Jr.",
+        "stat": "20.0"
+       },
+       {
+        "name": "Jaylen Andrews",
+        "stat": "10.3"
+       },
+       {
+        "name": "Patrick Clacks III",
+        "stat": "28.0"
+       },
+       {
+        "name": "Jasaiah Gathings",
+        "stat": "10.0"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "TD",
+      "lines": [
+       {
+        "name": "Chance Morrow",
+        "stat": "2"
+       },
+       {
+        "name": "Dwayne Early Jr.",
+        "stat": "0"
+       },
+       {
+        "name": "Jaylen Andrews",
+        "stat": "0"
+       },
+       {
+        "name": "Patrick Clacks III",
+        "stat": "0"
+       },
+       {
+        "name": "Jasaiah Gathings",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "receiving",
+      "type": "LONG",
+      "lines": [
+       {
+        "name": "Chance Morrow",
+        "stat": "39"
+       },
+       {
+        "name": "Dwayne Early Jr.",
+        "stat": "35"
+       },
+       {
+        "name": "Jaylen Andrews",
+        "stat": "13"
+       },
+       {
+        "name": "Patrick Clacks III",
+        "stat": "28"
+       },
+       {
+        "name": "Jasaiah Gathings",
+        "stat": "10"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "TOT",
+      "lines": [
+       {
+        "name": "Ronnell Davis",
+        "stat": "9"
+       },
+       {
+        "name": "Saveon Brown",
+        "stat": "8"
+       },
+       {
+        "name": "John Keough",
+        "stat": "8"
+       },
+       {
+        "name": "Sedrick Vessah",
+        "stat": "7"
+       },
+       {
+        "name": "Miles Greer",
+        "stat": "6"
+       },
+       {
+        "name": "Mikey Crawford",
+        "stat": "5"
+       },
+       {
+        "name": "Zach Bergmann",
+        "stat": "5"
+       },
+       {
+        "name": "Will Clark",
+        "stat": "4"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "SOLO",
+      "lines": [
+       {
+        "name": "Ronnell Davis",
+        "stat": "8"
+       },
+       {
+        "name": "Saveon Brown",
+        "stat": "6"
+       },
+       {
+        "name": "John Keough",
+        "stat": "3"
+       },
+       {
+        "name": "Sedrick Vessah",
+        "stat": "2"
+       },
+       {
+        "name": "Miles Greer",
+        "stat": "3"
+       },
+       {
+        "name": "Mikey Crawford",
+        "stat": "4"
+       },
+       {
+        "name": "Zach Bergmann",
+        "stat": "1"
+       },
+       {
+        "name": "Will Clark",
+        "stat": "3"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "SACKS",
+      "lines": [
+       {
+        "name": "Ronnell Davis",
+        "stat": "0"
+       },
+       {
+        "name": "Saveon Brown",
+        "stat": "0"
+       },
+       {
+        "name": "John Keough",
+        "stat": "0"
+       },
+       {
+        "name": "Sedrick Vessah",
+        "stat": "1.5"
+       },
+       {
+        "name": "Miles Greer",
+        "stat": "0"
+       },
+       {
+        "name": "Mikey Crawford",
+        "stat": "0"
+       },
+       {
+        "name": "Zach Bergmann",
+        "stat": "0"
+       },
+       {
+        "name": "Will Clark",
+        "stat": "2"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "TFL",
+      "lines": [
+       {
+        "name": "Ronnell Davis",
+        "stat": "0"
+       },
+       {
+        "name": "Saveon Brown",
+        "stat": "0"
+       },
+       {
+        "name": "John Keough",
+        "stat": "1"
+       },
+       {
+        "name": "Sedrick Vessah",
+        "stat": "2.5"
+       },
+       {
+        "name": "Miles Greer",
+        "stat": "1"
+       },
+       {
+        "name": "Mikey Crawford",
+        "stat": "0"
+       },
+       {
+        "name": "Zach Bergmann",
+        "stat": "0"
+       },
+       {
+        "name": "Will Clark",
+        "stat": "2"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "PD",
+      "lines": [
+       {
+        "name": "Ronnell Davis",
+        "stat": "1"
+       },
+       {
+        "name": "Saveon Brown",
+        "stat": "0"
+       },
+       {
+        "name": "John Keough",
+        "stat": "1"
+       },
+       {
+        "name": "Sedrick Vessah",
+        "stat": "1"
+       },
+       {
+        "name": "Miles Greer",
+        "stat": "2"
+       },
+       {
+        "name": "Mikey Crawford",
+        "stat": "1"
+       },
+       {
+        "name": "Zach Bergmann",
+        "stat": "0"
+       },
+       {
+        "name": "Will Clark",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "QB HUR",
+      "lines": [
+       {
+        "name": "Ronnell Davis",
+        "stat": "0"
+       },
+       {
+        "name": "Saveon Brown",
+        "stat": "0"
+       },
+       {
+        "name": "John Keough",
+        "stat": "0"
+       },
+       {
+        "name": "Sedrick Vessah",
+        "stat": "1"
+       },
+       {
+        "name": "Miles Greer",
+        "stat": "0"
+       },
+       {
+        "name": "Mikey Crawford",
+        "stat": "0"
+       },
+       {
+        "name": "Zach Bergmann",
+        "stat": "0"
+       },
+       {
+        "name": "Will Clark",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "defensive",
+      "type": "TD",
+      "lines": [
+       {
+        "name": "Ronnell Davis",
+        "stat": "0"
+       },
+       {
+        "name": "Saveon Brown",
+        "stat": "0"
+       },
+       {
+        "name": "John Keough",
+        "stat": "0"
+       },
+       {
+        "name": "Sedrick Vessah",
+        "stat": "0"
+       },
+       {
+        "name": "Miles Greer",
+        "stat": "0"
+       },
+       {
+        "name": "Mikey Crawford",
+        "stat": "0"
+       },
+       {
+        "name": "Zach Bergmann",
+        "stat": "0"
+       },
+       {
+        "name": "Will Clark",
+        "stat": "0"
+       }
+      ]
+     },
+     {
+      "name": "kickReturns",
+      "type": "NO",
+      "lines": [
+       {
+        "name": "Phillip Folmar",
+        "stat": "1"
+       }
+      ]
+     },
+     {
+      "name": "kickReturns",
+      "type": "YDS",
+      "lines": [
+       {
+        "name": "Phillip Folmar",
+        "stat": "32"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "player_boxscore_times": {
+  "401866453": "2026-11-08T07:15:11.402765Z",
+  "401866454": "2026-11-08T07:15:11.402765Z"
+ },
+ "player_stats_checked_at": "2026-11-08T07:15:11.402765Z"
+}
