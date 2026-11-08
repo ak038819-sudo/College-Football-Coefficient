@@ -62,14 +62,25 @@ class BowlingMeritsTests(unittest.TestCase):
 
     def test_historical_fixtures_if_present(self):
         root=Path(__file__).resolve().parents[2]
-        expected={2019:(774,1158,15.089198687115356),2026:(558,700,18.22364065332815)}
-        for year,(count,mature,byu) in expected.items():
-            path=root/"data"/"raw"/f"games_{year}.csv"
-            if not path.exists(): continue
+        # 2019 is frozen; 2026 is a growing live feed.
+        year,count,mature,byu=2019,774,1158,15.089198687115356
+        path=root/"data"/"raw"/f"games_{year}.csv"
+        if path.exists():
             games=read_games(path)
             self.assertEqual(len(games),count)
             ledger=calculate(games)
             self.assertEqual(sum(x["mature"] for x in ledger),mature)
             self.assertAlmostEqual(dict(standings(ledger))["BYU"],byu,places=8)
+
+    def test_live_2026_fixture_is_replayable(self):
+        root=Path(__file__).resolve().parents[2]
+        path=root/"data"/"raw"/"games_2026.csv"
+        if not path.exists(): return
+        games=read_games(path)
+        self.assertGreater(len(games),0)
+        ledger=calculate(games)
+        self.assertEqual(len(ledger),2*len(games))
+        self.assertEqual(ledger,calculate(list(reversed(games))))
+        self.assertTrue(all(x["season"]==2026 for x in ledger))
 
 if __name__=="__main__": unittest.main()
