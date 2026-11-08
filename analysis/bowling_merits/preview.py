@@ -9,7 +9,7 @@ import sqlite3
 from collections import defaultdict
 from pathlib import Path
 
-def build_preview(shadow_db,season,limit=25):
+def build_preview(shadow_db,season,limit=None):
     path=Path(shadow_db)
     if not path.is_file():
         raise FileNotFoundError(f"Bowling Merits shadow database missing: {path}")
@@ -54,7 +54,7 @@ if __name__=="__main__":
     p=argparse.ArgumentParser()
     p.add_argument("--shadow-db",default="db/bowling_merits_shadow.db")
     p.add_argument("--season",type=int,required=True)
-    p.add_argument("--limit",type=int,default=25)
+    p.add_argument("--limit",type=int,default=None)
     p.add_argument("--output")
     a=p.parse_args()
     data=build_preview(a.shadow_db,a.season,a.limit)
