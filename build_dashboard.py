@@ -36,6 +36,8 @@ STATS_PATH = Path("ui/stats.js")
 GEOGRAPHY_PATH = Path("ui/geography.js")
 LIVE_TEAMS_PATH = Path("ui/live_teams.js")
 FAVORITES_PATH = Path("ui/favorites.js")
+# The game-page helpers, shared with the other three league pages.
+GAME_PAGE_JS_PATH = Path("ui/game_page.js")
 TEAM_MODERN_CSS_PATH = Path("ui/team-modern.css")
 # The game-page design, shared with ui/nfl.html, ui/nba.html and
 # ui/basketball.html so the four leagues cannot drift apart.
@@ -91,7 +93,8 @@ def render_from_exports() -> None:
     required = [SHELL_PATH, DATA_PATH, CONFERENCE_PAGES_PATH, LOGO_MANIFEST_PATH,
                 TEAM_BRAND_COLORS_PATH,
                 STATIC_MANIFEST_PATH, NAVIGATION_PATH, SEARCH_PATH, STATS_PATH, GEOGRAPHY_PATH, LIVE_TEAMS_PATH,
-                FAVORITES_PATH, TEAM_MODERN_CSS_PATH, GAME_PAGE_CSS_PATH]
+                FAVORITES_PATH, GAME_PAGE_JS_PATH, TEAM_MODERN_CSS_PATH,
+                GAME_PAGE_CSS_PATH]
     missing = [str(path) for path in required if not path.exists()]
     if missing:
         raise SystemExit("Missing dashboard inputs: " + ", ".join(missing) +
@@ -108,6 +111,7 @@ def render_from_exports() -> None:
              .replace("__STATS_VERSION__", hashlib.sha256(STATS_PATH.read_bytes()).hexdigest()[:12])
              .replace("__SEARCH_VERSION__", hashlib.sha256(SEARCH_PATH.read_bytes()).hexdigest()[:12])
              .replace("__FAVORITES_VERSION__", hashlib.sha256(FAVORITES_PATH.read_bytes()).hexdigest()[:12])
+             .replace("__GAME_PAGE_VERSION__", hashlib.sha256(GAME_PAGE_JS_PATH.read_bytes()).hexdigest()[:12])
              # Empty unless a deployment sets it, which keeps the page on the
              # committed snapshot. See docs/live-score-delivery.md.
              .replace("__LIVE_FEED_URL__", live_feed_url()))

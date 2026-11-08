@@ -331,9 +331,6 @@
      ink as the rest of a sub line. */
   .teamcell .with-mark .sub { font-size: 11px; color: var(--ink-dim);
                               font-family: var(--font-mono); }
-  .gamehead { display: flex; justify-content: space-between; gap: 12px;
-              align-items: baseline; margin: 10px 0 4px; }
-  .gamehead .score { font-family: var(--font-mono); font-size: 20px; }
   /* The chart sits between the line score and the shape table, so it needs
      air above it or the three run together as one block of rules. */
   #game-body svg.wpchart { margin-top: 14px; }
@@ -637,12 +634,14 @@
 <script src="nba_loader.js?v=21577e47dd24"></script>
 <script src="ncaambb_app.js?v=4828bd5e0199"></script>
 <script src="nba_app.js?v=589ac1056265"></script>
+<script src="game_page.js?v=fb1a02a0b1c5"></script>
 <script>
 (function () {
   'use strict';
   var loader = window.nbaLoader;
   var leagues = window.ncaambbApp;   // the shared league registry
   var app = window.nbaApp;           // the NBA's own rules
+  var gp = window.gamePage;          // the game page every league shares
   var BASE = 'data/nba/';
 
   /* ALL FIVE of the shared tabs, since schema 3 carries the people layer.
@@ -1466,6 +1465,7 @@
   function gameChart(host, entry, game, periods) {
     var points = app.winProbabilityTrace(entry, periods);
     if (points.length < 2) return;
+    host = detailPanel(host, 'Win probability');
     var width = 600;
     var height = 110;
     var chart = svg('svg', {
@@ -1514,13 +1514,20 @@
     if (!rows.length) return;
     var scroller = node('div', 'scroller');
     var table = document.createElement('table');
+    // The shared design's line score, under the scoreboard it belongs to.
+    // The GUARD stays this page's own: `detailReconciles` already compares
+    // the published plays against the box score's final, which is the same
+    // question gamePage.lineScore asks, and it governs the chart and the
+    // plays below as well -- 1,339 games of the 31,241 in the archive fail
+    // it, and all of them must lose the whole section, not just the table.
+    table.className = 'gp-table gp-line';
     var head = document.createElement('thead');
     var headRow = document.createElement('tr');
     headRow.appendChild(node('th', '', 'Club'));
     rows.forEach(function (row) {
       headRow.appendChild(node('th', 'num', app.periodLabel(row.period)));
     });
-    headRow.appendChild(node('th', 'num', 'T'));
+    headRow.appendChild(node('th', 'num gp-line-total', 'T'));
     head.appendChild(headRow);
     table.appendChild(head);
     var body = document.createElement('tbody');
@@ -1538,7 +1545,7 @@
       rows.forEach(function (row) {
         tr.appendChild(node('td', 'num', String(row[pair[0]])));
       });
-      tr.appendChild(node('td', 'num',
+      tr.appendChild(node('td', 'num gp-line-total',
         app.isFinal(game) ? String(game[pair[0] + '_points']) : ''));
       body.appendChild(tr);
     });
@@ -1550,7 +1557,7 @@
   function shapeList(host, entry, payload, game) {
     var shape = app.unpackShape(entry, payload && payload.shape_fields);
     if (!shape) return;
-    host.appendChild(node('h3', 'section', 'How the game went'));
+    host = detailPanel(host, 'How the game went');
     var home = seasonAbbr(game.home) || seasonName(game.home);
     var away = seasonAbbr(game.away) || seasonName(game.away);
     var facts = [
@@ -1586,7 +1593,7 @@
   function keyPlayTable(host, entry, payload, game) {
     var plays = app.unpackKeyPlays(entry, game, payload && payload.reasons);
     if (!plays.length) return;
-    host.appendChild(node('h3', 'section', 'Key plays'));
+    host = detailPanel(host, 'Key plays');
     var scroller = node('div', 'scroller');
     var table = document.createElement('table');
     var head = document.createElement('thead');
@@ -1615,6 +1622,118 @@
       + 'homework.'));
   }
 
+  /* ---- the hero, the same one every league's game page carries -------- */
+
+  function heroSide(game, key, points, role, outcome) {
+    var side = node('div', 'gp-side' + (outcome ? ' ' + outcome : ''));
+    side.appendChild(node('span', 'gp-role', role));
+    // `gp-mark` is the shared contract: this page sizes `.mark` for a table
+    // cell, so a mark dropped into a hero drew at 22px until
+    // ui/game_page.css had a class of its own to size.
+    var mark = teamMark(key, 140);
+    if (mark) {
+      mark.classList.add('gp-mark');
+      side.appendChild(mark);
+    }
+    var name = node('span', 'gp-team');
+    name.appendChild(linkTo(seasonName(key), function () { openTeam(key); }));
+    side.appendChild(name);
+    // A missing score is an em dash, never a zero -- and a game not yet
+    // played hides this cell entirely, so the matchup's win chance below is
+    // what the reader sees.
+    side.appendChild(node('span', 'gp-score',
+      points === null || points === undefined ? '\u2014' : String(points)));
+    return side;
+  }
+
+  function gameBadges(game) {
+    var done = app.isFinal(game);
+    var list = [];
+    list.push(done ? { text: 'Final', kind: 'final' }
+      : { text: 'Not played', kind: 'upcoming' });
+    var type = app.typeLabel(game);
+    if (type) list.push({ text: type, kind: 'post' });
+    var note = app.typeNote(game);
+    if (note) list.push({ text: note });
+    if (!app.countsInRecord(game)) list.push({ text: 'Not in the standings' });
+    // Judged against the model's own pregame number, and only where there
+    // is one: a game the model said nothing about is not an upset.
+    var chance = gp.percents(game.home_wp);
+    if (done && chance && game.home_points !== game.away_points) {
+      var winner = game.home_points > game.away_points
+        ? Number(chance.home) : Number(chance.away);
+      if (winner < 35) list.push({ text: 'Upset', kind: 'upset' });
+    }
+    return list;
+  }
+
+  /* Draws the hero and RETURNS it, because the line score goes inside it --
+   * under the scoreboard, where every other league puts one. */
+  function gameHero(host, game) {
+    var done = app.isFinal(game);
+    var tie = done && game.home_points === game.away_points;
+    var homeWon = done && !tie && game.home_points > game.away_points;
+    var hero = node('div', 'panel gp-hero' + (done ? '' : ' gp-pregame-hero'));
+    var top = node('div', 'gl-top');
+    top.innerHTML = gp.badges(gameBadges(game));
+    top.appendChild(node('span', 'gl-when', dayLabel(app.dayOf(game)) || ''));
+    hero.appendChild(top);
+    hero.appendChild(node('p', 'gp-meta',
+      [loader.seasonLabel(state.season), game.venue, game.city]
+        .filter(Boolean).join(' \u00b7 ')));
+    var board = node('div', 'gp-board');
+    var outcome = function (isHome) {
+      if (!done || tie) return '';
+      return isHome === homeWon ? 'won' : 'lost';
+    };
+    board.appendChild(heroSide(game, game.away, game.away_points, 'Away',
+      outcome(false)));
+    board.appendChild(node('div', 'gp-mid', 'at'));
+    board.appendChild(heroSide(game, game.home, game.home_points, 'Home',
+      outcome(true)));
+    hero.appendChild(board);
+    host.appendChild(hero);
+    return hero;
+  }
+
+  /* The matchup table, built by the shared module from the same field names
+   * the other leagues' exports use. The NBA export carries no POSTGAME
+   * rating, so the group comes back with two columns rather than four, two
+   * of which would be dashes. */
+  function gameMatchup(host, game) {
+    var group = gp.eloGroup(game, { completed: app.isFinal(game) });
+    var panel = node('div', 'panel');
+    panel.appendChild(node('h2', 'section-title', 'Matchup'));
+    if (!group) {
+      panel.appendChild(node('p', 'empty',
+        'The model has no stored rating for this game.'));
+      host.appendChild(panel);
+      return;
+    }
+    var scroll = node('div', 'table-scroll');
+    scroll.tabIndex = 0;
+    scroll.setAttribute('role', 'region');
+    scroll.setAttribute('aria-label', 'The two clubs across every model');
+    scroll.innerHTML = gp.matchupTable([group], {
+      away: seasonName(game.away), home: seasonName(game.home)
+    });
+    panel.appendChild(scroll);
+    panel.appendChild(node('p', 'section-note', app.isFinal(game)
+      ? 'Recorded before tip-off and never recomputed. Win chance includes '
+        + 'home court exactly as the Elo model applies it.'
+      : 'Current ratings; they will change as games are played.'));
+    host.appendChild(panel);
+  }
+
+  /* A panel for one section of the game page, so each sits in the same card
+   * chrome as the hero and the matchup above it. */
+  function detailPanel(host, label) {
+    var panel = node('div', 'panel');
+    panel.appendChild(node('h2', 'section-title', label));
+    host.appendChild(panel);
+    return panel;
+  }
+
   function gamePanel() {
     var host = el('game-body');
     host.innerHTML = '';
@@ -1630,25 +1749,8 @@
       return;
     }
 
-    var head = node('div', 'gamehead');
-    var title = node('div', '');
-    var heading = node('h3', 'with-mark');
-    var awayMark = teamMark(game.away, 22);
-    if (awayMark) heading.appendChild(awayMark);
-    heading.appendChild(node('span', '', seasonName(game.away) + ' at '));
-    var homeMark = teamMark(game.home, 22);
-    if (homeMark) heading.appendChild(homeMark);
-    heading.appendChild(node('span', '', seasonName(game.home)));
-    title.appendChild(heading);
-    var when = [dayLabel(app.dayOf(game)), app.typeLabel(game), game.venue,
-      game.city].filter(Boolean).join(' · ');
-    title.appendChild(node('div', 'sub', when));
-    head.appendChild(title);
-    head.appendChild(node('div', 'score',
-      app.isFinal(game)
-        ? game.away_points + '-' + game.home_points
-        : 'not played'));
-    host.appendChild(head);
+    var hero = gameHero(host, game);
+    gameMatchup(host, game);
 
     var ready = ensureMonth(game);
     if (ready === 'pending') {
@@ -1680,7 +1782,7 @@
         + 'left out and everything below ends where the plays do. The score '
         + 'is the box score’s.'));
     } else {
-      lineScoreTable(host, entry, game);
+      lineScoreTable(hero, entry, game);
     }
     gameChart(host, entry, game, periods);
     shapeList(host, entry, payload, game);

@@ -1538,6 +1538,7 @@ __STATIC_MANIFEST_JSON__
 <script src="live_teams.js?v=__LIVE_TEAMS_VERSION__"></script>
 <script src="search.js?v=__SEARCH_VERSION__"></script>
 <script src="favorites.js?v=__FAVORITES_VERSION__"></script>
+<script src="game_page.js?v=__GAME_PAGE_VERSION__"></script>
 <script>
 const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
 // Logo manifest (data foundation step): the same {name: [{start, end, bg, ...}]}
@@ -9525,6 +9526,10 @@ function backLink() {
 // any further entries being overtimes). Drawn only when both sides have the
 // same number of periods and each side's periods add up to its final score: a
 // line that disagrees with the scoreboard is a line this page will not show.
+// The quarter scores arrive as "7-14-6-7"; the GUARD that decides whether a
+// line score may be drawn at all is the shared one in ui/game_page.js, which
+// every league's game page uses. Only the parsing is football's, because only
+// football's export packs the periods into a string.
 function lineScoreRows(detail, game) {
   if (!detail || !game.completed) return null;
   const parse = text => {
@@ -9532,25 +9537,15 @@ function lineScoreRows(detail, game) {
     const parts = text.split('-').map(Number);
     return parts.length && parts.every(n => Number.isInteger(n) && n >= 0) ? parts : null;
   };
-  const home = parse(detail.home_line_scores), away = parse(detail.away_line_scores);
-  if (!home || !away || home.length !== away.length || home.length < 4) return null;
-  const total = periods => periods.reduce((sum, n) => sum + n, 0);
-  if (total(home) !== game.home_score || total(away) !== game.away_score) return null;
-  const labels = home.map((_, i) => i < 4 ? String(i + 1) : i === 4 ? 'OT' : (i - 3) + 'OT');
-  return { labels, home, away };
+  return gamePage.lineScore({
+    home: parse(detail.home_line_scores), away: parse(detail.away_line_scores),
+    homeScore: game.home_score, awayScore: game.away_score, regulation: 4});
 }
 
 function lineScoreTable(detail, game, awayName, homeName) {
-  const rows = lineScoreRows(detail, game);
-  if (!rows) return '';
-  const head = '<tr><th scope="col"></th>' + rows.labels.map(l => '<th scope="col">' + l + '</th>').join('') +
-    '<th scope="col" class="gp-line-total">T</th></tr>';
-  const row = (name, periods, total) => '<tr><th scope="row">' + esc(name) + '</th>' +
-    periods.map(n => '<td>' + n + '</td>').join('') +
-    '<td class="gp-line-total">' + total + '</td></tr>';
-  return '<table class="gp-table gp-line"><thead>' + head + '</thead><tbody>' +
-    row(awayName, rows.away, game.away_score) + row(homeName, rows.home, game.home_score) +
-    '</tbody></table>';
+  return gamePage.lineScoreTable(lineScoreRows(detail, game),
+    {away: awayName, home: homeName},
+    {away: game.away_score, home: game.home_score});
 }
 
 const _gameDetails = new Map();

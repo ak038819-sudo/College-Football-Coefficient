@@ -339,7 +339,12 @@ async function open(overrides, schedule, hash) {
   await settle(dom, () => dom.window.document.querySelector(
     '#board tr, #refusal-list li, #cards .card, #team-body .directory, '
     + '#team-body .clubhead, #team-body .empty, #people-body h2, '
-    + '#people-body p, #people-body .directory, #people-body tbody tr'));
+    + '#people-body p, #people-body .directory, #people-body tbody tr, '
+    // A link straight to a game hides the cards, so without the game page
+    // listed here every such link timed out as "never rendered" before the
+    // test that was meant to check it had asserted anything -- exactly what
+    // leaving People off this list used to do.
+    + '#game-page .gp-hero, #game-page .empty'));
   return dom;
 }
 
@@ -1865,4 +1870,178 @@ test('the tabs sit inside the page wrap, where a desktop reads them', () => {
   const wrap = page.slice(page.indexOf('<div class="wrap">'),
                           page.indexOf('</div>\n\n<script'));
   assert.match(wrap, /<\/header>\s*<nav class="tabs"/);
+});
+
+// --- a game is a place, with an address ------------------------------------
+
+/* The scoreboard's cards carry Elo now, because a game page's matchup table
+   reads the model's own chain off the game. The schedule in `games()` has
+   none, so these tests describe their own. */
+function ratedGames() {
+  const [one, two, three] = games();
+  return [
+    // A FINAL game the model learned from: the whole chain.
+    Object.assign({}, one, {
+      home_elo: 2240.4, away_elo: 2100.1, home_wp: 0.6894,
+      home_elo_post: 2254.2, away_elo_post: 2086.3, elo_change: 13.84,
+      rateable: 1, d1: 1 }),
+    // A game NOT YET PLAYED: today's ratings, said to be live.
+    Object.assign({}, two, {
+      home_elo: 2240.4, away_elo: 1788.4, home_wp: 0.9312, wp_live: 1,
+      rateable: 0, d1: 1 }),
+    // A game the model never rated at all.
+    Object.assign({}, three, { rateable: 0, d1: 0 })
+  ];
+}
+
+const GAME_ROUTE = '#league=ncaambb&section=games&game=700&season=2026';
+
+function heroClubs(doc) {
+  return [...doc.querySelectorAll('#game-page .gp-board .gp-side .gp-team')]
+    .map(node => node.textContent);
+}
+
+function matchupRows(doc) {
+  return [...doc.querySelectorAll('#game-page .gp-matchup tbody tr')]
+    .map(tr => [...tr.children].map(cell => cell.textContent));
+}
+
+async function openGame(hash, schedule) {
+  const dom = await open(undefined, schedule || ratedGames(), hash);
+  await settle(dom, () => dom.window.document.querySelector(
+    '#game-page .gp-hero, #game-page .empty'));
+  return dom;
+}
+
+test('a card is a button and opens its game, with the season in the URL',
+  async () => {
+    const dom = await open(undefined, ratedGames(),
+      '#league=ncaambb&section=games');
+    const doc = dom.window.document;
+    const card = doc.querySelector('#cards button.card.open');
+    assert.ok(card, 'a card is not reachable by keyboard');
+    card.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    await settle(dom, () => doc.querySelector('#game-page .gp-hero'));
+    // The season is on the link because the page opens on the latest one: a
+    // bare id would resolve against the wrong year, and would start finding
+    // the WRONG game the day the provider reuses an id.
+    assert.match(dom.window.location.hash, /&game=\d+/);
+    assert.match(dom.window.location.hash, /&season=2026/);
+    dom.window.close();
+  });
+
+test('opening a game hides the whole slate, not only the cards', async () => {
+  // `hidden` is an attribute and any `display` rule beats it: `.cards` is a
+  // grid and `.days` a flex row, so this asks whether they are visible
+  // rather than which element carries the attribute.
+  const dom = await openGame(GAME_ROUTE);
+  const doc = dom.window.document;
+  for (const id of ['days', 'filters', 'sorts', 'cards']) {
+    assert.equal(doc.getElementById(id).hidden, true, id + ' is still shown');
+  }
+  assert.equal(doc.getElementById('game-page').hidden, false);
+  dom.window.close();
+});
+
+test('a finished game names both clubs, scores them and dims the loser',
+  async () => {
+    const dom = await openGame(GAME_ROUTE);
+    const doc = dom.window.document;
+    assert.deepEqual(heroClubs(doc), ['Duke', 'Michigan']);
+    assert.deepEqual(
+      [...doc.querySelectorAll('#game-page .gp-score')]
+        .map(node => node.textContent), ['61', '78']);
+    const sides = [...doc.querySelectorAll('#game-page .gp-side')];
+    assert.ok(sides[0].classList.contains('lost'), 'the loser is not dimmed');
+    assert.ok(sides[1].classList.contains('won'), 'the winner is not marked');
+    assert.match(doc.querySelector('#game-page .gl-top').textContent, /Final/);
+    dom.window.close();
+  });
+
+test('a finished game shows the chain the model stored before tip-off',
+  async () => {
+    const dom = await openGame(GAME_ROUTE);
+    const doc = dom.window.document;
+    assert.deepEqual(
+      [...doc.querySelectorAll('#game-page .gp-matchup thead tr')[1].children]
+        .map(cell => cell.textContent),
+      ['Team', 'Before', 'Win chance', 'After', 'Δ Elo']);
+    assert.deepEqual(matchupRows(doc), [
+      // Elo displays as a whole integer; a rating CHANGE keeps its decimal,
+      // and the away side's is the home side's negated.
+      ['Duke', '2100', '31.1%', '2086', '−13.8'],
+      ['Michigan', '2240', '68.9%', '2254', '+13.8']
+    ]);
+    assert.match(doc.querySelector('#game-page .section-note').textContent,
+      /Recorded before tip-off/);
+    dom.window.close();
+  });
+
+test('a game not yet played says its numbers are today’s, not a forecast',
+  async () => {
+    const dom = await openGame(
+      '#league=ncaambb&section=games&game=701&season=2026');
+    const doc = dom.window.document;
+    const head = [...doc.querySelectorAll(
+      '#game-page .gp-matchup thead tr')[1].children]
+      .map(cell => cell.textContent);
+    // "Now", not "Before": giving a moving number and a measurement the same
+    // heading is how a reader comes to believe the model predicted something
+    // it never did. And no After or delta, because nothing has happened.
+    assert.deepEqual(head, ['Team', 'Now', 'Win chance']);
+    assert.match(doc.querySelector('#game-page .section-note').textContent,
+      /stand today/);
+    // The hero gives the space to the marks instead of to absent scores.
+    assert.ok(doc.querySelector('#game-page .gp-pregame-hero'));
+    dom.window.close();
+  });
+
+test('a game the model never rated says so instead of showing dashes',
+  async () => {
+    const dom = await openGame(
+      '#league=ncaambb&section=games&game=702&season=2026');
+    const doc = dom.window.document;
+    assert.equal(doc.querySelectorAll('#game-page .gp-matchup').length, 0,
+      'a table of dashes was drawn');
+    assert.match(doc.querySelector('#game-page .empty').textContent,
+      /not a Division I club/);
+    // The hero is still there: the game happened, the rating did not.
+    assert.deepEqual(heroClubs(doc), ['BYU', 'Duke']);
+    dom.window.close();
+  });
+
+test('a game id this season does not hold is a dead end with a way out',
+  async () => {
+    const dom = await openGame(
+      '#league=ncaambb&section=games&game=99999&season=2026');
+    const doc = dom.window.document;
+    assert.match(doc.querySelector('#game-page .empty').textContent,
+      /No game in 2025-26 has that id/);
+    assert.ok(doc.querySelector('#game-page .back button'),
+      'the reader cannot walk back out');
+    dom.window.close();
+  });
+
+test('pressing a tab closes the game, in the URL as well as on the page',
+  async () => {
+    const dom = await openGame(GAME_ROUTE);
+    const doc = dom.window.document;
+    const standings = [...doc.querySelectorAll('.tabs button')]
+      .find(node => node.textContent === 'Standings');
+    standings.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    await settle(dom, () => !doc.getElementById('standings').hidden);
+    assert.doesNotMatch(dom.window.location.hash, /game=/,
+      'the game is still in the URL');
+    dom.window.close();
+  });
+
+test('the meetings panel says it covers this season only', async () => {
+  // Only the open season is loaded, so this is not the all-time series and
+  // must not read as one.
+  const dom = await openGame(GAME_ROUTE);
+  const panel = [...dom.window.document.querySelectorAll('#game-page .panel')]
+    .find(node => /Meetings/.test(node.textContent));
+  assert.ok(panel, 'no meetings panel');
+  assert.match(panel.textContent, /This season only/);
+  dom.window.close();
 });
