@@ -3912,7 +3912,12 @@ function renderTeamPage(param) {
       '<div class="grid-2 team-section">' + loading('tp-gains', 'Biggest Elo Gains') +
       loading('tp-losses', 'Biggest Elo Losses') + '</div>';
   }
-  return back + header + pageTabNav('team', TEAM_TAB_LABELS) + body;
+  const bowlingResearch = new URLSearchParams(location.search).get('bowlingMeritsResearch') === '1'
+    ? '<section class="panel team-section" id="tp-bowling-merits" data-bowling-team="' + esc(team.name) +
+      '" data-bowling-season="' + esc(season || '') + '"><h2 class="section-title">Bowling Merits (Research)</h2>' +
+      '<p class="section-note">Experimental · separate from official Merits · FBS eligibility reconciliation pending</p>' +
+      '<div class="bowling-merits-detail" role="status">Checking approved research export…</div></section>' : '';
+  return back + header + bowlingResearch + pageTabNav('team', TEAM_TAB_LABELS) + body;
 }
 
 // One school colour for the whole team page: the header gradient and the
@@ -11278,6 +11283,69 @@ paintConnection();
 </script>
 
 <script>
+/* Team-page Bowling Merits reads the same approved JSON as the research preview.
+   No production rating field is overwritten. Missing export fails visibly closed. */
+const bowlingPreviewCache = new Map();
+function bowlingPreviewForSeason(season) {
+  if (!bowlingPreviewCache.has(season)) {
+    bowlingPreviewCache.set(season, fetch('./bowling-merits-preview.json', {cache:'no-store'})
+      .then(r => { if (!r.ok) throw Error('No approved research export published'); return r.json(); })
+      .then(data => {
+        if (data.model !== 'Bowling Merits' || data.status !== 'research_preview' ||
+            data.production_merits_unchanged !== true || Number(data.season) !== Number(season) ||
+            !Array.isArray(data.standings)) throw Error('Research export does not match this season');
+        return data;
+      }));
+  }
+  return bowlingPreviewCache.get(season);
+}
+function paintBowlingTeam(panel) {
+  if (panel.dataset.bowlingLoaded) return;
+  panel.dataset.bowlingLoaded='1';
+  const team=panel.dataset.bowlingTeam,season=panel.dataset.bowlingSeason;
+  const target=panel.querySelector('.bowling-merits-detail');
+  if (!season) { target.textContent='No season selected.'; return; }
+  bowlingPreviewForSeason(season).then(data => {
+    if (!panel.isConnected) return;
+    const row=data.standings.find(t => t.team === team);
+    if (!row) {
+      target.textContent='No published research award for this team in '+season+
+        '. The preview may be limited to the top 25; this is not a zero score.';
+      return;
+    }
+    target.replaceChildren();
+    const summary=document.createElement('p');
+    summary.textContent='#'+row.rank+' · '+Number(row.merits).toFixed(3)+' Bowling Merits · '+
+      row.games+' games · '+row.wins+' wins · '+row.regulation_losses+' regulation losses · '+
+      row.ot_losses+' OT losses'+(row.provisional?' · PROVISIONAL':'');
+    target.append(summary);
+    const details=document.createElement('details');
+    const heading=document.createElement('summary');
+    heading.textContent='Game-by-game Bowling Merits awards';
+    details.append(heading);
+    const table=document.createElement('table');
+    const head=document.createElement('tr');
+    for (const label of ['Date','Opponent','Result','Q','Award','Status']) {
+      const th=document.createElement('th');th.textContent=label;head.append(th);
+    }
+    table.append(head);
+    for (const award of row.awards || []) {
+      const tr=document.createElement('tr');
+      for (const value of [award.date,award.opponent,award.outcome,
+        Number(award.opponent_quality).toFixed(3),Number(award.merits).toFixed(3),
+        award.provisional?'Provisional':'Mature']) {
+        const td=document.createElement('td');td.textContent=String(value);tr.append(td);
+      }
+      table.append(tr);
+    }
+    details.append(table);target.append(details);
+  }).catch(err => {if(panel.isConnected)target.textContent='Research preview unavailable: '+err.message;});
+}
+function scanBowlingTeamPanels() {
+  document.querySelectorAll('#tp-bowling-merits:not([data-bowling-loaded])').forEach(paintBowlingTeam);
+}
+new MutationObserver(scanBowlingTeamPanels).observe(document.body,{childList:true,subtree:true});
+scanBowlingTeamPanels();
 /* Opt-in research navigation only. The main Standings tab stays unchanged. */
 if (new URLSearchParams(location.search).get('bowlingMeritsResearch') === '1') {
   document.querySelectorAll('.bowling-merits-research-link').forEach(link => { link.hidden = false; });
