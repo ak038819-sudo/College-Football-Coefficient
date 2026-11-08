@@ -17,9 +17,27 @@
   and a franchise is not a team code -- a 2015 game says STL and the team it
   belongs to is the Rams.
 -->
+<meta name="theme-color" content="#0e1512" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f2f0e8" media="(prefers-color-scheme: light)">
 <link rel="icon" href="brand/mark.svg" type="image/svg+xml">
 <link rel="icon" href="brand/icon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+<!-- Add to Home Screen. Any league page can be the one someone installs
+     from, so every one of them carries the same block as
+     ui/dashboard_shell.html. Without it a phone has no icon to use and falls
+     back to a screenshot of the page.
+
+     The manifest sits at the repository root because a service worker's scope
+     can never reach above its own directory, and its members resolve against
+     the MANIFEST's URL, not this page's. Its id is "./", so an install from
+     here is the same app as an install from the football page. -->
+<link rel="manifest" href="../manifest.webmanifest">
+<!-- iOS reads none of the manifest except the icon: standalone display, the
+     home-screen name and the status bar are these tags or nothing. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Elocast">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@600;700;800&family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">

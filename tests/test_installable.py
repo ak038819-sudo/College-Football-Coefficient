@@ -28,6 +28,12 @@ MANIFEST = ROOT / 'manifest.webmanifest'
 WORKER = ROOT / 'service-worker.js'
 INDEX = ROOT / 'index.html'
 SHELL = ROOT / 'ui' / 'dashboard_shell.html'
+# Any of these can be the page someone taps Add to Home Screen on, so each one
+# has to carry the install block itself. A page that only links a stylesheet
+# gets a screenshot of itself as its home-screen icon, silently.
+LEAGUE_PAGES = [ROOT / 'ui' / name for name in
+                ('basketball.html', 'nfl.html', 'nba.html')]
+INSTALL_PAGES = [INDEX, SHELL] + LEAGUE_PAGES
 
 
 @pytest.fixture(scope='module')
@@ -104,8 +110,10 @@ def test_the_icons_are_derived_from_the_mark_like_every_other_brand_asset(manife
 
 # ---- the pages that point at it ----------------------------------------------
 
-@pytest.mark.parametrize('page,expected', [(INDEX, 'manifest.webmanifest'),
-                                           (SHELL, '../manifest.webmanifest')])
+@pytest.mark.parametrize('page,expected',
+                         [(INDEX, 'manifest.webmanifest'),
+                          (SHELL, '../manifest.webmanifest')] +
+                         [(page, '../manifest.webmanifest') for page in LEAGUE_PAGES])
 def test_both_entry_points_link_the_manifest(page, expected):
     """Whichever URL someone opens, the browser must find the manifest: the
     root is what people paste, the dashboard is what the root redirects to."""
@@ -113,7 +121,7 @@ def test_both_entry_points_link_the_manifest(page, expected):
     assert found == [expected], f'{page.name} links {found}'
 
 
-@pytest.mark.parametrize('page', [INDEX, SHELL])
+@pytest.mark.parametrize('page', INSTALL_PAGES)
 def test_ios_gets_the_tags_it_reads_instead_of_the_manifest(page):
     """iOS reads almost nothing from the manifest. Standalone display and the
     home-screen name are these tags or they do not happen."""
@@ -121,6 +129,22 @@ def test_ios_gets_the_tags_it_reads_instead_of_the_manifest(page):
     assert 'name="apple-mobile-web-app-capable" content="yes"' in text
     assert 'name="apple-mobile-web-app-title" content="Elocast"' in text
     assert re.search(r'<link\s+rel="apple-touch-icon"', text)
+
+
+@pytest.mark.parametrize('page', INSTALL_PAGES)
+def test_the_home_screen_icon_each_page_names_is_the_real_brand_file(page):
+    """The icon a phone keeps is the file the page named at the moment it was
+    installed. An href that 404s, or one page pointing at a stale copy of its
+    own, shows as a screenshot or an out-of-date logo on a home screen and
+    nowhere else -- the site itself keeps looking right."""
+    text = head(page)
+    hrefs = re.findall(r'<link\s+rel="apple-touch-icon"\s+href="([^"]+)"', text)
+    assert len(hrefs) == 1, f'{page.name} names {hrefs}'
+    target = (page.parent / hrefs[0]).resolve()
+    assert target.is_file(), f'{page.name} points at a missing {hrefs[0]}'
+    # One file, so swapping ui/brand/mark.svg for the artist's logo and
+    # re-running scripts/build_brand_assets.py changes every page at once.
+    assert target == (ROOT / 'ui' / 'brand' / 'apple-touch-icon.png').resolve()
 
 
 # ---- the worker --------------------------------------------------------------
@@ -181,7 +205,7 @@ def test_the_viewport_lets_the_page_reach_the_safe_area():
     assert 'viewport-fit=cover' in content.group(1), content.group(1)
 
 
-@pytest.mark.parametrize('page', [INDEX, SHELL])
+@pytest.mark.parametrize('page', INSTALL_PAGES)
 def test_the_status_bar_is_opaque_in_both_entry_points(page):
     """black-translucent draws the page under the clock, and iOS writes that
     clock in light ink whatever the page behind it is -- white on the light
@@ -192,7 +216,7 @@ def test_the_status_bar_is_opaque_in_both_entry_points(page):
     assert 'name="apple-mobile-web-app-status-bar-style" content="default"' in text
 
 
-@pytest.mark.parametrize('page', [INDEX, SHELL])
+@pytest.mark.parametrize('page', INSTALL_PAGES)
 def test_theme_color_is_declared_for_each_theme(page):
     """One unconditional theme-color paints the status bar and the Android
     address bar the dark theme's colour even when the light theme is on."""
