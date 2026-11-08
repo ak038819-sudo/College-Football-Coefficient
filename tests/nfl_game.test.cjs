@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
+const { copyAssets } = require('./page_assets.cjs');
 
 const UI = path.join(__dirname, '..', 'ui');
 const app = require(path.join(UI, 'nfl_app.js'));
@@ -252,11 +253,21 @@ function site(withGames, payloadOver, slate) {
       weeks: ['1'] } } };
   }
   fs.writeFileSync(path.join(base, 'manifest.json'), JSON.stringify(payload));
-  for (const name of ['nfl.html', 'nfl_loader.js', 'nfl_app.js',
-    'ncaambb_app.js']) {
-    fs.copyFileSync(path.join(UI, name), path.join(root, name));
-  }
+  copyAssets(UI, 'nfl.html', root);
   return root;
+}
+
+/* The two clubs the hero names, away first.
+
+   The game page used to carry a `.gamehead` reading "Away at Home" as one
+   string, and four tests matched that string. The hero every league's game
+   page now shares is a board of two sides, so the names are two elements
+   with the venue word between them -- asking for them as one run of text
+   would be asking about the layout rather than about which clubs are named.
+*/
+function heroClubs(doc) {
+  return [...doc.querySelectorAll('#game .gp-board .gp-side .gp-team button')]
+    .map(node => node.textContent);
 }
 
 function settle(ready, tries = 500) {
@@ -336,7 +347,9 @@ test('a card opens a game page with its scoring summary and its drives',
     click(dom, '#cards .card.open');
     await settle(() => dom.window.document.querySelector('#game table'));
     const panel = dom.window.document.getElementById('game');
-    assert.match(panel.textContent, /Buffalo Bills at Kansas City Chiefs/);
+    assert.deepEqual(heroClubs(dom.window.document),
+      ['Buffalo Bills', 'Kansas City Chiefs']);
+    assert.match(panel.textContent, /at/, 'the hero does not say where');
     assert.match(panel.textContent, /TOUCHDOWN\./);
     assert.match(panel.textContent, /FIELD GOAL\./);
     assert.match(panel.textContent, /Drives/);
@@ -574,7 +587,7 @@ test('pressing a club on a card opens the club, not the game', async () => {
   name.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
   await settle(() => doc.querySelector('.clubhead'));
   assert.equal(dom.window.location.hash, '#league=nfl&section=teams&team=KC');
-  assert.equal(doc.querySelectorAll('#game .gamehead').length, 0,
+  assert.equal(doc.querySelectorAll('#game .gp-hero').length, 0,
     'the card opened its game as well as the club');
   dom.window.close();
 });
@@ -602,10 +615,8 @@ test('the game heading links both clubs', async () => {
   const doc = dom.window.document;
   click(dom, '#cards .card.open');
   await settle(() => doc.querySelector('#game table'));
-  const names = [...doc.querySelectorAll('#game .gamehead button')]
-    .map(node => node.textContent);
-  assert.deepEqual(names, ['Buffalo Bills', 'Kansas City Chiefs'],
-    'the heading names both clubs and links neither');
+  assert.deepEqual(heroClubs(doc), ['Buffalo Bills', 'Kansas City Chiefs'],
+    'the hero names both clubs and links neither');
   dom.window.close();
 });
 
@@ -624,8 +635,7 @@ test('a link to a game opens the game', async () => {
   const dom = await open(true, undefined, '#league=nfl&game=g1');
   const doc = dom.window.document;
   await settle(() => doc.querySelector('#game table'));
-  assert.match(doc.getElementById('game').textContent,
-    /Buffalo Bills at Kansas City Chiefs/);
+  assert.deepEqual(heroClubs(doc), ['Buffalo Bills', 'Kansas City Chiefs']);
   assert.equal(doc.getElementById('weeks').hidden, true,
     'the week strip is still over the game');
   dom.window.close();
@@ -682,8 +692,7 @@ test('a result on a club\u2019s schedule opens that game', async () => {
   result.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
   await settle(() => doc.querySelector('#game table'));
   assert.equal(dom.window.location.hash, '#league=nfl&game=g1');
-  assert.match(doc.getElementById('game').textContent,
-    /Buffalo Bills at Kansas City Chiefs/);
+  assert.deepEqual(heroClubs(doc), ['Buffalo Bills', 'Kansas City Chiefs']);
   assert.equal(doc.getElementById('teams').hidden, true,
     'the club page is still open under the game');
   dom.window.close();

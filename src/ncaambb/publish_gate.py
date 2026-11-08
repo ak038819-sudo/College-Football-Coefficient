@@ -30,11 +30,15 @@ from pathlib import Path
 # break that requires the loader to be taught the new shape first.
 # 2 added the `people` section to `files`, the `tip` field to a game and
 # changed `at` from the UTC date to the date the game is played on.
-SCHEMA_VERSION = 2
+# 3 adds the model's own per-game chain to a game -- `home_elo`, `away_elo`,
+# `home_wp`, and on a game the model counted `home_elo_post`, `away_elo_post`
+# and `elo_change` -- which is what a game page's matchup table reads. A game
+# with no stored rating carries none of them rather than zeros.
+SCHEMA_VERSION = 3
 # 1 is still accepted when READING, because an export already on disk is
 # schema 1 until the next refresh rebuilds it, and the page must keep working
 # in between.
-SUPPORTED_SCHEMA_VERSIONS = (1, 2)
+SUPPORTED_SCHEMA_VERSIONS = (1, 2, 3)
 
 # Division I measured 351 teams in 2015 and 365 in 2026. A floor of 300 passes
 # every real season and fails any sample: one team, one conference, or one

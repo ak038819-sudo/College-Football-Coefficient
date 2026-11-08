@@ -15,6 +15,7 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { JSDOM } = require('jsdom');
+const { copyAssets } = require('./page_assets.cjs');
 
 const UI = path.join(__dirname, '..', 'ui');
 const app = require(path.join(UI, 'nfl_app.js'));
@@ -269,10 +270,7 @@ function site() {
       seasons: { 2026: 'seasons/2026.js?v=' + stamp(seasonText) },
       files: { teams: 'teams.js?v=' + stamp(teamsText) }
     }));
-  for (const name of ['nfl.html', 'nfl_loader.js', 'nfl_app.js',
-    'ncaambb_app.js']) {
-    fs.copyFileSync(path.join(UI, name), path.join(root, name));
-  }
+  copyAssets(UI, 'nfl.html', root);
   return root;
 }
 

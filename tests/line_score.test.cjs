@@ -11,7 +11,10 @@ const fn = name => {
   assert.ok(match, 'missing ' + name);
   return match[0];
 };
-const ctx = {esc: v => String(v)};
+// The REAL shared module, not a stub: the guard these helpers apply now
+// lives in ui/game_page.js, and a stub would let this file keep passing
+// while the page drew a line score that disagreed with the scoreboard.
+const ctx = {esc: v => String(v), gamePage: require('../ui/game_page.js')};
 vm.runInNewContext([fn('lineScoreRows'), fn('lineScoreTable'),
   'this.rows = lineScoreRows; this.table = lineScoreTable;'].join('\n'), ctx);
 

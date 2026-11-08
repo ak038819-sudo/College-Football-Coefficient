@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import export_people
+from .elo import SCALE, expected_home
 from .identity import current_season
 from .publish_gate import SCHEMA_VERSION, check, render
 from .store import connect
@@ -131,7 +132,21 @@ def data_as_of(connection, season):
     return row['data_fetched_at'] if row else None
 
 
-def season_games(connection, season):
+def season_games(connection, season, model_id=None, config=None):
+    """One season's games, in tip-off order, with the model's own chain.
+
+    `model_id` adds what the model knew before tip-off and what the result did
+    to it. Without one the games come out as they always did, which is what a
+    caller wanting the schedule alone asks for.
+
+    TWO DIFFERENT NUMBERS SHARE THESE FIELDS, and the difference is the game's
+    own status. A FINAL game carries the STORED chain: the ratings the model
+    held before tip-off, never recomputed, so a 2015 game shows what the model
+    believed in 2015. A game NOT YET PLAYED has no stored chain at all --
+    `rateable` requires a final score, so the replay never saw it -- and
+    carries the ratings the clubs hold NOW, with the expectation those imply.
+    A page must say which it is showing, and the one on a game page does.
+    """
     rows = connection.execute(
         'SELECT game_key, provider_id, season_type, tournament, status,'
         '       start_date_utc, playing_date, start_at_utc, start_time_tbd,'
@@ -144,6 +159,25 @@ def season_games(connection, season):
         ' ORDER BY COALESCE(start_at_utc, playing_date, start_date_utc),'
         ' game_key',
         (season,)).fetchall()
+    # The stored per-game chain, not a number recomputed from today's ratings:
+    # a 2015 game shows what the model believed in 2015. `counted = 0` is a
+    # game the model declined to learn from, so its change is a real zero.
+    chain, standing = {}, {}
+    if model_id is not None:
+        chain = {row['game_key']: row for row in connection.execute(
+            'SELECT r.game_key, r.home_pregame, r.away_pregame,'
+            '       r.home_expected, r.home_postgame, r.away_postgame,'
+            '       r.rating_change, r.counted'
+            '  FROM rating_game r JOIN game g ON g.game_key = r.game_key'
+            ' WHERE g.season = ? AND r.model_id = ?', (season, model_id))}
+        # Where the clubs stand now, for the games still to be played. Without
+        # this an upcoming game had no win chance at all, which is the one
+        # place a reader most wants one.
+        standing = {row['team_key']: row['rating'] for row in
+                    connection.execute(
+                        'SELECT team_key, rating FROM team_rating'
+                        ' WHERE season = ? AND model_id = ?',
+                        (season, model_id))}
     out = []
     for row in rows:
         game = dict(
@@ -183,6 +217,34 @@ def season_games(connection, season):
             game['city'] = row['city']
         if row['state']:
             game['state'] = row['state']
+        stored = chain.get(row['game_key'])
+        if stored is not None:
+            # Named as college football names them, so one game page can read
+            # either league's export without a translation table in the middle.
+            game['home_elo'] = round(stored['home_pregame'], 1)
+            game['away_elo'] = round(stored['away_pregame'], 1)
+            game['home_wp'] = round(stored['home_expected'], 4)
+            if stored['counted']:
+                game['home_elo_post'] = round(stored['home_postgame'], 1)
+                game['away_elo_post'] = round(stored['away_postgame'], 1)
+                game['elo_change'] = round(stored['rating_change'], 2)
+        elif row['status'] != 'final' and config:
+            # Only for a game NOT played. A final game the replay skipped --
+            # one side is not Division I -- is left with no numbers rather
+            # than given today's ratings, which would read as a pregame
+            # expectation the model never formed.
+            home = standing.get(row['home_team_key'])
+            away = standing.get(row['away_team_key'])
+            if home is not None and away is not None:
+                game['home_elo'] = round(home, 1)
+                game['away_elo'] = round(away, 1)
+                game['home_wp'] = round(expected_home(
+                    home, away, neutral=bool(row['neutral_site']),
+                    home_advantage=config['home_advantage'],
+                    scale=config.get('scale', SCALE)), 4)
+                # Said out loud, so a reader of the export cannot mistake a
+                # live number for a stored one.
+                game['wp_live'] = 1
         out.append(game)
     return out
 
@@ -308,7 +370,12 @@ def build(connection, *, model_name=None, seasons=None, now=None,
     in_progress = current_season(moment)
     payloads, coverage = {}, []
     for season in wanted:
-        games = season_games(connection, season)
+        # The stored configuration IS the elo configuration -- see
+        # build_ratings.record_rating_model -- so the expectation an upcoming
+        # game carries is computed with the same home advantage and scale the
+        # replay used, not with a default standing in for them.
+        games = season_games(connection, season, model['model_id'],
+                             config=json.loads(model['config']))
         rows = board(connection, season, model['model_id'], games)
         payloads[season] = dict(season=season, board=rows, games=games)
         coverage.append(coverage_row(connection, season, games, rows,

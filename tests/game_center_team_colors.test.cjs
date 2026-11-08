@@ -4,6 +4,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const shell = fs.readFileSync('ui/dashboard_shell.html','utf8');
+// The game-page design moved out of the shell and into a stylesheet every
+// league page links; the markup that sets these two custom properties stayed
+// in the shell. Both halves still have to agree, which is what the rule
+// below is checked for.
+const style = fs.readFileSync('ui/game_page.css','utf8');
 function fn(name) {
  const m = shell.match(new RegExp('function '+name+'\\([^]*?\\n\\}'));
  assert.ok(m,'missing helper: '+name);
@@ -36,8 +41,8 @@ test('reversed fixtures swap colors without changing model probability',()=>{
 test('all schools use existing team color registry, unknown teams safely fall back',()=>{
  assert.equal(ctx.bar('Akron'),'#1d2f53');
  assert.equal(ctx.bar('Unknown'),'#304250');
- assert.match(shell,/\.gp-intel-meter span:first-child\{background:var\(--gp-away-color/);
- assert.match(shell,/\.gp-intel-meter span:last-child\{background:var\(--gp-home-color/);
+ assert.match(style,/\.gp-intel-meter span:first-child\{background:var\(--gp-away-color/);
+ assert.match(style,/\.gp-intel-meter span:last-child\{background:var\(--gp-home-color/);
 });
 test('scouting meters flip team and opponent colors with matchup direction',()=>{
  const p=fn('gameScoutingPanel');

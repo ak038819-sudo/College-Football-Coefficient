@@ -312,9 +312,6 @@
      ink as the rest of a sub line. */
   .teamcell .with-mark .sub { font-size: 11px; color: var(--ink-dim);
                               font-family: var(--font-mono); }
-  .gamehead { display: flex; justify-content: space-between; gap: 12px;
-              align-items: baseline; margin: 10px 0 4px; }
-  .gamehead .score { font-family: var(--font-mono); font-size: 20px; }
   .wpchart { width: 100%; height: 110px; display: block;
              border: 1px solid var(--line); border-radius: 8px;
              background: var(--panel-2); }
@@ -446,6 +443,10 @@
      scroller is already there; wrapping is what stops it being used. */
   #market-body td, #market-body th { white-space: nowrap; }
 </style>
+<!-- The game-page design, shared with every league page and with
+     ui/dashboard_shell.html. Linked after this page's own rules because it
+     introduces classes rather than overriding any: see ui/game_page.css. -->
+<link rel="stylesheet" href="game_page.css?v=9491c897e35b">
 </head>
 <body>
 <div class="wrap">
@@ -547,12 +548,14 @@
 <script src="nfl_loader.js?v=4ad39c8c1b77"></script>
 <script src="ncaambb_app.js?v=4828bd5e0199"></script>
 <script src="nfl_app.js?v=9b983b2ded47"></script>
+<script src="game_page.js?v=fb1a02a0b1c5"></script>
 <script>
 (function () {
   'use strict';
   var loader = window.nflLoader;
   var leagues = window.ncaambbApp;   // the shared league registry
   var app = window.nflApp;           // the NFL's own rules
+  var gp = window.gamePage;          // the game page every league shares
   var BASE = 'data/nfl/';
   /* FIVE TABS, the same five every league shows, named and ordered by the
    * shared registry. This page used to draw EIGHT of its own: Standings and
@@ -2697,6 +2700,7 @@
   function renderWinProbability(host, entry, payload, game) {
     var points = app.winProbabilityTrace(entry, game);
     if (points.length < 2) return;
+    host = detailPanel(host, 'Win probability');
     var width = 600;
     var height = 110;
     var chart = svg('svg', {
@@ -2723,9 +2727,11 @@
       });
     host.appendChild(chart);
     var key = document.createElement('p');
-    // Its own class, not just `wpkey`: the status line above the chart has
-    // that class too, and a test reading "the first .wpkey" was reading the
-    // venue instead of the legend and passing on it.
+    // Its own class, not just `wpkey`: the status line above the chart used
+    // to carry that class too, and a test reading "the first .wpkey" was
+    // reading the venue instead of the legend and passing on it. The status
+    // line is now the hero's, and `wplegend` stays: `wpkey` is still shared
+    // with the note under the chart, directly below this.
     key.className = 'wpkey wplegend';
     // Said on the page, not only in the docs: the curve knows the score, the
     // clock and the pregame rating, and nothing about possession, field
@@ -2745,9 +2751,7 @@
   function scoringTable(host, entry, payload, game) {
     var plays = app.unpackScoring(entry, payload.kinds);
     if (!plays.length) return;
-    var heading = document.createElement('h3');
-    heading.textContent = 'Scoring';
-    host.appendChild(heading);
+    host = detailPanel(host, 'Scoring');
     if (!app.scoringReconciles(entry)) {
       emptyLine(host, 'The source\u2019s play log for this game does not add '
         + 'up to the final score above, so the summary below is incomplete. '
@@ -2789,9 +2793,7 @@
   function drivesTable(host, entry, payload, game) {
     var drives = app.unpackDrives(entry, payload.results);
     if (!drives.length) return;
-    var heading = document.createElement('h3');
-    heading.textContent = 'Drives';
-    host.appendChild(heading);
+    host = detailPanel(host, 'Drives');
     var wrap = document.createElement('div');
     wrap.className = 'scroller wide';
     var table = document.createElement('table');
@@ -2841,9 +2843,7 @@
   function injuryTable(host, entry, payload, game) {
     var rows = app.unpackInjuries(entry, payload.statuses);
     if (!rows.length) return;
-    var heading = document.createElement('h3');
-    heading.textContent = 'Injury report';
-    host.appendChild(heading);
+    host = detailPanel(host, 'Injury report');
     var wrap = document.createElement('div');
     wrap.className = 'scroller wide injury';
     var table = document.createElement('table');
@@ -2879,6 +2879,184 @@
     host.appendChild(note);
   }
 
+  /* ---- the hero, the same one every league's game page carries -------- */
+
+  /* A club's mark at hero size. `gp-mark` is the shared contract: this page
+   * sizes `.mark` for a table cell, so a mark dropped into a hero drew at
+   * 22px until ui/game_page.css was given a class of its own to size. */
+  function heroMark(key) {
+    var mark = teamMark(key, 140);
+    if (mark) mark.classList.add('gp-mark');
+    return mark;
+  }
+
+  function heroSide(game, key, points, role, outcome) {
+    var side = document.createElement('div');
+    side.className = 'gp-side' + (outcome ? ' ' + outcome : '');
+    var label = document.createElement('span');
+    label.className = 'gp-role';
+    label.textContent = role;
+    side.appendChild(label);
+    var mark = heroMark(key);
+    if (mark) side.appendChild(mark);
+    var name = document.createElement('span');
+    name.className = 'gp-team';
+    name.appendChild(teamLink(key));
+    side.appendChild(name);
+    var score = document.createElement('span');
+    score.className = 'gp-score';
+    // A missing score is an em dash, never a zero -- and for a game not yet
+    // played the hero hides this cell entirely, so the win chance in the
+    // matchup below is what the reader sees.
+    score.textContent = points === null || points === undefined
+      ? '—' : String(points);
+    side.appendChild(score);
+    return side;
+  }
+
+  function gameBadges(game) {
+    var done = app.isFinal(game);
+    var list = [];
+    list.push(done
+      ? { text: game.ot ? 'Final / OT' : 'Final', kind: 'final' }
+      : { text: app.statusLine(game), kind: 'upcoming' });
+    if (game.type && game.type !== 'regular') {
+      list.push({ text: app.weekLabel(game), kind: 'post' });
+    }
+    if (game.neutral) list.push({ text: 'Neutral site' });
+    if (game.roof && game.roof !== 'outdoors') list.push({ text: game.roof });
+    // Judged against the model's own pregame number, and only where there
+    // is one: a game the model said nothing about is not an upset.
+    var chance = gp.percents(game.home_wp);
+    if (done && chance && game.home_points !== game.away_points) {
+      var winner = game.home_points > game.away_points
+        ? Number(chance.home) : Number(chance.away);
+      if (winner < 35) list.push({ text: 'Upset', kind: 'upset' });
+    }
+    return list;
+  }
+
+  /* The kickoff, in the reader's own clock. The export states an instant;
+   * this page does not pick a timezone on anyone's behalf. A game with no
+   * time decided says so rather than showing midnight. */
+  /* A panel for one section of the game page. The sections used to be `h3`
+   * headings stacked inside one container; the shared design puts each in
+   * its own card, which is how every other league's game page reads. The
+   * panel is only attached once something is put in it -- a game with no
+   * injury report must show no injury panel, not an empty one. */
+  function detailPanel(host, label) {
+    var panel = document.createElement('div');
+    panel.className = 'panel';
+    var title = document.createElement('h2');
+    title.className = 'section-title';
+    title.textContent = label;
+    panel.appendChild(title);
+    host.appendChild(panel);
+    return panel;
+  }
+
+  function kickoffText(game) {
+    if (!app.timeKnown(game)) {
+      return game && game.date ? game.date + ' \u00b7 time TBD' : 'Time TBD';
+    }
+    var when = new Date(game.at);
+    if (isNaN(when.getTime())) return game.date || '';
+    return when.toLocaleString(undefined, {
+      weekday: 'short', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit'
+    });
+  }
+
+  /* The closing spread, named by club rather than by code: a fact box is
+   * read on its own and "SEA -3" beside a hero naming Seattle Seahawks
+   * reads as a different team. */
+  function spreadFact(game) {
+    return app.spreadText(game, teamName) || '';
+  }
+
+  function gameHero(host, game) {
+    var done = app.isFinal(game);
+    var tie = done && game.home_points === game.away_points;
+    var homeWon = done && !tie && game.home_points > game.away_points;
+    var hero = document.createElement('div');
+    hero.className = 'panel gp-hero' + (done ? '' : ' gp-pregame-hero');
+    var top = document.createElement('div');
+    top.className = 'gl-top';
+    top.innerHTML = gp.badges(gameBadges(game));
+    var when = document.createElement('span');
+    when.className = 'gl-when';
+    when.textContent = kickoffText(game);
+    top.appendChild(when);
+    hero.appendChild(top);
+    var meta = document.createElement('p');
+    meta.className = 'gp-meta';
+    meta.textContent = [state.season + ' season', app.weekLabel(game),
+                        game.venue].filter(Boolean).join(' · ');
+    hero.appendChild(meta);
+    var board = document.createElement('div');
+    board.className = 'gp-board';
+    var outcome = function (isHome) {
+      if (!done || tie) return '';
+      return isHome === homeWon ? 'won' : 'lost';
+    };
+    board.appendChild(heroSide(game, game.away, game.away_points,
+      game.neutral ? 'Neutral' : 'Away', outcome(false)));
+    var mid = document.createElement('div');
+    mid.className = 'gp-mid';
+    mid.textContent = game.neutral ? 'vs.' : 'at';
+    board.appendChild(mid);
+    board.appendChild(heroSide(game, game.home, game.home_points,
+      game.neutral ? 'Neutral' : 'Home', outcome(true)));
+    hero.appendChild(board);
+    host.appendChild(hero);
+  }
+
+  /* The matchup table, built by the shared module from the same field names
+   * college basketball's export uses. The NFL export carries no POSTGAME
+   * rating, so the group comes back with two columns rather than four
+   * rather than two columns of dashes. */
+  function gameMatchup(host, game) {
+    var group = gp.eloGroup(game, { completed: app.isFinal(game) });
+    var panel = document.createElement('div');
+    panel.className = 'panel';
+    var title = document.createElement('h2');
+    title.className = 'section-title';
+    title.textContent = 'Matchup';
+    panel.appendChild(title);
+    if (!group) {
+      emptyLine(panel, 'The model has no stored rating for this game.');
+      host.appendChild(panel);
+      return;
+    }
+    var scroll = document.createElement('div');
+    scroll.className = 'table-scroll';
+    scroll.tabIndex = 0;
+    scroll.setAttribute('role', 'region');
+    scroll.setAttribute('aria-label', 'The two clubs across every model');
+    scroll.innerHTML = gp.matchupTable([group], {
+      away: teamName(game.away), home: teamName(game.home)
+    });
+    panel.appendChild(scroll);
+    var facts = document.createElement('div');
+    // The market's own view, beside the model's, where the export has it.
+    facts.innerHTML = gp.facts([
+      { label: 'Closing spread', value: spreadFact(game) },
+      { label: 'Total', value: game.total_line === null
+        || game.total_line === undefined ? '' : String(game.total_line) },
+      { label: 'Weather', value: app.weatherText(game) },
+      { label: 'Rest', value: app.restText(game) }
+    ]);
+    panel.appendChild(facts);
+    var note = document.createElement('p');
+    note.className = 'section-note';
+    note.textContent = app.isFinal(game)
+      ? 'Recorded before kickoff and never recomputed. Win chance includes '
+        + 'home field exactly as the Elo model applies it.'
+      : 'Current ratings; they will change as games are played.';
+    panel.appendChild(note);
+    host.appendChild(panel);
+  }
+
   function renderGame() {
     var host = el('game');
     host.innerHTML = '';
@@ -2888,24 +3066,8 @@
       return;
     }
     backButton(host, '\u2190 Back to the week', closeGame);
-    var head = document.createElement('div');
-    head.className = 'gamehead';
-    var who = document.createElement('div');
-    who.appendChild(teamLink(game.away));
-    who.appendChild(document.createTextNode(' at '));
-    who.appendChild(teamLink(game.home));
-    var score = document.createElement('div');
-    score.className = 'score';
-    score.textContent = app.isFinal(game)
-      ? game.away_points + ' \u2013 ' + game.home_points : '';
-    head.appendChild(who);
-    head.appendChild(score);
-    host.appendChild(head);
-    var status = document.createElement('p');
-    status.className = 'wpkey';
-    status.textContent = [app.weekLabel(game), app.statusLine(game),
-                          game.venue].filter(Boolean).join(' \u00b7 ');
-    host.appendChild(status);
+    gameHero(host, game);
+    gameMatchup(host, game);
 
     var got = gameWeekData(game);
     if (got.missing) {

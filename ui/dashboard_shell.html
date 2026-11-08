@@ -343,44 +343,7 @@
   /* ---- Game pages (Milestone C) ---- */
   .gl-more { margin-left: auto; color: var(--amber); font: 11px var(--font-mono); white-space: nowrap; }
   .gl-foot { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
-  .gp-hero .gl-top { margin-bottom: 14px; }
-  .gp-meta { font: 12px var(--font-mono); color: var(--ink-dim); margin: 0 0 14px; }
-  .gp-board { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; }
-  .gp-side { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; min-width: 0; }
-  .gp-side .gp-role { font: 11px var(--font-mono); color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.5px; }
-  .gp-side .gp-score { font: 700 44px var(--font-display); line-height: 1; }
-  .gp-side.won .gp-score { color: var(--amber); }
-  .gp-side.lost { opacity: 0.6; }
-  .gp-mid { font: 13px var(--font-mono); color: var(--ink-dim); text-align: center; }
-  .gp-table { width: auto; max-width: 100%; border-collapse: collapse; font-size: 14px; }
-  .gp-table th, .gp-table td { padding: 8px 10px; border-bottom: 1px dotted var(--line); text-align: left; }
-  .gp-table th:first-child, .gp-table td:first-child { text-align: left; color: var(--ink-dim); font-weight: 400; }
-  .gp-table td { font-family: var(--font-mono); }
-  .gp-table thead th { font: 11px var(--font-mono); color: var(--ink-dim); text-transform: uppercase; }
-  /* The matchup table is a row per team and a column group per model, so it
-     earns the panel's width where three transposed tables could not. */
-  .gp-matchup { width: auto; max-width: 100%; }
-  /* Fill the panel once the table has the columns to justify it. Below that a
-     game simply has less to show -- a 1984 game carries only the Elo group --
-     and five columns stretched across the panel is the sparseness this table
-     exists to remove, not a fix for it. */
-  .gp-matchup.is-wide { width: 100%; }
-  .gp-matchup th.gp-group { text-align: center; color: var(--amber); letter-spacing: .06em;
-    border-bottom: 1px solid var(--line); }
-  .gp-matchup th.gp-group + th.gp-group { border-left: 1px solid var(--line); }
-  .gp-matchup tbody th[scope="row"] { font-family: var(--font-body); font-weight: 600;
-    color: var(--ink); white-space: nowrap; }
-  .gp-matchup th[title] { cursor: help; }
-  .gp-formula { font: 12.5px var(--font-mono); line-height: 1.7; background: var(--panel-2); padding: 10px 12px; border-radius: 3px; overflow-x: auto; }
-  .gp-list { list-style: none; padding: 0; margin: 0; }
-  .gp-list a, .gp-fact a, .swing-meta a, .up-meta a { color: var(--amber); }
-  .gp-list li { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px dotted var(--line); font-size: 14px; }
-  .gp-list li.current { box-shadow: inset 3px 0 0 var(--amber); padding-left: 8px; }
-  .gp-list .yr { font-family: var(--font-mono); color: var(--ink-dim); }
-  .gp-list .aux { font: 11px var(--font-mono); color: var(--ink-dim); text-align: right; }
-  .gp-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 10px; margin: 12px 0; }
-  .gp-fact { background: var(--panel-2); padding: 10px 12px; border-radius: 3px; font-size: 13px; }
-  .gp-fact b { display: block; font: 10.5px var(--font-mono); color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; font-weight: 400; }
+  .swing-meta a, .up-meta a { color: var(--amber); }
   .story-panel { border-top: 3px solid var(--amber); }
   .story-intro { font: 18px/1.45 var(--font-display); margin: 8px 0 18px; max-width: 72ch; }
   .story-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -393,10 +356,6 @@
   .story-leaders { margin-top: 18px; }
   .story-leaders h3 { font: 16px var(--font-display); margin: 0 0 10px; }
   @media (max-width: 700px) { .story-grid { grid-template-columns: 1fr; } }
-  .gp-side .team-link { flex-direction: column; align-items: center; max-width: 100%; text-align: center; }
-  .gp-side .team-link-name { white-space: normal; overflow-wrap: anywhere; }
-  @media (max-width: 520px) { .gp-side .logo-mark.lg { width: 84px; height: 84px; padding: 6px; } .gp-board { gap: 8px; } }
-  @media (max-width: 520px) { .gp-side .gp-score { font-size: 34px; } .gp-list li { grid-template-columns: 46px minmax(0, 1fr); } .gp-list .aux { grid-column: 2; text-align: left; } }
   .listing-game.is-target { border-color: var(--amber); box-shadow: inset 0 0 0 1px var(--amber); }
   .skip-link:focus { position: fixed; left: 12px; top: 12px; z-index: 10; background: var(--panel); padding: 12px; color: var(--ink); }
   .control-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0; }
@@ -419,14 +378,6 @@
   .listing-game { background: var(--panel-2); border: 1px solid var(--line); padding: 14px; border-radius: 4px; }
   /* ---- Games explorer cards + filters (Milestone B) ---- */
   .listing-game { display: flex; flex-direction: column; gap: 8px; }
-  .gl-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-  .gl-when { font: 11px var(--font-mono); color: var(--ink-dim); margin-left: auto; }
-  .gbadge { font: 10.5px var(--font-mono); letter-spacing: 0.4px; text-transform: uppercase; padding: 2px 6px; border-radius: 3px;
-    border: 1px solid var(--line); color: var(--ink-dim); }
-  .gbadge.final { color: var(--ink); border-color: var(--ink-dim); }
-  .gbadge.upcoming { color: var(--amber); border-color: var(--amber-dim); }
-  .gbadge.post { color: var(--bg); background: var(--amber); border-color: var(--amber); }
-  .gbadge.upset { color: var(--amber); border-color: var(--amber); }
   .gl-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; }
   .gl-team { display: flex; align-items: center; gap: 4px; min-width: 0; }
   .gl-aux { font: 11px var(--font-mono); color: var(--ink-dim); text-align: right; min-width: 38px; }
@@ -466,12 +417,10 @@
   .matchup-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   .matchup-actions button { background: var(--panel-2); color: var(--ink); padding: 8px 12px; border: 1px solid var(--line); border-radius: 3px; cursor: pointer; }
   @media (max-width: 520px) { .matchup-board { gap: 6px; } .matchup-controls { grid-template-columns: 1fr; } .matchup-controls .venue-control { grid-column: 1; } }
-  .section-note { color: var(--ink-dim); font-size: 13px; line-height: 1.5; margin: 0 0 16px; }
   .playoff-disclaimer { margin: 24px 0 0; }
   .stat-partial { color: var(--amber); cursor: help; text-decoration: none;
                   border: 0; font-size: 12px; }
   #content, .panel { min-width: 0; }
-  .table-scroll { max-width: 100%; overflow-x: auto; }
   /* On a phone the masthead was costing a whole screen before the first row of
      content: a tagline, a secondary link row, five tabs wrapping onto two
      lines, a search field and a labelled view selector. Everything below keeps
@@ -531,14 +480,6 @@
   .conf-race h3.section-title { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
   .conf-race .rank-table { margin: 0; }
 
-  h2.section-title {
-    font-family: var(--font-display);
-    font-size: 18px;
-    letter-spacing: 0.4px;
-    margin: 0 0 14px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--line);
-  }
 
   table.rank-table { width: auto; max-width: 100%; border-collapse: collapse; font-size: 14px; }
   table.rank-table th {
@@ -787,9 +728,6 @@
   .chart-legend .sw { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
   .an-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .an-grid .team-stat .val { font-size: 19px; }
-  details.help { margin-top: 12px; font-size: 12.5px; color: var(--ink-dim); }
-  details.help summary { cursor: pointer; font-family: var(--font-mono); font-size: 11px; }
-  details.help ul { margin: 8px 0 0; padding-left: 18px; line-height: 1.5; }
   /* The two ends of the opponent adjustment, four short lists rather than one
      long table. Two columns on a phone keeps all four on one screen. */
   .adj-movers-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1154,11 +1092,6 @@
   }
   .seed-pill.seed-bye { color: var(--amber); font-weight: 600; }
   .rank-table tr.row-dim td { color: var(--ink-dim); }
-  .gp-line { margin: 18px auto 0; width: auto; font-family: var(--font-mono); font-size: 13px; }
-  .gp-line th, .gp-line td { padding: 4px 10px; text-align: right; }
-  .gp-line th[scope="row"] { text-align: left; padding-right: 18px; font-family: var(--font-display); }
-  .gp-line thead th { color: var(--ink-dim); font-weight: 400; font-size: 11px; }
-  .gp-line .gp-line-total { color: var(--amber); font-weight: 700; }
   .elo-table .conf-cell { color: var(--ink-dim); font-size: 13px; }
   .elo-table .conf-cell .team-link-name { font-size: 13px; }
   .elo-table td.last5, .elo-table td.sos, .elo-table td.vsexp { font-family: var(--font-mono); font-size: 12.5px; }
@@ -1400,13 +1333,6 @@
   @media (max-width: 400px) { .live-team { padding: 10px; } .live-team .logo-mark.xs,
     .live-team .monogram.xs { width: 39px; height: 39px; } .live-team .team-link-name { font-size: 15px; }
     .live-card .gc-foot { font-size: 10px; } }
-  .empty-note {
-    color: var(--ink-dim);
-    font-size: 14px;
-    font-style: italic;
-    padding: 30px 0;
-    text-align: center;
-  }
 
   .stats-leaders { display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px; }
   .stats-leaders li { padding:8px 0; }
@@ -1422,7 +1348,6 @@
   .stats-table td.rank-col {position:sticky;left:0;background:var(--panel);z-index:1;width:46px;min-width:46px;font-family:var(--font-mono);font-size:15px;color:var(--ink);vertical-align:middle;}
   .stats-table th:nth-child(2),.stats-table td:nth-child(2) {position:sticky;left:46px;background:var(--panel);z-index:1;min-width:150px;}
   .stats-table th.rank-col,.stats-table th:nth-child(2) {z-index:2;}
-  .table-scroll {overflow-x:auto;max-width:100%;}
   .tabs {flex-wrap:wrap;}
   /* Keep text links on the theme accent, including visited links. */
   :root a:any-link:not(.active):not(.action-button) { color: var(--amber); }
@@ -1484,25 +1409,6 @@
     .view-select select { flex:1; }
   }
 
-.gp-pregame-hero .gp-score{display:none}
-.gp-pregame-hero .gp-board{max-width:940px;margin-inline:auto}
-.gp-pregame-hero .gp-side .logo-mark.lg{width:110px;height:110px}
-@media(max-width:520px){.gp-pregame-hero .gp-side .logo-mark.lg{width:78px;height:78px}}
-.gp-pregame-insights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-.gp-pregame-insights .panel{min-width:0}
-.gp-intel-label{color:var(--amber);font:600 11px var(--font-mono);text-transform:uppercase;letter-spacing:.07em}
-.gp-intel-heading{margin:5px 0 18px;font:700 21px var(--font-display)}
-.gp-intel-pair{display:flex;justify-content:space-between;gap:10px}
-.gp-intel-pair>div:last-child{text-align:right}
-.gp-intel-number{display:block;font:700 clamp(26px,4vw,42px) var(--font-display)}
-.gp-intel-meter{display:flex;height:12px;gap:2px;overflow:hidden;margin-top:12px;border-radius:3px;background:var(--line)}
-.gp-intel-meter span:first-child{background:var(--gp-away-color,var(--amber))}.gp-intel-meter span:last-child{background:var(--gp-home-color,var(--ink-dim))}
-.gp-intel-trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.gp-intel-stat{padding:12px 8px;background:var(--panel-2);border:1px solid var(--line);min-width:0}
-.gp-intel-stat b{display:block;font:700 clamp(17px,2.5vw,25px) var(--font-display);margin-top:8px}
-.gp-intel-context{margin-top:15px;padding:12px;background:var(--panel-2);border-left:3px solid var(--amber);font-size:13px}
-.gp-intel-note{color:var(--ink-dim);font-size:12px;margin-bottom:0}
-@media(max-width:760px){.gp-pregame-insights{grid-template-columns:1fr}}
 
 .gp-scouting .tm-match-compare{margin-top:18px}
 .gp-keys{padding:16px 0;border-bottom:1px solid var(--line)}
@@ -1633,6 +1539,7 @@ __STATIC_MANIFEST_JSON__
 <script src="live_teams.js?v=__LIVE_TEAMS_VERSION__"></script>
 <script src="search.js?v=__SEARCH_VERSION__"></script>
 <script src="favorites.js?v=__FAVORITES_VERSION__"></script>
+<script src="game_page.js?v=__GAME_PAGE_VERSION__"></script>
 <script>
 const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
 // Logo manifest (data foundation step): the same {name: [{start, end, bg, ...}]}
@@ -9620,6 +9527,10 @@ function backLink() {
 // any further entries being overtimes). Drawn only when both sides have the
 // same number of periods and each side's periods add up to its final score: a
 // line that disagrees with the scoreboard is a line this page will not show.
+// The quarter scores arrive as "7-14-6-7"; the GUARD that decides whether a
+// line score may be drawn at all is the shared one in ui/game_page.js, which
+// every league's game page uses. Only the parsing is football's, because only
+// football's export packs the periods into a string.
 function lineScoreRows(detail, game) {
   if (!detail || !game.completed) return null;
   const parse = text => {
@@ -9627,25 +9538,15 @@ function lineScoreRows(detail, game) {
     const parts = text.split('-').map(Number);
     return parts.length && parts.every(n => Number.isInteger(n) && n >= 0) ? parts : null;
   };
-  const home = parse(detail.home_line_scores), away = parse(detail.away_line_scores);
-  if (!home || !away || home.length !== away.length || home.length < 4) return null;
-  const total = periods => periods.reduce((sum, n) => sum + n, 0);
-  if (total(home) !== game.home_score || total(away) !== game.away_score) return null;
-  const labels = home.map((_, i) => i < 4 ? String(i + 1) : i === 4 ? 'OT' : (i - 3) + 'OT');
-  return { labels, home, away };
+  return gamePage.lineScore({
+    home: parse(detail.home_line_scores), away: parse(detail.away_line_scores),
+    homeScore: game.home_score, awayScore: game.away_score, regulation: 4});
 }
 
 function lineScoreTable(detail, game, awayName, homeName) {
-  const rows = lineScoreRows(detail, game);
-  if (!rows) return '';
-  const head = '<tr><th scope="col"></th>' + rows.labels.map(l => '<th scope="col">' + l + '</th>').join('') +
-    '<th scope="col" class="gp-line-total">T</th></tr>';
-  const row = (name, periods, total) => '<tr><th scope="row">' + esc(name) + '</th>' +
-    periods.map(n => '<td>' + n + '</td>').join('') +
-    '<td class="gp-line-total">' + total + '</td></tr>';
-  return '<table class="gp-table gp-line"><thead>' + head + '</thead><tbody>' +
-    row(awayName, rows.away, game.away_score) + row(homeName, rows.home, game.home_score) +
-    '</tbody></table>';
+  return gamePage.lineScoreTable(lineScoreRows(detail, game),
+    {away: awayName, home: homeName},
+    {away: game.away_score, home: game.home_score});
 }
 
 const _gameDetails = new Map();
