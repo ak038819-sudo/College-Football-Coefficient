@@ -9,6 +9,7 @@ const match = shell.match(/function gamePregameIntelligence\([^]*?\n\}/);
 assert.ok(match, 'real Game Center helper exists');
 const ctx = {
   esc: x => String(x).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'),
+  gameBarColor: () => '#304250',
   eloValue: v => Math.round(v).toString(),
   probPct: p => ({home: Math.round(p*100), away: 100-Math.round(p*100)})
 };
