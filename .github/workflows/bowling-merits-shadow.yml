@@ -1,0 +1,36 @@
+name: Bowling Merits shadow pipeline (manual only)
+on:
+  workflow_dispatch:
+    inputs:
+      season:
+        description: 'Season to recompute'
+        required: true
+        type: number
+      as_of:
+        description: 'Optional historical cutoff YYYY-MM-DD'
+        required: false
+        type: string
+jobs:
+  shadow:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Require canonical database artifact
+        run: |
+          if [ ! -f db/league.db ]; then
+            echo 'No canonical DB in checkout. Supply a vetted DB artifact before enabling this job.'
+            exit 1
+          fi
+      - name: Build isolated shadow output
+        run: |
+          python analysis/bowling_merits/pipeline.py --season "${{ inputs.season }}" ${{ inputs.as_of && format('--as-of {0}', inputs.as_of) || '' }} --shadow-db /tmp/bowling_merits_shadow.db --enable-shadow-writes
+      - name: Upload isolated shadow database
+        uses: actions/upload-artifact@v4
+        with:
+          name: bowling-merits-shadow-${{ inputs.season }}
+          path: /tmp/bowling_merits_shadow.db
