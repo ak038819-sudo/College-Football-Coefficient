@@ -81,11 +81,44 @@ fifteen minutes.
 Measured against the roadmap's proposed gate of **p95 ≤ 15 s**, the current
 architecture is off by a factor of roughly **175** at p95.
 
-One caveat, stated precisely: a game recorded as `in_progress` at the start of
-a long gap may have finished during it. So these intervals measure "the
-published scoreboard asserted that games were live and did not change for N
-minutes" — which is the user-visible failure — rather than "N minutes of
+Two caveats, both stated precisely because the second one was raised in review
+and is worth more than the first.
+
+**A game's status is itself stale.** A game recorded as `in_progress` at the
+start of a long gap may have finished during it. So these intervals measure
+"the published scoreboard asserted that games were live and did not change for
+N minutes" — which is the user-visible failure — rather than "N minutes of
 genuinely live play went unpolled."
+
+**This measures committed snapshots, not what Pages served.** Everything above
+is read from git history, and a commit is not a deployment. That gap is itself
+measurable, because `src/measure_live_delivery.py` already runs at the end of
+every session and polls the public Pages URL with a cache-busting query until
+the snapshot it just pushed appears. Reading that line out of the last 40
+session logs:
+
+| | |
+| --- | ---: |
+| Sessions where the snapshot was confirmed visible on Pages | **13 of 40** |
+| When confirmed, fetch → visible on Pages | **74–112 s** |
+| `git push` completion after fetch | 2–10 s |
+| Sessions reporting "Pages visibility unconfirmed" within the 120 s timeout | **27 of 40 (68%)** |
+
+So the publish leg costs roughly **75–112 seconds** on top of every number in
+this section, and **two thirds of the time the pipeline cannot confirm its own
+snapshot reached the published site within two minutes at all.**
+
+Read the 68% carefully rather than as a 68% failure rate: the confirmed samples
+cluster at 74–112 s against a 120 s timeout, so "unconfirmed" will often mean
+"arrived just after we stopped looking" rather than "never arrived". The honest
+conclusion is that the script's window is too short to characterise this leg's
+tail, and that **the publish→visible leg is an unmeasured third failure layer**
+on top of the two in §2. Widening that timeout is a one-line change and is the
+cheapest open measurement in the audit.
+
+Either way the direction is the same: the true reader-visible staleness is
+**worse** than §1 reports, by at least a minute and a half and by an unknown
+amount beyond that. The conclusions do not soften.
 
 ---
 
@@ -157,18 +190,26 @@ analytics and deploys.
 | `sync-people.yml`, `sync-awards.yml`, `matchup-intelligence.yml` | cron, dispatch | archive layers |
 | `backfill-*.yml` | dispatch only | one-off archive loads |
 
-Two structural problems inherited from this shape, both already recorded in
-project history and both still open:
+Two things this audit initially got wrong about this shape, corrected after
+review, because both bear on what Phase 2 still has to fix:
 
-- The refresh and backfill workflows commit with `[skip ci]`, so new data does
-  not reach the site until `ci-and-deploy.yml` is dispatched by hand.
-- The deploy's publish step uses `git pull --rebase`, which cannot resolve
-  conflicts in generated files and dies when two publishes race. A separate
-  thread owns that fix.
+- **The rebase race is fixed.** Every workflow now publishes through
+  `scripts/publish_to_main.sh`, which merges with `-X ours` rather than rebasing,
+  and checks each git command on its own line so a push cannot follow a failed
+  merge. The failure mode recorded in earlier project notes — 20-odd conflicts in
+  regenerated files, nothing published — is closed.
+- **Rebuilds are not all manual.** `ci-and-deploy.yml` carries a `workflow_run`
+  trigger for `Backfill player box scores` and `Sync rosters and coaches`, so
+  those two queue a rebuild on completion despite their `[skip ci]` commits, and
+  it has scheduled triggers of its own. The workflows that genuinely have no
+  follow-up path — the per-league refreshes and the remaining backfills — are the
+  ones that still need a hand dispatch.
 
-Both are symptoms of the same thing: **live state is being carried by git
-commits.** A publish is a merge, so it can conflict; a refresh is a commit, so
-it can be skipped.
+What remains true, and is the point: **live state is carried by git commits.**
+A merge that keeps our side cannot conflict, but it also cannot rebuild, so a
+generated file is only as fresh as the run that produced it. That is a sound
+design for archival ETL and the wrong one for a score that changes every few
+minutes.
 
 ### The static-payload ceiling
 
@@ -350,6 +391,10 @@ the feed quote is the gating action.
   measurement, not an assumption.
 - **A live-feed quote** from Sportradar or SportsDataIO, which gates the entire
   cost envelope.
+- **The publish→Pages-visible tail.** `measure_live_delivery.py` times out at
+  120 s and 68% of sessions hit that timeout, so this leg is characterised only
+  up to two minutes. Widening the timeout is a one-line change and the cheapest
+  open measurement here.
 
 ## How these numbers were produced
 
@@ -361,5 +406,14 @@ Reproducible from the repository alone, no provider calls:
   consecutive snapshots.
 - Session health: the GitHub Actions API for `live-score-session.yml`, 66 runs,
   with start lateness computed against the crons declared in the workflow file.
+- Publish-leg visibility: the `measure_live_delivery.py` line in the job summary
+  of the last 40 `live-score-session.yml` runs.
 - Rights: repository documentation plus the licence files of each source, except
   CFBD, which is unread.
+
+Three claims in an earlier draft of this document were wrong and were corrected
+after review: that the deploy still rebases (it merges, via
+`publish_to_main.sh`), that refreshed data always needs a hand dispatch (two
+workflows queue a rebuild through `workflow_run`), and that git-history gaps
+were user-visible freshness without qualification (a commit is not a
+deployment; see the second caveat in §1).
