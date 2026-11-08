@@ -11,6 +11,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
+const { copyAssets } = require('./page_assets.cjs');
 
 const UI = path.join(__dirname, '..', 'ui');
 const loader = require(path.join(UI, 'nfl_loader.js'));
@@ -111,10 +112,7 @@ function site(overrides, schedule, logos, standings) {
   payload.files = { teams: 'teams.js?v=' + stamp(teamsText) };
   fs.writeFileSync(path.join(root, 'data', 'nfl', 'manifest.json'),
     JSON.stringify(payload));
-  for (const name of ['nfl.html', 'nfl_loader.js', 'nfl_app.js',
-    'ncaambb_app.js']) {
-    fs.copyFileSync(path.join(UI, name), path.join(root, name));
-  }
+  copyAssets(UI, 'nfl.html', root);
   // The club marks live beside the page, not under data/nfl, because the
   // refresh replaces that directory wholesale.
   if (logos) {

@@ -258,7 +258,7 @@
 <!-- The game-page design, shared with every league page and with
      ui/dashboard_shell.html. Linked after this page's own rules because it
      introduces classes rather than overriding any: see ui/game_page.css. -->
-<link rel="stylesheet" href="game_page.css?v=f695c92f914e">
+<link rel="stylesheet" href="game_page.css?v=9491c897e35b">
 </head>
 <body>
 <div class="wrap">
@@ -674,23 +674,32 @@
     return span;
   }
 
-  function logoMark(key) {
+  /* `extra` is a class put on the mark AND on the blank box that replaces it
+   * when the file does not load, so a hero sized by that class does not jump
+   * when a mark fails. */
+  function logoMark(key, extra) {
     var teams = window.NCAAMBB_TEAMS || {};
     var team = teams[key];
     var id = team && team.logo;
-    if (!id) return blankMark();
+    if (!id) {
+      var empty = blankMark();
+      if (extra) empty.classList.add(extra);
+      return empty;
+    }
     var picture = document.createElement('picture');
     var light = document.createElement('source');
     light.media = '(prefers-color-scheme: light)';
     light.srcset = LOGO_BASE + id + '.png';
     var img = document.createElement('img');
-    img.className = 'logo-mark';
+    img.className = 'logo-mark' + (extra ? ' ' + extra : '');
     img.src = LOGO_BASE + id + '-dark.png';
     img.alt = '';
     img.loading = 'lazy';
     img.addEventListener('error', function () {
       if (picture.parentNode) {
-        picture.parentNode.replaceChild(blankMark(), picture);
+        var empty = blankMark();
+        if (extra) empty.classList.add(extra);
+        picture.parentNode.replaceChild(empty, picture);
       }
     });
     picture.appendChild(light);
@@ -1183,21 +1192,12 @@
    * the panel would be two columns wide and would read as the whole of what
    * was recorded. Both are absent rather than approximated.
    */
-  function gameMark(key, size) {
-    var mark = logoMark(key);
-    var img = mark.tagName === 'PICTURE' ? mark.querySelector('img') : mark;
-    if (img) img.classList.add(size);
-    // The error fallback replaces the <picture> with a blank box, which has
-    // to be the same size or the hero jumps when a mark fails to load.
-    if (mark.tagName === 'PICTURE') {
-      img.addEventListener('error', function () {
-        var blank = document.querySelector('.gp-side .logo-mark.blank.' + size);
-        if (blank) blank.classList.add(size);
-      });
-    } else {
-      mark.classList.add(size);
-    }
-    return mark;
+  /* A club's mark at hero size. `gp-mark` is the shared contract -- every
+   * league puts it on whatever element its own mark builder returns, and
+   * ui/game_page.css sizes it there, because each league's own mark class is
+   * sized for a table cell. */
+  function gameMark(key) {
+    return logoMark(key, 'gp-mark');
   }
 
   function gameSide(key, points, role, outcome) {
@@ -1207,7 +1207,7 @@
     label.className = 'gp-role';
     label.textContent = role;
     side.appendChild(label);
-    var mark = gameMark(key, 'lg');
+    var mark = gameMark(key);
     side.appendChild(mark);
     var text = document.createElement('span');
     text.className = 'gp-team';

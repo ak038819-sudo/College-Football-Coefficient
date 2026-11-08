@@ -11,6 +11,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
+const { copyAssets } = require('./page_assets.cjs');
 
 const UI = path.join(__dirname, '..', 'ui');
 const loader = require(path.join(UI, 'nba_loader.js'));
@@ -371,10 +372,7 @@ function site(overrides, schedule, standings, past, detail, folk, bracket,
     fs.writeFileSync(path.join(root, 'nba_logo_assets.json'),
       JSON.stringify(marks === true ? logoMarks() : marks));
   }
-  for (const name of ['nba.html', 'nba_loader.js', 'nba_app.js',
-    'ncaambb_app.js']) {
-    fs.copyFileSync(path.join(UI, name), path.join(root, name));
-  }
+  copyAssets(UI, 'nba.html', root);
   return { root, manifest: payload };
 }
 

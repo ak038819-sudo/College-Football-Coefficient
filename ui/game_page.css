@@ -79,21 +79,24 @@ details.help ul { margin: 8px 0 0; padding-left: 18px; line-height: 1.5; }
 .gp-side.lost { opacity: 0.6; }
 .gp-mid { font: 13px var(--font-mono); color: var(--ink-dim); text-align: center; }
 .gp-side .team-link { flex-direction: column; align-items: center; max-width: 100%; text-align: center; }
-/* The hero's marks. College football sized `.logo-mark.lg` in its own page
-   and every other league sized `.logo-mark` small for a table cell, with a
-   `flex` shorthand that pins the basis -- so a mark dropped into a hero drew
-   at 20px. The size belongs to the hero, so it is stated here, with the
-   flex-basis the shorthand would otherwise win with. */
-.gp-side .logo-mark.lg { width: 140px; height: 140px; flex-basis: 140px;
-  padding: 10px; object-fit: contain; }
+/* The hero's marks.
+   `.gp-mark` is the shared contract: a league puts it on whatever element it
+   builds a club's mark from, and the hero sizes it. The three leagues each
+   had their own class for a mark -- `logo-mark`, `mark` -- each sized for a
+   table cell, two of them with a `flex` shorthand that pins the basis, so a
+   mark dropped into a hero drew at 20px. College football's own
+   `.logo-mark.lg` is named here as well, because its hero predates the
+   contract and still builds marks that way. */
+.gp-side .logo-mark.lg, .gp-side .gp-mark { width: 140px; height: 140px;
+  flex-basis: 140px; padding: 10px; object-fit: contain; }
 .gp-side .team-link-name { white-space: normal; overflow-wrap: anywhere; }
 
 /* A game not yet played has no score to show, so the hero gives the space to
    the two marks instead. */
 .gp-pregame-hero .gp-score{display:none}
 .gp-pregame-hero .gp-board{max-width:940px;margin-inline:auto}
-.gp-pregame-hero .gp-side .logo-mark.lg{width:110px;height:110px;flex-basis:110px}
-@media(max-width:520px){.gp-pregame-hero .gp-side .logo-mark.lg{width:78px;height:78px;flex-basis:78px}}
+.gp-pregame-hero .gp-side .logo-mark.lg,.gp-pregame-hero .gp-side .gp-mark{width:110px;height:110px;flex-basis:110px}
+@media(max-width:520px){.gp-pregame-hero .gp-side .logo-mark.lg,.gp-pregame-hero .gp-side .gp-mark{width:78px;height:78px;flex-basis:78px}}
 
 /* ---- tables ---- */
 
@@ -161,5 +164,5 @@ details.help ul { margin: 8px 0 0; padding-left: 18px; line-height: 1.5; }
 
 /* ---- phone ---- */
 
-@media (max-width: 520px) { .gp-side .logo-mark.lg { width: 84px; height: 84px; flex-basis: 84px; padding: 6px; } .gp-board { gap: 8px; } }
+@media (max-width: 520px) { .gp-side .logo-mark.lg, .gp-side .gp-mark { width: 84px; height: 84px; flex-basis: 84px; padding: 6px; } .gp-board { gap: 8px; } }
 @media (max-width: 520px) { .gp-side .gp-score { font-size: 34px; } .gp-list li { grid-template-columns: 46px minmax(0, 1fr); } .gp-list .aux { grid-column: 2; text-align: left; } }

@@ -19,6 +19,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
+const { copyAssets } = require('./page_assets.cjs');
 
 const UI = path.join(__dirname, '..', 'ui');
 // The fixture's games are TODAY's, because the page opens on today and the
@@ -287,10 +288,7 @@ function site(overrides, schedule) {
   fs.mkdirSync(marks, { recursive: true });
   fs.writeFileSync(path.join(marks, '130.png'), PIXEL);
   fs.writeFileSync(path.join(marks, '130-dark.png'), PIXEL);
-  for (const name of ['basketball.html', 'ncaambb_loader.js',
-    'ncaambb_app.js']) {
-    fs.copyFileSync(path.join(UI, name), path.join(root, name));
-  }
+  copyAssets(UI, 'basketball.html', root);
   return { root, manifest: payload, at };
 }
 

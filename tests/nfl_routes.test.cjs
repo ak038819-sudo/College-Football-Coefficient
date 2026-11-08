@@ -11,6 +11,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
+const { copyAssets } = require('./page_assets.cjs');
 
 const UI = path.join(__dirname, '..', 'ui');
 
@@ -85,10 +86,7 @@ function site() {
     payload.seasons[season] = 'seasons/' + season + '.js?v=' + stamp(text);
   }
   fs.writeFileSync(path.join(base, 'manifest.json'), JSON.stringify(payload));
-  for (const name of ['nfl.html', 'nfl_loader.js', 'nfl_app.js',
-    'ncaambb_app.js']) {
-    fs.copyFileSync(path.join(UI, name), path.join(root, name));
-  }
+  copyAssets(UI, 'nfl.html', root);
   return root;
 }
 
@@ -123,7 +121,7 @@ async function open(hash) {
     }
   });
   await settle(() => dom.window.document.querySelector(
-    '#cards .card, #refusal-list li, #game .gamehead'));
+    '#cards .card, #refusal-list li, #game .gp-hero'));
   return dom;
 }
 
@@ -131,13 +129,16 @@ test('a link to a game loads the season the game is in, not the latest',
   async () => {
     const dom = await open('#league=nfl&game=2004_01_BUF_KC');
     const doc = dom.window.document;
-    await settle(() => doc.querySelector('#game .gamehead'));
+    await settle(() => doc.querySelector('#game .gp-hero'));
     assert.equal(doc.getElementById('season').value, '2004',
       'the page opened on the wrong season');
     // The 2004 game ended 20-31 and the 2026 one 20-24. Reading the score
-    // is what tells the two apart -- both name the same two clubs.
-    assert.match(doc.querySelector('#game .score').textContent,
-      /20 – 31/);
+    // is what tells the two apart -- both name the same two clubs. The hero
+    // gives each side its own cell, so the two are read as a pair.
+    assert.deepEqual(
+      [...doc.querySelectorAll('#game .gp-board .gp-score')]
+        .map(node => node.textContent),
+      ['20', '31']);
     dom.window.close();
   });
 
@@ -165,7 +166,7 @@ test('changing season closes the game, in the URL as well as the page',
   async () => {
     const dom = await open('#league=nfl&game=2004_01_BUF_KC');
     const doc = dom.window.document;
-    await settle(() => doc.querySelector('#game .gamehead'));
+    await settle(() => doc.querySelector('#game .gp-hero'));
     const select = doc.getElementById('season');
     select.value = '2026';
     select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
@@ -190,8 +191,11 @@ test('following a link to another season’s game loads that season',
     assert.equal(doc.getElementById('season').value, '2026');
     dom.window.location.hash = '#league=nfl&game=2004_01_BUF_KC';
     await settle(() => !doc.getElementById('game').hidden
-      && doc.querySelector('#game .score'));
+      && doc.querySelector('#game .gp-board .gp-score'));
     assert.equal(doc.getElementById('season').value, '2004');
-    assert.match(doc.querySelector('#game .score').textContent, /20 – 31/);
+    assert.deepEqual(
+      [...doc.querySelectorAll('#game .gp-board .gp-score')]
+        .map(node => node.textContent),
+      ['20', '31']);
     dom.window.close();
   });
