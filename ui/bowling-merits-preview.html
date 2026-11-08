@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bowling Merits — Research Preview | Elocast</title>
+<style>
+:root{color-scheme:dark;font:16px system-ui,sans-serif;background:#10151d;color:#f2f5fa}
+body{max-width:1100px;margin:0 auto;padding:24px 16px 60px}
+a{color:#f4ce52}h1{margin-bottom:6px}p{line-height:1.5}
+.notice{border:1px solid #8a7440;border-radius:10px;padding:12px 16px;background:#292517}
+table{width:100%;border-collapse:collapse;margin-top:18px}th,td{padding:12px 8px;border-bottom:1px solid #38414c;text-align:left}
+th:nth-child(n+3),td:nth-child(n+3){text-align:right}
+button{font:inherit;background:#26394b;color:#fff;border:1px solid #677c8f;border-radius:6px;padding:6px 10px;cursor:pointer}
+details{margin:12px 0 22px}summary{cursor:pointer;color:#f4ce52}
+.small{font-size:.85rem;color:#bac4cf}.error{color:#ffbd9b}
+.badge{font-size:.78rem;border:1px solid #b49a52;border-radius:4px;padding:2px 5px;white-space:nowrap}
+@media(max-width:650px){table{font-size:.82rem}th,td{padding:9px 4px}}
+</style>
+</head>
+<body>
+<a href="./dashboard.html">← Elocast</a>
+<h1>Bowling Merits</h1>
+<p class="small">Research preview · Challenger A · three future opponent games</p>
+<p class="notice">Experimental standings, not official Elocast Merits. Awards can change as opponents play more games. Season-specific FBS eligibility reconciliation is pending.</p>
+<div id="status" role="status">Preview unavailable until a vetted shadow export is supplied.</div>
+<div id="content"></div>
+<script>
+"use strict";
+// Explicit opt-in: no request is made unless a URL query contains preview=1.
+// The JSON must be generated from the isolated shadow database, never production Merits.
+const params=new URLSearchParams(location.search);
+const status=document.getElementById("status"),root=document.getElementById("content");
+function node(tag,text){const el=document.createElement(tag);if(text!==undefined)el.textContent=String(text);return el}
+function cell(row,text,tag="td"){const el=node(tag,text);row.append(el);return el}
+function table(headers){const t=node("table"),h=node("tr");headers.forEach(x=>cell(h,x,"th"));t.append(h);return t}
+function render(data){
+ if(data.status!=="research_preview"||data.model!=="Bowling Merits"||!Array.isArray(data.standings))throw Error("Unexpected preview data contract");
+ status.textContent="Season "+data.season+" · "+data.teams+" teams · research only";
+ const t=table(["Rank","Team","Merits","Games","W","L","OT L"]);
+ for(const team of data.standings){
+  const tr=node("tr");
+  cell(tr,team.rank);const name=cell(tr,team.team);
+  if(team.provisional){name.append(" ");name.append(node("span","Provisional")).className="badge"}
+  [Number(team.merits).toFixed(3),team.games,team.wins,team.regulation_losses,team.ot_losses].forEach(v=>cell(tr,v));
+  t.append(tr);
+  const detailRow=node("tr"),td=node("td");td.colSpan=7;
+  const details=node("details"),summary=node("summary","Game-by-game awards for "+team.team);
+  details.append(summary);
+  const awards=table(["Date","Opponent","Result","Q","Award","Status"]);
+  for(const award of team.awards||[]){
+   const r=node("tr");
+   [award.date,award.opponent,award.outcome,Number(award.opponent_quality).toFixed(3),Number(award.merits).toFixed(3),award.provisional?"Provisional":"Mature"].forEach(v=>cell(r,v));
+   awards.append(r);
+  }
+  details.append(awards);td.append(details);detailRow.append(td);t.append(detailRow);
+ }
+ root.replaceChildren(t);
+}
+if(params.get("preview")==="1"){
+ fetch("./bowling-merits-preview.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("No approved preview export published");return r.json()})
+ .then(render).catch(err=>{status.textContent="Preview unavailable: "+err.message;status.className="error"});
+}
+</script>
+</body>
+</html>
