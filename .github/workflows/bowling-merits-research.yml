@@ -1,0 +1,46 @@
+name: Bowling Merits research checks
+on:
+  push:
+    branches:
+      - research/bowling-merits-step1-ot
+  pull_request:
+    paths:
+      - 'analysis/bowling_merits/**'
+      - 'data/raw/games_2019.csv'
+      - 'data/raw/games_2026.csv'
+      - '.github/workflows/bowling-merits-research.yml'
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run research regression suite
+        run: python -m unittest discover -s analysis/bowling_merits -p 'test_*.py' -v
+      - name: Run raw-versus-canonical eligibility audit when DB is present
+        run: |
+          if [ -f db/league.db ]; then
+            python analysis/bowling_merits/eligibility_audit.py db/league.db data/raw/games_2019.csv data/raw/games_2026.csv
+          else
+            echo 'Canonical DB unavailable in checkout; reconciliation requires DB artifact.'
+          fi
+      - name: Run historical reference replay
+        run: python analysis/bowling_merits/engine.py data/raw/games_2019.csv data/raw/games_2026.csv
+
+      - name: Step 2 historical model comparison
+        run: python analysis/bowling_merits/historical_validation.py --output-dir /tmp/bowling-merits-study
+      - name: Upload historical study tables
+        uses: actions/upload-artifact@v4
+        with:
+          name: bowling-merits-historical-study
+          path: /tmp/bowling-merits-study/*.csv
+
+      - name: Step 2 evidence review for rank movers
+        run: python analysis/bowling_merits/rank_mover_review.py --output /tmp/bowling-merits-study/bowling_merits_rank_mover_evidence.csv
+      - name: Upload rank mover evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: bowling-merits-rank-mover-evidence
+          path: /tmp/bowling-merits-study/bowling_merits_rank_mover_evidence.csv

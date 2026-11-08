@@ -1563,6 +1563,7 @@
         <a data-section="teams" href="#section=teams">Teams</a>
         <a data-section="people" href="#section=people">People</a>
       </nav>
+      <a href="bowling-merits-preview.html?preview=1" class="bowling-merits-research-link" title="Experimental Bowling Merits standings; research only" hidden>Bowling Merits (Research)</a>
       <div class="global-search" role="search">
         <!-- The box has found players and coaches since v0.1.1 and conferences
              since the conference pages landed, but it went on advertising three
@@ -11370,6 +11371,13 @@ paintConnection();
     catch (err) { /* the choice is not remembered, which is survivable */ }
   });
 }());
+</script>
+
+<script>
+/* Opt-in research navigation only. The main Standings tab stays unchanged. */
+if (new URLSearchParams(location.search).get('bowlingMeritsResearch') === '1') {
+  document.querySelectorAll('.bowling-merits-research-link').forEach(link => { link.hidden = false; });
+}
 </script>
 </body>
 </html>

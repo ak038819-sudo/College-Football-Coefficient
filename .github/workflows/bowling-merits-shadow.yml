@@ -1,0 +1,58 @@
+name: Bowling Merits shadow pipeline (manual only)
+on:
+  workflow_dispatch:
+    inputs:
+      season:
+        description: 'Season to recompute'
+        required: true
+        type: number
+      as_of:
+        description: 'Optional historical cutoff YYYY-MM-DD'
+        required: false
+        type: string
+jobs:
+  shadow:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Require canonical database artifact
+        run: |
+          if [ ! -f db/league.db ]; then
+            echo 'No canonical DB in checkout. Supply a vetted DB artifact before enabling this job.'
+            exit 1
+          fi
+      - name: Validate optional historical cutoff
+        env:
+          CUTOFF: ${{ inputs.as_of }}
+        run: |
+          python - <<'PY'
+          import os
+          from datetime import date
+          value=os.environ["CUTOFF"]
+          if value:
+              if len(value)!=10 or date.fromisoformat(value).isoformat()!=value:
+                  raise SystemExit("Invalid as_of; expected YYYY-MM-DD")
+          PY
+      - name: Build isolated shadow output and read-only preview
+        env:
+          SEASON: ${{ inputs.season }}
+          CUTOFF: ${{ inputs.as_of }}
+        run: |
+          mkdir -p /tmp/bowling-merits-artifacts
+          if [ -n "$CUTOFF" ]; then
+            python analysis/bowling_merits/pipeline.py --season "$SEASON" --as-of "$CUTOFF" --shadow-db /tmp/bowling-merits-artifacts/bowling_merits_shadow.db --enable-shadow-writes
+          else
+            python analysis/bowling_merits/pipeline.py --season "$SEASON" --shadow-db /tmp/bowling-merits-artifacts/bowling_merits_shadow.db --enable-shadow-writes
+          fi
+          python analysis/bowling_merits/preview.py --season "$SEASON" --limit 25 --shadow-db /tmp/bowling-merits-artifacts/bowling_merits_shadow.db --output /tmp/bowling-merits-artifacts/bowling-merits-preview.json
+      - name: Upload research artifacts (not published to Pages)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bowling-merits-shadow-${{ inputs.season }}
+          path: /tmp/bowling-merits-artifacts/
+          if-no-files-found: error

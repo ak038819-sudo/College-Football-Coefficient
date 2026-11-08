@@ -36,7 +36,7 @@ from pathlib import Path
 # to prevent.
 GENERATED = ('dashboard.html', 'dashboard_shell.html')
 PAGES = (Path('ui/basketball.html'), Path('ui/nfl.html'),
-         Path('ui/nba.html'))
+         Path('ui/nba.html'), Path('ui/bowling-merits-preview.html'))
 
 SCRIPT = re.compile(r'(<script src=")([A-Za-z0-9_.\-]+\.js)(\?v=[0-9a-f]+)?(")')
 
