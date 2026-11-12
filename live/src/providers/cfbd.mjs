@@ -78,6 +78,17 @@ function textOrNull(value, limit = null) {
   return limit === null ? trimmed : trimmed.slice(0, limit);
 }
 
+/**
+ * A venue's name, from either shape.
+ *
+ * `/scoreboard` sends an object: `{state, city, name}`. Accepting only a string
+ * is what made `venue` null on every live game the site has ever published, so
+ * both shapes are accepted here and neither is assumed.
+ */
+function venueName(venue) {
+  return textOrNull(venue && typeof venue === 'object' ? venue.name : venue, 120);
+}
+
 function normalizeTeam(raw, institutionLookup) {
   const name = textOrNull(raw?.name);
   if (!name) throw new Error('scoreboard team has no name');
@@ -122,18 +133,83 @@ export function normalizeGame(raw, { observedAt, institutionLookup = () => null 
     provider_status: typeof raw.status === 'string' ? raw.status : null,
     period: intOrNull(raw.period),
     clock: textOrNull(raw.clock),
-    // CFBD's /scoreboard carries no possession field and no update stamp.
-    // Both stay null rather than being guessed. See the module header.
+    // CORRECTED 2026-11-12. This read: "CFBD's /scoreboard carries no
+    // possession field and no update stamp." The second half is true; the
+    // first was WRONG. `/scoreboard` sends `possession`, `lastPlay` and
+    // `situation`, which CFBD's own generated client declares and which are
+    // precisely the live-state fields this service exists to carry. They were
+    // null here because `src/fetch_live_scores.py` never read them and this
+    // adapter was written against that file rather than against the provider.
+    //
+    // `possession` is a free-text side -- CFBD types it as a string, not a team
+    // id -- so it is NOT resolved to a team key by guessing. It is carried
+    // verbatim under its own name, and resolving it waits for a real response
+    // showing what those strings actually contain.
+    possession: textOrNull(raw.possession),
+    last_play: textOrNull(raw.lastPlay, 500),
+    situation: textOrNull(raw.situation, 200),
     possession_team_key: null,
+    // Still genuinely absent: `/scoreboard` carries no provider-side update
+    // stamp, so this stays null rather than being defaulted to `observed_at`.
+    // The moment it is defaulted, provider lag silently becomes our lag.
     provider_updated_at: null,
     observed_at: observedAt,
     start_date: textOrNull(raw.startDate),
-    venue: textOrNull(raw.venue, 120),
+    start_time_tbd: raw.startTimeTBD === true,
+    conference_game: raw.conferenceGame === true,
+    // An OBJECT on the wire -- {state, city, name} -- not a string. Reading it
+    // as a string is what published `"venue": null` on 238 of 238 live games;
+    // see `clean_venue` in src/fetch_live_scores.py for the measurement.
+    venue: venueName(raw.venue),
     tv: textOrNull(raw.tv),
     neutral_site: raw.neutralSite === true,
     away,
     home,
   };
+}
+
+/**
+ * Every field `/scoreboard` is known to send, from CFBD's generated client.
+ *
+ * WHY A LIST AND NOT A COMMENT. The venue bug was a field whose shape nobody
+ * had checked against the wire, and it survived for months because nothing
+ * noticed the difference between "we chose not to carry this" and "we never
+ * saw this". `unknownFields` makes the second one visible: a field CFBD starts
+ * sending that this adapter does not handle is reported, so it becomes a
+ * decision instead of a silent drop.
+ *
+ * `weather` and `betting` are DELIBERATELY not carried. Both are real fields;
+ * neither is game state, the live path has no consumer for either, and betting
+ * data in particular is not something to start redistributing as a side effect
+ * of a scoreboard refactor.
+ */
+export const KNOWN_SCOREBOARD_FIELDS = Object.freeze([
+  'id', 'startDate', 'startTimeTBD', 'tv', 'neutralSite', 'conferenceGame',
+  'status', 'period', 'clock', 'situation', 'possession', 'lastPlay',
+  'venue', 'homeTeam', 'awayTeam', 'weather', 'betting',
+]);
+export const KNOWN_TEAM_FIELDS = Object.freeze([
+  'winProbability', 'lineScores', 'points', 'classification', 'conference', 'name', 'id',
+]);
+
+/** Field names on a response that this adapter does not know about. */
+export function unknownFields(payload) {
+  const rows = Array.isArray(payload) ? payload : [payload];
+  const game = new Set();
+  const team = new Set();
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    for (const key of Object.keys(row)) {
+      if (!KNOWN_SCOREBOARD_FIELDS.includes(key)) game.add(key);
+    }
+    for (const side of ['homeTeam', 'awayTeam']) {
+      if (!row[side] || typeof row[side] !== 'object') continue;
+      for (const key of Object.keys(row[side])) {
+        if (!KNOWN_TEAM_FIELDS.includes(key)) team.add(key);
+      }
+    }
+  }
+  return { game: [...game].sort(), team: [...team].sort() };
 }
 
 /**

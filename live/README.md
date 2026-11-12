@@ -83,3 +83,69 @@ own older stamp, which is the number `freshness.mjs` later shows a reader; it no
 stamps the time the decision was made on. And `health` reported `'no games
 tracked'` for a perfectly healthy slate, because a FRESH verdict's reason is
 `null` by design and `??` fell through it.
+
+## What the provider actually sends (2026-11-12)
+
+Milestone A's tests held the adapter to *this project's* normalization
+contract, because the fixtures are real output of the Python publisher. That
+was stated as a limit at the time, and acting on it found a defect that had
+been live for months.
+
+`/scoreboard` sends **seventeen** top-level fields, per CFBD's own generated
+client (`CFBD/cfbd-python`, `ScoreboardGame`, OpenAPI 5.33.2):
+
+```
+id  startDate  startTimeTBD  tv  neutralSite  conferenceGame  status  period
+clock  situation  possession  lastPlay  venue  homeTeam  awayTeam  weather  betting
+```
+
+`src/fetch_live_scores.py` reads ten of them.
+
+**`venue` is an object, not a string** — `{state, city, name}` — and
+`clean_game` accepted only a string, so it wrote `null` every time. Measured
+across the three fixtures plus the file published that day: **0 of 238 games
+carried a venue.** The page's game detail falls through to
+`archive?.stadium`, so a live game absent from the static archive read "Venue
+unverified", and did. Fixed in `clean_venue`, which now accepts both shapes;
+the adapter's `venueName` does the same.
+
+It survived because the test fixture was written from an assumption rather than
+from the wire: `tests/test_live_scores.py` passed `'venue': 'LaVell Edwards
+Stadium'`, a string, and asserted it came through — which it did. The guard read
+like validation and behaved like a filter.
+
+**`possession`, `lastPlay` and `situation` are on the wire.** This module's own
+header previously claimed `/scoreboard` "carries no possession field", which was
+wrong; the adapter was written against the Python publisher rather than against
+the provider. They are carried now. `possession` is free text in CFBD's schema,
+not a team id, so it is **not** resolved to a team key — resolving it waits for
+a real response showing what those strings contain.
+
+**`provider_updated_at` is still genuinely absent.** That half of the old
+comment was right, and it stays null rather than being defaulted to
+`observed_at`; the moment it is defaulted, provider lag silently becomes ours.
+
+**`weather` and `betting` are deliberately not carried.** Neither is game
+state, the live path has no consumer for either, and betting data is not
+something to start redistributing as a side effect of a scoreboard refactor.
+
+### The general fix
+
+`unknownFields()` reports any field a response carries that the adapter does
+not handle, so "we chose not to carry this" and "we have never seen this" stop
+looking identical. That is the thing that would have caught the venue.
+
+### Still outstanding
+
+The reference above is a client library — CFBD's published contract — not bytes
+we have seen. `scripts/probe_cfbd_scoreboard.py` reports the shape of a real
+response and `.github/workflows/cfbd-scoreboard-probe.yml` runs it; the API is
+not reachable from a development container.
+
+**That workflow cannot be dispatched until it is on the default branch** —
+`workflow_dispatch` only registers a workflow whose file is already there. So
+confirming this against a live response waits on this branch merging, and it
+should then be run **during a slate**: with nothing in progress, `period`,
+`clock`, `possession`, `situation` and `lastPlay` are all legitimately null and
+the run cannot settle their shape. The probe says so in its own output rather
+than letting a quiet Tuesday read as a clean bill of health.

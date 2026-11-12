@@ -32,7 +32,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import { SCHEMA_VERSION, STATUSES, assertProvider, entityKey } from '../src/providers/provider.mjs';
-import { createCfbdProvider, normalizeGame, normalizeScoreboard } from '../src/providers/cfbd.mjs';
+import { createCfbdProvider, normalizeGame, normalizeScoreboard, unknownFields } from '../src/providers/cfbd.mjs';
 import { serializeLegacy, toLegacyGame, toLegacySnapshot } from '../src/legacy.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -498,4 +498,133 @@ test('player_stats_checked_at is OMITTED when there is none, never emitted as nu
   }).snapshot;
   assert.deepEqual(Object.keys(full), ['source', 'updated_at', 'games', 'player_boxscores', 'player_boxscore_times', 'player_stats_checked_at']);
   assert.equal(full.player_stats_checked_at, OBSERVED);
+});
+
+// --- what the provider actually sends ---------------------------------------
+
+/**
+ * Pinned against CFBD's own generated client, not against src/fetch_live_scores.py.
+ *
+ * The fixtures above are real OUTPUT of the Python publisher, which means they
+ * can only ever confirm what that publisher already does. They cannot show a
+ * field it never read -- and it never read seven of them, one of which it was
+ * actively discarding. So this section's reference is
+ * `CFBD/cfbd-python`'s `ScoreboardGame` and its sub-models (OpenAPI 5.33.2,
+ * read 2026-11-12), which declare the wire shape independently of this repo.
+ *
+ * That is still a client library rather than a live response. `scripts/probe_cfbd_scoreboard.py`
+ * exists to confirm it against the real endpoint, and until that has run these
+ * are "what CFBD publishes as its contract", not "bytes we have seen".
+ */
+
+test('the known-field list is exactly what CFBD declares for /scoreboard', async () => {
+  const { KNOWN_SCOREBOARD_FIELDS, KNOWN_TEAM_FIELDS } = await import('../src/providers/cfbd.mjs');
+  // ScoreboardGame.__properties, verbatim and in order.
+  assert.deepEqual([...KNOWN_SCOREBOARD_FIELDS], [
+    'id', 'startDate', 'startTimeTBD', 'tv', 'neutralSite', 'conferenceGame',
+    'status', 'period', 'clock', 'situation', 'possession', 'lastPlay',
+    'venue', 'homeTeam', 'awayTeam', 'weather', 'betting',
+  ]);
+  // ScoreboardGameHomeTeam.__properties, verbatim and in order.
+  assert.deepEqual([...KNOWN_TEAM_FIELDS], [
+    'winProbability', 'lineScores', 'points', 'classification', 'conference', 'name', 'id',
+  ]);
+});
+
+test('the venue is read from the OBJECT the wire carries, not only from a string', () => {
+  // This is the bug: `venue` is {state, city, name}, and reading it as a string
+  // published `"venue": null` on 238 of 238 live games.
+  const game = normalizeGame({
+    ...RAW,
+    venue: {state: 'KY', city: 'Bowling Green', name: 'Houchens-Smith Stadium'},
+  }, {observedAt: OBSERVED});
+  assert.equal(game.venue, 'Houchens-Smith Stadium');
+  // A string still works. Accepting only one shape is what caused this.
+  assert.equal(normalizeGame({...RAW, venue: 'Lane Stadium'}, {observedAt: OBSERVED}).venue,
+    'Lane Stadium');
+  // An object that names nothing is null, not '[object Object]' and not ''.
+  for (const empty of [{}, {name: null}, {name: ''}, {name: '   '}, {city: 'Bowling Green'},
+    {name: 42}, null, undefined, 42, []]) {
+    assert.equal(normalizeGame({...RAW, venue: empty}, {observedAt: OBSERVED}).venue, null,
+      JSON.stringify(empty));
+  }
+  // Still capped at 120 characters, from either shape.
+  assert.equal(normalizeGame({...RAW, venue: {name: 'A'.repeat(200)}}, {observedAt: OBSERVED}).venue,
+    'A'.repeat(120));
+});
+
+test('the live-state fields CFBD sends are carried, not dropped', () => {
+  // possession, lastPlay and situation are on the wire and are exactly the
+  // live-state fields this service exists to carry. The Python publisher never
+  // read them, and this adapter claimed in a comment that they did not exist.
+  const game = normalizeGame({
+    ...RAW,
+    possession: 'home',
+    lastPlay: 'Smith pass complete to Jones for 12 yards',
+    situation: '3rd & 4 at WKU 38',
+    startTimeTBD: true,
+    conferenceGame: true,
+  }, {observedAt: OBSERVED});
+  assert.equal(game.possession, 'home');
+  assert.equal(game.last_play, 'Smith pass complete to Jones for 12 yards');
+  assert.equal(game.situation, '3rd & 4 at WKU 38');
+  assert.equal(game.start_time_tbd, true);
+  assert.equal(game.conference_game, true);
+});
+
+test('possession is NOT guessed into a team key', () => {
+  // CFBD types possession as a free-text string, not a team id. Resolving it to
+  // one of our team keys would be a guess about content nobody has seen, and a
+  // wrong guess puts the ball with the wrong team on a live scoreboard.
+  const game = normalizeGame({...RAW, possession: 'home'}, {observedAt: OBSERVED});
+  assert.equal(game.possession_team_key, null);
+  assert.equal(game.possession, 'home');
+});
+
+test('a provider-side update stamp is still absent, and is not faked from our clock', () => {
+  // The one part of the old comment that was right. Defaulting this to
+  // observed_at would turn provider lag into our lag, silently.
+  const game = normalizeGame(RAW, {observedAt: OBSERVED});
+  assert.equal(game.provider_updated_at, null);
+  assert.notEqual(game.observed_at, game.provider_updated_at);
+});
+
+test('the boolean flags are strict, like neutral_site', () => {
+  for (const value of [1, 'true', 'false', {}, []]) {
+    const game = normalizeGame({...RAW, startTimeTBD: value, conferenceGame: value},
+      {observedAt: OBSERVED});
+    assert.equal(game.start_time_tbd, false, `startTimeTBD ${JSON.stringify(value)}`);
+    assert.equal(game.conference_game, false, `conferenceGame ${JSON.stringify(value)}`);
+  }
+});
+
+test('a field CFBD starts sending that we do not handle is REPORTED, not dropped silently', async () => {
+  const { unknownFields } = await import('../src/providers/cfbd.mjs');
+  // Nothing unknown in what CFBD declares today, including the two fields that
+  // are known and deliberately not carried.
+  assert.deepEqual(unknownFields([{...RAW, weather: {temperature: 54}, betting: {spread: -3.5}}]),
+    {game: [], team: []});
+  // A new field, at either level.
+  assert.deepEqual(unknownFields([{...RAW, drivesUrl: '/x', redZone: true}]).game,
+    ['drivesUrl', 'redZone']);
+  assert.deepEqual(
+    unknownFields([{...RAW, homeTeam: {...RAW.homeTeam, timeouts: 2}}]).team, ['timeouts']);
+  // Reported once across a whole slate, sorted, and a malformed row is skipped
+  // rather than throwing: this runs on every poll and must never be the thing
+  // that takes ingestion down.
+  assert.deepEqual(unknownFields([{...RAW, zz: 1}, {...RAW, aa: 1}, null, 'nonsense', {...RAW, zz: 2}]).game,
+    ['aa', 'zz']);
+  assert.deepEqual(unknownFields(RAW), {game: [], team: []});
+});
+
+test('every real fixture game has no unknown fields once inverted', () => {
+  // A weak check on its own -- toRaw only produces fields it knows -- but it
+  // fails loudly if toRaw and the known-field list ever disagree, which is the
+  // thing that would make the section above test nothing.
+  for (const { name, snapshot } of fixtures()) {
+    const raw = snapshot.games.map(toRaw);
+    const result = unknownFields(raw);
+    assert.deepEqual(result.game, [], name);
+    assert.deepEqual(result.team, [], name);
+  }
 });

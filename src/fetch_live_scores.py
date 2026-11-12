@@ -29,6 +29,39 @@ ATTEMPTS = 3
 BOXSCORE_INTERVAL = 900
 
 
+def clean_venue(venue):
+    """The venue's name, from either shape CFBD might send.
+
+    THIS WAS A SILENT, TOTAL DATA LOSS, found 2026-11-12. `/scoreboard` sends
+    `venue` as an OBJECT -- `{"state": ..., "city": ..., "name": ...}`, which is
+    what CFBD's own generated client declares (`ScoreboardGameVenue`) -- and
+    this function previously accepted only a string:
+
+        venue.strip()[:120] if isinstance(venue, str) and venue.strip() else None
+
+    So every live game published `"venue": null`. Measured across three
+    snapshots from October and November 2026 plus the file published that day:
+    **0 of 238 games carried a venue.** The page's game detail reads
+    `g.venue || archive?.stadium || UPCOMING_BY_ID...`, so a live game absent
+    from the static archive read "Venue unverified" -- and did, for as long as
+    these snapshots go back.
+
+    IT SURVIVED BECAUSE THE TEST FIXTURE WAS WRITTEN FROM AN ASSUMPTION rather
+    than from the wire. `tests/test_live_scores.py` passes
+    `'venue': 'LaVell Edwards Stadium'`, a string, and asserts it comes through,
+    which it does. The guard reads like validation and behaves like a filter,
+    and nothing compared it against a real response. Both shapes are accepted
+    below so the fix cannot itself become the next version of this bug.
+    """
+    if isinstance(venue, dict):
+        venue = venue.get('name')
+    if not isinstance(venue, str):
+        return None
+    trimmed = venue.strip()
+    # 120 characters, as before: the published payload is size-sensitive.
+    return trimmed[:120] if trimmed else None
+
+
 def clean_game(item):
     if not isinstance(item, dict) or not isinstance(item.get('id'), int):
         raise ValueError('invalid scoreboard game ID')
@@ -45,9 +78,8 @@ def clean_game(item):
         teams.append({'id': team.get('id') if type(team.get('id')) is int else None,
                       'name': team['name'], 'points': points,
                       'classification': team.get('classification')})
-    venue = item.get('venue')
     return {'id': item['id'], 'start_date': item.get('startDate'),
-            'venue': venue.strip()[:120] if isinstance(venue, str) and venue.strip() else None,
+            'venue': clean_venue(item.get('venue')),
             'status': item['status'], 'period': item.get('period'),
             'clock': item.get('clock'), 'tv': item.get('tv'),
             'neutral_site': item.get('neutralSite') is True,
