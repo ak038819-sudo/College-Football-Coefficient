@@ -101,3 +101,44 @@ def test_a_negative_athlete_id_is_kept():
     [line] = clean_player_boxscores(payload, {42}, max_athletes=None,
                                     keep_ids=True)['42'][0]['categories'][0]['lines']
     assert line['id'] == '-1044305'
+
+
+# --- the venue, which was null on every live game until 2026-11-12 ----------
+
+def test_the_venue_is_read_from_the_object_cfbd_actually_sends():
+    """CFBD's /scoreboard sends venue as {state, city, name}.
+
+    The old guard accepted only a string, so every live game published
+    `"venue": null` -- 0 of 238 games across three archived snapshots and the
+    file published that day. This test feeds the shape the wire actually
+    carries, which is the thing the old fixture did not do.
+    """
+    from fetch_live_scores import clean_venue
+    item = dict(sample(), venue={'state': 'KY', 'city': 'Bowling Green',
+                                 'name': 'Houchens-Smith Stadium'})
+    assert make_snapshot([item], dt.datetime.now(dt.timezone.utc))['games'][0]['venue'] \
+        == 'Houchens-Smith Stadium'
+    assert clean_venue({'name': 'Lane Stadium'}) == 'Lane Stadium'
+
+
+def test_a_plain_string_venue_still_works():
+    # Accepting only one shape is what caused the bug; the fix must not become
+    # the next version of it.
+    from fetch_live_scores import clean_venue
+    assert clean_venue('Lane Stadium') == 'Lane Stadium'
+    assert clean_venue('  Lane Stadium  ') == 'Lane Stadium'
+
+
+def test_a_venue_that_names_nothing_is_null_rather_than_a_blank_string():
+    from fetch_live_scores import clean_venue
+    for empty in [None, '', '   ', {}, {'name': None}, {'name': ''}, {'name': '   '},
+                  {'city': 'Bowling Green'}, 42, [], {'name': 42}]:
+        assert clean_venue(empty) is None, empty
+
+
+def test_the_venue_is_still_trimmed_to_120_characters():
+    # The published payload is size-sensitive and always capped this field.
+    from fetch_live_scores import clean_venue
+    assert clean_venue({'name': 'A' * 200}) == 'A' * 120
+    assert clean_venue('B' * 200) == 'B' * 120
+    assert clean_venue({'name': 'C' * 120}) == 'C' * 120

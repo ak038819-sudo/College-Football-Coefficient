@@ -23,6 +23,43 @@ DEFAULT_OUT = Path('ui/data/live_scores.json')
 # without the scoreboard going stale; a longer outage is the next run's
 # problem, and the last good snapshot stays published meanwhile.
 ATTEMPTS = 3
+# How often the player box-score batch is refetched, independent of how often
+# the scoreboard is polled. Fifteen minutes on a weekly box score is generous,
+# and `boxscores_due` explains why the two cadences are separate at all.
+BOXSCORE_INTERVAL = 900
+
+
+def clean_venue(venue):
+    """The venue's name, from either shape CFBD might send.
+
+    THIS WAS A SILENT, TOTAL DATA LOSS, found 2026-11-12. `/scoreboard` sends
+    `venue` as an OBJECT -- `{"state": ..., "city": ..., "name": ...}`, which is
+    what CFBD's own generated client declares (`ScoreboardGameVenue`) -- and
+    this function previously accepted only a string:
+
+        venue.strip()[:120] if isinstance(venue, str) and venue.strip() else None
+
+    So every live game published `"venue": null`. Measured across three
+    snapshots from October and November 2026 plus the file published that day:
+    **0 of 238 games carried a venue.** The page's game detail reads
+    `g.venue || archive?.stadium || UPCOMING_BY_ID...`, so a live game absent
+    from the static archive read "Venue unverified" -- and did, for as long as
+    these snapshots go back.
+
+    IT SURVIVED BECAUSE THE TEST FIXTURE WAS WRITTEN FROM AN ASSUMPTION rather
+    than from the wire. `tests/test_live_scores.py` passes
+    `'venue': 'LaVell Edwards Stadium'`, a string, and asserts it comes through,
+    which it does. The guard reads like validation and behaves like a filter,
+    and nothing compared it against a real response. Both shapes are accepted
+    below so the fix cannot itself become the next version of this bug.
+    """
+    if isinstance(venue, dict):
+        venue = venue.get('name')
+    if not isinstance(venue, str):
+        return None
+    trimmed = venue.strip()
+    # 120 characters, as before: the published payload is size-sensitive.
+    return trimmed[:120] if trimmed else None
 
 
 def clean_game(item):
@@ -41,9 +78,8 @@ def clean_game(item):
         teams.append({'id': team.get('id') if type(team.get('id')) is int else None,
                       'name': team['name'], 'points': points,
                       'classification': team.get('classification')})
-    venue = item.get('venue')
     return {'id': item['id'], 'start_date': item.get('startDate'),
-            'venue': venue.strip()[:120] if isinstance(venue, str) and venue.strip() else None,
+            'venue': clean_venue(item.get('venue')),
             'status': item['status'], 'period': item.get('period'),
             'clock': item.get('clock'), 'tv': item.get('tv'),
             'neutral_site': item.get('neutralSite') is True,
@@ -147,6 +183,51 @@ def fetch_player_boxscores(key, games, now):
     return clean_player_boxscores(payload, active)
 
 
+def boxscores_due(previous, now, interval=None):
+    """Is the player box-score batch due, or can this tick skip it?
+
+    WHY THIS EXISTS. Every tick used to make THREE CFBD requests -- /scoreboard
+    for the live scores, plus /calendar and /games/players for the weekly player
+    batch -- and `run_live_score_session.py` says so beside its idle interval:
+    "Three CFBD requests a tick is what makes it worth slowing down at all." So
+    the request cost of the live scoreboard was three times what the live
+    scoreboard actually needs, and that multiplier is what makes a faster
+    cadence unaffordable. The scoreboard genuinely needs one request per tick.
+    The player batch does not need six-second, six-minute or even hourly
+    granularity: it is a weekly box score, and the page labels it with
+    `player_stats_checked_at` so its age is disclosed rather than hidden.
+
+    Splitting them cuts the live cycle to one request on most ticks, and the
+    saving grows as the cadence gets faster -- at a fifteen-second cadence it is
+    one extra request in sixty rather than two in every one. That is the whole
+    point: this is what makes fast polling affordable.
+
+    THE DECISION IS MADE FROM THE PUBLISHED FILE, not from state held in a
+    process, because the two callers differ. A polling session could remember
+    when it last fetched; the five-minute cron is a fresh process every time and
+    could not. Reading `player_stats_checked_at` out of the previous snapshot
+    works identically for both and needs nothing plumbed through.
+
+    Anything unreadable means DUE. A missing, unparseable or future-dated stamp
+    is not evidence that a fetch happened recently, and the failure mode of
+    guessing the other way is never fetching again.
+    """
+    if interval is None:
+        interval = BOXSCORE_INTERVAL
+    stamp = (previous or {}).get('player_stats_checked_at')
+    if not isinstance(stamp, str) or not stamp:
+        return True
+    try:
+        last = dt.datetime.fromisoformat(stamp.replace('Z', '+00:00'))
+    except ValueError:
+        return True
+    if last.tzinfo is None:
+        last = last.replace(tzinfo=dt.timezone.utc)
+    age = (now - last).total_seconds()
+    # A negative age is a clock disagreement, not a recent fetch.
+    return not 0 <= age < interval
+
+
 def make_snapshot(payload, now):
     if not isinstance(payload, list):
         raise ValueError('scoreboard response must be a list')
@@ -204,14 +285,18 @@ def refresh(out, key):
         previous = json.loads(out.read_text(encoding='utf-8'))
     except (OSError, ValueError):
         previous = {}
-    checked_at = dt.datetime.now(dt.timezone.utc).isoformat().replace('+00:00', 'Z')
+    now = dt.datetime.now(dt.timezone.utc)
+    checked_at = now.isoformat().replace('+00:00', 'Z')
     fresh = None
-    try:
-        fresh = fetch_player_boxscores(key, snapshot['games'], dt.datetime.now(dt.timezone.utc))
-    except (OSError, ValueError, KeyError) as exc:
-        print(f'Player box scores unavailable: {exc}')
+    due = boxscores_due(previous, now)
+    if due:
+        try:
+            fresh = fetch_player_boxscores(key, snapshot['games'], now)
+        except (OSError, ValueError, KeyError) as exc:
+            print(f'Player box scores unavailable: {exc}')
     merge_player_boxscores(snapshot, previous, fresh, checked_at)
-    print(f"Player box scores: {len(fresh) if fresh is not None else 'fetch failed'} new/updated, "
+    print(f"Player box scores: "
+          f"{'not due' if not due else len(fresh) if fresh is not None else 'fetch failed'} new/updated, "
           f"{len(snapshot['player_boxscores'])} published; "
           f"{sum(g['status'] == 'completed' for g in snapshot['games'])} completed games")
     out.parent.mkdir(parents=True, exist_ok=True)

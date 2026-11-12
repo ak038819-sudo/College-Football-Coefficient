@@ -1,0 +1,54 @@
+name: CFBD scoreboard shape probe
+
+# What /scoreboard actually sends, and which of it this project reads.
+#
+# WHY THIS EXISTS AS ITS OWN WORKFLOW. Every test of the live scoreboard
+# compares against the output of src/fetch_live_scores.py, so none of them can
+# see a field that file never read -- and it never read seven of the seventeen
+# fields /scoreboard sends. One of them it was actively discarding: `venue`
+# arrives as an object and clean_game accepted only a string, so every live
+# game published `"venue": null`. Measured across three archived snapshots plus
+# the file published that day: 0 of 238 games carried a venue. A fixture
+# written from an assumption cannot catch that. Only a real response can.
+#
+# ONE request to /scoreboard and nothing else: no data file, no database, no
+# commit, so it cannot publish or overwrite anything. It prints the response's
+# SHAPE -- key paths, types, how often each is present, which of them this
+# project reads -- and a handful of short non-identifying values for the fields
+# whose shape is the question. It never prints a whole response.
+#
+# RE-RUN IT DURING A SLATE. With nothing in progress, period, clock,
+# possession, situation and lastPlay are all legitimately null and the run
+# cannot settle their shape; it says so in its own output.
+#
+# Its own concurrency group, never the deploy's or a refresh's: a pending run
+# of either has cancelled whatever was queued behind it before now.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: cfbd-scoreboard-probe
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Report the scoreboard's shape
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          # `cmd | tee` reports tee's status, so without pipefail a crash in
+          # the probe would pass this step.
+          set -o pipefail
+          python scripts/probe_cfbd_scoreboard.py | tee -a "$GITHUB_STEP_SUMMARY"
