@@ -63,6 +63,12 @@ function panelHtml(tp, { team = TEAM, season = 2024 } = {}) {
   const el = { innerHTML: '' };
   const ctx = {
     document: { getElementById: id => (id === 'tp-schedule' ? el : null) },
+    // fillSchedulePanel asks whether the Bowling Merits research column is
+    // showing, which reads the query string. Without these two the panel
+    // throws instead of rendering. URLSearchParams is the real one, so the
+    // flag is parsed exactly as the browser parses it.
+    location: { search: '' },
+    URLSearchParams,
     UPCOMING_GAMES: [],
     TEAM_BY_ID: new Map([[String(TEAM.id), TEAM], [String(OPP.id), OPP]]),
     teamPageState: { schedSeason: season },
@@ -110,7 +116,7 @@ function panelHtml(tp, { team = TEAM, season = 2024 } = {}) {
     sourceOf('eloShade') + '\n' +
     sourceOf('meritCell') + '\n' +
     sourceOf('meritConst') + '\n' +
-    sourceOf('seasonMerits') + '\n' +
+    sourceOf('seasonMerits') + '\n' + sourceOf('showBowlingMerits') + '\n' + sourceOf('schedColumns') + '\n' + sourceOf('bowlingMeritCell') + '\n' + sourceOf('bowlingMeritBlank') + '\n' + sourceOf('seasonBowlingMerits') + '\n' +
     sourceOf('teamScheduleSeasons') + '\n' +
     sourceOf('nonFbsRecord') + '\n' +
     sourceOf('recWithUnrated') + '\n' +
@@ -144,12 +150,17 @@ test('an unrated row leaves every rating column empty', () => {
   const html = panelHtml(withUnrated(ratedFixture(), [unratedGame()], [1, 0, 0]));
   const row = html.match(/<tr class="sched-unrated">[\s\S]*?<\/tr>/);
   assert.ok(row, 'no unrated row rendered');
-  // Ten columns: date, opponent, round, result, then the five rating columns and
-  // the game's Merits, which must every one be a dash. Asserting on the tail
-  // rather than the whole row, because the date contains a four-digit year.
+  // Date, opponent, round, result, then every rating column -- the five Elo
+  // ones, the game's Merits and the Bowling Merits research award -- each of
+  // which must be a dash. The width comes from the header rather than a
+  // literal, so adding a column cannot leave this row one cell short without
+  // the assertion noticing. Asserting on the tail rather than the whole row,
+  // because the date contains a four-digit year.
+  const columns = Array.from(html.matchAll(/<th scope="col"/g)).length;
   const cells = row[0].match(/<td[^>]*>[\s\S]*?<\/td>/g);
-  assert.equal(cells.length, 10);
-  assert.deepEqual(Array.from(cells.slice(4)), new Array(6).fill('<td class="dim">\u2014</td>'));
+  assert.equal(cells.length, columns);
+  assert.deepEqual(Array.from(cells.slice(4)),
+    new Array(columns - 4).fill('<td class="dim">\u2014</td>'));
 });
 
 test('an unrated row carries no Elo tint, because there was no Elo change', () => {

@@ -16,6 +16,8 @@ never recalculates Elo:
                        pregame win expectation, change, postgame)
   - games             (completed games only: both scores present)
   - hybrid_game_ratings (Game CoE 2.0, where available)
+  - bowling_merits_game_awards (the research model's per-game award,
+                       where src/build_bowling_merits.py has run)
 
 Shared, normalized layout (no game duplicated per team):
   games:        [[game_id, season, date, week, home_id, away_id, home_score,
@@ -24,7 +26,8 @@ Shared, normalized layout (no game duplicated per team):
                   team_score, opponent_score, is_home, neutral, phase, went_ot,
                   opponent_classification], ...]   NOT rated; see load_non_fbs_games
   elo:          [[game_id, team_id, pregame, opp_pregame, expectation,
-                  change, postgame], ...]   grouped by team, chronological
+                  change, postgame, mov, merits, bowling_merits], ...]
+                  grouped by team, chronological
   team_seasons: [[team_id, season, games, w, l, t, start_elo, end_elo,
                   elo_change, sos, sos_rank, expected_wins, actual_wins,
                   wins_above_expected, coe2_season, coe2_rank,
@@ -231,14 +234,28 @@ def load_elo_rows(conn: sqlite3.Connection) -> list[tuple]:
     award = ("h.game_coe" if hybrid else "NULL")
     join = ("LEFT JOIN hybrid_game_ratings h ON h.game_id = e.game_id AND h.team_id = e.team_id"
             if hybrid else "")
+    # The research model's award rides alongside, LEFT JOINed on the same two
+    # keys and absent for the same reason: a tie is not scored at all, so it
+    # must dash rather than read 0 -- and here 0 is not even a loss's award,
+    # since a Bowling Merits regulation loss is negative. See
+    # src/build_bowling_merits.py.
+    bowling = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' "
+        "AND name='bowling_merits_game_awards'"
+    ).fetchone()
+    bowl_award = ("b.merits" if bowling else "NULL")
+    bowl_join = ("LEFT JOIN bowling_merits_game_awards b "
+                 "ON b.game_id = e.game_id AND b.team_id = e.team_id"
+                 if bowling else "")
     return conn.execute(
         f"""
         SELECT e.game_id, e.team_id, e.pregame_elo, e.opponent_pregame_elo,
                e.elo_expectation, e.elo_change, e.postgame_elo,
-               g.season_year, g.game_date, e.mov_multiplier, {award}
+               g.season_year, g.game_date, e.mov_multiplier, {award}, {bowl_award}
         FROM elo_game_history e
         JOIN games g ON g.game_id = e.game_id
         {join}
+        {bowl_join}
         WHERE g.home_score IS NOT NULL AND g.away_score IS NOT NULL
         ORDER BY e.team_id, g.season_year, g.game_date, e.game_id
         """
@@ -292,6 +309,26 @@ def load_game_coe2(conn: sqlite3.Connection) -> dict:
     return dict(out)
 
 
+def load_bowling_rollups(conn: sqlite3.Connection) -> dict:
+    """{(team_id, season): season total} of the research model's game awards.
+
+    Summed HERE, like the production Merits footer, so the footer cannot
+    disagree with the column above it by rounding differently in the browser.
+    A team-season reaches this map only when it has at least one award, so the
+    footer dashes for a season of nothing but unrated opponents instead of
+    claiming a measured 0.0 -- and 0.0 would be doubly wrong here, since no
+    Bowling Merits outcome awards it.
+    """
+    if not conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' "
+        "AND name='bowling_merits_game_awards'"
+    ).fetchone():
+        return {}
+    return {(tid, season): round(total, 3) for tid, season, total in conn.execute(
+        "SELECT team_id, season_year, SUM(merits) FROM bowling_merits_game_awards "
+        "GROUP BY team_id, season_year")}
+
+
 def team_result(game_row: tuple, team_id: int) -> str:
     _, _, _, _, home, away, hs, as_, *_ = game_row
     mine, theirs = (hs, as_) if team_id == home else (as_, hs)
@@ -319,7 +356,7 @@ def build_team_pages(conn: sqlite3.Connection, champions: list[dict] | None = No
     # ---- per team-season analytics ----
     acc: dict = {}
     by_team: dict = defaultdict(list)
-    for gid, tid, pre, opp_pre, exp, chg, post, season, _date, _mov, _coe in elo_rows:
+    for gid, tid, pre, opp_pre, exp, chg, post, season, _date, _mov, _coe, _bowl in elo_rows:
         if gid not in game_by_id:
             continue
         by_team[tid].append((gid, pre, opp_pre, exp, chg, post, season))
@@ -414,18 +451,21 @@ def build_team_pages(conn: sqlite3.Connection, champions: list[dict] | None = No
         "cfp_first_season": CFP_FIRST_SEASON,
         # ENG-13: the season total decomposed into game awards plus named bonuses.
         "coe2_rollups": {f"{t}|{s}": v for (t, s), v in load_coe2_rollups(conn).items()},
+        "bowling_rollups": {f"{t}|{s}": v for (t, s), v in load_bowling_rollups(conn).items()},
         "titles_since": min((c["season"] for c in champions), default=None) if champions else None,
         "advanced": build_advanced(conn),
         # kickoff_utc appended LAST (position 11) so existing positions never move; null for
         # date-only seasons or when kickoff times haven't been fetched (see export_static_data.kickoff_map).
         "games": [[g[0], g[1], g[2], g[3], g[4], g[5], g[6], g[7], g[8],
                    PHASE_CODE.get(g[9], 0), g[10], kickoffs.get(g[0], (None, None))[0]] for g in games],
-        # mov_multiplier (position 7) and then the game's Merits award (position 8)
-        # are appended LAST; existing positions never move.
+        # mov_multiplier (position 7), the game's Merits award (position 8) and
+        # the research model's Bowling Merits award (position 9) are appended
+        # LAST; existing positions never move.
         # Expectation kept to 4 decimals so a ledger row's K x (S - E) x M reproduces the stored change.
         "elo": [[r[0], r[1], round(r[2], 1), round(r[3], 1), round(r[4], 4), round(r[5], 2), round(r[6], 1),
                  None if r[9] is None else round(r[9], 4),
-                 None if r[10] is None else round(r[10], 3)] for r in elo_rows if r[0] in game_by_id],
+                 None if r[10] is None else round(r[10], 3),
+                 None if r[11] is None else round(r[11], 3)] for r in elo_rows if r[0] in game_by_id],
         # Games against opponents with no rating here. Deliberately a SEPARATE
         # array from "games": nothing downstream that computes a rating reads
         # this key, which is the same separation the table itself makes.
@@ -524,6 +564,9 @@ def split_team_pages(data: dict) -> dict:
     for composite, value in (data.get("coe2_rollups") or {}).items():
         tid = composite.split("|", 1)[0]
         team(tid).setdefault("coe2_rollups", {})[composite] = value
+    for composite, value in (data.get("bowling_rollups") or {}).items():
+        tid = composite.split("|", 1)[0]
+        team(tid).setdefault("bowling_rollups", {})[composite] = value
     for composite, value in (data.get("non_fbs_records") or {}).items():
         tid = composite.split("|", 1)[0]
         team(tid).setdefault("non_fbs_records", {})[composite] = value

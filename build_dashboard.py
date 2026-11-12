@@ -159,6 +159,13 @@ def main() -> None:
     # show every season as unmeasured. Before export_static_data.py, which is
     # what exports the people pages that read these rows.
     subprocess.run([sys.executable, "src/build_coach_metrics.py", "--db", args.db], check=True)
+    # The research model's per-game awards, for the Schedule tab's display
+    # column. Here rather than in run_pipeline.py only to keep it beside the
+    # other pre-export builders -- it reads nothing but `games`, so unlike the
+    # coach metrics above it does not depend on build_elo.py having run. It
+    # must precede export_static_data.py, which is what writes the team-page
+    # shards that carry the award. Nothing that computes a rating reads it.
+    subprocess.run([sys.executable, "src/build_bowling_merits.py", "--db", args.db], check=True)
     # Per-season game files + search index, loaded on demand (data foundation step).
     subprocess.run([sys.executable, "src/export_static_data.py", "--db", args.db], check=True)
     # Research splits enter only an in-memory copy, never production Elo/Merits.

@@ -54,6 +54,12 @@ function panelHtml(tp, { team = TEAM, season = 2024 } = {}) {
   const el = { innerHTML: '' };
   const ctx = {
     document: { getElementById: id => (id === 'tp-schedule' ? el : null) },
+    // fillSchedulePanel asks whether the Bowling Merits research column is
+    // showing, which reads the query string. Without these two the panel
+    // throws instead of rendering. URLSearchParams is the real one, so the
+    // flag is parsed exactly as the browser parses it.
+    location: { search: '' },
+    URLSearchParams,
     UPCOMING_GAMES: [],
     TEAM_BY_ID: new Map([[String(TEAM.id), TEAM], [String(OPP.id), OPP]]),
     teamPageState: { schedSeason: season },
@@ -87,7 +93,7 @@ function panelHtml(tp, { team = TEAM, season = 2024 } = {}) {
     sourceOf('eloShade') + '\n' +
     sourceOf('meritCell') + '\n' +
     sourceOf('meritConst') + '\n' +
-    sourceOf('seasonMerits') + '\n' +
+    sourceOf('seasonMerits') + '\n' + sourceOf('showBowlingMerits') + '\n' + sourceOf('schedColumns') + '\n' + sourceOf('bowlingMeritCell') + '\n' + sourceOf('bowlingMeritBlank') + '\n' + sourceOf('seasonBowlingMerits') + '\n' +
     sourceOf('teamScheduleSeasons') + '\n' +
     sourceOf('nonFbsRecord') + '\n' +
     sourceOf('recWithUnrated') + '\n' +
@@ -98,23 +104,37 @@ function panelHtml(tp, { team = TEAM, season = 2024 } = {}) {
   return el.innerHTML;
 }
 
-// The last cell of each body row, which is the Merits column.
+// The Merits column of each body row. It is the SECOND-last cell, not the
+// last: the Bowling Merits research column sits after it. Keyed off the header
+// count rather than a literal so the two cannot drift apart.
 function meritColumn(html) {
+  const headCount = Array.from(html.matchAll(/<th scope="col"/g)).length;
   const body = html.slice(html.indexOf('<tbody>'), html.indexOf('</tbody>'));
   return Array.from(body.matchAll(/<tr[^>]*>[\s\S]*?<\/tr>/g))
     .map(row => {
       const cells = row[0].match(/<td[^>]*>[\s\S]*?<\/td>/g) || [];
-      return cells[cells.length - 1];
+      return cells.length === headCount ? cells[headCount - 2] : cells[cells.length - 1];
     });
 }
 const DASH = '<td class="dim">—</td>';
+
+// The footer's Merits cell. Like meritColumn, it is the SECOND-last cell now
+// that the Bowling Merits research column follows it.
+function meritFooter(html) {
+  const foot = html.slice(html.indexOf('<tfoot>'), html.indexOf('</tfoot>'));
+  const cells = foot.match(/<td[^>]*>[\s\S]*?<\/td>/g) || [];
+  return cells[cells.length - 2];
+}
 
 test('the schedule has a Merits column, last, with a header of its own', () => {
   const html = panelHtml(fixture());
   const head = html.slice(html.indexOf('<thead>'), html.indexOf('</thead>'));
   const heads = Array.from(head.matchAll(/<th scope="col">([\s\S]*?)<\/th>/g)).map(m => m[1]);
+  // Bowling Merits sits after Merits since 2026-11-12. It is a research column
+  // and has its own file; what matters here is that Merits is still the ninth
+  // column and did not move or get replaced.
   assert.deepEqual(heads, ['Date', 'Opponent', 'Round', 'Result', 'Elo', 'Opp Elo',
-    'Win prob', 'Elo &Delta;', 'Elo after', 'Merits']);
+    'Win prob', 'Elo &Delta;', 'Elo after', 'Merits', 'Bowling Merits']);
 });
 
 test("a game's row carries the award that game earned", () => {
@@ -135,9 +155,7 @@ test("the footer shows Python's own season total from games, not a browser sum",
   // would print 3.418, and the point is that it prints the stored figure.
   const html = panelHtml(fixture({ awards: [3.418, 0, null],
     rollup: { games: 9.9, bonus: 0, total: 9.9, counted: 3, items: [] } }));
-  const foot = html.slice(html.indexOf('<tfoot>'), html.indexOf('</tfoot>'));
-  const cells = foot.match(/<td[^>]*>[\s\S]*?<\/td>/g);
-  assert.equal(cells[cells.length - 1], '<td>9.900</td>');
+  assert.equal(meritFooter(html), '<td>9.900</td>');
 });
 
 // The rollups carry a zero-game placeholder row for every season the awards
@@ -147,25 +165,19 @@ test("the footer shows Python's own season total from games, not a browser sum",
 test('a placeholder rollup row over zero games is no measurement', () => {
   const html = panelHtml(fixture({ awards: [null, null, null],
     rollup: { games: 0, bonus: 0, total: 0, counted: 0, items: [] } }));
-  const foot = html.slice(html.indexOf('<tfoot>'), html.indexOf('</tfoot>'));
-  const cells = foot.match(/<td[^>]*>[\s\S]*?<\/td>/g);
-  assert.equal(cells[cells.length - 1], DASH);
+  assert.equal(meritFooter(html), DASH);
   assert.deepEqual(meritColumn(html), [DASH, DASH, DASH]);
 });
 
 test('a real zero-game count does not suppress a season that was measured', () => {
   const html = panelHtml(fixture({ awards: [2.0, 0, 1.5],
     rollup: { games: 3.5, bonus: 0, total: 3.5, counted: 3, items: [] } }));
-  const foot = html.slice(html.indexOf('<tfoot>'), html.indexOf('</tfoot>'));
-  const cells = foot.match(/<td[^>]*>[\s\S]*?<\/td>/g);
-  assert.equal(cells[cells.length - 1], '<td>3.500</td>');
+  assert.equal(meritFooter(html), '<td>3.500</td>');
 });
 
 test('a season with no rollup row dashes its footer rather than printing zero', () => {
   const html = panelHtml(fixture({ rollup: null }));
-  const foot = html.slice(html.indexOf('<tfoot>'), html.indexOf('</tfoot>'));
-  const cells = foot.match(/<td[^>]*>[\s\S]*?<\/td>/g);
-  assert.equal(cells[cells.length - 1], DASH);
+  assert.equal(meritFooter(html), DASH);
 });
 
 // The group rows that separate live and scheduled games span the whole table;
@@ -178,6 +190,12 @@ test('the grouping rows span every column', () => {
   const tp = fixture();
   const ctx = {
     document: { getElementById: id => (id === 'tp-schedule' ? el : null) },
+    // fillSchedulePanel asks whether the Bowling Merits research column is
+    // showing, which reads the query string. Without these two the panel
+    // throws instead of rendering. URLSearchParams is the real one, so the
+    // flag is parsed exactly as the browser parses it.
+    location: { search: '' },
+    URLSearchParams,
     UPCOMING_GAMES: upcoming,
     TEAM_BY_ID: new Map([[String(TEAM.id), TEAM], [String(OPP.id), OPP]]),
     teamPageState: { schedSeason: 2024 },
@@ -195,7 +213,7 @@ test('the grouping rows span every column', () => {
     'let liveResults = new Map();\nlet liveResultsSignature = "";\n' +
     sourceOf('signed') + '\n' + sourceOf('fmtWins') + '\n' + sourceOf('recStr') + '\n' +
     sourceOf('gameFor') + '\n' + sourceOf('eloShade') + '\n' + sourceOf('meritCell') + '\n' +
-    sourceOf('meritConst') + '\n' + sourceOf('seasonMerits') + '\n' +
+    sourceOf('meritConst') + '\n' + sourceOf('seasonMerits') + '\n' + sourceOf('showBowlingMerits') + '\n' + sourceOf('schedColumns') + '\n' + sourceOf('bowlingMeritCell') + '\n' + sourceOf('bowlingMeritBlank') + '\n' + sourceOf('seasonBowlingMerits') + '\n' +
     sourceOf('teamScheduleSeasons') + '\n' + sourceOf('nonFbsRecord') + '\n' +
     sourceOf('recWithUnrated') + '\n' + sourceOf('fillSchedulePanel') + '\n' +
     'const SHADE_FULL = 25, SHADE_MIN_PCT = 4, SHADE_MAX_PCT = 20;\n' +
@@ -219,6 +237,12 @@ test('a scheduled row has no award yet', () => {
   const el = { innerHTML: '' };
   const ctx = {
     document: { getElementById: id => (id === 'tp-schedule' ? el : null) },
+    // fillSchedulePanel asks whether the Bowling Merits research column is
+    // showing, which reads the query string. Without these two the panel
+    // throws instead of rendering. URLSearchParams is the real one, so the
+    // flag is parsed exactly as the browser parses it.
+    location: { search: '' },
+    URLSearchParams,
     UPCOMING_GAMES: upcoming,
     TEAM_BY_ID: new Map([[String(TEAM.id), TEAM], [String(OPP.id), OPP]]),
     teamPageState: { schedSeason: 2024 },
@@ -236,7 +260,7 @@ test('a scheduled row has no award yet', () => {
     'let liveResults = new Map();\nlet liveResultsSignature = "";\n' +
     sourceOf('signed') + '\n' + sourceOf('fmtWins') + '\n' + sourceOf('recStr') + '\n' +
     sourceOf('gameFor') + '\n' + sourceOf('eloShade') + '\n' + sourceOf('meritCell') + '\n' +
-    sourceOf('meritConst') + '\n' + sourceOf('seasonMerits') + '\n' +
+    sourceOf('meritConst') + '\n' + sourceOf('seasonMerits') + '\n' + sourceOf('showBowlingMerits') + '\n' + sourceOf('schedColumns') + '\n' + sourceOf('bowlingMeritCell') + '\n' + sourceOf('bowlingMeritBlank') + '\n' + sourceOf('seasonBowlingMerits') + '\n' +
     sourceOf('teamScheduleSeasons') + '\n' + sourceOf('nonFbsRecord') + '\n' +
     sourceOf('recWithUnrated') + '\n' + sourceOf('fillSchedulePanel') + '\n' +
     'const SHADE_FULL = 25, SHADE_MIN_PCT = 4, SHADE_MAX_PCT = 20;\n' +
