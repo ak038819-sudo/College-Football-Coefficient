@@ -62,7 +62,8 @@ class BowlingMeritsTests(unittest.TestCase):
 
     def test_historical_fixtures_if_present(self):
         root=Path(__file__).resolve().parents[2]
-        # 2019 is frozen; 2026 is a growing live feed.
+        # 2019 is a frozen regression fixture. 2026 is a live feed and grows
+        # as games arrive; never assert its historical snapshot count/score.
         year,count,mature,byu=2019,774,1158,15.089198687115356
         path=root/"data"/"raw"/f"games_{year}.csv"
         if path.exists():

@@ -99,6 +99,56 @@ season_year,season_type,week,poll,rank,school,conference,first_place_votes,point
 2026,regular,3,ap,23,Louisville,ACC,0,244
 2026,regular,3,ap,24,Oklahoma,SEC,0,222
 2026,regular,3,ap,25,Virginia,ACC,0,182
+2026,regular,11,ap,1,Georgia,SEC,53,1729
+2026,regular,11,ap,2,Utah,Big 12,12,1675
+2026,regular,11,ap,3,Notre Dame,FBS Independents,5,1597
+2026,regular,11,ap,4,UCLA,Big Ten,0,1542
+2026,regular,11,ap,5,Miami,ACC,0,1430
+2026,regular,11,ap,6,Indiana,Big Ten,0,1376
+2026,regular,11,ap,7,Alabama,SEC,0,1334
+2026,regular,11,ap,8,Texas,SEC,0,1253
+2026,regular,11,ap,9,Tennessee,SEC,0,1177
+2026,regular,11,ap,10,Texas Tech,Big 12,0,1082
+2026,regular,11,ap,11,Wake Forest,ACC,0,1067
+2026,regular,11,ap,12,BYU,Big 12,0,1041
+2026,regular,11,ap,13,Kentucky,SEC,0,897
+2026,regular,11,ap,14,Houston,Big 12,0,803
+2026,regular,11,ap,15,USC,Big Ten,0,679
+2026,regular,11,ap,16,Iowa,Big Ten,0,659
+2026,regular,11,ap,17,Boise State,Pac-12,0,563
+2026,regular,11,ap,18,Oregon,Big Ten,0,517
+2026,regular,11,ap,19,Ole Miss,SEC,0,415
+2026,regular,11,ap,20,South Carolina,SEC,0,399
+2026,regular,11,ap,21,Ohio State,Big Ten,0,349
+2026,regular,11,ap,22,Arizona,Big 12,0,324
+2026,regular,11,ap,23,New Mexico,Mountain West,0,301
+2026,regular,11,ap,24,LSU,SEC,0,277
+2026,regular,11,ap,25,SMU,ACC,0,118
+2026,regular,11,cfp,1,Georgia,SEC,0,0
+2026,regular,11,cfp,2,Utah,Big 12,0,0
+2026,regular,11,cfp,3,Alabama,SEC,0,0
+2026,regular,11,cfp,4,UCLA,Big Ten,0,0
+2026,regular,11,cfp,5,Notre Dame,FBS Independents,0,0
+2026,regular,11,cfp,6,Texas,SEC,0,0
+2026,regular,11,cfp,7,Miami,ACC,0,0
+2026,regular,11,cfp,8,Tennessee,SEC,0,0
+2026,regular,11,cfp,9,Indiana,Big Ten,0,0
+2026,regular,11,cfp,10,BYU,Big 12,0,0
+2026,regular,11,cfp,11,Kentucky,SEC,0,0
+2026,regular,11,cfp,12,Texas Tech,Big 12,0,0
+2026,regular,11,cfp,13,Wake Forest,ACC,0,0
+2026,regular,11,cfp,14,Houston,Big 12,0,0
+2026,regular,11,cfp,15,Iowa,Big Ten,0,0
+2026,regular,11,cfp,16,Oregon,Big Ten,0,0
+2026,regular,11,cfp,17,South Carolina,SEC,0,0
+2026,regular,11,cfp,18,USC,Big Ten,0,0
+2026,regular,11,cfp,19,Ole Miss,SEC,0,0
+2026,regular,11,cfp,20,Ohio State,Big Ten,0,0
+2026,regular,11,cfp,21,LSU,SEC,0,0
+2026,regular,11,cfp,22,Missouri,SEC,0,0
+2026,regular,11,cfp,23,Arizona,Big 12,0,0
+2026,regular,11,cfp,24,Boise State,Pac-12,0,0
+2026,regular,11,cfp,25,Oklahoma State,Big 12,0,0
 2026,regular,5,ap,1,Texas,SEC,62,1737
 2026,regular,5,ap,2,Georgia,SEC,6,1646
 2026,regular,5,ap,3,Notre Dame,FBS Independents,0,1581
