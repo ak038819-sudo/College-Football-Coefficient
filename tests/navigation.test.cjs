@@ -20,15 +20,34 @@ const config = {
 };
 const read = hash => readRoute(hash, config);
 
-// The scoreboard's location lives in one accessor in the shell. Lifting the
-// real declaration and function, rather than stubbing them, keeps a function
-// extracted into a vm context fetching the same URL the page does.
+// The scoreboard's location and its fallback live in one chain in the shell.
+// Lifting the REAL declarations and functions, rather than stubbing them, keeps
+// a function extracted into a vm context reading what the page reads -- and a
+// stub here is how a previous version of this helper went stale the moment
+// liveFeedUrl started calling a new function.
 const liveFeedUrlSource = shell => {
-  const declaration = shell.match(/const LIVE_FEED_URL = '[^']*';/);
-  const accessor = shell.match(/function liveFeedUrl\(\) \{[\s\S]*?\n\}/);
-  assert.ok(declaration && accessor, 'the shell must declare one live feed accessor');
-  return declaration[0].replace('__LIVE_FEED_URL__', '') + '\n' + accessor[0] + '\n';
+  const parts = [];
+  for (const name of ['LIVE_FEED_URL', 'LIVE_FEED_STATIC', 'LIVE_FEED_STALE_MS', 'liveFeedSource']) {
+    const declaration = shell.match(new RegExp(`^(?:const|let) ${name} = [^\n]*;$`, 'm'));
+    assert.ok(declaration, `the shell must declare ${name}`);
+    parts.push(declaration[0].replace('__LIVE_FEED_URL__', ''));
+  }
+  for (const name of ['resolveLiveFeed', 'liveFeedUrl', 'liveSnapshotAge', 'fetchLiveJson',
+    'fetchLiveSnapshot']) {
+    const fn = shell.match(new RegExp(`function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}`));
+    assert.ok(fn, `the shell must define ${name}`);
+    parts.push(fn[0]);
+  }
+  return parts.join('\n') + '\n';
 };
+// What the lifted chain needs from a browser. The scoreboard reader consults
+// the query string and localStorage, and both must be present or absent
+// deliberately rather than by accident.
+const browserBits = () => ({
+  URLSearchParams, Date, Number,
+  location: {search: ''},
+  localStorage: {getItem: () => null},
+});
 
 test('the local dashboard identifies the in-progress site release', () => {
   const shell = fs.readFileSync(path.join(__dirname, '../ui/dashboard_shell.html'), 'utf8');
@@ -212,6 +231,7 @@ test('an open live game refreshes status and score even with a cached snapshot',
   let requests = 0;
   let stored = null;
   const context = {
+    ...browserBits(),
     // The game page feeds the shared live-result store, so a team page opened
     // from here already has the score the scoreboard just delivered.
     setLiveResults: games => { stored = games; },
@@ -245,6 +265,7 @@ test('a live final opens the full archive after season data loads', async () => 
   let archiveViews = 0;
   const target = {innerHTML: ''};
   const context = {
+    ...browserBits(),
     state: {view: 'game', gameParam: 42}, renderVersion: 1, liveGameRequest: 0,
     liveSnapshot: {games: [game]}, liveSeasonData: null,
     setLiveResults: () => {},

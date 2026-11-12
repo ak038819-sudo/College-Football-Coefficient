@@ -6169,11 +6169,128 @@ let liveSnapshot = null;
 // writes, and must allow this origin; docs/live-score-delivery.md has the
 // contract. The CFBD key stays with the publisher and never reaches here.
 const LIVE_FEED_URL = '__LIVE_FEED_URL__';
+// The committed snapshot. Always available, always the floor: whatever else
+// happens below, the page can fall back to this and still show scores.
+const LIVE_FEED_STATIC = 'data/live_scores.json';
+// Older than this and the live endpoint is unwell enough to be worth
+// double-checking against the static file. It is the same ten minutes
+// feedAgeShort() uses to decide a snapshot's age is worth mentioning, and it is
+// deliberately loose: a false trigger costs one cached request and changes
+// nothing, because the newer of the two snapshots wins either way.
+const LIVE_FEED_STALE_MS = 10 * 60 * 1000;
+// Which source the last successful read came from, and why, so the page can
+// SAY it. Never present a backup snapshot as the live feed.
+let liveFeedSource = null;
+/**
+ * Where the live scoreboard is read from, decided at RUNTIME.
+ *
+ * It used to be decided at build time and nowhere else: `LIVE_FEED_URL` is
+ * substituted into this file by build_dashboard.py, so changing it meant an
+ * environment variable, a rebuild, a commit and a deploy -- the slowest lever
+ * in the building, and the exact publishing path whose latency is the reason
+ * the live backend is being built at all. It also meant a canary was all
+ * readers or none.
+ *
+ * So the baked value is now the DEFAULT, not the only source:
+ *
+ *   ?liveFeed=live    read the baked endpoint
+ *   ?liveFeed=static  read the committed snapshot
+ *   localStorage['elocast.liveFeed'] = 'https://...'   read that instead
+ *
+ * The query parameter deliberately takes only those two WORDS and never a URL.
+ * A URL in a query string is attacker-supplied -- anyone could share a link
+ * that made this page draw scores from anywhere and look like ours -- so an
+ * arbitrary endpoint needs localStorage, which takes a console. The two words
+ * are enough for the thing a canary needs: hand testers a link, compare, and
+ * flip the default later with no deploy either way.
+ */
+function resolveLiveFeed() {
+  const baked = LIVE_FEED_URL || '';
+  let choice = '';
+  try {
+    choice = (new URLSearchParams(location.search).get('liveFeed') || '').trim().toLowerCase();
+  } catch (e) { choice = ''; }
+  if (choice === 'static') return LIVE_FEED_STATIC;
+  if (choice === 'live' && baked) return baked;
+  let stored = '';
+  try {
+    stored = (localStorage.getItem('elocast.liveFeed') || '').trim();
+  } catch (e) { stored = ''; }
+  // Only https, and only an absolute URL: a relative override could point at
+  // any path on this origin, and http would be blocked as mixed content
+  // anyway.
+  if (/^https:\/\//.test(stored)) return stored;
+  return baked || LIVE_FEED_STATIC;
+}
 function liveFeedUrl() {
-  const base = LIVE_FEED_URL || 'data/live_scores.json';
+  const base = resolveLiveFeed();
   // Cache-bust on the query string the same way for either source; an
   // endpoint that already sets no-store simply ignores it.
   return base + (base.includes('?') ? '&' : '?') + 't=' + Date.now();
+}
+function liveSnapshotAge(data) {
+  const stamp = data && data.updated_at ? new Date(data.updated_at) : null;
+  if (!stamp || Number.isNaN(stamp.getTime())) return null;
+  return Date.now() - stamp.getTime();
+}
+function fetchLiveJson(base) {
+  const url = base + (base.includes('?') ? '&' : '?') + 't=' + Date.now();
+  return fetch(url, {cache: 'no-store'})
+    .then(r => { if (!r.ok) throw new Error('scoreboard unavailable'); return r.json(); });
+}
+/**
+ * Read the live scoreboard, falling back to the committed snapshot by itself.
+ *
+ * This is the whole rollback plan. §7 of the backend design asks for it in as
+ * many words -- "if no live snapshot exists, it can fall back to our existing
+ * static game data" -- and building it is what makes rollback free: if the new
+ * endpoint breaks, the page degrades on its own and nobody has to deploy
+ * anything to recover.
+ *
+ * The fallback rule is a COMPARISON, not a threshold. When the live endpoint
+ * fails, or answers with something older than LIVE_FEED_STALE_MS or with no
+ * usable timestamp at all, the committed snapshot is fetched too and the NEWER
+ * of the two is used. That gives the property that actually matters for a
+ * canary: pointing this page at the live endpoint can never show a reader
+ * worse data than leaving it alone. A merely-delayed live feed still wins over
+ * an older static file, and a stale static file never overrides it.
+ *
+ * `liveFeedSource` records which one won, because a backup snapshot presented
+ * as the live feed is the one thing this must never do.
+ */
+function fetchLiveSnapshot() {
+  const base = resolveLiveFeed();
+  if (base === LIVE_FEED_STATIC) {
+    return fetchLiveJson(base).then(data => {
+      liveFeedSource = {source: 'static', fellBack: false, reason: null};
+      return data;
+    });
+  }
+  const statics = () => fetchLiveJson(LIVE_FEED_STATIC);
+  return fetchLiveJson(base).then(live => {
+    const age = liveSnapshotAge(live);
+    if (age !== null && age < LIVE_FEED_STALE_MS) {
+      liveFeedSource = {source: 'live', fellBack: false, reason: null};
+      return live;
+    }
+    const why = age === null ? 'the live feed sent no usable timestamp' : 'the live feed is behind';
+    return statics().then(backup => {
+      const backupAge = liveSnapshotAge(backup);
+      // A null age loses to any real one; two nulls keep the live answer,
+      // since there is no evidence the backup is any better.
+      const liveWins = backupAge === null || (age !== null && age <= backupAge);
+      liveFeedSource = liveWins
+        ? {source: 'live', fellBack: false, reason: why + ', but it is still newer than the backup'}
+        : {source: 'static', fellBack: true, reason: why};
+      return liveWins ? live : backup;
+    }).catch(() => {
+      liveFeedSource = {source: 'live', fellBack: false, reason: why + ' and the backup could not be read'};
+      return live;
+    });
+  }).catch(() => statics().then(backup => {
+    liveFeedSource = {source: 'static', fellBack: true, reason: 'the live feed could not be read'};
+    return backup;
+  }));
 }
 let liveResults = new Map();
 // What the schedule table would draw from the current scoreboard. Repainting a
@@ -6238,8 +6355,7 @@ function newerFinalTeams(games) {
 function hydrateRatingFreshness(version) {
   // No early return on the note: the scoreboard is fetched for the schedule
   // panel too, and a team page with no freshness note still wants its scores.
-  fetch(liveFeedUrl(), {cache: 'no-store'})
-    .then(r => { if (!r.ok) throw new Error('scoreboard unavailable'); return r.json(); })
+  fetchLiveSnapshot()
     .then(data => {
       if (version !== renderVersion) return;
       setLiveResults(data.games);
@@ -6527,8 +6643,7 @@ function paintLiveGames() {
 }
 function hydrateLiveScores(version) {
   const request = ++liveRequest;
-  fetch(liveFeedUrl(), {cache: 'no-store'})
-    .then(r => { if (!r.ok) throw new Error('scoreboard unavailable'); return r.json(); })
+  fetchLiveSnapshot()
     .then(data => {
       if (version !== renderVersion || request !== liveRequest || state.section !== 'live' && state.section !== 'home') return;
       const status = document.getElementById('live-status');
@@ -6551,8 +6666,13 @@ function hydrateLiveScores(version) {
       // perfectly valid timestamp, so silence here would show hours-old
       // in-progress scores as if they were current.
       const stale = validStamp ? feedAgeShort(Date.now() - stamp.getTime()) : '';
-      status.textContent = !validStamp ? 'Not active yet'
-        : stale ? 'Updated ' + stale : '';
+      // Falling back to the committed snapshot is said out loud even when that
+      // snapshot is fresh. The reader is being shown the backup source, and a
+      // backup presented silently as the live feed is the one thing this must
+      // never do.
+      const backup = liveFeedSource && liveFeedSource.fellBack ? 'backup feed' : '';
+      status.textContent = [!validStamp ? 'Not active yet' : stale ? 'Updated ' + stale : '', backup]
+        .filter(Boolean).join(' · ');
       paintLiveGames();
       if (state.section === 'home') hydrateHomeDiscovery(version);
       board.innerHTML = renderLiveBoard(slate.games);
@@ -6870,8 +6990,7 @@ function hydrateLiveGamePage(version) {
   };
   // Show cached data immediately, then always request the latest snapshot.
   const cached = !!(liveSnapshot && show(liveSnapshot));
-  fetch(liveFeedUrl(), {cache:'no-store'})
-    .then(r => r.ok ? r.json() : null)
+  fetchLiveSnapshot()
     .then(data => {
       if (request !== liveGameRequest || version !== renderVersion || state.view !== 'game') return;
       if (!show(data)) { hydrateGamePage(version); return; }

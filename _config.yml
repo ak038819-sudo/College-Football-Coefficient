@@ -20,6 +20,9 @@ exclude:
   - data
   - db
   - docs
+  # The shadow live service. It runs on Workers, not on Pages; nothing the
+  # site fetches is in it, and its fixtures are 330 KB of scoreboard JSON.
+  - live
   - package-lock.json
   - package.json
   - pytest.ini
