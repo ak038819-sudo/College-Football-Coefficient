@@ -928,7 +928,7 @@ note.
 ## The lineup pilot (not in the archive)
 
 `analysis/nba_lineups/` rebuilds 2017-18's lineup stints from the ESPN
-play-by-play: 39,339 stints over 1,306 games, 93.0% of them reconciled
+play-by-play: 39,541 stints over 1,306 games, 92.9% of them reconciled
 against the box score player by player. It writes no table, feeds no
 rating, and runs in no workflow; its README states the four quality
 statuses and the five traps in the feed, the sharpest being that

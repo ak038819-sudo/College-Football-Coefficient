@@ -42,6 +42,10 @@ PERIOD_SECONDS = 720
 OVERTIME_SECONDS = 300
 REGULATION_PERIODS = 4
 LINEUP_SIZE = 5
+# Order sentinels for a period's own two ends: before every play of it,
+# and after every play of it.
+FIRST = -1
+LAST = float('inf')
 
 SUBSTITUTION = 'Substitution'
 PERIOD_END = 'End Period'
@@ -54,6 +58,7 @@ NAMED_TURNOVER = 'Traveling'
 ENTRANT_UNNAMED = 'enters the game for'
 # A technical free throw scores without anybody having the ball.
 TECHNICAL = 'Technical'
+FREE_THROW = 'Free Throw'
 
 VERIFIED = 'verified'
 UNRESOLVED = 'unresolved_lineup'
@@ -302,47 +307,137 @@ def intervals(plays, starters, team_of):
     moves, notes = resolve(plays, starters, team_of)
     last_period = 1
     for play in plays:
-        period = int(play.get('period_number') or 1)
-        last_period = max(last_period, period)
-    boundaries = {}
-    for period in range(1, last_period + 1):
-        boundaries[period_start(period)] = period
-        boundaries[period_start(period) + period_length(period)] = period
-    for move in moves:
-        boundaries.setdefault(move['at'], move['period'])
-    marks = sorted(boundaries)
+        last_period = max(last_period, int(play.get('period_number') or 1))
+    groups = _boundaries(plays, moves)
+    by_period = {}
+    for at, order, period in groups:
+        by_period.setdefault(period, []).append((at, order))
 
     floor = _team_floor(starters)
     unresolved = 0
     stints = []
     pending = list(moves)
-    for index, mark in enumerate(marks[:-1]):
-        while pending and pending[0]['at'] <= mark:
-            move = pending.pop(0)
-            team = move['team']
-            if team not in floor:
+    for period in range(1, last_period + 1):
+        opens = (period_start(period), FIRST)
+        closes = (period_start(period) + period_length(period), LAST)
+        marks = [opens] + sorted(by_period.get(period, ())) + [closes]
+        for index, mark in enumerate(marks[:-1]):
+            while pending and pending[0]['group'] <= mark:
+                move = pending.pop(0)
+                team = move['team']
+                if team not in floor:
+                    continue
+                if move['leave'] is None or move['enter'] is None:
+                    unresolved += 1
+                if move['leave'] is not None:
+                    floor[team].discard(move['leave'])
+                if move['enter'] is not None:
+                    floor[team].add(move['enter'])
+            end = marks[index + 1]
+            if end < mark:
                 continue
-            if move['leave'] is None or move['enter'] is None:
-                unresolved += 1
-            if move['leave'] is not None:
-                floor[team].discard(move['leave'])
-            if move['enter'] is not None:
-                floor[team].add(move['enter'])
-        end = marks[index + 1]
-        if end <= mark:
-            continue
-        sized = all(len(five) == LINEUP_SIZE for five in floor.values())
-        stints.append({'start': mark, 'end': end,
-                       'period': boundaries[mark],
-                       'lineups': _snapshot(floor),
-                       'resolved': sized and not unresolved})
+            sized = all(len(five) == LINEUP_SIZE for five in floor.values())
+            stints.append({'start': mark[0], 'start_order': mark[1],
+                           'end': end[0], 'end_order': end[1],
+                           'period': period,
+                           'lineups': _snapshot(floor),
+                           'resolved': sized and not unresolved})
     return stints, notes
 
 
-def _stint_at(stints, when, period):
+def _free_throw(play):
+    return str(play.get('type_text') or '').startswith(FREE_THROW)
+
+
+def _at(play):
+    return elapsed(play.get('period_number'), play.get('clock_display_value'))
+
+
+def after_the_trip(plays, move, swaps=None):
+    """A boundary inside a free-throw trip moves to the end of the trip.
+
+    **ONE POSSESSION CANNOT HAVE TWO DENOMINATORS.** A substitution
+    between the first and second free throw is real -- the entering
+    players stand on the floor for the second one -- but splitting the
+    trip there puts one of its points in a stint with no possession to
+    divide it by, and over 2017-18 that is 1,264 stints. The and-one is
+    the same shape: the basket, the shooting foul, the change, and only
+    then the free throw. So a boundary moves past the free throws of a
+    team whose shot at that same clock already opened the possession, and
+    the change takes effect when the trip ends.
+    """
+    if swaps is None:
+        swaps = {index for index, play in enumerate(plays)
+                 if str(play.get('type_text')) == SUBSTITUTION}
+    order, at = move['order'], move['at']
+    earlier = None
+    index = order - 1
+    while index >= 0 and _at(plays[index]) == at:
+        if bool(plays[index].get('shooting_play')):
+            earlier = _identifier(plays[index].get('team_id'))
+            break
+        index -= 1
+    if earlier is None:
+        return order
+    place = order
+    for index in range(order, len(plays)):
+        if _at(plays[index]) != at:
+            break
+        if _free_throw(plays[index]) \
+                and _identifier(plays[index].get('team_id')) == earlier:
+            place = index + 1
+        elif index not in swaps:
+            break
+    return place
+
+
+def _boundaries(plays, moves):
+    """One boundary a substitution GROUP, carrying its play order.
+
+    **A CLOCK IS NOT AN ORDER.** A dead ball at 6:00 holds the foul, three
+    substitutions and then the free throw, all stamped 6:00, so a boundary
+    that knows only the clock cannot say which side of the change a play
+    falls on -- and matching on the clock alone credited the free throw to
+    the five that had just left. A boundary therefore carries the play
+    number of the first substitution in its group, and a play is placed by
+    (clock, play number) against it.
+
+    Substitutions at one clock with nothing but other substitutions
+    between them are ONE group, because that is one change of personnel.
+    A play between two of them -- the free throw above -- splits them into
+    two, which is what puts it on the right floor.
+    """
+    swaps = {index for index, play in enumerate(plays)
+             if str(play.get('type_text')) == SUBSTITUTION}
+    groups = []
+    previous = None
+    for move in sorted(moves, key=lambda one: (one['at'], one['order'])):
+        contiguous = (previous is not None
+                      and previous['at'] == move['at']
+                      and all(between in swaps for between
+                              in range(previous['order'] + 1, move['order'])))
+        if not contiguous:
+            groups.append((move['at'],
+                           after_the_trip(plays, move, swaps),
+                           move['period']))
+        # EVERY MOVE OF A GROUP IS APPLIED AT THE GROUP'S MARK, not at its
+        # own play number: a mark carries the group's FIRST play number,
+        # so a walk that compared each move against the mark would leave
+        # the second and third change of a dead ball unapplied until the
+        # next substitution, which is minutes on the wrong five.
+        move['group'] = (groups[-1][0], groups[-1][1])
+        previous = move
+    return groups
+
+
+def _stint_at(stints, when, period, order):
+    """The stint a play belongs to, by its clock AND its play number."""
+    place = (when, order)
     for index, stint in enumerate(stints):
-        if stint['period'] == int(period) \
-                and stint['start'] <= when <= stint['end']:
+        if stint['period'] != int(period):
+            continue
+        if (stint['start'], stint['start_order']) <= place \
+                < (stint['end'], stint['end_order']):
             return index
     return None
 
@@ -377,12 +472,12 @@ def measure(plays, stints, teams, *, home, away):
         if run is not None and where is not None:
             possessions[where][run] += 1
 
-    for play in plays:
+    for order, play in enumerate(plays):
         period = int(play.get('period_number') or 1)
         when = elapsed(period, play.get('clock_display_value'))
         if when is None:
             continue
-        index = _stint_at(stints, when, period)
+        index = _stint_at(stints, when, period, order)
         offense = offensive_team(play, teams)
         if offense is not None:
             if run_period != period:

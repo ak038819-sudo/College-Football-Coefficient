@@ -172,15 +172,24 @@ def build_game(plays, player_box, game_id, *, date=None, venue=None):
     points, possessions = lineups.measure(rows, spans, teams,
                                           home=home, away=away)
     adrift = minutes_adrift(spans, player_box, game_id)
+    # A SUBSTITUTION SPLIT BY A PLAY LEAVES A STINT OF NO LENGTH. Three
+    # changes at one dead ball with a free throw among them are two groups,
+    # so the floor between them holds that free throw and no clock at all.
+    # One holding nothing is noise and is dropped; one holding the free
+    # throw is the only row that free throw belongs to.
+    keep = [index for index, span in enumerate(spans)
+            if span['end'] > span['start']
+            or any(points[index].values()) or any(possessions[index].values())]
     records = []
-    for index, span in enumerate(spans):
+    for place, index in enumerate(keep):
+        span = spans[index]
         status = lineups.quality(span, points[index], possessions[index],
                                  adrift=adrift)
         records.append({
             'game_id': str(game_id),
             'date': date or '',
             'period': span['period'],
-            'stint_id': index + 1,
+            'stint_id': place + 1,
             'home_team': home,
             'away_team': away,
             'home_player_ids': ' '.join(str(one) for one in
@@ -293,17 +302,45 @@ def schedule_facts(schedule):
     return facts
 
 
+def expected_games(schedule):
+    """The completed, non-exhibition games a season OUGHT to rebuild.
+
+    **A GAME WITH NO PLAY-BY-PLAY IS THE ONE A PLAY INDEX CANNOT SHOW
+    YOU.** Taking the game list from the plays makes a missing feed look
+    like a season that never had the game: four completed 2017-18
+    regular-season games have no play-by-play at all (400975670 and
+    400975617, both Sacramento; 400974444; 400974773), and they have to
+    be in the denominator to be noticed.
+    """
+    wanted = []
+    for row in schedule:
+        if not str(row.get('status_type_completed')).lower() in ('true', '1'):
+            continue
+        teams = (lineups._identifier(row.get('home_id')),
+                 lineups._identifier(row.get('away_id')))
+        if any(team in EXHIBITION_IDS for team in teams if team is not None):
+            continue
+        wanted.append(str(row.get('id')))
+    return wanted
+
+
 def build_season(plays, player_box, team_box, schedule, *, limit=None):
     """Every game of a season, with one reconciliation report each."""
     facts = schedule_facts(schedule)
     plays, player_box = by_game(plays), by_game(player_box)
     team_box = by_game(team_box)
-    ids = sorted(plays)
+    ids = sorted(set(expected_games(schedule)) | set(plays))
     if limit:
         ids = ids[:int(limit)]
     rows, reports = [], []
     for game_id in ids:
         date, venue = facts.get(game_id, ('', ''))
+        if game_id not in plays:
+            reports.append({'game_id': game_id, 'stints': 0,
+                            'date': date, 'plays': 0,
+                            'notes': ['no play-by-play was published for '
+                                      'this game']})
+            continue
         records, notes, rebuilt = build_game(plays, player_box, game_id,
                                              date=date, venue=venue)
         if not records:
@@ -320,10 +357,13 @@ def coverage(rows, reports):
     """One summary of what the season's rebuild is worth."""
     statuses = _tally(rows)
     usable = [one for one in reports if one.get('stints')]
+    missing = [one for one in reports if one.get('plays') == 0]
     return {
         'games': len(reports),
         'games_rebuilt': len(usable),
         'games_without_stints': len(reports) - len(usable),
+        'games_without_play_by_play': len(missing),
+        'games_without_play_by_play_ids': [one['game_id'] for one in missing],
         'stints': len(rows),
         'stints_a_game': round(len(rows) / len(usable), 2) if usable else 0,
         'statuses': statuses,

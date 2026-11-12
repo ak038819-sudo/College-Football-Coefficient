@@ -340,6 +340,110 @@ class TestPointsAndPossessions:
         assert possessions[0][HOME] == 1
         assert possessions[0][AWAY] == 0
 
+    def test_a_basket_after_a_substitution_at_the_same_clock(self):
+        # A dead ball holds the foul, the substitutions and the free throw
+        # all stamped at one clock. Placing a play by its clock alone put
+        # the basket on the five that had just left the floor.
+        plays = numbered([
+            play(1, '6:00', 'Shooting Foul', team_id=AWAY, athlete_id_1=201,
+                 home_score=0, away_score=0),
+            swap(1, '6:00', HOME, 106, 101, home_score=0, away_score=0),
+            play(1, '6:00', 'Free Throw - 1 of 1', team_id=HOME,
+                 athlete_id_1=106, shooting_play=True, scoring_play=True,
+                 home_score=1, away_score=0),
+            play(1, '0:00', lineups.PERIOD_END),
+        ])
+        spans, _ = lineups.intervals(plays, starters(), team_of())
+        points, possessions = lineups.measure(plays, spans, [AWAY, HOME],
+                                              home=HOME, away=AWAY)
+        after = [index for index, span in enumerate(spans)
+                 if 106 in span['lineups'][HOME]]
+        assert after, 'the entrant should hold a stint of his own'
+        assert points[after[0]][HOME] == 1
+        assert possessions[after[0]][HOME] == 1
+        before = [index for index, span in enumerate(spans)
+                  if 101 in span['lineups'][HOME]]
+        assert all(points[index][HOME] == 0 for index in before)
+
+    def test_every_change_of_one_dead_ball_lands_before_the_next_play(self):
+        # Two changes at 6:00 and then the free throw. A walk that applied
+        # one change a boundary would leave the second waiting for the
+        # next substitution, putting minutes on a five that had left.
+        plays = numbered([
+            play(1, '6:00', 'Shooting Foul', team_id=AWAY, athlete_id_1=201,
+                 home_score=0, away_score=0),
+            swap(1, '6:00', HOME, 106, 101, home_score=0, away_score=0),
+            swap(1, '6:00', HOME, 107, 102, home_score=0, away_score=0),
+            play(1, '6:00', 'Free Throw - 1 of 1', team_id=HOME,
+                 athlete_id_1=106, shooting_play=True, scoring_play=True,
+                 home_score=1, away_score=0),
+            play(1, '0:00', lineups.PERIOD_END),
+        ])
+        spans, _ = lineups.intervals(plays, starters(), team_of())
+        closing = spans[-1]['lineups'][HOME]
+        assert {106, 107} <= closing
+        assert not {101, 102} & closing
+        played = lineups.minutes_played(spans)
+        assert played[101] == 6.0 and played[102] == 6.0
+        assert played[106] == 6.0 and played[107] == 6.0
+
+    def test_an_and_one_keeps_its_free_throw_with_its_basket(self):
+        # The basket, the shooting foul, the change, then the free throw,
+        # all at one clock. Splitting there would leave the free throw's
+        # point in a stint with no possession to divide it by.
+        plays = numbered([
+            made(1, '6:00', HOME, 101, 2, 0),
+            play(1, '6:00', 'Shooting Foul', team_id=AWAY, athlete_id_1=201,
+                 home_score=2, away_score=0),
+            swap(1, '6:00', HOME, 106, 102, home_score=2, away_score=0),
+            play(1, '6:00', 'Free Throw - 1 of 1', team_id=HOME,
+                 athlete_id_1=101, shooting_play=True, scoring_play=True,
+                 home_score=3, away_score=0),
+            play(1, '0:00', lineups.PERIOD_END),
+        ])
+        spans, _ = lineups.intervals(plays, starters(), team_of())
+        points, possessions = lineups.measure(plays, spans, [AWAY, HOME],
+                                              home=HOME, away=AWAY)
+        earned = [index for index, span in enumerate(spans)
+                  if 102 in span['lineups'][HOME]]
+        assert sum(points[index][HOME] for index in earned) == 3
+        assert sum(possessions[index][HOME] for index in earned) == 1
+        entered = [index for index, span in enumerate(spans)
+                   if 106 in span['lineups'][HOME]]
+        assert all(points[index][HOME] == 0 for index in entered)
+
+    def test_a_trip_split_by_a_change_is_not_split(self):
+        plays = numbered([
+            play(1, '6:00', 'Free Throw - 1 of 2', team_id=HOME,
+                 athlete_id_1=101, shooting_play=True, scoring_play=True,
+                 home_score=1, away_score=0),
+            swap(1, '6:00', HOME, 106, 102, home_score=1, away_score=0),
+            play(1, '6:00', 'Free Throw - 2 of 2', team_id=HOME,
+                 athlete_id_1=101, shooting_play=True, scoring_play=True,
+                 home_score=2, away_score=0),
+            play(1, '0:00', lineups.PERIOD_END),
+        ])
+        spans, _ = lineups.intervals(plays, starters(), team_of())
+        points, possessions = lineups.measure(plays, spans, [AWAY, HOME],
+                                              home=HOME, away=AWAY)
+        earned = [index for index, span in enumerate(spans)
+                  if 102 in span['lineups'][HOME]]
+        assert sum(points[index][HOME] for index in earned) == 2
+        assert sum(possessions[index][HOME] for index in earned) == 1
+
+    def test_a_play_before_a_substitution_stays_with_the_five_on_it(self):
+        plays = numbered([
+            made(1, '6:00', HOME, 101, 2, 0),
+            swap(1, '6:00', HOME, 106, 101, home_score=2, away_score=0),
+            play(1, '0:00', lineups.PERIOD_END),
+        ])
+        spans, _ = lineups.intervals(plays, starters(), team_of())
+        points, _ = lineups.measure(plays, spans, [AWAY, HOME],
+                                    home=HOME, away=AWAY)
+        leaving = [index for index, span in enumerate(spans)
+                   if 101 in span['lineups'][HOME]]
+        assert sum(points[index][HOME] for index in leaving) == 2
+
     def test_a_possession_is_credited_where_its_basket_was_scored(self):
         # 400974447's own shape: a basket, the and-one missed, a
         # substitution, and only then the rebound that finally ends the
@@ -558,6 +662,61 @@ class TestTheRowsThatGetWritten:
         rows, notes, _ = collect.build_game(plays, exhibition, GAME)
         assert rows == []
         assert 'exhibition' in notes[0]
+
+    def test_a_game_with_no_play_by_play_is_still_counted(self):
+        # The game a play index cannot show you is the one with no plays.
+        plays, box = self._game()
+        schedule = [{'id': GAME, 'game_date': '2017-10-18',
+                     'venue_full_name': 'Arena', 'home_id': HOME,
+                     'away_id': AWAY, 'status_type_completed': True},
+                    {'id': '400000001', 'game_date': '2017-10-19',
+                     'venue_full_name': 'Arena', 'home_id': HOME,
+                     'away_id': AWAY, 'status_type_completed': True}]
+        team_box = [{'game_id': GAME, 'team_id': HOME,
+                     'field_goals_attempted': 2, 'free_throws_attempted': 0,
+                     'offensive_rebounds': 0, 'turnovers': 0}]
+        rows, reports = collect.build_season(plays, box, team_box, schedule)
+        summary = collect.coverage(rows, reports)
+        assert summary['games'] == 2
+        assert summary['games_without_play_by_play'] == 1
+        assert summary['games_without_play_by_play_ids'] == ['400000001']
+        assert summary['games_rebuilt'] == 1
+
+    def test_a_dead_ball_floor_that_holds_a_free_throw_is_written(self):
+        # A change, the free throw, then another change: all at one clock.
+        # The floor between them has no length, and it is the only row
+        # that free throw belongs to, so it is kept while the empty ones
+        # of no length are dropped.
+        plays = numbered([
+            play(1, '6:00', 'Shooting Foul', team_id=AWAY, athlete_id_1=201,
+                 home_score=0, away_score=0),
+            swap(1, '6:00', HOME, 106, 101, home_score=0, away_score=0),
+            play(1, '6:00', 'Free Throw - 1 of 1', team_id=HOME,
+                 athlete_id_1=106, shooting_play=True, scoring_play=True,
+                 home_score=1, away_score=0),
+            swap(1, '6:00', HOME, 107, 102, home_score=1, away_score=0),
+            play(1, '0:00', lineups.PERIOD_END),
+        ])
+        box = player_box({101: 6.0, 102: 6.0, 106: 6.0, 107: 6.0})
+        rows, _, _ = collect.build_game(plays, box, GAME)
+        held = [row for row in rows
+                if row['start_clock'] == row['end_clock'] == '6:00']
+        assert len(held) == 1
+        assert held[0]['home_points'] == 1
+        assert held[0]['home_possessions'] == 1
+        assert 106 in [int(one) for one in held[0]['home_player_ids'].split()]
+        assert sum(row['home_points'] for row in rows) == 1
+        assert [row['stint_id'] for row in rows] == list(
+            range(1, len(rows) + 1))
+
+    def test_an_unplayed_game_is_not_expected_to_rebuild(self):
+        schedule = [{'id': '1', 'home_id': HOME, 'away_id': AWAY,
+                     'status_type_completed': False},
+                    {'id': '2', 'home_id': HOME, 'away_id': AWAY,
+                     'status_type_completed': True},
+                    {'id': '3', 'home_id': 111353, 'away_id': 111354,
+                     'status_type_completed': True}]
+        assert collect.expected_games(schedule) == ['2']
 
     def test_a_game_the_box_gives_no_starters_for_is_skipped(self):
         plays, box = self._game()
