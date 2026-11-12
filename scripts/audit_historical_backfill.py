@@ -34,10 +34,13 @@ def audit(db, first=FIRST, last=LAST):
             missing_id = missing_teams = missing_scores = missing_date = ties = unknown_class = 0
             for gid, home, away, hs, aws, hc, ac, date in rows:
                 if not gid:
+                    # A blank id is already counted as missing; never let two of
+                    # them read as a duplicate pair as well.
                     missing_id += 1
-                if gid in seen:
-                    duplicates += 1
-                seen.add(gid)
+                else:
+                    if gid in seen:
+                        duplicates += 1
+                    seen.add(gid)
                 missing_teams += int(not home or not away or home == away)
                 missing_scores += int(hs is None or aws is None)
                 missing_date += int(not date)

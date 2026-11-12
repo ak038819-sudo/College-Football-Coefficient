@@ -4,8 +4,8 @@
 
 ## Dependency and release gates
 
-- Phase 2 PR #196 must be completed and merged before running a full import.
-- Phase 1 PR #195 must establish trustworthy existing production baselines before any production promotion.
+- Phase 2 (#196, the staging importer) is merged, so a full import can be run against a staging database.
+- Phase 1 (#195 plus #197, the audit of existing production baselines) is merged and runs in CI; its findings must be reviewed and accepted before any production promotion.
 - Never run production Elo or Merits against unreviewed staging records.
 
 ## Backfill batches
