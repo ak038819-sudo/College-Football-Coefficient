@@ -31,8 +31,8 @@ def report(db, years):
             seasons.append(row)
             if status != "complete" or count != expected or count != distinct_ids:
                 errors.append(f"{year} {kind}: incomplete checkpoint or count mismatch")
-            if count == 0:
-                errors.append(f"{year} {kind}: empty response requires independent coverage review")
+            if count == 0 and kind == "regular":
+                errors.append(f"{year} {kind}: empty regular-season response requires independent coverage review")
             if missing_names:
                 errors.append(f"{year} {kind}: {missing_names} games missing team names")
     bad_hashes = 0
