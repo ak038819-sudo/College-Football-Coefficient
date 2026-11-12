@@ -9,6 +9,34 @@ environment. A value of 100 is league average and 110 means the team scored
 10% more points per possession than average. Compute the league rate from
 total points and total possessions across the same period.
 
+
+### Trial: chance creation and points per chance
+
+Let P be estimated possessions, C be the team's estimated shooting chances,
+and S be points scored. Use the same possession estimate in every term.
+
+`C = P + offensive rebounds − turnovers`
+
+`Chance creation index = 100 × (C / P for team) / (C / P for league)`
+
+`Points per chance index = 100 × (S / C for team) / (S / C for league)`
+
+`PxP+ = (chance creation index × points per chance index) / 100`
+
+Compute each league rate from league totals for the same period. Both
+component indexes center on 100. Chance creation shows how often the team
+generated a shooting chance per possession. Points per chance shows how much
+scoring it got from those chances. The factors multiply back to the original
+PxP+ because the chance terms cancel.
+
+For example, a league averaging 96 chances per 100 possessions and 1.25
+points per chance scores 1.20 points per possession. A team averaging 102
+chances and 1.20 points per chance has a chance creation index of 106.25, a
+points per chance index of 96.00, and a PxP+ of 102.00.
+
+This is a trial breakdown of the team stat. It uses the team's own estimated
+chances. Net Opportunities compares both teams.
+
 ## Net Opportunities
 
 `Net Opportunities per 100 = 100 × [(team ORB − opponent ORB) − (team TOV − opponent TOV)] / P`
