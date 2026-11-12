@@ -31,14 +31,14 @@ def audit(db):
     rows = []
     for year in YEARS:
         base = db.execute("""
-            SELECT COUNT(*), COUNT(DISTINCT game_id),
+            SELECT COUNT(*), COUNT(DISTINCT game_id),\n                   SUM(CASE WHEN game_id IS NULL THEN 1 ELSE 0 END),
                    SUM(CASE WHEN home_score IS NULL OR away_score IS NULL THEN 1 ELSE 0 END),
                    SUM(CASE WHEN home_team_id IS NULL OR away_team_id IS NULL THEN 1 ELSE 0 END),
                    SUM(CASE WHEN home_team_id = away_team_id THEN 1 ELSE 0 END),
                    SUM(CASE WHEN home_score = away_score AND home_score IS NOT NULL THEN 1 ELSE 0 END)
             FROM games WHERE season_year=?
         """, (year,)).fetchone()
-        total, unique, missing_scores, missing_teams, same_team, ties = [int(v or 0) for v in base]
+        total, unique, missing_ids, missing_scores, missing_teams, same_team, ties = [int(v or 0) for v in base]
         membership_missing = None
         if exists(db, "team_membership_by_season"):
             mcols = columns(db, "team_membership_by_season")
@@ -53,7 +53,7 @@ def audit(db):
                     )
                 """, (year, year, year)).fetchone()[0]
         rows.append(dict(season=year, games=total, distinct_game_ids=unique,
-                         duplicate_game_ids=total-unique, missing_scores=missing_scores,
+                         duplicate_game_ids=total-unique-missing_ids, missing_game_ids=missing_ids,\n                         missing_scores=missing_scores,
                          missing_team_ids=missing_teams, self_matchups=same_team,
                          ties=ties, teams_without_membership=membership_missing))
     return rows
@@ -85,7 +85,7 @@ def main():
         "coverage": results,
         "notes": [
             "Counts reflect database contents, not completeness against CFBD.",
-            "Duplicate game IDs count only non-null distinct IDs; check missing IDs separately.",
+            "Duplicate game IDs exclude missing IDs, which are counted separately.",
             "Missing team aliases discarded by the existing loader cannot be recovered from the games table.",
             "2020 is included in the audit; do not assume it is missing.",
         ],
