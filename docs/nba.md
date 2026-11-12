@@ -924,3 +924,18 @@ wired in**. The rating is still win/loss Elo and these statistics change
 nothing about it; the board exposes them beside the rating, which is what
 keeps the two independent. The player scoring index is a separate research
 note.
+
+## The lineup pilot (not in the archive)
+
+`analysis/nba_lineups/` rebuilds 2017-18's lineup stints from the ESPN
+play-by-play: 39,339 stints over 1,306 games, 93.0% of them reconciled
+against the box score player by player. It writes no table, feeds no
+rating, and runs in no workflow; its README states the four quality
+statuses and the five traps in the feed, the sharpest being that
+`athlete_id_1` on a substitution row is the entrant only when the row
+names both players.
+
+It exists because milestone 3 of the team-statistics handoff — a
+possession-weighted Player Elo — needs possessions attributed to fives,
+and the handoff's own stint archive is keyed by NBA.com game ids, a
+provider unreachable from here and from Actions.
