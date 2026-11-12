@@ -44,6 +44,12 @@ function panelHtml({ team = PITT, upcoming = [upcomingGame()], liveGames = [] } 
   const el = { innerHTML: '' };
   const ctx = {
     document: { getElementById: id => (id === 'tp-schedule' ? el : null) },
+    // fillSchedulePanel asks whether the Bowling Merits research column is
+    // showing, which reads the query string. Without these two the panel
+    // throws instead of rendering. URLSearchParams is the real one, so the
+    // flag is parsed exactly as the browser parses it.
+    location: { search: '' },
+    URLSearchParams,
     UPCOMING_GAMES: upcoming,
     UPCOMING_BY_ID: new Map(upcoming.map(g => [g.id, g])),
     TEAM_BY_ID: new Map([[String(VT.id), VT], [String(PITT.id), PITT]]),
@@ -81,7 +87,7 @@ function panelHtml({ team = PITT, upcoming = [upcomingGame()], liveGames = [] } 
     sourceOf('recWithUnrated') + '\n' +
     sourceOf('meritCell') + '\n' +
     sourceOf('meritConst') + '\n' +
-    sourceOf('seasonMerits') + '\n' +
+    sourceOf('seasonMerits') + '\n' + sourceOf('showBowlingMerits') + '\n' + sourceOf('schedColumns') + '\n' + sourceOf('bowlingMeritCell') + '\n' + sourceOf('bowlingMeritBlank') + '\n' + sourceOf('seasonBowlingMerits') + '\n' +
     sourceOf('fillSchedulePanel') + '\n' +
     'this.setLiveResults = setLiveResults; this.fill = fillSchedulePanel;', ctx);
   ctx.setLiveResults(liveGames);

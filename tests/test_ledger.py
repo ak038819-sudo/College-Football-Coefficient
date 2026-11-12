@@ -59,9 +59,10 @@ def test_team_pages_carry_what_the_ledger_needs(db_path):
     conn = sqlite3.connect(str(db_path))
     data = build_team_pages(conn)
     row = data["elo"][0]
-    # 7 original positions, then mov_multiplier, then the game's Merits award.
-    # Appended only, never reordered: the page indexes these by position.
-    assert len(row) == 9
+    # 7 original positions, then mov_multiplier, the game's Merits award, and
+    # the Bowling Merits research award. Appended only, never reordered: the
+    # page indexes these by position.
+    assert len(row) == 10
     stored = dict(conn.execute("SELECT game_id || '-' || team_id, mov_multiplier FROM elo_game_history"))
     assert row[7] == round(stored[f"{row[0]}-{row[1]}"], 4)
     # Every row's award is the one stored for THAT team in THAT game, against
@@ -75,6 +76,22 @@ def test_team_pages_carry_what_the_ledger_needs(db_path):
         assert r[8] == (None if want is None else round(want, 3)), (r[0], r[1], r[8], want)
         valued += r[8] is not None
     assert valued > 0, "no exported row carries an award, so the column would be empty everywhere"
+    # And the research award beside it, from its own table. A tie, and a game
+    # the model does not score, carry None -- which here is further from a zero
+    # than it is for Merits, since a Bowling Merits regulation loss is negative
+    # and no outcome at all awards 0.
+    have_bowling = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' "
+        "AND name='bowling_merits_game_awards'").fetchone()
+    bowling = {(g, t_): m for g, t_, m in conn.execute(
+        "SELECT game_id, team_id, merits FROM bowling_merits_game_awards")} if have_bowling else {}
+    scored = 0
+    for r in data["elo"]:
+        want = bowling.get((r[0], r[1]))
+        assert r[9] == (None if want is None else round(want, 3)), (r[0], r[1], r[9], want)
+        scored += r[9] is not None
+    if have_bowling:
+        assert scored > 0, "the research column would be empty on every team page"
     # The rollups carry a zero-game placeholder row for every pre-coverage
     # season; the page needs the count to tell that from a measured zero.
     counted = {(tid, s_): n for tid, s_, n in

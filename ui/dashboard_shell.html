@@ -4273,7 +4273,7 @@ function indexTeamPages(raw, core) {
   (raw.elo || []).forEach(r => {
     if (!eloByTeam.has(r[1])) eloByTeam.set(r[1], []);
     eloByTeam.get(r[1]).push({ gid: r[0], tid: r[1], pre: r[2], oppPre: r[3], exp: r[4], chg: r[5], post: r[6],
-      mov: r[7] ?? null, coe: r[8] ?? null });
+      mov: r[7] ?? null, coe: r[8] ?? null, bowl: r[9] ?? null });
   });
   // Games against opponents this project holds no rating for -- mostly FCS, and
   // a few 1980s programs CFBD still calls FBS that this project never carried.
@@ -4314,7 +4314,10 @@ function indexTeamPages(raw, core) {
     advanced: core.advanced ? { ...core.advanced, teams: byId(raw.advanced, raw.team_id) } : null,
     // ENG-13: {"<team>|<season>": {games, bonus, total, items}} -- the season total
     // decomposed, so the ledger can show where every point came from.
-    rollups: raw.coe2_rollups || {} };
+    rollups: raw.coe2_rollups || {},
+    // The research model's season totals, summed in Python beside the Merits
+    // ones. {"<team>|<season>": total}; a team-season with no award is absent.
+    bowlingRollups: raw.bowling_rollups || {} };
 }
 
 // The team-page data is sharded two ways, because the site reads it two ways:
@@ -4851,6 +4854,48 @@ function eloShade(chg) {
 function meritCell(v) {
   return v == null ? '<td class="dim">—</td>' : '<td>' + Number(v).toFixed(3) + '</td>';
 }
+// Bowling Merits is a RESEARCH model (analysis/bowling_merits/, awarded by
+// src/build_bowling_merits.py), and its Schedule column is public: Austin's
+// call on 2026-11-12, over keeping it behind ?bowlingMeritsResearch=1 the way
+// the team page's Bowling Merits panel still is. Every caller goes through
+// this one predicate, so hiding the column again is a one-line change rather
+// than an unpicking of the table's widths. The column still labels itself as
+// research, in its header title and in the help text under the table.
+function showBowlingMerits() {
+  return true;
+}
+// Absent and zero are different facts here too, and further apart than they are
+// for Merits: a tie is not scored at all and a game against an unrated opponent
+// has no award, while a REGULATION LOSS earns a negative award, so 0.000 is not
+// a number any outcome produces. Three decimals and a sign, like the column it
+// sits beside.
+function bowlingMeritCell(v) {
+  if (!showBowlingMerits()) return '';
+  if (v == null) return '<td class="dim">\u2014</td>';
+  // A plain number, not signed(): every win would otherwise carry a '+' and the
+  // column would read as a change rather than an award. Negatives take the
+  // typographic minus the rest of the page uses, and the loss tint, because a
+  // negative award is the one thing here that is unlike Merits.
+  const text = Math.abs(Number(v)).toFixed(3);
+  return v < 0 ? '<td class="neg">\u2212' + text + '</td>' : '<td>' + text + '</td>';
+}
+// An empty string where the column is hidden, so a hidden column costs the
+// other rows nothing and the header, the dashes and the footer stay in step.
+function bowlingMeritBlank() {
+  return showBowlingMerits() ? '<td class="dim">\u2014</td>' : '';
+}
+// The schedule table's width. Ten columns, plus the research one when it is
+// showing. Group rows and the no-rated-games footer span the table, so they
+// cannot be given a literal: a hidden column would leave them one too wide and
+// the table would grow a phantom eleventh column on every team page.
+function schedColumns() {
+  return showBowlingMerits() ? 11 : 10;
+}
+// The season's Bowling Merits, as Python summed it -- not a sum taken here.
+function seasonBowlingMerits(tp, teamId, season) {
+  const v = (tp.bowlingRollups || {})[teamId + '|' + season];
+  return v == null ? null : v;
+}
 // Printed, never typed: the build publishes config/model_config.json's own
 // values in the static manifest, which is where How It Works reads them too.
 function meritConst(name) {
@@ -4901,7 +4946,8 @@ function fillSchedulePanel(tp, team) {
       '<td>' + r.pre.toFixed(0) + '</td><td>' + r.oppPre.toFixed(0) + '</td>' +
       '<td>' + Math.round(r.exp * 100) + '%</td>' +
       '<td class="' + (r.chg >= 0 ? 'pos' : 'neg') + '">' + signed(r.chg, 1) + '</td>' +
-      '<td>' + r.post.toFixed(0) + '</td>' + meritCell(r.coe) + '</tr>'];
+      '<td>' + r.post.toFixed(0) + '</td>' + meritCell(r.coe) +
+      bowlingMeritCell(r.bowl) + '</tr>'];
   });
   // An unrated game has a real date, opponent and score, and nothing else: no
   // pregame Elo for either side, no expectation, no change and no post-game
@@ -4928,7 +4974,8 @@ function fillSchedulePanel(tp, team) {
         '<td class="' + (res === 'W' ? 'win' : res === 'L' ? 'loss' : '') + '">' +
           res + ' ' + u.mine + '–' + u.theirs + (u.ot ? ' OT' : '') + '</td>' +
         '<td class="dim">—</td><td class="dim">—</td><td class="dim">—</td>' +
-        '<td class="dim">—</td><td class="dim">—</td><td class="dim">—</td></tr>'];
+        '<td class="dim">—</td><td class="dim">—</td><td class="dim">—</td>' +
+        bowlingMeritBlank() + '</tr>'];
     });
   const rows = playedRows.concat(unratedRows)
     .sort((x, y) => String(x[0]).localeCompare(String(y[0])) || x[1] - y[1])
@@ -4967,17 +5014,18 @@ function fillSchedulePanel(tp, team) {
       // Elo delta and post-game rating stay em-dashes.
       '<td>' + Number(myElo).toFixed(0) + '</td><td>' + Number(oppElo).toFixed(0) + '</td>' +
       '<td>' + (home ? pct.home : pct.away) + '%</td>' +
-      '<td class="dim">—</td><td class="dim">—</td><td class="dim">—</td></tr>';
+      '<td class="dim">—</td><td class="dim">—</td><td class="dim">—</td>' +
+      bowlingMeritBlank() + '</tr>';
   };
   const scored = ahead.filter(g => liveResults.has(g.id));
   const unplayed = ahead.filter(g => !liveResults.has(g.id));
   if (scored.length) {
-    rows.push('<tr class="sched-post"><td colspan="10" class="sched-group">Live scoreboard · ' +
+    rows.push('<tr class="sched-post"><td colspan="' + schedColumns() + '" class="sched-group">Live scoreboard · ' +
       'score is in, the ratings have not rebuilt yet</td></tr>');
     scored.forEach(g => rows.push(aheadRow(g, liveResults.get(g.id))));
   }
   if (unplayed.length) {
-    rows.push('<tr class="sched-post"><td colspan="10" class="sched-group">Scheduled · ' +
+    rows.push('<tr class="sched-post"><td colspan="' + schedColumns() + '" class="sched-group">Scheduled · ' +
       'current ratings, not yet played</td></tr>');
     unplayed.forEach(g => rows.push(aheadRow(g, null)));
   }
@@ -4994,24 +5042,28 @@ function fillSchedulePanel(tp, team) {
       '<td>' + sRow.startElo.toFixed(0) + '</td><td>' + sRow.sos.toFixed(0) + '</td>' +
       '<td>' + Math.round(100 * sRow.expWins / sRow.games) + '%</td>' +
       '<td class="' + (sRow.eloChange >= 0 ? 'pos' : 'neg') + '">' + signed(sRow.eloChange, 1) + '</td>' +
-      '<td>' + sRow.endElo.toFixed(0) + '</td>' + meritCell(seasonMerits(tp, team.id, season)) + '</tr></tfoot>'
+      '<td>' + sRow.endElo.toFixed(0) + '</td>' + meritCell(seasonMerits(tp, team.id, season)) +
+      bowlingMeritCell(seasonBowlingMerits(tp, team.id, season)) + '</tr></tfoot>'
     // A season whose only games were against unrated opponents has no rated
     // row at all, and so no Elo of any kind -- just the record.
     : uRec
       ? '<tfoot><tr><td colspan="3">' + season + ' · ' +
           recStr(uRec[0], uRec[1], uRec[2]) + ' overall</td>' +
-        '<td colspan="7" class="dim">No rated games this season</td></tr></tfoot>'
+        '<td colspan="' + (schedColumns() - 3) + '" class="dim">No rated games this season</td></tr></tfoot>'
       : '';
   el.innerHTML = panelHead('Schedule', seasonSelect('tp-sched-season', seasons, season, false)) +
     (rows.length
       ? '<div class="table-scroll" tabindex="0" role="region" aria-label="' + season + ' schedule">' +
         '<table class="ledger"><caption>Footer row: season record, actual wins, opening Elo, ' +
         'average opponent pregame Elo, average pregame win probability, net Elo change, closing Elo, ' +
-        'the season\u2019s Merits from games.</caption>' +
+        'the season\u2019s Merits from games' +
+        (showBowlingMerits() ? ', the season\u2019s Bowling Merits' : '') + '.</caption>' +
         '<thead><tr><th scope="col">Date</th><th scope="col">Opponent</th>' +
         '<th scope="col">Round</th><th scope="col">Result</th><th scope="col">Elo</th>' +
         '<th scope="col">Opp Elo</th><th scope="col">Win prob</th><th scope="col">Elo &Delta;</th>' +
-        '<th scope="col">Elo after</th><th scope="col">Merits</th></tr></thead><tbody>' + rows.join('') + '</tbody>' + foot + '</table></div>'
+        '<th scope="col">Elo after</th><th scope="col">Merits</th>' +
+        (showBowlingMerits() ? '<th scope="col">Bowling Merits</th>' : '') +
+        '</tr></thead><tbody>' + rows.join('') + '</tbody>' + foot + '</table></div>'
       : '<div class="empty-note">No games recorded for ' + season + '.</div>') +
     '<details class="help"><summary>What these columns mean</summary><ul>' +
       '<li><b>Elo</b> and <b>Opp Elo</b> are both teams’ ratings <i>entering</i> the game, and <b>Win prob</b> is the ' +
@@ -5027,6 +5079,15 @@ function fillSchedulePanel(tp, team) {
         'bonuses to reach Season Merits. A season from before the archive holds five prior seasons has no award ' +
         'at all, which is why an early row\u2019s Merits is an em-dash rather than a zero \u2014 and why a loss, ' +
         'which really does earn ' + meritConst('regulation_loss') + ', shows a number.</li>' +
+      (showBowlingMerits()
+        ? '<li><b>Bowling Merits</b> is a <b>research model</b>, not this site\u2019s Merits, and nothing ' +
+          'else on the site reads it. It scores a game by how good the opponent looks from the games ' +
+          'either side of this one in their own season, so a team\u2019s recent awards keep moving until ' +
+          'their opponents have played three more. A win earns 1.5 to 4.0, an overtime loss a flat 0.5, ' +
+          'and a regulation loss a <i>negative</i> award down to \u22120.5 \u2014 which is the sharpest ' +
+          'difference from <b>Merits</b>, where a loss earns 0. A tie is not scored at all, so it shows an ' +
+          'em-dash. The model lives in <code>analysis/bowling_merits/</code>.</li>'
+        : '') +
       '<li>Scheduled rows use current ratings from <code>src/predict_upcoming.py</code> and have no result, no Elo change ' +
         'and no post-game rating, because the game hasn’t been played.</li>' +
       '<li>A row under <b>Live scoreboard</b> has a score from the live feed. Its Elo, win probability and ' +

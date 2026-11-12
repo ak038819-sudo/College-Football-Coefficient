@@ -142,6 +142,11 @@ jobs:
           python3 src/build_hybrid_coefficients.py
           python3 src/build_conference_coe2.py
           python3 src/build_coe2_rollups.py
+          # The Bowling Merits research model's per-game awards. Display only:
+          # no rating, selector or Merits figure reads the table. Built here so
+          # the tests that check the award against the real archive run instead
+          # of skipping; the deploy job gets it from build_dashboard.py.
+          python3 src/build_bowling_merits.py
 
       - name: Run tests
         run: pytest -v
