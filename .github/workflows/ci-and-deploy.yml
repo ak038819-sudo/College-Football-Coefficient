@@ -156,6 +156,27 @@ jobs:
           python3 src/validate_matchup_intelligence.py --db db/league.db --season 2025 --metric success_rate
           python3 src/validate_matchup_intelligence.py --db db/league.db --season 2026 --metric success_rate
 
+      # PR #195: Phase 1 historical audit, against the real database bootstrapped
+      # above rather than the synthetic table its unit tests use. Read-only -- both
+      # scripts open the DB with mode=ro and PRAGMA query_only=ON. Runs on every
+      # invocation of this job, not just pull requests: it is a standing gate on
+      # archive integrity, and it fails the run if a table it fingerprints as a
+      # baseline has disappeared, which should stop a publish rather than ship a
+      # fingerprint of null. Outputs are attached below for review.
+      - name: Audit historical coverage and baselines (1980-present)
+        run: |
+          mkdir -p /tmp/elocast-phase1
+          python3 scripts/audit_historical_coverage.py --db db/league.db --out /tmp/elocast-phase1
+          python3 scripts/audit_historical_baselines.py --db db/league.db --raw-dir data/raw --out /tmp/elocast-phase1
+
+      - name: Attach historical audit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: elocast-historical-audit
+          path: /tmp/elocast-phase1/*
+          retention-days: 14
+
       # Research-only data artifact for the UI design handoff. Never published.
       - name: Build offline scouting contract samples
         if: github.event_name == 'pull_request'
