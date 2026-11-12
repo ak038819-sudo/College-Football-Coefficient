@@ -69,6 +69,44 @@ matchup to build the expectations. The pilot used 1,500 possessions of
 league-average prior exposure per team profile and 6,000 possessions of
 prior-season exposure for the league baseline.
 
+
+## Trial: PxP+ differential as an Elo performance modifier
+
+For a completed game, take the winner's perspective. The actual PxP+ edge is
+the winner's PxP+ minus the opponent's PxP+. Use the same estimated game
+possessions and pregame league scoring rate for both sides. Estimate each
+side's scoring rate before tipoff as its prior offensive rate plus the
+opponent's prior allowed rate minus the league rate. Convert those two rates
+to PxP+ on the same scale and subtract to get the expected PxP+ edge.
+
+`g = actual PxP+ edge − expected PxP+ edge`
+
+`M = 1 + 0.25 × tanh(g / σ)`
+
+`Winner Elo gain = F × (1 − E) × M`
+
+Here σ is the historical standard deviation of the game grade, measured in
+the first warmup season in the trial. F is temperature, and E is the
+winner's pregame Elo expectation. The loser gives up the same amount.
+
+The design choice is diminishing returns for extreme performance. M is 1
+when the winner meets expectations, rises for better performances, and falls
+for worse ones. It approaches 0.75 or 1.25, so additional scoring separation
+matters less at the extremes. The multiplier stays positive and every winner
+gains Elo. The 25% limit is a trial setting.
+
+The 2017–18 Sacramento and Utah wins over Golden State illustrate the taper.
+Their scoring edges exceeded expectations by 17.2 and 39.8 PxP+ points,
+respectively. Their multipliers were 1.224 and 1.249. The league-relative
+differential still uses points scored. With a shared possession estimate it
+is the scoring margin per possession scaled to the league scoring rate,
+and the game grade adjusts it for matchup expectation.
+
+In the 11-season replay, the trial improved early top-five overlap with
+season-to-date efficiency from 3.00 to 3.11 teams out of five. It also
+flagged 430 unsupported five-place rises, compared with 348 for win/loss Elo.
+The result is exploratory and the modifier remains a trial.
+
 ## Trial: player scoring index
 
 `Estimated plays used = FGA + 0.44 × FTA + player turnovers`
