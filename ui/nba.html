@@ -1434,9 +1434,20 @@
    * written before the reduction ran carries no `files.games` at all, and
    * then no card is a link — which is the honest answer, not a link to a
    * page that would say nothing. */
+  /* Whether a game has a page behind it. EVERY game the schedule carries
+   * does: the hero and the matchup are built from the schedule row itself,
+   * and a game not yet played still carries the model's rating for both
+   * clubs and its win chance, which is the most useful thing the page can
+   * say about a game nobody has played.
+   *
+   * This used to also require the game to be final AND its month's detail
+   * file to exist, which is why Austin found no game page reachable from
+   * Home: the slate opens on TODAY, whose games have not been played, so
+   * every card on it was refused. The line score, the flow and the key
+   * plays are gated on the play-by-play separately, in gamePanel, which is
+   * where that question belongs. */
   function gameOpenable(game) {
-    if (!game || !app.isFinal(game)) return false;
-    return Boolean(monthSourceFor(game));
+    return Boolean(game && game.id);
   }
 
   function openGame(game) {
@@ -1752,9 +1763,29 @@
     var hero = gameHero(host, game);
     gameMatchup(host, game);
 
+    // A game nobody has played has no plays to show, and saying so is not
+    // the same claim as none being published for a game that WAS played,
+    // which is what the message further down says. Asked before the month
+    // file is fetched, because there is nothing in it to wait for.
+    if (!app.isFinal(game)) {
+      host.appendChild(node('p', 'note', 'This game has not been played '
+        + 'yet, so there is no line score, flow or play to show. The '
+        + 'matchup above is the model\u2019s view of it as things stand.'));
+      return;
+    }
     var ready = ensureMonth(game);
     if (ready === 'pending') {
       host.appendChild(node('p', 'note', 'Loading the play-by-play…'));
+      return;
+    }
+    // An export that built no file for this month is a different fact from
+    // a file that arrived without this game, and from a game nobody has
+    // played. Told apart, because each one is a different thing for a
+    // reader to do about it.
+    if (ready === 'absent') {
+      host.appendChild(node('p', 'note', 'This export carries no '
+        + 'play-by-play for this game\u2019s month, so there is no line '
+        + 'score, flow or play to show. The next refresh writes one.'));
       return;
     }
     var payload = monthPayloadFor(game);

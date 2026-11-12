@@ -210,6 +210,14 @@ function schedule() {
             away_points: 20, rateable: 1, venue: 'Arrowhead Stadium' }];
 }
 
+/* The same slate with the model's numbers on it. The bare fixture carries
+   no rating, and the matchup table is the thing worth opening a fixture
+   for, so a test about that has to give the page something to draw. */
+function rated(games) {
+  return games.map(game => Object.assign(
+    { home_elo: 1648.4, away_elo: 1591.6, home_wp: 0.61 }, game));
+}
+
 function weekPayload(over) {
   return Object.assign({
     season: 2026, week: '1', kinds: KINDS, results: RESULTS,
@@ -430,13 +438,59 @@ test('a game with every drive priced says nothing about overtime',
     dom.window.close();
   });
 
-test('an export built before the game layer offers no tap that opens onto '
-  + 'nothing', async () => {
-    const dom = await open(false);
+/* A card used to open its game only where the detail behind it existed, and
+   Austin found the consequence: the page opens on the first UNPLAYED week,
+   so every card on the slate a reader lands on refused the tap and no game
+   page was reachable from Home at all. The hero and the matchup are built
+   from the schedule row, so they are drawn whatever the detail says, and
+   each reason a detail can be absent gets a sentence of its own.
+
+   The old test here asserted the opposite -- that such a card is NOT a tap
+   -- which was the right rule only while the page had nothing but the
+   detail to show. */
+test('an export built before the game layer still opens the game, and says '
+  + 'why there are no drives', async () => {
+    const dom = await open(false, undefined, undefined, rated(schedule()));
     go(dom, 'games');
-    assert.equal(
-      dom.window.document.querySelector('#cards .card.open'), null);
-    assert.ok(dom.window.document.querySelector('#cards .card'));
+    const card = dom.window.document.querySelector('#cards .card.open');
+    assert.ok(card, 'the card refuses the tap');
+    card.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    const host = dom.window.document.getElementById('game');
+    await settle(() => /built before the game layer/.test(host.textContent));
+    assert.deepEqual(heroClubs(dom.window.document),
+      ['Buffalo Bills', 'Kansas City Chiefs']);
+    // The matchup is what makes the tap worth offering.
+    assert.equal(host.querySelectorAll('table.gp-matchup').length, 1);
+    assert.equal(host.querySelectorAll('svg.wpchart').length, 0);
+    dom.window.close();
+  });
+
+test('a game nobody has played opens its matchup and says so, rather than '
+  + 'refusing the tap', async () => {
+    const unplayed = rated([{ id: 'g9', date: '2026-09-13',
+      at: '2026-09-13T17:00:00Z', week: 1, type: 'regular', home: KC,
+      away: BUF, home_points: null, away_points: null, rateable: 0,
+      venue: 'Arrowhead Stadium' }]);
+    const dom = await open(true, undefined, undefined, unplayed);
+    go(dom, 'games');
+    const card = dom.window.document.querySelector('#cards .card.open');
+    assert.ok(card, 'an unplayed game refuses the tap');
+    card.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    const host = dom.window.document.getElementById('game');
+    await settle(() => /has not been played yet/.test(host.textContent));
+    assert.deepEqual(heroClubs(dom.window.document),
+      ['Buffalo Bills', 'Kansas City Chiefs']);
+    // Both ratings and a win chance: the reason to open a fixture at all.
+    const cells = [...host.querySelectorAll('table.gp-matchup td')]
+      .map(node => node.textContent);
+    assert.ok(cells.includes('1648'), 'no home rating: ' + cells);
+    assert.ok(cells.includes('1592'), 'no away rating: ' + cells);
+    // The pair sums to 100: the away side is derived from the home one.
+    assert.ok(cells.includes('61.0%'), 'no home win chance: ' + cells);
+    assert.ok(cells.includes('39.0%'), 'no away win chance: ' + cells);
+    // And nothing that would need plays nobody has made.
+    assert.equal(host.querySelectorAll('svg.wpchart').length, 0);
+    assert.equal(host.querySelectorAll('table').length, 1);
     dom.window.close();
   });
 
@@ -698,18 +752,22 @@ test('a result on a club\u2019s schedule opens that game', async () => {
   dom.window.close();
 });
 
-test('a schedule result with no game page behind it is plain text',
-  async () => {
-    // withGames false: the export has no week files, so there is nothing to
-    // open and the row must not offer a tap onto nothing.
+/* A club's own schedule is the other way into a game page, and it asks the
+   same question, so it changed with it: the result is a tap whether or not
+   the detail is there, and the page it opens says what it has. */
+test('a club\u2019s schedule opens a game page even where the export has no '
+  + 'detail for it', async () => {
     const dom = await open(false, undefined,
-      '#league=nfl&section=teams&team=KC');
+      '#league=nfl&section=teams&team=KC', rated(schedule()));
     const doc = dom.window.document;
     await settle(() => doc.querySelector('.clubhead'));
-    const offered = [...doc.querySelectorAll('#teams tbody button')]
-      .some(node => /^W 27\u201320$/.test(node.textContent));
-    assert.equal(offered, false, 'the row offered a game page that is absent');
-    assert.match(doc.getElementById('teams').textContent, /W 27\u201320/);
+    const row = [...doc.querySelectorAll('#teams tbody button')]
+      .find(node => /^W 27\u201320$/.test(node.textContent));
+    assert.ok(row, 'the result is not a way into the game');
+    row.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    const host = doc.getElementById('game');
+    await settle(() => /built before the game layer/.test(host.textContent));
+    assert.equal(host.querySelectorAll('table.gp-matchup').length, 1);
     dom.window.close();
   });
 
@@ -729,8 +787,12 @@ test('an unplayed game first in the week does not close the finals beside it',
     await settle(() => doc.querySelectorAll('#cards .card').length === 2);
     const cards = [...doc.querySelectorAll('#cards .card')];
     assert.equal(cards.length, 2);
-    assert.equal(cards[0].classList.contains('open'), false,
-      'a game with no score offered a page');
+    // Codex's point survives the change: the question is asked of each
+    // game, so the unscored one at the top cannot speak for the week. Both
+    // are taps now, which is the fix for the Home page; what matters here
+    // is that the finished one below it still opens its own game.
+    assert.equal(cards[0].classList.contains('open'), true,
+      'a game with no score refused the tap');
     assert.equal(cards[1].classList.contains('open'), true,
       'the finished game lost its page to the one above it');
     cards[1].dispatchEvent(new dom.window.Event('click', { bubbles: true }));
