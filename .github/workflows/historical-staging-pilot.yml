@@ -1,0 +1,49 @@
+name: Historical CFBD staging pilot
+
+on:
+  push:
+    branches: [feature/historical-ingestion-phase-2]
+    paths:
+      - 'scripts/import_historical_archive.py'
+      - 'scripts/report_historical_pilot.py'
+      - '.github/workflows/historical-staging-pilot.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: historical-staging-pilot-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  staging-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check API credential
+        run: |
+          if [ -z "$CFBD_API_KEY" ]; then
+            echo "::error::CFBD_API_KEY repository secret is missing"
+            exit 1
+          fi
+      - name: Fetch two pilot seasons into isolated staging
+        run: |
+          python scripts/import_historical_archive.py --db "$RUNNER_TEMP/historical_staging.db" --start 1946 --end 1947 --pause 1
+      - name: Check staging integrity and export report
+        run: |
+          python scripts/report_historical_pilot.py --db "$RUNNER_TEMP/historical_staging.db" --start 1946 --end 1947 --out "$RUNNER_TEMP/pilot-report"
+      - name: Upload aggregate report only (no raw records or secrets)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: historical-pilot-report
+          path: ${{ runner.temp }}/pilot-report/
+          if-no-files-found: ignore
+          retention-days: 14

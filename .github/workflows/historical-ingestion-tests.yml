@@ -1,0 +1,28 @@
+name: Historical archive ingestion tests
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/import_historical_archive.py'
+      - 'tests/test_historical_archive_import.py'
+      - '.github/workflows/historical-ingestion-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  historical-ingestion-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile importer and tests
+        run: python -m compileall -q scripts/import_historical_archive.py tests/test_historical_archive_import.py
+      - name: Install pytest
+        run: python -m pip install pytest
+      - name: Run isolated ingestion tests
+        run: python -m pytest tests/test_historical_archive_import.py -q
