@@ -3,7 +3,7 @@
 **Status:** Planning specification only. No historical imports, model rebuilds, schema migrations, or production deployment are authorized by this document.
 
 **Program tracker:** #194  
-**Predecessors:** Phase 1 baseline and coverage audit (#195); Phase 2 isolated, resumable archive ingestion (#196); Phase 3 1946–1979 backfill and integrity gates (#198).
+**Predecessors:** Phase 1 baseline and coverage audit (#195, merged); Phase 2 isolated, resumable archive ingestion (#196); Phase 3 1946–1979 backfill readiness and integrity gates (#198, merged).
 
 ## Shared non-negotiable requirements
 
@@ -97,7 +97,7 @@ Make the verified historical archive usable on the Elocast website, with transpa
 
 ### Scope and implementation
 
-- **Historical navigation:** Add season and game discovery across supported years, including early seasons, with clear era labels. Preserve existing Home · Stats · Standings · Teams navigation and modern game experiences.
+- **Historical navigation:** Add season and game discovery across supported years, including early seasons, with clear era labels. Preserve the existing Home · Stats · Standings · Teams · People navigation and modern game experiences, and keep historical browsing inside the football league route rather than altering the league selector.
 - **Game detail:** Show original participants, date, result, tie status, source attribution, and confidence/uncertainty flags. Missing statistics must display as unavailable, not zero.
 - **Team history:** Show historical program aliases and seasons where identity is verified; distinguish discontinued or renamed programs without silently merging unrelated teams.
 - **Coverage dashboard:** Display per-season counts, known missing data, unresolved identities, source provenance, and whether a season is archive-only or analytically eligible.
