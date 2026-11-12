@@ -112,7 +112,15 @@ def normalized(row, year):
 
 
 def store(db, year, season_type, payload):
+    for game in payload:
+        source_year = value(game, "season", "year")
+        source_kind = value(game, "seasonType", "season_type")
+        if source_year is not None and int(source_year) != year:
+            raise ValueError(f"Unexpected source season {source_year} for requested {year}")
+        if source_kind is not None and source_kind != season_type:
+            raise ValueError(f"Unexpected season type {source_kind} for {year} {season_type}")
     rows = [normalized(game, year) for game in payload]
+    rows = [(*row[:3], season_type, *row[4:]) for row in rows]
     ids = [r[1] for r in rows]
     if len(ids) != len(set(ids)):
         raise ValueError(f"Duplicate source game IDs in {year} {season_type}")
