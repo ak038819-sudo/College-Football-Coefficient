@@ -6,6 +6,8 @@ import sqlite3
 import sys
 from pathlib import Path
 
+import pytest
+
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "audit_historical_coverage.py"
 spec = importlib.util.spec_from_file_location("historical_audit", SCRIPT)
 audit_module = importlib.util.module_from_spec(spec)
@@ -46,20 +48,9 @@ def test_empty_season_is_reported_not_silently_omitted():
 
 def test_stale_alias_csv_is_rewritten_when_nothing_is_unresolved(tmp_path, monkeypatch):
     """A previous run's unresolved names must not survive beside a fresh empty report."""
-    baselines_path = Path(__file__).resolve().parents[1] / "scripts" / "audit_historical_baselines.py"
-    spec_b = importlib.util.spec_from_file_location("historical_baselines", baselines_path)
-    baselines = importlib.util.module_from_spec(spec_b)
-    spec_b.loader.exec_module(baselines)
-
+    baselines = _load_baselines()
     db_path = tmp_path / "league.db"
-    con = sqlite3.connect(db_path)
-    con.executescript("""
-        CREATE TABLE games(game_id INTEGER, season_year INTEGER, home_team_id INTEGER,
-                           away_team_id INTEGER, home_score INTEGER, away_score INTEGER);
-        INSERT INTO games VALUES (1, 2025, 1, 2, 21, 14);
-    """)
-    con.commit()
-    con.close()
+    _synthetic_db(db_path, baselines.MODELS)
 
     out = tmp_path / "out"
     out.mkdir()
@@ -78,3 +69,78 @@ def test_stale_alias_csv_is_rewritten_when_nothing_is_unresolved(tmp_path, monke
     report = json.loads((out / "baseline_fingerprints.json").read_text(encoding="utf-8"))
     assert report["unresolved_aliases"] == []
     assert len(list(csv.DictReader((out / "raw_vs_loaded.csv").open(newline="", encoding="utf-8")))) == 47
+
+
+def _load_baselines():
+    path = Path(__file__).resolve().parents[1] / "scripts" / "audit_historical_baselines.py"
+    spec = importlib.util.spec_from_file_location("historical_baselines", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _synthetic_db(path, model_tables=()):
+    con = sqlite3.connect(path)
+    con.executescript("""
+        CREATE TABLE games(game_id INTEGER, season_year INTEGER, home_team_id INTEGER,
+                           away_team_id INTEGER, home_score INTEGER, away_score INTEGER);
+        INSERT INTO games VALUES (1, 2025, 1, 2, 21, 14);
+    """)
+    for table in model_tables:
+        con.execute(f'CREATE TABLE "{table}"(team_id INTEGER, value REAL)')
+        con.execute(f'INSERT INTO "{table}" VALUES (1, 1.5)')
+    con.commit()
+    con.close()
+
+
+def test_legacy_coe_v1_table_is_not_claimed_as_a_baseline():
+    """team_coefficient_by_year lives in a SQL file no build runs, so it is not a baseline."""
+    baselines = _load_baselines()
+    assert "team_coefficient_by_year" not in baselines.MODELS
+    assert set(baselines.MODELS) == {"elo_game_history", "hybrid_game_ratings",
+                                     "team_coe2_by_season", "team_coe_5yr_by_season"}
+
+
+def test_absent_baseline_table_fails_instead_of_fingerprinting_none(tmp_path, monkeypatch):
+    """A None fingerprint must not pass for a baseline just because nothing complained."""
+    baselines = _load_baselines()
+    db_path = tmp_path / "league.db"
+    # Every baseline table but one, so the refusal names the absent one specifically.
+    _synthetic_db(db_path, [t for t in baselines.MODELS if t != "hybrid_game_ratings"])
+    out = tmp_path / "out"
+    out.mkdir()
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    argv = ["audit_historical_baselines.py", "--db", str(db_path),
+            "--raw-dir", str(raw), "--out", str(out)]
+    monkeypatch.setattr(sys, "argv", argv)
+
+    with pytest.raises(SystemExit) as refused:
+        baselines.main()
+    assert "hybrid_game_ratings" in str(refused.value)
+
+    # The reports are still written, so the refusal is reviewable rather than blind.
+    report = json.loads((out / "baseline_fingerprints.json").read_text(encoding="utf-8"))
+    assert report["missing_model_tables"] == ["hybrid_game_ratings"]
+    assert report["model_tables"]["hybrid_game_ratings"] is None
+    assert report["model_tables"]["team_coe2_by_season"]["rows"] == 1
+
+    # --allow-missing-tables downgrades the same state to a warning.
+    monkeypatch.setattr(sys, "argv", argv + ["--allow-missing-tables"])
+    baselines.main()
+
+
+def test_a_complete_database_reports_no_missing_baseline_tables(tmp_path, monkeypatch):
+    baselines = _load_baselines()
+    db_path = tmp_path / "league.db"
+    _synthetic_db(db_path, baselines.MODELS)
+    out = tmp_path / "out"
+    out.mkdir()
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    monkeypatch.setattr(sys, "argv", ["audit_historical_baselines.py", "--db", str(db_path),
+                                      "--raw-dir", str(raw), "--out", str(out)])
+    baselines.main()
+    report = json.loads((out / "baseline_fingerprints.json").read_text(encoding="utf-8"))
+    assert report["missing_model_tables"] == []
+    assert all(report["model_tables"][t]["rows"] == 1 for t in baselines.MODELS)

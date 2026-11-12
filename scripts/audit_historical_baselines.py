@@ -14,8 +14,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 YEARS = range(1980, 2027)
+# Model output tables whose contents this audit freezes as a baseline.
+# team_coefficient_by_year is deliberately NOT here: it is defined only in
+# sql/team_coe_tables.sql, which neither bootstrap_league_db.py, run_pipeline.py
+# nor either CI job ever runs, so it exists in no database this project builds.
+# It is a legacy CoE v1 table that only report_year.py and coe_cli.py still read.
 MODELS = ("elo_game_history", "hybrid_game_ratings", "team_coe2_by_season",
-          "team_coe_5yr_by_season", "team_coefficient_by_year")
+          "team_coe_5yr_by_season")
 SOURCE_FIELDS = ("season", "raw_file", "raw_rows", "missing_game_ids",
                  "unresolved_team_games", "source_ids_not_loaded")
 ALIAS_FIELDS = ("season", "raw_name", "games")
@@ -101,6 +106,8 @@ def main():
     p.add_argument("--db", type=Path, default=ROOT / "db/league.db")
     p.add_argument("--raw-dir", type=Path, default=ROOT / "data/raw")
     p.add_argument("--out", type=Path, default=ROOT / "data/processed/historical_audit")
+    p.add_argument("--allow-missing-tables", action="store_true",
+                   help="Warn instead of failing when a named baseline table is absent.")
     a = p.parse_args()
     if not a.db.is_file():
         p.error(f"Missing database: {a.db}")
@@ -111,8 +118,13 @@ def main():
             raise RuntimeError("Missing games table")
         source_rows, aliases = audit_sources(db, a.raw_dir)
         tables = {table: fingerprint(db, table) for table in ("games", *MODELS)}
+        # A table named here but absent fingerprints as None. Left unreported that
+        # reads exactly like a table deliberately skipped, so a rename would empty
+        # a baseline in silence instead of failing. Name them and refuse.
+        missing = sorted(name for name, value in tables.items() if value is None)
         snapshot = {"database_sha256": hashlib.sha256(a.db.read_bytes()).hexdigest(),
                     "model_tables": tables,
+                    "missing_model_tables": missing,
                     "config_sha256": hashlib.sha256((ROOT / "config/model_config.json").read_bytes()).hexdigest(),
                     "source_comparison": source_rows,
                     "unresolved_aliases": aliases,
@@ -137,6 +149,12 @@ def main():
             writer.writeheader()
             writer.writerows(rows)
     print(f"Audit complete: {a.out} (no source DB writes)")
+    if missing:
+        message = ("Baseline tables absent from the database: " + ", ".join(missing) +
+                   ". A fingerprint of None is not a baseline.")
+        if not a.allow_missing_tables:
+            raise SystemExit(f"{message} Pass --allow-missing-tables to audit anyway.")
+        print(f"WARNING: {message}")
 
 
 if __name__ == "__main__":
