@@ -35,6 +35,31 @@ def test_repeat_import_is_idempotent_and_refreshes_source():
         assert db.execute("SELECT home_score FROM archive_games").fetchone()[0] == 4
 
 
+def test_checkpoint_failure_rolls_back_the_games_insert(monkeypatch):
+    """The games insert and its checkpoint share one transaction.
+
+    Without that transaction the games would survive a checkpoint that never
+    landed, leaving rows no fetch record accounts for. The failure is forced
+    after executemany by making the checkpoint's timestamp raise.
+    """
+    class Exploding:
+        @staticmethod
+        def now(tz=None):
+            raise RuntimeError("clock unavailable")
+
+    with sqlite3.connect(":memory:") as db:
+        mod.setup(db)
+        monkeypatch.setattr(mod, "datetime", Exploding)
+        try:
+            mod.store(db, 1901, "regular", [sample()])
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("A failing checkpoint should propagate")
+        assert db.execute("SELECT COUNT(*) FROM archive_games").fetchone()[0] == 0
+        assert db.execute("SELECT COUNT(*) FROM archive_fetches").fetchone()[0] == 0
+
+
 def test_failed_payload_cannot_partially_import():
     with sqlite3.connect(":memory:") as db:
         mod.setup(db)

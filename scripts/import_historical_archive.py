@@ -63,7 +63,7 @@ def value(row, *keys):
     return None
 
 
-def fetch(year, season_type, key, attempts=4, pause=0.5):
+def fetch(year, season_type, key, attempts=4):
     params = urllib.parse.urlencode({"year": year, "seasonType": season_type})
     request = urllib.request.Request(
         f"{API}?{params}",
