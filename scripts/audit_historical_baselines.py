@@ -16,6 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 YEARS = range(1980, 2027)
 MODELS = ("elo_game_history", "hybrid_game_ratings", "team_coe2_by_season",
           "team_coe_5yr_by_season", "team_coefficient_by_year")
+SOURCE_FIELDS = ("season", "raw_file", "raw_rows", "missing_game_ids",
+                 "unresolved_team_games", "source_ids_not_loaded")
+ALIAS_FIELDS = ("season", "raw_name", "games")
 
 
 def exists(db, table):
@@ -124,12 +127,15 @@ def main():
         db.close()
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / "baseline_fingerprints.json").write_text(json.dumps(snapshot, indent=2) + "\n")
-    for filename, rows in (("raw_vs_loaded.csv", source_rows), ("unresolved_aliases.csv", aliases)):
-        if rows:
-            with (a.out / filename).open("w", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=list(rows[0]))
-                writer.writeheader()
-                writer.writerows(rows)
+    csv_files = (("raw_vs_loaded.csv", source_rows, SOURCE_FIELDS),
+                 ("unresolved_aliases.csv", aliases, ALIAS_FIELDS))
+    # Always rewrite, header included, even with no rows: a stale CSV left beside a
+    # fresh JSON reads as unresolved identities that the audit no longer found.
+    for filename, rows, fields in csv_files:
+        with (a.out / filename).open("w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(rows)
     print(f"Audit complete: {a.out} (no source DB writes)")
 
 
