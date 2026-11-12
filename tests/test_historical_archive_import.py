@@ -51,7 +51,7 @@ def test_checkpoint_resume_and_sparse_seasons():
     calls = []
     def fetch(year, kind, key):
         calls.append((year, kind))
-        return [] if year == 1871 else [sample(gid=year * 10 + (kind == "postseason"))]
+        return [] if year == 1871 else [dict(sample(gid=year * 10 + (kind == "postseason")), season=year, seasonType=kind)]
     with sqlite3.connect(":memory:") as db:
         mod.run(db, 1870, 1871, "fake", pause=0, fetcher=fetch)
         mod.run(db, 1870, 1871, "fake", pause=0, fetcher=fetch)
@@ -69,4 +69,17 @@ def test_duplicate_ids_rejected_before_any_write():
             pass
         else:
             raise AssertionError("Duplicate IDs should fail")
+        assert db.execute("SELECT COUNT(*) FROM archive_games").fetchone()[0] == 0
+
+
+def test_wrong_season_and_type_rejected():
+    with sqlite3.connect(":memory:") as db:
+        mod.setup(db)
+        for bad in (dict(sample(), season=1902), dict(sample(), seasonType="postseason")):
+            try:
+                mod.store(db, 1901, "regular", [bad])
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("Mismatched season metadata should fail")
         assert db.execute("SELECT COUNT(*) FROM archive_games").fetchone()[0] == 0
