@@ -22,7 +22,9 @@ def test_historical_audit_counts_ties_null_ids_and_2020():
     """)
     row = next(x for x in audit_module.audit(db) if x["season"] == 2020)
     assert row["games"] == 3
-    assert row["distinct_game_ids"] == 1\n    assert row["missing_game_ids"] == 1\n    assert row["duplicate_game_ids"] == 1
+    assert row["distinct_game_ids"] == 1
+    assert row["missing_game_ids"] == 1
+    assert row["duplicate_game_ids"] == 1
     assert row["missing_scores"] == 1
     assert row["ties"] == 2
     assert row["self_matchups"] == 1

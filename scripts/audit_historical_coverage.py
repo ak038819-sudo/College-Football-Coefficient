@@ -31,7 +31,8 @@ def audit(db):
     rows = []
     for year in YEARS:
         base = db.execute("""
-            SELECT COUNT(*), COUNT(DISTINCT game_id),\n                   SUM(CASE WHEN game_id IS NULL THEN 1 ELSE 0 END),
+            SELECT COUNT(*), COUNT(DISTINCT game_id),
+                   SUM(CASE WHEN game_id IS NULL THEN 1 ELSE 0 END),
                    SUM(CASE WHEN home_score IS NULL OR away_score IS NULL THEN 1 ELSE 0 END),
                    SUM(CASE WHEN home_team_id IS NULL OR away_team_id IS NULL THEN 1 ELSE 0 END),
                    SUM(CASE WHEN home_team_id = away_team_id THEN 1 ELSE 0 END),
@@ -53,7 +54,8 @@ def audit(db):
                     )
                 """, (year, year, year)).fetchone()[0]
         rows.append(dict(season=year, games=total, distinct_game_ids=unique,
-                         duplicate_game_ids=total-unique-missing_ids, missing_game_ids=missing_ids,\n                         missing_scores=missing_scores,
+                         duplicate_game_ids=total-unique-missing_ids, missing_game_ids=missing_ids,
+                         missing_scores=missing_scores,
                          missing_team_ids=missing_teams, self_matchups=same_team,
                          ties=ties, teams_without_membership=membership_missing))
     return rows
