@@ -371,19 +371,137 @@ test('onEvents THROWING does not lose the events: they are offered again', async
 
   await assert.rejects(() => coordinator.poll(), /pipeline is down/);
   assert.deepEqual(seen, []);
-  // The state kept the older emitted set, so the game is NOT recorded as sent.
-  assert.equal(coordinator.state.emitted.has('a'), false);
+  // The event is OWED, not forgotten: generated, so it cannot be produced a
+  // second time, and queued, so it is retried.
+  assert.deepEqual(coordinator.state.pending.map((e) => e.event_key), ['a']);
+  assert.equal(coordinator.state.emitted.has('a'), true);
 
   fail = false;
   clock = at(15);
   await coordinator.poll();
   assert.deepEqual(seen, ['a'], 'the event was lost when the handler first failed');
-  assert.equal(coordinator.state.emitted.has('a'), true);
+  assert.deepEqual(coordinator.state.pending, [], 'the queue was not cleared on delivery');
 
   // And now it does not come a second time.
   clock = at(30);
   await coordinator.poll();
   assert.deepEqual(seen, ['a']);
+});
+
+test('an owed event is retried even once the provider stops reporting the game', async () => {
+  // This is the case that makes the queue necessary rather than tidy. A
+  // finished game leaves the scoreboard: holding the event inside the game's
+  // own stored row means a handler that failed once can never be offered the
+  // event again, because nothing will regenerate it.
+  let clock = NOW;
+  let fail = true;
+  const seen = [];
+  const coordinator = createCoordinator({
+    provider: fakeProvider([
+      () => [game('a', 'in_progress', { observed_at: clock.toISOString() })],
+      () => [game('a', 'final', { observed_at: clock.toISOString() })],
+      // The slate is over. The game is gone from the provider for good.
+      () => [],
+      () => [],
+    ]),
+    now: () => clock,
+    onEvents: (events) => {
+      if (fail) throw new Error('the pipeline is down');
+      seen.push(...events.map((e) => e.event_key));
+    },
+  });
+
+  await coordinator.poll();
+  clock = at(15);
+  await assert.rejects(() => coordinator.poll(), /pipeline is down/);
+  assert.deepEqual(seen, []);
+
+  fail = false;
+  clock = at(30);
+  await coordinator.poll();
+  assert.deepEqual(seen, ['a'], 'the result was lost with the game that produced it');
+
+  clock = at(45);
+  await coordinator.poll();
+  assert.deepEqual(seen, ['a'], 'delivered twice');
+});
+
+test('a downstream outage does not stop scores reaching readers', async () => {
+  // The other half of holding the state back: an unrelated live game in the
+  // same poll was withheld from every reader because a DIFFERENT game's
+  // finalization could not be handed over.
+  let clock = NOW;
+  const published = [];
+  const coordinator = createCoordinator({
+    provider: fakeProvider([
+      () => [
+        game('a', 'in_progress', { observed_at: clock.toISOString() }),
+        game('b', 'in_progress', { observed_at: clock.toISOString() }),
+      ],
+      () => [
+        game('a', 'final', { observed_at: clock.toISOString() }),
+        game('b', 'in_progress', { observed_at: clock.toISOString(), home: { score: 21 } }),
+      ],
+    ]),
+    now: () => clock,
+    onEvents: () => { throw new Error('the pipeline is down'); },
+    onPublish: (state) => { published.push(state.games.b.home.score); },
+  });
+
+  await coordinator.poll();
+  clock = at(15);
+  await assert.rejects(() => coordinator.poll(), /pipeline is down/);
+  assert.equal(coordinator.state.games.b.home.score, 21, 'the unrelated score was withheld');
+  assert.equal(coordinator.state.games.a.status, 'final');
+  assert.deepEqual(published, [7, 21], 'readers did not see the poll that the pipeline refused');
+});
+
+test('overlapping polls are serialized, not raced', async () => {
+  // Both polls would otherwise reconcile against the same pre-poll state, so
+  // the slower response could not be compared against what the faster one
+  // installed -- an older in-progress row would reinstate a game the newer
+  // response had already finalized.
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let call = 0;
+  const provider = {
+    async getLiveGames() {
+      call += 1;
+      if (call === 1) {
+        // The newer, final response, held open until the second poll is away.
+        await gate;
+        return [game('a', 'final', { observed_at: at(15).toISOString() })];
+      }
+      return [game('a', 'in_progress', { observed_at: NOW.toISOString() })];
+    },
+  };
+  const coordinator = createCoordinator({ provider, now: () => at(30) });
+
+  const first = coordinator.poll();
+  const second = coordinator.poll();
+  release();
+  await Promise.all([first, second]);
+
+  assert.equal(call, 2);
+  assert.equal(coordinator.state.polls, 2, 'a poll was recorded over the top of another');
+  assert.equal(coordinator.state.games.a.status, 'final',
+    'the older response reinstated a game that had already finalized');
+});
+
+test('a failed poll does not poison the polls queued behind it', async () => {
+  let clock = NOW;
+  const coordinator = createCoordinator({
+    provider: fakeProvider([
+      new Error('down'),
+      () => [game('a', 'in_progress', { observed_at: clock.toISOString() })],
+    ]),
+    now: () => clock,
+  });
+  const first = coordinator.poll();
+  clock = at(15);
+  const second = coordinator.poll();
+  assert.equal((await first).ok, false);
+  assert.equal((await second).ok, true, 'the chain stayed rejected after one failure');
 });
 
 test('the delay backs off after a failure and recovers after a success', async () => {

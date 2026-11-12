@@ -85,9 +85,20 @@ export function nextIntervalSeconds(games, now, {
 export function emptyState() {
   return {
     games: {},
-    // Finalization events already handed downstream, so re-polling a finished
-    // game does not re-emit. A Set, not a count: the keys are the identity.
+    // Finalization events this state has already GENERATED, so re-polling a
+    // finished game does not produce a second one. A Set, not a count: the
+    // keys are the identity.
+    //
+    // Generated is not the same as delivered, which is what `pending` is for.
+    // Collapsing the two is how an event gets lost: if the only record of
+    // "this game finished" is the game's own stored row, then a downstream
+    // handler that fails, plus a provider that stops returning the game,
+    // loses the result permanently.
     emitted: new Set(),
+    // Generated events not yet accepted by `onEvents`. They are retried on
+    // every later poll, from this queue, WITHOUT needing the provider to
+    // return the game again.
+    pending: [],
     // The observation time of the last poll we ACCEPTED anything from. Not the
     // last poll attempted -- a failed poll must not advance it, or freshness
     // would report a staleness that had not been earned.
@@ -185,6 +196,9 @@ export async function tick(state, provider, { now }) {
       ...next,
       games: merged,
       emitted,
+      // Queued for delivery, behind anything a previous poll could not hand
+      // over. `tick` never delivers; it only records what is owed.
+      pending: [...(state.pending ?? []), ...events],
       // Only an accepted write advances this. A poll that was entirely
       // rejected as stale learned nothing.
       lastAcceptedAt: applied.length ? observedAt : state.lastAcceptedAt,
@@ -219,11 +233,28 @@ export function backoffSeconds(consecutiveFailures, {
  * game. Both may be async; both are awaited, because a publish that is still
  * in flight when the next poll lands is how two writers race.
  *
- * `onEvents` THROWING DOES NOT DROP THE EVENTS. They are only recorded as
- * emitted once the handler has returned, so a downstream failure means they are
- * offered again on the next poll rather than lost. Live ingestion must not
- * touch Elo or Merits directly, so this handler is the only seam to the
- * existing pipeline and losing an event there would silently lose a result.
+ * `onEvents` THROWING DOES NOT DROP THE EVENTS, AND DOES NOT DROP THE SCORES
+ * EITHER. Live ingestion must not touch Elo or Merits directly, so `onEvents`
+ * is the only seam to the existing pipeline and losing an event there would
+ * silently lose a game result. An earlier version held the whole new state
+ * back until the handler returned, which looked safe and was not: the only
+ * record that the game had finished was the state being withheld, so a
+ * provider that stopped returning that game -- which is exactly what happens
+ * once a slate ends -- made the event unregenerable. It also meant a
+ * downstream outage stopped every unrelated live score from reaching readers.
+ *
+ * So the accepted state is installed FIRST and the events are owed from a
+ * queue (`state.pending`) that survives a failed delivery and is retried on
+ * every later poll, needing nothing from the provider. A throwing handler
+ * still propagates -- the caller is entitled to know -- but by then the scores
+ * are published and the debt is recorded.
+ *
+ * POLLS ARE SERIALIZED. Each `poll()` waits for the one before it, including
+ * its handlers. Two overlapping polls would both reconcile against the same
+ * pre-poll state, so the slower response could not be compared against what
+ * the faster one installed: an older in-progress row would reinstate a game
+ * the newer response had already finalized, and the poll counter would record
+ * one poll where two happened.
  */
 export function createCoordinator({
   provider,
@@ -240,6 +271,9 @@ export function createCoordinator({
   }
   const options = { intervalSeconds, idleIntervalSeconds };
   let current = state;
+  // The tail of the serialized chain. Resolved, never rejected: a failed poll
+  // must not poison the polls after it.
+  let chain = Promise.resolve();
 
   return {
     get state() { return current; },
@@ -264,34 +298,57 @@ export function createCoordinator({
       return nextIntervalSeconds(current.games, at, options);
     },
 
-    /** Poll once, publish, emit. Returns the outcome. */
-    async poll() {
-      const at = now();
-      const { state: nextState, outcome } = await tick(current, provider, { now: at });
-
-      if (!outcome.ok) {
-        // State still advances: the failure counters are the point, and the
-        // games are carried through untouched by `tick`.
-        current = nextState;
-        onLog?.({ level: 'warn', message: 'poll failed, keeping the last good state', ...outcome });
-        return outcome;
-      }
-
-      // Events first, and the state recorded as emitted only after the handler
-      // returns. If it throws, `current` keeps the older `emitted` set and the
-      // same events are offered again next poll.
-      if (outcome.events.length && onEvents) {
-        await onEvents(outcome.events);
-      }
-      current = nextState;
-
-      if (onPublish && (outcome.applied.length || outcome.events.length)) {
-        await onPublish(current, outcome);
-      }
-      if (outcome.rejected.length) {
-        onLog?.({ level: 'info', message: 'rejected writes', rejected: outcome.rejected });
-      }
-      return outcome;
+    /**
+     * Poll once, publish, emit. Returns the outcome.
+     *
+     * Serialized against any poll still in flight, so `current` is read after
+     * the previous poll installed its state rather than alongside it.
+     */
+    poll() {
+      const mine = chain.then(() => runPoll());
+      // The chain itself must stay resolved whatever this poll does, or one
+      // failure would reject every poll queued behind it.
+      chain = mine.then(() => undefined, () => undefined);
+      return mine;
     },
   };
+
+  async function runPoll() {
+    const at = now();
+    const { state: nextState, outcome } = await tick(current, provider, { now: at });
+
+    if (!outcome.ok) {
+      // State still advances: the failure counters are the point, and the
+      // games are carried through untouched by `tick`.
+      current = nextState;
+      onLog?.({ level: 'warn', message: 'poll failed, keeping the last good state', ...outcome });
+      return outcome;
+    }
+
+    // The accepted state goes in before anything downstream is attempted. A
+    // reader asking a moment later sees the scores we just accepted even if
+    // the pipeline behind `onEvents` is down.
+    current = nextState;
+
+    if (onPublish && (outcome.applied.length || outcome.events.length)) {
+      await onPublish(current, outcome);
+    }
+    if (outcome.rejected.length) {
+      onLog?.({ level: 'info', message: 'rejected writes', rejected: outcome.rejected });
+    }
+
+    // Everything owed, not just what this poll generated. The queue is
+    // cleared only once the handler has returned, and a handler that throws
+    // leaves it exactly as it was -- so the next poll offers the same events
+    // again whether or not the provider still reports those games.
+    const owed = current.pending;
+    if (owed.length && onEvents) {
+      await onEvents(owed);
+      // `current` may have been replaced while the handler was awaited only
+      // if a caller bypassed `poll()`; clearing by identity rather than by
+      // assignment keeps that from dropping a newer queue.
+      current = { ...current, pending: current.pending.filter((event) => !owed.includes(event)) };
+    }
+    return outcome;
+  }
 }
