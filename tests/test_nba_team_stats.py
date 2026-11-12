@@ -258,6 +258,29 @@ class TestTheSeasonNumbers:
         assert teams == {}
         assert metrics.team_season_stats(None, league) is None
 
+    def test_a_game_with_no_score_is_left_out_of_the_scoring_rate(self):
+        # Found by Codex on PR #204. A missing score added as nothing,
+        # against possessions added in full, is zero points per possession
+        # rather than an absent measurement: on a two-club league it read
+        # as PxP+ of 0 and 200.
+        rows = [stored(points=None),
+                stored(team_key=AWAY, points=104)]
+        teams, _, counts = metrics.season_rates(rows)
+        assert counts['unscored'] == 1 and counts['measured'] == 0
+        assert teams == {}
+
+    def test_an_unscored_game_still_carries_its_opportunity_grades(self):
+        # Points enter PxP+; the opportunity arithmetic reads attempts,
+        # rebounds and turnovers, so the two are separable and a game
+        # without a score is not a game without a grade.
+        rows = [stored(points=None),
+                stored(team_key=AWAY, points=None, offensive_rebounds=4,
+                       possession_turnovers=20)]
+        grades = metrics.replay_expectations(rows)
+        entry = grades[identity.game_key(GAME)]
+        assert entry[HOME]['net'] == pytest.approx(-entry[AWAY]['net'])
+        assert entry[HOME]['net'] != 0
+
     def test_a_game_with_one_row_is_counted_rather_than_half_measured(self):
         _, _, counts = metrics.season_rates([stored()])
         assert counts['unpaired'] == 1 and counts['games'] == 0

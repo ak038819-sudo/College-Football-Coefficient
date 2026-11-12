@@ -360,6 +360,11 @@ def team_statistics_section(built):
         games=counts['games'],
         measured_games=counts['measured'],
         unmeasured_games=counts['unmeasured'],
+        # A game with a possession estimate and no final score. It still
+        # carries its opportunity grades; only the scoring rate leaves it
+        # out, because adding its possessions with no points against them
+        # is a zero, not an absence.
+        unscored_games=counts['unscored'],
         unpaired_rows=counts['unpaired'],
         league=dict(
             possessions=_round(league['possessions'], 1),

@@ -242,15 +242,43 @@ def pair_games(rows):
     return [(key, sides) for key, sides in ordered]
 
 
+def scored(sides):
+    """Whether both sides of a game carry a score.
+
+    A GAME WITH NO SCORE MAY NOT ENTER A SCORING RATE, and the reason it is
+    checked here rather than in `measurable` is that points and
+    opportunities are separable: the opportunity arithmetic reads attempts,
+    rebounds and turnovers, so a game missing a score still grades, and only
+    the scoring aggregate has to leave it out.
+
+    Both sides, not one. The denominator is shared, so admitting the scored
+    half of a game would put its possessions into the league rate with only
+    one club's points against them.
+
+    Left unguarded, a missing score is added as nothing against possessions
+    that are added in full — which is zero points per possession, not an
+    absent measurement. On a two-club league that reads as PxP+ of 0 and
+    200. Found by Codex on PR #204; no row in the archive is like this
+    today, which is exactly why it would have gone unnoticed.
+    """
+    return all(_number(row.get('points')) is not None for row in sides)
+
+
 def season_rates(rows):
     """Season totals per club and for the league, from the games given.
 
     Returns `(teams, league, counts)`: a `Totals` per club key, one for the
     league, and what was dropped on the way. Nothing is rounded.
+
+    One set of games feeds all three indexes, so
+    `chance creation x points per chance / 100` is PxP+ exactly. Measuring
+    chances over every game and points over the scored ones would break
+    that identity in the second decimal and leave nothing to say which half
+    was wrong.
     """
     teams = defaultdict(Totals)
     league = Totals()
-    counts = dict(games=0, measured=0, unpaired=0, unmeasured=0)
+    counts = dict(games=0, measured=0, unpaired=0, unmeasured=0, unscored=0)
     for _, sides in pair_games(rows):
         if len(sides) != 2:
             counts['unpaired'] += len(sides)
@@ -260,6 +288,9 @@ def season_rates(rows):
         possessions = game_possessions(one, other)
         if possessions is None:
             counts['unmeasured'] += 1
+            continue
+        if not scored(sides):
+            counts['unscored'] += 1
             continue
         counts['measured'] += 1
         for row, opponent in ((one, other), (other, one)):
