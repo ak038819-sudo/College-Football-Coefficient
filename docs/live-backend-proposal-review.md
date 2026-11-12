@@ -62,6 +62,17 @@ granularity and should poll on its own much slower schedule. Splitting them
 makes §4's "1 request per cycle" true rather than aspirational, and it is
 cleaner anyway: the live worker's job is game state, not statistics.
 
+> **Done, 2026-11-12.** `fetch_live_scores.boxscores_due` puts the player
+> batch on its own 15-minute cadence, decided from the published snapshot's
+> `player_stats_checked_at` rather than from state held in a process — so the
+> five-minute cron and a long polling session behave identically with nothing
+> plumbed between them. A live tick now costs **one** request on all but one
+> tick in 15 minutes, and the saving grows as the cadence gets faster: at a
+> 15-second cadence it is one extra request in 60 rather than two in every one.
+> That is what makes §4's table affordable rather than merely corrected.
+> `tests/test_live_boxscore_cadence.py` drives the real `refresh()` against a
+> fake network and counts the requests.
+
 ## 2. The quota question, with the evidence we actually have
 
 §4 cites CFBD's documented free tier of 1,000 calls/month and correctly says the
@@ -132,6 +143,27 @@ behaviour** ("If no live snapshot exists, it can fall back to our existing stati
 game data"). Implementing it is what makes rollback free — the page degrades by
 itself and nobody has to deploy anything. Build the fallback and the rollback
 problem disappears as a side effect.
+
+> **Done, 2026-11-12.** `resolveLiveFeed` and `fetchLiveSnapshot` in
+> `ui/dashboard_shell.html`. The baked value is now the default rather than the
+> only source: `?liveFeed=live` and `?liveFeed=static` pick a source per reader
+> with no deploy, and a `localStorage` key takes an arbitrary https endpoint for
+> development.
+>
+> **The query parameter deliberately takes only those two words, never a URL.**
+> A URL in a query string is attacker-supplied — anyone could share a link that
+> made the page draw scores from their server and look like ours — so an
+> arbitrary endpoint needs a console. The two words are all a canary needs.
+>
+> **The fallback rule turned out to be a comparison, not a threshold.** When the
+> live endpoint fails, or answers with something older than ten minutes or with
+> no usable timestamp, the committed snapshot is fetched too and the *newer* of
+> the two is used. That buys the property that actually matters: pointing the
+> page at the live endpoint can never show a reader worse data than leaving it
+> alone. A fixed threshold alone would have handed a reader the older file
+> whenever both were stale. The page says `backup feed` whenever it fell back,
+> because a backup presented silently as the live feed is the one thing this
+> must never do. `tests/live_feed_fallback.test.cjs`.
 
 ## 4. The normalized game object should use the repository's identity convention (§5)
 

@@ -23,6 +23,10 @@ DEFAULT_OUT = Path('ui/data/live_scores.json')
 # without the scoreboard going stale; a longer outage is the next run's
 # problem, and the last good snapshot stays published meanwhile.
 ATTEMPTS = 3
+# How often the player box-score batch is refetched, independent of how often
+# the scoreboard is polled. Fifteen minutes on a weekly box score is generous,
+# and `boxscores_due` explains why the two cadences are separate at all.
+BOXSCORE_INTERVAL = 900
 
 
 def clean_game(item):
@@ -147,6 +151,51 @@ def fetch_player_boxscores(key, games, now):
     return clean_player_boxscores(payload, active)
 
 
+def boxscores_due(previous, now, interval=None):
+    """Is the player box-score batch due, or can this tick skip it?
+
+    WHY THIS EXISTS. Every tick used to make THREE CFBD requests -- /scoreboard
+    for the live scores, plus /calendar and /games/players for the weekly player
+    batch -- and `run_live_score_session.py` says so beside its idle interval:
+    "Three CFBD requests a tick is what makes it worth slowing down at all." So
+    the request cost of the live scoreboard was three times what the live
+    scoreboard actually needs, and that multiplier is what makes a faster
+    cadence unaffordable. The scoreboard genuinely needs one request per tick.
+    The player batch does not need six-second, six-minute or even hourly
+    granularity: it is a weekly box score, and the page labels it with
+    `player_stats_checked_at` so its age is disclosed rather than hidden.
+
+    Splitting them cuts the live cycle to one request on most ticks, and the
+    saving grows as the cadence gets faster -- at a fifteen-second cadence it is
+    one extra request in sixty rather than two in every one. That is the whole
+    point: this is what makes fast polling affordable.
+
+    THE DECISION IS MADE FROM THE PUBLISHED FILE, not from state held in a
+    process, because the two callers differ. A polling session could remember
+    when it last fetched; the five-minute cron is a fresh process every time and
+    could not. Reading `player_stats_checked_at` out of the previous snapshot
+    works identically for both and needs nothing plumbed through.
+
+    Anything unreadable means DUE. A missing, unparseable or future-dated stamp
+    is not evidence that a fetch happened recently, and the failure mode of
+    guessing the other way is never fetching again.
+    """
+    if interval is None:
+        interval = BOXSCORE_INTERVAL
+    stamp = (previous or {}).get('player_stats_checked_at')
+    if not isinstance(stamp, str) or not stamp:
+        return True
+    try:
+        last = dt.datetime.fromisoformat(stamp.replace('Z', '+00:00'))
+    except ValueError:
+        return True
+    if last.tzinfo is None:
+        last = last.replace(tzinfo=dt.timezone.utc)
+    age = (now - last).total_seconds()
+    # A negative age is a clock disagreement, not a recent fetch.
+    return not 0 <= age < interval
+
+
 def make_snapshot(payload, now):
     if not isinstance(payload, list):
         raise ValueError('scoreboard response must be a list')
@@ -204,14 +253,18 @@ def refresh(out, key):
         previous = json.loads(out.read_text(encoding='utf-8'))
     except (OSError, ValueError):
         previous = {}
-    checked_at = dt.datetime.now(dt.timezone.utc).isoformat().replace('+00:00', 'Z')
+    now = dt.datetime.now(dt.timezone.utc)
+    checked_at = now.isoformat().replace('+00:00', 'Z')
     fresh = None
-    try:
-        fresh = fetch_player_boxscores(key, snapshot['games'], dt.datetime.now(dt.timezone.utc))
-    except (OSError, ValueError, KeyError) as exc:
-        print(f'Player box scores unavailable: {exc}')
+    due = boxscores_due(previous, now)
+    if due:
+        try:
+            fresh = fetch_player_boxscores(key, snapshot['games'], now)
+        except (OSError, ValueError, KeyError) as exc:
+            print(f'Player box scores unavailable: {exc}')
     merge_player_boxscores(snapshot, previous, fresh, checked_at)
-    print(f"Player box scores: {len(fresh) if fresh is not None else 'fetch failed'} new/updated, "
+    print(f"Player box scores: "
+          f"{'not due' if not due else len(fresh) if fresh is not None else 'fetch failed'} new/updated, "
           f"{len(snapshot['player_boxscores'])} published; "
           f"{sum(g['status'] == 'completed' for g in snapshot['games'])} completed games")
     out.parent.mkdir(parents=True, exist_ok=True)

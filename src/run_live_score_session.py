@@ -68,8 +68,13 @@ COMMIT_MESSAGE = 'Refresh live scoreboard [skip ci]'
 DEFAULT_INTERVAL = 360
 # Nothing on the scoreboard is moving, so this is not a staleness the page can
 # show: it is how long a kickoff can go unnoticed, and the kickoff itself is
-# anticipated rather than waited for (see `next_interval`). Three CFBD requests
-# a tick is what makes it worth slowing down at all.
+# anticipated rather than waited for (see `next_interval`).
+#
+# This used to end "Three CFBD requests a tick is what makes it worth slowing
+# down at all." That is no longer true: `fetch_live_scores.boxscores_due` put
+# the weekly player batch on its own fifteen-minute cadence, so an idle tick
+# costs ONE request. What still justifies slowing down is the publish, not the
+# request -- every tick that changes anything is a commit and a Pages build.
 DEFAULT_IDLE_INTERVAL = 1200
 # Four hours, and `live-score-session.yml` starts a session every four hours.
 # The two numbers are one decision: sessions that do not meet leave a hole, and

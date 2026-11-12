@@ -253,17 +253,22 @@ test('the scoreboard source is the committed snapshot unless a URL is baked in',
   // The placeholder is what build_dashboard.py substitutes. Reading the shell
   // rather than the built page keeps this independent of the last build.
   assert.match(shell, /const LIVE_FEED_URL = '__LIVE_FEED_URL__';/);
-  // Every live fetch must go through the accessor, or one of them keeps
-  // reading the static file after a deployment points the others elsewhere.
+  // Every live fetch must go through the reader, or one of them keeps reading
+  // the static file after a deployment points the others elsewhere.
   assert.equal(shell.includes("data/live_scores.json?t="), false,
     'a live fetch still hardcodes the snapshot path');
-  assert.equal((shell.match(/fetch\(liveFeedUrl\(\)/g) || []).length, 3);
+  assert.equal((shell.match(/fetchLiveSnapshot\(\)/g) || []).length, 4,
+    'expected the definition plus exactly three call sites');
 
+  // resolveLiveFeed is lifted too, because liveFeedUrl now calls it. Stubbing
+  // it would leave this test green while the shipped chain was broken.
   const run = baked => {
-    const ctx = {};
+    const ctx = {URLSearchParams, location: {search: ''}, localStorage: {getItem: () => null}, Date};
     vm.createContext(ctx);
     vm.runInContext(shell.match(/const LIVE_FEED_URL = '[^']*';/)[0]
       .replace('__LIVE_FEED_URL__', baked) + '\n' +
+      shell.match(/^const LIVE_FEED_STATIC = [^\n]*;$/m)[0] + '\n' +
+      sourceOf('resolveLiveFeed') + '\n' +
       sourceOf('liveFeedUrl') + '\nthis.url = liveFeedUrl;', ctx);
     return ctx.url();
   };
