@@ -49,7 +49,7 @@ jobs:
           else
             python analysis/bowling_merits/pipeline.py --season "$SEASON" --shadow-db /tmp/bowling-merits-artifacts/bowling_merits_shadow.db --enable-shadow-writes
           fi
-          python analysis/bowling_merits/preview.py --season "$SEASON" --limit 25 --shadow-db /tmp/bowling-merits-artifacts/bowling_merits_shadow.db --output /tmp/bowling-merits-artifacts/bowling-merits-preview.json
+          python analysis/bowling_merits/preview.py --season "$SEASON" --shadow-db /tmp/bowling-merits-artifacts/bowling_merits_shadow.db --output /tmp/bowling-merits-artifacts/bowling-merits-preview.json
       - name: Upload research artifacts (not published to Pages)
         uses: actions/upload-artifact@v4
         with:
