@@ -9,6 +9,10 @@ on:
       - '.github/workflows/historical-staging-pilot.yml'
   workflow_dispatch:
 
+concurrency:
+  group: historical-staging-pilot-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
