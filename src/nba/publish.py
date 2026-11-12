@@ -55,6 +55,24 @@ def generated_at(manifest):
     return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
 
 
+def _statistics_seasons(manifest):
+    """The seasons whose coverage row says team statistics were measured.
+
+    A row with no `team_stats` key is an export written before the layer
+    existed, which is not the same as one that measured none: both yield
+    nothing here, and the comparison in `plan` is one-directional, so
+    neither can be mistaken for a loss.
+    """
+    found = set()
+    for row in (manifest or {}).get('coverage') or []:
+        if not isinstance(row, dict):
+            continue
+        stats = row.get('team_stats')
+        if isinstance(stats, dict) and stats.get('measured'):
+            found.add(row.get('season'))
+    return found
+
+
 def plan(new_dir, live_dir, *, now=None, gate=check):
     """Whether the new export may replace the live one, and why.
 
@@ -90,6 +108,20 @@ def plan(new_dir, live_dir, *, now=None, gate=check):
                     reason=f'the new export lacks {", ".join(dropped)}, which '
                            'the published one carries; publishing it would '
                            'remove that part of the site')
+    # THE TEAM STATISTICS ARE A LAYER WITHOUT A `files` KEY. They ride in the
+    # season payloads and the month files that `files` already names, so the
+    # check above cannot see them go: a refresh whose `team_box` step failed
+    # would publish the same file list with every PxP+ missing, and a reader
+    # cannot tell that from a league where nobody scored. Compared per
+    # season, because a season the live export never measured is not a
+    # regression — it is a season this layer has not reached yet.
+    lost = sorted(_statistics_seasons(live) - _statistics_seasons(incoming))
+    if lost:
+        return dict(publish=False, first=False, incoming=incoming, live=live,
+                    reason='the new export carries no team statistics for '
+                           f'{", ".join(str(season) for season in lost)}, '
+                           'which the published one measures; publishing it '
+                           'would blank those columns')
     new_moment, live_moment = generated_at(incoming), generated_at(live)
     if new_moment is None:
         return dict(publish=False, first=False, incoming=incoming, live=live,

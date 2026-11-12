@@ -96,6 +96,60 @@ SHAPE_FIELDS = ('lead_changes', 'ties', 'home_biggest_lead',
                 'scoring_plays', 'plays')
 
 
+def team_stat_entry(game, measured, grade):
+    """One game's team statistics for the wire, under NAMED keys.
+
+    Named rather than appended to an array like `sh`, because this is a new
+    group of fields rather than another field of an existing one: a reader
+    holding an older export must be able to find nothing here, not find
+    something at an index it reads as a shape field.
+
+    Keyed `home` and `away`, which the season payload already tells the page,
+    rather than by club key — the entry would otherwise repeat two 24-byte
+    keys for every game in the archive.
+
+    `exp` and `net` are absent for a game with no expectation, which is every
+    club's first game of a season: the matchup expectation is built from
+    games played BEFORE this one, and on opening night there are none to
+    build it from beyond the priors. Nothing substitutes the season's own
+    numbers there, which would be the expectation knowing the result.
+    """
+    if not measured:
+        return None
+    sides = measured.get('sides') or {}
+    entry = dict(p=round(measured['possessions'], 1), estimated=1)
+    for role, key in (('home', game['home']), ('away', game['away'])):
+        side = sides.get(key)
+        if side is None:
+            continue
+        body = dict(
+            pxp=None if side['pxp'] is None else round(side['pxp'], 3),
+            rate=None if side['opportunity_rate'] is None
+            else round(side['opportunity_rate'], 3),
+            chances=None if side['chances'] is None
+            else round(side['chances'], 1),
+            # Counts, written as counts. `team_metrics` works in floats so
+            # that one division cannot promote an integer by accident, and
+            # `9.0` on the wire for nine rebounds is two wasted bytes and a
+            # reader wondering what the fraction means.
+            orb=None if side['offensive_rebounds'] is None
+            else int(side['offensive_rebounds']),
+            tov=None if side['turnovers'] is None
+            else int(side['turnovers']),
+        )
+        graded = (grade or {}).get(key)
+        if graded:
+            if graded['expected'] is not None:
+                body['exp'] = round(graded['expected'], 3)
+            if graded['net'] is not None:
+                body['net'] = round(graded['net'], 3)
+            if graded['residual'] is not None:
+                body['res'] = round(graded['residual'], 3)
+            body['prior_games'] = graded['prior_games']
+        entry[role] = body
+    return entry
+
+
 def month_key(game):
     """The file a game's detail lives in: `2026-01`. The page derives this.
 
@@ -189,11 +243,19 @@ def _curve(rows, diff, expected, params):
     return [elapsed, home, away, chance]
 
 
-def build(connection, season, *, model_id, params=None):
+def build(connection, season, *, model_id, params=None, team_stats=None):
     """A season's game detail as `{month key: payload}`, or None if it has none.
 
     `model_id` is the model the rest of the export was built from; the
     probabilities here must come from the same one.
+
+    `team_stats` is one season of `team_metrics.build_season`, whose per-game
+    half rides in these month files rather than in the season payload: a
+    reader who opens a season fetches that, and a reader who opens a game
+    fetches this, so the numbers for 1,230 games belong on the side that is
+    only fetched when a game is opened. A game carrying statistics but no
+    reduced play-by-play is still written — the two layers are loaded by
+    different modules and either can be the one that has not run.
     """
     if params is None:
         params = load_params()
@@ -228,10 +290,14 @@ def build(connection, season, *, model_id, params=None):
             REASONS.index(row['reason']) if row['reason'] in REASONS
             else None, row['kind']])
 
+    measured = (team_stats or {}).get('games') or {}
+    grades = (team_stats or {}).get('grades') or {}
+
     months = defaultdict(dict)
     for key, game in games.items():
         shape = shapes.get(key)
-        if shape is None and key not in states:
+        stats = team_stat_entry(game, measured.get(key), grades.get(key))
+        if shape is None and key not in states and stats is None:
             continue
         month = month_key(game)
         if month is None:
@@ -255,6 +321,8 @@ def build(connection, season, *, model_id, params=None):
             entry['c'] = _curve(states[key], diff, game['expected'], params)
         if key in key_plays:
             entry['k'] = key_plays[key]
+        if stats is not None:
+            entry['ts'] = stats
         months[month][key] = entry
     if not months:
         return None

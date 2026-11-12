@@ -59,6 +59,12 @@ on:
           careers."
         type: string
         default: ""
+      team_box_seasons:
+        description: "Only load the team box scores for these seasons. For
+          rehearsing the load; a partial one leaves the other seasons with
+          no team statistics and may not publish."
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -95,6 +101,7 @@ jobs:
             tests/test_nba_export.py tests/test_nba_plays.py \
             tests/test_nba_game_export.py \
             tests/test_nba_people.py \
+            tests/test_nba_team_stats.py \
             tests/test_nba_series.py \
             tests/test_nba_win_probability.py -q
 
@@ -152,6 +159,27 @@ jobs:
             ${{ inputs.people_seasons && format('--seasons {0}', inputs.people_seasons) || '' }} \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
+      - name: Load the team box scores
+        run: |
+          # 64,672 rows across 26 seasons, two a game, fetched one season at
+          # a time and discarded like the play-by-play. What comes out are
+          # the COUNTS that PxP+ and the opportunity grades are computed
+          # from; not one rate is stored.
+          #
+          # AFTER the schedule, because a box score for a game the schedule
+          # does not carry is dropped rather than invented, and because the
+          # season type a row is stored under is the SCHEDULE's -- this feed
+          # calls the NBA Cup final a regular-season game. BEFORE the
+          # export, which decides from `team_game_box` whether there are
+          # team statistics to publish at all; an export built without them
+          # would blank columns the published one carries, and
+          # src/nba/publish.py refuses that. A failure here fails the run,
+          # which says the same thing earlier and more clearly.
+          set -o pipefail
+          python -m src.nba.team_box \
+            ${{ inputs.team_box_seasons && format('--seasons {0}', inputs.team_box_seasons) || '' }} \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Replay the archive with the committed model
         run: |
           set -o pipefail
@@ -175,10 +203,15 @@ jobs:
           # that. `pbp_seasons` is the same hazard one layer down: a
           # one-season reduction would build a game layer covering one
           # season, and nothing downstream would notice it replacing
-          # twenty-six.
+          # twenty-six. `team_box_seasons` is the same hazard again: the
+          # team statistics have no `files` key of their own, so a one-season
+          # load would publish the same file list with every other season's
+          # PxP+ gone.
           ALLOWED: ${{ (inputs.publish == null && 'true' || inputs.publish)
             && (inputs.seasons == null || inputs.seasons == '')
-            && (inputs.pbp_seasons == null || inputs.pbp_seasons == '') }}
+            && (inputs.pbp_seasons == null || inputs.pbp_seasons == '')
+            && (inputs.team_box_seasons == null
+                || inputs.team_box_seasons == '') }}
         run: |
           set -o pipefail
           python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"

@@ -401,3 +401,81 @@ CREATE INDEX IF NOT EXISTS person_game_by_person
 CREATE INDEX IF NOT EXISTS person_game_by_game ON person_game(game_key);
 CREATE INDEX IF NOT EXISTS person_season_by_season
     ON person_season(season, season_type);
+
+-- ----------------------------------------------------------------------
+-- The team box score (schema 4): the counts PxP+ and the opportunity
+-- grades are computed from, and nothing derived.
+-- ----------------------------------------------------------------------
+-- `src/nba/team_box.py` loads this from the `team_box` feed, two rows a
+-- game. What is stored here is COUNTS ONLY: not one rate, index or grade,
+-- because every one of them is a quotient of numbers that are all here and
+-- `src/nba/team_metrics.py` is the single place that divides them. A stored
+-- PxP+ would be a second answer to a question the counts already answer,
+-- and the two would drift the first time the league denominator changed.
+--
+-- A MISSING COUNT IS NULL, AND IT COSTS THE WHOLE GAME. Measured on
+-- 2025-26: game 401810169 (Chicago at Orlando, 2025-12-01) carries no
+-- `total_turnovers` for Chicago, so its possession estimate cannot be made
+-- and the game is unmeasurable for BOTH sides -- the denominator is shared.
+-- `team_metrics.measurable` is where that is decided; nothing here guesses
+-- a zero.
+--
+-- THE SEASON TYPE IS THE SCHEDULE'S, not the feed's, for the reason
+-- `src/nba/people.py` takes the schedule's: this feed calls the NBA Cup
+-- final a regular-season game, and the archive already knows better.
+CREATE TABLE IF NOT EXISTS team_game_box (
+    game_key     TEXT    NOT NULL REFERENCES game(game_key),
+    team_key     TEXT    NOT NULL REFERENCES team(team_key),
+    opponent_key TEXT    REFERENCES team(team_key),
+    season       INTEGER NOT NULL,
+    season_type  TEXT    NOT NULL,
+    game_date    TEXT    NOT NULL,
+    home_away    TEXT,
+    points       INTEGER,
+    -- The four the possession estimate needs. FGA + 0.44 x FTA - ORB + TOV.
+    field_goals_attempted INTEGER,
+    free_throws_attempted INTEGER,
+    offensive_rebounds    INTEGER,
+    -- `total_turnovers` is the one the estimate uses: it includes team
+    -- turnovers, which `turnovers` does not. The two disagree on 1,272 of
+    -- 2,460 team rows in 2025-26, so both are stored and the arithmetic
+    -- names which one it reads.
+    total_turnovers       INTEGER,
+    turnovers             INTEGER,
+    team_turnovers        INTEGER,
+    -- WHICH TURNOVER COUNT THE POSSESSION ESTIMATE READS, and on what
+    -- basis. Derived per SEASON in `team_box.turnover_basis`, because the
+    -- feed's meaning changes between seasons and no single row shows it:
+    -- 2001-02 to 2011-12 set `team_turnovers` to a COPY of `turnovers`, so
+    -- their `total_turnovers` is the team's turnovers counted twice -- 28.9
+    -- a game against a true 14.4 -- and 2017-18 carries no total at all.
+    -- The basis is 'total' where the sum is trustworthy and 'team-only'
+    -- where the narrower count is all there is, and it is published so a
+    -- reader is never shown a 2004 rate as if it were measured the same way
+    -- as a 2026 one.
+    possession_turnovers  INTEGER,
+    turnover_basis        TEXT,
+    -- Kept because a page that shows an opportunity edge is asked what made
+    -- it, and these are the counts behind the answer.
+    field_goals_made      INTEGER,
+    free_throws_made      INTEGER,
+    threes_made           INTEGER,
+    threes_attempted      INTEGER,
+    defensive_rebounds    INTEGER,
+    total_rebounds        INTEGER,
+    assists               INTEGER,
+    steals                INTEGER,
+    blocks                INTEGER,
+    fouls                 INTEGER,
+    -- Whether `points` equals the final the schedule carries. Stated, never
+    -- corrected: a box score that disagrees with the final is a fact about
+    -- the source, and a page may say so rather than publish a quiet fix.
+    reconciled   INTEGER,
+    snapshot_id  INTEGER REFERENCES snapshot(snapshot_id),
+    PRIMARY KEY (game_key, team_key)
+);
+
+CREATE INDEX IF NOT EXISTS team_game_box_by_season
+    ON team_game_box(season, season_type, game_date);
+CREATE INDEX IF NOT EXISTS team_game_box_by_team
+    ON team_game_box(team_key, season);

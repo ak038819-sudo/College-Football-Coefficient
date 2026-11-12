@@ -845,7 +845,95 @@
     return limit ? rows.slice(0, limit) : rows;
   }
 
+  /* ------------------------------------------------- team statistics
+   *
+   * The reader's half of src/nba/team_metrics.py. Nothing here computes a
+   * rate: the export carries them at three decimals and these functions
+   * decide how many of those a reader sees. An index is drawn to one
+   * decimal and a grade to two, which is the precision each was quoted at
+   * in the trial these came from.
+   *
+   * AN ABSENT NUMBER DRAWS AS A DASH, NEVER AS ZERO OR 100. A club with no
+   * measured game has no estimate, and "exactly league average" is a
+   * measurement somebody could act on. Null is checked BEFORE any
+   * coercion, because Number(null) is 0 and isFinite(0) is true — the trap
+   * that has read a missing clock as 0:00 three times in this repository.
+   */
+  var NO_VALUE = '—';
+
+  function indexText(value) {
+    if (value === null || value === undefined) return NO_VALUE;
+    return isFiniteNumber(value) ? value.toFixed(1) : NO_VALUE;
+  }
+
+  function netOpportunityText(value) {
+    if (value === null || value === undefined) return NO_VALUE;
+    if (!isFiniteNumber(value)) return NO_VALUE;
+    var rounded = Math.round(value * 100) / 100;
+    return (rounded > 0 ? '+' : '') + rounded.toFixed(2);
+  }
+
+  /* Whether a season's payload carries team statistics worth drawing.
+   *
+   * An export written before `src/nba/team_box.py` ran has no section at
+   * all, and a season whose feed measured nothing has one that says zero.
+   * Both mean the same thing to a page: draw no columns rather than a
+   * column of dashes. */
+  function teamStatsAvailable(payload) {
+    var stats = payload && payload.team_stats;
+    if (!stats || typeof stats !== 'object') return false;
+    return isFiniteNumber(stats.measured_games) && stats.measured_games > 0;
+  }
+
+  /* What a season's numbers were measured from, where that is not the
+   * modern feed. Empty for a season measured the usual way, so a page adds
+   * no note at all rather than a note saying nothing happened. */
+  function turnoverBasisNote(payload) {
+    var stats = payload && payload.team_stats;
+    var basis = stats && stats.turnover_basis;
+    if (!Array.isArray(basis) || basis.indexOf('team-only') < 0) return '';
+    return 'This season\u2019s turnovers are the narrower count: the feed\u2019s '
+      + 'combined total is either absent or the team\u2019s own count doubled, so '
+      + 'possessions here are estimated without team turnovers. Rates are '
+      + 'comparable within the season and read a little high against a '
+      + 'season measured from the full count.';
+  }
+
+  /* One side of a game's opportunity numbers, or null.
+   *
+   * `role` is 'home' or 'away', which is what the month file keys them by:
+   * the season payload already tells the page which club is which, so the
+   * entry does not repeat two club keys for every game in the archive. */
+  function opportunityOf(entry, role) {
+    var stats = entry && entry.ts;
+    var side = stats && stats[role];
+    if (!side || typeof side !== 'object') return null;
+    return {
+      possessions: isFiniteNumber(stats.p) ? stats.p : null,
+      pxp: side.pxp === undefined ? null : side.pxp,
+      rate: side.rate === undefined ? null : side.rate,
+      expected: side.exp === undefined ? null : side.exp,
+      residual: side.res === undefined ? null : side.res,
+      net: side.net === undefined ? null : side.net,
+      chances: side.chances === undefined ? null : side.chances,
+      offensiveRebounds: side.orb === undefined ? null : side.orb,
+      turnovers: side.tov === undefined ? null : side.tov,
+      priorGames: isFiniteNumber(side.prior_games) ? side.prior_games : null
+    };
+  }
+
   var api = {
+    // Exported because a page drawing these numbers needs the same guard
+    // the module uses: `Number.isFinite(Number(x))` is TRUE for null, and
+    // reading a missing value as zero is the trap this repository has hit
+    // three times.
+    isFiniteNumber: isFiniteNumber,
+    NO_VALUE: NO_VALUE,
+    indexText: indexText,
+    netOpportunityText: netOpportunityText,
+    teamStatsAvailable: teamStatsAvailable,
+    turnoverBasisNote: turnoverBasisNote,
+    opportunityOf: opportunityOf,
     REGULATION_SECONDS: REGULATION_SECONDS,
     OVERTIME_SECONDS: OVERTIME_SECONDS,
     REGULATION_PERIODS: REGULATION_PERIODS,

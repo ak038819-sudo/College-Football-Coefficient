@@ -26,6 +26,8 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+# Schema 4 adds the team statistics: `coverage[].team_stats`, the board's
+# PxP+ and opportunity columns, and the per-game grades in the month files.
 # Schema 2 adds the game layer: `files.games`, and the month files under
 # `games/<season>/`. Schema 3 adds the people layer: `files.people`, and the
 # shards under `people/`. Both earlier versions are still SUPPORTED, because
@@ -34,8 +36,8 @@ from pathlib import Path
 # learns from the absence of the `files` entry rather than from the version
 # number. What a bump buys is that the version says which shape a reader is
 # holding.
-SCHEMA_VERSION = 3
-SUPPORTED_SCHEMA_VERSIONS = (1, 2, 3)
+SCHEMA_VERSION = 4
+SUPPORTED_SCHEMA_VERSIONS = (1, 2, 3, 4)
 
 # The Charlotte expansion team arrived in 2004-05, taking the league from 29
 # franchises to 30. Measured from the archive, not recalled: every schedule
@@ -163,6 +165,44 @@ def check_coverage(manifest):
     return reasons
 
 
+def check_team_statistics(manifest):
+    """The team statistics must be internally consistent, or absent.
+
+    NOT A COVERAGE FLOOR. Which games can be measured is a property of the
+    feed — one 2025-26 game is short a turnover count — and a gate that
+    demanded a share of them would refuse a correct export because a
+    provider dropped a field. Staleness and shortfall are MARKED, in the
+    coverage row and on the page; what is refused is arithmetic that cannot
+    be true of any archive: more games measured than played, a negative
+    count, or a league denominator of zero under a board that divides by it.
+    """
+    reasons = []
+    for row in manifest.get('coverage') or []:
+        if not isinstance(row, dict):
+            continue
+        stats = row.get('team_stats')
+        if stats is None:
+            continue
+        if not isinstance(stats, dict):
+            reasons.append(f'{row.get("season")} has a team_stats that is '
+                           'not an object')
+            continue
+        games, measured = stats.get('games'), stats.get('measured')
+        for name, value in (('games', games), ('measured', measured),
+                            ('unmeasured', stats.get('unmeasured')),
+                            ('teams', stats.get('teams'))):
+            if not isinstance(value, int) or isinstance(value, bool) \
+                    or value < 0:
+                reasons.append(f'{row.get("season")} reports team_stats '
+                               f'{name} as {value!r}')
+        if isinstance(games, int) and isinstance(measured, int) \
+                and measured > games:
+            reasons.append(f'{row.get("season")} measures team statistics on '
+                           f'{measured} games of {games}, which is more '
+                           'games than it has')
+    return reasons
+
+
 def check_time(manifest, *, now=None):
     moment = _parse_time(manifest.get('generated_at'))
     if moment is None:
@@ -203,6 +243,7 @@ def check(manifest, *, root=None, now=None):
     if reasons:
         return reasons
     return (check_model(manifest) + check_coverage(manifest)
+            + check_team_statistics(manifest)
             + check_time(manifest, now=now) + check_files(manifest, root))
 
 
