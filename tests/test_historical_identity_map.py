@@ -480,3 +480,44 @@ class TestTheCommittedMap:
             assert int(row['games']) > 0, row['raw_name']
             assert 1946 <= int(row['first_season']) <= int(row['last_season']) <= 1979
             assert int(row['as_home']) + int(row['as_away']) == int(row['games'])
+
+    def test_every_unresolved_name_has_been_ruled_on(self, committed):
+        for row in committed:
+            if row['status'] == 'unresolved':
+                assert row['verdict'], row['raw_name']
+                assert row['verdict_note'], row['raw_name']
+
+    def test_no_verdict_claims_a_rating(self, committed):
+        # The whole point of ruling on these 165: none of them is rated.
+        # `renamed` would be the exception, and none was used, because the
+        # archive carries each programme under a single name.
+        rated = {row['raw_name'] for row in committed
+                 if row['verdict'] == 'renamed'}
+        assert not rated, rated
+
+    def test_each_verdict_says_what_it_rests_on(self, committed):
+        # Not a bare word: the basis travels with it, so a later reader can
+        # disagree with the reasoning rather than only with the answer.
+        for row in committed:
+            if row['verdict']:
+                assert 'unclassified in every staged game' in \
+                    row['verdict_note'], row['raw_name']
+
+    def test_the_two_spellings_of_parsons_were_not_merged(self, committed):
+        # Overlapping seasons, one letter of difference in intent: exactly
+        # the merge this gate exists to refuse. Both are flagged, neither
+        # is resolved.
+        pair = [row for row in committed
+                if row['raw_name'].startswith('Parsons')]
+        assert len(pair) == 2
+        for row in pair:
+            assert row['verdict'] == 'ambiguous'
+            assert row['canonical_name'] == ''
+            assert 'Never merged here.' in row['verdict_note']
+
+    def test_a_resolved_name_was_left_alone(self, committed):
+        # The verdict column is for the names nobody carried. A name with
+        # an id from the provider does not need one.
+        for row in committed:
+            if row['status'] != 'unresolved':
+                assert row['verdict'] == '', row['raw_name']

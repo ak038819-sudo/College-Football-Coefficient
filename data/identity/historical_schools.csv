@@ -1,17 +1,17 @@
 raw_name,status,canonical_name,cfbd_team_ids,first_season,last_season,seasons,games,as_home,as_away,record_seasons,classifications,conferences,distinct_opponents,suggestion,suggestion_ratio,verdict,verdict_note
 Abilene Christian,records_matched,Abilene Christian,2000,1947,1972,17,27,5,22,27,ii/iii,College Division Independents;Gulf Coast;Pre-classification Independents;Southland;Texas Conference,13,,0.0,,
-Adams State,unresolved,,,1950,1955,2,2,0,2,0,,,2,,0.0,,
-Adelphi,unresolved,,,1947,1947,1,1,0,1,0,,,1,,0.0,,
+Adams State,unresolved,,,1950,1955,2,2,0,2,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
+Adelphi,unresolved,,,1947,1947,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Air Force,records_matched,Air Force,2005,1956,1979,24,241,121,120,24,fbs;ii,FBS Independents;Independent DII,57,,0.0,,
 Akron,records_matched,Akron,2006,1966,1979,14,41,20,21,34,ii,Independent DII;Mid-Continent,18,,0.0,,
 Alabama,records_matched,Alabama,333,1946,1979,34,381,221,160,34,fbs,SEC,54,,0.0,,
 Alabama A&M,records_matched,Alabama A&M,2010,1977,1977,1,1,1,0,29,ii,SIAC,1,,0.0,,
 Alabama State,records_matched,Alabama State,2011,1977,1977,1,2,0,2,34,ii,Independent DII,2,,0.0,,
-Alameda NAS,unresolved,,,1946,1946,1,1,0,1,0,,,1,,0.0,,
-Albright,unresolved,,,1950,1952,3,3,0,3,0,,,1,,0.0,,
+Alameda NAS,unresolved,,,1946,1946,1,1,0,1,0,,,1,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
+Albright,unresolved,,,1950,1952,3,3,0,3,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Alcorn State,records_matched,Alcorn State,2016,1977,1978,2,12,6,6,33,fbs;fcs,SWAC,11,,0.0,,
-Alliance,unresolved,,,1948,1948,1,1,1,0,0,,,1,,0.0,,
-Amherst,unresolved,,,1949,1953,2,2,0,2,0,,,2,,0.0,,
+Alliance,unresolved,,,1948,1948,1,1,1,0,0,,,1,,0.0,ambiguous,unclassified in every staged game and carried by no record line; no college of this name identified from the archive alone
+Amherst,unresolved,,,1949,1953,2,2,0,2,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 App State,records_matched,App State,2026,1971,1979,9,90,44,46,34,fbs;ii,Independent DII;Southern,22,,0.0,,
 Arizona,records_matched,Arizona,12,1946,1979,34,354,200,154,34,fbs,Border;FBS Independents;Pac-10;Western Athletic,49,,0.0,,
 Arizona State,records_matched,Arizona State,9,1946,1979,34,361,223,138,34,fbs,Border;Pac-10;Western Athletic,62,,0.0,,
@@ -21,58 +21,58 @@ Arkansas-Pine Bluff,records_matched,Arkansas-Pine Bluff,2029,1977,1977,1,3,2,1,3
 Army,records_matched,Army,349,1946,1979,34,334,202,132,34,fbs,FBS Independents,76,,0.0,,
 Auburn,records_matched,Auburn,2,1946,1979,34,357,199,158,34,fbs,SEC,43,,0.0,,
 BYU,records_matched,BYU,252,1946,1979,34,357,168,189,34,fbs,Mountain State;Skyline;Western Athletic,46,,0.0,,
-Bainbridge NTS,unresolved,,,1946,1946,1,1,0,1,0,,,1,,0.0,,
-Baker,unresolved,,,1950,1950,1,1,0,1,0,,,1,,0.0,,
+Bainbridge NTS,unresolved,,,1946,1946,1,1,0,1,0,,,1,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
+Baker,unresolved,,,1950,1950,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Ball State,records_matched,Ball State,2050,1968,1979,12,72,34,38,34,fbs;ii/iii,College Division Independents;Indiana Collegiate;Mid-American;Midwestern Universities,21,,0.0,,
-Bates,unresolved,,,1951,1951,1,1,0,1,0,,,1,,0.0,,
+Bates,unresolved,,,1951,1951,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Baylor,records_matched,Baylor,239,1946,1979,34,357,169,188,34,fbs,Southwest,57,,0.0,,
-Beaumont Hospital,unresolved,,,1946,1946,1,1,0,1,0,,,1,,0.0,,
+Beaumont Hospital,unresolved,,,1946,1946,1,1,0,1,0,,,1,,0.0,exhibition,"unclassified in every staged game and carried by no record line; a hospital side, not a college programme"
 Bethune-Cookman,records_matched,Bethune-Cookman,2065,1977,1977,1,2,1,1,34,ii,SIAC,2,,0.0,,
-Bishop,unresolved,,,1977,1977,1,5,2,3,0,,,5,,0.0,,
+Bishop,unresolved,,,1977,1977,1,5,2,3,0,,,5,,0.0,small_college,unclassified in every staged game and carried by no record line
 Boise State,records_matched,Boise State,68,1970,1979,9,13,7,6,10,fcs,Big Sky,6,,0.0,,
-Bolling Field,unresolved,,,1952,1952,1,1,0,1,0,,,1,,0.0,,
+Bolling Field,unresolved,,,1952,1952,1,1,0,1,0,,,1,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
 Boston College,records_matched,Boston College,103,1946,1979,34,332,190,142,34,fbs,FBS Independents,63,,0.0,,
 Boston University,records_matched,Boston University,1000010,1946,1979,34,211,108,103,18,fbs,FBS Independents,49,,0.0,,
 Bowling Green,records_matched,Bowling Green,189,1947,1979,26,193,96,97,34,fbs;ii/iii,Mid-American;Pre-classification Independents,41,,0.0,,
 Bradley,records_matched,Bradley,1000011,1946,1965,14,45,25,20,3,fbs,Missouri Valley,23,,0.0,,
-Brandeis,unresolved,,,1951,1956,5,5,1,4,0,,,3,,0.0,,
-Brooklyn,unresolved,,,1946,1950,5,7,2,5,0,,,2,,0.0,,
+Brandeis,unresolved,,,1951,1956,5,5,1,4,0,,,3,,0.0,small_college,unclassified in every staged game and carried by no record line
+Brooklyn,unresolved,,,1946,1950,5,7,2,5,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 Brown,records_matched,Brown,225,1946,1979,34,304,163,141,34,fbs,FBS Independents;Ivy,20,,0.0,,
 Bucknell,records_matched,Bucknell,2083,1946,1979,34,97,36,61,34,fbs;fcs;ii;ii/iii,College Division Independents;FBS Independents;FCS Independents;Independent DII;Middle Atlantic University;Pre-classification Independents,23,,0.0,,
 Buffalo,records_matched,Buffalo,2084,1946,1970,17,102,51,51,28,fbs;ii/iii,FBS Independents;Pre-classification Independents,30,,0.0,,
 Butler,records_matched,Butler,2086,1962,1962,1,1,0,1,34,ii/iii,Indiana Collegiate,1,,0.0,,
-Cal Lutheran,unresolved,,,1971,1971,1,1,0,1,0,,,1,,0.0,,
+Cal Lutheran,unresolved,,,1971,1971,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Cal Poly,records_matched,Cal Poly,13,1947,1979,18,31,17,14,34,ii;ii/iii,California Collegiate Athletic,10,,0.0,,
-Cal Poly-Pomona,unresolved,,,1969,1979,10,16,7,9,0,,,7,,0.0,,
+Cal Poly-Pomona,unresolved,,,1969,1979,10,16,7,9,0,,,7,,0.0,small_college,unclassified in every staged game and carried by no record line
 Cal State Fullerton,records_matched,Cal State Fullerton,1000012,1970,1979,10,64,25,39,5,fbs,PCAA,22,,0.0,,
 Cal State Los Angeles,records_matched,Cal State Los Angeles,1000013,1955,1975,13,40,15,25,3,fbs,PCAA,17,,0.0,,
-Cal State Northridge,unresolved,,,1967,1979,12,22,8,14,0,,,6,,0.0,,
+Cal State Northridge,unresolved,,,1967,1979,12,22,8,14,0,,,6,,0.0,small_college,unclassified in every staged game and carried by no record line
 California,records_matched,California,25,1946,1979,34,355,196,159,34,fbs,AAWU;Pac-10;Pac-8;Pacific,55,,0.0,,
-California Tech,unresolved,,,1949,1952,3,3,0,3,0,,,1,,0.0,,
-California-Riverside,unresolved,,,1973,1975,2,2,0,2,0,,,2,,0.0,,
+California Tech,unresolved,,,1949,1952,3,3,0,3,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+California-Riverside,unresolved,,,1973,1975,2,2,0,2,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 California-Santa Barbara,records_matched,California-Santa Barbara,1000007,1946,1971,7,39,21,18,3,fbs,PCAA,18,,0.0,,
-Camp Hood,unresolved,,,1950,1950,1,1,0,1,0,,,1,,0.0,,
-Camp Lejeune,unresolved,,,1951,1965,2,3,1,2,0,,,2,,0.0,,
-Camp McClelland,unresolved,,,1946,1946,1,1,0,1,0,,,1,,0.0,,
-Camp Pendleton,unresolved,,,1951,1951,1,1,0,1,0,,,1,,0.0,,
-Canisius,unresolved,,,1946,1948,2,2,1,1,0,,,2,,0.0,,
-Carson Newman,unresolved,,,1958,1978,6,6,3,3,0,,,2,,0.0,,
-Carswell AFB,unresolved,,,1952,1952,1,1,0,1,0,,,1,,0.0,,
-Catawba,unresolved,,,1946,1963,16,20,5,15,0,,,5,,0.0,,
-Centenary (LA),unresolved,,,1947,1947,1,1,1,0,0,,,1,,0.0,,
+Camp Hood,unresolved,,,1950,1950,1,1,0,1,0,,,1,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
+Camp Lejeune,unresolved,,,1951,1965,2,3,1,2,0,,,2,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
+Camp McClelland,unresolved,,,1946,1946,1,1,0,1,0,,,1,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
+Camp Pendleton,unresolved,,,1951,1951,1,1,0,1,0,,,1,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
+Canisius,unresolved,,,1946,1948,2,2,1,1,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
+Carson Newman,unresolved,,,1958,1978,6,6,3,3,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
+Carswell AFB,unresolved,,,1952,1952,1,1,0,1,0,,,1,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
+Catawba,unresolved,,,1946,1963,16,20,5,15,0,,,5,,0.0,small_college,unclassified in every staged game and carried by no record line
+Centenary (LA),unresolved,,,1947,1947,1,1,1,0,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Central Michigan,records_matched,Central Michigan,2117,1947,1979,16,72,33,39,34,fbs;ii;ii/iii,Independent DII;Interstate Intercollegiate Athletic;Mid-American;Pre-classification Independents,21,,0.0,,
-Central Missouri,unresolved,,,1947,1947,1,1,0,1,0,,,1,,0.0,,
-Central State,unresolved,,,1974,1977,3,3,1,2,0,,,3,,0.0,,
-Charleston,unresolved,,,1950,1950,1,1,1,0,0,,,1,,0.0,,
+Central Missouri,unresolved,,,1947,1947,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Central State,unresolved,,,1974,1977,3,3,1,2,0,,,3,,0.0,ambiguous,unclassified in every staged game and carried by no record line; which Central State cannot be settled from the archive
+Charleston,unresolved,,,1950,1950,1,1,1,0,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Chattanooga,records_matched,Chattanooga,236,1946,1979,34,206,78,128,34,fbs;ii;ii/iii,College Division Independents;FBS Independents;Independent DII;Pre-classification Independents;Southern,52,,0.0,,
 Cincinnati,records_matched,Cincinnati,2132,1946,1979,34,302,175,127,34,fbs,FBS Independents;Mid-American;Missouri Valley,61,,0.0,,
-City College of New York,unresolved,,,1949,1949,1,1,1,0,0,,,1,,0.0,,
+City College of New York,unresolved,,,1949,1949,1,1,1,0,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Clemson,records_matched,Clemson,228,1946,1979,34,353,164,189,34,fbs,ACC;Southern,40,,0.0,,
-Coast Guard,unresolved,,,1946,1963,2,3,0,3,0,,,3,,0.0,,
+Coast Guard,unresolved,,,1946,1963,2,3,0,3,0,,,3,,0.0,small_college,"unclassified in every staged game and carried by no record line; the service academy, a college programme"
 Colgate,records_matched,Colgate,2142,1946,1979,34,319,92,227,34,fbs,FBS Independents,33,,0.0,,
 Colorado,records_matched,Colorado,38,1946,1979,34,356,183,173,34,fbs,Big 7;Big 8;Mountain State,48,,0.0,,
-Colorado College,unresolved,,,1946,1956,11,19,6,13,0,,,7,,0.0,,
-Colorado School of Mines,unresolved,,,1946,1952,7,13,7,6,0,,,5,,0.0,,
+Colorado College,unresolved,,,1946,1956,11,19,6,13,0,,,7,,0.0,small_college,unclassified in every staged game and carried by no record line
+Colorado School of Mines,unresolved,,,1946,1952,7,13,7,6,0,,,5,,0.0,small_college,unclassified in every staged game and carried by no record line
 Colorado State,records_matched,Colorado State,36,1946,1979,34,351,152,199,34,fbs,FBS Independents;Mountain State;Skyline;Western Athletic,50,,0.0,,
 Columbia,records_matched,Columbia,171,1946,1979,34,305,169,136,34,fbs,FBS Independents;Ivy,20,,0.0,,
 Cornell,records_matched,Cornell,172,1946,1979,34,306,149,157,34,fbs,FBS Independents;Ivy,20,,0.0,,
@@ -80,63 +80,63 @@ Dartmouth,records_matched,Dartmouth,159,1946,1979,34,304,120,184,34,fbs,FBS Inde
 Davidson,records_matched,Davidson,2166,1946,1979,34,269,112,157,34,fbs;fcs;ii;ii/iii,Southern,41,,0.0,,
 Dayton,records_matched,Dayton,2168,1946,1978,32,236,116,120,34,fbs;ii/iii;iii,FBS Independents;Independent DIII;Pre-classification Independents,48,,0.0,,
 Delaware,records_matched,Delaware,48,1946,1979,31,77,38,39,34,ii;ii/iii;iii,Independent DII;Mason-Dixon;Mid Atlantic;Pre-classification Independents,17,,0.0,,
-Delta State,unresolved,,,1951,1976,2,2,0,2,0,,,2,,0.0,,
+Delta State,unresolved,,,1951,1976,2,2,0,2,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 Denver,records_matched,Denver,1000001,1946,1960,15,153,88,65,15,fbs,Mountain State;Skyline,29,,0.0,,
 Detroit Mercy,records_matched,Detroit Mercy,1000019,1946,1964,19,180,103,77,19,fbs,FBS Independents;Missouri Valley,46,,0.0,,
 Drake,records_matched,Drake,2181,1946,1979,34,247,110,137,34,fbs,FBS Independents;Missouri Valley,51,,0.0,,
-Dubuque,unresolved,,,1948,1949,2,2,0,2,0,,,2,,0.0,,
+Dubuque,unresolved,,,1948,1949,2,2,0,2,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 Duke,records_matched,Duke,150,1946,1979,34,349,172,177,34,fbs,ACC;Southern,42,,0.0,,
 Duquesne,records_matched,Duquesne,2184,1947,1950,4,37,13,24,5,fbs,FBS Independents,24,,0.0,,
 East Carolina,records_matched,East Carolina,151,1951,1979,23,174,81,93,34,fbs;ii,FBS Independents;North State;Southern,39,,0.0,,
 East Tennessee State,records_matched,East Tennessee State,2193,1957,1979,14,36,17,19,29,fcs;ii;ii/iii,OVC;Southern,14,,0.0,,
-East Texas A&M,unresolved,,,1948,1979,8,10,5,5,0,,,7,,0.0,,
+East Texas A&M,unresolved,,,1948,1979,8,10,5,5,0,,,7,,0.0,small_college,unclassified in every staged game and carried by no record line
 Eastern Illinois,records_matched,Eastern Illinois,2197,1975,1979,5,6,3,3,34,ii,Independent DII;Mid-Continent,2,,0.0,,
 Eastern Kentucky,records_matched,Eastern Kentucky,2198,1954,1979,10,14,6,8,34,fcs;ii;ii/iii,OVC,9,,0.0,,
 Eastern Michigan,records_matched,Eastern Michigan,2199,1968,1979,9,63,31,32,32,fbs;ii,Independent DII;Mid-American,20,,0.0,,
-Eastern New Mexico,unresolved,,,1946,1966,6,6,2,4,0,,,2,,0.0,,
+Eastern New Mexico,unresolved,,,1946,1966,6,6,2,4,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 Eastern Washington,records_matched,Eastern Washington,331,1946,1950,5,5,2,3,2,,,1,,0.0,,
 Elon,records_matched,Elon,2210,1947,1979,6,7,1,6,27,ii/iii,North State,3,,0.0,,
-Emory & Henry,unresolved,,,1949,1950,2,2,0,2,0,,,2,,0.0,,
-Emporia State,unresolved,,,1948,1967,7,7,1,6,0,,,4,Georgia State,0.846,,
-Erskine,unresolved,,,1946,1950,3,3,1,2,0,,,2,,0.0,,
-Evansville,unresolved,,,1947,1948,2,2,1,1,0,,,2,,0.0,,
-Findlay,unresolved,,,1962,1962,1,1,0,1,0,,,1,,0.0,,
+Emory & Henry,unresolved,,,1949,1950,2,2,0,2,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
+Emporia State,unresolved,,,1948,1967,7,7,1,6,0,,,4,Georgia State,0.846,small_college,unclassified in every staged game and carried by no record line
+Erskine,unresolved,,,1946,1950,3,3,1,2,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
+Evansville,unresolved,,,1947,1948,2,2,1,1,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
+Findlay,unresolved,,,1962,1962,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Florida,records_matched,Florida,57,1946,1979,34,359,205,154,34,fbs,SEC,53,,0.0,,
 Florida A&M,records_matched,Florida A&M,50,1971,1979,5,7,5,2,34,fcs;ii;ii/iii,MEAC;SIAC,5,,0.0,,
 Florida State,records_matched,Florida State,52,1951,1979,29,289,151,138,33,fbs,FBS Independents,58,,0.0,,
 Fordham,records_matched,Fordham,2230,1946,1972,10,77,28,49,19,fbs;ii/iii,College Division Independents;FBS Independents,29,,0.0,,
-Fort Bliss,unresolved,,,1948,1948,1,1,0,1,0,,,1,,0.0,,
-Fort Hays,unresolved,,,1948,1979,3,3,0,3,0,,,3,,0.0,,
-Fort Lewis College,unresolved,,,1954,1954,1,1,0,1,0,,,1,,0.0,,
-Fort Warren,unresolved,,,1946,1946,1,1,1,0,0,,,1,,0.0,,
-Frederick,unresolved,,,1965,1965,1,1,0,1,0,,,1,,0.0,,
+Fort Bliss,unresolved,,,1948,1948,1,1,0,1,0,,,1,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
+Fort Hays,unresolved,,,1948,1979,3,3,0,3,0,,,3,,0.0,small_college,unclassified in every staged game and carried by no record line
+Fort Lewis College,unresolved,,,1954,1954,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Fort Warren,unresolved,,,1946,1946,1,1,1,0,0,,,1,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
+Frederick,unresolved,,,1965,1965,1,1,0,1,0,,,1,,0.0,ambiguous,unclassified in every staged game and carried by no record line; no college of this name identified from the archive alone
 Fresno State,records_matched,Fresno State,278,1946,1979,34,181,90,91,34,fbs;ii;ii/iii,California Collegiate Athletic;PCAA;Pre-classification Independents,35,,0.0,,
-Fresno State JV,unresolved,,,1946,1946,1,1,0,1,0,,,1,Fresno State,0.889,,
+Fresno State JV,unresolved,,,1946,1946,1,1,0,1,0,,,1,Fresno State,0.889,exhibition,"unclassified in every staged game and carried by no record line; a junior varsity side, not a varsity programme"
 Furman,records_matched,Furman,231,1946,1979,34,346,172,174,34,fbs;ii/iii,Southern,49,,0.0,,
-Geneva,unresolved,,,1947,1951,2,2,0,2,0,,,2,,0.0,,
+Geneva,unresolved,,,1947,1951,2,2,0,2,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 George Washington,records_matched,George Washington,1000025,1946,1966,21,191,84,107,21,fbs,Southern,45,,0.0,,
 Georgetown,records_matched,Georgetown,46,1946,1950,5,43,15,28,15,fbs,FBS Independents,15,,0.0,,
 Georgia,records_matched,Georgia,61,1946,1979,34,370,199,171,34,fbs,SEC,55,,0.0,,
 Georgia Tech,records_matched,Georgia Tech,59,1946,1979,34,371,233,138,34,fbs,FBS Independents;SEC,46,,0.0,,
-Gettysburg,unresolved,,,1946,1965,5,8,2,6,0,,,5,,0.0,,
+Gettysburg,unresolved,,,1946,1965,5,8,2,6,0,,,5,,0.0,small_college,unclassified in every staged game and carried by no record line
 Grambling,records_matched,Grambling,2755,1968,1977,6,18,8,10,34,fbs;ii;ii/iii,SWAC,15,,0.0,,
-Grand Valley State,unresolved,,,1977,1979,3,3,1,2,0,,,2,,0.0,,
-Great Lakes Navy,unresolved,,,1951,1951,1,1,0,1,0,,,1,,0.0,,
-Guilford,unresolved,,,1969,1971,3,3,2,1,0,,,2,,0.0,,
-Hampden Sydney,unresolved,,,1946,1954,4,8,1,7,0,,,4,,0.0,,
+Grand Valley State,unresolved,,,1977,1979,3,3,1,2,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
+Great Lakes Navy,unresolved,,,1951,1951,1,1,0,1,0,,,1,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
+Guilford,unresolved,,,1969,1971,3,3,2,1,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
+Hampden Sydney,unresolved,,,1946,1954,4,8,1,7,0,,,4,,0.0,small_college,unclassified in every staged game and carried by no record line
 Hardin Simmons,records_matched,Hardin Simmons,2810,1946,1963,18,181,75,106,17,fbs,Border;FBS Independents,40,,0.0,,
 Harvard,records_matched,Harvard,108,1946,1979,34,299,202,97,34,fbs,FBS Independents;Ivy,28,,0.0,,
 Hawai'i,records_matched,Hawai'i,62,1946,1979,33,156,111,45,34,fbs;ii;ii/iii,FBS Independents;Independent DII;Pre-classification Independents;Western Athletic,53,,0.0,,
-Hawaii All-Stars,unresolved,,,1946,1950,3,7,5,2,0,,,5,,0.0,,
-Hayward State,unresolved,,,1970,1971,2,2,1,1,0,,,1,,0.0,,
-Hillsdale,unresolved,,,1950,1950,1,1,0,1,0,,,1,,0.0,,
-Hobart,unresolved,,,1950,1950,1,1,0,1,0,,,1,,0.0,,
-Hofstra,unresolved,,,1946,1947,2,2,1,1,0,,,1,,0.0,,
+Hawaii All-Stars,unresolved,,,1946,1950,3,7,5,2,0,,,5,,0.0,exhibition,"unclassified in every staged game and carried by no record line; an all-star selection, not a college programme"
+Hayward State,unresolved,,,1970,1971,2,2,1,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Hillsdale,unresolved,,,1950,1950,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Hobart,unresolved,,,1950,1950,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Hofstra,unresolved,,,1946,1947,2,2,1,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Holy Cross,records_matched,Holy Cross,107,1946,1979,34,335,168,167,34,fbs,FBS Independents,36,,0.0,,
 Houston,records_matched,Houston,248,1946,1979,34,330,172,158,34,fbs;ii,FBS Independents;Gulf Coast;Lone Star;Missouri Valley;Southwest,68,,0.0,,
 Howard,records_matched,Howard,47,1977,1977,1,1,1,0,34,ii,MEAC,1,,0.0,,
-Howard Payne,unresolved,,,1946,1973,8,8,1,7,0,,,3,,0.0,,
-Humboldt State,unresolved,,,1974,1974,1,1,0,1,0,,,1,,0.0,,
+Howard Payne,unresolved,,,1946,1973,8,8,1,7,0,,,3,,0.0,small_college,unclassified in every staged game and carried by no record line
+Humboldt State,unresolved,,,1974,1974,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Idaho,records_matched,Idaho,70,1946,1979,34,298,120,178,34,fbs;fcs;ii/iii,Big Sky;FBS Independents;Pacific,54,,0.0,,
 Idaho State,records_matched,Idaho State,304,1946,1979,22,33,15,18,34,fcs;ii;ii/iii,Big Sky;College Division Independents;Pre-classification Independents;Rocky Mountain,15,,0.0,,
 Illinois,records_matched,Illinois,356,1946,1979,34,333,178,155,34,fbs,Big Ten;Western,40,,0.0,,
@@ -148,42 +148,42 @@ Iowa State,records_matched,Iowa State,66,1946,1979,34,345,169,176,34,fbs,Big 6;B
 Jackson State,records_matched,Jackson State,2296,1977,1977,1,11,6,5,34,fbs,SWAC,11,,0.0,,
 Jacksonville State,records_matched,Jacksonville State,55,1974,1978,5,6,2,4,10,ii,Gulf South,2,,0.0,,
 James Madison,records_matched,James Madison,256,1978,1979,2,4,0,4,8,ii;iii,Independent DII;Independent DIII,3,,0.0,,
-John Carroll,unresolved,,,1949,1950,2,2,1,1,0,,,2,,0.0,,
-Johns Hopkins,unresolved,,,1946,1946,1,1,0,1,0,,,1,,0.0,,
-Juniata,unresolved,,,1955,1955,1,1,0,1,0,,,1,,0.0,,
+John Carroll,unresolved,,,1949,1950,2,2,1,1,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
+Johns Hopkins,unresolved,,,1946,1946,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Juniata,unresolved,,,1955,1955,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Kansas,records_matched,Kansas,2305,1946,1979,34,355,176,179,34,fbs,Big 6;Big 7;Big 8,50,,0.0,,
 Kansas State,records_matched,Kansas State,2306,1946,1979,34,348,158,190,34,fbs,Big 6;Big 7;Big 8,55,,0.0,,
 Kent State,records_matched,Kent State,2309,1960,1979,20,191,95,96,34,fbs,Mid-American,32,,0.0,,
 Kentucky,records_matched,Kentucky,96,1946,1979,34,359,199,160,34,fbs,SEC,56,,0.0,,
-Kentucky State,unresolved,,,1963,1964,2,2,0,2,0,,,1,Kent State,0.833,,
+Kentucky State,unresolved,,,1963,1964,2,2,0,2,0,,,1,Kent State,0.833,small_college,unclassified in every staged game and carried by no record line
 LSU,records_matched,LSU,99,1946,1979,34,371,229,142,34,fbs,SEC,51,,0.0,,
-La Verne,unresolved,,,1948,1952,4,4,0,4,0,,,1,,0.0,,
+La Verne,unresolved,,,1948,1952,4,4,0,4,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Lafayette,records_matched,Lafayette,322,1946,1979,34,110,40,70,34,fbs;fcs;ii;ii/iii,College Division Independents;FBS Independents;FCS Independents;Independent DII;Pre-classification Independents,21,,0.0,,
 Lamar,records_matched,Lamar,2320,1961,1979,17,94,43,51,17,fbs;ii/iii,Southland,24,,0.0,,
-Langston,unresolved,,,1977,1977,1,3,1,2,0,,,3,,0.0,,
-Lebanon Valley,unresolved,,,1948,1948,1,1,1,0,0,,,1,,0.0,,
+Langston,unresolved,,,1977,1977,1,3,1,2,0,,,3,,0.0,small_college,unclassified in every staged game and carried by no record line
+Lebanon Valley,unresolved,,,1948,1948,1,1,1,0,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Lehigh,records_matched,Lehigh,2329,1946,1979,34,128,54,74,34,fcs;ii;ii/iii,College Division Independents;FCS Independents;Independent DII;Middle Atlantic University;Pre-classification Independents,22,,0.0,,
-Leilahau,unresolved,,,1946,1946,1,1,1,0,0,,,1,,0.0,,
-Lenoir Rhyne,unresolved,,,1951,1979,10,14,4,10,0,,,5,,0.0,,
-Lewis,unresolved,,,1954,1954,1,1,0,1,0,,,1,,0.0,,
-Lincoln,unresolved,,,1977,1977,1,1,1,0,0,,,1,,0.0,,
-Linfield,unresolved,,,1971,1971,1,1,0,1,0,,,1,,0.0,,
+Leilahau,unresolved,,,1946,1946,1,1,1,0,0,,,1,,0.0,ambiguous,unclassified in every staged game and carried by no record line; no college of this name identified from the archive alone
+Lenoir Rhyne,unresolved,,,1951,1979,10,14,4,10,0,,,5,,0.0,small_college,unclassified in every staged game and carried by no record line
+Lewis,unresolved,,,1954,1954,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Lincoln,unresolved,,,1977,1977,1,1,1,0,0,,,1,,0.0,ambiguous,unclassified in every staged game and carried by no record line; which Lincoln cannot be settled from the archive
+Linfield,unresolved,,,1971,1971,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Long Beach State,records_matched,Long Beach State,1000006,1961,1979,17,128,57,71,11,fbs,PCAA,34,,0.0,,
 Louisiana,records_matched,Louisiana,309,1946,1979,17,88,47,41,34,fbs;ii;ii/iii,Gulf States;Pre-classification Independents;Southland,30,,0.0,,
-Louisiana Christian,unresolved,,,1950,1952,3,3,0,3,0,,,2,,0.0,,
+Louisiana Christian,unresolved,,,1950,1952,3,3,0,3,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 Louisiana Tech,records_matched,Louisiana Tech,2348,1946,1979,21,87,42,45,34,fbs;ii;ii/iii,Gulf States;Louisiana Intercollegiate;Southland,26,,0.0,,
 Louisville,records_matched,Louisville,97,1949,1979,29,216,115,101,34,fbs,FBS Independents;Missouri Valley,44,,0.0,,
-Lowry Field,unresolved,,,1952,1952,1,1,0,1,0,,,1,,0.0,,
+Lowry Field,unresolved,,,1952,1952,1,1,0,1,0,,,1,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
 Loyola Marymount,records_matched,Loyola Marymount,1000034,1946,1951,6,35,16,19,3,fbs,FBS Independents,14,,0.0,,
 Maine,records_matched,Maine,311,1965,1979,5,6,3,3,34,fcs;ii;ii/iii,Yankee,5,,0.0,,
 Marquette,records_matched,Marquette,1000039,1946,1960,15,142,62,80,15,fbs,FBS Independents,38,,0.0,,
-Mars Hill,unresolved,,,1967,1967,1,1,0,1,0,,,1,Marshall,0.824,,
+Mars Hill,unresolved,,,1967,1967,1,1,0,1,0,,,1,Marshall,0.824,small_college,unclassified in every staged game and carried by no record line
 Marshall,records_matched,Marshall,276,1947,1979,27,196,98,98,34,fbs;fcs;ii;ii/iii,FBS Independents;Mid-American;OVC;Pre-classification Independents;Southern;West Virginia Intercollegiate Athletic,37,,0.0,,
 Maryland,records_matched,Maryland,120,1946,1979,34,356,177,179,34,fbs,ACC;FBS Independents;Southern,51,,0.0,,
-Maryville (TN),unresolved,,,1946,1946,1,1,0,1,0,,,1,,0.0,,
+Maryville (TN),unresolved,,,1946,1946,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Massachusetts,records_matched,Massachusetts,113,1954,1979,26,77,30,47,34,fcs,Yankee,13,,0.0,,
-McDaniel,unresolved,,,1947,1947,1,1,0,1,0,,,1,,0.0,,
-McMurry,unresolved,,,1946,1962,17,30,2,28,0,,,6,,0.0,,
+McDaniel,unresolved,,,1947,1947,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+McMurry,unresolved,,,1946,1962,17,30,2,28,0,,,6,,0.0,small_college,unclassified in every staged game and carried by no record line
 McNeese,records_matched,McNeese,2377,1964,1979,9,67,35,32,29,fbs;ii;ii/iii,Gulf States;Southland,21,,0.0,,
 Memphis,records_matched,Memphis,235,1949,1979,31,235,145,90,33,fbs;ii/iii,FBS Independents;Missouri Valley;Pre-classification Independents,43,,0.0,,
 Merchant Marine,records_matched,Merchant Marine,2383,1946,1964,8,32,16,16,2,fbs,FBS Independents,15,,0.0,,
@@ -192,37 +192,37 @@ Miami (OH),records_matched,Miami (OH),193,1946,1979,33,232,94,138,34,fbs,FBS Ind
 Michigan,records_matched,Michigan,130,1946,1979,34,340,209,131,34,fbs,Big Ten;Western,40,,0.0,,
 Michigan State,records_matched,Michigan State,127,1946,1979,34,335,187,148,34,fbs,Big Ten;FBS Independents,48,,0.0,,
 Middle Tennessee,records_matched,Middle Tennessee,2393,1950,1979,15,18,4,14,34,fcs;ii/iii,OVC;Pre-classification Independents,7,,0.0,,
-Midwestern Texas State,unresolved,,,1947,1956,10,22,11,11,0,,,7,,0.0,,
+Midwestern Texas State,unresolved,,,1947,1956,10,22,11,11,0,,,7,,0.0,small_college,unclassified in every staged game and carried by no record line
 Minnesota,records_matched,Minnesota,135,1946,1979,34,333,188,145,34,fbs,Big Ten;Western,37,,0.0,,
-Minnesota Morris,unresolved,,,1974,1974,1,1,0,1,0,,,1,,0.0,,
-Mississippi College,unresolved,,,1952,1970,8,9,2,7,0,,,3,,0.0,,
+Minnesota Morris,unresolved,,,1974,1974,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Mississippi College,unresolved,,,1952,1970,8,9,2,7,0,,,3,,0.0,small_college,unclassified in every staged game and carried by no record line
 Mississippi State,records_matched,Mississippi State,344,1946,1979,34,342,151,191,34,fbs,SEC,47,,0.0,,
 Mississippi Valley State,records_matched,Mississippi Valley State,2400,1977,1977,1,10,5,5,27,ii,SWAC,10,,0.0,,
 Missouri,records_matched,Missouri,142,1946,1979,34,362,180,182,34,fbs,Big 6;Big 7;Big 8,56,,0.0,,
-Missouri Valley,unresolved,,,1955,1958,2,2,1,1,0,,,2,,0.0,,
-Missouri-Rolla,unresolved,,,1946,1948,3,3,1,2,0,,,1,,0.0,,
-Mohawk,unresolved,,,1947,1947,1,1,0,1,0,,,1,,0.0,,
+Missouri Valley,unresolved,,,1955,1958,2,2,1,1,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
+Missouri-Rolla,unresolved,,,1946,1948,3,3,1,2,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Mohawk,unresolved,,,1947,1947,1,1,0,1,0,,,1,,0.0,ambiguous,unclassified in every staged game and carried by no record line; no college of this name identified from the archive alone
 Montana,records_matched,Montana,149,1946,1979,31,195,87,108,34,fbs;fcs;ii;ii/iii,Big Sky;FBS Independents;Pacific;Skyline,39,,0.0,,
 Montana State,records_matched,Montana State,147,1946,1979,34,80,33,47,34,fbs;fcs;ii;ii/iii,Big Sky;College Division Independents;Rocky Mountain,23,,0.0,,
 Morehead State,records_matched,Morehead State,2413,1958,1977,17,19,8,11,34,ii;ii/iii,OVC,4,,0.0,,
 Morgan State,records_matched,Morgan State,2415,1966,1977,4,5,1,4,34,ii;ii/iii,CIAA;MEAC,4,,0.0,,
-Muhlenberg,unresolved,,,1946,1955,6,7,3,4,0,,,6,,0.0,,
+Muhlenberg,unresolved,,,1946,1955,6,7,3,4,0,,,6,,0.0,small_college,unclassified in every staged game and carried by no record line
 Murray State,records_matched,Murray State,93,1946,1948,2,3,0,3,34,ii/iii,Kentucky Intercollegiate Athletic;OVC,3,,0.0,,
 NC State,records_matched,NC State,152,1946,1979,34,358,158,200,34,fbs,ACC;Southern,54,,0.0,,
 Navy,records_matched,Navy,2426,1946,1979,34,343,150,193,34,fbs,FBS Independents,52,,0.0,,
 Nebraska,records_matched,Nebraska,158,1946,1979,34,365,206,159,34,fbs,Big 6;Big 7;Big 8,57,,0.0,,
-Nebraska Kearney,unresolved,,,1953,1953,1,1,0,1,0,,,1,,0.0,,
-Nebraska Wesleyan,unresolved,,,1956,1956,1,1,0,1,0,,,1,,0.0,,
-Nebraska-Omaha,unresolved,,,1954,1975,4,4,2,2,0,,,3,,0.0,,
+Nebraska Kearney,unresolved,,,1953,1953,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Nebraska Wesleyan,unresolved,,,1956,1956,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Nebraska-Omaha,unresolved,,,1954,1975,4,4,2,2,0,,,3,,0.0,small_college,unclassified in every staged game and carried by no record line
 Nevada,records_matched,Nevada,2440,1946,1979,9,56,20,36,34,fbs;fcs;ii,Big Sky;FBS Independents;FCS Independents;Independent DII,30,,0.0,,
 New Hampshire,records_matched,New Hampshire,160,1956,1979,14,18,7,11,34,fcs;ii;ii/iii,Yankee,3,,0.0,,
 New Mexico,records_matched,New Mexico,167,1946,1979,34,356,185,171,34,fbs,Border;Skyline;Western Athletic,40,,0.0,,
-New Mexico Highlands,unresolved,,,1948,1971,7,7,1,6,0,,,3,,0.0,,
-New Mexico Military,unresolved,,,1949,1950,2,2,0,2,0,,,1,,0.0,,
+New Mexico Highlands,unresolved,,,1948,1971,7,7,1,6,0,,,3,,0.0,small_college,unclassified in every staged game and carried by no record line
+New Mexico Military,unresolved,,,1949,1950,2,2,0,2,0,,,1,,0.0,small_college,"unclassified in every staged game and carried by no record line; a military junior college, counted as a college"
 New Mexico State,records_matched,New Mexico State,166,1946,1979,34,346,168,178,34,fbs,Border;FBS Independents;Missouri Valley,60,,0.0,,
 New York University,records_matched,New York University,1000041,1946,1952,7,57,18,39,7,fbs,FBS Independents,20,,0.0,,
-Newberry,unresolved,,,1946,1966,16,25,5,20,0,,,4,,0.0,,
-Niagara,unresolved,,,1947,1949,3,3,0,3,0,,,2,,0.0,,
+Newberry,unresolved,,,1946,1966,16,25,5,20,0,,,4,,0.0,small_college,unclassified in every staged game and carried by no record line
+Niagara,unresolved,,,1947,1949,3,3,0,3,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 Nicholls,records_matched,Nicholls,2447,1976,1979,4,9,4,5,8,ii,Gulf South;Independent DII,3,,0.0,,
 Norfolk State,records_matched,Norfolk State,2450,1946,1977,2,3,1,2,34,ii;ii/iii,CIAA;Eastern Intercollegiate Athletic,3,,0.0,,
 North Alabama,records_matched,North Alabama,2453,1959,1979,4,4,2,2,8,ii;ii/iii,Gulf South,3,,0.0,,
@@ -231,77 +231,77 @@ North Carolina A&T,records_matched,North Carolina A&T,2448,1977,1977,1,1,0,1,34,
 North Dakota,records_matched,North Dakota,155,1948,1979,11,11,3,8,34,ii;ii/iii,North Central,7,,0.0,,
 North Dakota State,records_matched,North Dakota State,2449,1946,1969,13,14,3,11,34,ii,North Central,10,,0.0,,
 North Texas,records_matched,North Texas,249,1946,1979,34,301,139,162,34,fbs;ii,FBS Independents;Gulf Coast;Lone Star;Missouri Valley,58,,0.0,,
-Northeastern,unresolved,,,1970,1977,4,5,0,5,0,,,3,Northwestern,0.917,,
+Northeastern,unresolved,,,1970,1977,4,5,0,5,0,,,3,Northwestern,0.917,small_college,unclassified in every staged game and carried by no record line
 Northern Arizona,records_matched,Northern Arizona,2464,1946,1977,18,74,35,39,18,ii;ii/iii,Big Sky;Border;College Division Independents,26,,0.0,,
 Northern Colorado,records_matched,Northern Colorado,2458,1946,1979,6,11,4,7,34,fbs;ii;ii/iii,Independent DII;Rocky Mountain,6,,0.0,,
 Northern Illinois,records_matched,Northern Illinois,2459,1966,1979,14,134,64,70,34,fbs;ii,FBS Independents;Independent DII;Mid-American,35,,0.0,,
 Northern Iowa,records_matched,Northern Iowa,2460,1946,1975,17,21,10,11,34,ii;ii/iii,North Central,2,,0.0,,
-Northern Michigan,unresolved,,,1963,1979,10,15,3,12,0,,,9,,0.0,,
-Northern State,unresolved,,,1949,1949,1,1,0,1,0,,,1,Northwestern State,0.875,,
+Northern Michigan,unresolved,,,1963,1979,10,15,3,12,0,,,9,,0.0,small_college,unclassified in every staged game and carried by no record line
+Northern State,unresolved,,,1949,1949,1,1,0,1,0,,,1,Northwestern State,0.875,small_college,unclassified in every staged game and carried by no record line
 Northwestern,records_matched,Northwestern,77,1946,1979,34,331,177,154,34,fbs,Big Ten;Western,43,,0.0,,
 Northwestern State,records_matched,Northwestern State,2466,1946,1979,10,52,24,28,34,fcs;ii;ii/iii,FCS Independents;Gulf South;Gulf States;Independent DII;Louisiana Intercollegiate,16,,0.0,,
 Notre Dame,records_matched,Notre Dame,87,1946,1979,34,350,192,158,34,fbs,FBS Independents,42,,0.0,,
-Occidental,unresolved,,,1948,1957,2,2,1,1,0,,,2,,0.0,,
+Occidental,unresolved,,,1948,1957,2,2,1,1,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 Ohio,records_matched,Ohio,195,1948,1979,30,205,91,114,34,fbs,Mid-American,41,,0.0,,
 Ohio State,records_matched,Ohio State,194,1946,1979,34,334,192,142,34,fbs,Big Ten;Western,35,,0.0,,
-Ohio Wesleyan,unresolved,,,1956,1970,2,2,0,2,0,,,2,,0.0,,
+Ohio Wesleyan,unresolved,,,1956,1970,2,2,0,2,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 Oklahoma,records_matched,Oklahoma,201,1946,1979,34,370,203,167,34,fbs,Big 6;Big 7;Big 8,54,,0.0,,
-Oklahoma City,unresolved,,,1946,1948,2,3,0,3,0,,,3,Oklahoma State,0.833,,
+Oklahoma City,unresolved,,,1946,1948,2,3,0,3,0,,,3,Oklahoma State,0.833,small_college,unclassified in every staged game and carried by no record line
 Oklahoma State,records_matched,Oklahoma State,197,1946,1979,34,354,168,186,34,fbs,Big 8;FBS Independents;Missouri Valley,42,,0.0,,
 Ole Miss,records_matched,Ole Miss,145,1946,1979,34,363,181,182,34,fbs,SEC,39,,0.0,,
 Oregon,records_matched,Oregon,2483,1946,1979,34,354,172,182,34,fbs,AAWU;FBS Independents;Pac-10;Pac-8;Pacific,51,,0.0,,
 Oregon State,records_matched,Oregon State,204,1946,1979,34,350,155,195,34,fbs,AAWU;FBS Independents;Pac-10;Pac-8;Pacific,51,,0.0,,
-Otterbein,unresolved,,,1946,1947,2,2,0,2,0,,,1,,0.0,,
-Ouachita,unresolved,,,1948,1948,1,1,0,1,0,,,1,,0.0,,
+Otterbein,unresolved,,,1946,1947,2,2,0,2,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Ouachita,unresolved,,,1948,1948,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Pacific,records_matched,Pacific,1000044,1946,1979,34,321,159,162,30,fbs,FBS Independents;PCAA,68,,0.0,,
-Pacific (Oregon),unresolved,,,1948,1948,1,1,1,0,0,,,1,,0.0,,
-Pacific Fleet,unresolved,,,1948,1949,2,2,0,2,0,,,1,,0.0,,
-Pacific Submarines,unresolved,,,1949,1949,1,1,0,1,0,,,1,,0.0,,
-Parris Island Marines,unresolved,,,1950,1953,3,3,1,2,0,,,3,,0.0,,
-Parsons,unresolved,,,1966,1968,3,4,1,3,0,,,3,,0.0,,
-Parsons (Iowa),unresolved,,,1965,1967,2,2,0,2,0,,,2,,0.0,,
+Pacific (Oregon),unresolved,,,1948,1948,1,1,1,0,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Pacific Fleet,unresolved,,,1948,1949,2,2,0,2,0,,,1,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
+Pacific Submarines,unresolved,,,1949,1949,1,1,0,1,0,,,1,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
+Parris Island Marines,unresolved,,,1950,1953,3,3,1,2,0,,,3,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
+Parsons,unresolved,,,1966,1968,3,4,1,3,0,,,3,,0.0,ambiguous,"unclassified in every staged game and carried by no record line; see ""Parsons (Iowa)"": two spellings in overlapping seasons, possibly one programme. Never merged here."
+Parsons (Iowa),unresolved,,,1965,1967,2,2,0,2,0,,,2,,0.0,ambiguous,"unclassified in every staged game and carried by no record line; see ""Parsons"": two spellings in overlapping seasons, possibly one programme. Never merged here."
 Penn State,records_matched,Penn State,213,1946,1979,34,353,179,174,34,fbs,FBS Independents,64,,0.0,,
 Pennsylvania,records_matched,Pennsylvania,219,1946,1979,34,302,198,104,34,fbs,FBS Independents;Ivy,28,,0.0,,
-Pensacola NAS,unresolved,,,1959,1965,2,2,1,1,0,,,2,,0.0,,
-Pepperdine,unresolved,,,1946,1951,6,16,9,7,0,,,5,,0.0,,
+Pensacola NAS,unresolved,,,1959,1965,2,2,1,1,0,,,2,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
+Pepperdine,unresolved,,,1946,1951,6,16,9,7,0,,,5,,0.0,small_college,unclassified in every staged game and carried by no record line
 Pittsburgh,records_matched,Pittsburgh,221,1946,1979,34,349,177,172,34,fbs,FBS Independents,53,,0.0,,
 Portland,records_matched,Portland,1000046,1946,1949,4,25,6,19,2,fbs,FBS Independents,13,,0.0,,
 Portland State,records_matched,Portland State,2502,1969,1977,5,5,0,5,25,ii;ii/iii,College Division Independents;Independent DII,3,,0.0,,
 Prairie View A&M,records_matched,Prairie View A&M,2504,1977,1979,2,12,6,6,34,fcs;ii,SWAC,12,,0.0,,
 Presbyterian,records_matched,Presbyterian,2506,1946,1979,34,80,17,63,5,ii/iii,South Carolina Little Three,6,,0.0,,
 Princeton,records_matched,Princeton,163,1946,1979,34,303,195,108,34,fbs,FBS Independents;Ivy,14,,0.0,,
-Puget Sound,unresolved,,,1947,1950,2,2,1,1,0,,,2,,0.0,,
+Puget Sound,unresolved,,,1947,1950,2,2,1,1,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 Purdue,records_matched,Purdue,2509,1946,1979,34,332,170,162,34,fbs,Big Ten;Western,37,,0.0,,
 Quantico Marines,records_matched,Quantico Marines,1000047,1947,1972,25,55,7,48,1,fbs,FBS Independents,22,,0.0,,
-Randolph Macon,unresolved,,,1946,1957,12,12,0,12,0,,,1,,0.0,,
-Redlands,unresolved,,,1948,1949,2,2,0,2,0,,,1,,0.0,,
+Randolph Macon,unresolved,,,1946,1957,12,12,0,12,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Redlands,unresolved,,,1948,1949,2,2,0,2,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Rhode Island,records_matched,Rhode Island,227,1946,1979,34,46,4,42,34,fcs;ii;ii/iii,Pre-classification Independents;Yankee,6,,0.0,,
 Rice,records_matched,Rice,242,1946,1979,34,355,204,151,34,fbs,Southwest,51,,0.0,,
 Richmond,records_matched,Richmond,257,1946,1979,34,344,162,182,34,fbs,FBS Independents;Southern,53,,0.0,,
-Ripon,unresolved,,,1949,1950,2,2,0,2,0,,,1,,0.0,,
-Rochester (NY),unresolved,,,1946,1946,1,1,1,0,0,,,1,,0.0,,
-Rockhurst,unresolved,,,1948,1948,1,1,0,1,0,,,1,,0.0,,
-Rollins,unresolved,,,1946,1949,4,9,3,6,0,,,6,,0.0,,
+Ripon,unresolved,,,1949,1950,2,2,0,2,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Rochester (NY),unresolved,,,1946,1946,1,1,1,0,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Rockhurst,unresolved,,,1948,1948,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Rollins,unresolved,,,1946,1949,4,9,3,6,0,,,6,,0.0,small_college,unclassified in every staged game and carried by no record line
 Rutgers,records_matched,Rutgers,164,1946,1979,34,325,165,160,34,fbs,FBS Independents;Middle Atlantic University;Middle Three,45,,0.0,,
 SE Louisiana,records_matched,SE Louisiana,2545,1949,1979,14,23,9,14,34,ii;ii/iii,Gulf South;Gulf States;Independent DII,10,,0.0,,
 SMU,records_matched,SMU,2567,1946,1979,34,355,180,175,34,fbs,Southwest,52,,0.0,,
 Sacramento State,records_matched,Sacramento State,16,1968,1977,5,5,0,5,26,ii/iii,Far Western,4,,0.0,,
-Saint Francis,unresolved,,,1948,1948,1,1,1,0,0,,,1,San Francisco,0.846,,
+Saint Francis,unresolved,,,1948,1948,1,1,1,0,0,,,1,San Francisco,0.846,small_college,unclassified in every staged game and carried by no record line
 Saint Louis,records_matched,Saint Louis,1000050,1946,1949,4,40,23,17,4,fbs,Missouri Valley,20,,0.0,,
 Saint Mary's (CA),records_matched,Saint Mary's (CA),1000051,1946,1950,5,49,16,33,5,fbs,FBS Independents,21,,0.0,,
 Sam Houston,registry_matched,Sam Houston,,1948,1950,2,2,0,2,0,,,2,,0.0,,
 Samford,records_matched,Samford,2535,1961,1969,8,8,3,5,26,ii/iii,College Division Independents,3,,0.0,,
 San Diego,records_matched,San Diego,301,1958,1961,2,2,2,0,13,ii/iii,College Division Independents,2,,0.0,,
-San Diego Marines,unresolved,,,1954,1964,5,5,1,4,0,,,3,,0.0,,
-San Diego Navy,unresolved,,,1951,1956,6,13,1,12,0,,,9,,0.0,,
+San Diego Marines,unresolved,,,1954,1964,5,5,1,4,0,,,3,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
+San Diego Navy,unresolved,,,1951,1956,6,13,1,12,0,,,9,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
 San Diego State,records_matched,San Diego State,21,1946,1979,31,155,90,65,34,fbs;ii,California Collegiate Athletic;FBS Independents;Independent DII;PCAA;Western Athletic,39,,0.0,,
 San Francisco,records_matched,San Francisco,1000004,1946,1951,6,58,32,26,6,fbs,FBS Independents,25,,0.0,,
-San Francisco State,unresolved,,,1969,1976,2,2,0,2,0,,,2,,0.0,,
+San Francisco State,unresolved,,,1969,1976,2,2,0,2,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 San José State,records_matched,San José State,23,1946,1979,34,326,137,189,34,fbs;ii,California Collegiate Athletic;FBS Independents;PCAA,49,,0.0,,
-San Pedro A.C.,unresolved,,,1948,1948,1,1,0,1,0,,,1,,0.0,,
+San Pedro A.C.,unresolved,,,1948,1948,1,1,0,1,0,,,1,,0.0,exhibition,"unclassified in every staged game and carried by no record line; an athletic club, not a college programme"
 Santa Clara,records_matched,Santa Clara,1000003,1946,1979,21,94,27,67,7,fbs,FBS Independents,30,,0.0,,
-Scranton,unresolved,,,1946,1958,4,6,2,4,0,,,5,,0.0,,
-Shepherd,unresolved,,,1953,1953,1,1,0,1,0,,,1,,0.0,,
+Scranton,unresolved,,,1946,1958,4,6,2,4,0,,,5,,0.0,small_college,unclassified in every staged game and carried by no record line
+Shepherd,unresolved,,,1953,1953,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 South Carolina,records_matched,South Carolina,2579,1946,1979,34,346,184,162,34,fbs,ACC;FBS Independents;Southern,47,,0.0,,
 South Carolina State,records_matched,South Carolina State,2569,1977,1977,1,1,0,1,34,ii,MEAC,1,,0.0,,
 South Dakota,records_matched,South Dakota,233,1946,1978,21,26,4,22,34,ii;ii/iii,North Central,10,,0.0,,
@@ -309,19 +309,19 @@ South Dakota State,records_matched,South Dakota State,2571,1947,1978,17,20,4,16,
 Southern,records_matched,Southern,2582,1977,1977,1,11,4,7,34,fbs,SWAC,11,,0.0,,
 Southern Illinois,records_matched,Southern Illinois,79,1962,1979,18,122,58,64,34,fbs;ii/iii,College Division Independents;FBS Independents;Missouri Valley,30,,0.0,,
 Southern Miss,records_matched,Southern Miss,2572,1946,1979,34,232,95,137,34,fbs;ii;ii/iii,FBS Independents;Gulf States;Pre-classification Independents,50,,0.0,,
-Southwestern (Kansas),unresolved,,,1948,1948,1,1,1,0,0,,,1,,0.0,,
-Southwestern Oklahoma State,unresolved,,,1950,1954,2,2,0,2,0,,,1,,0.0,,
-Southwestern U,unresolved,,,1946,1947,2,3,0,3,0,,,3,,0.0,,
-Springfield,unresolved,,,1947,1954,5,6,1,5,0,,,5,,0.0,,
-St. Ambrose,unresolved,,,1946,1959,2,2,0,2,0,,,2,,0.0,,
-St. Bonaventure,unresolved,,,1946,1950,5,13,5,8,0,,,8,,0.0,,
-St. Joseph's (IN),unresolved,,,1964,1964,1,1,0,1,0,,,1,,0.0,,
-St. Joseph's (Pennsylvania),unresolved,,,1968,1968,1,1,0,1,0,,,1,,0.0,,
-St. Vincent's (Pennsylvania),unresolved,,,1949,1950,2,2,1,1,0,,,2,,0.0,,
+Southwestern (Kansas),unresolved,,,1948,1948,1,1,1,0,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Southwestern Oklahoma State,unresolved,,,1950,1954,2,2,0,2,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Southwestern U,unresolved,,,1946,1947,2,3,0,3,0,,,3,,0.0,small_college,unclassified in every staged game and carried by no record line
+Springfield,unresolved,,,1947,1954,5,6,1,5,0,,,5,,0.0,small_college,unclassified in every staged game and carried by no record line
+St. Ambrose,unresolved,,,1946,1959,2,2,0,2,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
+St. Bonaventure,unresolved,,,1946,1950,5,13,5,8,0,,,8,,0.0,small_college,unclassified in every staged game and carried by no record line
+St. Joseph's (IN),unresolved,,,1964,1964,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+St. Joseph's (Pennsylvania),unresolved,,,1968,1968,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+St. Vincent's (Pennsylvania),unresolved,,,1949,1950,2,2,1,1,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 Stanford,records_matched,Stanford,24,1946,1979,34,355,203,152,34,fbs,AAWU;Pac-10;Pac-8;Pacific,42,,0.0,,
-Stephen F. Austin,unresolved,,,1947,1979,6,7,2,5,0,,,4,,0.0,,
+Stephen F. Austin,unresolved,,,1947,1979,6,7,2,5,0,,,4,,0.0,small_college,unclassified in every staged game and carried by no record line
 Stetson,records_matched,Stetson,56,1951,1956,6,14,6,8,11,ii/iii,College Division Independents;Pre-classification Independents,10,,0.0,,
-Sul Ross State,unresolved,,,1946,1963,8,10,3,7,0,,,4,,0.0,,
+Sul Ross State,unresolved,,,1946,1963,8,10,3,7,0,,,4,,0.0,small_college,unclassified in every staged game and carried by no record line
 Syracuse,records_matched,Syracuse,183,1946,1979,34,341,169,172,34,fbs,FBS Independents,58,,0.0,,
 TCU,records_matched,TCU,2628,1946,1979,34,357,156,201,34,fbs,Southwest,48,,0.0,,
 Tampa,records_matched,Tampa,1000056,1951,1974,21,99,58,41,7,fbs,FBS Independents,47,,0.0,,
@@ -331,23 +331,23 @@ Tennessee State,records_matched,Tennessee State,2634,1972,1979,8,18,10,8,29,fbs;
 Tennessee Tech,records_matched,Tennessee Tech,2635,1946,1979,20,27,6,21,34,fcs;ii;ii/iii,OVC;Pre-classification Independents,12,,0.0,,
 Texas,records_matched,Texas,251,1946,1979,34,369,203,166,34,fbs,Southwest,51,,0.0,,
 Texas A&M,records_matched,Texas A&M,245,1946,1979,34,357,155,202,34,fbs,Southwest,50,,0.0,,
-Texas A&M-Corpus Christi,unresolved,,,1948,1957,5,6,2,4,0,,,2,,0.0,,
-Texas A&M-Kingsville,unresolved,,,1969,1977,4,4,1,3,0,,,3,,0.0,,
-Texas Lutheran,unresolved,,,1977,1977,1,1,1,0,0,,,1,Texas Southern,0.857,,
+Texas A&M-Corpus Christi,unresolved,,,1948,1957,5,6,2,4,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
+Texas A&M-Kingsville,unresolved,,,1969,1977,4,4,1,3,0,,,3,,0.0,small_college,unclassified in every staged game and carried by no record line
+Texas Lutheran,unresolved,,,1977,1977,1,1,1,0,0,,,1,Texas Southern,0.857,small_college,unclassified in every staged game and carried by no record line
 Texas Southern,records_matched,Texas Southern,2640,1977,1977,1,11,7,4,33,fbs,SWAC,11,,0.0,,
 Texas State,records_matched,Texas State,326,1977,1977,1,1,1,0,34,ii,Lone Star,1,,0.0,,
 Texas Tech,records_matched,Texas Tech,2641,1946,1979,34,368,194,174,34,fbs,Border;FBS Independents;Southwest,47,,0.0,,
 Texas-Arlington,records_matched,Texas-Arlington,1000058,1960,1979,19,121,54,67,9,fbs,FBS Independents;Southland,27,,0.0,,
 The Citadel,records_matched,The Citadel,2643,1946,1979,34,341,174,167,34,fbs,Southern,49,,0.0,,
 Toledo,records_matched,Toledo,2649,1946,1979,24,198,96,102,34,fbs;ii/iii;iii,Mid-American;Ohio;Pre-classification Independents,33,,0.0,,
-Trinity (Texas),unresolved,,,1947,1972,22,65,31,34,0,,,15,,0.0,,
+Trinity (Texas),unresolved,,,1947,1972,22,65,31,34,0,,,15,,0.0,small_college,unclassified in every staged game and carried by no record line
 Troy,records_matched,Troy,2653,1977,1977,1,1,1,0,10,ii,Gulf South,1,,0.0,,
-Truman State,unresolved,,,1949,1979,2,2,0,2,0,,,2,,0.0,,
-Tufts,unresolved,,,1946,1966,4,4,0,4,0,,,1,,0.0,,
+Truman State,unresolved,,,1949,1979,2,2,0,2,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
+Tufts,unresolved,,,1946,1966,4,4,0,4,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Tulane,records_matched,Tulane,2655,1946,1979,34,351,183,168,34,fbs,FBS Independents;SEC,64,,0.0,,
 Tulsa,records_matched,Tulsa,202,1946,1979,34,357,183,174,34,fbs,Missouri Valley,59,,0.0,,
-Tuskegee,unresolved,,,1977,1977,1,1,0,1,0,,,1,,0.0,,
-U.S. International,unresolved,,,1971,1971,1,1,0,1,0,,,1,,0.0,,
+Tuskegee,unresolved,,,1977,1977,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+U.S. International,unresolved,,,1971,1971,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 UC Davis,records_matched,UC Davis,302,1972,1978,3,3,0,3,34,ii;ii/iii,Far Western,1,,0.0,,
 UCLA,records_matched,UCLA,26,1946,1979,34,350,195,155,34,fbs,AAWU;Pac-10;Pac-8;Pacific,49,,0.0,,
 UConn,records_matched,UConn,41,1946,1979,33,104,33,71,34,fcs;ii/iii,New England;Yankee,18,,0.0,,
@@ -356,8 +356,8 @@ UNLV,records_matched,UNLV,2439,1970,1979,9,32,12,20,12,fbs;ii,FBS Independents;I
 USC,records_matched,USC,30,1946,1979,34,365,204,161,34,fbs,AAWU;Pac-10;Pac-8;Pacific,49,,0.0,,
 UT Martin,records_matched,UT Martin,2630,1967,1977,2,2,2,0,34,ii;ii/iii,Gulf South;Volunteer State Athletic,2,,0.0,,
 UTEP,records_matched,UTEP,2638,1946,1979,34,351,198,153,34,fbs,Border;FBS Independents;Western Athletic,48,,0.0,,
-Union (Tennessee),unresolved,,,1947,1947,1,1,0,1,0,,,1,,0.0,,
-University of Mexico,unresolved,,,1958,1960,3,5,1,4,0,,,3,,0.0,,
+Union (Tennessee),unresolved,,,1947,1947,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+University of Mexico,unresolved,,,1958,1960,3,5,1,4,0,,,3,,0.0,small_college,unclassified in every staged game and carried by no record line; a university outside US college football
 Utah,records_matched,Utah,254,1946,1979,34,356,182,174,34,fbs,Mountain State;Skyline;Western Athletic,49,,0.0,,
 Utah State,records_matched,Utah State,328,1946,1979,34,356,153,203,34,fbs,FBS Independents;Mountain State;PCAA;Skyline,51,,0.0,,
 VMI,records_matched,VMI,2678,1946,1979,34,346,130,216,34,fbs,Southern,53,,0.0,,
@@ -365,41 +365,41 @@ Vanderbilt,records_matched,Vanderbilt,238,1946,1979,34,353,185,168,34,fbs,SEC,57
 Villanova,records_matched,Villanova,222,1946,1979,34,338,143,195,34,fbs,FBS Independents,71,,0.0,,
 Virginia,records_matched,Virginia,258,1946,1979,34,344,188,156,34,fbs,ACC;FBS Independents,43,,0.0,,
 Virginia Tech,records_matched,Virginia Tech,259,1946,1979,34,349,165,184,34,fbs,FBS Independents;Southern,50,,0.0,,
-WVU Tech,unresolved,,,1954,1957,2,2,1,1,0,,,1,,0.0,,
+WVU Tech,unresolved,,,1954,1957,2,2,1,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Wagner,records_matched,Wagner,2681,1946,1946,1,1,0,1,34,ii/iii,Pre-classification Independents,1,,0.0,,
 Wake Forest,records_matched,Wake Forest,154,1946,1979,34,349,141,208,34,fbs,ACC;Southern,45,,0.0,,
-Washburn,unresolved,,,1946,1946,1,1,1,0,0,,,1,,0.0,,
+Washburn,unresolved,,,1946,1946,1,1,1,0,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Washington,records_matched,Washington,264,1946,1979,34,352,194,158,34,fbs,AAWU;Pac-10;Pac-8;Pacific,48,,0.0,,
-Washington & Jefferson,unresolved,,,1946,1949,2,2,0,2,0,,,2,,0.0,,
-Washington St. Louis,unresolved,,,1952,1958,5,5,3,2,0,,,2,,0.0,,
+Washington & Jefferson,unresolved,,,1946,1949,2,2,0,2,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
+Washington St. Louis,unresolved,,,1952,1958,5,5,3,2,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 Washington State,records_matched,Washington State,265,1946,1979,34,346,152,194,34,fbs,AAWU;FBS Independents;Pac-10;Pac-8;Pacific,42,,0.0,,
 Washington and Lee,records_matched,Washington and Lee,2688,1946,1956,10,80,29,51,8,fbs,Southern,27,,0.0,,
-Wayne State,unresolved,,,1946,1954,8,16,3,13,0,,,8,,0.0,,
-Waynesburg,unresolved,,,1946,1954,8,8,0,8,0,,,2,,0.0,,
+Wayne State,unresolved,,,1946,1954,8,16,3,13,0,,,8,,0.0,ambiguous,unclassified in every staged game and carried by no record line; which Wayne State cannot be settled from the archive
+Waynesburg,unresolved,,,1946,1954,8,8,0,8,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 Weber State,records_matched,Weber State,2692,1962,1979,16,28,12,16,18,fcs;ii;ii/iii,Big Sky;College Division Independents,9,,0.0,,
-West Chester,unresolved,,,1958,1973,12,15,1,14,0,,,4,,0.0,,
+West Chester,unresolved,,,1958,1973,12,15,1,14,0,,,4,,0.0,small_college,unclassified in every staged game and carried by no record line
 West Texas,records_matched,West Texas,2704,1946,1979,34,347,174,173,34,fbs,Border;FBS Independents;Missouri Valley,51,,0.0,,
 West Virginia,records_matched,West Virginia,277,1946,1979,34,355,181,174,34,fbs,FBS Independents;Southern,58,,0.0,,
-West Virginia Wesleyan,unresolved,,,1948,1948,1,1,0,1,0,,,1,,0.0,,
+West Virginia Wesleyan,unresolved,,,1948,1948,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Western Carolina,records_matched,Western Carolina,2717,1971,1979,9,48,23,25,34,fbs;ii;ii/iii,College Division Independents;Independent DII;Southern,16,,0.0,,
-Western Colorado,unresolved,,,1946,1958,8,12,3,9,0,,,5,,0.0,,
+Western Colorado,unresolved,,,1946,1958,8,12,3,9,0,,,5,,0.0,small_college,unclassified in every staged game and carried by no record line
 Western Illinois,records_matched,Western Illinois,2710,1973,1979,7,12,4,8,34,ii,Independent DII;Mid-Continent,6,,0.0,,
 Western Kentucky,records_matched,Western Kentucky,98,1963,1979,10,14,7,7,34,fcs,OVC,8,,0.0,,
 Western Michigan,records_matched,Western Michigan,2711,1947,1979,21,187,95,92,34,fbs;ii/iii,Mid-American;Pre-classification Independents,32,,0.0,,
-Western New Mexico,unresolved,,,1946,1952,5,6,2,4,0,,,2,,0.0,,
-Western Reserve,unresolved,,,1947,1951,5,11,4,7,0,,,6,,0.0,,
-White Sands,unresolved,,,1949,1949,1,1,0,1,0,,,1,,0.0,,
-Whittier,unresolved,,,1948,1969,6,6,3,3,0,,,2,,0.0,,
+Western New Mexico,unresolved,,,1946,1952,5,6,2,4,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
+Western Reserve,unresolved,,,1947,1951,5,11,4,7,0,,,6,,0.0,small_college,unclassified in every staged game and carried by no record line
+White Sands,unresolved,,,1949,1949,1,1,0,1,0,,,1,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
+Whittier,unresolved,,,1948,1969,6,6,3,3,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 Wichita State,records_matched,Wichita State,1000063,1946,1979,34,346,177,169,34,fbs,Missouri Valley,63,,0.0,,
-Willamette,unresolved,,,1946,1949,3,3,1,2,0,,,2,,0.0,,
+Willamette,unresolved,,,1946,1949,3,3,1,2,0,,,2,,0.0,small_college,unclassified in every staged game and carried by no record line
 William & Mary,records_matched,William & Mary,2729,1946,1979,34,351,152,199,34,fbs,FBS Independents;Southern,54,,0.0,,
-Williams,unresolved,,,1950,1950,1,1,0,1,0,,,1,,0.0,,
-Williams Field,unresolved,,,1946,1946,1,2,1,1,0,,,2,,0.0,,
+Williams,unresolved,,,1950,1950,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Williams Field,unresolved,,,1946,1946,1,2,1,1,0,,,2,,0.0,service_team,unclassified in every staged game and carried by no record line; a military or base side
 Wisconsin,records_matched,Wisconsin,275,1946,1979,34,333,181,152,34,fbs,Big Ten;Western,49,,0.0,,
-Wisconsin-Milwaukee,unresolved,,,1974,1974,1,1,0,1,0,,,1,,0.0,,
-Wittenberg,unresolved,,,1966,1966,1,1,0,1,0,,,1,,0.0,,
+Wisconsin-Milwaukee,unresolved,,,1974,1974,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
+Wittenberg,unresolved,,,1966,1966,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Wofford,records_matched,Wofford,2747,1946,1979,34,85,35,50,11,ii/iii,South Carolina Little Three,9,,0.0,,
-Wooster,unresolved,,,1948,1948,1,1,0,1,0,,,1,,0.0,,
+Wooster,unresolved,,,1948,1948,1,1,0,1,0,,,1,,0.0,small_college,unclassified in every staged game and carried by no record line
 Wyoming,records_matched,Wyoming,2751,1946,1979,34,352,162,190,34,fbs,Mountain State;Skyline;Western Athletic,56,,0.0,,
 Xavier,records_matched,Xavier,1000064,1946,1973,26,176,72,104,15,fbs,FBS Independents,30,,0.0,,
 Yale,records_matched,Yale,43,1946,1979,34,305,211,94,34,fbs,FBS Independents;Ivy,24,,0.0,,
