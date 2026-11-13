@@ -518,6 +518,12 @@
          border-radius: 3px; padding: 1px 5px; margin-left: 6px;
          white-space: nowrap; }
   .tag.cup { color: var(--amber); border-color: var(--amber-dim); }
+  /* A game being played right now. It takes the red the page already uses
+     for a loss rather than a colour of its own, and it is the only tag that
+     is not quiet: a reader scanning the slate is looking for exactly this. */
+  .tag.now { color: var(--red-ink); border-color: var(--red-ink);
+             font-weight: 600; }
+  .card.live { border-color: var(--red-ink); }
   /* Short records and rating columns must not wrap: without this "53–29"
      breaks after the dash and a record reads as two numbers. The table
      already scrolls; wrapping is what stops that being used. */
@@ -562,6 +568,7 @@
   <section class="panel" id="scoreboard" hidden>
     <div class="days" id="days"></div>
     <div class="filters" id="slate-filters"></div>
+    <p class="note" id="live-note" hidden></p>
     <!-- The slate and the rail sit side by side on a wide screen and stack
          on a narrow one. The rail is SECOND in the markup so that reading
          order and tab order both reach the games first. -->
@@ -636,7 +643,7 @@
 
 <script src="nba_loader.js?v=77aae2564765"></script>
 <script src="ncaambb_app.js?v=4828bd5e0199"></script>
-<script src="nba_app.js?v=bda8f6289f60"></script>
+<script src="nba_app.js?v=168c66eec5f3"></script>
 <script src="game_page.js?v=fb1a02a0b1c5"></script>
 <script>
 (function () {
@@ -1161,6 +1168,95 @@
   }
 
   /* ------------------------------------------------------------------
+   * Tonight's scores.
+   *
+   * `ui/data/nba_live.json` is written every ten minutes through the evening
+   * by .github/workflows/nba-live-scores.yml. It lives OUTSIDE ui/data/nba/
+   * because src/nba/publish.py swaps that whole directory on every refresh
+   * and would delete anything another job wrote into it -- the same reason
+   * nba_logo_assets.json sits outside it.
+   *
+   * Fetched lazily and re-fetched on a timer, like the marks, and for the
+   * same reason: nothing here may sit on the path to the first score. A
+   * failure is silent. The page without it is the page as it was before it,
+   * which is a slate of tip-off times -- and until the job has run once, the
+   * file is not there at all.
+   *
+   * NO `?v=` STAMP, deliberately. Every other data file here is stamped
+   * because a cached JS MODULE is missing a function the fresh HTML calls.
+   * This one is the opposite case: it is pure data whose whole point is to
+   * be newer than the page, and a stamp baked into the HTML would pin it to
+   * whatever was current when the site was last deployed. `cache: no-store`
+   * is what keeps it fresh instead.
+   * ---------------------------------------------------------------- */
+
+  var LIVE_SOURCE = 'data/nba_live.json';
+  var LIVE_POLL_MS = 60000;
+  var liveState = { snapshot: null, loading: false, at: 0, timer: null };
+
+  function fetchLive(force) {
+    if (liveState.loading) return;
+    if (!force && liveState.at && Date.now() - liveState.at < LIVE_POLL_MS) {
+      return;
+    }
+    liveState.loading = true;
+    fetch(LIVE_SOURCE, { cache: 'no-store' }).then(function (response) {
+      if (!response.ok) throw new Error(String(response.status));
+      return response.json();
+    }).then(function (snapshot) {
+      liveState.loading = false;
+      liveState.at = Date.now();
+      liveState.snapshot = snapshot;
+      render();
+    }).catch(function () {
+      liveState.loading = false;
+      // Remembered as an attempt, so a missing file is not refetched every
+      // sixty seconds for as long as the tab is open.
+      liveState.at = Date.now();
+    });
+  }
+
+  /* Poll only while the slate is what is being looked at, and only while the
+   * tab is in front. A page left open in a background tab overnight should
+   * not fetch this 500 times. */
+  function pollLive() {
+    if (liveState.timer) {
+      window.clearInterval(liveState.timer);
+      liveState.timer = null;
+    }
+    if (state.tab !== 'home') return;
+    liveState.timer = window.setInterval(function () {
+      if (document.hidden) return;
+      fetchLive(true);
+    }, LIVE_POLL_MS);
+  }
+
+  /* What the snapshot is worth saying out loud. Nothing at all where there
+   * is no game of tonight's on the day being looked at: a line about live
+   * scores over a slate from 2014 is noise. */
+  function liveNote(matched) {
+    var host = el('live-note');
+    if (!host) return;
+    var snapshot = liveState.snapshot;
+    if (!snapshot || !matched) {
+      host.hidden = true;
+      text(host, '');
+      return;
+    }
+    var fresh = app.liveFreshness(snapshot);
+    var age = !fresh.known ? 'at an unknown time'
+      : fresh.minutes < 1 ? 'just now'
+      : fresh.minutes < 60 ? fresh.minutes + ' minutes ago'
+      : Math.floor(fresh.minutes / 60) + ' hours ago';
+    host.hidden = false;
+    text(host, fresh.stale
+      ? 'Live scores last updated ' + age + '. Games still being played are '
+        + 'not shown until they update again.'
+      : 'Live scores updated ' + age + '. They do not move the ratings, '
+        + 'which are rebuilt from the archive each night.');
+  }
+
+  /* ------------------------------------------------------------------
    * The club marks.
    *
    * `ui/nba_logo_assets.json` lives OUTSIDE `ui/data/nba/`, because the
@@ -1321,14 +1417,17 @@
       if (game.wp_estimated) wp.title = 'An estimate: this game has not been '
         + 'played, and both clubs play before it.';
       row.appendChild(wp);
-      // A SCORE ONLY WHERE THERE IS ONE. The source writes an unplayed game
-      // 0-0 and the loader has already turned that into nothing; putting a
-      // zero back here is the whole trap.
-      row.appendChild(node('span', 'pts',
-        app.isFinal(game) ? String(game[pair[0] + '_points']) : ''));
+      // A SCORE ONLY WHERE THERE IS ONE, from the archive where it has
+      // settled the game and from tonight's snapshot where it has not.
+      row.appendChild(node('span', 'pts', app.shownScoreText(game, pair[0])));
       card.appendChild(row);
     });
+    if (app.isLive(game)) card.classList.add('live');
     var foot = node('div', 'foot');
+    // Said on the card as well as in the status line above it, because the
+    // status line of a game in progress is a clock, and a clock alone does
+    // not say that this is happening now rather than a scheduled tip-off.
+    if (app.isLive(game)) foot.appendChild(node('span', 'tag now', 'Live'));
     var label = app.typeLabel(game);
     if (label) {
       var tag = node('span', game.type === 'cup_final' ? 'tag cup' : 'tag',
@@ -1347,8 +1446,20 @@
   }
 
   function scoreboard(payload) {
+    // Tonight's scores, hung off the games they belong to before anything is
+    // drawn. The join is on the game key both files already carry, so
+    // nothing is matched on a name.
+    fetchLive(false);
+    pollLive();
+    app.attachLive(payload.games, liveState.snapshot);
     days(payload);
     slateFilters();
+    // Counted on THE DAY BEING LOOKED AT, not on the season: a line about
+    // live scores over a slate from 2014 is noise, and `days` is what has
+    // just decided which day that is.
+    liveNote(app.gamesOn(payload.games, state.day).filter(function (game) {
+      return Boolean(game.live);
+    }).length);
     var host = el('cards');
     host.innerHTML = '';
     var slate = app.sortGames(app.gamesOn(payload.games, state.day),

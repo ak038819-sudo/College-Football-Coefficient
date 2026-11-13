@@ -194,6 +194,22 @@ test('the live scoreboard prefers the network and keeps the last good copy',asyn
   assert.equal((await w.respond(makeRequest(url))).body,'fresher','the last scoreboard survives offline');
 });
 
+test("the NBA's live scoreboard prefers the network too",async()=>{
+  // It is a SEPARATE file from football's, because src/nba/publish.py swaps
+  // the whole of ui/data/nba/ on every refresh, and it carries no `?v=`
+  // stamp. Without being named as a live feed it falls to
+  // stale-while-revalidate, and the installed app draws a cached score over
+  // a game that has moved on.
+  let body='42-38';
+  const w=loadWorker({network:()=>makeResponse(body)});
+  const url=u('/ui/data/nba_live.json');
+  assert.equal((await w.respond(makeRequest(url))).body,'42-38');
+  body='61-58';
+  assert.equal((await w.respond(makeRequest(url))).body,'61-58','a cached scoreboard must not win');
+  w.scope.fetch=async()=>{throw new Error('offline');};
+  assert.equal((await w.respond(makeRequest(url))).body,'61-58','the last scoreboard survives offline');
+});
+
 test('requests a cache cannot answer honestly are passed straight through',async()=>{
   const w=loadWorker();
   assert.equal(await w.respond(makeRequest(u('/ui/x'),{method:'POST'})),undefined);

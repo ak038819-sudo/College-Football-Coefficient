@@ -364,7 +364,7 @@ function playerRatings(options) {
 }
 
 function site(overrides, schedule, standings, past, detail, folk, bracket,
-  marks, stats, rating) {
+  marks, stats, rating, live) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nba-page-'));
   const data = path.join(root, 'data', 'nba', 'seasons');
   fs.mkdirSync(data, { recursive: true });
@@ -469,6 +469,13 @@ function site(overrides, schedule, standings, past, detail, folk, bracket,
     fs.writeFileSync(path.join(root, 'nba_logo_assets.json'),
       JSON.stringify(marks === true ? logoMarks() : marks));
   }
+  // Tonight's scores are a file of their own OUTSIDE data/nba for the same
+  // reason the marks are: the refresh swaps that directory wholesale. A site
+  // without one is the ordinary case out of season, and the page must draw.
+  if (live) {
+    fs.writeFileSync(path.join(root, 'data', 'nba_live.json'),
+      JSON.stringify(live));
+  }
   copyAssets(UI, 'nba.html', root);
   return { root, manifest: payload };
 }
@@ -490,9 +497,9 @@ function settle(dom, ready, tries = 500) {
 }
 
 async function open(overrides, schedule, standings, hash, past, detail,
-  folk, bracket, marks, stats, rating) {
+  folk, bracket, marks, stats, rating, live) {
   const built = site(overrides, schedule, standings, past, detail, folk,
-    bracket, marks, stats, rating);
+    bracket, marks, stats, rating, live);
   const file = path.join(built.root, 'nba.html');
   const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
     // The hash is part of the URL the reader arrived with, so it is set here
@@ -2258,3 +2265,112 @@ test('the board rows split on status rather than carrying a label', () => {
     app.playerBoardRows(board, undefined, 'minutes')
       .map(row => row.player_id), [1966, 4066, 9001]);
 });
+
+
+/* ------------------------------------------------------------------
+ * Tonight's scores on the real page.
+ *
+ * These drive ui/nba.html with a `data/nba_live.json` on disk, because the
+ * merge living in a pure function proves nothing about whether the page
+ * fetches it, draws it, or says where it came from.
+ * ---------------------------------------------------------------- */
+
+function liveSnapshot(rows, minutesAgo) {
+  const at = new Date(Date.now() - (minutesAgo || 0) * 60000);
+  return {
+    source: 'espn-scoreboard',
+    sport: 'nba',
+    updated_at: at.toISOString().replace(/\.\d+Z$/, 'Z'),
+    days: ['2025-12-20'],
+    games: rows
+  };
+}
+
+/* A live row for g3, the unplayed game in the fixture slate. */
+function liveG3(options) {
+  const o = options || {};
+  return {
+    id: '3', game_key: 'g3',
+    state: o.state || 'in',
+    completed: o.completed === undefined ? false : o.completed,
+    detail: o.detail === undefined ? '5:21 - 3rd' : o.detail,
+    period: 3, clock: '5:21',
+    home: { id: 25, key: OKC, abbrev: 'OKC',
+            points: o.home === undefined ? 58 : o.home },
+    away: { id: 18, key: NYK, abbrev: 'NY',
+            points: o.away === undefined ? 61 : o.away }
+  };
+}
+
+async function openWithLive(live, hash) {
+  return open(null, null, null, hash || '', false, false, false, false,
+    false, false, false, live);
+}
+
+function cardAt(dom) {
+  return dom.window.document.querySelector('#cards .card');
+}
+
+test('the slate draws a score for a game being played right now', async () => {
+  // Without this the page shows a tip-off time for a game at halftime,
+  // because the archive it is drawn from is rebuilt from a source that runs
+  // about a day behind.
+  const dom = await openWithLive(liveSnapshot([liveG3()]));
+  await goToDay(dom, 20);
+  await settle(dom, () => cardAt(dom)
+    && cardAt(dom).querySelector('.status').textContent.includes('5:21'));
+  const card = cardAt(dom);
+  assert.match(card.querySelector('.status').textContent, /5:21 - 3rd/);
+  const points = [...card.querySelectorAll('.pts')].map(n => n.textContent);
+  assert.deepEqual(points, ['61', '58']);
+  assert.ok(card.classList.contains('live'));
+  assert.match(card.textContent, /Live/);
+  dom.window.close();
+});
+
+test('the page says when the live scores were last updated', async () => {
+  const dom = await openWithLive(liveSnapshot([liveG3()]));
+  await goToDay(dom, 20);
+  const note = dom.window.document.getElementById('live-note');
+  await settle(dom, () => note && !note.hidden);
+  assert.match(note.textContent, /Live scores updated/);
+  // And that they are not what the ratings are built from.
+  assert.match(note.textContent, /do not move the ratings/);
+  dom.window.close();
+});
+
+test('a day with no live game of its own says nothing about live scores',
+  async () => {
+    const dom = await openWithLive(liveSnapshot([liveG3()]));
+    // Day 16 is the Cup final, long settled and not in the snapshot.
+    await goToDay(dom, 16);
+    const note = dom.window.document.getElementById('live-note');
+    await settle(dom, () => note && note.hidden);
+    assert.equal(note.hidden, true);
+    dom.window.close();
+  });
+
+test('a stale snapshot draws no in-progress score and says why', async () => {
+  const stale = app.LIVE_STALE_AFTER_MINUTES + 5;
+  const dom = await openWithLive(liveSnapshot([liveG3()], stale));
+  await goToDay(dom, 20);
+  const card = cardAt(dom);
+  // The tip-off time, as before there was a live feed at all -- never the
+  // score the loop last managed to see.
+  assert.doesNotMatch(card.textContent, /5:21/);
+  assert.deepEqual([...card.querySelectorAll('.pts')].map(n => n.textContent),
+    ['', '']);
+  dom.window.close();
+});
+
+test('a page with no live file at all draws exactly as it did before',
+  async () => {
+    // Out of season, and until the job has run once, the file is not there.
+    const dom = await openWithLive(null);
+    await goToDay(dom, 20);
+    const card = cardAt(dom);
+    assert.deepEqual([...card.querySelectorAll('.pts')]
+      .map(n => n.textContent), ['', '']);
+    assert.equal(dom.window.document.getElementById('live-note').hidden, true);
+    dom.window.close();
+  });
