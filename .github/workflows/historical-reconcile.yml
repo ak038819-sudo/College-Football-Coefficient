@@ -224,6 +224,17 @@ jobs:
                             f"{row['staged_regular_games']} | "
                             f"{row['reference_regular_games']} | "
                             f"{row['findings']} |" for row in worst]
+          unmatched = Counter(
+              row['team_raw'] for row in flagged
+              if 'no_reference_line' in row['findings'])
+          if unmatched:
+              lines += ['', f'### {len(unmatched)} staged team names the '
+                        'records feed never carries', '',
+                        'These are the identity map\'s work list, not '
+                        'records to drop.', '',
+                        '| team | seasons |', '| --- | --- |']
+              lines += [f'| {name} | {count} |'
+                        for name, count in unmatched.most_common(25)]
           lines += ['', 'Both feeds are collegefootballdata.com, so agreement '
                     'means the import is faithful to the provider, not that '
                     'the history is complete. Nothing is promoted by this '

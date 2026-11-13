@@ -65,7 +65,13 @@ the same count with different results, a team with a record line and no
 staged games, and a staged team the records feed never mentions.
 
 That last one is not a fault to be fixed but the input to the identity map:
-an unmatched name is reported, never dropped and never guessed at.
+an unmatched name is reported, never dropped and never guessed at, and the
+summary ranks those names by how many seasons they appear in.
+
+A record line of all zeroes beside nothing staged is the two feeds
+**agreeing** that a team did not play — the provider carries lines for
+programs it has no fixtures for — so it is counted apart
+(`empty_reference_lines`) and is not a finding.
 
 **It is a cross-feed check, not an independent one.** Both feeds are
 collegefootballdata.com, so agreement means the import is faithful to the
