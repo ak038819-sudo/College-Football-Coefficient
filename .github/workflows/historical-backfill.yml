@@ -1,0 +1,238 @@
+# Phase 3: the 1946-1979 backfill, one batch a run.
+#
+# WHY A WORKFLOW AND NOT A SCRIPT RUN BY HAND: api.collegefootballdata.com is
+# unreachable from the containers this repository is worked in, and the key is
+# a repository secret and nothing else. A runner is the only place the import
+# can happen at all.
+#
+# WHY THE STAGING DATABASE IS AN ARTIFACT: the importer checkpoints per season
+# and season type and skips what is already complete, so a batch that stops
+# halfway is resumable -- but only if the database it checkpointed into
+# outlives the runner. It is carried from the newest run of this workflow to
+# the next, and it is UPLOADED EVEN WHEN THE IMPORT FAILS, which is the run
+# where resumability actually matters. It is deliberately not committed: the
+# plan keeps staging records and raw payloads out of Git.
+#
+# NOTHING HERE PROMOTES ANYTHING. No production table is opened, no rating is
+# built, and `ui/` is untouched, so no deploy follows. Promotion waits on the
+# source reconciliation and the identity map that docs/historical-expansion-
+# phase3.md requires, and on Austin's own say-so.
+name: Historical backfill (1946-1979)
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "First season of this batch (1946-1979)."
+        type: string
+        default: "1948"
+      end:
+        description: "Last season of this batch (1946-1979)."
+        type: string
+        default: "1959"
+      force:
+        description: "Re-fetch seasons already marked complete."
+        type: boolean
+        default: false
+      fresh:
+        description: "Start from an empty staging database, carrying nothing
+          forward. For a rehearsal; a batch run this way resumes nothing,
+          audits only itself, and is kept under its own artifact name so the
+          cumulative archive is not replaced by it."
+        type: boolean
+        default: false
+      pause:
+        description: "Seconds between requests."
+        type: string
+        default: "1"
+
+# NOT cancel-in-progress: a cancelled import loses the seasons fetched since
+# its last checkpoint upload, and the provider has already served them.
+concurrency:
+  group: historical-backfill
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # To list and download this workflow's own earlier staging artifact.
+  actions: read
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+      GH_TOKEN: ${{ github.token }}
+      STAGING: ${{ github.workspace }}/staging/historical_staging.db
+      REPORT: ${{ github.workspace }}/report
+      # The chain. Only a run that carried this forward may replace it: a
+      # rehearsal uploads under ARTIFACT_REHEARSAL instead, because the carry
+      # step takes the NEWEST artifact of this name, and a rehearsal landing
+      # in the chain would silently drop every batch before it and have the
+      # provider asked for them all again.
+      ARTIFACT: historical-staging-db
+      ARTIFACT_REHEARSAL: historical-staging-rehearsal
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      # No pip install: both scripts are standard library only, which is what
+      # lets this workflow run without the pipeline's bootstrap.
+
+      - name: Check the credential and the range
+        run: |
+          set -o pipefail
+          if [ -z "$CFBD_API_KEY" ]; then
+            echo "::error::CFBD_API_KEY repository secret is missing"
+            exit 1
+          fi
+          # Checked here rather than left to the importer, because the range
+          # decides what is fetched and a typo would otherwise be found after
+          # the provider had been asked for it.
+          python - <<'PY'
+          import os
+          import sys
+          start, end = os.environ['START'], os.environ['END']
+          try:
+              first, last = int(start), int(end)
+          except ValueError:
+              sys.exit(f'::error::start and end must be years: {start}, {end}')
+          if not 1946 <= first <= last <= 1979:
+              sys.exit('::error::Phase 3 is 1946-1979, and start must not be '
+                       f'after end: got {first}-{last}')
+          print(f'Batch {first}-{last}')
+          PY
+        env:
+          START: ${{ inputs.start }}
+          END: ${{ inputs.end }}
+
+      - name: Carry the staging database forward
+        id: carry
+        run: |
+          set -o pipefail
+          mkdir -p "$(dirname "$STAGING")"
+          if [ "$FRESH" = "true" ]; then
+            echo "Starting empty: this run was dispatched with fresh=true."
+            echo "restored=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # The newest artifact of this name that has not expired. A repo with
+          # none is the first run, which is not a failure.
+          id=$(gh api \
+            "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$ARTIFACT&per_page=1" \
+            --jq '.artifacts[] | select(.expired == false) | .id' | head -1)
+          if [ -z "$id" ]; then
+            echo "No staging database has been uploaded yet; starting empty."
+            echo "restored=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Guarded rather than chained: a download that fails silently would
+          # look exactly like a first run and would re-fetch every season the
+          # archive already holds.
+          if ! gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" \
+               > "$RUNNER_TEMP/staging.zip"; then
+            echo "::error::artifact $id could not be downloaded"
+            exit 1
+          fi
+          if ! unzip -o -q "$RUNNER_TEMP/staging.zip" -d "$(dirname "$STAGING")"; then
+            echo "::error::artifact $id is not a readable zip"
+            exit 1
+          fi
+          if [ ! -f "$STAGING" ]; then
+            echo "::error::artifact $id holds no historical_staging.db"
+            exit 1
+          fi
+          echo "restored=$id" >> "$GITHUB_OUTPUT"
+          python - <<'PY'
+          import os
+          import sqlite3
+          path = os.environ['STAGING']
+          db = sqlite3.connect(f'file:{path}?mode=ro', uri=True)
+          seasons = db.execute(
+              "SELECT COUNT(*) FROM archive_fetches WHERE status = 'complete'"
+          ).fetchone()[0]
+          games = db.execute('SELECT COUNT(*) FROM archive_games').fetchone()[0]
+          print(f'Carried forward: {games} games, {seasons} completed '
+                'season-and-type partitions.')
+          PY
+        env:
+          FRESH: ${{ inputs.fresh }}
+
+      - name: Import the batch into staging
+        run: |
+          set -o pipefail
+          python scripts/import_historical_archive.py \
+            --db "$STAGING" \
+            --start "${{ inputs.start }}" \
+            --end "${{ inputs.end }}" \
+            --pause "${{ inputs.pause }}" \
+            ${{ inputs.force && '--force' || '' }} \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the staging database, whether or not the import finished
+        # ALWAYS. A run that stopped on 1954 has 1946-1953 in it, and throwing
+        # that away would mean asking the provider for them again.
+        #
+        # A REHEARSAL IS KEPT OUT OF THE CHAIN. `fresh` started from nothing,
+        # so its database holds only its own batch; published under the chain
+        # name it would be what the next ordinary dispatch resumed from.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.fresh && 'historical-staging-rehearsal'
+                                 || 'historical-staging-db' }}
+          path: ${{ github.workspace }}/staging/historical_staging.db
+          retention-days: 90
+          if-no-files-found: error
+          overwrite: true
+
+      - name: Audit what is now staged
+        if: always()
+        run: |
+          set -o pipefail
+          if [ ! -f "$STAGING" ]; then
+            echo "No staging database to audit."
+            exit 0
+          fi
+          python scripts/audit_historical_backfill.py \
+            --db "$STAGING" \
+            --out "$REPORT" \
+            --start "${{ inputs.start }}" \
+            --end "${{ inputs.end }}" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+          # The verdict a reader wants is which partitions are blocked and
+          # why, which the CSV holds a row each for.
+          python - <<'PY'
+          import csv
+          import os
+          from pathlib import Path
+          rows = list(csv.DictReader(
+              (Path(os.environ['REPORT']) / 'backfill_readiness.csv').open()))
+          blocked = [row for row in rows if row['blockers']]
+          lines = ['', f'### {len(rows) - len(blocked)} of {len(rows)} '
+                   'partitions passed the structural checks', '']
+          if blocked:
+              lines += ['| season | type | staged | blockers |',
+                        '| --- | --- | --- | --- |']
+              lines += [f"| {row['season']} | {row['season_type']} | "
+                        f"{row['staged_count']} | {row['blockers']} |"
+                        for row in blocked]
+          lines += ['', 'Passing these checks is NOT a claim that a season is '
+                    'complete or fit for ratings. Nothing is promoted by this '
+                    'run.', '']
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+              out.write('\n'.join(lines))
+          PY
+
+      - name: Publish the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: historical-backfill-report-${{ inputs.start }}-${{ inputs.end }}
+          path: ${{ env.REPORT }}
+          retention-days: 90
+          if-no-files-found: ignore
+          overwrite: true
