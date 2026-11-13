@@ -73,6 +73,24 @@ def _statistics_seasons(manifest):
     return found
 
 
+def _rated_seasons(manifest):
+    """The seasons whose coverage row says the Player Elo board was drawn.
+
+    The same one-directional comparison the team statistics get, and for
+    the same reason: these ratings have no `files` key of their own, so a
+    refresh whose Net Points step failed would otherwise publish the same
+    file list with every rating gone.
+    """
+    found = set()
+    for row in (manifest or {}).get('coverage') or []:
+        if not isinstance(row, dict):
+            continue
+        rating = row.get('player_elo')
+        if isinstance(rating, dict) and rating.get('ranked'):
+            found.add(row.get('season'))
+    return found
+
+
 def plan(new_dir, live_dir, *, now=None, gate=check):
     """Whether the new export may replace the live one, and why.
 
@@ -122,6 +140,13 @@ def plan(new_dir, live_dir, *, now=None, gate=check):
                            f'{", ".join(str(season) for season in lost)}, '
                            'which the published one measures; publishing it '
                            'would blank those columns')
+    unrated = sorted(_rated_seasons(live) - _rated_seasons(incoming))
+    if unrated:
+        return dict(publish=False, first=False, incoming=incoming, live=live,
+                    reason='the new export ranks nobody on Player Elo for '
+                           f'{", ".join(str(one) for one in unrated)}, '
+                           'which the published one ranks; publishing it '
+                           'would empty those boards')
     new_moment, live_moment = generated_at(incoming), generated_at(live)
     if new_moment is None:
         return dict(publish=False, first=False, incoming=incoming, live=live,

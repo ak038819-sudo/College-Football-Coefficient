@@ -924,3 +924,127 @@ wired in**. The rating is still win/loss Elo and these statistics change
 nothing about it; the board exposes them beside the rating, which is what
 keeps the two independent. The player scoring index is a separate research
 note.
+
+# The player rating
+
+`src/nba/net_points.py` imports ESPN's per-player, per-game net points;
+`src/nba/player_elo.py` walks them into one rating a player;
+`#section=people&view=elo` and the player pages draw it. Schema 5.
+
+## It is a weighted average, not an Elo update
+
+Whatever it is called on the page, there is no expectation and no error
+term. A grade is already a measurement against the league, so the replay
+has nothing to predict. What it has is an **exposure** problem — a
+12-possession appearance and a 95-possession one are not equal evidence —
+and that is what the weighting is in and what the half-life is measured in:
+
+```
+offence  = 100 * offensive net points / offensive team possessions
+defence  = 100 * defensive net points / defensive team possessions
+exposure = (offensive + defensive team possessions) / 2
+decay    = 2 ** (-exposure / 2000)
+weight  <- decay * weight  + (1 - decay)
+offence <- decay * offence + (1 - decay) * this game's offence
+defence <- decay * defence + (1 - decay) * this game's defence
+impact   = offence / weight + defence / weight
+rating   = 1500 + 25 * impact
+```
+
+**The two sides have different denominators** and neither may stand in for
+the other: a player's team has the ball for one count of possessions while
+he is on the floor and the opponent for another. The archive carries both.
+
+**All three accumulators start at zero, so the first grade is the rating**
+— the `(1 - decay)` factor divides out — and the rating *before* a man's
+first graded game is NULL, never 1500. A page that drew 1500 there would
+show a man arriving at exactly average and then moving, which never
+happened.
+
+## It carries across seasons, and that is measured
+
+Taking the rating after a man's fifth graded game of a season and comparing
+it with what he actually did over his next 500 possessions of exposure:
+
+| season | carried across | reset each season |
+| --- | --- | --- |
+| 2024-25 | 2.26 | 4.28 |
+| 2025-26 | 2.69 | 4.22 |
+
+Root-mean-square error in net points per 100. A rating that starts every
+season from nothing is about twice as wrong about what comes next, which is
+why `offseason_retention` is not a thing here: the half-life does it, in
+possessions rather than in months.
+
+## The crosswalk, which is the part that can silently lie
+
+The archive is keyed by **NBA** ids and ours by **ESPN** ids, so every
+grade is resolved before it is stored, and anything unresolved is
+quarantined in `player_net_points_unresolved` with its reason rather than
+dropped:
+
+- **A game** resolves on the date and the two franchises, through a
+  30-row NBA-to-ESPN franchise map. A game the NBA lists at a neutral site
+  has no home team, so ESPN's own `home` flag on the grades says which side
+  is which. Regular season only.
+- **A player** resolves on a name unique in that season, *checked against
+  the games he played*. The name alone would be a guess. A name matching
+  two people, or none, falls to the appearance fingerprint — the set of
+  games played, which is nearly unique. Two men in this archive needed it:
+  "Nathan Mensah"/"Nate Mensah" and "Cui Cui"/"Yongxi Cui".
+
+One player is quarantined: Jaron Pierre Jr. (NBA `1643555`) has no ESPN
+person here at all.
+
+## A zero is a grade; a missing possession count is not
+
+A net points of zero is the average performance, and reading it as missing
+would drop every ordinary night in the archive. A row with no possessions
+on one side of it is not a grade: the rate would divide by zero, and a man
+on the floor for none of his team's offensive possessions has said nothing
+about its offence. A did-not-play is not a grade either.
+
+## The cutoff is a board's rule, not the rating's
+
+A man is `rated` at 500 **current-season** minutes, `provisional` under it,
+`unavailable` with no graded game. The board ranks the rated ones only — a
+board that placed a man on forty minutes seventh in the league would be
+making a claim the measurement cannot carry — but the payload carries the
+provisional men too, because for the first six weeks of a season nobody is
+over the cutoff and a payload holding only the rated would hide the whole
+layer until December. Where none are ranked the page lists them **by floor
+time**, saying so: six minutes of net points can read as +22.
+
+## What reconciles, and what does not
+
+The grades reconcile to ESPN's own season totals exactly on team
+possessions and games played, and within 0.0053 of a net point on the
+season, which is the rounding in the stored per-game values. Above 500
+offensive possessions the per-100 rate agrees to 0.001 in 2023-24 and
+2024-25.
+
+**2025-26 is the exception.** Its days were saved as they happened and ESPN
+has since revised some of them, so 387 of 452 players agree and the worst
+is 0.87 per 100. A replay over it is reproducible from this archive but is
+not ESPN's current published season number.
+
+## Two things the gates will not let through
+
+`publish_gate.check_player_ratings` refuses arithmetic no archive can
+produce — more players carried than have a graded game at all, a negative
+count, a cutoff that is not a positive number of minutes — and, as with the
+team statistics, **imposes no coverage floor**: in October nobody has 500
+minutes, and a gate that demanded a ranked board would refuse every export
+of the first six weeks of a season.
+
+`src/nba/publish.py` adds the layer-regression check these ratings need for
+the same reason the team statistics need one: they have **no `files` key**,
+so a refresh whose import step failed would otherwise publish the same file
+list with every rating gone. Per season and one-directional.
+
+## What is not here
+
+Nothing rates a *club* from these. The player rating is beside the club
+rating and feeds nothing into it; the rotation-change estimate is the
+milestone after this one. The lineup reconstruction in `analysis/` is a
+different measurement from a different provider and is not in the archive.

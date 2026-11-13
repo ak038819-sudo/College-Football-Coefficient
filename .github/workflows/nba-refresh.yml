@@ -65,6 +65,12 @@ on:
           no team statistics and may not publish."
         type: string
         default: ""
+      net_points_seasons:
+        description: "Only import ESPN's net points for these seasons. For
+          rehearsing the import; a partial one leaves the other seasons
+          with no player ratings and may not publish."
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -180,6 +186,35 @@ jobs:
             ${{ inputs.team_box_seasons && format('--seasons {0}', inputs.team_box_seasons) || '' }} \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
+      - name: Import ESPN's net points
+        run: |
+          # The per-player, per-game offensive and defensive net points the
+          # player rating is replayed from, taken from the public archive at
+          # basketball-data.billmill.org. Nothing here rates anybody: what is
+          # stored is one grade an appearance and the two possession counts
+          # it is a rate over.
+          #
+          # AFTER the schedule and the people, because every grade is
+          # resolved to a game of ours and a person of ours before it is
+          # stored, and one that resolves to neither is quarantined in
+          # `player_net_points_unresolved` rather than invented. BEFORE the
+          # replay below, which reads the table this writes.
+          set -o pipefail
+          python -m src.nba.net_points \
+            ${{ inputs.net_points_seasons && format('--seasons {0}',
+                inputs.net_points_seasons) || '' }} \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Replay the player rating
+        run: |
+          # The whole archive of grades walked in order into one rating a
+          # player. AFTER the import above and after the people, whose
+          # minutes decide which men a board may rank; BEFORE the export,
+          # which reads `player_rating` and refuses an export that would
+          # drop a layer the published one carries.
+          set -o pipefail
+          python -m src.nba.player_elo | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Replay the archive with the committed model
         run: |
           set -o pipefail
@@ -206,12 +241,16 @@ jobs:
           # twenty-six. `team_box_seasons` is the same hazard again: the
           # team statistics have no `files` key of their own, so a one-season
           # load would publish the same file list with every other season's
-          # PxP+ gone.
+          # PxP+ gone. `net_points_seasons` is that hazard once more: the
+          # replay walks the grades that are in the table, so importing one
+          # season would publish a board drawn on one season of evidence.
           ALLOWED: ${{ (inputs.publish == null && 'true' || inputs.publish)
             && (inputs.seasons == null || inputs.seasons == '')
             && (inputs.pbp_seasons == null || inputs.pbp_seasons == '')
             && (inputs.team_box_seasons == null
-                || inputs.team_box_seasons == '') }}
+                || inputs.team_box_seasons == '')
+            && (inputs.net_points_seasons == null
+                || inputs.net_points_seasons == '') }}
         run: |
           set -o pipefail
           python - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
