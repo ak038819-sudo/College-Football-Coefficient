@@ -146,6 +146,9 @@ mistake is available here.
 
 ## The rating
 
+The [NBA team statistics reference](nba-team-metrics.md) defines PxP+,
+Net Opportunities, and Net Opportunities Above Expected.
+
 `config/nba_model.json` holds the fitted parameters and what they scored on
 seasons they were never fitted on. `src/nba/fit_elo.py` chooses them;
 `src/nba/build_ratings.py` replays with them and writes nothing else. A
