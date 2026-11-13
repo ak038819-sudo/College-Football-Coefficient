@@ -291,8 +291,53 @@ function playin() {
             points: [121, null] }];
 }
 
+/* The team statistics as `src/nba/export.py` writes them: a section on the
+ * season payload saying what 100 means, the numbers themselves on the board
+ * rows, and the per-game half in the month file under `ts`. */
+function teamStatsSection(extra) {
+  return Object.assign({
+    record_types: ['regular'],
+    turnover_basis: ['total'],
+    games: 1230,
+    measured_games: 1229,
+    unmeasured_games: 1,
+    unpaired_rows: 0,
+    estimated: true,
+    league: { possessions: 252030.7, points: 284150,
+              points_per_possession: 1.12744, chances_per_possession: 0.96963,
+              points_per_chance: 1.16275, opportunity_rate: 96.963 },
+    priors: { team_possessions: 1500.0, league_possessions: 6000.0,
+              league_rate: 96.893, free_throw_weight: 0.44 }
+  }, extra || {});
+}
+
+function statsBoard() {
+  const rows = board();
+  rows[0] = Object.assign(rows[0], {
+    pxp: 103.503, cci: 102.136, ppc: 101.339, net_opportunities: 3.434,
+    opportunity_rate: 97.1, allowed_rate: 96.2, measured_games: 82 });
+  rows[1] = Object.assign(rows[1], {
+    pxp: 99.126, cci: 98.4, ppc: 100.738, net_opportunities: -1.202,
+    opportunity_rate: 95.8, allowed_rate: 97.0, measured_games: 82 });
+  // The third club is left WITHOUT statistics on purpose: a season where
+  // one club could not be measured must draw dashes for it and numbers for
+  // the others, not hide the column for everybody.
+  return rows;
+}
+
+function gameStats() {
+  return {
+    p: 102.9,
+    estimated: 1,
+    home: { pxp: 108.608, rate: 99.028, exp: 98.094, res: 0.934,
+            net: 3.387, chances: 101.9, orb: 12, tov: 13, prior_games: 30 },
+    away: { pxp: 106.884, rate: 95.141, exp: 97.594, res: -2.453,
+            net: -3.387, chances: 97.9, orb: 9, tov: 14, prior_games: 31 }
+  };
+}
+
 function site(overrides, schedule, standings, past, detail, folk, bracket,
-  marks) {
+  marks, stats) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nba-page-'));
   const data = path.join(root, 'data', 'nba', 'seasons');
   fs.mkdirSync(data, { recursive: true });
@@ -308,8 +353,12 @@ function site(overrides, schedule, standings, past, detail, folk, bracket,
     ? { playoffs: bracket === true ? playoffs() : bracket,
         playin: playin() }
     : null;
+  const withStats = stats
+    ? Object.assign({}, extra, { team_stats: teamStatsSection(
+        stats === true ? null : stats) })
+    : extra;
   const seasonText = payloadFor(2026, standings || board(),
-    schedule || games(), extra);
+    schedule || games(), withStats);
   const teamsText = 'window.NBA_TEAMS=' + JSON.stringify(teams()) + ';\n';
   const historyText = 'window.NBA_HISTORY=' + JSON.stringify(history()) + ';\n';
   fs.writeFileSync(path.join(data, '2026.js'), seasonText);
@@ -334,6 +383,7 @@ function site(overrides, schedule, standings, past, detail, folk, bracket,
   // link. Both cases are driven below.
   if (detail) {
     const month = detailMonth(detail === true ? {} : detail);
+    if (stats) month.games.g1.ts = gameStats();
     const monthText = 'window.NBA_GAMEMONTHS=(window.NBA_GAMEMONTHS||{});'
       + 'window.NBA_GAMEMONTHS["2026/2025-12"]='
       + JSON.stringify(month) + ';\n';
@@ -393,9 +443,9 @@ function settle(dom, ready, tries = 500) {
 }
 
 async function open(overrides, schedule, standings, hash, past, detail,
-  folk, bracket, marks) {
+  folk, bracket, marks, stats) {
   const built = site(overrides, schedule, standings, past, detail, folk,
-    bracket, marks);
+    bracket, marks, stats);
   const file = path.join(built.root, 'nba.html');
   const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
     // The hash is part of the URL the reader arrived with, so it is set here
@@ -1805,4 +1855,158 @@ test('the marks file is asked for unstamped and outside the data '
   const page = fs.readFileSync(path.join(UI, 'nba.html'), 'utf8');
   const asked = page.match(/fetch\('([^']*logo[^']*)'\)/g) || [];
   assert.deepEqual(asked, ["fetch('nba_logo_assets.json')"]);
+});
+
+// --- the team statistics ---------------------------------------------------
+
+test('a board drawn from an export without statistics is the board it was',
+  async () => {
+    // An export written before `src/nba/team_box.py` ran carries no section
+    // at all. Two columns of dashes would be worse than the six columns a
+    // reader had before, so the headers go too.
+    const dom = await open(null, null, null,
+      '#league=nba&section=standings&view=elo');
+    await settle(dom, () => dom.window.document.querySelector('#board tr'));
+    const doc = dom.window.document;
+    assert.equal(doc.getElementById('board-pxp').hidden, true);
+    assert.equal(doc.getElementById('board-netopp').hidden, true);
+    assert.equal(doc.getElementById('board-stats-note').hidden, true);
+    assert.equal(doc.querySelectorAll('#board tr:first-child td').length, 6);
+    dom.window.close();
+  });
+
+test('the board carries PxP+ and the opportunity edge where they are measured',
+  async () => {
+    const dom = await open(null, null, statsBoard(),
+      '#league=nba&section=standings&view=elo', null, null, null, null, null,
+      true);
+    await settle(dom, () => dom.window.document.querySelector('#board tr'));
+    const doc = dom.window.document;
+    assert.equal(doc.getElementById('board-pxp').hidden, false);
+    const cells = [...doc.querySelectorAll('#board tr:first-child td')]
+      .map(td => td.textContent.trim());
+    // Rank, club, conference, rating, record, PxP+, net opportunities,
+    // rated games. Three decimals on the wire, one on the page.
+    assert.deepEqual(cells, ['1', 'New York Knicks', 'Eastern Conference',
+      '1640', '1–0', '103.5', '+3.43', '1']);
+    // A club the feed could not measure draws a dash, NOT a zero and NOT
+    // 100: "no estimate" and "exactly league average" are different claims.
+    const third = [...doc.querySelectorAll('#board tr:nth-child(3) td')]
+      .map(td => td.textContent.trim());
+    assert.equal(third[5], '—');
+    assert.equal(third[6], '—');
+    dom.window.close();
+  });
+
+test('the board says what 100 means and what could not be measured',
+  async () => {
+    const dom = await open(null, null, statsBoard(),
+      '#league=nba&section=standings&view=elo', null, null, null, null, null,
+      true);
+    await settle(dom, () => dom.window.document.querySelector('#board tr'));
+    const note = dom.window.document.getElementById('board-stats-note');
+    assert.equal(note.hidden, false);
+    assert.match(note.textContent, /100 is average/);
+    assert.match(note.textContent, /1\.127 points a possession/);
+    assert.match(note.textContent, /1229 measured games/);
+    assert.match(note.textContent, /Possessions are estimated, not counted/);
+    assert.match(note.textContent, /1 game is missing a count/);
+    dom.window.close();
+  });
+
+test('a season measured from the narrower turnover count says so',
+  async () => {
+    // 2001-02 to 2011-12 and 2017-18. A rate a reader compares across eras
+    // must say which basis it was measured on.
+    const dom = await open(null, null, statsBoard(),
+      '#league=nba&section=standings&view=elo', null, null, null, null, null,
+      { turnover_basis: ['team-only'] });
+    await settle(dom, () => dom.window.document.querySelector('#board tr'));
+    const note = dom.window.document.getElementById('board-stats-note');
+    assert.match(note.textContent, /narrower count/);
+    assert.match(note.textContent, /without team turnovers/);
+    dom.window.close();
+  });
+
+test('a club page shows PxP+ beside both of the factors behind it',
+  async () => {
+    const dom = await open(null, null, statsBoard(),
+      '#league=nba&section=teams&team=' + encodeURIComponent(NYK),
+      null, null, null, null, null, true);
+    await settle(dom, () => dom.window.document.querySelector(
+      '#teams-body .gp-fact'));
+    const facts = [...dom.window.document.querySelectorAll(
+      '#teams-body .gp-fact')].map(node => node.textContent.trim());
+    assert.deepEqual(facts, ['PxP+103.5', 'Chance creation102.1',
+      'Points per chance101.3', 'Net opportunities+3.43']);
+    // The two factors must be shown to multiply back, within the rounding
+    // the page does: 102.136 x 101.339 / 100 = 103.503.
+    assert.ok(Math.abs(102.136 * 101.339 / 100 - 103.503) < 0.001);
+    dom.window.close();
+  });
+
+test('a club with no measured season gets no statistics strip at all',
+  async () => {
+    const dom = await open(null, null, statsBoard(),
+      '#league=nba&section=teams&team=' + encodeURIComponent(OKC),
+      null, null, null, null, null, true);
+    await settle(dom, () => dom.window.document.querySelector(
+      '#teams-body tbody tr'));
+    assert.equal(dom.window.document.querySelectorAll(
+      '#teams-body .gp-fact').length, 0);
+    dom.window.close();
+  });
+
+test('a game page grades both sides, and the two grades cancel', async () => {
+  const dom = await open(null, null, statsBoard(), null, null, true, null,
+    null, null, true);
+  const host = await openGamePage(dom);
+  const panel = [...host.querySelectorAll('h2')].find(
+    node => node.textContent === 'Opportunities');
+  assert.ok(panel, 'the game page shows no opportunities panel');
+  const rows = [...panel.parentNode.querySelectorAll('tbody tr')].map(
+    row => [...row.querySelectorAll('td')].map(td => td.textContent.trim()));
+  assert.equal(rows.length, 2);
+  // Away first, then home, as the hero orders them.
+  assert.deepEqual(rows[0].slice(1),
+    ['106.9', '95.1', '97.6', '-3.39', '9', '14']);
+  assert.deepEqual(rows[1].slice(1),
+    ['108.6', '99.0', '98.1', '+3.39', '12', '13']);
+  assert.match(panel.parentNode.textContent,
+    /same estimated 102\.9 possessions/);
+  dom.window.close();
+});
+
+test('a game with no statistics shows no opportunities panel', async () => {
+  const dom = await open(null, null, null, null, null, true);
+  const host = await openGamePage(dom);
+  assert.equal([...host.querySelectorAll('h2')].filter(
+    node => node.textContent === 'Opportunities').length, 0);
+  dom.window.close();
+});
+
+test('an index with nothing behind it is a dash, never a zero', () => {
+  // `Number.isFinite(Number(null))` is TRUE, which is how a missing value
+  // becomes 0 and then reads as a measurement. Checked three times in this
+  // repository, so checked again here.
+  assert.equal(app.indexText(null), '—');
+  assert.equal(app.indexText(undefined), '—');
+  assert.equal(app.netOpportunityText(null), '—');
+  assert.equal(app.indexText(0), '0.0');
+  assert.equal(app.netOpportunityText(0), '0.00');
+  assert.equal(app.indexText(106.0616), '106.1');
+  assert.equal(app.netOpportunityText(-2.5444), '-2.54');
+  assert.equal(app.netOpportunityText(3.4349), '+3.43');
+});
+
+test('a side the export did not grade reads as absent, not as even', () => {
+  const entry = { ts: { p: 100, home: { pxp: 104, rate: 99, orb: 10,
+    tov: 12, chances: 98, prior_games: 0 } } };
+  const home = app.opportunityOf(entry, 'home');
+  assert.equal(home.expected, null);
+  assert.equal(home.net, null);
+  assert.equal(home.priorGames, 0);
+  // The away side is not in the entry at all.
+  assert.equal(app.opportunityOf(entry, 'away'), null);
+  assert.equal(app.opportunityOf({}, 'home'), null);
 });

@@ -20,13 +20,15 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-# 1 -> 2 added the game layer (plays.py), 2 -> 3 the people layer.
+# 1 -> 2 added the game layer (plays.py), 2 -> 3 the people layer, 3 -> 4
+# the team box score (team_box.py), which the team statistics are computed
+# from.
 # The bump matters to `publish_gate`, which refuses an export whose
 # database it does not recognise, and to a database built before either
 # layer existed: those tables are created on connect, and an export
 # taken from a database that has never been through the loaders says the
 # layer is absent rather than publishing it empty.
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 DEFAULT_PATH = Path('db/nba.db')
 SCHEMA_SQL = Path(__file__).with_name('schema.sql')
 

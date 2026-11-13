@@ -127,3 +127,27 @@ def test_a_partial_ingest_may_not_replace_the_whole_archive(steps):
     publish = next(step for step in steps if step.get('id') == 'publish')
     allowed = publish['env']['ALLOWED']
     assert 'inputs.seasons' in allowed
+
+
+def test_the_team_box_scores_are_loaded_before_the_export(steps):
+    names = [step.get('run') or '' for step in steps]
+    loaded = next(i for i, run in enumerate(names)
+                  if 'src.nba.team_box' in run)
+    exported = next(i for i, run in enumerate(names)
+                    if 'src.nba.export' in run)
+    ingested = next(i for i, run in enumerate(names)
+                    if 'src.nba.ingest' in run)
+    # AFTER the schedule, because a box score for a game the schedule does
+    # not carry is dropped; BEFORE the export, which decides from the table
+    # whether there are statistics to publish at all.
+    assert ingested < loaded < exported
+
+
+def test_a_partial_team_box_load_may_not_publish(steps):
+    # The team statistics have no `files` key, so publish.py's layer check
+    # cannot see a one-season load replacing twenty-six. This is what stops
+    # it.
+    decision = next(step for step in steps
+                    if (step.get('id') or '') == 'publish')
+    allowed = decision['env']['ALLOWED']
+    assert 'team_box_seasons' in allowed

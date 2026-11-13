@@ -596,6 +596,8 @@
         <thead>
           <tr><th class="rk">#</th><th>Club</th><th>Conference</th>
               <th class="num">Rating</th><th class="num">Record</th>
+              <th class="num" id="board-pxp" hidden>PxP+</th>
+              <th class="num" id="board-netopp" hidden>Net opp.</th>
               <th class="num">Rated games</th></tr>
         </thead>
         <tbody id="board"></tbody>
@@ -604,6 +606,7 @@
     <p class="note">The rating, not the record. A club can sit above another
       it finished behind: the model is measuring how well each played, not
       how often it won.</p>
+    <p class="note" id="board-stats-note" hidden></p>
   </section>
 
   <section class="panel" id="teams" hidden>
@@ -631,9 +634,9 @@
   </section>
 </div>
 
-<script src="nba_loader.js?v=21577e47dd24"></script>
+<script src="nba_loader.js?v=59cc8ae58d89"></script>
 <script src="ncaambb_app.js?v=4828bd5e0199"></script>
-<script src="nba_app.js?v=589ac1056265"></script>
+<script src="nba_app.js?v=28e091befaca"></script>
 <script src="game_page.js?v=fb1a02a0b1c5"></script>
 <script>
 (function () {
@@ -1736,6 +1739,77 @@
     host.appendChild(panel);
   }
 
+  /* Each side's opportunity rate, what the matchup expected of it, and the
+   * grade that is the difference between the two residuals.
+   *
+   * THE TWO GRADES ARE EQUAL AND OPPOSITE BY CONSTRUCTION — one shared
+   * possession estimate, one subtraction — so the panel prints both and a
+   * reader can see them cancel. Expectations are built only from games
+   * played before this one, which is why a club's opening night carries a
+   * rate and no expectation: the panel says so rather than falling back on
+   * the season's own numbers, which would be an expectation that knew the
+   * result.
+   */
+  function gameOpportunities(host, entry, game) {
+    var home = app.opportunityOf(entry, 'home');
+    var away = app.opportunityOf(entry, 'away');
+    if (!home && !away) return;
+    var panel = detailPanel(host, 'Opportunities');
+    var table = document.createElement('table');
+    table.className = 'gp-table';
+    var head = document.createElement('thead');
+    head.innerHTML = '<tr><th>Club</th><th class="num">PxP+</th>'
+      + '<th class="num">Opportunity rate</th><th class="num">Expected</th>'
+      + '<th class="num">Net</th><th class="num">Off. reb.</th>'
+      + '<th class="num">Turnovers</th></tr>';
+    table.appendChild(head);
+    var body = document.createElement('tbody');
+    [['away', away, game.away], ['home', home, game.home]].forEach(
+      function (pair) {
+        var side = pair[1];
+        if (!side) return;
+        var tr = document.createElement('tr');
+        var cell = node('td', 'teamcell');
+        cell.appendChild(markedName(pair[2], seasonPayload(state.season), 20));
+        tr.appendChild(cell);
+        tr.appendChild(node('td', 'num', app.indexText(side.pxp)));
+        tr.appendChild(node('td', 'num', app.indexText(side.rate)));
+        tr.appendChild(node('td', 'num', app.indexText(side.expected)));
+        tr.appendChild(node('td', 'num', app.netOpportunityText(side.net)));
+        tr.appendChild(node('td', 'num', side.offensiveRebounds === null
+          ? app.NO_VALUE : String(side.offensiveRebounds)));
+        tr.appendChild(node('td', 'num', side.turnovers === null
+          ? app.NO_VALUE : String(side.turnovers)));
+        body.appendChild(tr);
+      });
+    table.appendChild(body);
+    var scroll = node('div', 'table-scroll');
+    scroll.appendChild(table);
+    panel.appendChild(scroll);
+    var possessions = (home && home.possessions) || (away && away.possessions);
+    var parts = [];
+    if (app.isFiniteNumber(possessions)) {
+      parts.push('Both sides are measured over the same estimated '
+        + possessions.toFixed(1) + ' possessions, which is why the two net '
+        + 'grades are equal and opposite.');
+    }
+    parts.push('The opportunity rate is 100 plus the estimated chance edge '
+      + 'per 100 possessions. Expected is this club’s rate before the game '
+      + 'plus its opponent’s allowed rate, less the league’s, from games '
+      + 'played earlier only. Possessions are estimated, not counted.');
+    var fresh = [home, away].filter(function (side) {
+      return side && side.priorGames === 0;
+    }).length;
+    if (fresh) {
+      parts.push(fresh === 2
+        ? 'Neither club had played a game in this season before this one, so '
+          + 'both expectations rest on the pilot’s prior exposure alone.'
+        : 'One club had played no earlier game in this season, so its '
+          + 'expectation rests on the pilot’s prior exposure alone.');
+    }
+    panel.appendChild(node('p', 'section-note', parts.join(' ')));
+  }
+
   /* A panel for one section of the game page, so each sits in the same card
    * chrome as the hero and the matchup above it. */
   function detailPanel(host, label) {
@@ -1790,6 +1864,10 @@
     }
     var payload = monthPayloadFor(game);
     var entry = payload && payload.games ? payload.games[game.id] : null;
+    // BEFORE the play-by-play check below, because a game can carry team
+    // statistics and no reduced plays: the two layers are loaded by
+    // different modules and either can be the one that has not run.
+    gameOpportunities(host, entry, game);
     if (!entry) {
       // Measured, not hypothetical: one completed game in the archive —
       // 401810469, 2026-01-20 — has no published play-by-play at all, and
@@ -1865,6 +1943,13 @@
   function boardPanel(payload) {
     var body = el('board');
     body.innerHTML = '';
+    // Both columns and both headers are hidden together, so a season with
+    // no measured statistics draws the board it drew before this existed
+    // rather than two columns of dashes.
+    var measured = app.teamStatsAvailable(payload);
+    el('board-pxp').hidden = !measured;
+    el('board-netopp').hidden = !measured;
+    boardStatsNote(payload, measured);
     (payload.board || []).forEach(function (row) {
       var tr = document.createElement('tr');
       tr.appendChild(node('td', 'rk', String(row.rank)));
@@ -1874,9 +1959,54 @@
       tr.appendChild(node('td', '', row.conference || ''));
       tr.appendChild(node('td', 'num', app.ratingText(row.rating)));
       tr.appendChild(node('td', 'num', app.recordText(row)));
+      if (measured) {
+        // The statistics sit BESIDE the rating and change nothing about it:
+        // the Elo model does not read them, and the order of this board is
+        // still the rating's. Exposing them here is what the handoff asked
+        // for and what keeps them independent of the active model.
+        tr.appendChild(node('td', 'num', app.indexText(row.pxp)));
+        tr.appendChild(node('td', 'num',
+          app.netOpportunityText(row.net_opportunities)));
+      }
       tr.appendChild(node('td', 'num', String(row.rated_games)));
       body.appendChild(tr);
     });
+  }
+
+  /* What 100 means on this board, and what it was measured on.
+   *
+   * Under the table rather than in a tooltip: a reader meeting PxP+ for the
+   * first time needs the sentence, and a reader who knows it is not reading
+   * the note anyway. */
+  function boardStatsNote(payload, measured) {
+    var host = el('board-stats-note');
+    host.textContent = '';
+    host.hidden = !measured;
+    if (!measured) return;
+    var stats = payload.team_stats;
+    var league = stats.league || {};
+    var parts = ['PxP+ is points per possession against the league: 100 is '
+      + 'average and 110 is ten per cent better. Net opp. is the club’s '
+      + 'estimated edge in shooting chances per 100 possessions, from '
+      + 'offensive rebounds and turnovers, where zero is even.'];
+    if (app.isFiniteNumber(league.points_per_possession)) {
+      parts.push('This season the league scored '
+        + league.points_per_possession.toFixed(3)
+        + ' points a possession over ' + stats.measured_games
+        + ' measured games.');
+    }
+    // Possessions are an ESTIMATE and the label says so wherever one is
+    // drawn, because every number in this column is divided by one.
+    parts.push('Possessions are estimated, not counted: the feed does not '
+      + 'mark them.');
+    if (app.isFiniteNumber(stats.unmeasured_games) && stats.unmeasured_games) {
+      parts.push(stats.unmeasured_games + (stats.unmeasured_games === 1
+        ? ' game is' : ' games are') + ' missing a count the estimate needs '
+        + 'and could not be measured at all.');
+    }
+    var basis = app.turnoverBasisNote(payload);
+    if (basis) parts.push(basis);
+    host.textContent = parts.join(' ');
   }
 
   // ------------------------------------------------------------------ teams
@@ -1930,6 +2060,49 @@
     host.appendChild(list);
   }
 
+  /* PxP+ beside both of its components, which is what the handoff asked
+   * for and what makes the index readable: a club at 106 got there by
+   * generating chances, by scoring on them, or by both, and the single
+   * number cannot say which.
+   *
+   * Drawn only where this club has a measured season. A club with none gets
+   * no strip rather than a strip of dashes, for the same reason the board
+   * hides the columns.
+   */
+  function teamStatStrip(host, key, payload) {
+    if (!app.teamStatsAvailable(payload)) return;
+    var row = (payload.board || []).filter(function (entry) {
+      return entry.team === key;
+    })[0];
+    if (!row || !app.isFiniteNumber(row.pxp)) return;
+    // `gp-facts` / `gp-fact`, the vocabulary ui/game_page.css already gives
+    // all four leagues, rather than a fifth set of class names for the same
+    // thing. The page already loads that stylesheet.
+    var strip = node('div', 'gp-facts');
+    [['PxP+', app.indexText(row.pxp),
+      'Points per possession against the league. 100 is average.'],
+     ['Chance creation', app.indexText(row.cci),
+      'Estimated shooting chances per possession against the league.'],
+     ['Points per chance', app.indexText(row.ppc),
+      'Scoring per estimated chance against the league.'],
+     ['Net opportunities', app.netOpportunityText(row.net_opportunities),
+      'Estimated chance edge per 100 possessions. Zero is even.']
+    ].forEach(function (entry) {
+      var cell = node('div', 'gp-fact');
+      cell.appendChild(node('b', '', entry[0]));
+      cell.appendChild(document.createTextNode(entry[1]));
+      cell.title = entry[2];
+      strip.appendChild(cell);
+    });
+    host.appendChild(strip);
+    var note = 'Chance creation \u00d7 points per chance \u00f7 100 is PxP+: the '
+      + 'two factors are where the index comes from. Over '
+      + (app.isFiniteNumber(row.measured_games) ? row.measured_games : 0)
+      + ' measured games, with possessions estimated rather than counted.';
+    var basis = app.turnoverBasisNote(payload);
+    host.appendChild(node('p', 'note', basis ? note + ' ' + basis : note));
+  }
+
   function teamPage(host, key, payload) {
     var back = node('p', 'back');
     back.appendChild(linkTo('← All clubs', function () {
@@ -1960,6 +2133,7 @@
         + loader.seasonLabel(payload.season) + '.';
     }
     host.appendChild(summary);
+    teamStatStrip(host, key, payload);
     var titles = app.titleCount(state.history, key);
     if (titles) {
       host.appendChild(node('p', 'note',

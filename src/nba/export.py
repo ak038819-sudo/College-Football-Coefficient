@@ -30,7 +30,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import elo, game_export, people_export, series
+from . import elo, game_export, people_export, series, team_box, team_metrics
 from .identity import current_season, season_label
 from . import win_probability
 from .publish_gate import SCHEMA_VERSION, check, render
@@ -281,6 +281,105 @@ def board(connection, season, model_id, games, names=None, index=None):
     return rows
 
 
+def _round(value, digits=3):
+    """A rate rounded for the wire, or None. NEVER read back by arithmetic.
+
+    Three decimals, which is one more than any page draws, for the reason
+    the Elo board stores a decimal it does not show: the page rounds for
+    display and a rounded number must not be what the next calculation
+    reads. The identity `cci x ppc / 100 = pxp` holds at full precision
+    inside `team_metrics` and to within this rounding here.
+    """
+    if value is None:
+        return None
+    return round(float(value), digits)
+
+
+def team_statistics(connection, season):
+    """One season's team statistics, or None where the layer is absent.
+
+    The league prior for the matchup expectation is the PREVIOUS season's
+    league opportunity rate, read from the archive rather than assumed. A
+    season whose predecessor is not in the database — 2002, or a partial
+    ingest — replays from a break-even league prior instead, which is the
+    neutral statement rather than a borrowed number, and `priors.league_rate`
+    then says so by being null.
+    """
+    rows = team_box.season_rows(connection, season)
+    if not rows:
+        return None
+    previous = team_box.season_rows(connection, season - 1,
+                                    season_types=('regular',))
+    prior = (team_metrics.league_opportunity_rate(previous) if previous
+             else None)
+    return team_metrics.build_season(rows, league_prior_rate=prior)
+
+
+def attach_team_statistics(rows, built):
+    """Put each club's PxP+ and opportunity numbers on its board row.
+
+    On the board rather than in a section of their own, because every view
+    that ranks clubs already reads these rows, and a parallel table keyed by
+    the same club would be a second place for the two to disagree.
+
+    A club with no measured game gets no keys at all — not zeros. A reader
+    can tell "no estimate" from "exactly average" only if the absence is an
+    absence.
+    """
+    if not built:
+        return
+    for row in rows:
+        stats = built['teams'].get(row['team'])
+        if not stats:
+            continue
+        row['pxp'] = _round(stats['pxp'])
+        row['cci'] = _round(stats['cci'])
+        row['ppc'] = _round(stats['ppc'])
+        row['net_opportunities'] = _round(stats['net_opportunities'])
+        row['opportunity_rate'] = _round(stats['opportunity_rate'])
+        row['allowed_rate'] = _round(stats['allowed_rate'])
+        row['measured_games'] = stats['games']
+
+
+def team_statistics_section(built):
+    """The league environment the indexes are measured against.
+
+    Published beside the board so a reader can see what 100 means here: the
+    league's own points per possession over the same games, the exposure it
+    was measured on, and the pilot priors the expectation used. The counts
+    say how many games could not be measured at all, which is the one number
+    that makes "unavailable" on a club row legible.
+    """
+    if not built:
+        return None
+    league = built['league']
+    counts = built['counts']
+    return dict(
+        record_types=built['record_types'],
+        turnover_basis=built['turnover_basis'],
+        games=counts['games'],
+        measured_games=counts['measured'],
+        unmeasured_games=counts['unmeasured'],
+        # A game with a possession estimate and no final score. It still
+        # carries its opportunity grades; only the scoring rate leaves it
+        # out, because adding its possessions with no points against them
+        # is a zero, not an absence.
+        unscored_games=counts['unscored'],
+        unpaired_rows=counts['unpaired'],
+        league=dict(
+            possessions=_round(league['possessions'], 1),
+            points=int(league['points']),
+            points_per_possession=_round(league['points_per_possession'], 5),
+            chances_per_possession=_round(league['chances_per_possession'], 5),
+            points_per_chance=_round(league['points_per_chance'], 5),
+            opportunity_rate=_round(league['opportunity_rate']),
+        ),
+        priors=dict(built['priors'],
+                    league_rate=_round(built['priors']['league_rate'])),
+        estimated=True,
+    )
+
+
 def played_teams(games):
     """Franchises with at least one finished, rateable game.
 
@@ -305,9 +404,20 @@ def season_teams(connection, season):
     return row[0]
 
 
-def coverage_row(connection, season, games, rows, *, complete=True):
+def coverage_row(connection, season, games, rows, *, complete=True,
+                team_stats=None):
     played = sum(1 for game in games if game['home_points'] is not None)
+    counts = (team_stats or {}).get('counts')
     return dict(
+        # How much of the season the team statistics could be measured on,
+        # or absent where the loader has never run. A gate and a page can
+        # then tell "no team box scores in this database" from "every box
+        # score is here and one game of them is short a turnover count".
+        team_stats=(None if counts is None else dict(
+            games=counts['games'], measured=counts['measured'],
+            unmeasured=counts['unmeasured'],
+            teams=len([stats for stats in (team_stats['teams'] or {}).values()
+                       if stats]))),
         season=season,
         season_label=season_label(season),
         teams=season_teams(connection, season),
@@ -416,12 +526,19 @@ def build(connection, *, model_name=None, seasons=None, now=None):
     # Read once: every season's board falls back to it for a franchise whose
     # season row has no conference.
     index = teams(connection)
-    payloads, coverage = {}, []
+    payloads, coverage, statistics = {}, [], {}
     for season in wanted:
         games = season_games(connection, season, model['model_id'])
         names = season_names(connection, season)
         rows = board(connection, season, model['model_id'], games, names,
                      index)
+        # The team statistics, or nothing at all where `src/nba/team_box.py`
+        # has never run. Computed once a season: the board reads the season
+        # half and `game_export` the per-game half, so there is one replay
+        # behind both and they cannot disagree.
+        built = team_statistics(connection, season)
+        statistics[season] = built
+        attach_team_statistics(rows, built)
         # `rating_model.config` IS the elo block, not the whole file:
         # build_ratings stores `config['elo']`. Reaching for an 'elo' key here
         # would find nothing and quietly play every game at a home advantage
@@ -430,6 +547,9 @@ def build(connection, *, model_name=None, seasons=None, now=None):
         payloads[season] = dict(season=season,
                                 season_label=season_label(season),
                                 board=rows, games=games, names=names)
+        section = team_statistics_section(built)
+        if section:
+            payloads[season]['team_stats'] = section
         # THE BRACKET AND THE PLAY-IN ride in the season's own payload
         # rather than a file of their own, and derive from the games just
         # read and the board just built -- no query, no fetch, about 2 KB in
@@ -443,7 +563,8 @@ def build(connection, *, model_name=None, seasons=None, now=None):
         if rounds:
             payloads[season]['playin'] = rounds
         coverage.append(coverage_row(connection, season, games, rows,
-                                     complete=season < in_progress))
+                                     complete=season < in_progress,
+                                     team_stats=built))
     history = dict(conferences=conference_history(connection,
                                                   model['model_id']),
                    champions=champions(connection))
@@ -451,12 +572,13 @@ def build(connection, *, model_name=None, seasons=None, now=None):
     # reduction has never run. Absent is said out loud rather than published
     # as a directory of empty files: see game_export.has_plays.
     detail = {}
-    if game_export.has_plays(connection):
+    if game_export.has_plays(connection) or team_box.has_team_box(connection):
         params = win_probability.load_params()
         for season in wanted:
             months = game_export.build(connection, season,
                                        model_id=model['model_id'],
-                                       params=params)
+                                       params=params,
+                                       team_stats=statistics.get(season))
             if months:
                 detail[season] = months
     manifest = dict(
@@ -591,6 +713,21 @@ def summarise(manifest, out_dir):
         # identical to a run that was not.
         lines += ['', 'Game layer: ABSENT. This database carries no reduced '
                       'play-by-play; run `python -m src.nba.plays`.']
+    measured = [row for row in manifest['coverage']
+                if (row.get('team_stats') or {}).get('measured')]
+    if measured:
+        total = sum(row['team_stats']['measured'] for row in measured)
+        short = sum(row['team_stats']['unmeasured'] for row in measured)
+        lines += ['', f'Team statistics: {total} games measured across '
+                      f'{len(measured)} seasons'
+                      + (f', {short} unmeasurable from the feed.' if short
+                         else '.')]
+    else:
+        # Said out loud, for the reason the absent game layer is: a run that
+        # was meant to measure these and did not must not look like a run
+        # that was never asked to.
+        lines += ['', 'Team statistics: ABSENT. This database carries no team '
+                      'box scores; run `python -m src.nba.team_box`.']
     if folk:
         lines += ['', f'People layer: {folk["count"]} players.']
     else:

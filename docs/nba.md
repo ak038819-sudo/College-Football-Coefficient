@@ -794,3 +794,133 @@ archive has no mark for.
 **This is not a licence.** The archive grants nothing and claims nothing.
 The marks belong to their clubs and are used nominatively, to identify the
 club that played the game.
+
+---
+
+# The team statistics (schema 4)
+
+PxP+, the two factors behind it, and the opportunity grades, computed from
+the team box score. The definitions are in
+[the NBA team statistics reference](nba-team-metrics.md); what follows is
+how they are loaded, measured and published here.
+
+`src/nba/team_box.py` loads the feed, `src/nba/schema.sql` stores COUNTS
+and nothing derived, and **`src/nba/team_metrics.py` is the only module that
+divides**. The season board and the game page read the same replay, so the
+two cannot disagree.
+
+## What reproduces
+
+Against `team_box` for 2025-26, straight from the production feed:
+
+| | |
+| --- | --- |
+| regular-season games | 1,230 |
+| measured | 1,229 |
+| franchises | 30 |
+| league scoring rate | 1.12744 points per possession |
+| highest PxP+ | Denver, 106.1 |
+| highest raw Net Opportunities | Detroit, +3.47 |
+
+Those are the pilot's own numbers, reproduced from this archive rather than
+from the file it was built on. **The 1,230 is a coincidence worth stating.**
+1,235 game ids carry season type 2; four are exhibitions (World, Team Stars,
+Team Stripes) and the NBA Cup final is classified apart by the schedule,
+which leaves 1,230 regular-season games — while one of them, 401810169
+(Chicago at Orlando, 2025-12-01), has no turnover count for Chicago and
+cannot be measured. The pilot's 1,230 was a different set with the same
+size.
+
+## Four traps, each of which produces data that looks right
+
+**1. The feed calls the NBA Cup final a regular-season game.** The same trap
+`src/nba/people.py` documents. A stored row takes the SCHEDULE's season
+type, for every type, so the two finalists do not carry 83 games into a
+season rate.
+
+**2. The All-Star game is filed as a regular-season game too.** Four such
+games in 2025-26. Season type cannot find them; `identity.team_key` refuses
+their sides, because they are not franchises.
+
+**3. `total_turnovers` means two different things in two eras.** The
+identity `total = turnovers + team_turnovers` holds on 62,028 of the 62,051
+rows that carry a total. But in **every season from 2001-02 to 2011-12**,
+`team_turnovers` is a COPY of `turnovers` — equal on all 2,520 rows in
+2001-02 and on all of them in each of the eleven seasons — so the total is
+the team's turnovers counted twice: **28.9 a game against a true 14.4**.
+Read at face value it inflates those seasons' possession estimates by about
+12%, and because PxP+ is measured against the league it still centres on
+100 and still looks right. **2017-18 is the opposite hole**: the total is
+NULL on 2,620 of its 2,622 rows, the only season in the archive missing it.
+
+So `turnover_basis` is decided per SEASON from that season's own rows — the
+duplicate share is 1.000 for each of the twelve affected seasons and at most
+0.0004 for every other — and stored beside the count it chose. The basis is
+published, and a page drawing one of those seasons says the turnovers are
+the narrower count. The sanity check is that possessions per game now runs
+94 to 103 across the archive with no step at the 2012-13 boundary; before
+the fix, 2011-12 read about 109.
+
+**4. A count can simply be missing, and it costs the whole game.** The
+possession denominator is SHARED, so a side short of a count makes its
+opponent unmeasurable too. One game in 2025-26. Reported as unmeasured,
+never imputed.
+
+## What is published
+
+The season payload carries a `team_stats` section — the league's own rate,
+the exposure it was measured on, the pilot priors and what could not be
+measured — and each board row carries `pxp`, `cci`, `ppc`,
+`net_opportunities` and `measured_games`. A club with no measured game
+carries **no keys at all**, so a reader can tell "no estimate" from "exactly
+average".
+
+The per-game half rides in the month files under `ts`, keyed `home` and
+`away`: each side's PxP+, its opportunity rate, what the matchup expected of
+it, its residual and the net grade. It is there rather than in the season
+payload because a reader who opens a season fetches that and a reader who
+opens a game fetches this. A game carrying statistics but no reduced
+play-by-play is still written: the two layers are loaded by different
+modules and either can be the one that has not run.
+
+Rates go out at three decimals and the page draws one or two. The identity
+`chance creation × points per chance ÷ 100 = PxP+` holds exactly at full
+precision inside `team_metrics` and to within that rounding on the wire.
+
+## The expectation is frozen by date
+
+A game's expected opportunity rate is built from what both clubs and the
+league had done BEFORE it: `team offensive + opponent allowed − league`, on
+rates centred at 100. Every game on a date is expected from the state before
+that date's first game, and the whole date is observed afterwards — so a
+replay truncated anywhere leaves every earlier expectation bit-identical,
+and no expectation depends on resolving two tip-off times within a day.
+
+The priors are the trial's, not fitted here: a club starts a season with
+1,500 possessions of exposure at the current league rate, and the league
+starts with 6,000 at the previous season's. The export says so rather than
+letting a tuned number read as a measured one.
+
+## What the gate does and does not refuse
+
+The gate refuses arithmetic that cannot be true of any archive — more games
+measured than played, a negative count — and **does not impose a coverage
+floor**. Which games can be measured is the feed's business, and refusing a
+correct export because a provider dropped one field would take the site down
+for one missing number. A shortfall is marked, in the coverage row and on
+the page.
+
+`src/nba/publish.py` has one check of its own, because these statistics have
+**no `files` key**: they ride in the season payloads and month files that
+`files` already names, so the layer-regression check cannot see them go. A
+refresh whose `team_box` step failed would otherwise publish the same file
+list with every PxP+ missing. The comparison is per season and
+one-directional, so a season the live export never measured is not a loss.
+
+## What is not here
+
+The Elo performance modifier in the reference is **a trial and is not
+wired in**. The rating is still win/loss Elo and these statistics change
+nothing about it; the board exposes them beside the rating, which is what
+keeps the two independent. The player scoring index is a separate research
+note.
