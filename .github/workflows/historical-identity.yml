@@ -159,6 +159,22 @@ jobs:
                     f"{row['last_season']}\t{row['suggestion']}")
           PY
 
+      - name: Print the candidate map in full
+        if: always()
+        run: |
+          set -o pipefail
+          report="$REPORT/historical_schools.csv"
+          if [ ! -f "$report" ]; then
+            echo "No candidate map was written."
+            exit 0
+          fi
+          # The whole file, into the log. The artifact store is not reachable
+          # from every environment this repository is worked in, and the
+          # review that follows needs the evidence, not just the headline.
+          echo "--- historical_schools.csv ---"
+          cat "$report"
+          echo "--- end ---"
+
       - name: Publish the candidate map
         if: always()
         uses: actions/upload-artifact@v4

@@ -398,3 +398,10 @@ class TestTheWorkflowThatBuildsIt:
         source = SCRIPT.read_text(encoding='utf-8')
         for flag in ('--staging', '--records', '--out', '--start', '--end'):
             assert f"'{flag}'" in source, flag
+
+    def test_the_whole_map_is_printed_to_the_log(self, text):
+        # The artifact store is not reachable from every environment this
+        # repository is worked in, and the review needs the evidence.
+        body = text.split('Print the candidate map in full', 1)[1]
+        assert 'cat "$report"' in body
+        assert '--- historical_schools.csv ---' in body
