@@ -3,6 +3,7 @@
 Every assertion here is a rule this repository learned by breaking it.
 """
 
+import os
 from pathlib import Path
 
 import pytest
@@ -90,3 +91,67 @@ def test_the_nightly_refresh_has_more_than_one_chance_a_day():
     # skipped run loses a whole day of results.
     refresh = yaml.safe_load(REFRESH.read_text(encoding='utf-8'))
     assert len(refresh[True]['schedule']) >= 2
+
+
+def test_the_first_snapshot_publishes_although_git_has_never_seen_it(tmp_path):
+    """The bootstrap, driven rather than asserted on the workflow's prose.
+
+    `ui/data/nba_live.json` is UNTRACKED until the first run commits it, and
+    `git diff` compares against the INDEX: it reports no change for a file
+    git has never seen. A `git diff --quiet` guard in front of the publish
+    therefore exits 0 on every scheduled run and the feed never bootstraps.
+    This drives `publish_to_main.sh` on exactly that case.
+    """
+    import subprocess
+
+    def git(*args, cwd):
+        return subprocess.run(('git',) + args, cwd=cwd, check=True,
+                              capture_output=True, text=True)
+
+    remote = tmp_path / 'remote.git'
+    subprocess.run(['git', 'init', '--bare', '-b', 'main', str(remote)],
+                   check=True, capture_output=True)
+    work = tmp_path / 'work'
+    work.mkdir()
+    git('init', '-b', 'main', cwd=work)
+    git('config', 'user.email', 't@example.com', cwd=work)
+    git('config', 'user.name', 'T', cwd=work)
+    (work / 'seed').write_text('x', encoding='utf-8')
+    git('add', 'seed', cwd=work)
+    git('commit', '-m', 'seed', cwd=work)
+    git('remote', 'add', 'origin', str(remote), cwd=work)
+    git('push', 'origin', 'main', cwd=work)
+
+    (work / 'ui' / 'data').mkdir(parents=True)
+    snapshot = work / 'ui' / 'data' / 'nba_live.json'
+    snapshot.write_text('{"games": []}', encoding='utf-8')
+    # Exactly the state a scheduled run is in: the file exists on disk and
+    # git has never heard of it.
+    assert 'nba_live.json' in git('status', '--porcelain',
+                                  '--untracked-files=all', cwd=work).stdout
+    # And THE TRAP itself: `git diff` says nothing changed about a file it
+    # has never seen, so a guard built on it would exit 0 right here and the
+    # feed would never bootstrap.
+    quiet = subprocess.run(['git', 'diff', '--quiet', '--',
+                            'ui/data/nba_live.json'], cwd=work)
+    assert quiet.returncode == 0
+
+    script = str(ROOT / 'scripts' / 'publish_to_main.sh')
+    env = dict(os.environ, PUBLISH_BRANCH='main', PUBLISH_ATTEMPTS='1')
+    done = subprocess.run(['bash', script, 'Refresh [skip ci]',
+                           'ui/data/nba_live.json'],
+                          cwd=work, env=env, capture_output=True, text=True)
+    assert done.returncode == 0, done.stderr
+    # It reached the remote, which is the only thing that publishes it.
+    listed = subprocess.run(['git', 'ls-tree', '--name-only', '-r',
+                             'main', 'ui/data/'], cwd=remote,
+                            capture_output=True, text=True, check=True)
+    assert 'ui/data/nba_live.json' in listed.stdout
+
+    # And a second run with nothing changed commits nothing, which is what
+    # the removed guard was there for.
+    again = subprocess.run(['bash', script, 'Refresh [skip ci]',
+                            'ui/data/nba_live.json'],
+                           cwd=work, env=env, capture_output=True, text=True)
+    assert again.returncode == 0, again.stderr
+    assert 'Nothing changed' in again.stdout

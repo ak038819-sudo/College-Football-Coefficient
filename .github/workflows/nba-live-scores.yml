@@ -99,10 +99,14 @@ jobs:
           # without a scheduled job writing to main first.
           PUBLISH_BRANCH: ${{ github.ref_name }}
         run: |
-          if git diff --quiet -- ui/data/nba_live.json; then
-            echo "Unchanged; nothing to publish."
-            exit 0
-          fi
+          # NO `git diff --quiet` GUARD HERE. The snapshot is UNTRACKED until
+          # the first run commits it, and `git diff` compares against the
+          # index: it reports no change for a file git has never seen. A
+          # guard like that exits 0 on every scheduled run and the feed never
+          # bootstraps. `publish_to_main.sh` stages first and compares the
+          # INDEX, which answers both questions correctly -- a new file and an
+          # unchanged one -- and says "Nothing changed; no commit." itself.
+          #
           # `[skip ci]` is right here: ui/nba.html fetches this file directly,
           # so GitHub Pages republishing it is all it takes. Nothing needs the
           # football deploy to regenerate a dashboard.

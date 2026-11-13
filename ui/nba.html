@@ -1213,6 +1213,12 @@
       // Remembered as an attempt, so a missing file is not refetched every
       // sixty seconds for as long as the tab is open.
       liveState.at = Date.now();
+      // AND RE-RENDER ANYWAY. Staleness is decided when the snapshot is
+      // attached, so without this a page that drew a score and then lost the
+      // feed keeps that score, its LIVE badge and its "updated 2 minutes
+      // ago" for as long as the tab stays open -- the one case where the
+      // thirty-minute rule has to bite and nothing was asking it to.
+      if (liveState.snapshot) render();
     });
   }
 
