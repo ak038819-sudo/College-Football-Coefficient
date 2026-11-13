@@ -22,7 +22,12 @@ CONFIG = dict(elo=dict(k=48, home_advantage=50, offseason_retention=0.5,
                        margin_min=0.25, margin_max=4.0,
                        reference_margin=11.67, points_per_elo=0.0527,
                        initial_rating=1500.0, scale=400.0))
+# `chosen` is what the report measured, and `build()` refuses a report that
+# measured other parameters than the ones being replayed -- so the fixture
+# carries the parameters it claims to have measured, which is the point of
+# the guard rather than a concession to it.
 REPORT = dict(fit_seasons=[2024], holdout_seasons=[2025],
+              chosen=dict(CONFIG['elo']),
               holdout=dict(brier=0.2237, games=1424))
 
 
@@ -322,3 +327,66 @@ class TestPregameNumbersOnAGame:
         games = [dict(home='a', away='b', home_points=3, away_points=31)]
         export_module.expect_upcoming(games, rows, json.loads(model['config']))
         assert 'home_wp' not in games[0]
+
+
+class TestTheReportGuard:
+    """`--report` may not attach one fit's score to another fit's parameters.
+
+    The configuration path has carried `measured_on_elo_sha256` since it was
+    written; the other path into `build_ratings()` was taken on trust.
+    Replaying one k with a report whose `chosen.k` is another produced an
+    export the publish gate passed, because the gate reads the claim rather
+    than re-measuring it. Found and fixed on the NBA's copy of this module
+    first; this is the same hole, in the same shape, here.
+
+    These drive the real `league` fixture, so the assertion is about the
+    path the refresh actually takes.
+    """
+
+    def test_a_report_from_another_fit_is_refused(self, tmp_path):
+        from src.nfl.build_ratings import build as build_model
+        connection = store.connect(tmp_path / 'nfl.db')
+        games = season_games(2026)
+        store.upsert_team_stubs(connection, games)
+        store.upsert_games(connection, games)
+        other = dict(REPORT, chosen=dict(CONFIG['elo'],
+                                         k=CONFIG['elo']['k'] + 17))
+        with pytest.raises(ValueError) as raised:
+            build_model(connection, CONFIG, report=other)
+        assert "'k'" in str(raised.value)
+        assert 'never earned' in str(raised.value)
+
+    def test_a_report_that_names_no_parameters_is_refused(self, tmp_path):
+        from src.nfl.build_ratings import build as build_model
+        connection = store.connect(tmp_path / 'nfl.db')
+        games = season_games(2026)
+        store.upsert_team_stubs(connection, games)
+        store.upsert_games(connection, games)
+        bare = {key: value for key, value in REPORT.items() if key != 'chosen'}
+        with pytest.raises(ValueError) as raised:
+            build_model(connection, CONFIG, report=bare)
+        assert 'which parameters it measured' in str(raised.value)
+
+    def test_a_report_short_of_a_parameter_is_refused(self):
+        from src.nfl.build_ratings import check_report
+        elo = CONFIG['elo']
+        partial = {key: value for key, value in elo.items()
+                   if key != 'home_advantage'}
+        with pytest.raises(ValueError) as raised:
+            check_report(dict(REPORT, chosen=partial), elo)
+        assert 'home_advantage' in str(raised.value)
+
+    def test_the_fits_own_bookkeeping_is_not_a_difference(self):
+        # `chosen` repeats the search parameters alongside the derived ones
+        # and may carry keys the elo block does not. Those are the fit's
+        # record of its own search, not a disagreement.
+        from src.nfl.build_ratings import check_report
+        elo = CONFIG['elo']
+        report = dict(REPORT, chosen=dict(elo, grid_rank=1, brier=0.2))
+        assert check_report(report, elo) is report
+
+    def test_the_matching_report_the_fixture_uses_is_accepted(self):
+        """The guard would be vacuous if it refused everything: the league
+        fixture above is built with REPORT and gets this far."""
+        from src.nfl.build_ratings import check_report
+        assert check_report(REPORT, CONFIG['elo']) is REPORT
