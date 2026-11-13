@@ -78,6 +78,26 @@ collegefootballdata.com, so agreement means the import is faithful to the
 provider — not that the history is complete or correct. The independent
 references below are still owed.
 
+### Result, 1946–1979 (2026-11-13)
+
+8,087 team-seasons compared. **No game-count mismatch and no result
+mismatch anywhere in the range** — every team the two feeds share agrees
+exactly on games, wins, losses and ties. 7,333 team-seasons reconcile
+outright; 2,111 are an all-zero record line beside nothing staged, which is
+agreement.
+
+All 754 remaining findings are the same one: a staged team the records feed
+never carries, across **191 distinct names**. The most persistent are
+Presbyterian (29 seasons), Quantico Marines (24), Wofford (23), Trinity
+(Texas) (22), McMurry (17), Boston University and Catawba (16 each), Santa
+Clara and Tampa (14 each). They are opponents of major-college programs
+that the records feed does not carry, and they are the work list for the
+identity map and the season-specific eligibility mapping below — not
+records to drop.
+
+This says the import is faithful to the provider. It says nothing yet about
+completeness, which the independent references below are for.
+
 The run reads the backfill's artifact chain and never republishes it, so the
 backfill stays that chain's only writer; the records it collects are carried
 in a chain of their own (`historical-records-db`). `offline: true`
