@@ -126,9 +126,44 @@ empty to be filled in. Two schools that merely look alike stay two schools
 — "Trinity (Texas)" is not "Trinity (Connecticut)", and a defunct program
 is not the modern team sharing its name.
 
-The run prints every name still needing a verdict into its own log as well
-as the CSV, because the artifact store is not reachable from everywhere
-this gets read.
+The run prints the whole map into its own log as well as the CSV, because
+the artifact store is not reachable from everywhere this gets read — and
+the staging database expires 90 days after the run that built it, while
+the evidence should not.
+
+### Result, 1946–1979 (2026-11-13)
+
+405 distinct school names. 239 are carried by the provider as a team and
+have an id, 1 matches our reviewed registry, and **165 need a verdict** —
+753 games between them, about 3% of the archive. The committed map is
+`data/identity/historical_schools.csv`, which is where the verdicts go as
+they are made.
+
+The unresolved are small colleges and service teams: Trinity (Texas) over
+22 seasons, McMurry 17, Catawba and Newberry 16, then Cal State Northridge,
+Randolph Macon, West Chester, Colorado College. Some are programmes that
+later changed name (East Texas A&M, Texas A&M-Kingsville, Midwestern Texas
+State, Missouri-Rolla); a few are not colleges at all (San Diego Navy,
+Parris Island Marines, Hawaii All-Stars).
+
+Two of the suggestions in that file are wrong — "Georgia State" for
+Emporia State, "Northwestern" for Northeastern — which is the argument for
+the rule that a suggestion is never applied.
+
+### The verdict vocabulary
+
+| verdict | meaning | rated? |
+| --- | --- | --- |
+| `small_college` | a college programme outside the major-college tier in that era | no |
+| `service_team` | a military or base team | no |
+| `exhibition` | an all-star or non-college side | no |
+| `renamed` | the same programme under a later name; `canonical_name` must say which | follows that programme |
+| `ambiguous` | cannot be settled from what we have; reported, never guessed | no |
+
+Only `renamed` asserts that two names are one programme, so it is the only
+one that must name the programme, and `tests/test_historical_identity_map.py`
+refuses a `renamed` row without a canonical name. The other four mean the
+name is never rated and only has to be a consistent opponent.
 
 ## Review before promotion
 

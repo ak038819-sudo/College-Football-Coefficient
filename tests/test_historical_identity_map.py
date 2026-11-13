@@ -405,3 +405,78 @@ class TestTheWorkflowThatBuildsIt:
         body = text.split('Print the candidate map in full', 1)[1]
         assert 'cat "$report"' in body
         assert '--- historical_schools.csv ---' in body
+
+
+MAP = ROOT / 'data/identity/historical_schools.csv'
+# The vocabulary a reviewer fills `verdict` from. Everything but `renamed`
+# means the name is never rated and only has to be a consistent opponent;
+# `renamed` is the one that asserts two names are one programme, so it must
+# say which programme.
+VERDICTS = {'small_college', 'service_team', 'exhibition', 'renamed',
+            'ambiguous'}
+
+
+@pytest.fixture(scope='module')
+def committed():
+    return list(csv.DictReader(MAP.open(encoding='utf-8')))
+
+
+class TestTheCommittedMap:
+    """The evidence outlives the artifact it came from.
+
+    The staging database expires 90 days after the run that built it. This
+    file is the only durable record of what the archive actually contains,
+    and the place the verdicts get written as they are made.
+    """
+
+    def test_it_holds_every_name_the_run_found(self, committed):
+        assert len(committed) == 405
+        assert len({row['raw_name'] for row in committed}) == 405
+
+    def test_each_name_is_in_one_of_the_three_states(self, committed):
+        assert {row['status'] for row in committed} == {
+            'records_matched', 'registry_matched', 'unresolved'}
+
+    def test_a_resolved_name_carries_what_resolved_it(self, committed):
+        for row in committed:
+            if row['status'] == 'records_matched':
+                assert row['canonical_name'], row['raw_name']
+                assert row['cfbd_team_ids'], row['raw_name']
+            elif row['status'] == 'registry_matched':
+                assert row['canonical_name'], row['raw_name']
+
+    def test_an_unresolved_name_claims_no_identity(self, committed):
+        for row in committed:
+            if row['status'] == 'unresolved':
+                assert row['canonical_name'] == '', row['raw_name']
+
+    def test_a_verdict_is_one_of_the_words_that_mean_something(self,
+                                                               committed):
+        for row in committed:
+            if row['verdict']:
+                assert row['verdict'] in VERDICTS, row['raw_name']
+
+    def test_calling_a_name_a_rename_says_what_it_was_renamed_to(self,
+                                                                 committed):
+        # The one verdict that asserts two names are one programme. Without
+        # a canonical name it asserts it and does not say it, which is how
+        # a wrong merge gets in unnoticed.
+        for row in committed:
+            if row['verdict'] == 'renamed':
+                assert row['canonical_name'], row['raw_name']
+
+    def test_the_suggestion_column_was_never_promoted_into_an_identity(
+            self, committed):
+        # Two of the suggestions in this very file are wrong -- Georgia
+        # State for Emporia State, Northwestern for Northeastern. They are
+        # leads, and this is what keeps them leads.
+        for row in committed:
+            if row['status'] == 'unresolved' and row['suggestion']:
+                assert row['canonical_name'] == '', row['raw_name']
+                assert row['canonical_name'] != row['suggestion']
+
+    def test_the_evidence_columns_are_filled_for_every_name(self, committed):
+        for row in committed:
+            assert int(row['games']) > 0, row['raw_name']
+            assert 1946 <= int(row['first_season']) <= int(row['last_season']) <= 1979
+            assert int(row['as_home']) + int(row['as_away']) == int(row['games'])
