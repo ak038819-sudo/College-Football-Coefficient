@@ -222,6 +222,25 @@ class TestWhatItCatches:
             record('Centre', regular=(8, 5, 3, 0))]}))
         assert rows['Centre']['findings'] == 'reference_has_games_none_staged'
 
+    def test_an_all_zero_record_line_with_nothing_staged_is_agreement(
+            self, archive, tmp_path):
+        # The provider carries lines for programs it knows of and has no
+        # fixtures for. Both feeds say the team did not play, which is not a
+        # disagreement -- and calling it one cried wolf 2,111 times on the
+        # first real run, against 754 findings that matter.
+        rows = by_team(run(archive, tmp_path, {1950: [record('Wofford')]}))
+        assert rows['Wofford']['findings'] == ''
+        assert rows['Wofford']['reconciled'] is True
+        assert rows['Wofford']['empty_reference_line'] is True
+
+    def test_an_agreeing_team_is_not_marked_as_an_empty_line(self, archive,
+                                                             tmp_path):
+        game(archive, 1, 'Army', 'Navy', 21, 0)
+        rows = by_team(run(archive, tmp_path, {1950: [
+            record('Army', regular=(1, 1, 0, 0)),
+            record('Navy', regular=(1, 0, 1, 0))]}))
+        assert rows['Army']['empty_reference_line'] is False
+
     def test_a_team_we_staged_that_the_records_feed_never_mentions(
             self, archive, tmp_path):
         # Reported, not dropped: an unmatched name is what the identity map
@@ -605,3 +624,71 @@ class TestTheWorkflowThatRunsIt:
         for flag in ('--staging', '--db', '--out', '--start', '--end',
                      '--pause', '--force', '--offline'):
             assert f'"{flag}"' in source, flag
+
+
+class TestTheUnmatchedNamesAreRanked:
+    """The 754 unmatched team-seasons are the identity map's work list."""
+
+    def test_names_are_counted_by_season_and_the_worst_come_first(self):
+        rows = [
+            {'season': year, 'team_raw': 'Camp Lejeune',
+             'findings': 'no_reference_line', 'reconciled': False}
+            for year in (1946, 1947, 1948)
+        ] + [
+            # Sorts FIRST alphabetically and LAST by seasons, so an
+            # alphabetical sort cannot pass this test.
+            {'season': 1946, 'team_raw': 'Amphibious Force',
+             'findings': 'no_reference_line', 'reconciled': False},
+            {'season': 1946, 'team_raw': 'Army', 'findings': '',
+             'reconciled': True},
+        ]
+        summary = reconciler.summarize(rows, 1946, 1948)
+        assert summary['unmatched_team_names'] == 2
+        assert list(summary['unmatched_team_seasons_by_name']) == [
+            'Camp Lejeune', 'Amphibious Force']
+        assert summary['unmatched_team_seasons_by_name']['Camp Lejeune'] == 3
+
+    def test_an_agreeing_team_is_never_in_the_work_list(self):
+        summary = reconciler.summarize(
+            [{'season': 1946, 'team_raw': 'Army', 'findings': '',
+              'reconciled': True}], 1946, 1946)
+        assert summary['unmatched_team_seasons_by_name'] == {}
+        assert summary['unmatched_team_names'] == 0
+
+    def test_a_mismatched_team_is_not_in_the_work_list_either(self):
+        # The work list is names the records feed does not carry, not every
+        # team with something wrong.
+        summary = reconciler.summarize(
+            [{'season': 1946, 'team_raw': 'Army',
+              'findings': 'regular_game_count_mismatch', 'reconciled': False}],
+            1946, 1946)
+        assert summary['unmatched_team_seasons_by_name'] == {}
+
+    def test_the_list_is_capped_so_the_summary_stays_readable(self):
+        rows = [{'season': 1946, 'team_raw': f'Team {index:03d}',
+                 'findings': 'no_reference_line', 'reconciled': False}
+                for index in range(reconciler.UNMATCHED_SHOWN + 10)]
+        summary = reconciler.summarize(rows, 1946, 1946)
+        assert summary['unmatched_team_names'] == reconciler.UNMATCHED_SHOWN + 10
+        assert len(summary['unmatched_team_seasons_by_name']) \
+            == reconciler.UNMATCHED_SHOWN
+
+    def test_the_empty_lines_are_counted_apart_from_the_findings(self):
+        rows = [
+            {'season': 1950, 'team_raw': 'Wofford', 'findings': '',
+             'reconciled': True, 'empty_reference_line': True},
+            {'season': 1950, 'team_raw': 'Army', 'findings': '',
+             'reconciled': True, 'empty_reference_line': False},
+        ]
+        summary = reconciler.summarize(rows, 1950, 1950)
+        assert summary['empty_reference_lines'] == 1
+        assert summary['reconciled'] == 2
+        assert summary['with_findings'] == 0
+
+
+class TestTheRunSummarySurfacesTheWorkList:
+    def test_the_unmatched_names_reach_the_run_summary(self, text):
+        body = text.split('Summarise what disagrees', 1)[1]
+        assert "'no_reference_line' in row['findings']" in body
+        assert 'records feed never carries' in body
+        assert 'GITHUB_STEP_SUMMARY' in body

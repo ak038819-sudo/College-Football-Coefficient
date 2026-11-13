@@ -266,13 +266,20 @@ def reconcile(archive, records, first=FIRST, last=LAST):
                     row[f"delta_{name}"] = difference(mine, theirs)
                 row[f"staged_{kind}_undecided"] = counts.get(
                     f"{kind}_undecided", 0)
+            row["empty_reference_line"] = False
             if line is None:
                 findings.append("no_reference_line")
             elif not counts:
                 if any(line[f"{kind}_games"] or 0 for kind in SEASON_TYPES):
                     findings.append("reference_has_games_none_staged")
                 else:
-                    findings.append("no_staged_games")
+                    # A record line of all zeroes beside nothing staged is
+                    # the two feeds AGREEING that the team did not play --
+                    # the provider carries such lines for programs it knows
+                    # of but has no fixtures for. Counting it as a finding
+                    # cried wolf 2,111 times on the first real run and
+                    # buried the 754 that matter.
+                    row["empty_reference_line"] = True
             else:
                 for kind in SEASON_TYPES:
                     if row[f"delta_{kind}_games"]:
@@ -288,15 +295,24 @@ def reconcile(archive, records, first=FIRST, last=LAST):
     return results
 
 
+UNMATCHED_SHOWN = 40
+
+
 def summarize(rows, first, last):
     findings = defaultdict(int)
     seasons = defaultdict(int)
+    unmatched = defaultdict(int)
     for row in rows:
+        if "no_reference_line" in (row["findings"] or ""):
+            unmatched[row["team_raw"]] += 1
         if not row["findings"]:
             continue
         seasons[row["season"]] += 1
         for finding in row["findings"].split(";"):
             findings[finding] += 1
+    # Most seasons first: a name the records feed never carries in thirty
+    # years is a different problem from one missing in a single season.
+    ranked = sorted(unmatched.items(), key=lambda pair: (-pair[1], pair[0]))
     return {
         "years": [first, last],
         "team_seasons": len(rows),
@@ -305,6 +321,10 @@ def summarize(rows, first, last):
         "findings": dict(sorted(findings.items())),
         "seasons_with_findings": {str(year): count
                                   for year, count in sorted(seasons.items())},
+        "empty_reference_lines": sum(1 for row in rows
+                                     if row.get("empty_reference_line")),
+        "unmatched_team_names": len(unmatched),
+        "unmatched_team_seasons_by_name": dict(ranked[:UNMATCHED_SHOWN]),
         "production_promotion_allowed": False,
         "note": "Both feeds are collegefootballdata.com, so agreement means "
                 "the import is faithful to the provider, not that the "
