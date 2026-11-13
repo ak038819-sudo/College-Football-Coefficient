@@ -36,8 +36,9 @@ on:
         default: false
       fresh:
         description: "Start from an empty staging database, carrying nothing
-          forward. For a rehearsal; a batch run this way resumes nothing and
-          audits only itself."
+          forward. For a rehearsal; a batch run this way resumes nothing,
+          audits only itself, and is kept under its own artifact name so the
+          cumulative archive is not replaced by it."
         type: boolean
         default: false
       pause:
@@ -65,7 +66,13 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       STAGING: ${{ github.workspace }}/staging/historical_staging.db
       REPORT: ${{ github.workspace }}/report
+      # The chain. Only a run that carried this forward may replace it: a
+      # rehearsal uploads under ARTIFACT_REHEARSAL instead, because the carry
+      # step takes the NEWEST artifact of this name, and a rehearsal landing
+      # in the chain would silently drop every batch before it and have the
+      # provider asked for them all again.
       ARTIFACT: historical-staging-db
+      ARTIFACT_REHEARSAL: historical-staging-rehearsal
     steps:
       - uses: actions/checkout@v4
 
@@ -168,10 +175,15 @@ jobs:
       - name: Keep the staging database, whether or not the import finished
         # ALWAYS. A run that stopped on 1954 has 1946-1953 in it, and throwing
         # that away would mean asking the provider for them again.
+        #
+        # A REHEARSAL IS KEPT OUT OF THE CHAIN. `fresh` started from nothing,
+        # so its database holds only its own batch; published under the chain
+        # name it would be what the next ordinary dispatch resumed from.
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: historical-staging-db
+          name: ${{ inputs.fresh && 'historical-staging-rehearsal'
+                                 || 'historical-staging-db' }}
           path: ${{ github.workspace }}/staging/historical_staging.db
           retention-days: 90
           if-no-files-found: error

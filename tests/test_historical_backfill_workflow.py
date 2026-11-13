@@ -21,6 +21,7 @@ yaml = pytest.importorskip('yaml')
 ROOT = Path(__file__).parent.parent
 WORKFLOW = ROOT / '.github/workflows/historical-backfill.yml'
 ARTIFACT = 'historical-staging-db'
+REHEARSAL = 'historical-staging-rehearsal'
 
 
 @pytest.fixture(scope='module')
@@ -93,7 +94,7 @@ class TestWhatSurvivesAFailure:
         # dispatch a resume rather than a restart.
         keep = named(steps, 'keep the staging database')
         assert keep['if'] == 'always()'
-        assert keep['with']['name'] == ARTIFACT
+        assert ARTIFACT in keep['with']['name']
 
     def test_an_empty_upload_is_an_error_and_not_a_shrug(self, steps):
         keep = named(steps, 'keep the staging database')
@@ -110,6 +111,24 @@ class TestWhatSurvivesAFailure:
         body = text.split(carry, 1)[1].split('- name:', 1)[0]
         assert 'if ! gh api' in body
         assert 'holds no historical_staging.db' in body
+
+    def test_a_rehearsal_cannot_become_what_the_next_run_resumes_from(
+            self, steps, text):
+        # `fresh` starts from nothing, so its database holds only its own
+        # batch. Published under the chain's name it would be the newest
+        # artifact of that name, which is precisely what the next ordinary
+        # dispatch carries forward -- every earlier batch dropped in
+        # silence and fetched from the provider all over again.
+        keep = named(steps, 'keep the staging database')
+        name = keep['with']['name']
+        assert 'inputs.fresh' in name
+        assert REHEARSAL in name
+        # And the carry step still asks for the chain and never for a
+        # rehearsal.
+        carry = text.split('Carry the staging database forward', 1)[1]
+        carry = carry.split('- name:', 1)[0]
+        assert 'name=$ARTIFACT' in carry
+        assert REHEARSAL not in carry
 
     def test_every_piped_step_sets_pipefail(self, steps):
         for step in steps:

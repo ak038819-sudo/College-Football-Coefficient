@@ -30,7 +30,10 @@ committed — the plan keeps staging records and raw payloads out of Git — and
 it is uploaded **even when the import fails**, which is the run where it
 matters: the importer checkpoints per season and season type, so the next
 dispatch of the same range resumes rather than re-fetching what the provider
-has already served. `fresh: true` starts from nothing, for a rehearsal.
+has already served. `fresh: true` starts from nothing, for a rehearsal, and such a run is kept
+under its own artifact name: the carry step takes the newest artifact of the
+chain's name, so a rehearsal published into the chain would be what the next
+ordinary dispatch resumed from, dropping every earlier batch in silence.
 
 Each run audits the range it imported and publishes
 `backfill_readiness.csv` and `backfill_summary.json` as a second artifact,
