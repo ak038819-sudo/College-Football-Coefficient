@@ -116,6 +116,10 @@ ESPN_TEAM_OF_NBA = {
 # it counts for neither side of the regular season.
 REGULAR_SEASON = 'regular_season'
 
+# The first season ESPN publishes these grades for. The refresh names no
+# seasons, so this and the archive's own last season are what it imports.
+FIRST_SEASON = 2024
+
 # A fingerprint has to cover almost all of a player's games to stand in for
 # a name. Measured over four seasons, a real match scores above 0.95 and
 # the nearest wrong one below 0.4.
@@ -339,12 +343,25 @@ def crosswalk_people(players, played, people_by_name, our_played):
     resolved, unresolved = {}, []
 
     def by_fingerprint(games):
-        best, score = None, 0.0
-        for person, theirs in our_played.items():
+        """(person, score, tied) for the closest of our people by games.
+
+        **A TIE IS NOT A MATCH.** Two of our people can have the very same
+        appearance set -- two men who have played only the season's opening
+        night, which is every October -- and taking the first of them would
+        file one man's grades under another, silently, or collide on the
+        primary key where the other id resolved correctly. A tie at the
+        top is quarantined with its reason instead.
+        """
+        best, score, tied = None, 0.0, 0
+        for person, theirs in sorted(our_played.items()):
             overlap = _overlap(games, theirs)
             if overlap > score:
-                best, score = person, overlap
-        return (best, score) if score >= FINGERPRINT_FLOOR else (None, score)
+                best, score, tied = person, overlap, 1
+            elif overlap == score and score > 0:
+                tied += 1
+        if score < FINGERPRINT_FLOOR:
+            return None, score, tied
+        return best, score, tied
 
     for player, games in sorted(played.items()):
         candidates = people_by_name.get(normalised(named.get(player)), [])
@@ -352,19 +369,27 @@ def crosswalk_people(players, played, people_by_name, our_played):
             resolved[player] = (candidates[0], 'name')
             continue
         if len(candidates) > 1:
-            best = max(candidates, key=lambda one: _overlap(
-                games, our_played.get(one, set())))
-            if _overlap(games, our_played.get(best, set())) \
-                    >= FINGERPRINT_FLOOR:
+            scored = sorted(
+                ((_overlap(games, our_played.get(one, set())), one)
+                 for one in candidates), reverse=True)
+            best, top = scored[0][1], scored[0][0]
+            ties = sum(1 for score, _ in scored if score == top)
+            if top >= FINGERPRINT_FLOOR and ties == 1:
                 resolved[player] = (best, 'name and the games played')
                 continue
             unresolved.append((player, named.get(player),
                                'the name belongs to more than one of our '
                                'people and the games played settle none'))
             continue
-        person, score = by_fingerprint(games)
-        if person is not None:
+        person, score, tied = by_fingerprint(games)
+        if person is not None and tied == 1:
             resolved[player] = (person, 'the games played')
+            continue
+        if person is not None:
+            unresolved.append((player, named.get(player),
+                               'no person of ours goes by that name, and '
+                               '%d of them played the very same games'
+                               % tied))
             continue
         unresolved.append((player, named.get(player),
                            'no person of ours goes by that name, and the '
@@ -573,6 +598,19 @@ def ingest_season(connection, season, *, raw_root=None, reuse_cache=False,
                 resolved_games=len(games), dropped=dropped, **stored)
 
 
+def archive_seasons(connection, first=FIRST_SEASON):
+    """The seasons to import when nobody names any: every season of the
+    schedule from the first ESPN publishes grades for.
+
+    The refresh runs this step with no `--seasons`, so a CLI that demanded
+    them would stop the nightly run before the replay and the publish.
+    """
+    rows = connection.execute(
+        'SELECT DISTINCT season FROM game WHERE season >= ? ORDER BY season',
+        (int(first),))
+    return [int(one[0]) for one in rows]
+
+
 def ingest(connection, seasons, **kwargs):
     """Every season named, oldest first. A failure stops the run."""
     return [ingest_season(connection, season, **kwargs)
@@ -597,14 +635,20 @@ def main(argv=None):
     parser.add_argument('--db', default=None)
     parser.add_argument('--raw-root', default=None)
     parser.add_argument('--seasons', default='',
-                        help='comma-separated, e.g. 2024,2025,2026,2027')
+                        help='comma-separated, e.g. 2024,2025,2026,2027; '
+                             'every season of the schedule from %d by '
+                             'default' % FIRST_SEASON)
     parser.add_argument('--reuse-cache', action='store_true')
     args = parser.parse_args(argv)
-    if not args.seasons.strip():
-        parser.error('--seasons is required')
-    seasons = [int(one) for one in args.seasons.replace(' ', '').split(',')
-               if one]
+    named = [int(one) for one in args.seasons.replace(' ', '').split(',')
+             if one]
     connection = connect(args.db)
+    seasons = named or archive_seasons(connection)
+    if not seasons:
+        print('No season of the schedule is at or after %d, so there is '
+              'nothing to import.' % FIRST_SEASON)
+        connection.close()
+        return 1
     try:
         reports = ingest(connection, seasons, raw_root=args.raw_root,
                          reuse_cache=args.reuse_cache)

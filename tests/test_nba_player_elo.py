@@ -194,6 +194,36 @@ class TestResolvingTheArchiveOntoOurs:
         assert unresolved == []
         assert resolved[SOURCE_PLAYER] == (PLAYER, 'the games played')
 
+    def test_two_of_ours_who_played_the_very_same_games_settle_nothing(
+            self, tmp_path):
+        # A TIE IS NOT A MATCH. Two men who have played only the season's
+        # opening night is every October, and taking the first of them
+        # files one man's grades under another -- silently, or as a
+        # primary-key collision where the other id resolved correctly.
+        connection = database(
+            tmp_path, people=((PLAYER, 'A Player'), (OTHER, 'B Player')))
+        both = {identity.game_key(GAME)}
+        resolved, unresolved = net_points.crosswalk_people(
+            [{'player_id': SOURCE_PLAYER, 'name': 'Someone Else'}],
+            {SOURCE_PLAYER: both}, net_points.our_names(connection),
+            {PLAYER: set(both), OTHER: set(both)})
+        assert resolved == {}
+        assert 'played the very same games' in unresolved[0][2]
+
+    def test_a_shared_name_the_games_do_not_separate_settles_nothing(
+            self, tmp_path):
+        # The same hazard one branch up: two of our people go by the name,
+        # and both played the games the source player did.
+        connection = database(
+            tmp_path, people=((PLAYER, 'A Player'), (OTHER, 'A Player')))
+        both = {identity.game_key(GAME)}
+        resolved, unresolved = net_points.crosswalk_people(
+            [{'player_id': SOURCE_PLAYER, 'name': 'A Player'}],
+            {SOURCE_PLAYER: both}, net_points.our_names(connection),
+            {PLAYER: set(both), OTHER: set(both)})
+        assert resolved == {}
+        assert 'settle none' in unresolved[0][2]
+
     def test_a_player_the_fingerprint_cannot_settle_is_quarantined(
             self, tmp_path):
         connection = database(tmp_path, games=(GAME, SECOND, THIRD))
@@ -619,6 +649,45 @@ class TestWhatThePublisherWillNotDo:
         assert player_elo.MODEL_NAME  # the layer exists to be lost
         assert publish._rated_seasons(live) == {2026}
         assert publish._rated_seasons(fresh) == set()
+
+
+class TestWhichSeasonsAreImported:
+    def test_the_default_is_every_season_of_the_schedule(self, tmp_path):
+        # THE REFRESH NAMES NONE. A CLI that demanded them would stop the
+        # nightly run before the replay and before publishing.
+        connection = database(tmp_path)
+        assert net_points.archive_seasons(connection) == [2026]
+
+    def test_a_season_before_the_grades_exist_is_not_asked_for(self,
+                                                               tmp_path):
+        connection = database(tmp_path)
+        connection.execute(
+            'INSERT INTO game (game_key, provider_id, season,'
+            ' season_label, season_type, game_date, home_team_key,'
+            ' away_team_key, home_team_id, away_team_id)'
+            " VALUES ('g', 'p', 2015, '2014-15', 'regular', '2015-01-01',"
+            ' ?, ?, ?, ?)', (HOME, AWAY, HOME_ID, AWAY_ID))
+        connection.commit()
+        assert net_points.archive_seasons(connection) == [2026]
+        assert net_points.archive_seasons(connection, 2027) == []
+
+    def test_main_with_no_seasons_imports_the_archives_own(
+            self, tmp_path, monkeypatch, capsys):
+        # The regression this guards: `main` used to refuse the invocation
+        # the refresh makes, so the nightly run would stop here.
+        database(tmp_path).close()
+        asked = {}
+
+        def fake(connection, seasons, **kwargs):
+            asked['seasons'] = list(seasons)
+            return [{'season': one, 'stored': 0, 'people': 0, 'games': 0,
+                     'unresolved': 0} for one in seasons]
+
+        monkeypatch.setattr(net_points, 'ingest', fake)
+        monkeypatch.setattr(net_points, 'summarise', lambda reports: '')
+        assert net_points.main(['--db', str(tmp_path / 'nba.db')]) == 0
+        assert asked['seasons'] == [2026]
+        assert '1 seasons' in capsys.readouterr().out
 
 
 def test_the_module_runs_as_a_module(tmp_path, capsys):
