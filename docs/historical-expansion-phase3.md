@@ -104,10 +104,36 @@ in a chain of their own (`historical-records-db`). `offline: true`
 reconciles against records already collected and asks the provider for
 nothing.
 
+## Identity candidates
+
+`.github/workflows/historical-identity.yml` reads the staged archive and the
+collected records — both chains, neither replaced, no credential needed,
+nothing fetched — and writes `historical_schools.csv`: every distinct school
+name in the range with the evidence for it (seasons, games, home and away
+counts, distinct opponents, every classification and conference it appears
+under), sorted into three states:
+
+| status | meaning |
+| --- | --- |
+| `records_matched` | the provider carries the name as a team, so its id is known |
+| `registry_matched` | our own reviewed `team_identities.json` knows the name |
+| `unresolved` | neither: a person has to rule on it |
+
+**It decides nothing.** Where an unresolved name resembles a known one the
+`suggestion` column says so, as a lead to check; a suggestion is never
+written into `canonical_name`, and `verdict` and `verdict_note` come back
+empty to be filled in. Two schools that merely look alike stay two schools
+— "Trinity (Texas)" is not "Trinity (Connecticut)", and a defunct program
+is not the modern team sharing its name.
+
+The run prints every name still needing a verdict into its own log as well
+as the CSV, because the artifact store is not reachable from everywhere
+this gets read.
+
 ## Review before promotion
 
 - Reconcile source counts with independent historical references for each season, especially empty or unexpectedly sparse years. (The provider's own records feed is now reconciled by `historical-reconcile.yml`; independent references are still outstanding.)
-- Create a reviewed canonical historical school identity map including renamed, merged, discontinued, and similarly named programs.
+- Create a reviewed canonical historical school identity map including renamed, merged, discontinued, and similarly named programs. (`.github/workflows/historical-identity.yml` builds the **candidates**; the verdicts are a person's.)
 - Create season-specific major-college / division eligibility mapping; do not infer historical membership from present-day FBS.
 - Preserve ties, neutral-site uncertainty, missing scores/dates, and unknown classifications.
 - Report all unresolved ambiguities; never silently discard records to satisfy modern FBS constraints.

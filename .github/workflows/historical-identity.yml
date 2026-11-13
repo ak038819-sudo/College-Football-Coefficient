@@ -1,0 +1,170 @@
+# Phase 3, the second promotion gate: which school is each staged name?
+#
+# READS ONLY. It carries the backfill's staging chain and the reconciliation's
+# records chain, writes to neither, and asks no provider for anything -- it
+# needs no credential at all. What it produces is a CANDIDATE map: the
+# evidence for every name in the range, sorted into the ones the provider
+# carries as a team, the ones our reviewed registry already knows, and the
+# ones a person has to rule on.
+#
+# IT DECIDES NOTHING. The `suggestion` column is a lead to check, never a
+# resolution, and the `verdict` columns come back empty for a reviewer to
+# fill. Renaming, merging or dropping a school is not something a script
+# does here. No production table is opened, no rating is built, `ui/` is
+# untouched, so no deploy follows.
+name: Historical identity candidates (1946-1979)
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "First season (1946-1979)."
+        type: string
+        default: "1946"
+      end:
+        description: "Last season (1946-1979)."
+        type: string
+        default: "1979"
+
+concurrency:
+  group: historical-identity
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # To download the staging and records artifacts. Neither is replaced.
+  actions: read
+
+jobs:
+  identity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      STAGING: ${{ github.workspace }}/staging/historical_staging.db
+      RECORDS: ${{ github.workspace }}/records/historical_records.db
+      REPORT: ${{ github.workspace }}/report
+      ARTIFACT_STAGING: historical-staging-db
+      ARTIFACT_RECORDS: historical-records-db
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      # No pip install: the script is standard library only.
+
+      - name: Check the range
+        run: |
+          python - <<'PY'
+          import os
+          import sys
+          start, end = os.environ['START'], os.environ['END']
+          try:
+              first, last = int(start), int(end)
+          except ValueError:
+              sys.exit(f'::error::start and end must be years: {start}, {end}')
+          if not 1946 <= first <= last <= 1979:
+              sys.exit('::error::Phase 3 is 1946-1979, and start must not be '
+                       f'after end: got {first}-{last}')
+          print(f'Mapping {first}-{last}')
+          PY
+        env:
+          START: ${{ inputs.start }}
+          END: ${{ inputs.end }}
+
+      - name: Fetch the staged archive and the collected records
+        run: |
+          set -o pipefail
+          fetch () {
+            name="$1"; target="$2"; required="$3"
+            mkdir -p "$(dirname "$target")"
+            # SORTED: the artifacts endpoint promises no order and does not
+            # give one, and taking the first row once dropped a whole
+            # backfill batch out of the chain in silence.
+            id=$(gh api \
+              "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$name&per_page=100" \
+              --jq '[.artifacts[] | select(.expired == false)]
+                    | sort_by(.created_at) | reverse | .[0].id // empty')
+            if [ -z "$id" ]; then
+              if [ "$required" = "required" ]; then
+                echo "::error::No $name artifact. Run the backfill first; it expires 90 days after its run."
+                exit 1
+              fi
+              echo "No $name artifact yet; continuing without it."
+              return 0
+            fi
+            if ! gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" \
+                 > "$RUNNER_TEMP/$name.zip"; then
+              echo "::error::$name artifact $id could not be downloaded"
+              exit 1
+            fi
+            if ! unzip -o -q "$RUNNER_TEMP/$name.zip" -d "$(dirname "$target")"; then
+              echo "::error::$name artifact $id is not a readable zip"
+              exit 1
+            fi
+            if [ ! -f "$target" ]; then
+              echo "::error::$name artifact $id holds no $(basename "$target")"
+              exit 1
+            fi
+          }
+          fetch "$ARTIFACT_STAGING" "$STAGING" required
+          fetch "$ARTIFACT_RECORDS" "$RECORDS" optional
+
+      - name: Build the candidate map
+        run: |
+          set -o pipefail
+          python scripts/build_historical_identity_map.py \
+            --staging "$STAGING" \
+            --records "$RECORDS" \
+            --out "$REPORT" \
+            --start "${{ inputs.start }}" \
+            --end "${{ inputs.end }}" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: List every name still to be ruled on
+        if: always()
+        run: |
+          set -o pipefail
+          report="$REPORT/historical_schools.csv"
+          if [ ! -f "$report" ]; then
+            echo "No candidate map was written."
+            exit 0
+          fi
+          # Printed in full, not only written to the CSV: the artifact store
+          # is not reachable from every place this gets read from.
+          python - <<'PY'
+          import csv
+          import os
+          from pathlib import Path
+          rows = list(csv.DictReader(
+              (Path(os.environ['REPORT']) / 'historical_schools.csv').open()))
+          todo = sorted((row for row in rows if row['status'] == 'unresolved'),
+                        key=lambda row: (-int(row['seasons']),
+                                         row['raw_name']))
+          lines = ['', f'### {len(todo)} of {len(rows)} school names need a '
+                   'verdict', '',
+                   'A suggestion is a lead to check. Nothing here is '
+                   'resolved, renamed or merged by this run.', '',
+                   '| name | seasons | games | first | last | suggestion |',
+                   '| --- | --- | --- | --- | --- | --- |']
+          lines += [f"| {row['raw_name']} | {row['seasons']} | {row['games']} "
+                    f"| {row['first_season']} | {row['last_season']} | "
+                    f"{row['suggestion'] or ''} |" for row in todo]
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+              out.write('\n'.join(lines) + '\n')
+          for row in todo:
+              print(f"TODO\t{row['raw_name']}\t{row['seasons']}\t"
+                    f"{row['games']}\t{row['first_season']}-"
+                    f"{row['last_season']}\t{row['suggestion']}")
+          PY
+
+      - name: Publish the candidate map
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: historical-identity-${{ inputs.start }}-${{ inputs.end }}
+          path: ${{ env.REPORT }}
+          retention-days: 90
+          if-no-files-found: ignore
+          overwrite: true
