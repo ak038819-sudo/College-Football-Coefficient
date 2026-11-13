@@ -1,6 +1,6 @@
 # Phase 3 — 1946–1979 historical backfill
 
-**Status:** the importer, the auditor and the workflow that runs them are in place. No historical season has been imported or promoted yet.
+**Status:** all 34 seasons are staged. 1946–1979 was imported on 2026-11-13 — 22,706 games in 68 season-and-type partitions, audited in one pass with no blocked partition, no missing score and no missing date. Nothing has been promoted. The staged archive exists only as the `historical-staging-db` artifact, which expires 90 days after the run that produced it.
 
 ## Dependency and release gates
 
@@ -56,9 +56,31 @@ rating and touches no file under `ui/`, so no deploy follows it. Everything
 under "Review before promotion" below still has to happen first, and the
 promotion itself is a separate, approved step.
 
+## Source reconciliation
+
+`.github/workflows/historical-reconcile.yml` compares the staged fixtures
+against the provider's own season records (`/records`), per team per season
+per season type, and reports every disagreement: a game count that differs,
+the same count with different results, a team with a record line and no
+staged games, and a staged team the records feed never mentions.
+
+That last one is not a fault to be fixed but the input to the identity map:
+an unmatched name is reported, never dropped and never guessed at.
+
+**It is a cross-feed check, not an independent one.** Both feeds are
+collegefootballdata.com, so agreement means the import is faithful to the
+provider — not that the history is complete or correct. The independent
+references below are still owed.
+
+The run reads the backfill's artifact chain and never republishes it, so the
+backfill stays that chain's only writer; the records it collects are carried
+in a chain of their own (`historical-records-db`). `offline: true`
+reconciles against records already collected and asks the provider for
+nothing.
+
 ## Review before promotion
 
-- Reconcile source counts with independent historical references for each season, especially empty or unexpectedly sparse years.
+- Reconcile source counts with independent historical references for each season, especially empty or unexpectedly sparse years. (The provider's own records feed is now reconciled by `historical-reconcile.yml`; independent references are still outstanding.)
 - Create a reviewed canonical historical school identity map including renamed, merged, discontinued, and similarly named programs.
 - Create season-specific major-college / division eligibility mapping; do not infer historical membership from present-day FBS.
 - Preserve ties, neutral-site uncertainty, missing scores/dates, and unknown classifications.
