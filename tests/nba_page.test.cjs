@@ -995,26 +995,55 @@ function settleGame(dom) {
   });
 }
 
-test('a finished game is a link and an unplayed one is not', async () => {
-  const dom = await open(undefined, undefined, undefined, undefined,
-    undefined, true);
-  await goToDay(dom, 16);
-  assert.ok(dom.window.document.querySelector('#cards .card.open'));
-  // The same slate, on a day whose game has not been played.
-  await goToDay(dom, 20);
-  assert.equal(dom.window.document.querySelector('#cards .card.open'), null);
-  dom.window.close();
-});
+/* Every game on the slate is a link, played or not.
+ *
+ * It used to take a finished game whose month file existed, and Austin
+ * found what that meant: the slate opens on TODAY, whose games have not
+ * been played, so no game page was reachable from the home page at all.
+ * The hero and the matchup come off the schedule row, so they are there
+ * for a fixture too -- and a fixture's rating and win chance are the most
+ * useful thing the page can say about it. The two tests replaced here
+ * asserted the old rule.
+ */
+test('a game nobody has played is still a link, and its page says so',
+  async () => {
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, true);
+    await goToDay(dom, 20);
+    const card = dom.window.document.querySelector('#cards .card.open');
+    assert.ok(card, 'an unplayed game refuses the tap');
+    card.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    const host = dom.window.document.getElementById('game-body');
+    await settle(dom, () => /has not been played yet/.test(host.textContent));
+    assert.equal(host.querySelectorAll('table.gp-matchup').length, 1);
+    const cells = [...host.querySelectorAll('table.gp-matchup td')]
+      .map(node => node.textContent);
+    assert.ok(cells.includes('1600'), 'no home rating: ' + cells);
+    assert.ok(cells.includes('1640'), 'no away rating: ' + cells);
+    // Nothing that would need plays nobody has made.
+    assert.equal(host.querySelectorAll('svg.wpchart').length, 0);
+    assert.equal(host.querySelectorAll('table').length, 1);
+    dom.window.close();
+  });
 
-test('no card is a link when the export carries no game layer', async () => {
-  // An export written before the reduction ran names no `files.games` at
-  // all, and a link to a page that would say nothing is worse than no link.
-  const dom = await open();
-  await goToDay(dom, 16);
-  assert.ok(dom.window.document.querySelector('#cards .card'));
-  assert.equal(dom.window.document.querySelector('#cards .card.open'), null);
-  dom.window.close();
-});
+test('a finished game whose month this export never built opens anyway, and '
+  + 'says which of the two is missing', async () => {
+    // An export written before the reduction ran names no `files.games` at
+    // all. That is a different fact from a played game the published file
+    // does not carry, and from a game nobody has played, so it has its own
+    // sentence rather than borrowing one of theirs.
+    const dom = await open();
+    await goToDay(dom, 16);
+    const card = dom.window.document.querySelector('#cards .card.open');
+    assert.ok(card, 'the card refuses the tap');
+    card.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    const host = dom.window.document.getElementById('game-body');
+    await settle(dom, () => /carries no play-by-play/.test(host.textContent));
+    assert.equal(host.querySelectorAll('table.gp-matchup').length, 1);
+    assert.doesNotMatch(host.textContent, /has not been played yet/);
+    assert.doesNotMatch(host.textContent, /No play-by-play is published/);
+    dom.window.close();
+  });
 
 test('opening a game puts it in the URL and draws its line score',
   async () => {
