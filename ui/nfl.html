@@ -2666,10 +2666,20 @@
 
   /* Whether a game has a page behind it: it has to have been played, and
    * the week file its page reads has to be one this export built. */
+  /* Whether a game has a page behind it. EVERY game the schedule carries
+   * does: the hero and the matchup are built from the schedule row itself,
+   * and a game not yet played still carries the model's rating for both
+   * clubs and its win chance, which is the most useful thing the page can
+   * say about a game nobody has played.
+   *
+   * This used to also require the game to be final AND its week's detail
+   * file to exist, which is why Austin found no game page reachable from
+   * Home: the page opens on the first UNPLAYED week, so every card on the
+   * slate a reader lands on was refused. The drive, scoring and injury
+   * panels are gated on the detail separately, in renderGame, which is
+   * where that question belongs. */
   function gameOpenable(game) {
-    if (!game || !app.isFinal(game)) return false;
-    return Boolean(loader.gameWeekSource(state.manifest, state.season,
-      loader.gameWeekKey(game), BASE));
+    return Boolean(game && game.id);
   }
 
   function currentGame() {
@@ -3069,6 +3079,14 @@
     gameHero(host, game);
     gameMatchup(host, game);
 
+    // A game nobody has played has no drives to show, and saying so is not
+    // the same claim as the export being too old for them -- which is what
+    // the message below says, and would have been wrong here.
+    if (!app.isFinal(game)) {
+      return emptyLine(host, 'This game has not been played yet, so there '
+        + 'are no drives or scoring summaries. The matchup above is the '
+        + 'model\u2019s view of it as things stand.');
+    }
     var got = gameWeekData(game);
     if (got.missing) {
       return emptyLine(host, 'This export does not carry drives or scoring '
