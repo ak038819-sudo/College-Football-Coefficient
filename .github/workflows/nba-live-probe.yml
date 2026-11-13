@@ -38,7 +38,8 @@ jobs:
           sys.path.insert(0, '.')
           import pyarrow.parquet as pq
           from src.nba import source
-          path = source.fetch('schedule', 2027)
+          path, how = source.load_asset('schedule', 2027)
+          print('fetched via', how)
           table = pq.read_table(path)
           names = set(table.column_names)
           print('columns present:', sorted(n for n in names if 'status' in n or 'date' in n))
