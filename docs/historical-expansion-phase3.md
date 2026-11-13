@@ -165,11 +165,36 @@ one that must name the programme, and `tests/test_historical_identity_map.py`
 refuses a `renamed` row without a canonical name. The other four mean the
 name is never rated and only has to be a consistent opponent.
 
+## Season eligibility
+
+`scripts/build_historical_eligibility.py` runs beside the identity map, on
+the same two databases, and decides each **team-season** separately from
+what the provider recorded at the time: the classification carried on that
+team's game rows that season, and the classification on its record line.
+
+| eligibility | meaning |
+| --- | --- |
+| `major_college` | the evidence for that season says the top tier, and nothing else |
+| `lower_division` | the evidence says a lower division |
+| `unknown` | neither source says anything |
+| `conflict` | the sources disagree, or the season carries two labels |
+
+Three rules it does not bend. **Unknown is not no, and is never read as
+yes** — 165 school names in this archive carry no classification at all,
+and reading silence as the top tier would admit every one of them. **A
+season decides only itself**, because membership moved; the mapping is
+per team-season and not a list of schools. **A conflict is reported, not
+averaged** — a tier is not a number.
+
+Nothing in it reads the modern registry, and a test asserts the file never
+mentions it: a present-day power gets nothing for free in a season this
+archive says nothing about.
+
 ## Review before promotion
 
 - Reconcile source counts with independent historical references for each season, especially empty or unexpectedly sparse years. (The provider's own records feed is now reconciled by `historical-reconcile.yml`; independent references are still outstanding.)
 - Create a reviewed canonical historical school identity map including renamed, merged, discontinued, and similarly named programs. (`.github/workflows/historical-identity.yml` builds the **candidates**; the verdicts are a person's.)
-- Create season-specific major-college / division eligibility mapping; do not infer historical membership from present-day FBS.
+- Create season-specific major-college / division eligibility mapping; do not infer historical membership from present-day FBS. (`scripts/build_historical_eligibility.py`, run beside the identity map.)
 - Preserve ties, neutral-site uncertainty, missing scores/dates, and unknown classifications.
 - Report all unresolved ambiguities; never silently discard records to satisfy modern FBS constraints.
 - Freeze pre-promotion Elo/Merits fingerprints; compare outputs before and after promotion and require explicit approval.
