@@ -165,6 +165,33 @@ one that must name the programme, and `tests/test_historical_identity_map.py`
 refuses a `renamed` row without a canonical name. The other four mean the
 name is never rated and only has to be a consistent opponent.
 
+### Verdicts, 2026-11-13
+
+All 165 are ruled on, and **none is `renamed`**, so none of them carries a
+rating: 132 `small_college`, 20 `service_team`, 4 `exhibition`, 9
+`ambiguous`.
+
+What every verdict rests on is the same evidence, and it travels with it in
+`verdict_note`: each of these names is **unclassified in every staged game**
+and carried by no record line. The plan's own rule is that unknown
+classification stays unknown and is never read as FBS, so none of them can
+be major-college however it is identified. That is what makes these
+verdicts safe to make from the archive alone — they decide a tier the
+evidence already decides, not a history it does not record.
+
+`renamed` was not used, and that is a finding rather than an omission. The
+provider applies **present-day** names retroactively — "East Texas A&M"
+sits on a 1948 game, a name that school took in 2024 — so each programme
+appears in the archive under a single name and there is no pair to merge.
+
+Nine are `ambiguous`. Four are names no college could be identified for at
+all (Alliance, Frederick, Leilahau, Mohawk); three are names shared by more
+than one school, where which one cannot be settled from the archive (Wayne
+State, Central State, Lincoln); and two are "Parsons" and "Parsons (Iowa)",
+which appear in overlapping seasons and may well be one programme. They are
+flagged for each other and **not merged**, because a merge is the one thing
+this gate exists to refuse.
+
 ## Season eligibility
 
 `scripts/build_historical_eligibility.py` runs beside the identity map, on
