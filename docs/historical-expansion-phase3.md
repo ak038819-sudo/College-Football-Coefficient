@@ -217,6 +217,41 @@ Nothing in it reads the modern registry, and a test asserts the file never
 mentions it: a present-day power gets nothing for free in a season this
 archive says nothing about.
 
+### Result, 1946–1979 (2026-11-13)
+
+Run [43445448118](https://github.com/ak038819-sudo/College-Football-Coefficient/actions/runs/43445448118),
+over the full range, on the staged archive and the collected records:
+
+| | team-seasons |
+| --- | --- |
+| `major_college` | 4,240 |
+| `lower_division` | 3,093 |
+| `unknown` | 754 |
+| `conflict` | 0 |
+| total | 8,087 |
+
+**No season carries a conflict.** The two sources the gate reads — the
+classification on a team's game rows and the classification on its record
+line — never disagreed in 8,087 team-seasons, which is the same archive
+the reconciliation found zero count and result mismatches in.
+
+There are 754 unknown team-seasons, the same count the reconciliation
+reported as `no_reference_line` across 191 names: team-seasons the
+provider carries games for and no record line. The equal counts are what
+you would expect — a team-season with no record line and no classification
+on its games has nothing for either gate to read — but the two reports
+were not cross-checked row by row, so take it as agreement in size, not a
+proven identity. Either way the 754 stay unknown, and so stay out of any
+major-college set.
+
+Major-college counts run from **117** (1954) to **143** (1977), rising
+through the 1970s. That is the shape the period had, and it is a useful
+sanity check: a gate that had quietly read silence as the top tier would
+have shown several hundred a season instead.
+
+`production_promotion_allowed` is `false` in every report. This gate says
+which team-seasons *could* be rated, not that anything may be.
+
 ## Review before promotion
 
 - Reconcile source counts with independent historical references for each season, especially empty or unexpectedly sparse years. (The provider's own records feed is now reconciled by `historical-reconcile.yml`; independent references are still outstanding.)
