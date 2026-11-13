@@ -121,9 +121,17 @@ jobs:
           fi
           # The newest artifact of this name that has not expired. A repo with
           # none is the first run, which is not a failure.
+          #
+          # SORTED HERE, EXPLICITLY. The artifacts endpoint does not promise an
+          # order, and it does not give one: asked for this name after three
+          # batches it answered 09:11, 09:15, 09:13. Taking the first row cost
+          # the 1960-1971 batch, which was silently dropped from the chain and
+          # had to be fetched from the provider again. A whole page is read so
+          # the sort sees every candidate rather than one arbitrary row.
           id=$(gh api \
-            "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$ARTIFACT&per_page=1" \
-            --jq '.artifacts[] | select(.expired == false) | .id' | head -1)
+            "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$ARTIFACT&per_page=100" \
+            --jq '[.artifacts[] | select(.expired == false)]
+                  | sort_by(.created_at) | reverse | .[0].id // empty')
           if [ -z "$id" ]; then
             echo "No staging database has been uploaded yet; starting empty."
             echo "restored=none" >> "$GITHUB_OUTPUT"

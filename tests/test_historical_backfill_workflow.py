@@ -12,6 +12,9 @@ Nothing here runs the workflow. Its scripts have their own tests; this is
 about the wiring between them.
 """
 
+import json
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -206,3 +209,72 @@ class TestItMatchesTheScriptsItCalls:
             for third_party in ('import requests', 'import pandas',
                                 'import yaml', 'import pyarrow'):
                 assert third_party not in source, (script, third_party)
+
+
+class TestTheChainPicksTheNewestArtifact:
+    """The bug that cost a batch on 2026-11-13.
+
+    `GET /actions/artifacts` promises no order and does not give one: asked
+    for this name after three batches it answered 09:11, 09:15, 09:13. The
+    carry step took the first row of a one-row page, so the fourth dispatch
+    resumed from the FIRST batch's database and the 1960-1971 batch left the
+    chain without a word. Nothing failed; the seasons simply had to be
+    fetched from the provider again.
+    """
+
+    def carry_body(self, text):
+        body = text.split('Carry the staging database forward', 1)[1]
+        return body.split('- name:', 1)[0]
+
+    def jq_filter(self, text):
+        body = self.carry_body(text)
+        _, _, after = body.partition("--jq '")
+        filter_text, _, _ = after.partition("')")
+        assert filter_text, 'the carry step has no --jq filter'
+        return filter_text
+
+    def test_the_candidates_are_sorted_rather_than_taken_as_they_came(
+            self, text):
+        body = self.carry_body(text)
+        assert 'sort_by(.created_at)' in body
+        # One row cannot be sorted, and the row it is is nobody's choice.
+        assert 'per_page=1"' not in body
+        assert 'per_page=1&' not in body
+
+    def test_the_newest_is_chosen_out_of_an_unordered_answer(self, text):
+        # The real filter, run against the real shape, in the order the API
+        # actually replied in when this went wrong.
+        jq = shutil.which('jq')
+        assert jq, 'jq is needed to exercise the carry filter'
+        answer = {'artifacts': [
+            {'id': 14024626144, 'created_at': '2026-11-13T09:11:36Z',
+             'expired': False},
+            {'id': 14024357115, 'created_at': '2026-11-13T09:15:28Z',
+             'expired': False},
+            {'id': 14024147575, 'created_at': '2026-11-13T09:13:55Z',
+             'expired': False},
+        ]}
+        chosen = subprocess.run(
+            [jq, '-r', self.jq_filter(text)], input=json.dumps(answer),
+            capture_output=True, text=True, check=True).stdout.strip()
+        assert chosen == '14024357115'
+
+    def test_an_expired_database_is_never_chosen_however_new(self, text):
+        jq = shutil.which('jq')
+        assert jq, 'jq is needed to exercise the carry filter'
+        answer = {'artifacts': [
+            {'id': 1, 'created_at': '2026-11-13T09:11:36Z', 'expired': False},
+            {'id': 2, 'created_at': '2026-11-13T09:15:28Z', 'expired': True},
+        ]}
+        chosen = subprocess.run(
+            [jq, '-r', self.jq_filter(text)], input=json.dumps(answer),
+            capture_output=True, text=True, check=True).stdout.strip()
+        assert chosen == '1'
+
+    def test_no_artifact_at_all_is_a_first_run_and_not_an_error(self, text):
+        jq = shutil.which('jq')
+        assert jq, 'jq is needed to exercise the carry filter'
+        done = subprocess.run(
+            [jq, '-r', self.jq_filter(text)], input='{"artifacts": []}',
+            capture_output=True, text=True, check=True)
+        assert done.stdout.strip() == ''
