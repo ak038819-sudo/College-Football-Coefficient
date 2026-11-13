@@ -36,8 +36,8 @@ from pathlib import Path
 # learns from the absence of the `files` entry rather than from the version
 # number. What a bump buys is that the version says which shape a reader is
 # holding.
-SCHEMA_VERSION = 4
-SUPPORTED_SCHEMA_VERSIONS = (1, 2, 3, 4)
+SCHEMA_VERSION = 5
+SUPPORTED_SCHEMA_VERSIONS = (1, 2, 3, 4, 5)
 
 # The Charlotte expansion team arrived in 2004-05, taking the league from 29
 # franchises to 30. Measured from the archive, not recalled: every schedule
@@ -203,6 +203,50 @@ def check_team_statistics(manifest):
     return reasons
 
 
+def check_player_ratings(manifest):
+    """The Player Elo counts must be consistent, or absent.
+
+    NOT A COVERAGE FLOOR either, and for one more reason than the team
+    statistics have: in October nobody has 500 minutes, so a gate that
+    demanded a ranked board would refuse every export of the first six
+    weeks of a season. What is refused is arithmetic no archive can
+    produce: more players ranked than have a graded game at all, a
+    negative count, or a cutoff that is not a positive number of minutes.
+    """
+    reasons = []
+    for row in manifest.get('coverage') or []:
+        if not isinstance(row, dict):
+            continue
+        rating = row.get('player_elo')
+        if rating is None:
+            continue
+        season = row.get('season')
+        if not isinstance(rating, dict):
+            reasons.append(f'{season} has a player_elo that is not an '
+                           'object')
+            continue
+        ranked, graded = rating.get('ranked'), rating.get('graded')
+        held = rating.get('provisional')
+        counts = (('ranked', ranked), ('provisional', held),
+                  ('graded', graded))
+        for name, value in counts:
+            if not isinstance(value, int) or isinstance(value, bool) \
+                    or value < 0:
+                reasons.append(f'{season} reports player_elo {name} as '
+                               f'{value!r}')
+        if all(isinstance(value, int) and not isinstance(value, bool)
+               for _, value in counts) and ranked + held > graded:
+            reasons.append(f'{season} carries {ranked + held} players on '
+                           f'Player Elo with only {graded} graded, which is '
+                           'more players than it has')
+        cutoff = rating.get('cutoff_minutes')
+        if not isinstance(cutoff, (int, float)) or isinstance(cutoff, bool) \
+                or cutoff <= 0:
+            reasons.append(f'{season} reports a Player Elo cutoff of '
+                           f'{cutoff!r}')
+    return reasons
+
+
 def check_time(manifest, *, now=None):
     moment = _parse_time(manifest.get('generated_at'))
     if moment is None:
@@ -244,6 +288,7 @@ def check(manifest, *, root=None, now=None):
         return reasons
     return (check_model(manifest) + check_coverage(manifest)
             + check_team_statistics(manifest)
+            + check_player_ratings(manifest)
             + check_time(manifest, now=now) + check_files(manifest, root))
 
 

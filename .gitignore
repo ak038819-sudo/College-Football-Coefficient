@@ -229,3 +229,6 @@ data/nfl/raw/
 # The NBA archive, for the same reason and more so: a season of play-by-play
 # is 22 MB and the whole archive is about 400 MB fetched.
 data/nba/raw/
+# ESPN's net points, the same way: a season of per-player, per-game grades
+# is a 2 MB parquet refetched by the refresh, not committed.
+data/nba/net_points/

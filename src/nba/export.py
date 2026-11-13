@@ -30,7 +30,8 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import elo, game_export, people_export, series, team_box, team_metrics
+from . import elo, game_export, people_export, player_elo, series, \
+    team_box, team_metrics
 from .identity import current_season, season_label
 from . import win_probability
 from .publish_gate import SCHEMA_VERSION, check, render
@@ -53,15 +54,26 @@ class PublishRefused(Exception):
         self.reasons = list(reasons)
 
 
+# Models that rate PEOPLE and not clubs. `rating_model` holds both since
+# schema 5, and the club export's default -- the newest stored model -- would
+# otherwise pick the player rating and then refuse the export, because no
+# season has a club rating under that name.
+PERSON_MODELS = (player_elo.MODEL_NAME,)
+
+
 def model_row(connection, name=None):
-    """The newest stored model, or the one named. Never two, never a guess."""
+    """The newest stored CLUB model, or the one named. Never two, never a
+    guess.
+    """
     sql = ('SELECT model_id, name, config, fitted_on, held_out, holdout_brier,'
            '       holdout_games, created_at FROM rating_model')
     if name:
         row = connection.execute(sql + ' WHERE name = ?', (name,)).fetchone()
     else:
+        marks = ','.join('?' * len(PERSON_MODELS))
         row = connection.execute(
-            sql + ' ORDER BY model_id DESC LIMIT 1').fetchone()
+            sql + f' WHERE name NOT IN ({marks})'
+            ' ORDER BY model_id DESC LIMIT 1', PERSON_MODELS).fetchone()
     if row is None:
         raise ValueError('No rating model is stored; run build_ratings first')
     return dict(row)
@@ -380,6 +392,64 @@ def team_statistics_section(built):
     )
 
 
+def player_ratings(connection, season):
+    """A season's Player Elo leaderboard, or None where none was replayed.
+
+    Both the rated and the PROVISIONAL men, each carrying its own status.
+    A board ranks the rated ones only -- a board that ranked a man on forty
+    minutes is a board nobody can read -- but the provisional ones have to
+    be here too: for the first six weeks of a season nobody is over the
+    cutoff, and a payload holding only the rated would hide the whole layer
+    until December. The unavailable are left out, having no number.
+    """
+    rows = player_elo.leaderboard(
+        connection, season,
+        statuses=(player_elo.RATED, player_elo.PROVISIONAL))
+    if not rows:
+        return None
+    index = {key: athlete for key, athlete in connection.execute(
+        'SELECT person_key, athlete_id FROM person')}
+    model = connection.execute(
+        'SELECT config FROM rating_model WHERE name = ?',
+        (player_elo.MODEL_NAME,)).fetchone()
+    ranked = []
+    for row in rows:
+        athlete = index.get(row['person_key'])
+        if athlete is None:
+            continue
+        ranked.append(dict(
+            player_id=athlete,
+            elo=_round(row['elo'], 1),
+            impact_per_100=_round(row['impact_per_100']),
+            offense_per_100=_round(row['offense_per_100']),
+            defense_per_100=_round(row['defense_per_100']),
+            season_minutes=_round(row['season_minutes'], 1),
+            graded_games=row['graded_games'],
+            graded_possessions=_round(row['graded_possessions'], 1),
+            status=row['status'],
+        ))
+    if not ranked:
+        return None
+    config = json.loads(model['config']) if model else {}
+    return dict(
+        season=season,
+        as_of=rows[0]['as_of'],
+        model=player_elo.MODEL_NAME,
+        # What a reader needs to know the number means: the cutoff the
+        # board was drawn at, and the scale 1500 sits on.
+        cutoff_minutes=config.get('eligible_minutes'),
+        display_scale=config.get('display_scale'),
+        half_life_possessions=config.get('half_life_possessions'),
+        first_season=config.get('first_season'),
+        # What a board may rank, which is not how many it carries.
+        ranked=sum(1 for row in ranked
+                   if row['status'] == player_elo.RATED),
+        provisional=sum(1 for row in ranked
+                        if row['status'] == player_elo.PROVISIONAL),
+        players=ranked,
+    )
+
+
 def played_teams(games):
     """Franchises with at least one finished, rateable game.
 
@@ -405,7 +475,7 @@ def season_teams(connection, season):
 
 
 def coverage_row(connection, season, games, rows, *, complete=True,
-                team_stats=None):
+                team_stats=None, player_elo_board=None):
     played = sum(1 for game in games if game['home_points'] is not None)
     counts = (team_stats or {}).get('counts')
     return dict(
@@ -418,6 +488,15 @@ def coverage_row(connection, season, games, rows, *, complete=True,
             unmeasured=counts['unmeasured'],
             teams=len([stats for stats in (team_stats['teams'] or {}).values()
                        if stats]))),
+        # How many players the rating could rank, or absent where the
+        # replay has never run. A gate can then tell "no grades in this
+        # database" from "the grades are here and nobody has 500 minutes
+        # yet", which is every October.
+        player_elo=(None if player_elo_board is None else dict(
+            ranked=player_elo_board['ranked'],
+            provisional=player_elo_board['provisional'],
+            graded=player_elo_graded(connection, season),
+            cutoff_minutes=player_elo_board['cutoff_minutes'])),
         season=season,
         season_label=season_label(season),
         teams=season_teams(connection, season),
@@ -434,6 +513,13 @@ def coverage_row(connection, season, games, rows, *, complete=True,
         complete=bool(complete),
         played_teams=played_teams(games),
     )
+
+
+def player_elo_graded(connection, season):
+    """How many of a season's people have a graded appearance at all."""
+    return connection.execute(
+        'SELECT COUNT(DISTINCT person_key) FROM player_rating_game '
+        'WHERE season = ?', (int(season),)).fetchone()[0]
 
 
 def champions(connection):
@@ -550,6 +636,12 @@ def build(connection, *, model_name=None, seasons=None, now=None):
         section = team_statistics_section(built)
         if section:
             payloads[season]['team_stats'] = section
+        # The Player Elo board, or nothing at all where the replay has
+        # never run. It rides in the season payload a reader already has,
+        # as the bracket does.
+        ratings = player_ratings(connection, season)
+        if ratings:
+            payloads[season]['player_elo'] = ratings
         # THE BRACKET AND THE PLAY-IN ride in the season's own payload
         # rather than a file of their own, and derive from the games just
         # read and the board just built -- no query, no fetch, about 2 KB in
@@ -564,7 +656,8 @@ def build(connection, *, model_name=None, seasons=None, now=None):
             payloads[season]['playin'] = rounds
         coverage.append(coverage_row(connection, season, games, rows,
                                      complete=season < in_progress,
-                                     team_stats=built))
+                                     team_stats=built,
+                                     player_elo_board=ratings))
     history = dict(conferences=conference_history(connection,
                                                   model['model_id']),
                    champions=champions(connection))

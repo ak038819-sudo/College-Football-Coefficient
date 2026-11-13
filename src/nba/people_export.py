@@ -31,7 +31,10 @@ so that a page can be honest about the archive rather than about the sport:
 """
 
 import json
+import sqlite3
 from collections import defaultdict
+
+from . import player_elo
 
 # The season types a line can carry, in the order a page prints them. The
 # payload holds the index, not the word. The play-in is its own type because
@@ -83,6 +86,30 @@ GAME_SQL = """
      ORDER BY g.person_key, g.season, g.game_date, g.game_key
 """
 ALIAS_SQL = 'SELECT person_key, other_key FROM person_alias'
+
+# The Player Elo snapshots and the replay behind them, both optional: a
+# database whose replay has never run simply has no rows here, and the
+# player files then carry no rating keys at all. Older files without them
+# must keep rendering, which is why these are named keys and not new
+# positions in the arrays above.
+RATING_SQL = """
+    SELECT r.person_key, r.season, r.elo, r.impact_per_100,
+           r.offense_per_100, r.defense_per_100, r.season_minutes,
+           r.graded_games, r.graded_possessions, r.status,
+           r.last_graded_game, r.as_of
+      FROM player_rating r
+      JOIN rating_model m ON m.model_id = r.model_id
+     WHERE m.name = ?
+     ORDER BY r.person_key, r.season
+"""
+REPLAY_SQL = """
+    SELECT p.person_key, p.season, p.game_key, p.game_date, p.game_grade,
+           p.exposure, p.pregame_impact, p.postgame_impact, p.change
+      FROM player_rating_game p
+      JOIN rating_model m ON m.model_id = p.model_id
+     WHERE m.name = ?
+     ORDER BY p.person_key, p.season, p.game_date, p.game_key
+"""
 
 
 def has_people(connection):
@@ -183,6 +210,62 @@ def game_row(row):
             + [_number(row[name]) for name in COUNTS])
 
 
+def rating_row(row):
+    """One season's rating: `[season, elo, impact, off, def, min, games,
+    poss, status]`.
+
+    Rounded for the wire at three decimals, one more than any page draws,
+    for the reason `export._round` gives.
+    """
+    return [row['season'], _round(row['elo'], 1),
+            _round(row['impact_per_100']), _round(row['offense_per_100']),
+            _round(row['defense_per_100']), _round(row['season_minutes'], 1),
+            row['graded_games'], _round(row['graded_possessions'], 1),
+            row['status']]
+
+
+def replay_row(row):
+    """One graded game: `[game, date, grade, exposure, before, after,
+    change]`.
+
+    **`before` IS NULL FOR A FIRST GRADE, NOT 1500.** The rating did not
+    exist before it, and a page that drew 1500 there would show a player
+    arriving at exactly average and then moving, which never happened.
+    """
+    return [short_id(row['game_key']), row['game_date'],
+            _round(row['game_grade']), _round(row['exposure'], 1),
+            _round(row['pregame_impact']), _round(row['postgame_impact']),
+            _round(row['change'])]
+
+
+def _round(value, digits=3):
+    if value is None:
+        return None
+    return round(float(value), digits)
+
+
+def ratings(connection, model_name):
+    """(snapshots, replay) per person, or two empty maps.
+
+    One pass over each table, for the reason `build` gives: a query per
+    player is what makes an export take minutes.
+    """
+    snapshots = defaultdict(list)
+    replay = defaultdict(lambda: defaultdict(list))
+    try:
+        rows = connection.execute(RATING_SQL, (model_name,)).fetchall()
+        games = connection.execute(REPLAY_SQL, (model_name,)).fetchall()
+    except sqlite3.OperationalError:
+        # A database from before schema 5 has neither table. The layer is
+        # absent, which is a fact to report, not an error to raise.
+        return {}, {}
+    for row in rows:
+        snapshots[row['person_key']].append(rating_row(row))
+    for row in games:
+        replay[row['person_key']][row['season']].append(replay_row(row))
+    return snapshots, replay
+
+
 def build(connection):
     """The whole people layer as `(index, {athlete id: detail})`, or None.
 
@@ -209,6 +292,7 @@ def build(connection):
             continue
         key = (row['season'], _type_index(row['season_type']))
         games[row['person_key']][key].append(game_row(row))
+    snapshots, replay = ratings(connection, player_elo.MODEL_NAME)
     index, detail = [], {}
     for key, row in people.items():
         athlete_id = row['athlete_id']
@@ -231,6 +315,14 @@ def build(connection):
             payload['g'] = log
         if aliases[key]:
             payload['al'] = sorted(aliases[key])
+        # The rating, where there is one. A player with no graded game has
+        # no keys at all rather than a null rating, so a page can tell
+        # "unavailable" from "we have not replayed this season".
+        if snapshots.get(key):
+            payload['r'] = snapshots[key]
+        if replay.get(key):
+            payload['rg'] = [[season, rows] for season, rows
+                             in sorted(replay[key].items())]
         detail[athlete_id] = payload
     index.sort(key=lambda entry: (entry[1] or '', entry[0]))
     return dict(count=len(index), types=list(SEASON_TYPES),

@@ -634,9 +634,9 @@
   </section>
 </div>
 
-<script src="nba_loader.js?v=59cc8ae58d89"></script>
+<script src="nba_loader.js?v=77aae2564765"></script>
 <script src="ncaambb_app.js?v=4828bd5e0199"></script>
-<script src="nba_app.js?v=28e091befaca"></script>
+<script src="nba_app.js?v=bda8f6289f60"></script>
 <script src="game_page.js?v=fb1a02a0b1c5"></script>
 <script>
 (function () {
@@ -655,7 +655,11 @@
    * champions. */
   var VIEWS = {
     standings: [['conferences', 'Conferences'], ['elo', 'Elo'],
-                ['bracket', 'Playoffs']]
+                ['bracket', 'Playoffs']],
+    // Player Elo is a VIEW of People rather than a tab: it is the same men
+    // the list holds, ordered by the rating instead of by points, and a tab
+    // of its own would repeat the player search beside it.
+    people: [['players', 'Players'], ['elo', 'Player Elo']]
   };
 
   /* Whether this export carries players at all. Asked of the manifest and
@@ -669,7 +673,16 @@
     if (tab === 'home') return 'scoreboard';
     if (tab === 'stats') return 'history';
     if (tab === 'teams') return 'teams';
-    if (tab === 'people') return hasPeople() ? 'people' : null;
+    if (tab === 'people') {
+      if (!hasPeople()) return null;
+      // Whether the view EXISTS is asked of the manifest and never of the
+      // season payload, which arrives later: `placeFromHash` validates a
+      // URL's view through this, so a view gated on the payload was dropped
+      // from the URL every time the season changed and the reader lost the
+      // board they were on.
+      if (view === 'elo') return hasPlayerElo() ? 'people' : null;
+      return 'people';
+    }
     if (tab === 'standings') {
       if (view === 'elo') return 'rankings';
       // Playoffs is a view of the standings rather than a tab of its own:
@@ -815,6 +828,31 @@
 
   function seasonPayload(season) {
     return (window.NBA_SEASONS || {})[season] || null;
+  }
+
+  /* Whether a season was replayed at all, from the MANIFEST: the coverage
+   * row the export writes beside every other count. Loaded before the first
+   * render and never reloaded, so it answers the same way whatever the page
+   * is in the middle of fetching. */
+  function hasPlayerElo(season) {
+    var want = season === undefined ? state.season : season;
+    var rows = (state.manifest && state.manifest.coverage) || [];
+    for (var i = 0; i < rows.length; i += 1) {
+      if (rows[i] && rows[i].season === want) {
+        var rating = rows[i].player_elo;
+        return Boolean(rating
+          && ((rating.ranked || 0) + (rating.provisional || 0)) > 0);
+      }
+    }
+    return false;
+  }
+
+  /* The season on screen's Player Elo board, or null. Read from the payload
+   * every time rather than cached: the payload arrives after the first
+   * render, and a flag read too early would hide the view for good — the
+   * mistake `hasPeople` is written to avoid. */
+  function eloBoard() {
+    return app.playerBoard(seasonPayload(state.season));
   }
 
   function loadSeason(season) {
@@ -2419,6 +2457,12 @@
   function peoplePanel() {
     var host = el('people-body');
     host.innerHTML = '';
+    // The search box belongs to the list it filters, so the board does not
+    // carry it: a box that filtered nothing on screen is navigation that
+    // does nothing.
+    var board = state.view === 'elo' && eloBoard();
+    var box = el('person-search').parentNode;
+    box.hidden = Boolean(board);
     var status = ensurePeopleIndex();
     if (status === 'pending') {
       host.appendChild(node('p', 'note', 'Loading the players…'));
@@ -2429,6 +2473,10 @@
       return;
     }
     var index = peopleIndex();
+    if (board) {
+      playerBoardPanel(host, index);
+      return;
+    }
     var query = state.personQuery || '';
     var found = query.trim().length >= 2
       ? app.searchPeople(index, query, PEOPLE_SHOWN) : null;
@@ -2453,6 +2501,117 @@
       + 'season, and they are the archive’s own count of what each man '
       + 'did in it rather than a career record — a man who played '
       + 'before ' + loader.seasonLabel(2002) + ' did that elsewhere.'));
+  }
+
+
+  /* ---------------------------------------------------- the player board
+   *
+   * The season's Player Elo, drawn from the season payload the page
+   * already has. The board carries player ids and no names, so the names
+   * come from the people index the tab has loaded anyway, and a man the
+   * index has no row for is drawn by his id rather than dropped.
+   */
+  function playerBoardTable(rows, index, ranked) {
+    var names = app.peopleById(index);
+    var wrap = node('div', 'scroll');
+    var table = document.createElement('table');
+    var head = document.createElement('thead');
+    var headRow = document.createElement('tr');
+    [[ranked ? '#' : '', 'rk'], ['Player', ''], ['Elo', 'num'],
+      ['Impact', 'num'], ['Off', 'num'], ['Def', 'num'], ['MIN', 'num'],
+      ['G', 'num'], ['Poss', 'num']].forEach(function (pair) {
+        headRow.appendChild(node('th', pair[1], pair[0]));
+      });
+    head.appendChild(headRow);
+    table.appendChild(head);
+    var body = document.createElement('tbody');
+    rows.forEach(function (row, place) {
+      var line = document.createElement('tr');
+      // NO RANK NUMBER ON A PROVISIONAL MAN. The number would be a place in
+      // the league, and his minutes cannot carry one.
+      line.appendChild(node('td', 'rk', ranked ? String(place + 1) : ''));
+      var who = node('td', '');
+      var entry = names[String(row.player_id)];
+      who.appendChild(linkTo(entry ? entry.name : String(row.player_id),
+        function () { openPlayer(row.player_id); }));
+      line.appendChild(who);
+      line.appendChild(node('td', 'num', app.playerEloText(row.elo)));
+      line.appendChild(node('td', 'num', app.impactText(row.impact_per_100)));
+      line.appendChild(node('td', 'num',
+        app.impactText(row.offense_per_100)));
+      line.appendChild(node('td', 'num',
+        app.impactText(row.defense_per_100)));
+      line.appendChild(node('td', 'num',
+        row.season_minutes === null || row.season_minutes === undefined
+          ? '\u2014' : Math.round(row.season_minutes)));
+      line.appendChild(node('td', 'num', row.graded_games));
+      line.appendChild(node('td', 'num',
+        row.graded_possessions === null
+          || row.graded_possessions === undefined
+          ? '\u2014' : Math.round(row.graded_possessions)));
+      body.appendChild(line);
+    });
+    table.appendChild(body);
+    wrap.appendChild(table);
+    return wrap;
+  }
+
+  function playerBoardPanel(host, index) {
+    var board = eloBoard();
+    if (!board) {
+      host.appendChild(node('p', 'empty',
+        'This season has no player ratings yet.'));
+      return;
+    }
+    var rated = app.playerBoardRows(board, app.RATING_STATUS.rated);
+    // BY MINUTES AND NOT BY RATING. Six minutes of net points can read as
+    // +22, so a provisional list in rating order puts a man who played
+    // three minutes in November above Luka Doncic. Ordered by floor time it
+    // is a rotation with its numbers beside it, which is what it is.
+    var held = app.playerBoardRows(board, app.RATING_STATUS.provisional,
+                                   'minutes');
+    var cutoff = board.cutoff_minutes;
+    var floor = cutoff === null || cutoff === undefined
+      ? 'the cutoff' : Math.round(cutoff) + ' minutes';
+    host.appendChild(node('h3', 'section',
+      loader.seasonLabel(board.season) + ' Player Elo'));
+    if (rated.length) {
+      host.appendChild(playerBoardTable(rated, index, true));
+    } else {
+      // THE FIRST SIX WEEKS OF EVERY SEASON. Nobody has the minutes a rank
+      // needs, so the men are listed and not placed, and the line says so
+      // rather than leaving a reader to wonder where the board went.
+      host.appendChild(node('p', 'note', 'Nobody has played ' + floor
+        + ' this season yet, so NOTHING HERE IS RANKED. These are the '
+        + 'ratings as they stand, most floor time first, each one '
+        + 'provisional: six minutes of net points can read as twenty '
+        + 'points of impact, and ordering such a list by the rating would '
+        + 'put a man who played once in November at the top of the '
+        + 'league.'));
+      host.appendChild(playerBoardTable(held, index, false));
+    }
+    host.appendChild(node('p', 'note', 'What a man\u2019s club was worth '
+      + 'with him on the floor and what it was worth without, per 100 '
+      + 'possessions, from ESPN\u2019s own net points. Impact is the two '
+      + 'halves added: Off is the offence he was on the floor for and Def '
+      + 'the defence, and a positive Def is a defence that gave up fewer '
+      + 'points than the league\u2019s. The Elo is that impact on the '
+      + 'scale the club ratings use, ' + board.display_scale + ' points a '
+      + 'point of impact either side of 1500, and it is a rating of a '
+      + 'player and not of a club: nothing here plays anybody.'));
+    if (rated.length) {
+      host.appendChild(node('p', 'note', 'The ' + rated.length
+        + ' men with at least ' + floor + ' this season. '
+        + held.length + ' more are rated and not ranked: a board that '
+        + 'placed a man on forty minutes seventh in the league would be '
+        + 'making a claim the measurement cannot carry, so their numbers '
+        + 'are on their own pages instead.'));
+    }
+    host.appendChild(node('p', 'note', 'Earlier seasons carry forward at '
+      + 'half weight every ' + board.half_life_possessions
+      + ' possessions, so a man arrives in October at what he was in April '
+      + 'rather than at average, and what he does now outweighs it within '
+      + 'a month.'));
   }
 
   // ----------------------------------------------------------------- player
@@ -2641,6 +2800,109 @@
     render();
   }
 
+
+  /* ------------------------------------------------- a man's own rating
+   *
+   * His seasons of Player Elo and, under them, the games that moved it.
+   * The rating exists only for the seasons the grades cover, which is
+   * fewer than the archive's own seasons, so the table says which ones and
+   * the note says why the rest are absent.
+   */
+  function ratingSeasonTable(rows) {
+    var wrap = node('div', 'scroll');
+    var table = document.createElement('table');
+    var head = document.createElement('thead');
+    var headRow = document.createElement('tr');
+    [['Season', ''], ['Elo', 'num'], ['Impact', 'num'], ['Off', 'num'],
+      ['Def', 'num'], ['MIN', 'num'], ['G', 'num'], ['Poss', 'num'],
+      ['', '']].forEach(function (pair) {
+        headRow.appendChild(node('th', pair[1], pair[0]));
+      });
+    head.appendChild(headRow);
+    table.appendChild(head);
+    var body = document.createElement('tbody');
+    rows.forEach(function (row) {
+      var line = document.createElement('tr');
+      line.appendChild(node('td', '', loader.seasonLabel(row.season)));
+      line.appendChild(node('td', 'num', app.playerEloText(row.elo)));
+      line.appendChild(node('td', 'num', app.impactText(row.impact)));
+      line.appendChild(node('td', 'num', app.impactText(row.offense)));
+      line.appendChild(node('td', 'num', app.impactText(row.defense)));
+      line.appendChild(node('td', 'num',
+        row.minutes === null || row.minutes === undefined
+          ? '\u2014' : Math.round(row.minutes)));
+      line.appendChild(node('td', 'num', row.games));
+      line.appendChild(node('td', 'num',
+        row.possessions === null || row.possessions === undefined
+          ? '\u2014' : Math.round(row.possessions)));
+      // The word, not a flag: "provisional" is the one thing a reader has
+      // to know about a number drawn from eighty minutes.
+      line.appendChild(node('td', 'sub',
+        row.status === app.RATING_STATUS.rated ? '' : row.status));
+      body.appendChild(line);
+    });
+    table.appendChild(body);
+    wrap.appendChild(table);
+    return wrap;
+  }
+
+  /* The games that moved a rating, one table a season. `before` is EMPTY
+   * for a first grade rather than 1500: the rating did not exist before
+   * it, and drawing average there would show a man arriving at exactly
+   * average and then moving, which never happened. */
+  function ratingLogTables(host, groups) {
+    groups.forEach(function (group) {
+      host.appendChild(node('h3', 'section',
+        loader.seasonLabel(group.season) + ' graded games'));
+      var wrap = node('div', 'scroll');
+      var table = document.createElement('table');
+      var head = document.createElement('thead');
+      var headRow = document.createElement('tr');
+      [['Date', ''], ['Impact', 'num'], ['Poss', 'num'], ['Before', 'num'],
+        ['After', 'num'], ['Change', 'num']].forEach(function (pair) {
+          headRow.appendChild(node('th', pair[1], pair[0]));
+        });
+      head.appendChild(headRow);
+      table.appendChild(head);
+      var body = document.createElement('tbody');
+      group.games.forEach(function (game) {
+        var line = document.createElement('tr');
+        var when = node('td', '');
+        when.appendChild(linkTo(String(game.date || '').slice(5),
+          function () { openGameById(game.game, group.season); }));
+        line.appendChild(when);
+        line.appendChild(node('td', 'num', app.impactText(game.grade)));
+        line.appendChild(node('td', 'num',
+          game.exposure === null || game.exposure === undefined
+            ? '\u2014' : Math.round(game.exposure)));
+        line.appendChild(node('td', 'num', app.impactText(game.before)));
+        line.appendChild(node('td', 'num', app.impactText(game.after)));
+        line.appendChild(node('td', 'num', app.impactText(game.change)));
+        body.appendChild(line);
+      });
+      table.appendChild(body);
+      wrap.appendChild(table);
+      host.appendChild(wrap);
+    });
+  }
+
+  function ratingBlock(host, payload) {
+    var rows = app.playerRatings(payload);
+    if (!rows.length) return;
+    host.appendChild(node('h3', 'section', 'Player Elo'));
+    host.appendChild(ratingSeasonTable(rows));
+    host.appendChild(node('p', 'note', 'What his club was worth with him on '
+      + 'the floor against what it was worth without, per 100 possessions, '
+      + 'from ESPN\u2019s own net points: Impact is the offence and the '
+      + 'defence added, and the Elo is that impact either side of 1500 on '
+      + 'the scale the club ratings use. A season reads only the games it '
+      + 'has grades for, and what he was in earlier seasons carries '
+      + 'forward at a falling weight, so a figure in October is mostly '
+      + 'last April\u2019s. Provisional means he is under the minutes a '
+      + 'board needs; the number is still the measurement.'));
+    ratingLogTables(host, app.ratingLog(payload));
+  }
+
   function playerPanel() {
     var host = el('player-body');
     host.innerHTML = '';
@@ -2679,6 +2941,7 @@
       });
       host.appendChild(split);
     }
+    ratingBlock(host, payload);
     var seasons = app.playerSeasons(payload);
     var starred = false;
     // The Cup final is its OWN table, never a row of the regular season:
@@ -2859,6 +3122,11 @@
     if (!payload) {
       showPanel(null);
       return;
+    }
+    // A reader on the Player Elo view who crosses into a season with no
+    // replayed board keeps the People tab rather than a blank panel.
+    if (state.tab === 'people' && state.view === 'elo' && !eloBoard()) {
+      state.view = defaultView('people');
     }
     // A game page sits inside Home and replaces the slate while it is open.
     if (state.tab === 'home' && state.game) {

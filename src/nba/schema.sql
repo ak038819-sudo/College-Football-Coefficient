@@ -479,3 +479,106 @@ CREATE INDEX IF NOT EXISTS team_game_box_by_season
     ON team_game_box(season, season_type, game_date);
 CREATE INDEX IF NOT EXISTS team_game_box_by_team
     ON team_game_box(team_key, season);
+
+-- Schema 5: ESPN Analytics net points, and the player rating replayed from
+-- them. `src/nba/net_points.py` ingests the grades; `src/nba/player_elo.py`
+-- replays them. The grades arrive in a THIRD provider's ids, so the source
+-- ids are stored beside ours: a crosswalk nobody can audit after the fact
+-- is a crosswalk nobody should trust.
+CREATE TABLE IF NOT EXISTS player_net_points (
+    person_key   TEXT    NOT NULL REFERENCES person(person_key),
+    game_key     TEXT    NOT NULL REFERENCES game(game_key),
+    season       INTEGER NOT NULL,
+    team_key     TEXT    REFERENCES team(team_key),
+    -- The NBA ids the archive is keyed by, kept exactly as strings: a game
+    -- id's leading zero is part of it.
+    source_player_id TEXT NOT NULL,
+    source_game_id   TEXT NOT NULL,
+    source_team_id   TEXT NOT NULL,
+    home         INTEGER NOT NULL DEFAULT 0,
+    started      INTEGER NOT NULL DEFAULT 0,
+    played       INTEGER NOT NULL DEFAULT 0,
+    seconds_played INTEGER,
+    -- The grade itself. A zero is a grade: average, not missing.
+    offense_net_points REAL,
+    defense_net_points REAL,
+    -- The team's possessions WHILE THIS PLAYER WAS ON THE FLOOR, which is
+    -- what each grade is per. The two sides differ, so neither stands in
+    -- for the other.
+    offense_team_possessions REAL,
+    defense_team_possessions REAL,
+    -- How this person was resolved: by name, by the games played, or both.
+    resolved_by  TEXT    NOT NULL,
+    snapshot_id  INTEGER REFERENCES snapshot(snapshot_id),
+    PRIMARY KEY (person_key, game_key)
+);
+
+CREATE INDEX IF NOT EXISTS player_net_points_by_season
+    ON player_net_points(season, person_key);
+CREATE INDEX IF NOT EXISTS player_net_points_by_game
+    ON player_net_points(game_key);
+
+-- What the crosswalk could not settle. Quarantined, counted and reported,
+-- never guessed into the table above.
+CREATE TABLE IF NOT EXISTS player_net_points_unresolved (
+    season       INTEGER NOT NULL,
+    kind         TEXT    NOT NULL,
+    source_id    TEXT    NOT NULL,
+    label        TEXT,
+    reason       TEXT    NOT NULL,
+    snapshot_id  INTEGER REFERENCES snapshot(snapshot_id),
+    PRIMARY KEY (season, kind, source_id)
+);
+
+-- One row per graded appearance: the rating before it, after it, and the
+-- grade that moved it. A pregame impact with no previous evidence is NULL,
+-- never 1500: the rating did not exist yet.
+CREATE TABLE IF NOT EXISTS player_rating_game (
+    person_key     TEXT    NOT NULL REFERENCES person(person_key),
+    game_key       TEXT    NOT NULL REFERENCES game(game_key),
+    model_id       INTEGER NOT NULL REFERENCES rating_model(model_id),
+    season         INTEGER NOT NULL,
+    game_date      TEXT    NOT NULL,
+    offense_grade  REAL    NOT NULL,
+    defense_grade  REAL    NOT NULL,
+    game_grade     REAL    NOT NULL,
+    exposure       REAL    NOT NULL,
+    pregame_impact REAL,
+    postgame_impact REAL   NOT NULL,
+    change         REAL,
+    PRIMARY KEY (person_key, game_key, model_id)
+);
+
+CREATE INDEX IF NOT EXISTS player_rating_game_by_person
+    ON player_rating_game(person_key, model_id, game_date);
+CREATE INDEX IF NOT EXISTS player_rating_game_by_season
+    ON player_rating_game(season, model_id);
+
+-- The season snapshot a leaderboard and a player page read. The rating
+-- itself carries across seasons; `season` says which season's exposure
+-- and eligibility the row describes.
+CREATE TABLE IF NOT EXISTS player_rating (
+    person_key      TEXT    NOT NULL REFERENCES person(person_key),
+    season          INTEGER NOT NULL,
+    model_id        INTEGER NOT NULL REFERENCES rating_model(model_id),
+    as_of           TEXT    NOT NULL,
+    elo             REAL    NOT NULL,
+    impact_per_100  REAL    NOT NULL,
+    offense_per_100 REAL    NOT NULL,
+    defense_per_100 REAL    NOT NULL,
+    -- Minutes from OUR OWN archive, not from the grades: eligibility is a
+    -- statement about the season a player had, and a missing grade must
+    -- not make a player look like he did not play.
+    season_minutes  REAL    NOT NULL,
+    graded_games    INTEGER NOT NULL,
+    graded_possessions REAL NOT NULL,
+    last_graded_game TEXT   REFERENCES game(game_key),
+    -- `rated` once the minutes threshold is crossed, `provisional` before
+    -- it, `unavailable` when no valid grade has ever been seen.
+    status          TEXT    NOT NULL,
+    snapshot_id     INTEGER REFERENCES snapshot(snapshot_id),
+    PRIMARY KEY (person_key, season, model_id)
+);
+
+CREATE INDEX IF NOT EXISTS player_rating_by_season
+    ON player_rating(season, model_id, elo);

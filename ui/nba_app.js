@@ -922,6 +922,117 @@
     };
   }
 
+
+  /* --------------------------------------------- the player rating
+   *
+   * The reader's half of src/nba/player_elo.py. NOTHING HERE RATES
+   * ANYBODY: the replay runs at build time and these functions name the
+   * fields it wrote and decide how many decimals a reader sees. An absent
+   * number draws as a dash and never as zero, and null is checked BEFORE
+   * any coercion, for the reason the team statistics give above.
+   */
+
+  var RATING_STATUS = { rated: 'rated', provisional: 'provisional',
+                        unavailable: 'unavailable' };
+
+  /* One season's rating off a player payload's `r`:
+   * `[season, elo, impact, off, def, min, games, poss, status]`. */
+  function ratingEntry(row) {
+    if (!Array.isArray(row)) return null;
+    return { season: row[0], elo: row[1], impact: row[2], offense: row[3],
+      defense: row[4], minutes: row[5], games: row[6], possessions: row[7],
+      status: row[8] };
+  }
+
+  /* A man's seasons of rating, NEWEST FIRST, or an empty list where the
+   * replay has never reached him. A payload written before schema 5 has no
+   * `r` at all, which is an export without the layer rather than a player
+   * without a rating: both draw nothing, and the page says which. */
+  function playerRatings(payload) {
+    var rows = (payload && payload.r) || [];
+    return rows.map(ratingEntry).filter(Boolean).sort(function (one, two) {
+      return two.season - one.season;
+    });
+  }
+
+  /* One graded game off a payload's `rg`: `[game, date, grade, exposure,
+   * before, after, change]`. `before` IS NULL FOR A FIRST GRADE and is
+   * left null here: 1500 there would draw a man arriving at exactly
+   * average, which never happened. */
+  function ratingGame(row) {
+    if (!Array.isArray(row)) return null;
+    return { game: row[0], date: row[1], grade: row[2], exposure: row[3],
+      before: row[4], after: row[5], change: row[6] };
+  }
+
+  /* The replay as `[{season, games}]`, newest season first and each
+   * season's games oldest first, which is the order a rating moved in. */
+  function ratingLog(payload) {
+    var groups = (payload && payload.rg) || [];
+    return groups.map(function (pair) {
+      if (!Array.isArray(pair)) return null;
+      return { season: pair[0],
+        games: (pair[1] || []).map(ratingGame).filter(Boolean) };
+    }).filter(function (group) {
+      return group && group.games.length;
+    }).sort(function (one, two) { return two.season - one.season; });
+  }
+
+  /* A season payload's Player Elo board, or null. */
+  function playerBoard(payload) {
+    var board = payload && payload.player_elo;
+    if (!board || !Array.isArray(board.players) || !board.players.length) {
+      return null;
+    }
+    return board;
+  }
+
+  /* The board's players in rating order, highest first. The export writes
+   * them in that order already; sorting here keeps the page honest about
+   * what it claims rather than trusting a file's order.
+   *
+   * `status` SPLITS THE BOARD and is not a label on one list: the rated men
+   * are ranked and the provisional ones are not, because a man on forty
+   * minutes placed 7th in the league is a claim the measurement cannot
+   * carry. Pass a status to get one side of it.
+   */
+  function playerBoardRows(board, status, by) {
+    var rows = ((board && board.players) || []).filter(function (row) {
+      return !status || row.status === status;
+    });
+    var key = by === 'minutes' ? 'season_minutes' : 'elo';
+    rows.sort(function (one, two) {
+      return (two[key] || 0) - (one[key] || 0);
+    });
+    return rows;
+  }
+
+  /* An index's players by id, for a board that carries ids and no names. */
+  function peopleById(index) {
+    var map = {};
+    ((index && index.players) || []).forEach(function (row) {
+      var entry = indexEntry(row);
+      if (entry) map[String(entry.id)] = entry;
+    });
+    return map;
+  }
+
+  /* A rate per 100 possessions, to two decimals and signed, because the
+   * sign IS the measurement: -1.20 is a man his club was worse with. */
+  function impactText(value) {
+    if (value === null || value === undefined) return '—';
+    var number = Number(value);
+    if (!isFinite(number)) return '—';
+    return (number > 0 ? '+' : '') + number.toFixed(2);
+  }
+
+  /* A player Elo as a whole number, the rule the team ratings follow. */
+  function playerEloText(value) {
+    if (value === null || value === undefined) return '—';
+    var number = Number(value);
+    return isFinite(number) ? String(Math.round(number)) : '—';
+  }
+
   var api = {
     // Exported because a page drawing these numbers needs the same guard
     // the module uses: `Number.isFinite(Number(x))` is TRUE for null, and
@@ -1003,7 +1114,17 @@
     archiveSpan: archiveSpan,
     searchPeople: searchPeople,
     indexEntry: indexEntry,
-    topScorers: topScorers
+    topScorers: topScorers,
+    peopleById: peopleById,
+    RATING_STATUS: RATING_STATUS,
+    ratingEntry: ratingEntry,
+    playerRatings: playerRatings,
+    ratingGame: ratingGame,
+    ratingLog: ratingLog,
+    playerBoard: playerBoard,
+    playerBoardRows: playerBoardRows,
+    impactText: impactText,
+    playerEloText: playerEloText
   };
 
   if (typeof module === 'object' && module.exports) {

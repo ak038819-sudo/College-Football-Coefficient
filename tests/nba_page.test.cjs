@@ -336,8 +336,35 @@ function gameStats() {
   };
 }
 
+/* The Player Elo board as `src/nba/export.py` writes it into a season
+ * payload: the rated men and the provisional ones in one list, each
+ * carrying its own status, with the counts stated beside them. */
+function playerRatings(options) {
+  const opts = options || {};
+  const player = (id, elo, impact, off, def, minutes, status) => ({
+    player_id: id, elo: elo, impact_per_100: impact, offense_per_100: off,
+    defense_per_100: def, season_minutes: minutes, graded_games: 60,
+    graded_possessions: minutes * 2, status: status
+  });
+  const players = opts.players || [
+    player(1966, 1733.4, 9.3, 8.14, 1.17, 2262, 'rated'),
+    player(4066, 1647.2, 5.87, 2.24, 3.62, 1868, 'rated'),
+    // Eighteen minutes and an impact that would top the league: the man
+    // the board may not rank.
+    player(9001, 2053.1, 22.13, 25.59, -3.46, 18, 'provisional')
+  ];
+  return {
+    season: 2026, as_of: '2026-11-13T00:00:00+00:00',
+    model: 'player-net-points', cutoff_minutes: 500,
+    display_scale: 25, half_life_possessions: 2000, first_season: 2024,
+    ranked: players.filter(one => one.status === 'rated').length,
+    provisional: players.filter(one => one.status === 'provisional').length,
+    players: players
+  };
+}
+
 function site(overrides, schedule, standings, past, detail, folk, bracket,
-  marks, stats) {
+  marks, stats, rating) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nba-page-'));
   const data = path.join(root, 'data', 'nba', 'seasons');
   fs.mkdirSync(data, { recursive: true });
@@ -357,20 +384,40 @@ function site(overrides, schedule, standings, past, detail, folk, bracket,
     ? Object.assign({}, extra, { team_stats: teamStatsSection(
         stats === true ? null : stats) })
     : extra;
+  // The ratings ride in the season payload, and the MANIFEST says whether
+  // the season has any: the page asks the manifest, because the payload
+  // arrives later and a view gated on it is dropped from the URL while it
+  // is loading.
+  const withRating = rating
+    ? Object.assign({}, withStats, {
+        player_elo: rating === true ? playerRatings() : rating })
+    : withStats;
   const seasonText = payloadFor(2026, standings || board(),
-    schedule || games(), withStats);
+    schedule || games(), withRating);
   const teamsText = 'window.NBA_TEAMS=' + JSON.stringify(teams()) + ';\n';
   const historyText = 'window.NBA_HISTORY=' + JSON.stringify(history()) + ';\n';
   fs.writeFileSync(path.join(data, '2026.js'), seasonText);
   fs.writeFileSync(path.join(root, 'data', 'nba', 'teams.js'), teamsText);
   fs.writeFileSync(path.join(root, 'data', 'nba', 'history.js'), historyText);
   const payload = manifest(overrides);
+  if (rating) {
+    const board = withRating.player_elo;
+    payload.coverage[0].player_elo = {
+      ranked: board.ranked, provisional: board.provisional,
+      graded: board.players.length,
+      cutoff_minutes: board.cutoff_minutes };
+  }
   payload.seasons = { 2026: 'seasons/2026.js?v=' + stamp(seasonText) };
   // A second season, so the picker has something to pick between and a deep
   // link naming a season can be told from the page's default.
   if (past) {
+    // The past season carries its own ratings where this one does, so that
+    // changing the season on the board is a board becoming another board.
     const pastText = payloadFor(2025, standings || board(),
-      schedule || games());
+      schedule || games(), rating
+        ? { player_elo: Object.assign({}, withRating.player_elo,
+            { season: 2025 }) }
+        : null);
     fs.writeFileSync(path.join(data, '2025.js'), pastText);
     payload.seasons[2025] = 'seasons/2025.js?v=' + stamp(pastText);
     payload.coverage = payload.coverage.concat([Object.assign(
@@ -443,9 +490,9 @@ function settle(dom, ready, tries = 500) {
 }
 
 async function open(overrides, schedule, standings, hash, past, detail,
-  folk, bracket, marks, stats) {
+  folk, bracket, marks, stats, rating) {
   const built = site(overrides, schedule, standings, past, detail, folk,
-    bracket, marks, stats);
+    bracket, marks, stats, rating);
   const file = path.join(built.root, 'nba.html');
   const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
     // The hash is part of the URL the reader arrived with, so it is set here
@@ -2009,4 +2056,205 @@ test('a side the export did not grade reads as absent, not as even', () => {
   // The away side is not in the entry at all.
   assert.equal(app.opportunityOf(entry, 'away'), null);
   assert.equal(app.opportunityOf({}, 'home'), null);
+});
+
+// --- the player rating, on the page ---------------------------------------
+
+/* The people fixture with the rating fields the export attaches since
+ * schema 5: `r` a season a row, `rg` the games that moved it. */
+function ratedPeople() {
+  const people = peopleFixture();
+  people.detail[1966].r = [
+    [2026, 1733.4, 9.3, 8.14, 1.16, 2262, 68, 4724, 'rated'],
+    [2025, 1705.2, 8.21, 7.87, 0.34, 2597, 76, 5415, 'rated']
+  ];
+  people.detail[1966].rg = [
+    // The FIRST graded game of a career has nothing before it: a null,
+    // never 1500 and never zero.
+    [2025, [['g0', '2024-10-22', 6.07, 78, null, 5.02, null],
+      ['g1', '2024-10-24', 3.77, 67, 5.02, 4.61, -0.41]]],
+    [2026, [['g2', '2025-12-16', 14.17, 58, 8.31, 8.43, 0.12]]]
+  ];
+  // A man with no rating at all, which is every man before 2023-24.
+  return people;
+}
+
+async function openBoard(dom) {
+  await openPeople(dom);
+  const buttons = [...dom.window.document.querySelectorAll('#subnav button')];
+  const board = buttons.find(node => /Player Elo/.test(node.textContent));
+  assert.ok(board, 'there is no Player Elo view to press among '
+    + buttons.map(node => node.textContent).join(', '));
+  board.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+  return dom.window.document.getElementById('people-body');
+}
+
+test('Player Elo is a view only where the season was replayed', async () => {
+  const bare = await open(undefined, undefined, undefined, undefined,
+    undefined, undefined, true);
+  await openPeople(bare);
+  assert.deepEqual(
+    [...bare.window.document.querySelectorAll('#subnav button')]
+      .map(node => node.textContent), []);
+  bare.window.close();
+  const dom = await open(undefined, undefined, undefined, undefined,
+    undefined, undefined, true, undefined, undefined, undefined, true);
+  await openPeople(dom);
+  assert.deepEqual(
+    [...dom.window.document.querySelectorAll('#subnav button')]
+      .map(node => node.textContent), ['Players', 'Player Elo']);
+  dom.window.close();
+});
+
+test('the board ranks the rated men and leaves out the provisional',
+  async () => {
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, undefined, true, undefined, undefined, undefined, true);
+    const host = await openBoard(dom);
+    const rows = [...host.querySelectorAll('tbody tr')]
+      .map(row => [...row.querySelectorAll('td')]
+        .map(cell => cell.textContent));
+    // Two rows, ranked 1 and 2. The 18-minute man rated 2053 is NOT among
+    // them: a board that placed him first would be unreadable.
+    assert.deepEqual(rows.map(cells => [cells[0], cells[1], cells[2]]),
+      [['1', 'LeBron James', '1733'], ['2', 'Victor Wembanyama', '1647']]);
+    // The halves add to the impact, and the sign is kept.
+    assert.deepEqual(rows[0].slice(3, 7),
+      ['+9.30', '+8.14', '+1.17', '2262']);
+    assert.match(host.textContent, /1 more are rated and not ranked/);
+    dom.window.close();
+  });
+
+test('a season nobody has the minutes for lists without ranking',
+  async () => {
+    // Every October. The men are shown MOST FLOOR TIME FIRST, because six
+    // minutes of net points can read as twenty points of impact.
+    const rating = playerRatings({ players: [
+      { player_id: 9001, elo: 2053.1, impact_per_100: 22.13,
+        offense_per_100: 25.59, defense_per_100: -3.46, season_minutes: 18,
+        graded_games: 2, graded_possessions: 30, status: 'provisional' },
+      { player_id: 1966, elo: 1555.0, impact_per_100: 2.2,
+        offense_per_100: 2.0, defense_per_100: 0.2, season_minutes: 436,
+        graded_games: 12, graded_possessions: 890, status: 'provisional' }
+    ] });
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, undefined, true, undefined, undefined, undefined, rating);
+    const host = await openBoard(dom);
+    assert.match(host.textContent, /NOTHING HERE IS RANKED/);
+    const rows = [...host.querySelectorAll('tbody tr')]
+      .map(row => [...row.querySelectorAll('td')]
+        .map(cell => cell.textContent));
+    assert.deepEqual(rows.map(cells => [cells[0], cells[1]]),
+      [['', 'LeBron James'], ['', 'Nobody Atall']]);
+    dom.window.close();
+  });
+
+test('the board survives the season changing under it', async () => {
+  // THE BUG THIS PINS: the view was gated on the loaded season payload,
+  // which arrives after the hash change, so `placeFromHash` dropped
+  // `view=elo` from the URL and the reader lost the board they were on.
+  const dom = await open(undefined, undefined, undefined, undefined, true,
+    undefined, true, undefined, undefined, undefined, true);
+  await openBoard(dom);
+  const select = dom.window.document.getElementById('season');
+  select.value = '2025';
+  select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+  await settle(dom, () => /2024-25 Player Elo/.test(
+    dom.window.document.getElementById('people-body').textContent)
+    || /Most points in this archive/.test(
+      dom.window.document.getElementById('people-body').textContent));
+  assert.match(dom.window.location.hash, /view=elo/);
+  // The BOARD, not the player list: the view a reader is on survives the
+  // season changing under it.
+  assert.match(textOf(dom, '#people-body'), /2024-25 Player Elo/);
+  assert.equal([...dom.window.document.querySelectorAll('#subnav button')]
+    .find(node => /Player Elo/.test(node.textContent))
+    .getAttribute('aria-pressed'), 'true');
+  // The season change leaves a fetch in flight; closing the window under
+  // it turns its resolution into an unhandled rejection.
+  await new Promise(resolve => setTimeout(resolve, 300));
+  dom.window.close();
+});
+
+test('a player page draws the rating his seasons were replayed into',
+  async () => {
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, undefined, ratedPeople(), undefined, undefined, undefined,
+      true);
+    const host = await openPlayerPage(dom, 'LeBron James');
+    const table = [...host.querySelectorAll('table')].find(
+      node => /ELO|Elo/.test(node.querySelector('thead').textContent));
+    assert.ok(table, 'no rating table on the page');
+    const rows = [...table.querySelectorAll('tbody tr')]
+      .map(row => [...row.querySelectorAll('td')]
+        .map(cell => cell.textContent));
+    // Newest season first, the Elo whole and the rates signed.
+    assert.deepEqual(rows[0].slice(0, 5),
+      ['2025-26', '1733', '+9.30', '+8.14', '+1.16']);
+    assert.equal(rows[1][0], '2024-25');
+    dom.window.close();
+  });
+
+test('the first graded game of a career shows no rating before it',
+  async () => {
+    const dom = await open(undefined, undefined, undefined, undefined,
+      undefined, undefined, ratedPeople(), undefined, undefined, undefined,
+      true);
+    const host = await openPlayerPage(dom, 'LeBron James');
+    const heads = [...host.querySelectorAll('h3')]
+      .map(node => node.textContent);
+    assert.ok(heads.some(text => /2024-25 graded games/.test(text)),
+      'no graded-game table: ' + heads.join(', '));
+    // THE SEASON HE DEBUTED IN, which is not the first table on the page:
+    // the logs are newest season first, so the table to read is the one
+    // under the 2024-25 heading.
+    const heading = [...host.querySelectorAll('h3')].find(
+      node => /2024-25 graded games/.test(node.textContent));
+    const log = heading.nextElementSibling.querySelector('table');
+    assert.match(log.querySelector('thead').textContent, /Before/i);
+    const first = [...log.querySelectorAll('tbody tr')][0];
+    const cells = [...first.querySelectorAll('td')]
+      .map(cell => cell.textContent);
+    // A dash, not 1500 and not +0.00: the rating did not exist yet.
+    assert.deepEqual(cells.slice(3), ['—', '+5.02', '—']);
+    dom.window.close();
+  });
+
+test('a player the replay never reached gets no rating block', async () => {
+  const dom = await open(undefined, undefined, undefined, undefined,
+    undefined, undefined, ratedPeople(), undefined, undefined, undefined,
+    true);
+  const host = await openPlayerPage(dom, 'Victor Wembanyama');
+  assert.ok(!/Player Elo/i.test(host.textContent),
+    'a man with no rating was given one');
+  dom.window.close();
+});
+
+test('the rating helpers read a missing number as missing', () => {
+  // `Number.isFinite(Number(null))` is true, which has read a missing
+  // clock as 0:00 three times in this repository.
+  assert.equal(app.impactText(null), '—');
+  assert.equal(app.impactText(undefined), '—');
+  assert.equal(app.impactText(0), '0.00');
+  assert.equal(app.impactText(-1.204), '-1.20');
+  assert.equal(app.impactText(1.205), '+1.21');
+  assert.equal(app.playerEloText(null), '—');
+  assert.equal(app.playerEloText(1733.4), '1733');
+  assert.deepEqual(app.playerRatings({}), []);
+  assert.deepEqual(app.ratingLog({}), []);
+  assert.equal(app.playerBoard({ player_elo: { players: [] } }), null);
+});
+
+test('the board rows split on status rather than carrying a label', () => {
+  const board = playerRatings();
+  assert.deepEqual(
+    app.playerBoardRows(board, 'rated').map(row => row.player_id),
+    [1966, 4066]);
+  assert.deepEqual(
+    app.playerBoardRows(board, 'provisional').map(row => row.player_id),
+    [9001]);
+  // By minutes, which is the order a list that is not a ranking is in.
+  assert.deepEqual(
+    app.playerBoardRows(board, undefined, 'minutes')
+      .map(row => row.player_id), [1966, 4066, 9001]);
 });
