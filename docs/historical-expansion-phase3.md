@@ -1,6 +1,6 @@
 # Phase 3 — 1946–1979 historical backfill
 
-**Status:** implementation started; no historical seasons imported or promoted by this PR.
+**Status:** the importer, the auditor and the workflow that runs them are in place. No historical season has been imported or promoted yet.
 
 ## Dependency and release gates
 
@@ -17,16 +17,41 @@
 
 Each batch uses Phase 2's staging importer with a persistent staging database; checkpointed imports are resumable. Export read-only integrity reports after each batch. Treat unknown classification as **unknown**, not FBS.
 
-## Run after Phase 2 merge
+## How a batch is run
+
+**On a runner, not by hand.** `api.collegefootballdata.com` is unreachable
+from the containers this repository is worked in, and the key exists only as
+the `CFBD_API_KEY` repository secret, so
+`.github/workflows/historical-backfill.yml` is where the import happens.
+Dispatch it with the batch's first and last season.
+
+The staging database is **carried between runs as an artifact** rather than
+committed — the plan keeps staging records and raw payloads out of Git — and
+it is uploaded **even when the import fails**, which is the run where it
+matters: the importer checkpoints per season and season type, so the next
+dispatch of the same range resumes rather than re-fetching what the provider
+has already served. `fresh: true` starts from nothing, for a rehearsal.
+
+Each run audits the range it imported and publishes
+`backfill_readiness.csv` and `backfill_summary.json` as a second artifact,
+and writes the blocked partitions into the run summary.
+
+The same two scripts can be run directly where the provider is reachable:
 
 ```bash
 export CFBD_API_KEY="..."  # supply securely; never commit credentials
-python scripts/import_historical_archive.py --db db/historical_staging.db --start 1948 --end 1959
-python scripts/audit_historical_backfill.py --db db/historical_staging.db --start 1948 --end 1959 --out /tmp/elocast-1948-1959
-python -m pytest tests/test_historical_backfill_audit.py -q
+python scripts/import_historical_archive.py --db staging.db --start 1948 --end 1959
+python scripts/audit_historical_backfill.py --db staging.db --start 1948 --end 1959 --out /tmp/elocast-1948-1959
+python -m pytest tests/test_historical_backfill_audit.py tests/test_historical_backfill_workflow.py -q
 ```
 
-Repeat for 1960–1969 and 1970–1979. Staging DB and raw historical data should remain outside Git; back up securely and retain source provenance.
+Repeat for 1960–1969 and 1970–1979. Back up the staging database securely and
+retain source provenance.
+
+**The workflow promotes nothing.** It opens no production table, builds no
+rating and touches no file under `ui/`, so no deploy follows it. Everything
+under "Review before promotion" below still has to happen first, and the
+promotion itself is a separate, approved step.
 
 ## Review before promotion
 
