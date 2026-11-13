@@ -4,11 +4,14 @@ on:
   pull_request:
     paths:
       - 'scripts/audit_historical_backfill.py'
+      - 'scripts/reconcile_historical_sources.py'
       - 'scripts/import_historical_archive.py'
       - 'tests/test_historical_backfill_audit.py'
       - 'tests/test_historical_backfill_workflow.py'
+      - 'tests/test_historical_reconcile.py'
       - '.github/workflows/historical-backfill-tests.yml'
       - '.github/workflows/historical-backfill.yml'
+      - '.github/workflows/historical-reconcile.yml'
   workflow_dispatch:
 
 permissions:
@@ -28,13 +31,16 @@ jobs:
           python -m compileall -q \
             scripts/audit_historical_backfill.py \
             scripts/import_historical_archive.py \
+            scripts/reconcile_historical_sources.py \
             tests/test_historical_backfill_audit.py \
-            tests/test_historical_backfill_workflow.py
+            tests/test_historical_backfill_workflow.py \
+            tests/test_historical_reconcile.py
       - name: Install pytest
         # PyYAML too: the workflow test reads the backfill workflow as data,
         # and `importorskip` would otherwise skip it into silence here.
         run: python -m pip install pytest PyYAML
-      - name: Test the backfill audit and the workflow that runs it
+      - name: Test the backfill audit, the reconciliation and their workflows
         run: |
           python -m pytest tests/test_historical_backfill_audit.py \
-            tests/test_historical_backfill_workflow.py -q
+            tests/test_historical_backfill_workflow.py \
+            tests/test_historical_reconcile.py -q

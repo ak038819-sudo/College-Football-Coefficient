@@ -1,0 +1,243 @@
+# Phase 3, the first promotion gate: does the staged archive agree with the
+# provider's own season records?
+#
+# WHY A SECOND WORKFLOW AND NOT A STEP IN THE BACKFILL: the backfill owns the
+# staging artifact chain and is its only writer, which is what keeps a batch
+# resumable. This run READS that chain and never republishes it; the records
+# feed it collects goes into a chain of its own.
+#
+# NOTHING HERE PROMOTES ANYTHING. No production table is opened, no rating is
+# built, `ui/` is untouched, so no deploy follows. A clean reconciliation is
+# evidence that the import is faithful to collegefootballdata.com -- not that
+# the history is complete. The independent references under "Review before
+# promotion" in docs/historical-expansion-phase3.md are a separate step.
+name: Historical source reconciliation (1946-1979)
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "First season to reconcile (1946-1979)."
+        type: string
+        default: "1946"
+      end:
+        description: "Last season to reconcile (1946-1979)."
+        type: string
+        default: "1979"
+      force:
+        description: "Re-fetch records for seasons already collected."
+        type: boolean
+        default: false
+      offline:
+        description: "Reconcile against the records already collected, asking
+          the provider for nothing."
+        type: boolean
+        default: false
+      pause:
+        description: "Seconds between requests."
+        type: string
+        default: "1"
+
+# NOT cancel-in-progress: a cancelled run loses the seasons collected since
+# its last checkpoint upload, and the provider has already served them.
+concurrency:
+  group: historical-reconcile
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # To list and download the staging chain and this workflow's own records.
+  actions: read
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+      GH_TOKEN: ${{ github.token }}
+      STAGING: ${{ github.workspace }}/staging/historical_staging.db
+      RECORDS: ${{ github.workspace }}/records/historical_records.db
+      REPORT: ${{ github.workspace }}/report
+      # Read, never written: the backfill is the only writer of this chain.
+      ARTIFACT_STAGING: historical-staging-db
+      # This workflow's own chain.
+      ARTIFACT_RECORDS: historical-records-db
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      # No pip install: the script is standard library only.
+
+      - name: Check the credential and the range
+        run: |
+          set -o pipefail
+          if [ "$OFFLINE" != "true" ] && [ -z "$CFBD_API_KEY" ]; then
+            echo "::error::CFBD_API_KEY repository secret is missing"
+            exit 1
+          fi
+          python - <<'PY'
+          import os
+          import sys
+          start, end = os.environ['START'], os.environ['END']
+          try:
+              first, last = int(start), int(end)
+          except ValueError:
+              sys.exit(f'::error::start and end must be years: {start}, {end}')
+          if not 1946 <= first <= last <= 1979:
+              sys.exit('::error::Phase 3 is 1946-1979, and start must not be '
+                       f'after end: got {first}-{last}')
+          print(f'Reconciling {first}-{last}')
+          PY
+        env:
+          START: ${{ inputs.start }}
+          END: ${{ inputs.end }}
+          OFFLINE: ${{ inputs.offline }}
+
+      - name: Fetch the staged archive
+        run: |
+          set -o pipefail
+          mkdir -p "$(dirname "$STAGING")"
+          # SORTED, because the artifacts endpoint promises no order and does
+          # not give one -- taking the first row is what dropped a backfill
+          # batch from the chain in silence.
+          id=$(gh api \
+            "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$ARTIFACT_STAGING&per_page=100" \
+            --jq '[.artifacts[] | select(.expired == false)]
+                  | sort_by(.created_at) | reverse | .[0].id // empty')
+          if [ -z "$id" ]; then
+            echo "::error::No staging database artifact. Run historical-backfill.yml before reconciling; its artifact expires 90 days after its run."
+            exit 1
+          fi
+          if ! gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" \
+               > "$RUNNER_TEMP/staging.zip"; then
+            echo "::error::staging artifact $id could not be downloaded"
+            exit 1
+          fi
+          if ! unzip -o -q "$RUNNER_TEMP/staging.zip" -d "$(dirname "$STAGING")"; then
+            echo "::error::staging artifact $id is not a readable zip"
+            exit 1
+          fi
+          if [ ! -f "$STAGING" ]; then
+            echo "::error::staging artifact $id holds no historical_staging.db"
+            exit 1
+          fi
+          python - <<'PY'
+          import os
+          import sqlite3
+          db = sqlite3.connect(f"file:{os.environ['STAGING']}?mode=ro", uri=True)
+          games = db.execute('SELECT COUNT(*) FROM archive_games').fetchone()[0]
+          done = db.execute(
+              "SELECT COUNT(*) FROM archive_fetches WHERE status = 'complete'"
+          ).fetchone()[0]
+          print(f'Reconciling against {games} staged games in {done} '
+                'completed season-and-type partitions.')
+          PY
+
+      - name: Carry the collected records forward
+        run: |
+          set -o pipefail
+          mkdir -p "$(dirname "$RECORDS")"
+          id=$(gh api \
+            "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$ARTIFACT_RECORDS&per_page=100" \
+            --jq '[.artifacts[] | select(.expired == false)]
+                  | sort_by(.created_at) | reverse | .[0].id // empty')
+          if [ -z "$id" ]; then
+            echo "No records have been collected yet; starting empty."
+            exit 0
+          fi
+          if ! gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" \
+               > "$RUNNER_TEMP/records.zip"; then
+            echo "::error::records artifact $id could not be downloaded"
+            exit 1
+          fi
+          if ! unzip -o -q "$RUNNER_TEMP/records.zip" -d "$(dirname "$RECORDS")"; then
+            echo "::error::records artifact $id is not a readable zip"
+            exit 1
+          fi
+          if [ ! -f "$RECORDS" ]; then
+            echo "::error::records artifact $id holds no historical_records.db"
+            exit 1
+          fi
+
+      - name: Reconcile the staged games against the records feed
+        run: |
+          set -o pipefail
+          python scripts/reconcile_historical_sources.py \
+            --staging "$STAGING" \
+            --db "$RECORDS" \
+            --out "$REPORT" \
+            --start "${{ inputs.start }}" \
+            --end "${{ inputs.end }}" \
+            --pause "${{ inputs.pause }}" \
+            ${{ inputs.force && '--force' || '' }} \
+            ${{ inputs.offline && '--offline' || '' }} \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the records, whether or not the run finished
+        # ALWAYS, for the same reason the backfill keeps its database: a run
+        # that stopped on 1954 has collected 1946-1953, and the provider has
+        # already served them.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: historical-records-db
+          path: ${{ github.workspace }}/records/historical_records.db
+          retention-days: 90
+          if-no-files-found: error
+          overwrite: true
+
+      - name: Summarise what disagrees
+        if: always()
+        run: |
+          set -o pipefail
+          report="$REPORT/source_reconciliation.csv"
+          if [ ! -f "$report" ]; then
+            echo "No reconciliation report was written."
+            exit 0
+          fi
+          python - <<'PY'
+          import csv
+          import os
+          from collections import Counter
+          from pathlib import Path
+          rows = list(csv.DictReader(
+              (Path(os.environ['REPORT']) / 'source_reconciliation.csv').open()))
+          flagged = [row for row in rows if row['findings']]
+          counts = Counter(finding for row in flagged
+                           for finding in row['findings'].split(';'))
+          lines = ['', f'### {len(rows) - len(flagged)} of {len(rows)} '
+                   'team-seasons agree with the provider\'s own records', '']
+          if counts:
+              lines += ['| finding | team-seasons |', '| --- | --- |']
+              lines += [f'| {name} | {count} |'
+                        for name, count in counts.most_common()]
+              worst = sorted(
+                  (row for row in flagged if row['findings'].endswith('mismatch')),
+                  key=lambda row: -abs(int(row['delta_regular_games'] or 0)))[:20]
+              if worst:
+                  lines += ['', '| season | team | staged | records | finding |',
+                            '| --- | --- | --- | --- | --- |']
+                  lines += [f"| {row['season']} | {row['team_raw']} | "
+                            f"{row['staged_regular_games']} | "
+                            f"{row['reference_regular_games']} | "
+                            f"{row['findings']} |" for row in worst]
+          lines += ['', 'Both feeds are collegefootballdata.com, so agreement '
+                    'means the import is faithful to the provider, not that '
+                    'the history is complete. Nothing is promoted by this '
+                    'run.', '']
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+              out.write('\n'.join(lines))
+          PY
+
+      - name: Publish the reconciliation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: historical-reconciliation-${{ inputs.start }}-${{ inputs.end }}
+          path: ${{ env.REPORT }}
+          retention-days: 90
+          if-no-files-found: ignore
+          overwrite: true
