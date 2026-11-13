@@ -129,21 +129,133 @@
     return game.away_points + ' – ' + game.home_points;
   }
 
+  /* ------------------------------------------------------------------
+   * TONIGHT, from the live snapshot.
+   *
+   * The archive under ui/data/nba/ is rebuilt from a source that runs about
+   * a day behind: measured 2026-11-13, its newest completed game was the
+   * 11th while four games had finished on the 12th. So a reader opening this
+   * page during a game, or the morning after one, sees a slate with no
+   * scores on it. `ui/data/nba_live.json` is a separate, small snapshot of
+   * what is happening now, written by .github/workflows/nba-live-scores.yml
+   * from ESPN's public scoreboard.
+   *
+   * It is DISPLAY ONLY and it never writes into the archive's own fields.
+   * `home_points` and `away_points` stay exactly what the export published,
+   * so records, standings, ratings and the game page are untouched by a
+   * score that is still moving. What a live row does is hang off the game as
+   * `game.live`, and only the scoreboard reads it.
+   *
+   * A SNAPSHOT GOES STALE AND AN IN-PROGRESS SCORE GOES WRONG WITH IT. If
+   * the loop stops at nine in the evening, the 42-38 it last saw is not the
+   * score an hour later, and a page showing it confidently is worse than one
+   * showing none. So a game still being played is drawn only while the
+   * snapshot is fresh. A FINAL is different: a finished game does not change,
+   * so a completed row is drawn however old the snapshot is.
+   * ---------------------------------------------------------------- */
+
+  var LIVE_STALE_AFTER_MINUTES = 30;
+
+  function liveFreshness(snapshot, now) {
+    var stamp = snapshot && snapshot.updated_at;
+    var moment = typeof stamp === 'string' ? Date.parse(stamp) : NaN;
+    if (!isFiniteNumber(moment)) {
+      return { known: false, stale: true, minutes: null };
+    }
+    var current = isFiniteNumber(now) ? now : Date.now();
+    var minutes = Math.max(0, Math.round((current - moment) / 60000));
+    return { known: true, stale: minutes >= LIVE_STALE_AFTER_MINUTES,
+             minutes: minutes };
+  }
+
+  /* Hang each usable live row off the game it belongs to, and say how many
+   * landed. The join is on the game key, which both files already carry:
+   * the export's `id` is `nba:espn:game:401909966` and the snapshot's
+   * `game_key` is the same string, so nothing is matched on a name. */
+  function attachLive(games, snapshot, now) {
+    var rows = (snapshot && snapshot.games) || [];
+    var fresh = !liveFreshness(snapshot, now).stale;
+    var byKey = {};
+    rows.forEach(function (row) {
+      if (!row || !row.game_key) return;
+      // A game still being played is only worth drawing while the snapshot
+      // is fresh. A finished one is settled and keeps.
+      if (row.state === 'in' && !fresh) return;
+      if (row.state !== 'in' && row.state !== 'post') return;
+      byKey[row.game_key] = row;
+    });
+    var matched = 0;
+    (games || []).forEach(function (game) {
+      var row = byKey[game && game.id];
+      if (!row) {
+        if (game) delete game.live;
+        return;
+      }
+      game.live = row;
+      matched += 1;
+    });
+    return matched;
+  }
+
+  function isLive(game) {
+    return Boolean(game && game.live && game.live.state === 'in');
+  }
+
+  /* The points to SHOW for one side. The export's own number wins wherever
+   * it has one, because a game the archive has settled is the archive's.
+   * Only where it has none does the live row answer -- and only once that
+   * game has started, since an unplayed game is sent as 0-0 by both
+   * sources and a zero put back here is the whole trap. */
+  function shownPoints(game, side) {
+    var settled = game && game[side + '_points'];
+    if (isFiniteNumber(settled)) return settled;
+    if (!game || !game.live) return null;
+    var value = (game.live[side] || {}).points;
+    return isFiniteNumber(value) ? value : null;
+  }
+
+  function hasScore(game) {
+    return isFiniteNumber(shownPoints(game, 'home'))
+      && isFiniteNumber(shownPoints(game, 'away'));
+  }
+
+  function shownScoreText(game, side) {
+    var points = shownPoints(game, side);
+    return isFiniteNumber(points) ? String(points) : '';
+  }
+
   /* What to say about a game that has no score: the tip-off time where it is
    * known, and that it is undecided where it is not. Never a zero, and never
    * a time invented from a date. */
   function statusLine(game, formatTime) {
     if (isFinal(game)) return 'Final';
+    if (isLive(game)) {
+      // ESPN's own phrasing -- "5:21 - 3rd", "End of 2nd", "Halftime" --
+      // rather than one assembled here from a period and a clock that may
+      // each be absent.
+      return (game.live && game.live.detail) || 'In progress';
+    }
+    if (game && game.live && game.live.completed) return 'Final';
     if (!timeKnown(game)) return 'Time TBD';
     return typeof formatTime === 'function' ? formatTime(game.at) : game.at;
   }
 
   /* An NBA game cannot be drawn. A level completed score is a fault in the
-   * data, so neither side is called the winner. */
+   * data, so neither side is called the winner.
+   *
+   * A game the live snapshot has FINISHED counts here too, which is how a
+   * final from last night dims its loser before the archive has caught up.
+   * A game still being played does NOT: it has a leader, not a winner, and
+   * dimming a club at halftime says something the data does not. */
   function winnerOf(game) {
-    if (!isFinal(game)) return null;
-    if (game.home_points === game.away_points) return null;
-    return game.home_points > game.away_points ? game.home : game.away;
+    var settled = isFinal(game)
+      || Boolean(game && game.live && game.live.completed);
+    if (!settled) return null;
+    var home = shownPoints(game, 'home');
+    var away = shownPoints(game, 'away');
+    if (!isFiniteNumber(home) || !isFiniteNumber(away)) return null;
+    if (home === away) return null;
+    return home > away ? game.home : game.away;
   }
 
   function recordText(row) {
@@ -1073,6 +1185,13 @@
     daysIn: daysIn,
     timeKnown: timeKnown,
     isFinal: isFinal,
+    LIVE_STALE_AFTER_MINUTES: LIVE_STALE_AFTER_MINUTES,
+    liveFreshness: liveFreshness,
+    attachLive: attachLive,
+    isLive: isLive,
+    shownPoints: shownPoints,
+    shownScoreText: shownScoreText,
+    hasScore: hasScore,
     scoreLine: scoreLine,
     statusLine: statusLine,
     winnerOf: winnerOf,

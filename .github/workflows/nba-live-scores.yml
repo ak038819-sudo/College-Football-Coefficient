@@ -1,0 +1,118 @@
+name: Refresh the NBA live scoreboard
+
+# Publishes tonight's NBA scores while they are happening, from ESPN's public
+# scoreboard, into `ui/data/nba_live.json`.
+#
+# WHY THIS EXISTS BESIDE nba-refresh.yml, WHICH ALREADY RUNS NIGHTLY. The
+# archive is rebuilt from sportsdataverse's Parquet release assets, which are
+# republished once a day. MEASURED 2026-11-13 at 11:11 UTC: that source's
+# newest completed game was 2026-11-11, while ESPN had four finals on
+# 2026-11-12. So the nightly refresh is not slow, it is reading a source that
+# runs about a day behind, and no cadence of rebuilds can close that gap. A
+# reader opening the NBA tab during a game, or the morning after one, sees a
+# slate with no scores on it.
+#
+# WHAT THIS IS NOT. Display only. Not one number here reaches a rating, a
+# record, a standing or an export: `src/nba/build_ratings.py` still replays
+# the archive and nothing else, and the two files never touch. The snapshot
+# carries its own `updated_at`, and the page draws it only while it is fresh.
+#
+# WHERE THE FILE GOES. `ui/data/nba_live.json`, OUTSIDE `ui/data/nba/`, because
+# `src/nba/publish.py` swaps that whole directory for a freshly built one on
+# every refresh and would delete anything another job wrote into it.
+# `ui/nba_logo_assets.json` sits outside it for the same reason.
+#
+# NO HEALTH LIGHT, DELIBERATELY. This runs every ten minutes through the
+# evening; a light wired to it would open an issue for a network blip several
+# times a week, and a red light nobody believes is worse than none. A failure
+# here leaves the last good snapshot published, and the page stops drawing it
+# once it is older than it should be and says so. The nightly refresh keeps
+# its light, because that one failing means the ratings stop.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/nba-live-scores.yml'
+      - 'src/nba/live.py'
+  schedule:
+    # The NBA season, October to June. Tip-offs run from about 23:00 UTC to
+    # about 06:00 UTC, which is one evening in US time either side of
+    # midnight UTC -- the same reason `src/nba/live.py` asks for EASTERN days.
+    - cron: '3/10 22,23 * 10,11,12,1,2,3,4,5,6 *'
+    - cron: '3/10 0-7 * 10,11,12,1,2,3,4,5,6 *'
+    # Two in the daytime, so a reader in the morning sees last night's finals
+    # even if every evening run was skipped, and so the snapshot's age stays
+    # honest rather than drifting into staleness unnoticed.
+    - cron: '23 13 * 10,11,12,1,2,3,4,5,6 *'
+    - cron: '23 18 * 10,11,12,1,2,3,4,5,6 *'
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    # Short, and it must stay short: this runs off a ten-minute cron, and a
+    # job held open for longer would block the refreshes behind it.
+    timeout-minutes: 5
+    concurrency:
+      # Its OWN group. Not the deploy's, which would queue this behind a
+      # six-minute deploy and then have the next run cancel it; and not the
+      # nightly NBA refresh's, which takes eight minutes and would swallow
+      # most of an evening's polls.
+      group: nba-live-scores
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      # No pyarrow and no key: this reads one small JSON document a day from
+      # a public endpoint, so the standard library is the whole dependency.
+      - name: Fetch tonight's scoreboard
+        run: |
+          set -o pipefail
+          python -m src.nba.live | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Refuse to publish a snapshot that is already stale
+        run: |
+          set -o pipefail
+          python - <<'PY'
+          import datetime as dt, json, sys
+          from pathlib import Path
+          path = Path('ui/data/nba_live.json')
+          if not path.exists():
+              sys.exit('No snapshot was written.')
+          data = json.loads(path.read_text(encoding='utf-8'))
+          stamp = dt.datetime.strptime(
+              data['updated_at'], '%Y-%m-%dT%H:%M:%SZ').replace(
+              tzinfo=dt.timezone.utc)
+          age = dt.datetime.now(dt.timezone.utc) - stamp
+          if age > dt.timedelta(minutes=20):
+              sys.exit(f'The snapshot this run wrote is already {age} old.')
+          print(f"{len(data['games'])} games over {len(data['days'])} days.")
+          PY
+      - name: Publish the snapshot where it changed
+        env:
+          # The branch this ran on, so the loop can be rehearsed on a branch
+          # without a scheduled job writing to main first.
+          PUBLISH_BRANCH: ${{ github.ref_name }}
+        run: |
+          # NO `git diff --quiet` GUARD HERE. The snapshot is UNTRACKED until
+          # the first run commits it, and `git diff` compares against the
+          # index: it reports no change for a file git has never seen. A
+          # guard like that exits 0 on every scheduled run and the feed never
+          # bootstraps. `publish_to_main.sh` stages first and compares the
+          # INDEX, which answers both questions correctly -- a new file and an
+          # unchanged one -- and says "Nothing changed; no commit." itself.
+          #
+          # `[skip ci]` is right here: ui/nba.html fetches this file directly,
+          # so GitHub Pages republishing it is all it takes. Nothing needs the
+          # football deploy to regenerate a dashboard.
+          #
+          # publish_to_main.sh merges a branch that moved keeping THIS run's
+          # file and retries a rejected push, which matters more here than
+          # anywhere else: this is the most frequent writer in the repository.
+          scripts/publish_to_main.sh 'Refresh the NBA live scoreboard [skip ci]' \
+            ui/data/nba_live.json

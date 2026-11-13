@@ -298,6 +298,80 @@ two-season export, which the gate would pass — it checks the seasons that are
 there. The input is for rehearsing an ingest, and that guard is what keeps it
 to that.
 
+Two crons a day, not one. GitHub defers scheduled runs under load, and this
+one has been deferred by six to ten hours on every run since it was added:
+the 11:20 UTC cron has actually started between 16:52 and 21:28 UTC. One cron
+a day therefore means one CHANCE a day, and a skipped run loses a whole day
+of results. The run is idempotent — the database is rebuilt from scratch and
+the publish gate refuses an export that would roll anything back — so a
+second attempt costs eight minutes and can only move the archive forward.
+
+## Tonight's scores
+
+`.github/workflows/nba-live-scores.yml`, every ten minutes through the
+evening, plus twice in the daytime. It writes `ui/data/nba_live.json` from
+`src/nba/live.py`.
+
+**Why a second source at all.** The refresh above is not slow; it reads a
+source that runs about a day behind. MEASURED 2026-11-13 at 11:11 UTC: the
+newest completed game in `nba_schedule_2027.parquet` was 2026-11-11, while
+ESPN's scoreboard had four finals on 2026-11-12. No cadence of rebuilds
+closes that gap, so a reader opening the NBA tab during a game — or the
+morning after one — saw a slate with no scores on it.
+
+**It is display only.** Not one number here reaches a rating, a record, a
+standing or an export. `build_ratings.py` still replays the archive and
+nothing else, `home_points` and `away_points` stay exactly what the export
+published, and a live row hangs off the game as `game.live` for the
+scoreboard alone to read. If the two ever disagree about a finished game,
+the archive's number is what the page shows.
+
+**The ids join with no crosswalk**, which is the whole reason this is cheap.
+The archive is keyed on ESPN's ids because sportsdataverse's data is
+ESPN-derived, so a scoreboard event id is a `provider_id` here and a
+competitor id is an ESPN team id. Nothing is matched on a name.
+
+**Where the file goes.** `ui/data/nba_live.json`, OUTSIDE `ui/data/nba/`,
+because `src/nba/publish.py` swaps that whole directory for a freshly built
+one on every refresh and would delete anything another job wrote into it —
+the same reason `ui/nba_logo_assets.json` sits outside it. It is also named
+in `service-worker.js` as a live feed, so the installed app fetches it
+network-first instead of serving a cached score over a game that has moved
+on.
+
+**Four traps in this feed**, each with a test in `tests/test_nba_live.py`:
+
+1. An unplayed game carries a score of `"0"`, not an absent one — the same
+   trap the Parquet archive sets. An evening slate published as read is nine
+   scoreless ties. The score is read only where the status says the game has
+   started.
+2. A missing clock is absent, and `Number()` of absent is 0, which reads as
+   0:00: a game that has not tipped off shown as one about to end. The real
+   feed sends `displayClock: "0.0"` before the tip, so this is not
+   hypothetical.
+3. An All-Star game is on this scoreboard like any other and its sides are
+   not franchises. An event whose competitors are not both among the thirty
+   is skipped.
+4. The scoreboard's day is not a UTC day. A 7:30pm tip in Los Angeles is
+   03:30Z the next day, so asking for "today" in UTC loses half a night's
+   slate. The days asked for are US Eastern days, which is the day ESPN files
+   a game under and the day the archive's `game_date` holds.
+
+**Staleness, on the page.** A finished game does not change, so a completed
+row is drawn however old the snapshot is. A game still being played does
+change, so it is drawn only while the snapshot is under thirty minutes old:
+if the loop stops at nine in the evening, the 58-61 it last saw is not the
+score an hour later, and a page showing it confidently is worse than one
+showing none. The page says, under the day strip, when the scores were last
+updated and that they do not move the ratings.
+
+**No health light, deliberately.** This runs every ten minutes; a light wired
+to it would open an issue for a network blip several times a week, and a red
+light nobody believes is worse than none. A failure leaves the last good
+snapshot published and the page stops drawing in-progress scores on its own.
+The nightly refresh keeps its light, because that one failing means the
+ratings stop.
+
 ---
 
 # The game layer (N3)
