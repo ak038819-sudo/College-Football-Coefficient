@@ -4324,6 +4324,10 @@
     },
     "401862824": {
       "away_id": 50,
+      "candidate_brier": 0.19679161,
+      "candidate_log_loss": 0.58628939,
+      "flat_brier": 0.19324025,
+      "flat_log_loss": 0.5790884,
       "home_bonus": 47.913,
       "home_id": 137,
       "kickoff_utc": "2026-11-13T01:00:00.000Z",
@@ -4331,6 +4335,8 @@
       "p_candidate": 0.443612,
       "p_flat": 0.439591,
       "recorded_at": "2026-11-06T07:18:19.390695Z",
+      "result": 0.0,
+      "scored_at": "2026-11-13T07:11:04.787524Z",
       "season": 2026
     },
     "401862825": {
@@ -4386,6 +4392,17 @@
       "p_candidate": 0.353375,
       "p_flat": 0.357279,
       "recorded_at": "2026-11-07T23:06:17.296673Z",
+      "season": 2026
+    },
+    "401862830": {
+      "away_id": 41,
+      "home_bonus": 43.972,
+      "home_id": 108,
+      "kickoff_utc": "2026-11-20T00:30:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.511762,
+      "p_flat": 0.52211,
+      "recorded_at": "2026-11-13T07:11:04.787524Z",
       "season": 2026
     },
     "401864513": {
@@ -6012,6 +6029,10 @@
     },
     "401869969": {
       "away_id": 49,
+      "candidate_brier": 0.1412309,
+      "candidate_log_loss": 0.47129566,
+      "flat_brier": 0.14348338,
+      "flat_log_loss": 0.47608931,
       "home_bonus": 42.859,
       "home_id": 58,
       "kickoff_utc": "2026-11-13T02:00:00.000Z",
@@ -6019,6 +6040,8 @@
       "p_candidate": 0.375807,
       "p_flat": 0.378792,
       "recorded_at": "2026-11-06T07:18:19.390695Z",
+      "result": 0.0,
+      "scored_at": "2026-11-13T07:11:04.787524Z",
       "season": 2026
     },
     "401870752": {
@@ -6654,11 +6677,11 @@
     "version": "centered_hfa_v1"
   },
   "summary": {
-    "candidate_brier": 0.204862,
-    "candidate_log_loss": 0.599323,
-    "flat_brier": 0.204525,
-    "flat_log_loss": 0.598333,
-    "games": 348
+    "candidate_brier": 0.204657,
+    "candidate_log_loss": 0.59892,
+    "flat_brier": 0.204318,
+    "flat_log_loss": 0.597929,
+    "games": 350
   },
   "version": "centered_hfa_v1"
 }
