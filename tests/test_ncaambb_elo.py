@@ -569,7 +569,7 @@ def test_building_stores_the_model_its_ratings_and_its_games(db):
     from src.ncaambb.build_ratings import build
     loaded(db, season_games(2025) + season_games(2026))
     summary = build(db, FITTED, report=dict(
-        fit_seasons=[2025], holdout_seasons=[2026],
+        fit_seasons=[2025], holdout_seasons=[2026], chosen=dict(ELO),
         holdout=dict(brier=0.19, games=6)))
     assert summary['seasons'] == [2025, 2026]
     assert summary['games'] == 12 and summary['counted'] == 12
@@ -741,6 +741,7 @@ def test_a_fit_report_still_wins_over_the_committed_claim(db):
     from src.ncaambb.build_ratings import build
     loaded(db, season_games(2026))
     build(db, FITTED, report=dict(fit_seasons=[2015], holdout_seasons=[2025],
+                                  chosen=dict(ELO),
                                   holdout=dict(brier=0.11, games=4000)))
     row = db.execute('SELECT held_out, holdout_brier FROM rating_model'
                      ' ORDER BY model_id DESC LIMIT 1').fetchone()
@@ -864,3 +865,76 @@ def test_a_board_is_not_filled_when_no_roster_is_given():
                  away_team_key='B', home_postgame=1900.0,
                  away_postgame=1100.0)]
     assert len(season_ratings(rows, {})) == 2
+
+
+class TestReportGuard:
+    """`--report` may not attach one fit's score to another fit's parameters.
+
+    The configuration path has carried `measured_on_elo_sha256` since it was
+    written; the other path into `build()` was taken on trust. Replaying one
+    k with a report whose `chosen.k` is another produced an export the
+    publish gate passed, because the gate reads the claim rather than
+    re-measuring it. Found and fixed on the NBA's copy of this module first;
+    this is the same hole, in the same shape, here.
+    """
+
+    def _config(self):
+        from src.ncaambb.build_ratings import CONFIG_PATH
+        return json.loads(Path(CONFIG_PATH).read_text(encoding='utf-8'))
+
+    def _report(self, elo, **holdout):
+        return dict(fit_seasons=[2025], holdout_seasons=[2026],
+                    chosen=dict(elo),
+                    holdout=dict(dict(brier=0.19, games=6), **holdout))
+
+    def test_a_report_measured_on_these_parameters_is_accepted(self):
+        from src.ncaambb import build_ratings
+        elo = self._config()['elo']
+        report = self._report(elo)
+        assert build_ratings.check_report(report, elo) is report
+
+    def test_a_report_measured_on_other_parameters_is_refused(self):
+        from src.ncaambb import build_ratings
+        elo = self._config()['elo']
+        report = self._report({**elo, 'k': elo['k'] + 17})
+        with pytest.raises(ValueError) as raised:
+            build_ratings.check_report(report, elo)
+        assert "'k'" in str(raised.value)
+        assert 'never earned' in str(raised.value)
+
+    def test_a_report_that_names_no_parameters_is_refused(self):
+        from src.ncaambb import build_ratings
+        elo = self._config()['elo']
+        report = self._report(elo)
+        del report['chosen']
+        with pytest.raises(ValueError) as raised:
+            build_ratings.check_report(report, elo)
+        assert 'which parameters it measured' in str(raised.value)
+
+    def test_a_report_short_of_a_parameter_is_refused(self):
+        from src.ncaambb import build_ratings
+        elo = self._config()['elo']
+        partial = {key: value for key, value in elo.items()
+                   if key != 'home_advantage'}
+        with pytest.raises(ValueError) as raised:
+            build_ratings.check_report(self._report(partial), elo)
+        assert 'home_advantage' in str(raised.value)
+
+    def test_the_fits_own_bookkeeping_is_not_a_difference(self):
+        # `chosen` repeats the search parameters alongside the derived ones
+        # and may carry keys the elo block does not. Those are the fit's
+        # record of its own search, not a disagreement.
+        from src.ncaambb import build_ratings
+        elo = self._config()['elo']
+        report = self._report({**elo, 'grid_rank': 1, 'brier': 0.2})
+        assert build_ratings.check_report(report, elo) is report
+
+    def test_build_refuses_a_report_from_another_fit(self, db):
+        """The guard has to be on the path `build()` takes, not only on a
+        function nothing calls."""
+        from src.ncaambb.build_ratings import build
+        loaded(db, season_games(2026))
+        report = self._report({**ELO, 'k': ELO['k'] + 17})
+        with pytest.raises(ValueError) as raised:
+            build(db, FITTED, report=report)
+        assert 'never earned' in str(raised.value)
