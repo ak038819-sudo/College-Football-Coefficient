@@ -663,6 +663,50 @@
       "scored_at": "2026-11-08T02:44:44.023770Z",
       "season": 2026
     },
+    "401856748": {
+      "away_id": 131,
+      "home_bonus": 55.781,
+      "home_id": 125,
+      "kickoff_utc": "2026-11-21T17:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.592937,
+      "p_flat": 0.594704,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
+    "401856752": {
+      "away_id": 36,
+      "home_bonus": 59.258,
+      "home_id": 52,
+      "kickoff_utc": "2026-11-21T17:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.684868,
+      "p_flat": 0.681361,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
+    "401856754": {
+      "away_id": 133,
+      "home_bonus": 57.538,
+      "home_id": 130,
+      "kickoff_utc": "2026-11-21T20:30:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.524626,
+      "p_flat": 0.501413,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
+    "401856755": {
+      "away_id": 53,
+      "home_bonus": 62.77,
+      "home_id": 35,
+      "kickoff_utc": "2026-11-21T20:30:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.901158,
+      "p_flat": 0.899469,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
     "401856807": {
       "away_id": 65,
       "candidate_brier": 0.05285401,
@@ -1418,6 +1462,10 @@
     },
     "401856859": {
       "away_id": 55,
+      "candidate_brier": 0.18790404,
+      "candidate_log_loss": 0.56824113,
+      "flat_brier": 0.1911692,
+      "flat_log_loss": 0.57488248,
       "home_bonus": 50.767,
       "home_id": 32,
       "kickoff_utc": "2026-11-14T17:00:00.000Z",
@@ -1425,6 +1473,8 @@
       "p_candidate": 0.566521,
       "p_flat": 0.562771,
       "recorded_at": "2026-11-12T05:20:42.855628Z",
+      "result": 1.0,
+      "scored_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401856860": {
@@ -1486,6 +1536,17 @@
       "p_candidate": 0.316565,
       "p_flat": 0.310853,
       "recorded_at": "2026-11-12T05:20:42.855628Z",
+      "season": 2026
+    },
+    "401856867": {
+      "away_id": 22,
+      "home_bonus": 52.49,
+      "home_id": 55,
+      "kickoff_utc": "2026-11-21T17:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.657795,
+      "p_flat": 0.657192,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401856869": {
@@ -1578,6 +1639,10 @@
     },
     "401856889": {
       "away_id": 121,
+      "candidate_brier": 0.05186596,
+      "candidate_log_loss": 0.25843529,
+      "flat_brier": 0.04820572,
+      "flat_log_loss": 0.24789485,
       "home_bonus": 45.559,
       "home_id": 131,
       "kickoff_utc": "2026-11-14T17:45:00.000Z",
@@ -1585,6 +1650,8 @@
       "p_candidate": 0.227741,
       "p_flat": 0.219558,
       "recorded_at": "2026-11-07T23:06:17.296673Z",
+      "result": 0.0,
+      "scored_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401858246": {
@@ -2376,6 +2443,10 @@
     },
     "401858296": {
       "away_id": 95,
+      "candidate_brier": 0.02419145,
+      "candidate_log_loss": 0.16905317,
+      "flat_brier": 0.02517109,
+      "flat_log_loss": 0.17275229,
       "home_bonus": 56.75,
       "home_id": 127,
       "kickoff_utc": "2026-11-14T17:00:00.000Z",
@@ -2383,10 +2454,16 @@
       "p_candidate": 0.844464,
       "p_flat": 0.841346,
       "recorded_at": "2026-11-07T23:06:17.296673Z",
+      "result": 1.0,
+      "scored_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401858297": {
       "away_id": 124,
+      "candidate_brier": 0.57784323,
+      "candidate_log_loss": 1.42778324,
+      "flat_brier": 0.57483843,
+      "flat_log_loss": 1.41956577,
       "home_bonus": 56.209,
       "home_id": 129,
       "kickoff_utc": "2026-11-14T17:30:00.000Z",
@@ -2394,6 +2471,8 @@
       "p_candidate": 0.76016,
       "p_flat": 0.758181,
       "recorded_at": "2026-11-07T23:06:17.296673Z",
+      "result": 0.0,
+      "scored_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401858298": {
@@ -2420,6 +2499,10 @@
     },
     "401858300": {
       "away_id": 105,
+      "candidate_brier": 0.35851354,
+      "candidate_log_loss": 0.91319553,
+      "flat_brier": 0.35449878,
+      "flat_log_loss": 0.90485141,
       "home_bonus": 55.007,
       "home_id": 93,
       "kickoff_utc": "2026-11-14T17:00:00.000Z",
@@ -2427,10 +2510,16 @@
       "p_candidate": 0.59876,
       "p_flat": 0.595398,
       "recorded_at": "2026-11-07T23:06:17.296673Z",
+      "result": 0.0,
+      "scored_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401858301": {
       "away_id": 94,
+      "candidate_brier": 0.19719284,
+      "candidate_log_loss": 0.5871021,
+      "flat_brier": 0.19153752,
+      "flat_log_loss": 0.57563085,
       "home_bonus": 59.676,
       "home_id": 42,
       "kickoff_utc": "2026-11-14T17:00:00.000Z",
@@ -2438,6 +2527,8 @@
       "p_candidate": 0.444064,
       "p_flat": 0.43765,
       "recorded_at": "2026-11-07T23:06:17.296673Z",
+      "result": 0.0,
+      "scored_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401858303": {
@@ -2449,6 +2540,39 @@
       "p_candidate": 0.723847,
       "p_flat": 0.721828,
       "recorded_at": "2026-11-14T10:54:06.098852Z",
+      "season": 2026
+    },
+    "401858304": {
+      "away_id": 93,
+      "home_bonus": 51.399,
+      "home_id": 126,
+      "kickoff_utc": "2026-11-21T20:30:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.796146,
+      "p_flat": 0.792564,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
+    "401858305": {
+      "away_id": 96,
+      "home_bonus": 46.447,
+      "home_id": 91,
+      "kickoff_utc": "2026-11-21T17:30:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.440437,
+      "p_flat": 0.444998,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
+    "401858309": {
+      "away_id": 105,
+      "home_bonus": 43.834,
+      "home_id": 106,
+      "kickoff_utc": "2026-11-21T17:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.487629,
+      "p_flat": 0.493806,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401858472": {
@@ -3240,6 +3364,10 @@
     },
     "401858520": {
       "away_id": 76,
+      "candidate_brier": 0.50778023,
+      "candidate_log_loss": 1.24683507,
+      "flat_brier": 0.49112905,
+      "flat_log_loss": 1.20666309,
       "home_bonus": 37.87,
       "home_id": 90,
       "kickoff_utc": "2026-11-14T17:00:00.000Z",
@@ -3247,6 +3375,8 @@
       "p_candidate": 0.287413,
       "p_flat": 0.299194,
       "recorded_at": "2026-11-07T23:06:17.296673Z",
+      "result": 1.0,
+      "scored_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401858521": {
@@ -3262,6 +3392,10 @@
     },
     "401858522": {
       "away_id": 75,
+      "candidate_brier": 0.01340593,
+      "candidate_log_loss": 0.1230539,
+      "flat_brier": 0.01913602,
+      "flat_log_loss": 0.14888639,
       "home_bonus": 84.419,
       "home_id": 71,
       "kickoff_utc": "2026-11-14T17:00:00.000Z",
@@ -3269,6 +3403,8 @@
       "p_candidate": 0.884216,
       "p_flat": 0.861667,
       "recorded_at": "2026-11-07T23:06:17.296673Z",
+      "result": 1.0,
+      "scored_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401858523": {
@@ -3295,6 +3431,10 @@
     },
     "401858525": {
       "away_id": 31,
+      "candidate_brier": 0.06126714,
+      "candidate_log_loss": 0.28438352,
+      "flat_brier": 0.06737814,
+      "flat_log_loss": 0.30052823,
       "home_bonus": 39.319,
       "home_id": 104,
       "kickoff_utc": "2026-11-14T17:30:00.000Z",
@@ -3302,6 +3442,8 @@
       "p_candidate": 0.247522,
       "p_flat": 0.259573,
       "recorded_at": "2026-11-07T23:06:17.296673Z",
+      "result": 0.0,
+      "scored_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401858526": {
@@ -3321,6 +3463,17 @@
       "scored_at": "2026-11-14T10:54:06.098852Z",
       "season": 2026
     },
+    "401858527": {
+      "away_id": 78,
+      "home_bonus": 47.736,
+      "home_id": 74,
+      "kickoff_utc": "2026-11-21T19:30:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.250238,
+      "p_flat": 0.24612,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
     "401858529": {
       "away_id": 3,
       "home_bonus": 47.042,
@@ -3330,6 +3483,39 @@
       "p_candidate": 0.282108,
       "p_flat": 0.282617,
       "recorded_at": "2026-11-14T10:54:06.098852Z",
+      "season": 2026
+    },
+    "401858530": {
+      "away_id": 75,
+      "home_bonus": 54.068,
+      "home_id": 77,
+      "kickoff_utc": "2026-11-21T17:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.449266,
+      "p_flat": 0.448002,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
+    "401858532": {
+      "away_id": 104,
+      "home_bonus": 55.897,
+      "home_id": 87,
+      "kickoff_utc": "2026-11-21T20:30:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.862389,
+      "p_flat": 0.863847,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
+    "401858533": {
+      "away_id": 76,
+      "home_bonus": 37.495,
+      "home_id": 73,
+      "kickoff_utc": "2026-11-21T17:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.302675,
+      "p_flat": 0.307149,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401859185": {
@@ -3786,6 +3972,10 @@
     },
     "401861967": {
       "away_id": 97,
+      "candidate_brier": 0.50046428,
+      "candidate_log_loss": 1.22906841,
+      "flat_brier": 0.50385295,
+      "flat_log_loss": 1.23727454,
       "home_bonus": 46.335,
       "home_id": 107,
       "kickoff_utc": "2026-11-14T17:00:00.000Z",
@@ -3793,6 +3983,19 @@
       "p_candidate": 0.292565,
       "p_flat": 0.290174,
       "recorded_at": "2026-11-07T23:06:17.296673Z",
+      "result": 1.0,
+      "scored_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
+    "401861968": {
+      "away_id": 98,
+      "home_bonus": 48.039,
+      "home_id": 107,
+      "kickoff_utc": "2026-11-21T20:30:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.633424,
+      "p_flat": 0.634656,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401862787": {
@@ -4392,6 +4595,10 @@
     },
     "401862825": {
       "away_id": 100,
+      "candidate_brier": 0.02500099,
+      "candidate_log_loss": 0.17211423,
+      "flat_brier": 0.0285262,
+      "flat_log_loss": 0.18500154,
       "home_bonus": 35.633,
       "home_id": 103,
       "kickoff_utc": "2026-11-14T18:00:00.000Z",
@@ -4399,6 +4606,8 @@
       "p_candidate": 0.158117,
       "p_flat": 0.168897,
       "recorded_at": "2026-11-07T23:06:17.296673Z",
+      "result": 0.0,
+      "scored_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401862826": {
@@ -4436,6 +4645,10 @@
     },
     "401862829": {
       "away_id": 138,
+      "candidate_brier": 0.12487389,
+      "candidate_log_loss": 0.43598875,
+      "flat_brier": 0.12764828,
+      "flat_log_loss": 0.44204455,
       "home_bonus": 43.862,
       "home_id": 108,
       "kickoff_utc": "2026-11-14T18:00:00.000Z",
@@ -4443,6 +4656,8 @@
       "p_candidate": 0.353375,
       "p_flat": 0.357279,
       "recorded_at": "2026-11-07T23:06:17.296673Z",
+      "result": 0.0,
+      "scored_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401862830": {
@@ -4454,6 +4669,50 @@
       "p_candidate": 0.511762,
       "p_flat": 0.52211,
       "recorded_at": "2026-11-13T07:11:04.787524Z",
+      "season": 2026
+    },
+    "401862831": {
+      "away_id": 100,
+      "home_bonus": 47.058,
+      "home_id": 109,
+      "kickoff_utc": "2026-11-21T17:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.502174,
+      "p_flat": 0.507479,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
+    "401862832": {
+      "away_id": 103,
+      "home_bonus": 40.301,
+      "home_id": 34,
+      "kickoff_utc": "2026-11-21T19:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.921012,
+      "p_flat": 0.927091,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
+    "401862833": {
+      "away_id": 137,
+      "home_bonus": 49.952,
+      "home_id": 60,
+      "kickoff_utc": "2026-11-21T19:30:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.636919,
+      "p_flat": 0.637094,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
+    "401862834": {
+      "away_id": 50,
+      "home_bonus": 54.887,
+      "home_id": 110,
+      "kickoff_utc": "2026-11-21T17:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.31675,
+      "p_flat": 0.311174,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401864513": {
@@ -4911,6 +5170,17 @@
       "p_candidate": 0.390281,
       "p_flat": 0.390056,
       "recorded_at": "2026-11-14T10:54:06.098852Z",
+      "season": 2026
+    },
+    "401864543": {
+      "away_id": 86,
+      "home_bonus": 63.461,
+      "home_id": 59,
+      "kickoff_utc": "2026-11-21T21:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.949843,
+      "p_flat": 0.947605,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401864545": {
@@ -5732,6 +6002,17 @@
       "recorded_at": "2026-11-07T23:06:17.296673Z",
       "season": 2026
     },
+    "401869929": {
+      "away_id": 58,
+      "home_bonus": 55.636,
+      "home_id": 102,
+      "kickoff_utc": "2026-11-21T19:30:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.720799,
+      "p_flat": 0.721408,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
     "401869932": {
       "away_id": 57,
       "candidate_brier": 0.22594621,
@@ -5819,6 +6100,10 @@
     },
     "401869937": {
       "away_id": 57,
+      "candidate_brier": 0.44223963,
+      "candidate_log_loss": 1.09365758,
+      "flat_brier": 0.43406487,
+      "flat_log_loss": 1.07539198,
       "home_bonus": 45.213,
       "home_id": 101,
       "kickoff_utc": "2026-11-14T18:00:00.000Z",
@@ -5826,6 +6111,8 @@
       "p_candidate": 0.334989,
       "p_flat": 0.341164,
       "recorded_at": "2026-11-07T23:06:17.296673Z",
+      "result": 1.0,
+      "scored_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401869942": {
@@ -5896,6 +6183,17 @@
       "scored_at": "2026-11-07T23:06:17.296673Z",
       "season": 2026
     },
+    "401869946": {
+      "away_id": 101,
+      "home_bonus": 53.091,
+      "home_id": 49,
+      "kickoff_utc": "2026-11-21T20:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.831419,
+      "p_flat": 0.831098,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
     "401869949": {
       "away_id": 97,
       "candidate_brier": 0.02927624,
@@ -5958,6 +6256,17 @@
       "recorded_at": "2026-11-07T23:06:17.296673Z",
       "season": 2026
     },
+    "401869953": {
+      "away_id": 61,
+      "home_bonus": 46.575,
+      "home_id": 120,
+      "kickoff_utc": "2026-11-21T21:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.28785,
+      "p_flat": 0.283976,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
     "401869956": {
       "away_id": 98,
       "candidate_brier": 0.39113767,
@@ -5990,6 +6299,17 @@
       "recorded_at": "2026-10-10T21:57:57.361423Z",
       "result": 1.0,
       "scored_at": "2026-10-17T19:44:00.655655Z",
+      "season": 2026
+    },
+    "401869958": {
+      "away_id": 62,
+      "home_bonus": 50.853,
+      "home_id": 99,
+      "kickoff_utc": "2026-11-21T21:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.679697,
+      "p_flat": 0.687162,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
       "season": 2026
     },
     "401869962": {
@@ -6557,6 +6877,61 @@
       "scored_at": "2026-11-08T02:44:44.023770Z",
       "season": 2026
     },
+    "401871077": {
+      "away_id": 117,
+      "home_bonus": 41.143,
+      "home_id": 27,
+      "kickoff_utc": "2026-11-21T20:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.422217,
+      "p_flat": 0.429537,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
+    "401871078": {
+      "away_id": 51,
+      "home_bonus": 49.621,
+      "home_id": 64,
+      "kickoff_utc": "2026-11-21T20:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.583014,
+      "p_flat": 0.590932,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
+    "401871079": {
+      "away_id": 66,
+      "home_bonus": 59.58,
+      "home_id": 63,
+      "kickoff_utc": "2026-11-21T19:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.841784,
+      "p_flat": 0.838267,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
+    "401871080": {
+      "away_id": 119,
+      "home_bonus": 57.023,
+      "home_id": 118,
+      "kickoff_utc": "2026-11-21T18:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.887,
+      "p_flat": 0.883902,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
+    "401871081": {
+      "away_id": 65,
+      "home_bonus": 43.015,
+      "home_id": 46,
+      "kickoff_utc": "2026-11-21T19:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.281099,
+      "p_flat": 0.288863,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
+    },
     "401871089": {
       "away_id": 58,
       "candidate_brier": 0.03591897,
@@ -6748,6 +7123,17 @@
       "p_flat": 0.539013,
       "recorded_at": "2026-11-08T02:44:44.023770Z",
       "season": 2026
+    },
+    "401871101": {
+      "away_id": 67,
+      "home_bonus": 37.429,
+      "home_id": 68,
+      "kickoff_utc": "2026-11-21T21:00:00.000Z",
+      "neutral": false,
+      "p_candidate": 0.498455,
+      "p_flat": 0.509693,
+      "recorded_at": "2026-11-14T21:45:51.904249Z",
+      "season": 2026
     }
   },
   "frozen": {
@@ -6761,11 +7147,11 @@
     "version": "centered_hfa_v1"
   },
   "summary": {
-    "candidate_brier": 0.206027,
-    "candidate_log_loss": 0.601879,
-    "flat_brier": 0.205678,
-    "flat_log_loss": 0.600858,
-    "games": 353
+    "candidate_brier": 0.207104,
+    "candidate_log_loss": 0.603749,
+    "flat_brier": 0.206725,
+    "flat_log_loss": 0.602717,
+    "games": 366
   },
   "version": "centered_hfa_v1"
 }
