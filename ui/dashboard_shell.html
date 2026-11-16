@@ -9862,6 +9862,24 @@ function marketSpreadText(margin, awayName, homeName) {
   return side + ' by ' + Math.abs(value).toFixed(1).replace(/\.0$/, '');
 }
 
+// Fill the slot the game page left for a line, or take the slot away.
+//
+// BOTH callbacks are guarded on `version`. Without the guard on the FAILURE
+// side, a reader who moves to a game in another season while the first
+// season's request is still in flight loses the new page's slot when the old
+// request fails -- and the new request, even when it succeeds, then finds no
+// slot and the panel never appears at all.
+function hydrateMarketLine(season, id, game, awayName, homeName, version) {
+  return loadMarketLine(season, id).then(line => {
+    if (version !== renderVersion) return;
+    const slot = document.getElementById('gp-market-slot');
+    if (slot) slot.outerHTML = gameMarketPanel(line, game, awayName, homeName);
+  }).catch(() => {
+    if (version !== renderVersion) return;
+    document.getElementById('gp-market-slot')?.remove();
+  });
+}
+
 function gameMarketPanel(line, game, awayName, homeName) {
   if (!line || line.market_home_margin == null) return '';
   const margin = Number(line.market_home_margin);
@@ -10397,11 +10415,7 @@ function hydrateGamePage(version) {
         // is worse than one that simply appears when there is something.
         (marketLineEntry(season) ? '<div id="gp-market-slot"></div>' : '') +
         '<div class="panel" id="gp-series"><h2 class="section-title">Series history</h2><p class="empty-note">Loading meetings…</p></div>' + more;
-      if (marketLineEntry(season)) loadMarketLine(season, id).then(line => {
-        if (version !== renderVersion) return;
-        const slot = document.getElementById('gp-market-slot');
-        if (slot) slot.outerHTML = gameMarketPanel(line, g, an, hn);
-      }).catch(() => { document.getElementById('gp-market-slot')?.remove(); });
+      if (marketLineEntry(season)) hydrateMarketLine(season, id, g, an, hn, version);
       if (!g.completed) hydrateGameScouting(g, season, an, hn, version);
       if (g.completed) Promise.all([loadPlayerArchive(season, id), loadRoster(season).catch(() => null)])
         .then(([archive, rosterData]) => {

@@ -9,7 +9,8 @@ const vm = require('node:vm');
 
 const shell = fs.readFileSync('ui/dashboard_shell.html', 'utf8');
 
-for (const name of ['gameMarketPanel', 'marketSpreadText', 'loadMarketLine', 'marketLineEntry']) {
+for (const name of ['gameMarketPanel', 'marketSpreadText', 'loadMarketLine', 'marketLineEntry',
+  'hydrateMarketLine']) {
   // Two declarations of one name silently replace each other here, and a test
   // that lifts BY NAME never notices which one it got.
   const found = shell.match(new RegExp('function ' + name + '\\(', 'g')) || [];
@@ -131,4 +132,49 @@ test('a team name cannot inject markup', () => {
   const html = panel(line(), game(), '<script>x</script>', 'Florida');
   assert.doesNotMatch(html, /<script>/);
   assert.match(html, /&lt;script&gt;/);
+});
+
+/* ---- filling the slot, and the render that has moved on ---------------- */
+
+const { JSDOM } = require('jsdom');
+
+// hydrateMarketLine is lifted on its own: the two callbacks it holds are the
+// only place the page decides whether an in-flight request still speaks for
+// what is on screen.
+function hydrator({ resolve, reject, version, current }) {
+  const doc = new JSDOM('<!doctype html><body><div id="gp-market-slot"></div>' +
+    '</body>').window.document;
+  const context = {
+    document: doc,
+    renderVersion: current,
+    loadMarketLine: () => reject ? Promise.reject(new Error('no file')) : Promise.resolve(resolve),
+    gameMarketPanel: () => '<div class="panel" id="drawn">panel</div>'
+  };
+  vm.runInNewContext(shell.match(/function hydrateMarketLine\([^]*?\n\}/)[0] +
+    '\nthis.run = hydrateMarketLine;', context);
+  return context.run(2024, 7, game(), 'A', 'B', version).then(() => doc);
+}
+
+test('a line that arrives replaces the slot with the panel', async () => {
+  const doc = await hydrator({ resolve: line(), version: 3, current: 3 });
+  assert.ok(doc.getElementById('drawn'), 'the panel is drawn');
+  assert.equal(doc.getElementById('gp-market-slot'), null, 'the slot is consumed');
+});
+
+test('a season with no file takes its own slot away', async () => {
+  const doc = await hydrator({ reject: true, version: 3, current: 3 });
+  assert.equal(doc.getElementById('gp-market-slot'), null);
+});
+
+test('a request whose render has moved on touches nothing', async () => {
+  // The failure side is the one that bites: a reader opens a 2024 game, moves
+  // to a 1998 one before the file lands, and the old request's failure would
+  // remove the NEW page's slot -- after which the new request, even when it
+  // succeeds, finds no slot and the panel never appears at all.
+  const failed = await hydrator({ reject: true, version: 3, current: 4 });
+  assert.ok(failed.getElementById('gp-market-slot'),
+    "a stale failure must not remove the current page's slot");
+  const stale = await hydrator({ resolve: line(), version: 3, current: 4 });
+  assert.equal(stale.getElementById('drawn'), null, 'nor may a stale success draw');
+  assert.ok(stale.getElementById('gp-market-slot'));
 });
