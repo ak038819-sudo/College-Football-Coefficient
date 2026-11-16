@@ -11177,6 +11177,11 @@ function addTableDownload(table) {
   if (!wrapper || !wrapper.classList.contains('table-scroll')) return;
   if (wrapper.nextElementSibling?.classList.contains('table-download')) return;
   if (!table.tBodies.length || table.tBodies[0].rows.length < DOWNLOAD_MIN_ROWS) return;
+  // No header row means no column names, so CfbStats.tableCsv refuses the
+  // table -- and a control that does nothing is worse than no control. The
+  // movers panels, the conference races and the CoE 2.0 breakdown are read
+  // down the page rather than analysed, and have no <thead> on purpose.
+  if (!table.tHead || !table.tHead.rows.length) return;
   // A paginated board holds 50 rows of a longer list, and a file that silently
   // contained one page of it would be worse than no file at all. Say so.
   const paged = wrapper.nextElementSibling?.classList.contains('table-pagination')

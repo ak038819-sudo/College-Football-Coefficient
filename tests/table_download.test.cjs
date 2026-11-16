@@ -175,3 +175,41 @@ test('every board on the site is reachable, because wrapWideTables offers them a
   assert.match(shell, /document\.querySelectorAll\('#content table'\)/);
   assert.match(shell, /addTableDownload\(table\);/);
 });
+
+test('a table the exporter refuses gets no control at all', () => {
+  // moversPanel, the conference races and coe2SeasonBreakdown draw a <tbody>
+  // with no <thead> on purpose -- they are read down the page, not analysed.
+  // tableCsv returns '' for them, so a button there is a control that does
+  // nothing when pressed.
+  const source = lift('addTableDownload') +
+    '\n' + (shell.match(/const DOWNLOAD_MIN_ROWS = \d+;/) || [''])[0];
+  const context = { document: null };
+  vm.runInNewContext(source + '\nthis.add = addTableDownload;', context);
+  const d = dom('<div class="table-scroll"><table>' +
+    '<tbody><tr><td>Alabama</td><td>+12</td></tr><tr><td>Auburn</td><td>-9</td></tr>' +
+    '</tbody></table></div>');
+  context.document = d;
+  const headerless = d.querySelector('table');
+  assert.equal(stats.tableCsv(headerless), '', 'the exporter refuses it');
+  context.add(headerless);
+  assert.equal(d.querySelectorAll('.table-download').length, 0,
+    'so the shell must not offer it');
+});
+
+test('a row the reader filtered away is not in the file', () => {
+  // The promise of this control is the table ON SCREEN. The stadium and
+  // home-field searches hide rows with `row.hidden`, which leaves them in the
+  // DOM, so an export reading every <tr> hands back teams the reader excluded.
+  const t = table('<thead><tr><th>Team</th><th>HFA</th></tr></thead><tbody>' +
+    '<tr><td>Alabama</td><td>2.1</td></tr>' +
+    '<tr hidden><td>Auburn</td><td>1.4</td></tr>' +
+    '<tr><td>Arizona</td><td>1.9</td></tr></tbody>');
+  const out = rows(stats.tableCsv(t));
+  assert.deepEqual(out, ['Team,HFA', 'Alabama,2.1', 'Arizona,1.9']);
+});
+
+test('a search that matches nothing yields no file rather than a header alone', () => {
+  const t = table('<thead><tr><th>Team</th></tr></thead><tbody>' +
+    '<tr hidden><td>Alabama</td></tr><tr hidden><td>Auburn</td></tr></tbody>');
+  assert.equal(stats.tableCsv(t), '', 'a column of headings is not data');
+});

@@ -236,8 +236,11 @@
     if (!headRows.length) return '';
     const head = [...headRows[headRows.length - 1].cells]
       .map(cell => csvCell((cell.textContent || '').replace(/[▲▼]\s*$/, '')));
+    // A row the reader filtered out is not on screen, and the promise of this
+    // control is the table as shown. The search boxes hide rows with
+    // `row.hidden`, which leaves them in the DOM and in `rows`.
     const body = [...table.tBodies[0].rows]
-      .filter(row => row.cells.length)
+      .filter(row => row.cells.length && !row.hidden)
       .map(row => [...row.cells].map(csvValue));
     if (!body.length) return '';
     return [head, ...body].map(cells => cells.map(csvField).join(',')).join('\r\n') + '\r\n';
