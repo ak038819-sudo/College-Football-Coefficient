@@ -745,6 +745,56 @@ def write_game_log_shards(out_dir: Path, logs: dict) -> dict:
             "index": write_game_log_index(out_dir, build_game_log_index(logs))}
 
 
+# ---- Returning production -------------------------------------------------
+#
+# Thirteen seasons sat in data/raw and in no table at all until
+# src/load_returning_production.py; the only thing that ever read them was the
+# calibration that REJECTED the feed as an Elo input. It is kept as its own
+# measurement, so here it is as one, and nothing downstream of this treats it
+# as a rating.
+RETURNING_FIELDS = ["team_id", "percent_ppa", "percent_passing_ppa",
+                    "percent_rushing_ppa", "percent_receiving_ppa",
+                    "usage", "total_ppa"]
+
+
+def build_returning_production(conn: sqlite3.Connection) -> dict:
+    """{season: payload} of each team's returning share.
+
+    The absolute `total_ppa` comes last and is kept because a share on its own
+    cannot tell a team that returns 80% of very little from one that returns
+    80% of a great deal.
+    """
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                        "AND name='team_returning_production'").fetchone():
+        return {}
+    out = defaultdict(list)
+    for row in conn.execute(
+            "SELECT season_year, " + ", ".join(RETURNING_FIELDS) +
+            " FROM team_returning_production ORDER BY season_year, team_id"):
+        season, team_id = int(row[0]), int(row[1])
+        out[season].append([team_id] + [
+            None if value is None else round(float(value), 4) for value in row[2:]])
+    return {season: {"season": season, "fields": RETURNING_FIELDS, "teams": teams}
+            for season, teams in out.items()}
+
+
+def write_returning_production(out_dir: Path, payloads: dict) -> dict:
+    """One file per season that has the measurement, and none for the rest."""
+    directory = out_dir / "returning"
+    if directory.exists():
+        shutil.rmtree(directory)                                 # no orphan seasons
+    if not payloads:
+        return {}
+    directory.mkdir(parents=True)
+    files = {}
+    for season, payload in sorted(payloads.items()):
+        version = _write_js(
+            directory / f"{season}.js",
+            f"(window.__CFB_RETURNING__=window.__CFB_RETURNING__||{{}})[{season}]", payload)
+        files[str(season)] = f"data/returning/{season}.js?v={version}"
+    return files
+
+
 def _write_js(path: Path, global_expr: str, payload) -> str:
     body = json.dumps(payload, separators=(",", ":"))
     path.write_text(f"{global_expr}={body};\n", encoding="utf-8")
@@ -806,6 +856,7 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
             continue
         archives[season] = selected
         players[str(season)] = write_box_score_shards(players_dir, season, selected)
+    returning = write_returning_production(out_dir, build_returning_production(conn))
     # Drive-by-drive records, sharded the same way and for the same reason.
     drives_dir = out_dir / "drives"
     if drives_dir.exists():
@@ -925,6 +976,10 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                 "model_params": model_params(),
                 # P1-08: what each season actually has, so an absent metric can say
                 # why it is absent instead of rendering as a zero.
+                # Returning production, 2014-2026. Absent rather than empty
+                # when the archive has not been loaded, so the view can be
+                # missing instead of drawing an empty board.
+                **({"returning": returning} if returning else {}),
                 "coverage": build_coverage(conn),
                 # The model's own track record, from the validation harness that
                 # has been scoring it all along (see src/accuracy.py). Absent,

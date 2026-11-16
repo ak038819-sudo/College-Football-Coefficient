@@ -6,7 +6,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
   const views = {
-    people: [], stats: ['overview', 'teams', 'players', 'adjusted', 'awards'], home: [], live: [], games: [], matchups: [], teams: ['', 'stadiums'], methodology: [], coverage: [], accuracy: [],
+    people: [], stats: ['overview', 'teams', 'players', 'adjusted', 'awards', 'returning'], home: [], live: [], games: [], matchups: [], teams: ['', 'stadiums'], methodology: [], coverage: [], accuracy: [],
     // Conference Merits is CoE 2.0's frozen value entering the season, and is
     // now the default board. CoE 1.0's five-year rolling value keeps its own
     // view at 'conference-coe-v1': they are different numbers and must never be
