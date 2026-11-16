@@ -1337,6 +1337,13 @@
   .stats-leaders { display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px; }
   .stats-leaders li { padding:8px 0; }
   .stats-categories,.table-pagination {display:flex;gap:16px;flex-wrap:wrap;margin:16px 0;}
+  /* The download sits under its own table, quiet enough to be ignored by a
+     reader who only wants to look, and right-aligned so a column of them down
+     a long page reads as one edge rather than as a list of links. */
+  .table-download {display:flex;justify-content:flex-end;margin:6px 0 0;}
+  .download-button {appearance:none;background:none;border:0;padding:2px 0;font:inherit;
+    font-size:12px;color:var(--ink-dim);cursor:pointer;border-bottom:1px solid transparent;}
+  .download-button:hover,.download-button:focus-visible {color:var(--ink);border-bottom-color:currentColor;}
   .stats-categories [aria-current] {color:var(--amber);text-decoration:underline;}
   .sort-button {background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:10px 4px;white-space:nowrap;}
   .sort-button:focus-visible {outline:2px solid var(--amber);}
@@ -11117,16 +11124,94 @@ document.getElementById('content').addEventListener('submit', e => {
 function wrapWideTables() {
   document.querySelectorAll('#content table').forEach(table => {
     CfbStats.enhanceTable(table);
-    if (table.parentElement?.classList.contains('table-scroll')) return;
-    const wrapper = document.createElement('div');
-    wrapper.className = 'table-scroll';
-    wrapper.tabIndex = 0;
-    wrapper.setAttribute('role', 'region');
-    wrapper.setAttribute('aria-label', 'Scrollable ' + SECTION_LABELS[state.section] + ' table');
-    table.replaceWith(wrapper);
-    wrapper.appendChild(table);
+    if (!table.parentElement?.classList.contains('table-scroll')) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'table-scroll';
+      wrapper.tabIndex = 0;
+      wrapper.setAttribute('role', 'region');
+      wrapper.setAttribute('aria-label', 'Scrollable ' + SECTION_LABELS[state.section] + ' table');
+      table.replaceWith(wrapper);
+      wrapper.appendChild(table);
+    }
+    addTableDownload(table);
   });
 }
+
+// ---------------- Taking a table away with you ----------------
+//
+// Every board on this site is a table inside a .table-scroll, and this
+// function runs over all of them, so one control reaches the whole site
+// rather than each view learning to export itself. What downloads is exactly
+// what is on screen: the reader's season, filters and sort, no more.
+//
+// A table of one row is read, not analysed, so it gets no control -- the point
+// is to keep this from becoming a link under every two-cell fact table.
+const DOWNLOAD_MIN_ROWS = 2;
+
+// A name the file keeps once it leaves the browser. Built from where the
+// reader is, because "table.csv" in a downloads folder is anonymous.
+const DOWNLOAD_PAGE_ID = { team: 'teamParam', conference: 'conferenceParam',
+  game: 'gameParam', player: 'playerParam', coach: 'coachParam' };
+
+function downloadFileName() {
+  // A detail page is named for the thing it is about, not for its kind: eight
+  // files all called 'elocast-team-roster-2026.csv' help nobody.
+  const idKey = DOWNLOAD_PAGE_ID[state.view];
+  const parts = ['elocast'];
+  if (idKey) {
+    parts.push(state.view, String(state[idKey] ?? ''));
+    const tab = activeTab(state.view);
+    if (tab) parts.push(tab);
+  } else {
+    if (state.section) parts.push(state.section);
+    if (state.subview) parts.push(state.subview);
+  }
+  if (state.year) parts.push(String(state.year));
+  return parts.filter(Boolean).join('-')
+    .replace(/[^a-z0-9-]+/gi, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+    .toLowerCase() + '.csv';
+}
+
+function addTableDownload(table) {
+  const wrapper = table.parentElement;
+  if (!wrapper || !wrapper.classList.contains('table-scroll')) return;
+  if (wrapper.nextElementSibling?.classList.contains('table-download')) return;
+  if (!table.tBodies.length || table.tBodies[0].rows.length < DOWNLOAD_MIN_ROWS) return;
+  // A paginated board holds 50 rows of a longer list, and a file that silently
+  // contained one page of it would be worse than no file at all. Say so.
+  const paged = wrapper.nextElementSibling?.classList.contains('table-pagination')
+    || wrapper.parentElement?.querySelector('.table-pagination');
+  const bar = document.createElement('p');
+  bar.className = 'table-download';
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'download-button';
+  button.dataset.downloadCsv = 'true';
+  button.textContent = paged ? 'Download this page (CSV)' : 'Download CSV';
+  bar.appendChild(button);
+  wrapper.after(bar);
+}
+
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-download-csv]');
+  if (!button) return;
+  const table = button.closest('.table-download')?.previousElementSibling?.querySelector('table');
+  const csv = table ? CfbStats.tableCsv(table) : '';
+  if (!csv) return;
+  // A BOM, so a spreadsheet opening this file reads it as UTF-8 and does not
+  // turn a team name's accent into mojibake.
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = downloadFileName();
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  // Revoked on the next frame, not immediately: a click handler that frees the
+  // object URL in the same tick races the download in some browsers.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+});
 
 // Statistics hub: cached season aggregation; filtering and paging never refetch data.
 const statsCache = new Map();
