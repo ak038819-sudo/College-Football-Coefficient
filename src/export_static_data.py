@@ -925,7 +925,11 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                 "model_params": model_params(),
                 # P1-08: what each season actually has, so an absent metric can say
                 # why it is absent instead of rendering as a zero.
-                "coverage": build_coverage(conn),
+                # The box-score archive is files on disk, not a table, so its
+                # coverage is counted here where the archives are already read
+                # rather than by opening all 23 of them a second time.
+                "coverage": build_coverage(
+                    conn, box_scores={season: len(games) for season, games in archives.items()}),
                 # The model's own track record, from the validation harness that
                 # has been scoring it all along (see src/accuracy.py). Absent,
                 # not empty, when no report has been generated, so the page can

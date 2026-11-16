@@ -71,10 +71,50 @@ DIMENSIONS = [
     {"key": "coe2", "label": "Merits",
      "source": "src/build_hybrid_coefficients.py",
      "absent": "Merits needs five prior seasons of history, which this season does not have."},
+    # The archives below were collected after this module was written and were
+    # missing from it, so the page a reader opens to find out what this project
+    # holds described six of its fourteen datasets. Each one counts a real
+    # fraction -- how many of the season's games or teams have it, out of how
+    # many could -- on the same rule as the six above; nothing here reports a
+    # bare yes or no dressed up as coverage.
+    {"key": "drives", "label": "Drive-by-drive",
+     "source": "CollegeFootballData.com /drives",
+     "absent": "Drive records were not collected for this season."},
+    {"key": "lines", "label": "Betting lines",
+     "source": "CollegeFootballData.com /lines",
+     "absent": "No betting market was collected for this season."},
+    {"key": "box_scores", "label": "Player box scores",
+     "source": "CollegeFootballData.com /games/players",
+     "absent": "Per-game player lines were not collected for this season."},
+    {"key": "season_stats", "label": "Player season statistics",
+     "source": "CollegeFootballData.com /stats/player/season",
+     "absent": "Season statistics were not collected for this season."},
+    {"key": "rosters", "label": "Rosters",
+     "source": "CollegeFootballData.com /roster",
+     "absent": "No roster snapshot was collected for this season."},
+    {"key": "coaches", "label": "Head coaches",
+     "source": "CollegeFootballData.com /coaches",
+     "absent": "No head coach is recorded for this season."},
+    {"key": "recruiting", "label": "Recruiting classes",
+     "source": "CollegeFootballData.com /recruiting/teams",
+     "absent": "No recruiting class was collected for this season."},
+    {"key": "polls", "label": "AP and CFP polls",
+     "source": "CollegeFootballData.com /rankings",
+     "absent": "No poll releases were collected for this season."},
 ]
 
 
-def build_coverage(conn: sqlite3.Connection) -> dict:
+def _season_counts(conn: sqlite3.Connection, table: str, sql: str) -> dict:
+    """One dimension's per-season numerator, or {} when its table is absent.
+
+    A table that was never loaded is a real state here -- a fresh bootstrap
+    loads games and little else -- and must read as "not collected", not as a
+    crash and not as a zero nobody can tell apart from a measured zero.
+    """
+    return _counts(conn, sql) if _table_exists(conn, table) else {}
+
+
+def build_coverage(conn: sqlite3.Connection, box_scores: dict | None = None) -> dict:
     """
     {"dimensions": [...], "seasons": {season: {key: [have, of]}}, "first": {key: season}}
 
@@ -124,6 +164,47 @@ def build_coverage(conn: sqlite3.Connection) -> dict:
                             FROM hybrid_game_ratings h JOIN games g ON g.game_id = h.game_id GROUP BY 1""") \
         if _table_exists(conn, "hybrid_game_ratings") else {}
 
+    # Per-game archives. The numerator is DISTINCT GAMES, never rows: 441,307
+    # drives and 40,490 lines over a few thousand games each would otherwise
+    # read as coverage far above 100%.
+    drives = _season_counts(conn, "game_drives", """
+        SELECT g.season_year, COUNT(DISTINCT d.game_id) FROM game_drives d
+        JOIN games g ON g.game_id = d.game_id GROUP BY 1""")
+    lines = _season_counts(conn, "game_lines", """
+        SELECT g.season_year, COUNT(DISTINCT l.game_id) FROM game_lines l
+        JOIN games g ON g.game_id = l.game_id
+        WHERE l.market_home_margin IS NOT NULL GROUP BY 1""")
+
+    # Per-team archives, against the teams that actually played that season --
+    # the same denominator, and for the same reason, as team_advanced above.
+    played = """EXISTS (SELECT 1 FROM games g WHERE g.season_year = {alias}.season_year
+                        AND (g.home_team_id = {alias}.team_id OR g.away_team_id = {alias}.team_id))"""
+    rosters = _season_counts(conn, "player_team_seasons", f"""
+        SELECT season_year, COUNT(DISTINCT team_id) FROM player_team_seasons s
+        WHERE team_id IS NOT NULL AND {played.format(alias='s')} GROUP BY 1""")
+    season_stats = _season_counts(conn, "player_season_stats", f"""
+        SELECT season_year, COUNT(DISTINCT team_id) FROM player_season_stats p
+        WHERE team_id IS NOT NULL AND {played.format(alias='p')} GROUP BY 1""")
+    coaches = _season_counts(conn, "coach_tenures", f"""
+        SELECT season_year, COUNT(DISTINCT team_id) FROM coach_tenures c
+        WHERE team_id IS NOT NULL AND {played.format(alias='c')} GROUP BY 1""")
+    recruiting = _season_counts(conn, "recruiting_classes", f"""
+        SELECT season_year, COUNT(DISTINCT team_id) FROM recruiting_classes r
+        WHERE team_id IS NOT NULL AND {played.format(alias='r')} GROUP BY 1""")
+
+    # Polls are counted in RELEASES, not teams: a week either had one or did
+    # not, and 25 of 25 teams ranked says nothing about the weeks with no poll
+    # at all. The denominator is the season's own regular-season weeks plus one
+    # for the final postseason release.
+    poll_weeks = _season_counts(conn, "poll_rankings", """
+        SELECT season_year, COUNT(DISTINCT season_type || '-' || week)
+        FROM poll_rankings GROUP BY 1""")
+    game_cols = {r[1] for r in conn.execute("PRAGMA table_info(games)")}
+    weeks = _counts(conn, """SELECT season_year, MAX(week) FROM games
+                             WHERE week IS NOT NULL GROUP BY 1""") if "week" in game_cols else {}
+
+    box = {int(k): int(v) for k, v in (box_scores or {}).items()}
+
     seasons = {}
     for season in sorted(games):
         done, total, n_teams = completed.get(season, 0), games.get(season, 0), teams.get(season, 0)
@@ -134,6 +215,14 @@ def build_coverage(conn: sqlite3.Connection) -> dict:
             "game_advanced": [game_advanced.get(season, 0), done],
             "elo": [elo.get(season, 0), done],
             "coe2": [coe2.get(season, 0), done],
+            "drives": [drives.get(season, 0), done],
+            "lines": [lines.get(season, 0), done],
+            "box_scores": [box.get(season, 0), done],
+            "season_stats": [season_stats.get(season, 0), n_teams],
+            "rosters": [rosters.get(season, 0), n_teams],
+            "coaches": [coaches.get(season, 0), n_teams],
+            "recruiting": [recruiting.get(season, 0), n_teams],
+            "polls": [poll_weeks.get(season, 0), weeks.get(season, 0) + 1 if weeks.get(season) else 0],
         }
 
     # First season that actually has each dimension, alongside the source's own
@@ -148,7 +237,13 @@ def build_coverage(conn: sqlite3.Connection) -> dict:
         "seasons": seasons,
         "first": first,
         "source_first": {"team_advanced": _first_season("fetch_cfbd_advanced"),
-                         "game_advanced": _first_season("fetch_cfbd_game_advanced")},
+                         "game_advanced": _first_season("fetch_cfbd_game_advanced"),
+                         "drives": _first_season("fetch_cfbd_drives"),
+                         "lines": _first_season("fetch_cfbd_lines"),
+                         "box_scores": _first_season("fetch_cfbd_players"),
+                         "season_stats": _first_season("fetch_cfbd_player_season_stats"),
+                         "rosters": _first_season("fetch_cfbd_rosters"),
+                         "recruiting": _first_season("fetch_cfbd_recruiting")},
     }
 
 
