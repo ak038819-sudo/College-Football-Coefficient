@@ -9,6 +9,7 @@ here.
 """
 import sqlite3
 
+import coverage as cov_mod
 from coverage import DIMENSIONS, build_coverage
 
 KEYS = [d["key"] for d in DIMENSIONS]
@@ -333,3 +334,48 @@ def test_the_eight_later_archives_are_all_described(tmp_path):
     assert len(KEYS) == 14, "six original dimensions plus the eight added here"
     for d in DIMENSIONS:
         assert d["label"] and d["source"] and d["absent"].endswith(".")
+
+
+def test_the_deduplicated_count_matches_asking_every_row(tmp_path):
+    """The fast form must answer exactly what the per-row question answered.
+
+    `_played_team_counts` replaced a correlated EXISTS over every row, which
+    cost 15.2s on 1.1m player_season_stats rows because nothing indexes the
+    lookup. The rewrite is only correct if it is indistinguishable, so this
+    asks the old question directly and compares -- including a team that played
+    ONLY as the away side, which a one-legged participation set would lose.
+    """
+    conn = _wide_db(tmp_path)
+    conn.executemany("INSERT INTO player_season_stats VALUES (?,?,?)",
+                     [(1, 2016, 10), (2, 2016, 10), (3, 2016, 10),   # three rows, one team
+                      (4, 2016, 20), (5, 2016, 99),                  # 99 never played
+                      (6, 2016, None)])                              # and no team at all
+    conn.commit()
+    slow = {int(season): int(n) for season, n in conn.execute("""
+        SELECT season_year, COUNT(DISTINCT team_id) FROM player_season_stats p
+        WHERE team_id IS NOT NULL
+          AND EXISTS (SELECT 1 FROM games g WHERE g.season_year = p.season_year
+                      AND (g.home_team_id = p.team_id OR g.away_team_id = p.team_id))
+        GROUP BY 1""")}
+    assert cov_mod._played_team_counts(conn, "player_season_stats") == slow
+    assert slow, "a fixture that counts nothing would make this vacuous"
+    conn.close()
+
+
+def test_a_team_that_only_ever_played_away_still_counts(tmp_path):
+    # The participation set unions the home and away columns. Keeping one leg
+    # only would silently drop every team with no home game that season.
+    conn = _wide_db(tmp_path)
+    away_only = conn.execute("""SELECT away_team_id FROM games
+                                WHERE season_year = 2016 AND away_team_id NOT IN
+                                (SELECT home_team_id FROM games WHERE season_year = 2016)
+                                LIMIT 1""").fetchone()
+    if away_only is None:                       # give the fixture one on purpose
+        conn.execute("INSERT INTO games (game_id, season_year, home_team_id, away_team_id, "
+                     "completed) VALUES (900, 2016, 10, 77, 1)")
+        away_only = (77,)
+    conn.execute("INSERT INTO player_season_stats VALUES (?,?,?)", (90, 2016, away_only[0]))
+    conn.commit()
+    counts = cov_mod._played_team_counts(conn, "player_season_stats")
+    assert counts.get(2016, 0) >= 1, f"team {away_only[0]} played away and was dropped"
+    conn.close()

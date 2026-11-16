@@ -49,6 +49,36 @@ def _counts(conn: sqlite3.Connection, sql: str) -> dict:
     return {int(season): int(n) for season, n in conn.execute(sql)}
 
 
+# The team-seasons that actually played, computed ONCE.
+#
+# WHY A CTE AND NOT `EXISTS`. The per-team dimensions ask the same question of
+# every row -- "did this team play that season?" -- and the answer is identical
+# for everyone on the same team-season. Asking it per row made SQLite scan
+# `games` again for each of 1.1m player_season_stats rows, since the schema has
+# no index that serves it: 15.2s for that one dimension and 18.5s across the
+# four, on every static export. Deduplicating the team-seasons first and
+# joining them against this set gives the same numbers in 0.64s.
+PLAYED_CTE = """WITH played(season_year, team_id) AS (
+        SELECT season_year, home_team_id FROM games WHERE home_team_id IS NOT NULL
+        UNION
+        SELECT season_year, away_team_id FROM games WHERE away_team_id IS NOT NULL)"""
+
+
+def _played_team_counts(conn: sqlite3.Connection, table: str) -> dict:
+    """Per season, how many of `table`'s teams played that season.
+
+    The subquery is DISTINCT on (season, team) so a table with one row per
+    player counts teams, not players -- the same thing COUNT(DISTINCT team_id)
+    did before, reached without the correlated scan.
+    """
+    return _season_counts(conn, table, PLAYED_CTE + f"""
+        SELECT t.season_year, COUNT(*) FROM
+          (SELECT DISTINCT season_year, team_id FROM {table}
+           WHERE team_id IS NOT NULL) t
+          JOIN played p ON p.season_year = t.season_year AND p.team_id = t.team_id
+        GROUP BY 1""")
+
+
 # Each dimension the site can report on. `key` is what the UI looks up, `source`
 # says where it comes from, and `absent` is the sentence shown when a season has
 # none of it -- written once here rather than in each view.
@@ -149,10 +179,10 @@ def build_coverage(conn: sqlite3.Connection, box_scores: dict | None = None) -> 
     # fraction answers is "of the teams in this dataset for this season, how
     # many have stats?", so a row for a team we show no games for is not
     # coverage of anything.
-    team_advanced = _counts(conn, """SELECT a.season_year, COUNT(*) FROM team_season_advanced a
-                                     WHERE EXISTS (SELECT 1 FROM games g WHERE g.season_year = a.season_year
-                                                   AND (g.home_team_id = a.team_id OR g.away_team_id = a.team_id))
-                                     GROUP BY 1""") \
+    team_advanced = _counts(conn, PLAYED_CTE + """
+        SELECT a.season_year, COUNT(*) FROM team_season_advanced a
+          JOIN played p ON p.season_year = a.season_year AND p.team_id = a.team_id
+        GROUP BY 1""") \
         if _table_exists(conn, "team_season_advanced") else {}
     game_advanced = _counts(conn, """SELECT season_year, COUNT(DISTINCT game_id) FROM game_team_advanced
                                      WHERE off_success_rate IS NOT NULL GROUP BY 1""") \
@@ -177,20 +207,10 @@ def build_coverage(conn: sqlite3.Connection, box_scores: dict | None = None) -> 
 
     # Per-team archives, against the teams that actually played that season --
     # the same denominator, and for the same reason, as team_advanced above.
-    played = """EXISTS (SELECT 1 FROM games g WHERE g.season_year = {alias}.season_year
-                        AND (g.home_team_id = {alias}.team_id OR g.away_team_id = {alias}.team_id))"""
-    rosters = _season_counts(conn, "player_team_seasons", f"""
-        SELECT season_year, COUNT(DISTINCT team_id) FROM player_team_seasons s
-        WHERE team_id IS NOT NULL AND {played.format(alias='s')} GROUP BY 1""")
-    season_stats = _season_counts(conn, "player_season_stats", f"""
-        SELECT season_year, COUNT(DISTINCT team_id) FROM player_season_stats p
-        WHERE team_id IS NOT NULL AND {played.format(alias='p')} GROUP BY 1""")
-    coaches = _season_counts(conn, "coach_tenures", f"""
-        SELECT season_year, COUNT(DISTINCT team_id) FROM coach_tenures c
-        WHERE team_id IS NOT NULL AND {played.format(alias='c')} GROUP BY 1""")
-    recruiting = _season_counts(conn, "recruiting_classes", f"""
-        SELECT season_year, COUNT(DISTINCT team_id) FROM recruiting_classes r
-        WHERE team_id IS NOT NULL AND {played.format(alias='r')} GROUP BY 1""")
+    rosters = _played_team_counts(conn, "player_team_seasons")
+    season_stats = _played_team_counts(conn, "player_season_stats")
+    coaches = _played_team_counts(conn, "coach_tenures")
+    recruiting = _played_team_counts(conn, "recruiting_classes")
 
     # Polls are counted in RELEASES, not teams: a week either had one or did
     # not, and 25 of 25 teams ranked says nothing about the weeks with no poll
