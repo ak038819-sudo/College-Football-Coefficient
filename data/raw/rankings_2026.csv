@@ -224,6 +224,56 @@ season_year,season_type,week,poll,rank,school,conference,first_place_votes,point
 2026,regular,7,ap,23,Boise State,Pac-12,0,268
 2026,regular,7,ap,24,SMU,ACC,0,142
 2026,regular,7,ap,25,Northwestern,Big Ten,0,112
+2026,regular,12,ap,1,Georgia,SEC,58,1734
+2026,regular,12,ap,2,Utah,Big 12,10,1677
+2026,regular,12,ap,3,Notre Dame,FBS Independents,2,1584
+2026,regular,12,ap,4,UCLA,Big Ten,0,1552
+2026,regular,12,ap,5,Miami,ACC,0,1426
+2026,regular,12,ap,6,Indiana,Big Ten,0,1384
+2026,regular,12,ap,7,Alabama,SEC,0,1297
+2026,regular,12,ap,8,Texas,SEC,0,1290
+2026,regular,12,ap,9,Tennessee,SEC,0,1179
+2026,regular,12,ap,10,Wake Forest,ACC,0,1134
+2026,regular,12,ap,11,Texas Tech,Big 12,0,1081
+2026,regular,12,ap,12,BYU,Big 12,0,1038
+2026,regular,12,ap,13,Iowa,Big Ten,0,861
+2026,regular,12,ap,14,Oregon,Big Ten,0,820
+2026,regular,12,ap,15,Boise State,Pac-12,0,767
+2026,regular,12,ap,16,Ohio State,Big Ten,0,661
+2026,regular,12,ap,17,Kentucky,SEC,0,599
+2026,regular,12,ap,18,USC,Big Ten,0,546
+2026,regular,12,ap,19,Arizona,Big 12,0,404
+2026,regular,12,ap,20,Houston,Big 12,0,365
+2026,regular,12,ap,21,Louisville,ACC,0,357
+2026,regular,12,ap,22,Liberty,Conference USA,0,183
+2026,regular,12,ap,23,Florida,SEC,0,173
+2026,regular,12,ap,24,Memphis,American Athletic,0,138
+2026,regular,12,ap,25,Ole Miss,SEC,0,103
+2026,regular,12,cfp,1,Georgia,SEC,0,0
+2026,regular,12,cfp,2,Utah,Big 12,0,0
+2026,regular,12,cfp,3,Alabama,SEC,0,0
+2026,regular,12,cfp,4,UCLA,Big Ten,0,0
+2026,regular,12,cfp,5,Texas,SEC,0,0
+2026,regular,12,cfp,6,Notre Dame,FBS Independents,0,0
+2026,regular,12,cfp,7,Miami,ACC,0,0
+2026,regular,12,cfp,8,Indiana,Big Ten,0,0
+2026,regular,12,cfp,9,Tennessee,SEC,0,0
+2026,regular,12,cfp,10,BYU,Big 12,0,0
+2026,regular,12,cfp,11,Wake Forest,ACC,0,0
+2026,regular,12,cfp,12,Texas Tech,Big 12,0,0
+2026,regular,12,cfp,13,Oregon,Big Ten,0,0
+2026,regular,12,cfp,14,Ohio State,Big Ten,0,0
+2026,regular,12,cfp,15,Iowa,Big Ten,0,0
+2026,regular,12,cfp,16,Kentucky,SEC,0,0
+2026,regular,12,cfp,17,Boise State,Pac-12,0,0
+2026,regular,12,cfp,18,USC,Big Ten,0,0
+2026,regular,12,cfp,19,Arizona,Big 12,0,0
+2026,regular,12,cfp,20,Houston,Big 12,0,0
+2026,regular,12,cfp,21,South Carolina,SEC,0,0
+2026,regular,12,cfp,22,Oklahoma,SEC,0,0
+2026,regular,12,cfp,23,Louisville,ACC,0,0
+2026,regular,12,cfp,24,Florida,SEC,0,0
+2026,regular,12,cfp,25,Ole Miss,SEC,0,0
 2026,regular,8,ap,1,Miami,ACC,40,1697
 2026,regular,8,ap,2,BYU,Big 12,20,1675
 2026,regular,8,ap,3,Ohio State,Big Ten,9,1649
