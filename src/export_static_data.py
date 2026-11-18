@@ -52,6 +52,7 @@ from elo_timeline import build_timeline  # noqa: E402
 from build_schedule_strength import build_season as build_schedule_season  # noqa: E402
 from build_adjusted_stats import build_season as build_adjusted_season  # noqa: E402
 from build_awards_payload import build_payload as build_awards_payload  # noqa: E402
+from export_people_boards import build as build_people_boards  # noqa: E402
 import player_archive  # noqa: E402
 from export_people_pages import export as export_people  # noqa: E402
 from export_team_pages import (  # noqa: E402
@@ -871,6 +872,19 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                       table)
         adjusted_stats[str(season)] = f"data/adjusted_stats/{season}.js?v={v}"
 
+    # Browsable People boards: career statistical leaders and coach wins above
+    # expectation. One 69 KB file -- these are summed from 1,112,976 season
+    # statistics, which is not work a browser can do, and the landing page
+    # needs all of them at once.
+    boards_payload = build_people_boards(conn)
+    people_boards = None
+    if boards_payload:
+        bv = _write_js(out_dir / "people_boards.js", "window.__CFB_PEOPLE_BOARDS__",
+                       boards_payload)
+        people_boards = f"data/people_boards.js?v={bv}"
+        print(f"people boards: {len(boards_payload['leaders'])} career boards, "
+              f"{len(boards_payload['coaches'].get('coaches', []))} coaches")
+
     # National award winners. One file, not one per season: a player page needs
     # the trophies one person won, which are spread across his career, and the
     # awards view needs every winner of one trophy, which is spread across every
@@ -922,6 +936,10 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                 # database has none, so the pages can say there are none
                 # instead of fetching a file that is not there.
                 **({"awards": awards} if awards else {}),
+                # Absent rather than empty when the season-statistics archive
+                # was never loaded, so People can stay a search box instead of
+                # offering boards with nothing on them.
+                **({"people_boards": people_boards} if people_boards else {}),
                 "model_params": model_params(),
                 # P1-08: what each season actually has, so an absent metric can say
                 # why it is absent instead of rendering as a zero.
