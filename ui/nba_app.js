@@ -197,6 +197,37 @@
     return matched;
   }
 
+  /* WHETHER THE PAGE SHOULD KEEP POLLING AT ALL, given the day being looked
+   * at. A pure function, because the alternative — deciding it inside the
+   * timer — is what hung a six-hour CI job.
+   *
+   * A slate from last December cannot change, so a page showing one has
+   * nothing to poll for, and a repeating timer armed over it is a handle
+   * that never closes: `node --test` finished all 107 page tests and then
+   * sat there until GitHub killed the job at its six-hour cap. The tests
+   * were green the whole time, which is exactly why this is a rule and not
+   * a tidy-up.
+   *
+   * YESTERDAY COUNTS, not just today. A game that ended after midnight is
+   * still filed under the previous day, and the archive is a day behind, so
+   * last night's slate is the one most likely to be gaining finals. The day
+   * is compared as the page's own local date, which is what the day strip
+   * is labelled with. */
+  function shouldPollLive(day, now) {
+    if (typeof day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+      return false;
+    }
+    var moment = now instanceof Date ? now
+      : (isFiniteNumber(now) ? new Date(now) : new Date());
+    var yesterday = new Date(moment.getTime() - 86400000);
+    function stamp(date) {
+      return date.getFullYear() + '-'
+        + String(date.getMonth() + 1).padStart(2, '0') + '-'
+        + String(date.getDate()).padStart(2, '0');
+    }
+    return day >= stamp(yesterday);
+  }
+
   function isLive(game) {
     return Boolean(game && game.live && game.live.state === 'in');
   }
@@ -1189,6 +1220,7 @@
     liveFreshness: liveFreshness,
     attachLive: attachLive,
     isLive: isLive,
+    shouldPollLive: shouldPollLive,
     shownPoints: shownPoints,
     shownScoreText: shownScoreText,
     hasScore: hasScore,

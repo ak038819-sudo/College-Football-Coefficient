@@ -643,7 +643,7 @@
 
 <script src="nba_loader.js?v=77aae2564765"></script>
 <script src="ncaambb_app.js?v=4828bd5e0199"></script>
-<script src="nba_app.js?v=168c66eec5f3"></script>
+<script src="nba_app.js?v=ff3381975e1a"></script>
 <script src="game_page.js?v=fb1a02a0b1c5"></script>
 <script>
 (function () {
@@ -1222,15 +1222,23 @@
     });
   }
 
-  /* Poll only while the slate is what is being looked at, and only while the
-   * tab is in front. A page left open in a background tab overnight should
-   * not fetch this 500 times. */
+  /* Poll only while the slate is what is being looked at, only while the tab
+   * is in front, and ONLY FOR A DAY THAT CAN STILL CHANGE. A page left open
+   * in a background tab overnight should not fetch this 500 times, and a
+   * page showing a slate from last December has nothing to poll for at all.
+   *
+   * That last condition is not tidiness. A repeating timer armed over a
+   * settled slate is a handle that never closes: `node --test` finished all
+   * 107 page tests green and then sat there until GitHub killed the job at
+   * its six-hour cap. `app.shouldPollLive` is where the rule lives, so it
+   * can be tested without a timer. */
   function pollLive() {
     if (liveState.timer) {
       window.clearInterval(liveState.timer);
       liveState.timer = null;
     }
     if (state.tab !== 'home') return;
+    if (!app.shouldPollLive(state.day)) return;
     liveState.timer = window.setInterval(function () {
       if (document.hidden) return;
       fetchLive(true);
@@ -1456,10 +1464,12 @@
     // drawn. The join is on the game key both files already carry, so
     // nothing is matched on a name.
     fetchLive(false);
-    pollLive();
     app.attachLive(payload.games, liveState.snapshot);
     days(payload);
     slateFilters();
+    // AFTER `days`, which is what has just chosen the day being looked at,
+    // and the poll is armed only for a day that can still change.
+    pollLive();
     // Counted on THE DAY BEING LOOKED AT, not on the season: a line about
     // live scores over a slate from 2014 is noise, and `days` is what has
     // just decided which day that is.

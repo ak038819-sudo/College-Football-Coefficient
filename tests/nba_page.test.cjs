@@ -523,6 +523,19 @@ async function open(overrides, schedule, standings, hash, past, detail,
           clear: () => cells.clear()
         }
       });
+      // Every repeating timer the page arms, so a test can assert that a
+      // page with nothing to poll for leaves none behind. An uncleared one
+      // is a handle `node --test` waits onForever: all 107 tests in this
+      // file once passed and the job was then killed at GitHub's six-hour
+      // cap with the suite already green.
+      const intervals = [];
+      const realSetInterval = window.setInterval.bind(window);
+      window.setInterval = function (fn, ms) {
+        const id = realSetInterval(fn, ms);
+        intervals.push({ id, ms });
+        return id;
+      };
+      window.__intervals = intervals;
       window.fetch = function (url) {
         const target = path.join(built.root, String(url));
         return Promise.resolve({
@@ -2374,3 +2387,16 @@ test('a page with no live file at all draws exactly as it did before',
     assert.equal(dom.window.document.getElementById('live-note').hidden, true);
     dom.window.close();
   });
+
+
+test('a page showing a settled slate arms no repeating timer', async () => {
+  // THE SIX-HOUR BUG. The live poll used to be armed on every render, so
+  // every page opened in this file left a 60-second interval running. The
+  // tests all passed; `node --test` then never exited, and CI was killed at
+  // its six-hour cap. The fixture slate is from December 2025 and cannot
+  // change, so there is nothing here to poll for.
+  const dom = await open();
+  const armed = dom.window.__intervals.filter(t => t.ms >= 1000);
+  assert.deepEqual(armed, [], 'a settled slate must leave no timer running');
+  dom.window.close();
+});
