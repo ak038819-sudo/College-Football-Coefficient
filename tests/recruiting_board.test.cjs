@@ -151,3 +151,43 @@ test('the team tab and the board both say no rating reads this', () => {
     assert.match(lift(fn), /no rating on this site reads/i, fn);
   }
 });
+
+/* ---- the shared table enhancer must be allowed to run ------------------- */
+
+test('the board really does sort, driven through the real ui/stats.js', () => {
+  // The structural test below says the marker is gone. This one says the
+  // consequence: the enhancer installs buttons and a click reorders the rows.
+  const { JSDOM } = require('jsdom');
+  const html = board([cls(), cls({ team_id: 20, class_rank: 4, points: 120.2 })],
+                     new Map(), 0);
+  const dom = new JSDOM('<body>' + html + '</body>', { runScripts: 'outside-only' });
+  const w = dom.window;
+  w.eval(fs.readFileSync('ui/stats.js', 'utf8'));
+  const table = w.document.querySelector('table');
+  w.CfbStats.enhanceTable(table);
+  const points = () => [...table.tBodies[0].rows].map(r => r.cells[2].textContent.trim());
+  assert.ok(table.querySelectorAll('.sort-button').length > 0,
+    'the enhancer must have been allowed to run');
+  const button = [...table.querySelectorAll('.sort-button')]
+    .find(b => /Points/.test(b.textContent));
+  button.dispatchEvent(new w.Event('click'));   // first click sorts descending
+  button.dispatchEvent(new w.Event('click'));
+  assert.deepEqual(points(), ['120.20', '310.67'], 'ascending by points');
+});
+
+test('a recruiting table does not pre-set data-sortable', () => {
+  // `CfbStats.enhanceTable()` uses that attribute as its own "already done"
+  // marker and returns immediately when it is present (ui/stats.js). A table
+  // that sets it in its own markup therefore never gets sort buttons or click
+  // handlers, and the sort keys beside every number go unread. Only the
+  // roster table may carry it, because that one installs its own handlers.
+  for (const html of [
+    signees([signee()]),
+    board([cls()], new Map(), 0),
+    history({ id: 10 }, { bySeason: new Map([
+      [2026, [cls()]], [2025, [cls({ season_year: 2025, class_rank: 3 })]]]) })
+  ]) {
+    assert.doesNotMatch(html, /data-sortable/,
+      'leave the attribute to the enhancer, which sets it once it has run');
+  }
+});

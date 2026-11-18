@@ -8152,7 +8152,7 @@ function signeeTableHtml(rows) {
       '<td>' + (recruitHometown(r) ? esc(recruitHometown(r)) : '&mdash;') + '</td>' +
       '<td>' + cell(r.high_school) + '</td></tr>';
   }).join('');
-  return '<table class="data-table" data-sortable="true"><thead>' + head +
+  return '<table class="data-table"><thead>' + head +
     '</thead><tbody>' + body + '</tbody></table>';
 }
 
@@ -8202,7 +8202,7 @@ function recruitingBoardHtml(classes, signees, unplaced) {
       ' went to schools it does not, which is why the ranks above skip numbers: the rank is ' +
       'national and counts them.</p>'
     : '';
-  return '<table class="rank-table" data-sortable="true"><thead>' + head + '</thead><tbody>' +
+  return '<table class="rank-table"><thead>' + head + '</thead><tbody>' +
     body + '</tbody></table>' + note;
 }
 
@@ -8320,7 +8320,7 @@ function teamClassHistory(team, archive) {
     '<td class="num" data-sort="' + (c.points ?? '') + '">' +
     (c.points == null ? '&mdash;' : Number(c.points).toFixed(2)) + '</td></tr>').join('');
   return '<h3 class="section-title">Class by class</h3>' +
-    '<table class="rank-table" data-sortable="true"><thead><tr><th scope="col">Season</th>' +
+    '<table class="rank-table"><thead><tr><th scope="col">Season</th>' +
     '<th scope="col">National rank</th><th scope="col">Points</th></tr></thead><tbody>' +
     body + '</tbody></table>';
 }
