@@ -584,3 +584,22 @@ def test_a_database_without_the_poll_table_builds_a_timeline_anyway():
     not run it must still produce every Elo stage rather than failing.
     """
     assert elo_timeline.poll_timeline(sqlite3.connect(":memory:"), 2030, {}) == {}
+
+
+def test_a_poll_row_carries_first_place_votes_and_a_blank_is_not_a_zero(poll_db):
+    """Carried since the poll backfill, so a 1994 board reads like today's.
+
+    The CFP poll reports no first-place votes at all, and a 0 there would be a
+    claim that nobody voted a team first.
+    """
+    poll_db.executemany(
+        """INSERT INTO poll_rankings (season_year, season_type, week, poll, rank,
+           team_id, school, first_place_votes)
+           VALUES (2030, 'regular', 1, 'ap', ?, ?, ?, ?)""",
+        [(1, 7, "Georgia", 61), (2, 8, "Texas", None)])
+    poll_db.commit()
+    track = elo_timeline.poll_timeline(poll_db, 2030, {7: 0, 8: 1})["ap"]
+    assert elo_timeline.POLL_ROW_FIELDS[-1] == "votes", "appended last, so no index moves"
+    rows = [dict(zip(elo_timeline.POLL_ROW_FIELDS, r)) for r in track["rows"][0]]
+    assert rows[0]["votes"] == 61
+    assert rows[1]["votes"] is None, "not reported is not zero"

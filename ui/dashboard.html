@@ -3932,7 +3932,7 @@ function teamProfileColor(name) {
 
 // Validated and versioned historical descriptive assets. The panel is optional,
 // and existing team sections continue working if the asset cannot be loaded.
-const SCOUTING_VERSIONS = {"2025": "b71cdfabcfb8", "2026": "e433ecafb5eb"};
+const SCOUTING_VERSIONS = {"2026": "e433ecafb5eb", "2025": "b71cdfabcfb8"};
 const _scoutingRequests = new Map();
 const SCOUTING_TRAITS = [
   ['rush_success_rate', 'Rush success'], ['rush_ppa', 'Rush PPA'],
@@ -7311,13 +7311,31 @@ function top25EloBoard() {
 // columns can be read across. Polls are display data: no model reads them.
 function pollTitle(key) { return key === 'cfp' ? 'CFP Rankings' : 'AP Top 25'; }
 
+// The CURRENT season's release comes from DATA.polls, which is already on the
+// page. Any other season's comes from that season's Elo timeline, which
+// carries every release and is fetched on demand -- so the boards below work
+// for 1980 the same way they work for today.
 function pollRelease(key) {
   const polls = DATA.polls || {};
   return state.year === polls.season ? polls[key] : null;
 }
 
-function top25PollBoard(key) {
-  const release = pollRelease(key);
+// The last release of a poll in a season's timeline, shaped like a DATA.polls
+// release so one renderer draws both. The timeline's own row order is by rank,
+// and `votes` is carried for exactly this.
+function pollReleaseFromTimeline(timeline, key) {
+  const track = (timeline.polls || {})[key];
+  if (!track || !track.releases.length) return null;
+  const last = track.releases.length - 1;
+  const release = track.releases[last];
+  return { season_type: release.season_type, week: release.week,
+           rows: track.rows[last].map(row => [row.rank,
+             row.team == null ? null : (timeline.teams[row.team] || {}).id,
+             row.school, row.votes]) };
+}
+
+function top25PollBoard(key, releaseOverride) {
+  const release = releaseOverride === undefined ? pollRelease(key) : releaseOverride;
   const title = pollTitle(key);
   if (!release?.rows?.length) return '';
   // Elo rank for the season on screen, which is the poll's season here.
@@ -7346,16 +7364,51 @@ function renderTop25Boards() {
     return rankingStageMount() +
       '<div id="top25-asof"><div class="empty-note">Loading&hellip;</div></div>';
   }
+  // A past season's ballots live in that season's timeline file, so the boards
+  // are filled after it loads. The Elo board draws at once either way: a
+  // reader who asked for 1994 should not watch three empty columns.
+  if (state.year !== (DATA.polls || {}).season) {
+    return rankingStageMount() +
+      '<div id="top25-polls"><div class="rank-boards" data-boards="1">' +
+      top25EloBoard() + '</div>' +
+      '<p class="section-note">Looking for the ' + state.year + ' ballots\u2026</p></div>';
+  }
+  return rankingStageMount() + top25BoardsHtml(key => pollRelease(key), true);
+}
+
+// One renderer for both sources. `current` only changes the wording of the
+// note: a poll missing from this season has not been released yet, while one
+// missing from 1994 was never archived here.
+function top25BoardsHtml(releaseFor, current) {
   const polls = ['ap', 'cfp'];
-  const boards = polls.map(key => top25PollBoard(key)).filter(Boolean);
-  const missing = polls.filter(key => !pollRelease(key)?.rows?.length).map(pollTitle);
-  const current = state.year === (DATA.polls || {}).season;
+  const releases = Object.fromEntries(polls.map(key => [key, releaseFor(key)]));
+  const boards = polls.map(key => top25PollBoard(key, releases[key])).filter(Boolean);
+  const missing = polls.filter(key => !releases[key]?.rows?.length).map(pollTitle);
   const note = !missing.length ? '' :
     '<p class="section-note">' + missing.join(' and ') +
     (current ? (missing.length > 1 ? ' have' : ' has') + ' not been released for ' + state.year + '.'
              : ' for ' + state.year + (missing.length > 1 ? ' are' : ' is') + ' not in this export.') + '</p>';
-  return rankingStageMount() + '<div class="rank-boards" data-boards="' + (boards.length + 1) + '">' +
+  return '<div class="rank-boards" data-boards="' + (boards.length + 1) + '">' +
     top25EloBoard() + boards.join('') + '</div>' + note;
+}
+
+function hydrateTop25Polls(version) {
+  const slot = document.getElementById('top25-polls');
+  if (!slot) return;                       // the current season, or another view
+  loadEloTimeline(state.year).then(timeline => {
+    if (version !== renderVersion) return;
+    const target = document.getElementById('top25-polls');
+    if (!target) return;
+    target.innerHTML = top25BoardsHtml(key => pollReleaseFromTimeline(timeline, key), false);
+  }).catch(() => {
+    if (version !== renderVersion) return;
+    const target = document.getElementById('top25-polls');
+    // The Elo board is already drawn and stays drawn; only the ballots are
+    // unknown, and saying so beats replacing a working board with an error.
+    if (target) target.innerHTML = '<div class="rank-boards" data-boards="1">' +
+      top25EloBoard() + '</div><p class="section-note">The ' + state.year +
+      ' ballots could not be loaded.</p>';
+  });
 }
 
 // The scope disclaimer belongs on the page, but at the foot of it: a reader
@@ -11360,6 +11413,7 @@ function render() {
     }
     if (STAGED_RANKINGS.includes(state.subview)) hydrateRankingStages(version);
     if (state.subview === 'top25' && state.stage) hydrateTop25AsOf(version);
+    else if (state.subview === 'top25') hydrateTop25Polls(version);
     if (state.subview === 'conference-elo' && state.stage) hydrateConferenceEloAsOf(version);
   } else if (state.section === 'playoff') {
     const views = { field: renderField, projection: renderProjection, bracket: renderBracket, odds: renderOdds, history: renderHistory };

@@ -85,7 +85,10 @@ STAGE_FIELDS = ["key", "label", "phase", "week", "first_date", "last_date", "gam
 ROW_FIELDS = ["team", "elo", "rank", "d_elo", "d_rank", "played", "stage_games"]
 POLLS = ("ap", "cfp")
 POLL_RELEASE_FIELDS = ["key", "label", "season_type", "week"]
-POLL_ROW_FIELDS = ["team", "school", "rank", "d_rank"]
+# `votes` is first-place votes, carried since the poll backfill so a past
+# season's board reads exactly like the current one. The CFP poll reports
+# none at all, so NULL here means "not reported", never "nobody voted".
+POLL_ROW_FIELDS = ["team", "school", "rank", "d_rank", "votes"]
 
 PRESEASON_KEY = "pre"
 POSTSEASON_KEY = "post"
@@ -146,19 +149,19 @@ def poll_timeline(conn: sqlite3.Connection, season: int, index_of: dict[int, int
         previous: dict = {}
         for season_type, week in releases:
             rows = conn.execute(
-                """SELECT rank, team_id, school FROM poll_rankings
+                """SELECT rank, team_id, school, first_place_votes FROM poll_rankings
                    WHERE season_year = ? AND poll = ? AND season_type = ? AND week = ?
                    ORDER BY rank, school""",
                 (season, poll, season_type, week),
             ).fetchall()
             rows_out, now = [], {}
-            for rank, team_id, school in rows:
+            for rank, team_id, school, votes in rows:
                 # An unmatched school is still a row, keyed by its raw name so
                 # its own movement is still measured across releases.
                 identity = team_id if team_id is not None else f"school:{school}"
                 before = previous.get(identity)
                 rows_out.append([index_of.get(team_id), school, rank,
-                                 None if before is None else before - rank])
+                                 None if before is None else before - rank, votes])
                 now[identity] = rank
             previous = now
             meta.append([poll_release_key(season_type, week),
