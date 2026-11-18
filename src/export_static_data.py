@@ -52,6 +52,8 @@ from elo_timeline import build_timeline  # noqa: E402
 from build_schedule_strength import build_season as build_schedule_season  # noqa: E402
 from build_adjusted_stats import build_season as build_adjusted_season  # noqa: E402
 from build_awards_payload import build_payload as build_awards_payload  # noqa: E402
+from export_recruiting import build_classes as build_recruiting_classes  # noqa: E402
+from export_recruiting import build_signees as build_recruiting_signees  # noqa: E402
 import player_archive  # noqa: E402
 from export_people_pages import export as export_people  # noqa: E402
 from export_team_pages import (  # noqa: E402
@@ -871,6 +873,31 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                       table)
         adjusted_stats[str(season)] = f"data/adjusted_stats/{season}.js?v={v}"
 
+    # Recruiting. Two shapes, because they are read differently: every
+    # attributable class in ONE file (93 KB, and the ranking board and a team's
+    # whole class history both come out of it), and one file per season for
+    # that season's signees, which only a reader opening a class ever needs.
+    recruiting_classes = build_recruiting_classes(conn)
+    recruiting = None
+    if recruiting_classes:
+        cv = _write_js(out_dir / "recruiting_classes.js", "window.__CFB_RECRUITING__",
+                       recruiting_classes)
+        signee_dir = out_dir / "recruiting"
+        if signee_dir.exists():
+            shutil.rmtree(signee_dir)                                # no orphan seasons
+        signees = build_recruiting_signees(conn)
+        seasons = {}
+        if signees:
+            signee_dir.mkdir(parents=True)
+            for season, payload in sorted(signees.items()):
+                v = _write_js(signee_dir / f"{season}.js",
+                              f"(window.__CFB_SIGNEES__=window.__CFB_SIGNEES__||{{}})[{season}]",
+                              payload)
+                seasons[str(season)] = f"data/recruiting/{season}.js?v={v}"
+        recruiting = {"classes": f"data/recruiting_classes.js?v={cv}", "seasons": seasons}
+        print(f"recruiting: {len(recruiting_classes['classes'])} classes and "
+              f"{sum(len(p['teams']) for p in signees.values())} team-seasons of signees")
+
     # National award winners. One file, not one per season: a player page needs
     # the trophies one person won, which are spread across his career, and the
     # awards view needs every winner of one trophy, which is spread across every
@@ -922,6 +949,10 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                 # database has none, so the pages can say there are none
                 # instead of fetching a file that is not there.
                 **({"awards": awards} if awards else {}),
+                # Absent rather than empty when the archive was never loaded,
+                # so the tab and the board can be missing instead of drawing
+                # a team that signed nobody.
+                **({"recruiting": recruiting} if recruiting else {}),
                 "model_params": model_params(),
                 # P1-08: what each season actually has, so an absent metric can say
                 # why it is absent instead of rendering as a zero.
