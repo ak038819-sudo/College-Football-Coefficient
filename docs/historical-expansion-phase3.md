@@ -275,15 +275,23 @@ It does three things, read-only, on the staging chain alone:
    `mismatch` (both speak, differently). The field mapping is **written out
    a second time** rather than imported from the importer: reading the
    payload back with the function that wrote the row would only prove that
-   function is deterministic.
+   function is deterministic. The game id and the season are checked too,
+   because every later gate credits a game to a team-season by the *stored*
+   season, so a season that drifted would move evidence between years
+   without touching a score.
 3. **Counts what the provider left uncertain** — ties, missing scores,
    missing dates, missing venues, unknown classification per side, and
-   neutral site as three values rather than two.
+   neutral site as three values rather than two. The census is counted
+   **from the payloads, not from the columns**: the columns are what is
+   under audit, and letting a drifted one answer a question about the
+   source would hand the corruption the last word. A stored 7-6 over a
+   payload's 7-7 would otherwise report no tie. Rows whose payload failed
+   its digest are left out of the census entirely and counted separately.
 
-The season type is the one column the importer deliberately overrides: it
-writes the season type that was *requested*, so a payload that never
-mentions one cannot contradict it. A payload that names a different one
-still does.
+Season and season type are the two columns the importer takes from the
+*request* rather than the response: it writes the year and season type it
+asked for, so a payload silent about either cannot contradict the column.
+A payload that names a different one still does.
 
 Nothing is repaired. Rule 1 of the plan is that source records are kept as
 they came, so a drifted column is a finding for a person, not something a

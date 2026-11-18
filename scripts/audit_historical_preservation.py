@@ -23,7 +23,9 @@ Three questions, in order of how much they matter:
 3. What did the provider actually leave uncertain? Ties, missing scores,
    missing dates, unknown classification and -- the one most easily lost --
    neutral site, which is only honestly three-valued if the provider ever
-   says nothing. The census answers that instead of assuming it.
+   says nothing. The census answers that instead of assuming it, and it
+   counts from the PAYLOADS, not the columns: a column under audit must
+   not get to answer a question about the source.
 
 A column that is NULL where the payload carries a value is a LOSS. A column
 that carries a value the payload does not have is an INVENTION. Both are
@@ -46,6 +48,11 @@ FIRST, LAST = 1946, 1979
 # column names the keys it may come from; snake_case and camelCase are both
 # in the wild and the importer accepts either, so this must too.
 FIELDS = {
+    # Provenance first. Every later gate assigns a game to a team-season by
+    # the STORED season, so a season that drifted would move evidence from
+    # one year to another without touching a score.
+    'source_game_id': ('id', 'game_id'),
+    'season': ('season', 'year'),
     'season_type': ('seasonType', 'season_type'),
     'start_date': ('startDate', 'start_date'),
     'home_name_raw': ('homeTeam', 'home_team'),
@@ -60,10 +67,13 @@ FIELDS = {
     'venue': ('venue',),
 }
 
-# The one column the importer deliberately overrides: `store()` writes the
-# season type that was REQUESTED, so a payload that is silent about it is
-# not a disagreement. A payload that names a different one still is.
-REQUEST_SHAPED = ('season_type',)
+# The two columns the importer takes from the REQUEST rather than the
+# response: it writes the season and season type it asked for. A payload
+# silent about either is therefore not a disagreement. A payload that names
+# a different one still is.
+REQUEST_SHAPED = ('season', 'season_type')
+
+INTEGER_COLUMNS = ('home_score', 'away_score', 'season')
 
 # How many disagreeing rows are written out in full. The counts are exact
 # either way; this only bounds the file.
@@ -90,7 +100,7 @@ def comparable(column, value):
         return None
     if column == 'neutral_site':
         return int(bool(value))
-    if column in ('home_score', 'away_score'):
+    if column in INTEGER_COLUMNS:
         return int(value)
     text = str(value)
     return text if text != '' else None
@@ -119,26 +129,38 @@ def row_findings(row, payload):
     return found
 
 
-def census(row):
-    """What this row leaves uncertain, in the gate's own vocabulary."""
+def census(payload):
+    """What the PROVIDER left uncertain, in the gate's own vocabulary.
+
+    Read from the payload, never from the columns. The columns are what
+    this audit is checking, so counting uncertainty out of them would let a
+    drifted column answer a question about the source: a stored 7-6 over a
+    payload's 7-7 would report no tie, and a stored 0 over a payload's null
+    would report that the provider is certain about a neutral site it never
+    spoke to.
+    """
     marks = []
-    home, away = row['home_score'], row['away_score']
+    home = comparable('home_score', payload_value(payload, 'home_score'))
+    away = comparable('away_score', payload_value(payload, 'away_score'))
     if home is None or away is None:
         marks.append('missing_score')
-    elif int(home) == int(away):
+    elif home == away:
         marks.append('tie')
-    if not row['start_date']:
+    if not comparable('start_date', payload_value(payload, 'start_date')):
         marks.append('missing_date')
     for side in ('home', 'away'):
-        if not row[f'{side}_classification']:
+        column = f'{side}_classification'
+        if not comparable(column, payload_value(payload, column)):
             marks.append(f'{side}_classification_unknown')
-    if row['neutral_site'] is None:
+    neutral = comparable('neutral_site',
+                         payload_value(payload, 'neutral_site'))
+    if neutral is None:
         marks.append('neutral_site_unknown')
-    elif int(row['neutral_site']):
+    elif neutral:
         marks.append('neutral_site_true')
     else:
         marks.append('neutral_site_false')
-    if not row['venue']:
+    if not comparable('venue', payload_value(payload, 'venue')):
         marks.append('missing_venue')
     return marks
 
@@ -152,6 +174,7 @@ def audit(archive, first=FIRST, last=LAST):
         ' ORDER BY season, source_game_id', (first, last)).fetchall()
 
     games = 0
+    counted = 0
     corrupt_payloads = []
     unreadable_payloads = []
     findings = []
@@ -182,9 +205,13 @@ def audit(archive, first=FIRST, last=LAST):
                 'error': f'payload is {type(payload).__name__}, not an object'})
             continue
         findings.extend(row_findings(row, payload))
-        marks.update(census(row))
+        marks.update(census(payload))
+        counted += 1
     return {
         'games': games,
+        # Only verified payloads reach the census: a body that failed its
+        # own digest is not evidence of what the provider said.
+        'census_games': counted,
         'seasons': seasons,
         'corrupt_payloads': corrupt_payloads,
         'unreadable_payloads': unreadable_payloads,
@@ -218,6 +245,7 @@ def summarize(result, first, last):
             'by_kind': dict(sorted(by_kind.items())),
             'by_column': dict(sorted(by_column.items())),
         },
+        'census_games': result['census_games'],
         'preserved': {
             'ties': marks.get('tie', 0),
             'missing_score': marks.get('missing_score', 0),
@@ -233,7 +261,9 @@ def summarize(result, first, last):
         'production_promotion_allowed': False,
         'note': 'Read-only. Columns are checked against the payload they '
                 'came from, by a mapping written independently of the '
-                'importer. Nothing is repaired and nothing is promoted.',
+                'importer, and the uncertainty census is counted from '
+                'those payloads rather than from the columns under audit. '
+                'Nothing is repaired and nothing is promoted.',
     }
 
 

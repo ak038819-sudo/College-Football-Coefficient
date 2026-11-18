@@ -5,8 +5,10 @@
 # to it, and asks no provider for anything -- it needs no credential at
 # all. Every other gate reads the COLUMNS of archive_games; this one checks
 # those columns against the payload each row was built from, and counts
-# what the provider left uncertain: ties, missing scores and dates,
-# unknown classification, and neutral site.
+# what the provider left uncertain -- ties, missing scores and dates,
+# unknown classification, and neutral site -- from the payloads
+# themselves, so that a drifted column cannot answer a question about
+# the source.
 #
 # IT REPAIRS NOTHING. A column that drifted from its payload is reported,
 # never rewritten -- rule 1 of the plan is that source records are kept as

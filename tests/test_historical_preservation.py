@@ -115,12 +115,17 @@ def staged(tmp_path, bodies, damage=None, name='historical_staging.db'):
         raw = json.dumps(body, ensure_ascii=False, sort_keys=True,
                          separators=(',', ':'))
         cols = columns_from(body)
+        # The importer stores the season it REQUESTED, which is why a
+        # payload may omit one.
+        cols['season'] = body.get('season', 1952)
+        cols['source_game_id'] = gid
         for column, value in (damage or {}).get(gid, {}).items():
             cols[column] = value
         db.execute(
             'INSERT INTO archive_games VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,'
             '?,?,?)',
-            ('cfbd', gid, body['season'], *[cols[c] for c in COLUMNS], raw,
+            ('cfbd', cols['source_game_id'], cols['season'],
+             *[cols[c] for c in COLUMNS], raw,
              hashlib.sha256(raw.encode()).hexdigest()))
     db.commit()
     db.close()
@@ -222,6 +227,80 @@ class TestARewrittenColumnIsCaught:
             damage={'1': {'venue': None}, '3': {'home_score': 99}}))
         assert sorted(f['source_game_id'] for f in result['findings']) == \
             ['1', '3']
+
+
+class TestProvenanceIsCheckedToo:
+    """The season decides which team-season every later gate credits a
+    game to, so a season that drifted moves evidence between years without
+    touching a score."""
+
+    def test_a_drifted_season_is_caught(self, tmp_path):
+        result = run(staged(tmp_path, [game('1', 1952)],
+                            damage={'1': {'season': 1960}}))
+        assert [(f['column'], f['kind'], f['stored'], f['payload'])
+                for f in result['findings']] == [
+            ('season', 'mismatch', '1960', '1952')]
+
+    def test_a_payload_silent_about_the_season_is_not_a_disagreement(
+            self, tmp_path):
+        # normalized() writes the year that was REQUESTED.
+        body = game('1', 1952)
+        del body['season']
+        result = run(staged(tmp_path, [body], damage={'1': {'season': 1960}}))
+        assert result['findings'] == []
+
+    def test_a_drifted_game_id_is_caught(self, tmp_path):
+        result = run(staged(tmp_path, [game('1')],
+                            damage={'1': {'source_game_id': '4242'}}))
+        assert [(f['column'], f['kind'], f['payload'])
+                for f in result['findings']] == [
+            ('source_game_id', 'mismatch', '1')]
+
+
+class TestTheCensusReadsThePayloadNotTheColumns:
+    """The columns are what this audit is checking. Letting them answer a
+    question about the source would hand the corruption the last word."""
+
+    def test_a_tie_hidden_by_a_drifted_score_is_still_counted(self,
+                                                              tmp_path):
+        body = game('1', homePoints=7, awayPoints=7)
+        result = run(staged(tmp_path, [body],
+                            damage={'1': {'away_score': 6}}))
+        summary = audit.summarize(result, 1946, 1979)
+        assert summary['preserved']['ties'] == 1
+        assert summary['column_findings']['total'] == 1
+
+    def test_an_unknown_neutral_site_hidden_by_a_drifted_column_survives(
+            self, tmp_path):
+        # Otherwise the report would announce that the provider is never
+        # uncertain about a neutral site, on the strength of the very
+        # column it just reported as drifted.
+        body = game('1', neutralSite=None)
+        result = run(staged(tmp_path, [body],
+                            damage={'1': {'neutral_site': 0}}))
+        summary = audit.summarize(result, 1946, 1979)
+        assert summary['neutral_site'] == {'true': 0, 'false': 0,
+                                           'unknown': 1}
+        assert summary['neutral_site_is_three_valued'] is True
+
+    def test_a_classification_invented_in_a_column_is_not_counted_as_known(
+            self, tmp_path):
+        body = game('1', homeClassification='')
+        result = run(staged(tmp_path, [body],
+                            damage={'1': {'home_classification': 'fbs'}}))
+        summary = audit.summarize(result, 1946, 1979)
+        assert summary['preserved']['home_classification_unknown'] == 1
+
+    def test_unverified_payloads_are_left_out_of_the_census(self, tmp_path):
+        path = staged(tmp_path, [game('1'), game('2', 1960)])
+        db = sqlite3.connect(path)
+        db.execute("UPDATE archive_games SET source_payload_json='{}'"
+                   " WHERE source_game_id='1'")
+        db.commit()
+        db.close()
+        summary = audit.summarize(run(path), 1946, 1979)
+        assert summary['games'] == 2
+        assert summary['census_games'] == 1
 
 
 class TestADamagedPayloadIsNotTrusted:
