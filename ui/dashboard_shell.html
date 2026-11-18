@@ -1174,6 +1174,9 @@
   .recruit-signees td.num, .recruit-signees th.num { text-align: right; white-space: nowrap; }
   .recruit-signees td.stars { color: var(--amber); white-space: nowrap; letter-spacing: 1px; }
   .muted-inline { color: var(--ink-dim); font-size: 12px; }
+  .board-picker { display: inline-flex; gap: 8px; align-items: center; margin: 0 0 14px; }
+  .board-picker select { padding: 7px 9px; background: var(--panel-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 7px; font: inherit; max-width: 100%; }
   .recruit-top-title { margin: 0 0 6px; font-size: 13px; color: var(--ink-dim); font-weight: 600; }
   .recruit-top { list-style: none; margin: 0; padding: 0; font-size: 13px; }
   .recruit-top li { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px solid var(--line); }
@@ -5901,7 +5904,12 @@ function renderNavigation() {
 
 function renderPeople() {
   return '<section class="panel"><h1 class="view-title">People</h1><p>Find a player or head coach and explore their seasons, teams and statistics.</p>' +
-    '<form id="people-form" class="games-filters"><label>Name<input type="search" id="people-query" maxlength="150" value="'+esc(state.query)+'" placeholder="Search players and coaches"></label><label>Role<select id="people-kind"><option value="">Players and coaches</option><option value="player"'+(state.peopleKind==='player'?' selected':'')+'>Players</option><option value="coach"'+(state.peopleKind==='coach'?' selected':'')+'>Head coaches</option></select></label><button class="action-button" type="submit">Search</button></form><div id="people-results" aria-live="polite"></div></section>';
+    '<form id="people-form" class="games-filters"><label>Name<input type="search" id="people-query" maxlength="150" value="'+esc(state.query)+'" placeholder="Search players and coaches"></label><label>Role<select id="people-kind"><option value="">Players and coaches</option><option value="player"'+(state.peopleKind==='player'?' selected':'')+'>Players</option><option value="coach"'+(state.peopleKind==='coach'?' selected':'')+'>Head coaches</option></select></label><button class="action-button" type="submit">Search</button></form><div id="people-results" aria-live="polite"></div></section>' +
+    // Boards BELOW the search, not instead of it: someone who knows the name
+    // still wants the box first. An archive that was never loaded leaves this
+    // out rather than drawing a heading over nothing.
+    (peopleBoardsEntry() ? '<section class="panel"><h2 class="section-title">Browse the archive</h2>' +
+      '<div id="people-boards" aria-live="polite">Loading boards\u2026</div></section>' : '');
 }
 let peopleDirectorySeq = 0;
 function hydratePeople(version, kind=state.peopleKind) {
@@ -8049,6 +8057,159 @@ function adjustedHelpHtml() {
     '<li>Nothing here feeds Elo, Merits, the playoff model or any prediction. It is a description ' +
     'of statistics that were already published, with one known distortion taken out.</li>' +
     '</ul></details>';
+}
+
+// ---------------- People boards (career leaders, and coaches) ----------------
+//
+// #section=people used to render a search box and nothing else: with no query
+// it said "enter a name to search". Behind it sat 99,813 players, 827 coaches
+// and 1,112,976 season statistics, and a reader who did not already know a
+// name could reach none of it.
+//
+// The boards are PRECOMPUTED by src/export_people_boards.py, because summing a
+// million rows is not work a browser can do -- which is exactly why the
+// per-season "National leaders" view sums box scores client-side and so starts
+// in 2005. One 69 KB file carries every board.
+//
+// THESE ARE NOT ALL-TIME BOARDS, and the page says so on every one of them.
+// The archive begins in 2009 and defensive statistics in 2016, so each board
+// carries its own measured first season rather than one claim for all of them.
+
+let _peopleBoards = null;
+
+function peopleBoardsEntry() { return STATIC_MANIFEST.people_boards || null; }
+
+function loadPeopleBoards() {
+  if (_peopleBoards) return Promise.resolve(_peopleBoards);
+  const src = peopleBoardsEntry();
+  if (!src) return Promise.reject(new Error('no people boards'));
+  return loadDataScript(src).then(() => {
+    const raw = window.__CFB_PEOPLE_BOARDS__;
+    if (!raw || !raw.leaders) throw new Error('the people boards were empty');
+    _peopleBoards = raw;
+    return raw;
+  });
+}
+
+// A total prints without a decimal unless it has one. Sacks and tackles for
+// loss are halves in this feed, so rounding them to integers would lose a
+// half-sack from every career that has one.
+function boardTotal(value) {
+  if (value == null) return '—';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  return Number.isInteger(n) ? n.toLocaleString() : n.toLocaleString(undefined,
+    { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+function careerBoardHtml(board) {
+  if (!board || !board.leaders || !board.leaders.length) return '';
+  const rows = board.leaders.map((row, i) => {
+    const [pid, name, total, seasons, debut] = row;
+    return '<tr><td class="num rank-col">' + (i + 1) + '</td>' +
+      '<td><a href="' + esc(playerHref(pid)) + '">' + esc(name) + '</a></td>' +
+      '<td class="num" data-sort="' + total + '">' + boardTotal(total) + '</td>' +
+      '<td class="num" data-sort="' + seasons + '">' + seasons + '</td>' +
+      '<td class="num" data-sort="' + (debut == null ? '' : debut) + '">' +
+      (debut == null ? '—' : debut) + '</td></tr>';
+  }).join('');
+  return '<table class="rank-table" data-sortable="true"><thead><tr>' +
+    '<th scope="col" class="rank-col">#</th><th scope="col">Player</th>' +
+    '<th scope="col">' + esc(board.label) + '</th>' +
+    '<th scope="col" title="Seasons the archive has a line for.">Seasons</th>' +
+    '<th scope="col" title="The player’s first season in this archive.">From</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<p class="section-note">Totals are summed over this archive, which begins in ' +
+    esc(String(board.first_season)) + '. A career that started earlier is counted from ' +
+    esc(String(board.first_season)) + ' on, so this is not an all-time list.</p>';
+}
+
+function coachBoardHtml(payload) {
+  if (!payload || !payload.coaches || !payload.coaches.length) return '';
+  const idx = Object.fromEntries((payload.fields || []).map((f, i) => [f, i]));
+  const rows = payload.coaches.map((row, i) => {
+    const wae = Number(row[idx.wins_above_expected]);
+    const unmeasured = row[idx.seasons_unmeasured];
+    return '<tr><td class="num rank-col">' + (i + 1) + '</td>' +
+      '<td><a href="' + esc(coachHref(row[idx.coach_id])) + '">' +
+      esc(row[idx.name]) + '</a></td>' +
+      '<td class="num ' + (wae > 0 ? 'pos' : wae < 0 ? 'neg' : 'flat') + '" data-sort="' + wae +
+      '">' + (wae > 0 ? '+' : '') + wae.toFixed(2) + '</td>' +
+      '<td class="num" data-sort="' + row[idx.seasons_measured] + '">' +
+      row[idx.seasons_measured] +
+      // A season shared with another head coach is not measured, and saying
+      // "28 seasons" when two of them were not counted would be wrong.
+      (unmeasured ? ' <span class="muted-inline">(+' + unmeasured + ' not measured)</span>' : '') +
+      '</td>' +
+      '<td class="num" data-sort="' + row[idx.wins] + '">' + row[idx.wins] + '</td>' +
+      '<td class="num" data-sort="' + row[idx.first_season] + '">' +
+      row[idx.first_season] + '–' + row[idx.last_season] + '</td></tr>';
+  }).join('');
+  return '<table class="rank-table" data-sortable="true"><thead><tr>' +
+    '<th scope="col" class="rank-col">#</th><th scope="col">Head coach</th>' +
+    '<th scope="col" title="Wins above what the pregame Elo expectation gave his teams, ' +
+    'summed over his career.">Wins above expected</th>' +
+    '<th scope="col">Seasons</th><th scope="col">Wins</th><th scope="col">Span</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<p class="section-note">Before each game the Elo rating gave that team a win ' +
+    'probability, and the sum of those is the season a typical coach of that team, against ' +
+    'that schedule, would have had. This is the part that was not already predicted — ' +
+    'the top ' + payload.coaches.length + ' of ' + payload.measured_coaches +
+    ' measured coaches. A season two head coaches shared is <b>not</b> measured, because the ' +
+    'source never says which games were whose; ' + payload.unmeasured_seasons +
+    ' seasons are unmeasured for that reason and are counted beside each total, never ' +
+    'folded into it.</p>';
+}
+
+// Which board is open is page state, not a URL parameter. CfbNavigation
+// normalises the hash and drops anything not in its contract, so a `board=`
+// written here would be stripped on the next render and the picker would
+// spring back -- the same reason the roster tab keeps its season in
+// teamPageState. An unknown value falls back to the first board.
+let peopleBoardKey = null;
+function boardKeys(boards) { return ['coaches', ...Object.keys(boards.leaders || {})]; }
+function activeBoard(boards) {
+  const keys = boardKeys(boards);
+  return keys.includes(peopleBoardKey) ? peopleBoardKey : keys[0];
+}
+
+function boardPicker(boards, active) {
+  const options = [['coaches', 'Coaches: wins above expected'],
+    ...Object.entries(boards.leaders || {}).map(([key, b]) => [key, b.label])];
+  return '<label class="board-picker">Board <select id="people-board">' +
+    options.map(([value, label]) => '<option value="' + esc(value) + '"' +
+      (value === active ? ' selected' : '') + '>' + esc(label) + '</option>').join('') +
+    '</select></label>';
+}
+
+function peopleBoardsHtml(boards) {
+  const active = activeBoard(boards);
+  const body = active === 'coaches' ? coachBoardHtml(boards.coaches)
+    : careerBoardHtml((boards.leaders || {})[active]);
+  return boardPicker(boards, active) +
+    (body || '<p class="empty-note">This board has nothing in it.</p>');
+}
+
+function hydratePeopleBoards(version) {
+  const target = document.getElementById('people-boards');
+  if (!target) return;
+  if (!peopleBoardsEntry()) { target.innerHTML = ''; return; }
+  loadPeopleBoards().then(boards => {
+    if (version !== renderVersion) return;
+    const el = document.getElementById('people-boards');
+    if (!el) return;
+    el.innerHTML = peopleBoardsHtml(boards);
+    wrapWideTables();
+    const sel = document.getElementById('people-board');
+    if (sel) sel.addEventListener('change', () => {
+      peopleBoardKey = sel.value;
+      hydratePeopleBoards(version);
+    });
+  }).catch(() => {
+    if (version !== renderVersion) return;
+    const el = document.getElementById('people-boards');
+    if (el) el.innerHTML = '<p class="empty-note">The boards could not be loaded.</p>';
+  });
 }
 
 // ---------------- Awards (Stats > Awards) ----------------
@@ -11328,7 +11489,7 @@ function render() {
     else if (state.subview === 'awards') { content.innerHTML = renderAwards(); hydrateAwards(version); }
     else { content.innerHTML = renderStats(); hydrateStats(version); }
   }
-  else if (state.section === 'people') { content.innerHTML = renderPeople(); hydratePeople(version); }
+  else if (state.section === 'people') { content.innerHTML = renderPeople(); hydratePeople(version); hydratePeopleBoards(version); }
   else if (state.section === 'methodology') content.innerHTML = renderMethodology();
   else if (state.section === 'coverage') content.innerHTML = renderCoverage();
   else if (state.section === 'accuracy') content.innerHTML = renderAccuracy();
