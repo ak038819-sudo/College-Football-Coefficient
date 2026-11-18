@@ -6,11 +6,13 @@ on:
       - 'scripts/audit_historical_backfill.py'
       - 'scripts/reconcile_historical_sources.py'
       - 'scripts/build_historical_identity_map.py'
+      - 'scripts/build_historical_eligibility.py'
       - 'scripts/import_historical_archive.py'
       - 'tests/test_historical_backfill_audit.py'
       - 'tests/test_historical_backfill_workflow.py'
       - 'tests/test_historical_reconcile.py'
       - 'tests/test_historical_identity_map.py'
+      - 'tests/test_historical_eligibility.py'
       - '.github/workflows/historical-backfill-tests.yml'
       - '.github/workflows/historical-backfill.yml'
       - '.github/workflows/historical-reconcile.yml'
@@ -36,10 +38,12 @@ jobs:
             scripts/import_historical_archive.py \
             scripts/reconcile_historical_sources.py \
             scripts/build_historical_identity_map.py \
+            scripts/build_historical_eligibility.py \
             tests/test_historical_backfill_audit.py \
             tests/test_historical_backfill_workflow.py \
             tests/test_historical_reconcile.py \
-            tests/test_historical_identity_map.py
+            tests/test_historical_identity_map.py \
+            tests/test_historical_eligibility.py
       - name: Install pytest
         # PyYAML too: the workflow test reads the backfill workflow as data,
         # and `importorskip` would otherwise skip it into silence here.
@@ -49,4 +53,5 @@ jobs:
           python -m pytest tests/test_historical_backfill_audit.py \
             tests/test_historical_backfill_workflow.py \
             tests/test_historical_reconcile.py \
-            tests/test_historical_identity_map.py -q
+            tests/test_historical_identity_map.py \
+            tests/test_historical_eligibility.py -q

@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4997530]={"b":{"b":"2002-01-15T08:00Z","c":["Mbour",null,"Senegal"],"d":[2022,2,39],"h":83,"i":4997530,"j":"18","n":"Khalifa Diop","p":"Center","pa":"C","s":"K. Diop","w":231,"x":0},"s":[]};

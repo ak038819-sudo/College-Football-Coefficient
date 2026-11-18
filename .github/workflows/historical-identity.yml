@@ -12,7 +12,7 @@
 # fill. Renaming, merging or dropping a school is not something a script
 # does here. No production table is opened, no rating is built, `ui/` is
 # untouched, so no deploy follows.
-name: Historical identity candidates (1946-1979)
+name: Historical identity and eligibility (1946-1979)
 
 on:
   workflow_dispatch:
@@ -122,6 +122,20 @@ jobs:
             --end "${{ inputs.end }}" \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
+      - name: Map season eligibility
+        run: |
+          set -o pipefail
+          # Season by season, from what the provider recorded at the time.
+          # Never from present-day membership, which this archive predates
+          # by decades.
+          python scripts/build_historical_eligibility.py \
+            --staging "$STAGING" \
+            --records "$RECORDS" \
+            --out "$REPORT" \
+            --start "${{ inputs.start }}" \
+            --end "${{ inputs.end }}" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: List every name still to be ruled on
         if: always()
         run: |
@@ -179,7 +193,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: historical-identity-${{ inputs.start }}-${{ inputs.end }}
+          name: historical-identity-eligibility-${{ inputs.start }}-${{ inputs.end }}
           path: ${{ env.REPORT }}
           retention-days: 90
           if-no-files-found: ignore

@@ -165,11 +165,98 @@ one that must name the programme, and `tests/test_historical_identity_map.py`
 refuses a `renamed` row without a canonical name. The other four mean the
 name is never rated and only has to be a consistent opponent.
 
+### Verdicts, 2026-11-13
+
+All 165 are ruled on, and **none is `renamed`**, so none of them carries a
+rating: 132 `small_college`, 20 `service_team`, 4 `exhibition`, 9
+`ambiguous`.
+
+What every verdict rests on is the same evidence, and it travels with it in
+`verdict_note`: each of these names is **unclassified in every staged game**
+and carried by no record line. The plan's own rule is that unknown
+classification stays unknown and is never read as FBS, so none of them can
+be major-college however it is identified. That is what makes these
+verdicts safe to make from the archive alone — they decide a tier the
+evidence already decides, not a history it does not record.
+
+`renamed` was not used, and that is a finding rather than an omission. The
+provider applies **present-day** names retroactively — "East Texas A&M"
+sits on a 1948 game, a name that school took in 2024 — so each programme
+appears in the archive under a single name and there is no pair to merge.
+
+Nine are `ambiguous`. Four are names no college could be identified for at
+all (Alliance, Frederick, Leilahau, Mohawk); three are names shared by more
+than one school, where which one cannot be settled from the archive (Wayne
+State, Central State, Lincoln); and two are "Parsons" and "Parsons (Iowa)",
+which appear in overlapping seasons and may well be one programme. They are
+flagged for each other and **not merged**, because a merge is the one thing
+this gate exists to refuse.
+
+## Season eligibility
+
+`scripts/build_historical_eligibility.py` runs beside the identity map, on
+the same two databases, and decides each **team-season** separately from
+what the provider recorded at the time: the classification carried on that
+team's game rows that season, and the classification on its record line.
+
+| eligibility | meaning |
+| --- | --- |
+| `major_college` | the evidence for that season says the top tier, and nothing else |
+| `lower_division` | the evidence says a lower division |
+| `unknown` | neither source says anything |
+| `conflict` | the sources disagree, or the season carries two labels |
+
+Three rules it does not bend. **Unknown is not no, and is never read as
+yes** — 165 school names in this archive carry no classification at all,
+and reading silence as the top tier would admit every one of them. **A
+season decides only itself**, because membership moved; the mapping is
+per team-season and not a list of schools. **A conflict is reported, not
+averaged** — a tier is not a number.
+
+Nothing in it reads the modern registry, and a test asserts the file never
+mentions it: a present-day power gets nothing for free in a season this
+archive says nothing about.
+
+### Result, 1946–1979 (2026-11-13)
+
+Run [43445448118](https://github.com/ak038819-sudo/College-Football-Coefficient/actions/runs/43445448118),
+over the full range, on the staged archive and the collected records:
+
+| | team-seasons |
+| --- | --- |
+| `major_college` | 4,240 |
+| `lower_division` | 3,093 |
+| `unknown` | 754 |
+| `conflict` | 0 |
+| total | 8,087 |
+
+**No season carries a conflict.** The two sources the gate reads — the
+classification on a team's game rows and the classification on its record
+line — never disagreed in 8,087 team-seasons, which is the same archive
+the reconciliation found zero count and result mismatches in.
+
+There are 754 unknown team-seasons, the same count the reconciliation
+reported as `no_reference_line` across 191 names: team-seasons the
+provider carries games for and no record line. The equal counts are what
+you would expect — a team-season with no record line and no classification
+on its games has nothing for either gate to read — but the two reports
+were not cross-checked row by row, so take it as agreement in size, not a
+proven identity. Either way the 754 stay unknown, and so stay out of any
+major-college set.
+
+Major-college counts run from **117** (1954) to **143** (1977), rising
+through the 1970s. That is the shape the period had, and it is a useful
+sanity check: a gate that had quietly read silence as the top tier would
+have shown several hundred a season instead.
+
+`production_promotion_allowed` is `false` in every report. This gate says
+which team-seasons *could* be rated, not that anything may be.
+
 ## Review before promotion
 
 - Reconcile source counts with independent historical references for each season, especially empty or unexpectedly sparse years. (The provider's own records feed is now reconciled by `historical-reconcile.yml`; independent references are still outstanding.)
 - Create a reviewed canonical historical school identity map including renamed, merged, discontinued, and similarly named programs. (`.github/workflows/historical-identity.yml` builds the **candidates**; the verdicts are a person's.)
-- Create season-specific major-college / division eligibility mapping; do not infer historical membership from present-day FBS.
+- Create season-specific major-college / division eligibility mapping; do not infer historical membership from present-day FBS. (`scripts/build_historical_eligibility.py`, run beside the identity map.)
 - Preserve ties, neutral-site uncertainty, missing scores/dates, and unknown classifications.
 - Report all unresolved ambiguities; never silently discard records to satisfy modern FBS constraints.
 - Freeze pre-promotion Elo/Merits fingerprints; compare outputs before and after promotion and require explicit approval.
