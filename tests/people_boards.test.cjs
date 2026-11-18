@@ -179,3 +179,37 @@ test('the board choice is page state, not a URL the router would strip', () => {
   assert.doesNotMatch(fn, /location\.hash/,
     'the picker must not try to keep its state in the URL');
 });
+
+/* ---- the shared table enhancer must be allowed to run ------------------ */
+
+test('the boards really do sort, driven through the real ui/stats.js', () => {
+  // `CfbStats.enhanceTable()` uses data-sortable as its own "already done"
+  // marker and returns immediately when it is present (ui/stats.js). A board
+  // that set it in its own markup got no sort buttons and no click handlers,
+  // and every sort key beside a number went unread. This drives the
+  // consequence, not just the attribute.
+  const { JSDOM } = require('jsdom');
+  const html = career(careerBoard([[1, 'A Back', 6405, 4, 2013],
+                                   [2, 'B Back', 120, 2, 2015]]));
+  const dom = new JSDOM('<body>' + html + '</body>', { runScripts: 'outside-only' });
+  const w = dom.window;
+  w.eval(fs.readFileSync('ui/stats.js', 'utf8'));
+  const table = w.document.querySelector('table');
+  w.CfbStats.enhanceTable(table);
+  assert.ok(table.querySelectorAll('.sort-button').length > 0,
+    'the enhancer must have been allowed to run');
+  const names = () => [...table.tBodies[0].rows].map(r => r.cells[1].textContent.trim());
+  const button = [...table.querySelectorAll('.sort-button')]
+    .find(b => /Player|Name/i.test(b.textContent));
+  button.dispatchEvent(new w.Event('click'));
+  button.dispatchEvent(new w.Event('click'));
+  assert.deepEqual(names(), ['A Back', 'B Back'], 'ascending by name');
+});
+
+test('neither board pre-sets data-sortable', () => {
+  for (const html of [career(careerBoard([[1, 'A Back', 6405, 4, 2013]])),
+                      coachBoard(coachPayload([[1, 'A Coach', 4.0, 26, 2, 312, 240, 1990, 2019]]))]) {
+    assert.doesNotMatch(html, /data-sortable/,
+      'leave the attribute to the enhancer, which sets it once it has run');
+  }
+});

@@ -8116,7 +8116,7 @@ function careerBoardHtml(board) {
       '<td class="num" data-sort="' + (debut == null ? '' : debut) + '">' +
       (debut == null ? '—' : debut) + '</td></tr>';
   }).join('');
-  return '<table class="rank-table" data-sortable="true"><thead><tr>' +
+  return '<table class="rank-table"><thead><tr>' +
     '<th scope="col" class="rank-col">#</th><th scope="col">Player</th>' +
     '<th scope="col">' + esc(board.label) + '</th>' +
     '<th scope="col" title="Seasons the archive has a line for.">Seasons</th>' +
@@ -8148,7 +8148,7 @@ function coachBoardHtml(payload) {
       '<td class="num" data-sort="' + row[idx.first_season] + '">' +
       row[idx.first_season] + '–' + row[idx.last_season] + '</td></tr>';
   }).join('');
-  return '<table class="rank-table" data-sortable="true"><thead><tr>' +
+  return '<table class="rank-table"><thead><tr>' +
     '<th scope="col" class="rank-col">#</th><th scope="col">Head coach</th>' +
     '<th scope="col" title="Wins above what the pregame Elo expectation gave his teams, ' +
     'summed over his career.">Wins above expected</th>' +
