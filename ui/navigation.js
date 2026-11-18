@@ -6,7 +6,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
   const views = {
-    people: [], stats: ['overview', 'teams', 'players', 'adjusted', 'awards'], home: [], live: [], games: [], matchups: [], teams: ['', 'stadiums'], methodology: [], coverage: [], accuracy: [],
+    people: [], stats: ['overview', 'teams', 'players', 'adjusted', 'recruiting', 'awards'], home: [], live: [], games: [], matchups: [], teams: ['', 'stadiums'], methodology: [], coverage: [], accuracy: [],
     // Conference Merits is CoE 2.0's frozen value entering the season, and is
     // now the default board. CoE 1.0's five-year rolling value keeps its own
     // view at 'conference-coe-v1': they are different numbers and must never be
@@ -17,7 +17,7 @@
   // Detail-page tabs (Milestone E). The first entry is the default and is left out
   // of the URL, so every existing #team= link keeps opening the same page.
   const pageTabs = {
-    team: ['overview', 'week', 'schedule', 'roster', 'stats', 'leaders', 'history', 'analytics'],
+    team: ['overview', 'week', 'schedule', 'roster', 'recruiting', 'stats', 'leaders', 'history', 'analytics'],
     conference: ['overview', 'members', 'history', 'external'],
     game: [],
     // People pages (v0.1.1) carry no tabs yet, like #game=. What is known about a
