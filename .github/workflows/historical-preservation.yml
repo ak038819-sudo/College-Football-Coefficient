@@ -1,0 +1,172 @@
+# Phase 3, the preservation gate: does the staged archive still say what
+# the provider said?
+#
+# READS ONLY. It carries the backfill's staging chain, writes nothing back
+# to it, and asks no provider for anything -- it needs no credential at
+# all. Every other gate reads the COLUMNS of archive_games; this one checks
+# those columns against the payload each row was built from, and counts
+# what the provider left uncertain: ties, missing scores and dates,
+# unknown classification, and neutral site.
+#
+# IT REPAIRS NOTHING. A column that drifted from its payload is reported,
+# never rewritten -- rule 1 of the plan is that source records are kept as
+# they came. No production table is opened, no rating is built, `ui/` is
+# untouched, so no deploy follows.
+name: Historical preservation audit (1946-1979)
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "First season (1946-1979)."
+        type: string
+        default: "1946"
+      end:
+        description: "Last season (1946-1979)."
+        type: string
+        default: "1979"
+
+concurrency:
+  group: historical-preservation
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # To download the staging artifact. It is not replaced.
+  actions: read
+
+jobs:
+  preservation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      STAGING: ${{ github.workspace }}/staging/historical_staging.db
+      REPORT: ${{ github.workspace }}/report
+      ARTIFACT_STAGING: historical-staging-db
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      # No pip install: the script is standard library only.
+
+      - name: Check the range
+        run: |
+          python - <<'PY'
+          import os
+          import sys
+          start, end = os.environ['START'], os.environ['END']
+          try:
+              first, last = int(start), int(end)
+          except ValueError:
+              sys.exit(f'::error::start and end must be years: {start}, {end}')
+          if not 1946 <= first <= last <= 1979:
+              sys.exit('::error::Phase 3 is 1946-1979, and start must not be '
+                       f'after end: got {first}-{last}')
+          print(f'Auditing {first}-{last}')
+          PY
+        env:
+          START: ${{ inputs.start }}
+          END: ${{ inputs.end }}
+
+      - name: Fetch the staged archive
+        run: |
+          set -o pipefail
+          mkdir -p "$(dirname "$STAGING")"
+          # SORTED: the artifacts endpoint promises no order and does not
+          # give one, and taking the first row once dropped a whole
+          # backfill batch out of the chain in silence.
+          id=$(gh api \
+            "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$ARTIFACT_STAGING&per_page=100" \
+            --jq '[.artifacts[] | select(.expired == false)]
+                  | sort_by(.created_at) | reverse | .[0].id // empty')
+          if [ -z "$id" ]; then
+            echo "::error::No $ARTIFACT_STAGING artifact. Run the backfill first; it expires 90 days after its run."
+            exit 1
+          fi
+          if ! gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" \
+               > "$RUNNER_TEMP/staging.zip"; then
+            echo "::error::staging artifact $id could not be downloaded"
+            exit 1
+          fi
+          if ! unzip -o -q "$RUNNER_TEMP/staging.zip" -d "$(dirname "$STAGING")"; then
+            echo "::error::staging artifact $id is not a readable zip"
+            exit 1
+          fi
+          if [ ! -f "$STAGING" ]; then
+            echo "::error::staging artifact $id holds no $(basename "$STAGING")"
+            exit 1
+          fi
+
+      - name: Audit what the archive preserves
+        run: |
+          set -o pipefail
+          python scripts/audit_historical_preservation.py \
+            --staging "$STAGING" \
+            --out "$REPORT" \
+            --start "${{ inputs.start }}" \
+            --end "${{ inputs.end }}" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Say plainly whether anything drifted
+        if: always()
+        run: |
+          set -o pipefail
+          summary="$REPORT/historical_preservation_summary.json"
+          if [ ! -f "$summary" ]; then
+            echo "No report was written."
+            exit 0
+          fi
+          # Printed, not only written to the artifact: the artifact store
+          # is not reachable from every place this gets read from.
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          report = Path(os.environ['REPORT'])
+          summary = json.loads(
+              (report / 'historical_preservation_summary.json').read_text())
+          findings = summary['column_findings']
+          payloads = summary['payloads']
+          lines = ['', '### Preservation', '']
+          if findings['total'] or payloads['corrupt'] or payloads['unreadable']:
+              lines += [
+                  f"**{findings['total']} columns no longer match their "
+                  f"payload**, and {payloads['corrupt']} payloads failed "
+                  f"their own digest. Nothing was repaired.", '',
+                  '| kind | columns |', '| --- | --- |']
+              lines += [f'| {kind} | {count} |'
+                        for kind, count in findings['by_kind'].items()]
+          else:
+              lines.append(
+                  f"Every column of all {summary['games']} staged games "
+                  'still matches the payload it came from, and every '
+                  'payload matches its digest.')
+          preserved, neutral = summary['preserved'], summary['neutral_site']
+          lines += ['', '| preserved | games |', '| --- | --- |']
+          lines += [f'| {name.replace("_", " ")} | {count} |'
+                    for name, count in preserved.items()]
+          lines += [
+              f"| neutral site true | {neutral['true']} |",
+              f"| neutral site false | {neutral['false']} |",
+              f"| neutral site unknown | {neutral['unknown']} |", '']
+          if not summary['neutral_site_is_three_valued']:
+              lines.append(
+                  'The provider never says it does not know whether a game '
+                  'was at a neutral site, so every "false" here is its '
+                  'assertion and not an absence we read as one.')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+              out.write('\n'.join(lines) + '\n')
+          print('\n'.join(lines))
+          PY
+
+      - name: Publish the preservation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: historical-preservation-${{ inputs.start }}-${{ inputs.end }}
+          path: ${{ env.REPORT }}
+          if-no-files-found: ignore
+          retention-days: 90
