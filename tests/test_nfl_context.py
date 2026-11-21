@@ -30,7 +30,10 @@ CONFIG = dict(elo=dict(k=48, home_advantage=50, offseason_retention=0.5,
                        margin_min=0.25, margin_max=4.0,
                        reference_margin=11.67, points_per_elo=0.0527,
                        initial_rating=1500.0, scale=400.0))
+# `chosen` is what the report measured; `build_ratings` refuses a report
+# measured on other parameters than the ones being replayed.
 REPORT = dict(fit_seasons=[2024], holdout_seasons=[2025],
+              chosen=dict(CONFIG['elo']),
               holdout=dict(brier=0.2237, games=1424))
 
 
