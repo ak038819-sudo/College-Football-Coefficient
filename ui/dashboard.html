@@ -9884,6 +9884,125 @@ function scoringDrives(drives) {
   }
   return out;
 }
+// The conventional team box score -- first downs, third downs, total yards,
+// turnovers, penalties, time of possession. Sharded on the same rule as the
+// box scores and the drives, so a game page's three requests all land in the
+// same shard index.
+//
+// WHY THE PAGE DOES THE LABELLING AND NOT THE EXPORT. CFBD's category names
+// are the provider's spelling ("thirdDownEff", "totalPenaltiesYards") and its
+// values are strings whose meaning depends on the category: "417" is a
+// number, "31:45" is a clock, "6-14" is made-of-attempted. The export ships
+// them verbatim so nothing is invented on the way out; src/team_box_score.py
+// holds the same rules on the Python side and tests hold the two together.
+const TEAM_STAT_ORDER = [
+  ['firstDowns', 'First downs'],
+  ['thirdDownEff', 'Third down'],
+  ['fourthDownEff', 'Fourth down'],
+  ['totalYards', 'Total yards'],
+  ['netPassingYards', 'Passing yards'],
+  ['completionAttempts', 'Comp-Att'],
+  ['yardsPerPass', 'Yards per pass'],
+  ['rushingYards', 'Rushing yards'],
+  ['rushingAttempts', 'Rushing attempts'],
+  ['yardsPerRushAttempt', 'Yards per rush'],
+  ['turnovers', 'Turnovers'],
+  ['fumblesLost', 'Fumbles lost'],
+  ['interceptions', 'Interceptions thrown'],
+  ['totalPenaltiesYards', 'Penalties'],
+  ['possessionTime', 'Time of possession'],
+  ['sacks', 'Sacks'],
+  ['tacklesForLoss', 'Tackles for loss'],
+  ['qbHurries', 'QB hurries'],
+  ['passesDeflected', 'Passes deflected'],
+  ['interceptionYards', 'Interception return yards'],
+  ['kickReturnYards', 'Kick return yards'],
+  ['puntReturnYards', 'Punt return yards']
+];
+// Already on the scoreboard or in the scoring summary; repeating them here
+// would be the kind of duplicated furniture this site does without.
+const TEAM_STAT_SUPPRESSED = ['passingTDs', 'rushingTDs', 'kickingPoints'];
+// "5-45" is five penalties for forty-five yards, not five of forty-five.
+const TEAM_STAT_NOT_A_FRACTION = ['totalPenaltiesYards'];
+
+function teamBoxEntry(season) {
+  const entry = (STATIC_MANIFEST.team_box || {})[String(season)];
+  return entry && entry.files ? entry : null;
+}
+function loadTeamBox(season, gameId) {
+  const entry = teamBoxEntry(season);
+  if (!entry) return Promise.resolve(null);
+  const file = entry.files[String(boxScoreShard(gameId, entry.shards))];
+  if (!file) return Promise.resolve(null);
+  // Read the global only after the script resolves: the shard merges into it.
+  return loadDataScript(file)
+    .then(() => ((window.__CFB_TEAM_BOX__ || {})[season] || {})[String(gameId)] || null);
+}
+// A category with no curated label is still shown, spelled as the provider
+// spells it, spaced out. CFBD adds categories season by season and a reader
+// who sees an oddly named row is better served than one who sees nothing.
+function teamStatLabel(category) {
+  for (const [known, label] of TEAM_STAT_ORDER) if (known === category) return label;
+  const words = String(category == null ? '' : category)
+    .replace(/(?<=[a-z0-9])(?=[A-Z])/g, ' ').replace(/_/g, ' ').trim().split(/\s+/)
+    .filter(Boolean);
+  if (!words.length) return 'Unnamed';
+  // Sentence case, to match the curated labels: 'First downs', not 'First
+  // Downs'. A word already in full capitals is an abbreviation, left alone.
+  // src/team_box_score.py's label_for does exactly this, and a test holds
+  // the two spellings to each other.
+  const isUpper = w => w === w.toUpperCase() && w !== w.toLowerCase();
+  const first = isUpper(words[0]) ? words[0]
+    : words[0].charAt(0).toUpperCase() + words[0].slice(1).toLowerCase();
+  return [first].concat(words.slice(1).map(w => isUpper(w) ? w : w.toLowerCase())).join(' ');
+}
+// The conversion rate, or null. Null for anything that is not made-of-
+// attempted AND for a conversion out of zero attempts: nobody failed on
+// third down if nobody faced a third down.
+function teamStatPercent(category, value) {
+  if (TEAM_STAT_NOT_A_FRACTION.indexOf(category) >= 0) return null;
+  const match = /^\s*(\d+)\s*-\s*(\d+)\s*$/.exec(String(value == null ? '' : value));
+  if (!match) return null;
+  const attempted = Number(match[2]);
+  if (!attempted) return null;
+  return Math.round(1000 * Number(match[1]) / attempted) / 10;
+}
+// [{category, label, away, home, away_pct, home_pct}] in reading order. A
+// category either side reported appears, with '' for the side that did not:
+// the two teams of one game can disagree on which categories exist, and
+// blanking the row for both would lose a real measurement.
+function teamBoxRows(sides) {
+  const away = (sides || {}).away || {}, home = (sides || {}).home || {};
+  const order = new Map(TEAM_STAT_ORDER.map(([c], i) => [c, i]));
+  const seen = new Set([...Object.keys(away), ...Object.keys(home)]
+    .filter(c => TEAM_STAT_SUPPRESSED.indexOf(c) < 0));
+  const rank = c => order.has(c) ? [0, order.get(c), ''] : [1, 0, c];
+  return [...seen].sort((a, b) => {
+    const ra = rank(a), rb = rank(b);
+    return ra[0] - rb[0] || ra[1] - rb[1] || String(ra[2]).localeCompare(String(rb[2]));
+  }).map(category => ({
+    category, label: teamStatLabel(category),
+    away: away[category] == null ? '' : String(away[category]),
+    home: home[category] == null ? '' : String(home[category]),
+    away_pct: teamStatPercent(category, away[category]),
+    home_pct: teamStatPercent(category, home[category])
+  })).filter(row => row.away !== '' || row.home !== '');
+}
+function gameTeamStatsPanel(sides, an, hn) {
+  const rows = teamBoxRows(sides);
+  if (!rows.length) return '';
+  const cell = (value, pct) => '<td class="num">' + (value === '' ? '&mdash;' : esc(value)) +
+    (pct == null ? '' : ' <span class="muted">' + pct.toFixed(1) + '%</span>') + '</td>';
+  return '<div class="panel" id="gp-team-stats"><h2 class="section-title">Team stats</h2>' +
+    '<div class="table-scroll" tabindex="0" role="region" aria-label="Team totals for both sides">' +
+    '<table class="gp-table"><thead><tr><th></th><th class="num">' + esc(an) +
+    '</th><th class="num">' + esc(hn) + '</th></tr></thead><tbody>' +
+    rows.map(row => '<tr><td>' + esc(row.label) + '</td>' +
+      cell(row.away, row.away_pct) + cell(row.home, row.home_pct) + '</tr>').join('') +
+    '</tbody></table></div>' +
+    '<p class="section-note">As the provider recorded them; nothing here is summed from ' +
+    'player lines, which do not add up to a team total.</p></div>';
+}
 function gameDrivesPanel(drives, an, hn) {
   if (!drives.length) return '';
   const scoring = scoringDrives(drives);
@@ -10315,6 +10434,7 @@ function hydrateGamePage(version) {
         (g.completed ? '' : '<div id="gp-scouting-slot" aria-live="polite"></div>') + matchupPanel +
         gameStory(g, d, season, an, hn) + gameVenuePanel(g, hn) +
         (g.completed && driveArchiveEntry(season) ? '<div id="gp-drives" class="panel"><h2 class="section-title">Scoring summary</h2><p class="empty-note">Loading drives…</p></div>' : '') +
+        (g.completed && teamBoxEntry(season) ? '<div id="gp-team-stats" class="panel"><h2 class="section-title">Team stats</h2><p class="empty-note">Loading team totals…</p></div>' : '') +
         (g.completed ? '<div id="gp-players" class="panel"><h2 class="section-title">Player box score</h2><p class="empty-note">Loading player stats…</p></div>' : '') +
         '<div class="panel" id="gp-series"><h2 class="section-title">Series history</h2><p class="empty-note">Loading meetings…</p></div>' + more;
       if (!g.completed) hydrateGameScouting(g, season, an, hn, version);
@@ -10350,6 +10470,20 @@ function hydrateGamePage(version) {
         if (version === renderVersion && document.getElementById('gp-drives'))
           document.getElementById('gp-drives').innerHTML =
             '<h2 class="section-title">Scoring summary</h2><p class="empty-note">Drives could not be loaded.</p>';
+      });
+      if (g.completed && teamBoxEntry(season)) loadTeamBox(season, id).then(sides => {
+        if (version !== renderVersion) return;
+        const panel = document.getElementById('gp-team-stats');
+        if (!panel) return;
+        const html = gameTeamStatsPanel(sides, an, hn);
+        // A game the archive does not cover gets no empty section: CFBD's
+        // coverage is per game, not per season, and an empty panel would read
+        // as a game in which neither team gained a yard.
+        if (html) panel.outerHTML = html; else panel.remove();
+      }).catch(() => {
+        if (version === renderVersion && document.getElementById('gp-team-stats'))
+          document.getElementById('gp-team-stats').innerHTML =
+            '<h2 class="section-title">Team stats</h2><p class="empty-note">Team totals could not be loaded.</p>';
       });
       loadSeries(g.home_id, g.away_id).then(rows => {
         if (version === renderVersion) document.getElementById('gp-series').innerHTML = seriesHtml(rows, g, an, hn);

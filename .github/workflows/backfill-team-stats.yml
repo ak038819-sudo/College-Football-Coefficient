@@ -1,0 +1,155 @@
+# Fetch the conventional team box score for every game, one season at a time.
+#
+# WHY THIS RUNS HERE. CFBD is unreachable from a development container, so an
+# Actions runner is the only place /games/teams can be called.
+#
+# WHAT IT ADDS. The archive already holds every player's line and every team's
+# efficiency metrics. It holds no first down, no third-down conversion, no
+# penalty and no time of possession at all, and team passing yards cannot be
+# recovered by summing receivers. This is that data.
+#
+# Resumable: a season whose CSV is already committed is skipped, so a run that
+# times out can simply be dispatched again over the same range.
+name: Backfill team box scores
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_year:
+        description: "First season to fetch"
+        required: true
+        default: "2001"
+      end_year:
+        description: "Last season to fetch"
+        required: true
+        default: "2025"
+      probe:
+        description: "Report the endpoint's categories and counts; write nothing"
+        type: boolean
+        required: false
+        default: false
+      force:
+        description: "Re-fetch seasons whose CSV is already committed"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    # Shares the deploy's lock because it pushes to main and writes data/raw,
+    # which the scheduled refresh also rewrites.
+    concurrency:
+      group: rebuild-and-deploy-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Report what the endpoint actually returns
+        if: ${{ inputs.probe }}
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          START: ${{ inputs.start_year }}
+          END: ${{ inputs.end_year }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CFBD_API_KEY:-}" ]; then
+            echo "::error::CFBD_API_KEY is not set for this repository."
+            exit 1
+          fi
+          python3 src/fetch_cfbd_game_team_stats.py --probe "$START" "$END"
+
+      - name: Fetch and commit one season at a time
+        if: ${{ !inputs.probe }}
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          START: ${{ inputs.start_year }}
+          END: ${{ inputs.end_year }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CFBD_API_KEY:-}" ]; then
+            echo "::error::CFBD_API_KEY is not set for this repository."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          flags=""
+          if [ "$FORCE" = "true" ]; then flags="--force"; fi
+          # One season per commit, pushed as it lands, so a timeout or a CFBD
+          # outage costs the season in flight rather than the whole backfill.
+          for year in $(seq "$START" "$END"); do
+            echo "::group::season $year"
+            # Checked explicitly: `set -e` does NOT stop a shell loop, and a
+            # season that failed must halt the run rather than be skipped while
+            # later seasons commit on top of the gap.
+            if ! python3 src/fetch_cfbd_game_team_stats.py "$year" $flags; then
+              echo "::endgroup::"
+              echo "::error::Season $year failed. Earlier seasons are committed; re-run this workflow from $year to resume."
+              exit 1
+            fi
+            path="data/raw/game_team_stats_$year.csv"
+            # A season the endpoint has nothing for writes no file. That is a
+            # fact about the provider's coverage, not a failure.
+            if [ ! -f "$path" ]; then
+              echo "Season $year produced no file; CFBD has no team box score for it."
+              echo "::endgroup::"
+              continue
+            fi
+            if git diff --quiet -- "$path" && git ls-files --error-unmatch "$path" >/dev/null 2>&1; then
+              echo "Season $year is unchanged; nothing to publish."
+              echo "::endgroup::"
+              continue
+            fi
+            if ! scripts/publish_to_main.sh "Archive $year team box scores [skip ci]" "$path"; then
+              echo "::endgroup::"
+              echo "::error::Could not publish season $year. Nothing was published for it; re-run this workflow from $year."
+              exit 1
+            fi
+            echo "::endgroup::"
+          done
+
+      # Read off the files this job wrote. It never builds a database, so the
+      # summary must come from the CSVs themselves -- and the category list is
+      # the part worth reading, because an unfamiliar one is how the parser
+      # finds out it has something new to label.
+      - name: Summarise the backfill
+        if: ${{ always() && !inputs.probe }}
+        run: |
+          python3 - <<'PY'
+          import csv, pathlib, sys
+          sys.path.insert(0, 'src')
+          import team_box_score
+          paths = sorted(pathlib.Path('data/raw').glob('game_team_stats_*.csv'))
+          total = 0
+          categories = {}
+          for path in paths:
+              season = path.stem.replace('game_team_stats_', '')
+              rows = list(csv.DictReader(path.open(encoding='utf-8')))
+              total += len(rows)
+              games = {r['game_id'] for r in rows}
+              for row in rows:
+                  categories.setdefault(row['category'], set()).add(int(season))
+              print(f'{season}: {len(rows):,} values over {len(games):,} games')
+          print(f'total: {total:,} values over {len(paths)} seasons')
+          unlabelled = sorted(c for c in categories
+                              if c not in team_box_score.KNOWN
+                              and c not in team_box_score.SUPPRESSED)
+          if unlabelled:
+              print('categories with no curated label (shown, but spelled as '
+                    'the provider spells them):')
+              for name in unlabelled:
+                  seasons = sorted(categories[name])
+                  print(f'  {name}: {min(seasons)}-{max(seasons)}')
+          PY

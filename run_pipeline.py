@@ -213,6 +213,14 @@ def main() -> None:
             run([python, "src/load_recruiting.py", "--db", str(DB_PATH)],
                 "Load recruiting classes and recruits")
 
+        # The conventional team box score. After the games, because a row
+        # whose game this database does not carry is skipped rather than
+        # stored -- a total counted against no game would be counted against
+        # nothing.
+        if list(Path("data/raw").glob("game_team_stats_*.csv")):
+            run([python, "src/load_game_team_stats.py", "--db", str(DB_PATH)],
+                "Load team box scores")
+
         for snapshot_path in sorted(Path("data/raw").glob("membership_*.csv")):
             year_str = snapshot_path.stem.replace("membership_", "")
             if year_str.isdigit():
