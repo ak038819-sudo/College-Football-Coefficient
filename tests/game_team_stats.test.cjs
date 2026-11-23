@@ -178,7 +178,9 @@ test('the page and src/team_box_score.py label and rank identically', () => {
   // page would show a category the export considers suppressed, or spell a
   // label one way on a game page and another in a summary.
   const cases = ['firstDowns', 'thirdDownEff', 'totalPenaltiesYards',
-                 'qbHurriesAllowed', 'some_new_metric', 'ESPNRating', '', 'x'];
+                 'qbHurriesAllowed', 'some_new_metric', 'ESPNRating', '', 'x',
+                 // Pluralised abbreviations: both sides must keep the capitals.
+                 'defensiveTDs', 'kickReturnTDs', 'TDs', 'totalFumbles'];
   const out = execFileSync('python3', ['-c', `
 import json, sys
 sys.path.insert(0, 'src')

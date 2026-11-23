@@ -352,6 +352,18 @@ def test_a_category_with_no_curated_label_is_still_labelled():
     assert box.label_for(None) == 'Unnamed'
 
 
+def test_a_pluralised_abbreviation_keeps_its_capitals():
+    """CFBD writes `defensiveTDs`, and the first version of this rule only
+    spared a word in FULL capitals -- `TDs` is not, so four rows of a live
+    panel read 'Defensive tds'."""
+    assert box.label_for('defensiveTDs') == 'Defensive TDs'
+    assert box.label_for('kickReturnTDs') == 'Kick return TDs'
+    assert box.label_for('TDs') == 'TDs'
+    # Not an abbreviation: an ordinary plural stays in sentence case.
+    assert box.label_for('totalFumbles') == 'Total fumbles'
+    assert box.label_for('yards') == 'Yards'
+
+
 def test_the_rows_come_out_in_box_score_order_not_the_providers():
     rows = box.panel_rows({'totalYards': '417', 'firstDowns': '24'},
                           {'totalYards': '388', 'firstDowns': '19'})

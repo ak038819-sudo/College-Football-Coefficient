@@ -61,6 +61,14 @@ _FRACTION = re.compile(r"^\s*(\d+)\s*-\s*(\d+)\s*$")
 NOT_A_FRACTION = {"totalPenaltiesYards"}
 
 
+def _abbreviation(word):
+    """`TD` and `TDs` both are; `Yards` and `yards` are not. A trailing plural
+    `s` is dropped before the test, so a pluralised abbreviation keeps its
+    capitals instead of being flattened to lowercase."""
+    stem = word[:-1] if len(word) > 1 and word.endswith("s") else word
+    return len(stem) > 1 and stem.isupper()
+
+
 def label_for(category):
     """A human label: the curated one, or the provider's own name spaced out.
 
@@ -75,10 +83,12 @@ def label_for(category):
     if not words:
         return "Unnamed"
     # Sentence case, to match the curated labels: "First downs", not "First
-    # Downs". A word already in full capitals is an abbreviation and is left
-    # alone.
-    rest = [w if w.isupper() else w.lower() for w in words[1:]]
-    first = words[0] if words[0].isupper() else words[0][:1].upper() + words[0][1:].lower()
+    # Downs". An abbreviation is left alone, including a plural one: CFBD
+    # writes `defensiveTDs`, and lowercasing that gave "Defensive tds" on a
+    # live panel.
+    rest = [w if _abbreviation(w) else w.lower() for w in words[1:]]
+    first = (words[0] if _abbreviation(words[0])
+             else words[0][:1].upper() + words[0][1:].lower())
     return " ".join([first] + rest)
 
 

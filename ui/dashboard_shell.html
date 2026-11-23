@@ -10696,13 +10696,17 @@ function teamStatLabel(category) {
     .filter(Boolean);
   if (!words.length) return 'Unnamed';
   // Sentence case, to match the curated labels: 'First downs', not 'First
-  // Downs'. A word already in full capitals is an abbreviation, left alone.
-  // src/team_box_score.py's label_for does exactly this, and a test holds
-  // the two spellings to each other.
-  const isUpper = w => w === w.toUpperCase() && w !== w.toLowerCase();
-  const first = isUpper(words[0]) ? words[0]
+  // Downs'. An abbreviation is left alone, including a plural one -- CFBD
+  // writes `defensiveTDs`, and lowercasing that read 'Defensive tds' on a
+  // live panel. src/team_box_score.py's label_for does exactly this, and a
+  // test holds the two spellings to each other.
+  const abbreviation = w => {
+    const stem = w.length > 1 && w.endsWith('s') ? w.slice(0, -1) : w;
+    return stem.length > 1 && stem === stem.toUpperCase() && stem !== stem.toLowerCase();
+  };
+  const first = abbreviation(words[0]) ? words[0]
     : words[0].charAt(0).toUpperCase() + words[0].slice(1).toLowerCase();
-  return [first].concat(words.slice(1).map(w => isUpper(w) ? w : w.toLowerCase())).join(' ');
+  return [first].concat(words.slice(1).map(w => abbreviation(w) ? w : w.toLowerCase())).join(' ');
 }
 // The conversion rate, or null. Null for anything that is not made-of-
 // attempted AND for a conversion out of zero attempts: nobody failed on
