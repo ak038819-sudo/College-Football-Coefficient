@@ -27,6 +27,11 @@ per (game, team, category) goes to disk exactly as the endpoint said it, and
 the parsing into named numbers happens once, later, where it can be tested.
 That keeps the archive lossless and the guesswork in one place.
 
+ONE REQUEST PER WEEK. /games/teams will not answer for a year alone -- it
+returns `400 Bad Request` unless one of `week`, `team` or `conference` comes
+with it -- so a season is fetched week by week, and the weeks come from the
+season's own committed games file rather than from a guessed range.
+
 UNKNOWN FIELDS FAIL THE RUN. A key outside the known set stops the run and
 names itself, because this repository's recurring fault is the silent drop.
 An unfamiliar CATEGORY does not fail: categories are data, not schema, and
@@ -136,19 +141,61 @@ def stat_rows(payload, year):
     return rows
 
 
-def fetch(year, season_type, headers):
+def fetch(year, season_type, week, headers):
+    """One week. A whole season cannot be asked for: /games/teams answers
+    `400 Bad Request` for year alone, because one of `week`, `team` or
+    `conference` is required alongside it."""
     return cfbd_http.get_json(
-        f"{BASE}/games/teams", params={"year": year, "seasonType": season_type},
+        f"{BASE}/games/teams",
+        params={"year": year, "seasonType": season_type, "week": week},
         headers=headers, timeout=120,
-        describe=f"GET /games/teams {year} {season_type}")
+        describe=f"GET /games/teams {year} {season_type} week {week}")
 
 
-def season_rows(year, headers):
-    """Both halves of a season. The postseason is a separate request, and
-    leaving it out would drop every bowl and playoff game in silence."""
+def season_weeks(year, season_type, raw_dir=None):
+    """The weeks this season actually played, read from the committed games
+    file rather than guessed.
+
+    WHY NOT A RANGE. The endpoint has to be asked week by week, and a blind
+    `range(1, 16)` is a guess that is wrong in both directions: 2001 played no
+    week 4 at all (the September 11 cancellations) and ran through week 16, so
+    a fixed range either wastes requests or drops a week in silence -- this
+    repository's recurring fault. The archive already knows the answer.
+
+    `raw_dir` is resolved HERE and not in the signature, so a test can patch
+    OUT_DIR and have it take effect."""
+    path = (OUT_DIR if raw_dir is None else Path(raw_dir)) / f"games_{year}.csv"
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{year}: {path} is missing, so the weeks to request are unknown. "
+            "Fetch the season's games first.")
+    weeks = set()
+    with path.open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            if (row.get("season_type") or "").strip() != season_type:
+                continue
+            week = (row.get("week") or "").strip()
+            if not week:
+                raise ValueError(
+                    f"{year}: game {row.get('game_id')} has no week, so its "
+                    "box score could not be requested")
+            weeks.add(int(week))
+    return sorted(weeks)
+
+
+def season_rows(year, headers, raw_dir=None):
+    """Both halves of a season, week by week. The postseason is its own set of
+    requests, and leaving it out would drop every bowl and playoff game in
+    silence."""
     payload = []
+    asked = 0
     for season_type in ("regular", "postseason"):
-        payload.extend(fetch(year, season_type, headers) or [])
+        for week in season_weeks(year, season_type, raw_dir):
+            asked += 1
+            payload.extend(fetch(year, season_type, week, headers) or [])
+    if not asked:
+        raise ValueError(
+            f"{year}: the games file names no week, so nothing was requested")
     return stat_rows(payload, year)
 
 
@@ -159,13 +206,13 @@ def path_for(year, out_dir=None):
     return (OUT_DIR if out_dir is None else Path(out_dir)) / f"game_team_stats_{year}.csv"
 
 
-def write_season(year, headers, out_dir=None, force=False):
+def write_season(year, headers, out_dir=None, force=False, raw_dir=None):
     """Returns the number of rows written; 0 means no file was written."""
     path = path_for(year, out_dir)
     if path.exists() and not force:
         print(f"{year}: already committed, skipping ({path})")
         return 0
-    rows = season_rows(year, headers)
+    rows = season_rows(year, headers, raw_dir)
     if not rows:
         # Never truncate: an empty file would read downstream as a season in
         # which no team gained a yard, which is the shape of a real answer.
@@ -187,9 +234,10 @@ def probe(year, headers):
     category list is meant to be established rather than assumed."""
     payload = []
     for season_type in ("regular", "postseason"):
-        chunk = fetch(year, season_type, headers) or []
-        print(f"--- {year} {season_type}: {len(chunk)} game(s)")
-        payload.extend(chunk)
+        for week in season_weeks(year, season_type):
+            chunk = fetch(year, season_type, week, headers) or []
+            print(f"--- {year} {season_type} week {week}: {len(chunk)} game(s)")
+            payload.extend(chunk)
     if not payload:
         return
     categories = {}
