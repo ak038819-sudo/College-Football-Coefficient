@@ -1,0 +1,553 @@
+season_year,season_type,week,poll,rank,school,conference,first_place_votes,points
+2019,regular,16,ap,5,Georgia,SEC,0,1241
+2019,regular,16,ap,6,Florida,SEC,0,1167
+2019,regular,16,ap,25,Oklahoma State,Big 12,0,70
+2019,regular,16,ap,8,Baylor,Big 12,0,1039
+2019,regular,16,ap,7,Oregon,Pac-12,0,1141
+2019,regular,16,ap,22,USC,Pac-12,0,195
+2019,regular,16,ap,9,Auburn,SEC,0,1011
+2019,regular,16,ap,1,LSU,SEC,47,1535
+2019,regular,16,ap,12,Utah,Pac-12,0,909
+2019,regular,16,ap,9,Alabama,SEC,0,1011
+2019,regular,16,ap,2,Ohio State,Big Ten,12,1488
+2019,regular,16,ap,17,Michigan,Big Ten,0,597
+2019,regular,16,ap,13,Penn State,Big Ten,0,888
+2019,regular,16,ap,11,Wisconsin,Big Ten,0,944
+2019,regular,16,ap,16,Minnesota,Big Ten,0,645
+2019,regular,16,ap,19,Iowa,Big Ten,0,494
+2019,regular,16,ap,4,Oklahoma,Big 12,0,1364
+2019,regular,16,ap,14,Notre Dame,FBS Independents,0,709
+2019,regular,16,ap,20,App State,Sun Belt,0,355
+2019,regular,16,ap,23,Cincinnati,American Athletic,0,183
+2019,regular,16,ap,21,Navy,American Athletic,0,246
+2019,regular,16,ap,15,Memphis,American Athletic,0,675
+2019,regular,16,ap,3,Clemson,ACC,3,1441
+2019,regular,16,ap,18,Boise State,Mountain West,0,500
+2019,regular,16,ap,24,Air Force,Mountain West,0,97
+2019,regular,16,cfp,5,Georgia,SEC,0,0
+2019,regular,16,cfp,9,Florida,SEC,0,0
+2019,regular,16,cfp,25,Oklahoma State,Big 12,0,0
+2019,regular,16,cfp,7,Baylor,Big 12,0,0
+2019,regular,16,cfp,6,Oregon,Pac-12,0,0
+2019,regular,16,cfp,22,USC,Pac-12,0,0
+2019,regular,16,cfp,12,Auburn,SEC,0,0
+2019,regular,16,cfp,1,LSU,SEC,0,0
+2019,regular,16,cfp,11,Utah,Pac-12,0,0
+2019,regular,16,cfp,13,Alabama,SEC,0,0
+2019,regular,16,cfp,2,Ohio State,Big Ten,0,0
+2019,regular,16,cfp,14,Michigan,Big Ten,0,0
+2019,regular,16,cfp,10,Penn State,Big Ten,0,0
+2019,regular,16,cfp,8,Wisconsin,Big Ten,0,0
+2019,regular,16,cfp,18,Minnesota,Big Ten,0,0
+2019,regular,16,cfp,16,Iowa,Big Ten,0,0
+2019,regular,16,cfp,4,Oklahoma,Big 12,0,0
+2019,regular,16,cfp,15,Notre Dame,FBS Independents,0,0
+2019,regular,16,cfp,20,App State,Sun Belt,0,0
+2019,regular,16,cfp,21,Cincinnati,American Athletic,0,0
+2019,regular,16,cfp,23,Navy,American Athletic,0,0
+2019,regular,16,cfp,17,Memphis,American Athletic,0,0
+2019,regular,16,cfp,3,Clemson,ACC,0,0
+2019,regular,16,cfp,24,Virginia,ACC,0,0
+2019,regular,16,cfp,19,Boise State,Mountain West,0,0
+2019,regular,15,cfp,4,Georgia,SEC,0,0
+2019,regular,15,cfp,9,Florida,SEC,0,0
+2019,regular,15,cfp,25,Oklahoma State,Big 12,0,0
+2019,regular,15,cfp,7,Baylor,Big 12,0,0
+2019,regular,15,cfp,13,Oregon,Pac-12,0,0
+2019,regular,15,cfp,22,USC,Pac-12,0,0
+2019,regular,15,cfp,11,Auburn,SEC,0,0
+2019,regular,15,cfp,2,LSU,SEC,0,0
+2019,regular,15,cfp,5,Utah,Pac-12,0,0
+2019,regular,15,cfp,12,Alabama,SEC,0,0
+2019,regular,15,cfp,1,Ohio State,Big Ten,0,0
+2019,regular,15,cfp,14,Michigan,Big Ten,0,0
+2019,regular,15,cfp,10,Penn State,Big Ten,0,0
+2019,regular,15,cfp,8,Wisconsin,Big Ten,0,0
+2019,regular,15,cfp,18,Minnesota,Big Ten,0,0
+2019,regular,15,cfp,16,Iowa,Big Ten,0,0
+2019,regular,15,cfp,6,Oklahoma,Big 12,0,0
+2019,regular,15,cfp,15,Notre Dame,FBS Independents,0,0
+2019,regular,15,cfp,21,App State,Sun Belt,0,0
+2019,regular,15,cfp,20,Cincinnati,American Athletic,0,0
+2019,regular,15,cfp,24,Navy,American Athletic,0,0
+2019,regular,15,cfp,17,Memphis,American Athletic,0,0
+2019,regular,15,cfp,3,Clemson,ACC,0,0
+2019,regular,15,cfp,23,Virginia,ACC,0,0
+2019,regular,15,cfp,19,Boise State,Mountain West,0,0
+2019,regular,15,ap,4,Georgia,SEC,0,1356
+2019,regular,15,ap,7,Florida,SEC,0,1135
+2019,regular,15,ap,8,Baylor,Big 12,0,1074
+2019,regular,15,ap,13,Oregon,Pac-12,0,799
+2019,regular,15,ap,24,USC,Pac-12,0,157
+2019,regular,15,ap,11,Auburn,SEC,0,957
+2019,regular,15,ap,1,LSU,SEC,40,1528
+2019,regular,15,ap,5,Utah,Pac-12,0,1275
+2019,regular,15,ap,9,Alabama,SEC,0,995
+2019,regular,15,ap,2,Ohio State,Big Ten,19,1498
+2019,regular,15,ap,17,Michigan,Big Ten,0,603
+2019,regular,15,ap,12,Penn State,Big Ten,0,890
+2019,regular,15,ap,10,Wisconsin,Big Ten,0,971
+2019,regular,15,ap,15,Minnesota,Big Ten,0,683
+2019,regular,15,ap,18,Iowa,Big Ten,0,537
+2019,regular,15,ap,6,Oklahoma,Big 12,0,1257
+2019,regular,15,ap,14,Notre Dame,FBS Independents,0,734
+2019,regular,15,ap,20,App State,Sun Belt,0,288
+2019,regular,15,ap,21,Cincinnati,American Athletic,0,237
+2019,regular,15,ap,23,Navy,American Athletic,0,216
+2019,regular,15,ap,16,Memphis,American Athletic,0,615
+2019,regular,15,ap,3,Clemson,ACC,3,1437
+2019,regular,15,ap,22,Virginia,ACC,0,231
+2019,regular,15,ap,19,Boise State,Mountain West,0,463
+2019,regular,15,ap,25,Air Force,Mountain West,0,65
+2019,regular,14,ap,4,Georgia,SEC,0,1347
+2019,regular,14,ap,8,Florida,SEC,0,1058
+2019,regular,14,ap,21,Oklahoma State,Big 12,0,266
+2019,regular,14,ap,11,Baylor,Big 12,0,910
+2019,regular,14,ap,14,Oregon,Pac-12,0,784
+2019,regular,14,ap,25,USC,Pac-12,0,79
+2019,regular,14,ap,16,Auburn,SEC,0,635
+2019,regular,14,ap,1,LSU,SEC,50,1537
+2019,regular,14,ap,6,Utah,Pac-12,0,1231
+2019,regular,14,ap,5,Alabama,SEC,0,1283
+2019,regular,14,ap,2,Ohio State,Big Ten,9,1486
+2019,regular,14,ap,10,Michigan,Big Ten,0,913
+2019,regular,14,ap,12,Penn State,Big Ten,0,903
+2019,regular,14,ap,13,Wisconsin,Big Ten,0,791
+2019,regular,14,ap,9,Minnesota,Big Ten,0,996
+2019,regular,14,ap,19,Iowa,Big Ten,0,510
+2019,regular,14,ap,7,Oklahoma,Big 12,0,1189
+2019,regular,14,ap,15,Notre Dame,FBS Independents,0,701
+2019,regular,14,ap,22,App State,Sun Belt,0,206
+2019,regular,14,ap,18,Cincinnati,American Athletic,0,518
+2019,regular,14,ap,24,Navy,American Athletic,0,99
+2019,regular,14,ap,17,Memphis,American Athletic,0,535
+2019,regular,14,ap,3,Clemson,ACC,3,1440
+2019,regular,14,ap,23,Virginia Tech,ACC,0,147
+2019,regular,14,ap,20,Boise State,Mountain West,0,410
+2019,regular,13,cfp,4,Georgia,SEC,0,0
+2019,regular,13,cfp,11,Florida,SEC,0,0
+2019,regular,13,cfp,21,Oklahoma State,Big 12,0,0
+2019,regular,13,cfp,14,Baylor,Big 12,0,0
+2019,regular,13,cfp,22,Iowa State,Big 12,0,0
+2019,regular,13,cfp,6,Oregon,Pac-12,0,0
+2019,regular,13,cfp,23,USC,Pac-12,0,0
+2019,regular,13,cfp,15,Auburn,SEC,0,0
+2019,regular,13,cfp,1,LSU,SEC,0,0
+2019,regular,13,cfp,7,Utah,Pac-12,0,0
+2019,regular,13,cfp,5,Alabama,SEC,0,0
+2019,regular,13,cfp,2,Ohio State,Big Ten,0,0
+2019,regular,13,cfp,13,Michigan,Big Ten,0,0
+2019,regular,13,cfp,8,Penn State,Big Ten,0,0
+2019,regular,13,cfp,12,Wisconsin,Big Ten,0,0
+2019,regular,13,cfp,10,Minnesota,Big Ten,0,0
+2019,regular,13,cfp,17,Iowa,Big Ten,0,0
+2019,regular,13,cfp,9,Oklahoma,Big 12,0,0
+2019,regular,13,cfp,16,Notre Dame,FBS Independents,0,0
+2019,regular,13,cfp,24,App State,Sun Belt,0,0
+2019,regular,13,cfp,19,Cincinnati,American Athletic,0,0
+2019,regular,13,cfp,18,Memphis,American Athletic,0,0
+2019,regular,13,cfp,25,SMU,American Athletic,0,0
+2019,regular,13,cfp,3,Clemson,ACC,0,0
+2019,regular,13,cfp,20,Boise State,Mountain West,0,0
+2019,regular,13,ap,4,Georgia,SEC,0,1343
+2019,regular,13,ap,10,Florida,SEC,0,984
+2019,regular,13,ap,22,Oklahoma State,Big 12,0,200
+2019,regular,13,ap,13,Baylor,Big 12,0,787
+2019,regular,13,ap,6,Oregon,Pac-12,0,1243
+2019,regular,13,ap,16,Auburn,SEC,0,623
+2019,regular,13,ap,1,LSU,SEC,54,1542
+2019,regular,13,ap,7,Utah,Pac-12,0,1155
+2019,regular,13,ap,5,Alabama,SEC,0,1263
+2019,regular,13,ap,24,Texas A&M,SEC,0,132
+2019,regular,13,ap,2,Ohio State,Big Ten,5,1478
+2019,regular,13,ap,12,Michigan,Big Ten,0,829
+2019,regular,13,ap,9,Penn State,Big Ten,0,1030
+2019,regular,13,ap,14,Wisconsin,Big Ten,0,746
+2019,regular,13,ap,11,Minnesota,Big Ten,0,902
+2019,regular,13,ap,19,Iowa,Big Ten,0,493
+2019,regular,13,ap,8,Oklahoma,Big 12,0,1144
+2019,regular,13,ap,15,Notre Dame,FBS Independents,0,676
+2019,regular,13,ap,23,App State,Sun Belt,0,154
+2019,regular,13,ap,17,Cincinnati,American Athletic,0,536
+2019,regular,13,ap,18,Memphis,American Athletic,0,520
+2019,regular,13,ap,21,SMU,American Athletic,0,328
+2019,regular,13,ap,3,Clemson,ACC,3,1442
+2019,regular,13,ap,25,Virginia Tech,ACC,0,61
+2019,regular,13,ap,20,Boise State,Mountain West,0,379
+2019,regular,12,cfp,4,Georgia,SEC,0,0
+2019,regular,12,cfp,11,Florida,SEC,0,0
+2019,regular,12,cfp,22,Oklahoma State,Big 12,0,0
+2019,regular,12,cfp,24,Kansas State,Big 12,0,0
+2019,regular,12,cfp,13,Baylor,Big 12,0,0
+2019,regular,12,cfp,6,Oregon,Pac-12,0,0
+2019,regular,12,cfp,12,Auburn,SEC,0,0
+2019,regular,12,cfp,1,LSU,SEC,0,0
+2019,regular,12,cfp,7,Utah,Pac-12,0,0
+2019,regular,12,cfp,5,Alabama,SEC,0,0
+2019,regular,12,cfp,2,Ohio State,Big Ten,0,0
+2019,regular,12,cfp,15,Michigan,Big Ten,0,0
+2019,regular,12,cfp,9,Penn State,Big Ten,0,0
+2019,regular,12,cfp,14,Wisconsin,Big Ten,0,0
+2019,regular,12,cfp,8,Minnesota,Big Ten,0,0
+2019,regular,12,cfp,20,Iowa,Big Ten,0,0
+2019,regular,12,cfp,19,Texas,Big 12,0,0
+2019,regular,12,cfp,10,Oklahoma,Big 12,0,0
+2019,regular,12,cfp,16,Notre Dame,FBS Independents,0,0
+2019,regular,12,cfp,25,App State,Sun Belt,0,0
+2019,regular,12,cfp,17,Cincinnati,American Athletic,0,0
+2019,regular,12,cfp,23,Navy,American Athletic,0,0
+2019,regular,12,cfp,18,Memphis,American Athletic,0,0
+2019,regular,12,cfp,3,Clemson,ACC,0,0
+2019,regular,12,cfp,21,Boise State,Mountain West,0,0
+2019,regular,12,ap,5,Georgia,SEC,0,1267
+2019,regular,12,ap,11,Florida,SEC,0,934
+2019,regular,12,ap,25,Oklahoma State,Big 12,0,77
+2019,regular,12,ap,12,Baylor,Big 12,0,932
+2019,regular,12,ap,6,Oregon,Pac-12,0,1224
+2019,regular,12,ap,13,Auburn,SEC,0,871
+2019,regular,12,ap,1,LSU,SEC,54,1542
+2019,regular,12,ap,8,Utah,Pac-12,0,1099
+2019,regular,12,ap,4,Alabama,SEC,0,1312
+2019,regular,12,ap,2,Ohio State,Big Ten,5,1480
+2019,regular,12,ap,14,Michigan,Big Ten,0,744
+2019,regular,12,ap,9,Penn State,Big Ten,0,1003
+2019,regular,12,ap,24,Indiana,Big Ten,0,108
+2019,regular,12,ap,15,Wisconsin,Big Ten,0,657
+2019,regular,12,ap,7,Minnesota,Big Ten,0,1164
+2019,regular,12,ap,23,Iowa,Big Ten,0,197
+2019,regular,12,ap,22,Texas,Big 12,0,199
+2019,regular,12,ap,10,Oklahoma,Big 12,0,1000
+2019,regular,12,ap,16,Notre Dame,FBS Independents,0,593
+2019,regular,12,ap,17,Cincinnati,American Athletic,0,567
+2019,regular,12,ap,21,Navy,American Athletic,0,228
+2019,regular,12,ap,18,Memphis,American Athletic,0,510
+2019,regular,12,ap,20,SMU,American Athletic,0,346
+2019,regular,12,ap,3,Clemson,ACC,3,1441
+2019,regular,12,ap,19,Boise State,Mountain West,0,371
+2019,regular,7,ap,3,Georgia,SEC,3,1393
+2019,regular,7,ap,7,Florida,SEC,0,1163
+2019,regular,7,ap,22,Baylor,Big 12,0,260
+2019,regular,7,ap,13,Oregon,Pac-12,0,828
+2019,regular,7,ap,12,Auburn,SEC,0,920
+2019,regular,7,ap,5,LSU,SEC,2,1352
+2019,regular,7,ap,15,Utah,Pac-12,0,624
+2019,regular,7,ap,18,Arizona State,Pac-12,0,388
+2019,regular,7,ap,1,Alabama,SEC,32,1503
+2019,regular,7,ap,24,Texas A&M,SEC,0,165
+2019,regular,7,ap,3,Ohio State,Big Ten,10,1393
+2019,regular,7,ap,16,Michigan,Big Ten,0,618
+2019,regular,7,ap,10,Penn State,Big Ten,0,958
+2019,regular,7,ap,8,Wisconsin,Big Ten,0,1105
+2019,regular,7,ap,17,Iowa,Big Ten,0,454
+2019,regular,7,ap,11,Texas,Big 12,0,947
+2019,regular,7,ap,6,Oklahoma,Big 12,0,1268
+2019,regular,7,ap,9,Notre Dame,FBS Independents,0,1046
+2019,regular,7,ap,25,Cincinnati,American Athletic,0,118
+2019,regular,7,ap,23,Memphis,American Athletic,0,189
+2019,regular,7,ap,21,SMU,American Athletic,0,285
+2019,regular,7,ap,2,Clemson,ACC,15,1433
+2019,regular,7,ap,19,Wake Forest,ACC,0,380
+2019,regular,7,ap,20,Virginia,ACC,0,353
+2019,regular,7,ap,14,Boise State,Mountain West,0,654
+2019,regular,6,ap,3,Georgia,SEC,4,1375
+2019,regular,6,ap,10,Florida,SEC,0,986
+2019,regular,6,ap,21,Oklahoma State,Big 12,0,215
+2019,regular,6,ap,13,Oregon,Pac-12,0,817
+2019,regular,6,ap,15,Washington,Pac-12,0,603
+2019,regular,6,ap,7,Auburn,SEC,0,1186
+2019,regular,6,ap,5,LSU,SEC,0,1322
+2019,regular,6,ap,17,Utah,Pac-12,0,534
+2019,regular,6,ap,20,Arizona State,Pac-12,0,249
+2019,regular,6,ap,1,Alabama,SEC,29,1478
+2019,regular,6,ap,25,Texas A&M,SEC,0,147
+2019,regular,6,ap,4,Ohio State,Big Ten,7,1324
+2019,regular,6,ap,25,Michigan State,Big Ten,0,147
+2019,regular,6,ap,19,Michigan,Big Ten,0,350
+2019,regular,6,ap,12,Penn State,Big Ten,0,878
+2019,regular,6,ap,8,Wisconsin,Big Ten,0,1046
+2019,regular,6,ap,14,Iowa,Big Ten,0,731
+2019,regular,6,ap,11,Texas,Big 12,0,919
+2019,regular,6,ap,6,Oklahoma,Big 12,0,1264
+2019,regular,6,ap,9,Notre Dame,FBS Independents,0,996
+2019,regular,6,ap,18,UCF,American Athletic,0,352
+2019,regular,6,ap,24,SMU,American Athletic,0,151
+2019,regular,6,ap,2,Clemson,ACC,18,1426
+2019,regular,6,ap,22,Wake Forest,ACC,0,190
+2019,regular,6,ap,23,Virginia,ACC,0,186
+2019,regular,6,ap,16,Boise State,Mountain West,0,559
+2019,regular,5,ap,3,Georgia,SEC,1,1400
+2019,regular,5,ap,9,Florida,SEC,0,1022
+2019,regular,5,ap,24,Kansas State,Big 12,0,230
+2019,regular,5,ap,13,Oregon,Pac-12,0,839
+2019,regular,5,ap,17,Washington,Pac-12,0,498
+2019,regular,5,ap,15,California,Pac-12,0,547
+2019,regular,5,ap,21,USC,Pac-12,0,257
+2019,regular,5,ap,7,Auburn,SEC,0,1169
+2019,regular,5,ap,4,LSU,SEC,0,1344
+2019,regular,5,ap,19,Utah,Pac-12,0,426
+2019,regular,5,ap,2,Alabama,SEC,6,1485
+2019,regular,5,ap,23,Texas A&M,SEC,0,233
+2019,regular,5,ap,5,Ohio State,Big Ten,0,1288
+2019,regular,5,ap,25,Michigan State,Big Ten,0,104
+2019,regular,5,ap,20,Michigan,Big Ten,0,287
+2019,regular,5,ap,12,Penn State,Big Ten,0,848
+2019,regular,5,ap,8,Wisconsin,Big Ten,0,1071
+2019,regular,5,ap,14,Iowa,Big Ten,0,714
+2019,regular,5,ap,11,Texas,Big 12,0,968
+2019,regular,5,ap,6,Oklahoma,Big 12,0,1283
+2019,regular,5,ap,10,Notre Dame,FBS Independents,0,989
+2019,regular,5,ap,22,UCF,American Athletic,0,252
+2019,regular,5,ap,1,Clemson,ACC,55,1543
+2019,regular,5,ap,18,Virginia,ACC,0,430
+2019,regular,5,ap,16,Boise State,Mountain West,0,524
+2019,regular,4,ap,3,Georgia,SEC,0,1386
+2019,regular,4,ap,9,Florida,SEC,0,959
+2019,regular,4,ap,25,TCU,Big 12,0,104
+2019,regular,4,ap,16,Oregon,Pac-12,0,670
+2019,regular,4,ap,22,Washington,Pac-12,0,183
+2019,regular,4,ap,23,California,Pac-12,0,164
+2019,regular,4,ap,19,Washington State,Pac-12,0,452
+2019,regular,4,ap,8,Auburn,SEC,0,1079
+2019,regular,4,ap,4,LSU,SEC,0,1339
+2019,regular,4,ap,10,Utah,Pac-12,0,929
+2019,regular,4,ap,24,Arizona State,Pac-12,0,156
+2019,regular,4,ap,2,Alabama,SEC,5,1488
+2019,regular,4,ap,17,Texas A&M,SEC,0,665
+2019,regular,4,ap,6,Ohio State,Big Ten,0,1292
+2019,regular,4,ap,11,Michigan,Big Ten,0,917
+2019,regular,4,ap,13,Penn State,Big Ten,0,726
+2019,regular,4,ap,13,Wisconsin,Big Ten,0,726
+2019,regular,4,ap,18,Iowa,Big Ten,0,539
+2019,regular,4,ap,12,Texas,Big 12,0,888
+2019,regular,4,ap,5,Oklahoma,Big 12,0,1310
+2019,regular,4,ap,7,Notre Dame,FBS Independents,0,1099
+2019,regular,4,ap,15,UCF,American Athletic,0,703
+2019,regular,4,ap,1,Clemson,ACC,57,1545
+2019,regular,4,ap,21,Virginia,ACC,0,252
+2019,regular,4,ap,20,Boise State,Mountain West,0,277
+2019,regular,3,ap,3,Georgia,SEC,0,1385
+2019,regular,3,ap,9,Florida,SEC,0,997
+2019,regular,3,ap,15,Oregon,Pac-12,0,677
+2019,regular,3,ap,23,Washington,Pac-12,0,161
+2019,regular,3,ap,20,Washington State,Pac-12,0,343
+2019,regular,3,ap,24,USC,Pac-12,0,137
+2019,regular,3,ap,8,Auburn,SEC,0,1056
+2019,regular,3,ap,4,LSU,SEC,0,1336
+2019,regular,3,ap,11,Utah,Pac-12,0,905
+2019,regular,3,ap,2,Alabama,SEC,6,1489
+2019,regular,3,ap,16,Texas A&M,SEC,0,643
+2019,regular,3,ap,6,Ohio State,Big Ten,0,1291
+2019,regular,3,ap,18,Michigan State,Big Ten,0,495
+2019,regular,3,ap,21,Maryland,Big Ten,0,207
+2019,regular,3,ap,10,Michigan,Big Ten,0,936
+2019,regular,3,ap,13,Penn State,Big Ten,0,781
+2019,regular,3,ap,14,Wisconsin,Big Ten,0,714
+2019,regular,3,ap,19,Iowa,Big Ten,0,473
+2019,regular,3,ap,12,Texas,Big 12,0,877
+2019,regular,3,ap,5,Oklahoma,Big 12,0,1315
+2019,regular,3,ap,7,Notre Dame,FBS Independents,0,1072
+2019,regular,3,ap,17,UCF,American Athletic,0,544
+2019,regular,3,ap,1,Clemson,ACC,56,1544
+2019,regular,3,ap,25,Virginia,ACC,0,122
+2019,regular,3,ap,22,Boise State,Mountain West,0,164
+2019,regular,2,ap,3,Georgia,SEC,0,1407
+2019,regular,2,ap,11,Florida,SEC,0,940
+2019,regular,2,ap,25,Iowa State,Big 12,0,86
+2019,regular,2,ap,16,Oregon,Pac-12,0,568
+2019,regular,2,ap,23,Stanford,Pac-12,0,198
+2019,regular,2,ap,14,Washington,Pac-12,0,768
+2019,regular,2,ap,22,Washington State,Pac-12,0,244
+2019,regular,2,ap,10,Auburn,SEC,0,958
+2019,regular,2,ap,6,LSU,SEC,0,1233
+2019,regular,2,ap,13,Utah,Pac-12,0,826
+2019,regular,2,ap,2,Alabama,SEC,8,1493
+2019,regular,2,ap,12,Texas A&M,SEC,0,862
+2019,regular,2,ap,5,Ohio State,Big Ten,0,1270
+2019,regular,2,ap,19,Michigan State,Big Ten,0,409
+2019,regular,2,ap,7,Michigan,Big Ten,0,1126
+2019,regular,2,ap,15,Penn State,Big Ten,0,688
+2019,regular,2,ap,17,Wisconsin,Big Ten,0,519
+2019,regular,2,ap,25,Nebraska,Big Ten,0,86
+2019,regular,2,ap,20,Iowa,Big Ten,0,351
+2019,regular,2,ap,9,Texas,Big 12,0,1032
+2019,regular,2,ap,4,Oklahoma,Big 12,0,1337
+2019,regular,2,ap,8,Notre Dame,FBS Independents,0,1037
+2019,regular,2,ap,18,UCF,American Athletic,0,445
+2019,regular,2,ap,1,Clemson,ACC,54,1542
+2019,regular,2,ap,21,Syracuse,ACC,0,246
+2019,regular,2,ap,24,Boise State,Mountain West,0,179
+2019,regular,1,ap,3,Georgia,SEC,0,1403
+2019,regular,1,ap,8,Florida,SEC,0,1054
+2019,regular,1,ap,21,Iowa State,Big 12,0,302
+2019,regular,1,ap,11,Oregon,Pac-12,0,860
+2019,regular,1,ap,25,Stanford,Pac-12,0,141
+2019,regular,1,ap,13,Washington,Pac-12,0,786
+2019,regular,1,ap,23,Washington State,Pac-12,0,200
+2019,regular,1,ap,16,Auburn,SEC,0,578
+2019,regular,1,ap,6,LSU,SEC,0,1199
+2019,regular,1,ap,14,Utah,Pac-12,0,772
+2019,regular,1,ap,2,Alabama,SEC,10,1496
+2019,regular,1,ap,12,Texas A&M,SEC,0,852
+2019,regular,1,ap,5,Ohio State,Big Ten,0,1261
+2019,regular,1,ap,18,Michigan State,Big Ten,0,377
+2019,regular,1,ap,7,Michigan,Big Ten,0,1164
+2019,regular,1,ap,15,Penn State,Big Ten,0,651
+2019,regular,1,ap,19,Wisconsin,Big Ten,0,370
+2019,regular,1,ap,24,Nebraska,Big Ten,0,154
+2019,regular,1,ap,20,Iowa,Big Ten,0,330
+2019,regular,1,ap,10,Texas,Big 12,0,1005
+2019,regular,1,ap,4,Oklahoma,Big 12,0,1331
+2019,regular,1,ap,9,Notre Dame,FBS Independents,0,1044
+2019,regular,1,ap,17,UCF,American Athletic,0,410
+2019,regular,1,ap,1,Clemson,ACC,52,1540
+2019,regular,1,ap,22,Syracuse,ACC,0,209
+2019,regular,11,cfp,6,Georgia,SEC,0,0
+2019,regular,11,cfp,10,Florida,SEC,0,0
+2019,regular,11,cfp,23,Oklahoma State,Big 12,0,0
+2019,regular,11,cfp,16,Kansas State,Big 12,0,0
+2019,regular,11,cfp,12,Baylor,Big 12,0,0
+2019,regular,11,cfp,7,Oregon,Pac-12,0,0
+2019,regular,11,cfp,11,Auburn,SEC,0,0
+2019,regular,11,cfp,2,LSU,SEC,0,0
+2019,regular,11,cfp,8,Utah,Pac-12,0,0
+2019,regular,11,cfp,3,Alabama,SEC,0,0
+2019,regular,11,cfp,1,Ohio State,Big Ten,0,0
+2019,regular,11,cfp,14,Michigan,Big Ten,0,0
+2019,regular,11,cfp,4,Penn State,Big Ten,0,0
+2019,regular,11,cfp,13,Wisconsin,Big Ten,0,0
+2019,regular,11,cfp,17,Minnesota,Big Ten,0,0
+2019,regular,11,cfp,18,Iowa,Big Ten,0,0
+2019,regular,11,cfp,9,Oklahoma,Big 12,0,0
+2019,regular,11,cfp,15,Notre Dame,FBS Independents,0,0
+2019,regular,11,cfp,20,Cincinnati,American Athletic,0,0
+2019,regular,11,cfp,24,Navy,American Athletic,0,0
+2019,regular,11,cfp,21,Memphis,American Athletic,0,0
+2019,regular,11,cfp,25,SMU,American Athletic,0,0
+2019,regular,11,cfp,5,Clemson,ACC,0,0
+2019,regular,11,cfp,19,Wake Forest,ACC,0,0
+2019,regular,11,cfp,22,Boise State,Mountain West,0,0
+2019,regular,11,ap,6,Georgia,SEC,0,1196
+2019,regular,11,ap,10,Florida,SEC,0,938
+2019,regular,11,ap,20,Kansas State,Big 12,0,364
+2019,regular,11,ap,11,Baylor,Big 12,0,909
+2019,regular,11,ap,7,Oregon,Pac-12,0,1180
+2019,regular,11,ap,12,Auburn,SEC,0,901
+2019,regular,11,ap,1,LSU,SEC,17,1479
+2019,regular,11,ap,8,Utah,Pac-12,0,1090
+2019,regular,11,ap,2,Alabama,SEC,21,1472
+2019,regular,11,ap,3,Ohio State,Big Ten,17,1467
+2019,regular,11,ap,14,Michigan,Big Ten,0,780
+2019,regular,11,ap,5,Penn State,Big Ten,0,1306
+2019,regular,11,ap,16,Wisconsin,Big Ten,0,558
+2019,regular,11,ap,13,Minnesota,Big Ten,0,831
+2019,regular,11,ap,18,Iowa,Big Ten,0,491
+2019,regular,11,ap,9,Oklahoma,Big 12,0,1045
+2019,regular,11,ap,15,Notre Dame,FBS Independents,0,571
+2019,regular,11,ap,17,Cincinnati,American Athletic,0,527
+2019,regular,11,ap,25,Navy,American Athletic,0,83
+2019,regular,11,ap,19,Memphis,American Athletic,0,448
+2019,regular,11,ap,23,SMU,American Athletic,0,250
+2019,regular,11,ap,4,Clemson,ACC,7,1406
+2019,regular,11,ap,22,Wake Forest,ACC,0,296
+2019,regular,11,ap,21,Boise State,Mountain West,0,310
+2019,regular,11,ap,24,San Diego State,Mountain West,0,87
+2019,regular,10,ap,8,Georgia,SEC,0,1093
+2019,regular,10,ap,6,Florida,SEC,0,1226
+2019,regular,10,ap,22,Kansas State,Big 12,0,218
+2019,regular,10,ap,12,Baylor,Big 12,0,882
+2019,regular,10,ap,7,Oregon,Pac-12,0,1108
+2019,regular,10,ap,11,Auburn,SEC,0,910
+2019,regular,10,ap,1,LSU,SEC,17,1476
+2019,regular,10,ap,9,Utah,Pac-12,0,1032
+2019,regular,10,ap,2,Alabama,SEC,21,1474
+2019,regular,10,ap,3,Ohio State,Big Ten,17,1468
+2019,regular,10,ap,14,Michigan,Big Ten,0,744
+2019,regular,10,ap,5,Penn State,Big Ten,0,1302
+2019,regular,10,ap,18,Wisconsin,Big Ten,0,513
+2019,regular,10,ap,13,Minnesota,Big Ten,0,778
+2019,regular,10,ap,19,Iowa,Big Ten,0,456
+2019,regular,10,ap,10,Oklahoma,Big 12,0,1017
+2019,regular,10,ap,16,Notre Dame,FBS Independents,0,563
+2019,regular,10,ap,20,App State,Sun Belt,0,393
+2019,regular,10,ap,17,Cincinnati,American Athletic,0,524
+2019,regular,10,ap,24,Memphis,American Athletic,0,188
+2019,regular,10,ap,15,SMU,American Athletic,0,666
+2019,regular,10,ap,4,Clemson,ACC,7,1406
+2019,regular,10,ap,23,Wake Forest,ACC,0,200
+2019,regular,10,ap,21,Boise State,Mountain West,0,280
+2019,regular,10,ap,25,San Diego State,Mountain West,0,50
+2019,regular,9,ap,10,Georgia,SEC,0,1031
+2019,regular,9,ap,7,Florida,SEC,0,1138
+2019,regular,9,ap,14,Baylor,Big 12,0,732
+2019,regular,9,ap,23,Iowa State,Big 12,0,185
+2019,regular,9,ap,11,Oregon,Pac-12,0,979
+2019,regular,9,ap,9,Auburn,SEC,0,1054
+2019,regular,9,ap,2,LSU,SEC,16,1462
+2019,regular,9,ap,12,Utah,Pac-12,0,852
+2019,regular,9,ap,24,Arizona State,Pac-12,0,134
+2019,regular,9,ap,1,Alabama,SEC,24,1486
+2019,regular,9,ap,3,Ohio State,Big Ten,13,1429
+2019,regular,9,ap,19,Michigan,Big Ten,0,440
+2019,regular,9,ap,6,Penn State,Big Ten,0,1224
+2019,regular,9,ap,13,Wisconsin,Big Ten,0,767
+2019,regular,9,ap,17,Minnesota,Big Ten,0,577
+2019,regular,9,ap,20,Iowa,Big Ten,0,347
+2019,regular,9,ap,15,Texas,Big 12,0,627
+2019,regular,9,ap,5,Oklahoma,Big 12,0,1343
+2019,regular,9,ap,8,Notre Dame,FBS Independents,0,1058
+2019,regular,9,ap,21,App State,Sun Belt,0,286
+2019,regular,9,ap,18,Cincinnati,American Athletic,0,468
+2019,regular,9,ap,16,SMU,American Athletic,0,587
+2019,regular,9,ap,4,Clemson,ACC,9,1408
+2019,regular,9,ap,25,Wake Forest,ACC,0,118
+2019,regular,9,ap,22,Boise State,Mountain West,0,225
+2019,regular,8,ap,10,Georgia,SEC,0,995
+2019,regular,8,ap,9,Florida,SEC,0,1041
+2019,regular,8,ap,18,Baylor,Big 12,0,470
+2019,regular,8,ap,12,Oregon,Pac-12,0,906
+2019,regular,8,ap,25,Washington,Pac-12,0,107
+2019,regular,8,ap,11,Auburn,SEC,0,985
+2019,regular,8,ap,2,LSU,SEC,12,1449
+2019,regular,8,ap,13,Utah,Pac-12,0,729
+2019,regular,8,ap,17,Arizona State,Pac-12,0,524
+2019,regular,8,ap,1,Alabama,SEC,30,1503
+2019,regular,8,ap,22,Missouri,SEC,0,233
+2019,regular,8,ap,4,Ohio State,Big Ten,9,1404
+2019,regular,8,ap,16,Michigan,Big Ten,0,648
+2019,regular,8,ap,7,Penn State,Big Ten,0,1129
+2019,regular,8,ap,6,Wisconsin,Big Ten,0,1245
+2019,regular,8,ap,20,Minnesota,Big Ten,0,330
+2019,regular,8,ap,23,Iowa,Big Ten,0,210
+2019,regular,8,ap,15,Texas,Big 12,0,672
+2019,regular,8,ap,5,Oklahoma,Big 12,0,1333
+2019,regular,8,ap,8,Notre Dame,FBS Independents,0,1042
+2019,regular,8,ap,24,App State,Sun Belt,0,148
+2019,regular,8,ap,21,Cincinnati,American Athletic,0,308
+2019,regular,8,ap,19,SMU,American Athletic,0,398
+2019,regular,8,ap,3,Clemson,ACC,11,1427
+2019,regular,8,ap,14,Boise State,Mountain West,0,716
+2019,postseason,1,ap,1,LSU,SEC,62,1550
+2019,postseason,1,ap,2,Clemson,ACC,0,1487
+2019,postseason,1,ap,3,Ohio State,Big Ten,0,1426
+2019,postseason,1,ap,4,Georgia,SEC,0,1336
+2019,postseason,1,ap,5,Oregon,Pac-12,0,1249
+2019,postseason,1,ap,6,Florida,SEC,0,1211
+2019,postseason,1,ap,7,Oklahoma,Big 12,0,1179
+2019,postseason,1,ap,8,Alabama,SEC,0,1159
+2019,postseason,1,ap,9,Penn State,Big Ten,0,1038
+2019,postseason,1,ap,10,Minnesota,Big Ten,0,952
+2019,postseason,1,ap,11,Wisconsin,Big Ten,0,883
+2019,postseason,1,ap,12,Notre Dame,FBS Independents,0,879
+2019,postseason,1,ap,13,Baylor,Big 12,0,827
+2019,postseason,1,ap,14,Auburn,SEC,0,726
+2019,postseason,1,ap,15,Iowa,Big Ten,0,699
+2019,postseason,1,ap,16,Utah,Pac-12,0,543
+2019,postseason,1,ap,17,Memphis,American Athletic,0,528
+2019,postseason,1,ap,18,Michigan,Big Ten,0,468
+2019,postseason,1,ap,19,App State,Sun Belt,0,466
+2019,postseason,1,ap,20,Navy,American Athletic,0,415
+2019,postseason,1,ap,21,Cincinnati,American Athletic,0,343
+2019,postseason,1,ap,22,Air Force,Mountain West,0,209
+2019,postseason,1,ap,23,Boise State,Mountain West,0,188
+2019,postseason,1,ap,24,UCF,American Athletic,0,78
+2019,postseason,1,ap,25,Texas,Big 12,0,69
