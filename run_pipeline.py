@@ -213,6 +213,15 @@ def main() -> None:
             run([python, "src/load_recruiting.py", "--db", str(DB_PATH)],
                 "Load recruiting classes and recruits")
 
+        # Returning production. Display only -- the Elo preseason step keeps its
+        # flat offseason_retention and never reads this table. It loads after
+        # the teams exist because it refuses an unresolvable school rather than
+        # dropping the row: this feed is FBS-only, so a name that will not
+        # resolve means the identity map is wrong.
+        if list(Path("data/raw").glob("returning_production_*.csv")):
+            run([python, "src/load_returning_production.py", "--db", str(DB_PATH)],
+                "Load returning production")
+
         # The conventional team box score. After the games, because a row
         # whose game this database does not carry is skipped rather than
         # stored -- a total counted against no game would be counted against

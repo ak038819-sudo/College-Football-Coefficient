@@ -36,6 +36,15 @@ on:
     # Early morning US time through the NBA season, which runs October to
     # June. Out of season this publishes the same export and commits nothing.
     - cron: "20 11 * 10,11,12,1,2,3,4,5,6 *"
+    # A SECOND CHANCE, late in the US evening. GitHub defers scheduled runs
+    # under load, and this one has been deferred by six to ten hours on every
+    # run since it was added: the 11:20 cron has actually started between
+    # 16:52 and 21:28 UTC. One cron a day therefore means one chance a day,
+    # and a skipped run loses a whole day of results. The run is idempotent --
+    # the database is rebuilt from scratch and the publish gate refuses an
+    # export that would roll anything back -- so a second attempt costs eight
+    # minutes and can only move the archive forward.
+    - cron: "40 23 * 10,11,12,1,2,3,4,5,6 *"
   workflow_dispatch:
     inputs:
       publish:
