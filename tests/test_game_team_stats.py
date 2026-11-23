@@ -40,6 +40,18 @@ def game(**over):
     return row
 
 
+def games_file(tmp_path, year, weeks=((('regular'), 1), ('postseason', 1))):
+    """The committed games file the fetcher reads its week list from."""
+    path = tmp_path / f'games_{year}.csv'
+    with path.open('w', newline='', encoding='utf-8') as handle:
+        writer = csv.DictWriter(handle, fieldnames=['game_id', 'week', 'season_type'])
+        writer.writeheader()
+        for index, (season_type, week) in enumerate(weeks, start=1):
+            writer.writerow({'game_id': index, 'week': week,
+                             'season_type': season_type})
+    return path
+
+
 # ---- the fetcher: unknown fields stop the run, unknown categories do not ----
 
 def test_a_new_top_level_field_fails_rather_than_being_dropped():
@@ -111,7 +123,8 @@ def test_the_output_directory_is_resolved_inside_the_function(tmp_path, monkeypa
     patched and this test would pass while the code wrote into the real
     data/raw. That trap has bitten this repository five times."""
     monkeypatch.setattr(fetch, 'OUT_DIR', tmp_path)
-    monkeypatch.setattr(fetch, 'fetch', lambda year, season_type, headers:
+    games_file(tmp_path, 2099)
+    monkeypatch.setattr(fetch, 'fetch', lambda year, season_type, week, headers:
                         [game()] if season_type == 'regular' else [])
     assert fetch.write_season(2099, {}) > 0
     assert (tmp_path / 'game_team_stats_2099.csv').exists()
@@ -123,13 +136,14 @@ def test_the_output_directory_is_resolved_inside_the_function(tmp_path, monkeypa
 def test_the_postseason_is_fetched_too(tmp_path, monkeypatch):
     """Leaving it out would drop every bowl and playoff game in silence."""
     asked = []
+    games_file(tmp_path, 2024)
 
-    def spy(year, season_type, headers):
+    def spy(year, season_type, week, headers):
         asked.append(season_type)
         return [game()] if season_type == 'postseason' else []
 
     monkeypatch.setattr(fetch, 'fetch', spy)
-    fetch.write_season(2024, {}, out_dir=tmp_path)
+    fetch.write_season(2024, {}, out_dir=tmp_path, raw_dir=tmp_path)
     assert asked == ['regular', 'postseason']
     assert (tmp_path / 'game_team_stats_2024.csv').exists()
 
@@ -137,21 +151,85 @@ def test_the_postseason_is_fetched_too(tmp_path, monkeypatch):
 def test_a_season_with_no_rows_writes_no_file(tmp_path, monkeypatch):
     """A header-only file reads downstream as a season in which no team gained
     a yard, which is the same shape as a real answer."""
-    monkeypatch.setattr(fetch, 'fetch', lambda year, season_type, headers: [])
-    assert fetch.write_season(2001, {}, out_dir=tmp_path) == 0
-    assert list(tmp_path.iterdir()) == []
+    games_file(tmp_path, 2001)
+    monkeypatch.setattr(fetch, 'fetch',
+                        lambda year, season_type, week, headers: [])
+    assert fetch.write_season(2001, {}, out_dir=tmp_path, raw_dir=tmp_path) == 0
+    assert not list(tmp_path.glob('game_team_stats_*.csv'))
 
 
 def test_a_season_already_committed_is_skipped_so_a_backfill_resumes(tmp_path, monkeypatch):
     called = []
-    monkeypatch.setattr(fetch, 'fetch', lambda year, season_type, headers:
+    games_file(tmp_path, 2024)
+    monkeypatch.setattr(fetch, 'fetch', lambda year, season_type, week, headers:
                         called.append(season_type) or
                         ([game()] if season_type == 'regular' else []))
-    fetch.write_season(2024, {}, out_dir=tmp_path)
+    fetch.write_season(2024, {}, out_dir=tmp_path, raw_dir=tmp_path)
     called.clear()
-    assert fetch.write_season(2024, {}, out_dir=tmp_path) == 0
+    assert fetch.write_season(2024, {}, out_dir=tmp_path, raw_dir=tmp_path) == 0
     assert called == [], 'a committed season must not be re-requested'
-    assert fetch.write_season(2024, {}, out_dir=tmp_path, force=True) > 0
+    assert fetch.write_season(2024, {}, out_dir=tmp_path, raw_dir=tmp_path,
+                              force=True) > 0
+
+
+def test_a_season_is_requested_week_by_week_with_the_week_in_the_query():
+    """/games/teams answers 400 for a year alone: one of week, team or
+    conference is required alongside it. The whole backfill failed on its
+    first season because the week was missing."""
+    import inspect
+    source = inspect.getsource(fetch.fetch)
+    assert '"week": week' in source, (
+        'the request must carry a week, or CFBD refuses it with 400')
+    assert 'week' in inspect.signature(fetch.fetch).parameters
+
+
+def test_the_weeks_come_from_the_archive_so_a_played_week_is_never_skipped(tmp_path):
+    """A blind range is a guess in both directions. 2001 played no week 4 and
+    ran through week 16, so 1..15 would drop a week in silence."""
+    games_file(tmp_path, 2001,
+               weeks=[('regular', 1), ('regular', 2), ('regular', 3),
+                      ('regular', 5), ('regular', 16), ('postseason', 1)])
+    assert fetch.season_weeks(2001, 'regular', tmp_path) == [1, 2, 3, 5, 16]
+    assert fetch.season_weeks(2001, 'postseason', tmp_path) == [1]
+
+
+def test_the_real_archive_names_the_weeks_2001_actually_played():
+    """Not a fixture: the committed games file is what the backfill reads, and
+    the September 11 cancellations left 2001 with no week 4."""
+    weeks = fetch.season_weeks(2001, 'regular')
+    assert 16 in weeks, 'week 16 is played and must be requested'
+    assert 4 not in weeks, 'no week 4 was played in 2001'
+
+
+def test_every_week_the_archive_names_is_actually_requested(tmp_path, monkeypatch):
+    asked = []
+    games_file(tmp_path, 2024,
+               weeks=[('regular', 1), ('regular', 14), ('postseason', 1)])
+    monkeypatch.setattr(fetch, 'fetch',
+                        lambda year, season_type, week, headers:
+                        asked.append((season_type, week)) or [])
+    assert fetch.season_rows(2024, {}, tmp_path) == []
+    assert asked == [('regular', 1), ('regular', 14), ('postseason', 1)]
+
+
+def test_a_missing_games_file_stops_the_run_rather_than_fetching_nothing(tmp_path):
+    """Returning no weeks would write no file and read as a season CFBD has
+    no box score for, which is the shape of a real answer."""
+    with pytest.raises(FileNotFoundError):
+        fetch.season_weeks(2024, 'regular', tmp_path)
+
+
+def test_a_game_with_no_week_stops_the_run(tmp_path):
+    path = tmp_path / 'games_2024.csv'
+    path.write_text('game_id,week,season_type\n7,,regular\n', encoding='utf-8')
+    with pytest.raises(ValueError, match='no week'):
+        fetch.season_weeks(2024, 'regular', tmp_path)
+
+
+def test_the_raw_directory_is_resolved_inside_season_weeks():
+    """The same def-time default trap as the output directory."""
+    import inspect
+    assert inspect.signature(fetch.season_weeks).parameters['raw_dir'].default is None
 
 
 def test_a_year_before_the_archive_begins_is_refused_rather_than_requested(capsys):
