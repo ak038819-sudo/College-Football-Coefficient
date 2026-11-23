@@ -3932,7 +3932,7 @@ function teamProfileColor(name) {
 
 // Validated and versioned historical descriptive assets. The panel is optional,
 // and existing team sections continue working if the asset cannot be loaded.
-const SCOUTING_VERSIONS = {"2025": "b71cdfabcfb8", "2026": "18c06d849a59"};
+const SCOUTING_VERSIONS = {"2026": "18c06d849a59", "2025": "b71cdfabcfb8"};
 const _scoutingRequests = new Map();
 const SCOUTING_TRAITS = [
   ['rush_success_rate', 'Rush success'], ['rush_ppa', 'Rush PPA'],
@@ -9829,6 +9829,48 @@ function loadPlayerArchive(season, gameId) {
   if (!wanted.length) return Promise.resolve(archive());
   return Promise.all(wanted.map(loadDataScript)).then(archive);
 }
+// CFBD's per-game efficiency for one game, as a column group for the Matchup
+// table, or null when the game has none (coverage begins in 2001).
+//
+// This is the PROVIDER'S measurement of what each offence did, and it is kept
+// apart from the xSRDiff layer the Elo engine derives from it: Success Rate
+// moved here, beside the two numbers it was always meant to be read with, and
+// SRDiff / xSRDiff / SR+ stay in a group of their own named for the model.
+//
+// Each side carries its OWN OFFENCE only. In all 22,500 games of the archive a
+// team's defensive columns are its opponent's offensive columns exactly, so a
+// second set would print the same numbers twice; what a defence gave up is the
+// other row of the same table.
+function gameEfficiencyGroup(detail) {
+  const d = detail;
+  if (!d) return null;
+  // Two decimals and not one: PPA runs from about -0.5 to 1.5 a play, so a
+  // single decimal would round two very different offences onto one number.
+  // The real minus sign, as every other negative in this table uses -- an
+  // ASCII hyphen beside the next column's '−15.0%' reads as a typo.
+  const n2 = v => Number(v).toFixed(2).replace('-', '−');
+  const metrics = [
+    ['plays', 'Plays', 'This team’s offensive plays, garbage time excluded. The sample the averages beside it rest on.',
+      v => Number(v).toLocaleString()],
+    ['success_rate', 'Success Rate', 'Share of this team’s plays that gained enough for the down and distance.',
+      v => (v * 100).toFixed(1) + '%'],
+    ['ppa', 'PPA', 'Predicted points added per play: how much this offence moved its own scoring expectation, on average.', n2],
+    ['explosiveness', 'Explosiveness', 'Average predicted points added on the plays that succeeded.', n2]
+  ];
+  // A column exists only when at least one side has it, on the rule the whole
+  // group already follows: a game the provider never measured must not widen
+  // this table with columns of 'N/A'. 'N/A' is kept for the case it describes
+  // -- one side measured and the other not, in a game otherwise covered.
+  const shown = metrics.filter(([key]) =>
+    d['home_' + key] != null || d['away_' + key] != null);
+  if (!shown.length) return null;
+  const cells = side => shown.map(([key, , , format]) => {
+    const value = d[side + '_' + key];
+    return value == null ? 'N/A' : format(value);
+  });
+  return ['Efficiency', shown.map(([, label, tip]) => [label, tip]), cells];
+}
+
 // Drive-by-drive records for one game: the scoring summary, and the drive list
 // behind it. Sharded on the game id exactly as the box scores are, so a game
 // page asks for one drive shard and one box-score shard and nothing else.
@@ -10219,6 +10261,7 @@ function hydrateGamePage(version) {
       const pct1 = v => v == null ? 'N/A' : (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v * 100).toFixed(1) + '%';
       const hasCoe = !!(g.completed && d);
       const hasSr = !!(d && (d.home_sr_diff != null || d.away_sr_diff != null));
+      const effGroup = gameEfficiencyGroup(d);
 
       // side = 'away' | 'home'. Each entry is [label, value-for-this-side].
       const eloCells = side => {
@@ -10236,7 +10279,6 @@ function hydrateGamePage(version) {
           coe == null ? '—' : coe.toFixed(3)];
       };
       const srCells = side => [
-        d[side + '_success_rate'] == null ? 'N/A' : (d[side + '_success_rate'] * 100).toFixed(1) + '%',
         pct1(d[side + '_sr_diff']), pct1(d[side + '_xsr_diff']), pct1(d[side + '_sr_plus'])];
 
       const groups = [['Elo', g.completed
@@ -10251,9 +10293,9 @@ function hydrateGamePage(version) {
          ['Hybrid', 'Pregame Elo blended with the frozen five-season Legacy Merits.'],
          ['P', 'The win expectation those hybrid ratings imply.'],
          ['Game Merits', 'What the result earned. A tougher win earns more.']], coeCells]);
-      if (hasSr) groups.push(['Efficiency',
-        [['Success Rate', 'Share of this team’s plays that gained enough for the down and distance.'],
-         ['SRDiff', 'How much better this team performed by Success Rate than its opponent.'],
+      if (effGroup) groups.push(effGroup);
+      if (hasSr) groups.push(['xSRDiff layer',
+        [['SRDiff', 'How much better this team performed by Success Rate than its opponent.'],
          ['xSRDiff', 'What the matchup implied before kickoff, from pregame Elo and venue.'],
          ['SR+', 'SRDiff minus xSRDiff: how far the team beat the expectation.']], srCells]);
 
@@ -10286,8 +10328,17 @@ function hydrateGamePage(version) {
           (d.performance_model === 'xsrdiff'
             ? 'The winner’s SR+ set the Elo multiplier for this game.'
             : 'This game’s Elo used the <code>' + esc(d.performance_model || 'mov') + '</code> multiplier instead, so ' +
-              'these numbers are shown for context and did not move the rating.') +
-          ' Success Rate coverage begins in 2001; earlier games have none.</p>'
+              'these numbers are shown for context and did not move the rating.') + '</p>'
+        : '';
+      // Each side's Efficiency row is its OWN offence. What a defence gave up is
+      // the other row, which is why there are no def_ columns: in every game of
+      // the archive a team's defensive numbers are its opponent's offensive ones
+      // exactly, so a second set of columns would repeat the first.
+      const effHelp = effGroup
+        ? '<p class="section-note">Efficiency describes each team’s own <b>offence</b>; what it gave up is the ' +
+          'other row. Garbage time is excluded by the provider, so <b>Plays</b> is below the game’s real ' +
+          'play count and is the sample the three averages rest on — a short one makes them noisy. ' +
+          'Coverage begins in 2001; earlier games have none.</p>'
         : '';
 
       // Team column plus every metric column across the groups this game has.
@@ -10301,7 +10352,7 @@ function hydrateGamePage(version) {
         '<p class="section-note">' + (g.completed ? 'Recorded before kickoff and never recomputed. ' : 'Current ratings; they will change as games are played. ') +
         'Win chance includes home field exactly as the Elo model applies it.' +
         (g.away_provisional || g.home_provisional ? ' * No games yet this season: starting rating.' : '') + '</p>' +
-        coeMissing + srHelp + coeHelp + '</div>';
+        coeMissing + effHelp + srHelp + coeHelp + '</div>';
 
       const q = encodeURIComponent(an + ' vs ' + hn + ' ' + season + ' highlights');
       const more = '<div class="panel"><h2 class="section-title">More</h2>' +
