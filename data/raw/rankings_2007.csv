@@ -1,0 +1,376 @@
+season_year,season_type,week,poll,rank,school,conference,first_place_votes,points
+2007,regular,5,ap,9,Wisconsin,Big Ten,0,0
+2007,regular,5,ap,8,Ohio State,Big Ten,0,0
+2007,regular,5,ap,1,USC,Pac-10,43,0
+2007,regular,5,ap,23,Arizona State,Pac-10,0,0
+2007,regular,5,ap,6,California,Pac-10,0,0
+2007,regular,5,ap,11,Oregon,Pac-10,0,0
+2007,regular,5,ap,10,Rutgers,Big East,0,0
+2007,regular,5,ap,5,West Virginia,Big East,0,0
+2007,regular,5,ap,21,Penn State,Big Ten,0,0
+2007,regular,5,ap,25,Nebraska,Big 12,0,0
+2007,regular,5,ap,20,Missouri,Big 12,0,0
+2007,regular,5,ap,7,Texas,Big 12,0,0
+2007,regular,5,ap,3,Oklahoma,Big 12,0,0
+2007,regular,5,ap,18,South Florida,Big East,0,0
+2007,regular,5,ap,24,Cincinnati,Big East,0,0
+2007,regular,5,ap,15,Georgia,SEC,0,0
+2007,regular,5,ap,4,Florida,SEC,0,0
+2007,regular,5,ap,16,South Carolina,SEC,0,0
+2007,regular,5,ap,14,Kentucky,SEC,0,0
+2007,regular,5,ap,19,Hawai'i,Western Athletic,0,0
+2007,regular,5,ap,2,LSU,SEC,22,0
+2007,regular,5,ap,22,Alabama,SEC,0,0
+2007,regular,5,ap,12,Boston College,ACC,0,0
+2007,regular,5,ap,13,Clemson,ACC,0,0
+2007,regular,5,ap,17,Virginia Tech,ACC,0,0
+2007,regular,14,ap,15,Illinois,Big Ten,0,0
+2007,regular,14,ap,19,Wisconsin,Big Ten,0,0
+2007,regular,14,ap,3,Ohio State,Big Ten,0,0
+2007,regular,14,ap,8,USC,Pac-10,0,0
+2007,regular,14,ap,13,Arizona State,Pac-10,0,0
+2007,regular,14,ap,18,Oregon,Pac-10,0,0
+2007,regular,14,ap,2,West Virginia,Big East,20,0
+2007,regular,14,ap,1,Missouri,Big 12,45,0
+2007,regular,14,ap,7,Kansas,Big 12,0,0
+2007,regular,14,ap,17,Texas,Big 12,0,0
+2007,regular,14,ap,9,Oklahoma,Big 12,0,0
+2007,regular,14,ap,21,BYU,Mountain West,0,0
+2007,regular,14,ap,25,South Florida,Big East,0,0
+2007,regular,14,ap,20,Cincinnati,Big East,0,0
+2007,regular,14,ap,24,Boise State,Western Athletic,0,0
+2007,regular,14,ap,4,Georgia,SEC,0,0
+2007,regular,14,ap,10,Florida,SEC,0,0
+2007,regular,14,ap,14,Tennessee,SEC,0,0
+2007,regular,14,ap,11,Hawai'i,Western Athletic,0,0
+2007,regular,14,ap,23,Auburn,SEC,0,0
+2007,regular,14,ap,5,LSU,SEC,0,0
+2007,regular,14,ap,12,Boston College,ACC,0,0
+2007,regular,14,ap,16,Clemson,ACC,0,0
+2007,regular,14,ap,6,Virginia Tech,ACC,0,0
+2007,regular,14,ap,22,Virginia,ACC,0,0
+2007,regular,13,ap,18,Illinois,Big Ten,0,0
+2007,regular,13,ap,22,Wisconsin,Big Ten,0,0
+2007,regular,13,ap,5,Ohio State,Big Ten,0,0
+2007,regular,13,ap,11,USC,Pac-10,0,0
+2007,regular,13,ap,7,Arizona State,Pac-10,0,0
+2007,regular,13,ap,9,Oregon,Pac-10,0,0
+2007,regular,13,ap,4,West Virginia,Big East,1,0
+2007,regular,13,ap,3,Missouri,Big 12,1,0
+2007,regular,13,ap,2,Kansas,Big 12,3,0
+2007,regular,13,ap,13,Texas,Big 12,0,0
+2007,regular,13,ap,10,Oklahoma,Big 12,0,0
+2007,regular,13,ap,23,BYU,Mountain West,0,0
+2007,regular,13,ap,20,UConn,Big East,0,0
+2007,regular,13,ap,24,Cincinnati,Big East,0,0
+2007,regular,13,ap,17,Boise State,Western Athletic,0,0
+2007,regular,13,ap,6,Georgia,SEC,0,0
+2007,regular,13,ap,12,Florida,SEC,0,0
+2007,regular,13,ap,19,Tennessee,SEC,0,0
+2007,regular,13,ap,14,Hawai'i,Western Athletic,0,0
+2007,regular,13,ap,25,Auburn,SEC,0,0
+2007,regular,13,ap,1,LSU,SEC,60,0
+2007,regular,13,ap,15,Boston College,ACC,0,0
+2007,regular,13,ap,21,Clemson,ACC,0,0
+2007,regular,13,ap,8,Virginia Tech,ACC,0,0
+2007,regular,13,ap,16,Virginia,ACC,0,0
+2007,regular,12,ap,20,Illinois,Big Ten,0,0
+2007,regular,12,ap,24,Wisconsin,Big Ten,0,0
+2007,regular,12,ap,23,Michigan,Big Ten,0,0
+2007,regular,12,ap,7,Ohio State,Big Ten,0,0
+2007,regular,12,ap,11,USC,Pac-10,0,0
+2007,regular,12,ap,9,Arizona State,Pac-10,0,0
+2007,regular,12,ap,2,Oregon,Pac-10,22,0
+2007,regular,12,ap,5,West Virginia,Big East,1,0
+2007,regular,12,ap,6,Missouri,Big 12,0,0
+2007,regular,12,ap,4,Kansas,Big 12,1,0
+2007,regular,12,ap,12,Texas,Big 12,0,0
+2007,regular,12,ap,3,Oklahoma,Big 12,1,0
+2007,regular,12,ap,25,UConn,Big East,0,0
+2007,regular,12,ap,21,Cincinnati,Big East,0,0
+2007,regular,12,ap,17,Boise State,Western Athletic,0,0
+2007,regular,12,ap,8,Georgia,SEC,0,0
+2007,regular,12,ap,14,Florida,SEC,0,0
+2007,regular,12,ap,19,Tennessee,SEC,0,0
+2007,regular,12,ap,22,Kentucky,SEC,0,0
+2007,regular,12,ap,13,Hawai'i,Western Athletic,0,0
+2007,regular,12,ap,1,LSU,SEC,40,0
+2007,regular,12,ap,18,Boston College,ACC,0,0
+2007,regular,12,ap,15,Clemson,ACC,0,0
+2007,regular,12,ap,10,Virginia Tech,ACC,0,0
+2007,regular,12,ap,16,Virginia,ACC,0,0
+2007,regular,7,ap,18,Illinois,Big Ten,0,0
+2007,regular,7,ap,19,Wisconsin,Big Ten,0,0
+2007,regular,7,ap,3,Ohio State,Big Ten,0,0
+2007,regular,7,ap,10,USC,Pac-10,0,0
+2007,regular,7,ap,14,Arizona State,Pac-10,0,0
+2007,regular,7,ap,2,California,Pac-10,0,0
+2007,regular,7,ap,9,Oregon,Pac-10,0,0
+2007,regular,7,ap,8,West Virginia,Big East,0,0
+2007,regular,7,ap,11,Missouri,Big 12,0,0
+2007,regular,7,ap,20,Kansas,Big 12,0,0
+2007,regular,7,ap,23,Texas,Big 12,0,0
+2007,regular,7,ap,6,Oklahoma,Big 12,0,0
+2007,regular,7,ap,5,South Florida,Big East,0,0
+2007,regular,7,ap,15,Cincinnati,Big East,0,0
+2007,regular,7,ap,24,Georgia,SEC,0,0
+2007,regular,7,ap,13,Florida,SEC,0,0
+2007,regular,7,ap,25,Tennessee,SEC,0,0
+2007,regular,7,ap,7,South Carolina,SEC,0,0
+2007,regular,7,ap,17,Kentucky,SEC,0,0
+2007,regular,7,ap,16,Hawai'i,Western Athletic,0,0
+2007,regular,7,ap,22,Auburn,SEC,0,0
+2007,regular,7,ap,1,LSU,SEC,65,0
+2007,regular,7,ap,21,Florida State,ACC,0,0
+2007,regular,7,ap,4,Boston College,ACC,0,0
+2007,regular,7,ap,12,Virginia Tech,ACC,0,0
+2007,regular,10,ap,15,Michigan,Big Ten,0,0
+2007,regular,10,ap,1,Ohio State,Big Ten,59,0
+2007,regular,10,ap,13,USC,Pac-10,0,0
+2007,regular,10,ap,6,Arizona State,Pac-10,2,0
+2007,regular,10,ap,4,Oregon,Pac-10,0,0
+2007,regular,10,ap,7,West Virginia,Big East,0,0
+2007,regular,10,ap,9,Missouri,Big 12,0,0
+2007,regular,10,ap,8,Kansas,Big 12,0,0
+2007,regular,10,ap,14,Texas,Big 12,0,0
+2007,regular,10,ap,5,Oklahoma,Big 12,0,0
+2007,regular,10,ap,16,UConn,Big East,0,0
+2007,regular,10,ap,20,South Florida,Big East,0,0
+2007,regular,10,ap,21,Boise State,Western Athletic,0,0
+2007,regular,10,ap,10,Georgia,SEC,0,0
+2007,regular,10,ap,18,Florida,SEC,0,0
+2007,regular,10,ap,24,Tennessee,SEC,0,0
+2007,regular,10,ap,23,South Carolina,SEC,0,0
+2007,regular,10,ap,12,Hawai'i,Western Athletic,0,0
+2007,regular,10,ap,19,Auburn,SEC,0,0
+2007,regular,10,ap,3,LSU,SEC,3,0
+2007,regular,10,ap,17,Alabama,SEC,0,0
+2007,regular,10,ap,2,Boston College,ACC,1,0
+2007,regular,10,ap,25,Clemson,ACC,0,0
+2007,regular,10,ap,21,Wake Forest,ACC,0,0
+2007,regular,10,ap,11,Virginia Tech,ACC,0,0
+2007,regular,9,ap,19,Michigan,Big Ten,0,0
+2007,regular,9,ap,1,Ohio State,Big Ten,57,0
+2007,regular,9,ap,9,USC,Pac-10,0,0
+2007,regular,9,ap,7,Arizona State,Pac-10,1,0
+2007,regular,9,ap,18,California,Pac-10,0,0
+2007,regular,9,ap,5,Oregon,Pac-10,0,0
+2007,regular,9,ap,25,Rutgers,Big East,0,0
+2007,regular,9,ap,6,West Virginia,Big East,0,0
+2007,regular,9,ap,24,Penn State,Big Ten,0,0
+2007,regular,9,ap,13,Missouri,Big 12,0,0
+2007,regular,9,ap,12,Kansas,Big 12,0,0
+2007,regular,9,ap,17,Texas,Big 12,0,0
+2007,regular,9,ap,4,Oklahoma,Big 12,0,0
+2007,regular,9,ap,11,South Florida,Big East,0,0
+2007,regular,9,ap,20,Georgia,SEC,0,0
+2007,regular,9,ap,9,Florida,SEC,0,0
+2007,regular,9,ap,15,South Carolina,SEC,0,0
+2007,regular,9,ap,14,Kentucky,SEC,0,0
+2007,regular,9,ap,16,Hawai'i,Western Athletic,0,0
+2007,regular,9,ap,23,Auburn,SEC,0,0
+2007,regular,9,ap,3,LSU,SEC,5,0
+2007,regular,9,ap,22,Alabama,SEC,0,0
+2007,regular,9,ap,2,Boston College,ACC,2,0
+2007,regular,9,ap,8,Virginia Tech,ACC,0,0
+2007,regular,9,ap,21,Virginia,ACC,0,0
+2007,regular,6,ap,5,Wisconsin,Big Ten,0,0
+2007,regular,6,ap,4,Ohio State,Big Ten,0,0
+2007,regular,6,ap,23,Purdue,Big Ten,0,0
+2007,regular,6,ap,2,USC,Pac-10,32,0
+2007,regular,6,ap,18,Arizona State,Pac-10,0,0
+2007,regular,6,ap,3,California,Pac-10,0,0
+2007,regular,6,ap,14,Oregon,Pac-10,0,0
+2007,regular,6,ap,21,Rutgers,Big East,0,0
+2007,regular,6,ap,13,West Virginia,Big East,0,0
+2007,regular,6,ap,25,Nebraska,Big 12,0,0
+2007,regular,6,ap,24,Kansas State,Big 12,0,0
+2007,regular,6,ap,17,Missouri,Big 12,0,0
+2007,regular,6,ap,19,Texas,Big 12,0,0
+2007,regular,6,ap,10,Oklahoma,Big 12,0,0
+2007,regular,6,ap,6,South Florida,Big East,0,0
+2007,regular,6,ap,20,Cincinnati,Big East,0,0
+2007,regular,6,ap,12,Georgia,SEC,0,0
+2007,regular,6,ap,9,Florida,SEC,0,0
+2007,regular,6,ap,11,South Carolina,SEC,0,0
+2007,regular,6,ap,8,Kentucky,SEC,0,0
+2007,regular,6,ap,16,Hawai'i,Western Athletic,0,0
+2007,regular,6,ap,1,LSU,SEC,33,0
+2007,regular,6,ap,7,Boston College,ACC,0,0
+2007,regular,6,ap,22,Clemson,ACC,0,0
+2007,regular,6,ap,15,Virginia Tech,ACC,0,0
+2007,regular,4,ap,9,Wisconsin,Big Ten,0,0
+2007,regular,4,ap,8,Ohio State,Big Ten,0,0
+2007,regular,4,ap,1,USC,Pac-10,46,0
+2007,regular,4,ap,6,California,Pac-10,0,0
+2007,regular,4,ap,13,Oregon,Pac-10,0,0
+2007,regular,4,ap,11,Rutgers,Big East,0,0
+2007,regular,4,ap,5,West Virginia,Big East,0,0
+2007,regular,4,ap,10,Penn State,Big Ten,0,0
+2007,regular,4,ap,24,Nebraska,Big 12,0,0
+2007,regular,4,ap,25,Missouri,Big 12,0,0
+2007,regular,4,ap,7,Texas,Big 12,0,0
+2007,regular,4,ap,20,Texas A&M,Big 12,0,0
+2007,regular,4,ap,4,Oklahoma,Big 12,0,0
+2007,regular,4,ap,18,Louisville,Big East,0,0
+2007,regular,4,ap,23,South Florida,Big East,0,0
+2007,regular,4,ap,22,Georgia,SEC,0,0
+2007,regular,4,ap,3,Florida,SEC,0,0
+2007,regular,4,ap,12,South Carolina,SEC,0,0
+2007,regular,4,ap,21,Kentucky,SEC,0,0
+2007,regular,4,ap,19,Hawai'i,Western Athletic,0,0
+2007,regular,4,ap,2,LSU,SEC,19,0
+2007,regular,4,ap,16,Alabama,SEC,0,0
+2007,regular,4,ap,14,Boston College,ACC,0,0
+2007,regular,4,ap,15,Clemson,ACC,0,0
+2007,regular,4,ap,17,Virginia Tech,ACC,0,0
+2007,regular,3,ap,7,Wisconsin,Big Ten,0,0
+2007,regular,3,ap,10,Ohio State,Big Ten,0,0
+2007,regular,3,ap,1,USC,Pac-10,40,0
+2007,regular,3,ap,11,UCLA,Pac-10,0,0
+2007,regular,3,ap,8,California,Pac-10,0,0
+2007,regular,3,ap,19,Oregon,Pac-10,0,0
+2007,regular,3,ap,13,Rutgers,Big East,0,0
+2007,regular,3,ap,4,West Virginia,Big East,0,0
+2007,regular,3,ap,12,Penn State,Big Ten,0,0
+2007,regular,3,ap,14,Nebraska,Big 12,0,0
+2007,regular,3,ap,6,Texas,Big 12,0,0
+2007,regular,3,ap,25,Texas A&M,Big 12,0,0
+2007,regular,3,ap,3,Oklahoma,Big 12,0,0
+2007,regular,3,ap,9,Louisville,Big East,0,0
+2007,regular,3,ap,23,Georgia,SEC,0,0
+2007,regular,3,ap,5,Florida,SEC,0,0
+2007,regular,3,ap,22,Tennessee,SEC,0,0
+2007,regular,3,ap,17,South Carolina,SEC,0,0
+2007,regular,3,ap,24,Hawai'i,Western Athletic,0,0
+2007,regular,3,ap,2,LSU,SEC,25,0
+2007,regular,3,ap,16,Arkansas,SEC,0,0
+2007,regular,3,ap,21,Boston College,ACC,0,0
+2007,regular,3,ap,20,Clemson,ACC,0,0
+2007,regular,3,ap,18,Virginia Tech,ACC,0,0
+2007,regular,3,ap,15,Georgia Tech,ACC,0,0
+2007,regular,2,ap,5,Wisconsin,Big Ten,0,0
+2007,regular,2,ap,12,Ohio State,Big Ten,0,0
+2007,regular,2,ap,1,USC,Pac-10,59,0
+2007,regular,2,ap,13,UCLA,Pac-10,0,0
+2007,regular,2,ap,10,California,Pac-10,0,0
+2007,regular,2,ap,15,Rutgers,Big East,0,0
+2007,regular,2,ap,3,West Virginia,Big East,1,0
+2007,regular,2,ap,14,Penn State,Big Ten,0,0
+2007,regular,2,ap,16,Nebraska,Big 12,0,0
+2007,regular,2,ap,7,Texas,Big 12,0,0
+2007,regular,2,ap,23,Texas A&M,Big 12,0,0
+2007,regular,2,ap,5,Oklahoma,Big 12,0,0
+2007,regular,2,ap,8,Louisville,Big East,0,0
+2007,regular,2,ap,19,TCU,Mountain West,0,0
+2007,regular,2,ap,22,Boise State,Western Athletic,0,0
+2007,regular,2,ap,11,Georgia,SEC,0,0
+2007,regular,2,ap,4,Florida,SEC,0,0
+2007,regular,2,ap,24,Tennessee,SEC,0,0
+2007,regular,2,ap,20,Hawai'i,Western Athletic,0,0
+2007,regular,2,ap,17,Auburn,SEC,0,0
+2007,regular,2,ap,2,LSU,SEC,5,0
+2007,regular,2,ap,18,Arkansas,SEC,0,0
+2007,regular,2,ap,25,Clemson,ACC,0,0
+2007,regular,2,ap,9,Virginia Tech,ACC,0,0
+2007,regular,2,ap,21,Georgia Tech,ACC,0,0
+2007,regular,1,ap,7,Wisconsin,Big Ten,0,0
+2007,regular,1,ap,5,Michigan,Big Ten,0,0
+2007,regular,1,ap,11,Ohio State,Big Ten,0,0
+2007,regular,1,ap,1,USC,Pac-10,62,0
+2007,regular,1,ap,14,UCLA,Pac-10,0,0
+2007,regular,1,ap,12,California,Pac-10,0,0
+2007,regular,1,ap,16,Rutgers,Big East,0,0
+2007,regular,1,ap,3,West Virginia,Big East,1,0
+2007,regular,1,ap,17,Penn State,Big Ten,0,0
+2007,regular,1,ap,20,Nebraska,Big 12,0,0
+2007,regular,1,ap,4,Texas,Big 12,0,0
+2007,regular,1,ap,25,Texas A&M,Big 12,0,0
+2007,regular,1,ap,8,Oklahoma,Big 12,0,0
+2007,regular,1,ap,10,Louisville,Big East,0,0
+2007,regular,1,ap,22,TCU,Mountain West,0,0
+2007,regular,1,ap,24,Boise State,Western Athletic,0,0
+2007,regular,1,ap,13,Georgia,SEC,0,0
+2007,regular,1,ap,6,Florida,SEC,0,0
+2007,regular,1,ap,15,Tennessee,SEC,0,0
+2007,regular,1,ap,23,Hawai'i,Western Athletic,0,0
+2007,regular,1,ap,18,Auburn,SEC,0,0
+2007,regular,1,ap,2,LSU,SEC,2,0
+2007,regular,1,ap,21,Arkansas,SEC,0,0
+2007,regular,1,ap,19,Florida State,ACC,0,0
+2007,regular,1,ap,9,Virginia Tech,ACC,0,0
+2007,regular,11,ap,13,Michigan,Big Ten,0,0
+2007,regular,11,ap,1,Ohio State,Big Ten,60,0
+2007,regular,11,ap,12,USC,Pac-10,0,0
+2007,regular,11,ap,9,Arizona State,Pac-10,0,0
+2007,regular,11,ap,24,California,Pac-10,0,0
+2007,regular,11,ap,3,Oregon,Pac-10,0,0
+2007,regular,11,ap,6,West Virginia,Big East,0,0
+2007,regular,11,ap,7,Missouri,Big 12,0,0
+2007,regular,11,ap,5,Kansas,Big 12,0,0
+2007,regular,11,ap,15,Texas,Big 12,0,0
+2007,regular,11,ap,4,Oklahoma,Big 12,0,0
+2007,regular,11,ap,16,UConn,Big East,0,0
+2007,regular,11,ap,19,Boise State,Western Athletic,0,0
+2007,regular,11,ap,10,Georgia,SEC,0,0
+2007,regular,11,ap,17,Florida,SEC,0,0
+2007,regular,11,ap,22,Tennessee,SEC,0,0
+2007,regular,11,ap,24,Kentucky,SEC,0,0
+2007,regular,11,ap,14,Hawai'i,Western Athletic,0,0
+2007,regular,11,ap,18,Auburn,SEC,0,0
+2007,regular,11,ap,2,LSU,SEC,5,0
+2007,regular,11,ap,21,Alabama,SEC,0,0
+2007,regular,11,ap,8,Boston College,ACC,0,0
+2007,regular,11,ap,20,Clemson,ACC,0,0
+2007,regular,11,ap,11,Virginia Tech,ACC,0,0
+2007,regular,11,ap,23,Virginia,ACC,0,0
+2007,regular,8,ap,24,Michigan,Big Ten,0,0
+2007,regular,8,ap,1,Ohio State,Big Ten,50,0
+2007,regular,8,ap,13,USC,Pac-10,0,0
+2007,regular,8,ap,12,Arizona State,Pac-10,1,0
+2007,regular,8,ap,10,California,Pac-10,0,0
+2007,regular,8,ap,7,Oregon,Pac-10,0,0
+2007,regular,8,ap,9,West Virginia,Big East,0,0
+2007,regular,8,ap,25,Kansas State,Big 12,0,0
+2007,regular,8,ap,15,Missouri,Big 12,0,0
+2007,regular,8,ap,15,Kansas,Big 12,0,0
+2007,regular,8,ap,19,Texas,Big 12,0,0
+2007,regular,8,ap,22,Texas Tech,Big 12,0,0
+2007,regular,8,ap,4,Oklahoma,Big 12,1,0
+2007,regular,8,ap,2,South Florida,Big East,11,0
+2007,regular,8,ap,23,Cincinnati,Big East,0,0
+2007,regular,8,ap,21,Georgia,SEC,0,0
+2007,regular,8,ap,14,Florida,SEC,0,0
+2007,regular,8,ap,20,Tennessee,SEC,0,0
+2007,regular,8,ap,6,South Carolina,SEC,0,0
+2007,regular,8,ap,8,Kentucky,SEC,0,0
+2007,regular,8,ap,17,Hawai'i,Western Athletic,0,0
+2007,regular,8,ap,18,Auburn,SEC,0,0
+2007,regular,8,ap,5,LSU,SEC,1,0
+2007,regular,8,ap,3,Boston College,ACC,1,0
+2007,regular,8,ap,11,Virginia Tech,ACC,0,0
+2007,postseason,1,ap,1,LSU,SEC,60,0
+2007,postseason,1,ap,2,Georgia,SEC,3,0
+2007,postseason,1,ap,3,USC,Pac-10,1,0
+2007,postseason,1,ap,4,Missouri,Big 12,0,0
+2007,postseason,1,ap,5,Ohio State,Big Ten,0,0
+2007,postseason,1,ap,6,West Virginia,Big East,0,0
+2007,postseason,1,ap,7,Kansas,Big 12,1,0
+2007,postseason,1,ap,8,Oklahoma,Big 12,0,0
+2007,postseason,1,ap,9,Virginia Tech,ACC,0,0
+2007,postseason,1,ap,10,Texas,Big 12,0,0
+2007,postseason,1,ap,10,Boston College,ACC,0,0
+2007,postseason,1,ap,12,Tennessee,SEC,0,0
+2007,postseason,1,ap,13,Florida,SEC,0,0
+2007,postseason,1,ap,14,BYU,Mountain West,0,0
+2007,postseason,1,ap,15,Auburn,SEC,0,0
+2007,postseason,1,ap,16,Arizona State,Pac-10,0,0
+2007,postseason,1,ap,17,Cincinnati,Big East,0,0
+2007,postseason,1,ap,18,Michigan,Big Ten,0,0
+2007,postseason,1,ap,19,Hawai'i,Western Athletic,0,0
+2007,postseason,1,ap,20,Illinois,Big Ten,0,0
+2007,postseason,1,ap,21,Clemson,ACC,0,0
+2007,postseason,1,ap,22,Texas Tech,Big 12,0,0
+2007,postseason,1,ap,23,Oregon,Pac-10,0,0
+2007,postseason,1,ap,24,Wisconsin,Big Ten,0,0
+2007,postseason,1,ap,25,Oregon State,Pac-10,0,0
