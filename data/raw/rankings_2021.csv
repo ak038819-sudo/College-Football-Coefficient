@@ -1,0 +1,551 @@
+season_year,season_type,week,poll,rank,school,conference,first_place_votes,points
+2021,regular,9,ap,1,Georgia,SEC,63,1575
+2021,regular,9,ap,12,Kentucky,SEC,0,849
+2021,regular,9,ap,15,Oklahoma State,Big 12,0,682
+2021,regular,9,ap,16,Baylor,Big 12,0,513
+2021,regular,9,ap,22,Iowa State,Big 12,0,298
+2021,regular,9,ap,7,Oregon,Pac-12,0,1165
+2021,regular,9,ap,25,BYU,FBS Independents,0,44
+2021,regular,9,ap,18,Auburn,SEC,0,481
+2021,regular,9,ap,23,UTSA,Conference USA,0,235
+2021,regular,9,ap,3,Alabama,SEC,0,1417
+2021,regular,9,ap,10,Ole Miss,SEC,0,1034
+2021,regular,9,ap,14,Texas A&M,SEC,0,700
+2021,regular,9,ap,5,Ohio State,Big Ten,0,1311
+2021,regular,9,ap,8,Michigan State,Big Ten,0,1160
+2021,regular,9,ap,6,Michigan,Big Ten,0,1270
+2021,regular,9,ap,20,Penn State,Big Ten,0,471
+2021,regular,9,ap,9,Iowa,Big Ten,0,1035
+2021,regular,9,ap,4,Oklahoma,Big 12,0,1383
+2021,regular,9,ap,11,Notre Dame,FBS Independents,0,922
+2021,regular,9,ap,24,Coastal Carolina,Sun Belt,0,132
+2021,regular,9,ap,2,Cincinnati,American Athletic,0,1477
+2021,regular,9,ap,19,SMU,American Athletic,0,473
+2021,regular,9,ap,13,Wake Forest,ACC,0,801
+2021,regular,9,ap,17,Pittsburgh,ACC,0,510
+2021,regular,9,ap,21,San Diego State,Mountain West,0,390
+2021,regular,8,ap,1,Georgia,SEC,63,1575
+2021,regular,8,ap,15,Kentucky,SEC,0,723
+2021,regular,8,ap,8,Oklahoma State,Big 12,0,1082
+2021,regular,8,ap,20,Baylor,Big 12,0,378
+2021,regular,8,ap,10,Oregon,Pac-12,0,1054
+2021,regular,8,ap,19,Auburn,SEC,0,397
+2021,regular,8,ap,24,UTSA,Conference USA,0,104
+2021,regular,8,ap,4,Alabama,SEC,0,1393
+2021,regular,8,ap,12,Ole Miss,SEC,0,879
+2021,regular,8,ap,17,Texas A&M,SEC,0,536
+2021,regular,8,ap,5,Ohio State,Big Ten,0,1252
+2021,regular,8,ap,9,Michigan State,Big Ten,0,1076
+2021,regular,8,ap,6,Michigan,Big Ten,0,1214
+2021,regular,8,ap,7,Penn State,Big Ten,0,1116
+2021,regular,8,ap,11,Iowa,Big Ten,0,1048
+2021,regular,8,ap,25,Purdue,Big Ten,0,68
+2021,regular,8,ap,3,Oklahoma,Big 12,0,1434
+2021,regular,8,ap,13,Notre Dame,FBS Independents,0,763
+2021,regular,8,ap,14,Coastal Carolina,Sun Belt,0,736
+2021,regular,8,ap,2,Cincinnati,American Athletic,0,1483
+2021,regular,8,ap,21,SMU,American Athletic,0,358
+2021,regular,8,ap,18,NC State,ACC,0,485
+2021,regular,8,ap,16,Wake Forest,ACC,0,629
+2021,regular,8,ap,23,Pittsburgh,ACC,0,177
+2021,regular,8,ap,22,San Diego State,Mountain West,0,284
+2021,regular,7,ap,1,Georgia,SEC,62,1550
+2021,regular,7,ap,20,Florida,SEC,0,397
+2021,regular,7,ap,11,Kentucky,SEC,0,918
+2021,regular,7,ap,12,Oklahoma State,Big 12,0,830
+2021,regular,7,ap,9,Oregon,Pac-12,0,1057
+2021,regular,7,ap,19,BYU,FBS Independents,0,421
+2021,regular,7,ap,18,Arizona State,Pac-12,0,428
+2021,regular,7,ap,5,Alabama,SEC,0,1286
+2021,regular,7,ap,13,Ole Miss,SEC,0,779
+2021,regular,7,ap,17,Arkansas,SEC,0,470
+2021,regular,7,ap,21,Texas A&M,SEC,0,348
+2021,regular,7,ap,6,Ohio State,Big Ten,0,1157
+2021,regular,7,ap,10,Michigan State,Big Ten,0,992
+2021,regular,7,ap,8,Michigan,Big Ten,0,1139
+2021,regular,7,ap,7,Penn State,Big Ten,0,1147
+2021,regular,7,ap,2,Iowa,Big Ten,0,1476
+2021,regular,7,ap,25,Texas,Big 12,0,108
+2021,regular,7,ap,4,Oklahoma,Big 12,0,1336
+2021,regular,7,ap,14,Notre Dame,FBS Independents,0,732
+2021,regular,7,ap,15,Coastal Carolina,Sun Belt,0,712
+2021,regular,7,ap,3,Cincinnati,American Athletic,0,1407
+2021,regular,7,ap,23,SMU,American Athletic,0,225
+2021,regular,7,ap,22,NC State,ACC,0,265
+2021,regular,7,ap,16,Wake Forest,ACC,0,526
+2021,regular,7,ap,24,San Diego State,Mountain West,0,176
+2021,regular,6,ap,2,Georgia,SEC,9,1497
+2021,regular,6,ap,20,Florida,SEC,0,343
+2021,regular,6,ap,16,Kentucky,SEC,0,662
+2021,regular,6,ap,12,Oklahoma State,Big 12,0,749
+2021,regular,6,ap,8,Oregon,Pac-12,0,1069
+2021,regular,6,ap,10,BYU,FBS Independents,0,990
+2021,regular,6,ap,18,Auburn,SEC,0,448
+2021,regular,6,ap,22,Arizona State,Pac-12,0,297
+2021,regular,6,ap,1,Alabama,SEC,53,1541
+2021,regular,6,ap,17,Ole Miss,SEC,0,601
+2021,regular,6,ap,13,Arkansas,SEC,0,745
+2021,regular,6,ap,7,Ohio State,Big Ten,0,1094
+2021,regular,6,ap,11,Michigan State,Big Ten,0,852
+2021,regular,6,ap,9,Michigan,Big Ten,0,1053
+2021,regular,6,ap,4,Penn State,Big Ten,0,1360
+2021,regular,6,ap,3,Iowa,Big Ten,0,1381
+2021,regular,6,ap,21,Texas,Big 12,0,303
+2021,regular,6,ap,6,Oklahoma,Big 12,0,1248
+2021,regular,6,ap,14,Notre Dame,FBS Independents,0,701
+2021,regular,6,ap,15,Coastal Carolina,Sun Belt,0,694
+2021,regular,6,ap,5,Cincinnati,American Athletic,0,1320
+2021,regular,6,ap,24,SMU,American Athletic,0,136
+2021,regular,6,ap,23,NC State,ACC,0,279
+2021,regular,6,ap,19,Wake Forest,ACC,0,412
+2021,regular,6,ap,25,San Diego State,Mountain West,0,111
+2021,regular,5,ap,2,Georgia,SEC,4,1492
+2021,regular,5,ap,10,Florida,SEC,0,1019
+2021,regular,5,ap,19,Oklahoma State,Big 12,0,341
+2021,regular,5,ap,21,Baylor,Big 12,0,233
+2021,regular,5,ap,3,Oregon,Pac-12,0,1411
+2021,regular,5,ap,13,BYU,FBS Independents,0,748
+2021,regular,5,ap,22,Auburn,SEC,0,197
+2021,regular,5,ap,20,UCLA,Pac-12,0,316
+2021,regular,5,ap,1,Alabama,SEC,58,1546
+2021,regular,5,ap,12,Ole Miss,SEC,0,852
+2021,regular,5,ap,8,Arkansas,SEC,0,1094
+2021,regular,5,ap,15,Texas A&M,SEC,0,651
+2021,regular,5,ap,11,Ohio State,Big Ten,0,1005
+2021,regular,5,ap,17,Michigan State,Big Ten,0,581
+2021,regular,5,ap,14,Michigan,Big Ten,0,677
+2021,regular,5,ap,4,Penn State,Big Ten,0,1283
+2021,regular,5,ap,5,Iowa,Big Ten,0,1277
+2021,regular,5,ap,6,Oklahoma,Big 12,0,1212
+2021,regular,5,ap,9,Notre Dame,FBS Independents,0,1076
+2021,regular,5,ap,16,Coastal Carolina,Sun Belt,0,613
+2021,regular,5,ap,7,Cincinnati,American Athletic,0,1154
+2021,regular,5,ap,25,Clemson,ACC,0,138
+2021,regular,5,ap,23,NC State,ACC,0,145
+2021,regular,5,ap,24,Wake Forest,ACC,0,142
+2021,regular,5,ap,18,Fresno State,Mountain West,0,415
+2021,regular,4,ap,2,Georgia,SEC,3,1491
+2021,regular,4,ap,11,Florida,SEC,0,930
+2021,regular,4,ap,25,Kansas State,Big 12,0,127
+2021,regular,4,ap,14,Iowa State,Big 12,0,664
+2021,regular,4,ap,3,Oregon,Pac-12,0,1385
+2021,regular,4,ap,15,BYU,FBS Independents,0,603
+2021,regular,4,ap,23,Auburn,SEC,0,166
+2021,regular,4,ap,24,UCLA,Pac-12,0,142
+2021,regular,4,ap,1,Alabama,SEC,59,1547
+2021,regular,4,ap,13,Ole Miss,SEC,0,717
+2021,regular,4,ap,16,Arkansas,SEC,0,537
+2021,regular,4,ap,7,Texas A&M,SEC,0,1158
+2021,regular,4,ap,10,Ohio State,Big Ten,0,976
+2021,regular,4,ap,20,Michigan State,Big Ten,0,389
+2021,regular,4,ap,19,Michigan,Big Ten,0,456
+2021,regular,4,ap,6,Penn State,Big Ten,0,1197
+2021,regular,4,ap,18,Wisconsin,Big Ten,0,513
+2021,regular,4,ap,5,Iowa,Big Ten,0,1298
+2021,regular,4,ap,4,Oklahoma,Big 12,0,1302
+2021,regular,4,ap,12,Notre Dame,FBS Independents,0,874
+2021,regular,4,ap,17,Coastal Carolina,Sun Belt,0,526
+2021,regular,4,ap,8,Cincinnati,American Athletic,0,1145
+2021,regular,4,ap,9,Clemson,ACC,0,1074
+2021,regular,4,ap,21,North Carolina,ACC,0,306
+2021,regular,4,ap,22,Fresno State,Mountain West,0,201
+2021,regular,3,ap,2,Georgia,SEC,3,1514
+2021,regular,3,ap,11,Florida,SEC,0,935
+2021,regular,3,ap,14,Iowa State,Big 12,0,593
+2021,regular,3,ap,4,Oregon,Pac-12,0,1355
+2021,regular,3,ap,23,BYU,FBS Independents,0,213
+2021,regular,3,ap,22,Auburn,SEC,0,233
+2021,regular,3,ap,13,UCLA,Pac-12,0,804
+2021,regular,3,ap,19,Arizona State,Pac-12,0,341
+2021,regular,3,ap,1,Alabama,SEC,60,1572
+2021,regular,3,ap,17,Ole Miss,SEC,0,550
+2021,regular,3,ap,20,Arkansas,SEC,0,277
+2021,regular,3,ap,7,Texas A&M,SEC,0,1206
+2021,regular,3,ap,9,Ohio State,Big Ten,0,1029
+2021,regular,3,ap,25,Michigan,Big Ten,0,163
+2021,regular,3,ap,10,Penn State,Big Ten,0,1005
+2021,regular,3,ap,18,Wisconsin,Big Ten,0,499
+2021,regular,3,ap,5,Iowa,Big Ten,0,1263
+2021,regular,3,ap,3,Oklahoma,Big 12,0,1402
+2021,regular,3,ap,12,Notre Dame,FBS Independents,0,926
+2021,regular,3,ap,16,Coastal Carolina,Sun Belt,0,562
+2021,regular,3,ap,8,Cincinnati,American Athletic,0,1149
+2021,regular,3,ap,6,Clemson,ACC,0,1246
+2021,regular,3,ap,15,Virginia Tech,ACC,0,591
+2021,regular,3,ap,24,Miami,ACC,0,177
+2021,regular,3,ap,21,North Carolina,ACC,0,268
+2021,regular,2,ap,2,Georgia,SEC,4,1507
+2021,regular,2,ap,13,Florida,SEC,0,842
+2021,regular,2,ap,9,Iowa State,Big 12,0,1045
+2021,regular,2,ap,12,Oregon,Pac-12,0,883
+2021,regular,2,ap,14,USC,Pac-12,0,789
+2021,regular,2,ap,25,Auburn,SEC,0,83
+2021,regular,2,ap,16,UCLA,Pac-12,0,668
+2021,regular,2,ap,21,Utah,Pac-12,0,334
+2021,regular,2,ap,23,Arizona State,Pac-12,0,222
+2021,regular,2,ap,1,Alabama,SEC,59,1571
+2021,regular,2,ap,20,Ole Miss,SEC,0,335
+2021,regular,2,ap,5,Texas A&M,SEC,0,1288
+2021,regular,2,ap,3,Ohio State,Big Ten,0,1437
+2021,regular,2,ap,11,Penn State,Big Ten,0,908
+2021,regular,2,ap,18,Wisconsin,Big Ten,0,376
+2021,regular,2,ap,10,Iowa,Big Ten,0,942
+2021,regular,2,ap,15,Texas,Big 12,0,683
+2021,regular,2,ap,4,Oklahoma,Big 12,0,1374
+2021,regular,2,ap,8,Notre Dame,FBS Independents,0,1070
+2021,regular,2,ap,17,Coastal Carolina,Sun Belt,0,384
+2021,regular,2,ap,7,Cincinnati,American Athletic,0,1136
+2021,regular,2,ap,6,Clemson,ACC,0,1231
+2021,regular,2,ap,19,Virginia Tech,ACC,0,359
+2021,regular,2,ap,22,Miami,ACC,0,229
+2021,regular,2,ap,24,North Carolina,ACC,0,198
+2021,regular,1,ap,5,Georgia,SEC,3,1364
+2021,regular,1,ap,13,Florida,SEC,0,728
+2021,regular,1,ap,7,Iowa State,Big 12,0,1160
+2021,regular,1,ap,11,Oregon,Pac-12,0,968
+2021,regular,1,ap,20,Washington,Pac-12,0,449
+2021,regular,1,ap,15,USC,Pac-12,0,660
+2021,regular,1,ap,16,LSU,SEC,0,631
+2021,regular,1,ap,24,Utah,Pac-12,0,176
+2021,regular,1,ap,25,Arizona State,Pac-12,0,125
+2021,regular,1,ap,1,Alabama,SEC,47,1548
+2021,regular,1,ap,6,Texas A&M,SEC,0,1223
+2021,regular,1,ap,4,Ohio State,Big Ten,1,1393
+2021,regular,1,ap,19,Penn State,Big Ten,0,456
+2021,regular,1,ap,17,Indiana,Big Ten,0,549
+2021,regular,1,ap,12,Wisconsin,Big Ten,0,743
+2021,regular,1,ap,18,Iowa,Big Ten,0,513
+2021,regular,1,ap,21,Texas,Big 12,0,350
+2021,regular,1,ap,2,Oklahoma,Big 12,6,1462
+2021,regular,1,ap,9,Notre Dame,FBS Independents,0,1009
+2021,regular,1,ap,23,Louisiana,Sun Belt,0,208
+2021,regular,1,ap,22,Coastal Carolina,Sun Belt,0,232
+2021,regular,1,ap,8,Cincinnati,American Athletic,0,1014
+2021,regular,1,ap,3,Clemson,ACC,6,1447
+2021,regular,1,ap,14,Miami,ACC,0,663
+2021,regular,1,ap,10,North Carolina,ACC,0,999
+2021,regular,10,ap,1,Georgia,SEC,63,1575
+2021,regular,10,ap,18,Kentucky,SEC,0,409
+2021,regular,10,ap,11,Oklahoma State,Big 12,0,915
+2021,regular,10,ap,14,Baylor,Big 12,0,833
+2021,regular,10,ap,7,Oregon,Pac-12,0,1233
+2021,regular,10,ap,17,BYU,FBS Independents,0,450
+2021,regular,10,ap,12,Auburn,SEC,0,853
+2021,regular,10,ap,16,UTSA,Conference USA,0,460
+2021,regular,10,ap,3,Alabama,SEC,0,1413
+2021,regular,10,ap,15,Ole Miss,SEC,0,678
+2021,regular,10,ap,13,Texas A&M,SEC,0,847
+2021,regular,10,ap,6,Ohio State,Big Ten,0,1296
+2021,regular,10,ap,5,Michigan State,Big Ten,0,1340
+2021,regular,10,ap,9,Michigan,Big Ten,0,1048
+2021,regular,10,ap,22,Penn State,Big Ten,0,182
+2021,regular,10,ap,19,Iowa,Big Ten,0,342
+2021,regular,10,ap,4,Oklahoma,Big 12,0,1382
+2021,regular,10,ap,8,Notre Dame,FBS Independents,0,1067
+2021,regular,10,ap,24,Louisiana,Sun Belt,0,161
+2021,regular,10,ap,21,Coastal Carolina,Sun Belt,0,237
+2021,regular,10,ap,20,Houston,American Athletic,0,338
+2021,regular,10,ap,2,Cincinnati,American Athletic,0,1455
+2021,regular,10,ap,23,SMU,American Athletic,0,176
+2021,regular,10,ap,10,Wake Forest,ACC,0,1025
+2021,regular,10,ap,25,Fresno State,Mountain West,0,151
+2021,regular,10,cfp,1,Georgia,SEC,0,0
+2021,regular,10,cfp,18,Kentucky,SEC,0,0
+2021,regular,10,cfp,11,Oklahoma State,Big 12,0,0
+2021,regular,10,cfp,12,Baylor,Big 12,0,0
+2021,regular,10,cfp,4,Oregon,Pac-12,0,0
+2021,regular,10,cfp,15,BYU,FBS Independents,0,0
+2021,regular,10,cfp,13,Auburn,SEC,0,0
+2021,regular,10,cfp,2,Alabama,SEC,0,0
+2021,regular,10,cfp,16,Ole Miss,SEC,0,0
+2021,regular,10,cfp,17,Mississippi State,SEC,0,0
+2021,regular,10,cfp,14,Texas A&M,SEC,0,0
+2021,regular,10,cfp,5,Ohio State,Big Ten,0,0
+2021,regular,10,cfp,3,Michigan State,Big Ten,0,0
+2021,regular,10,cfp,7,Michigan,Big Ten,0,0
+2021,regular,10,cfp,21,Wisconsin,Big Ten,0,0
+2021,regular,10,cfp,20,Minnesota,Big Ten,0,0
+2021,regular,10,cfp,22,Iowa,Big Ten,0,0
+2021,regular,10,cfp,8,Oklahoma,Big 12,0,0
+2021,regular,10,cfp,10,Notre Dame,FBS Independents,0,0
+2021,regular,10,cfp,6,Cincinnati,American Athletic,0,0
+2021,regular,10,cfp,19,NC State,ACC,0,0
+2021,regular,10,cfp,9,Wake Forest,ACC,0,0
+2021,regular,10,cfp,25,Pittsburgh,ACC,0,0
+2021,regular,10,cfp,23,Fresno State,Mountain West,0,0
+2021,regular,10,cfp,24,San Diego State,Mountain West,0,0
+2021,regular,14,cfp,1,Georgia,SEC,0,0
+2021,regular,14,cfp,23,Kentucky,SEC,0,0
+2021,regular,14,cfp,5,Oklahoma State,Big 12,0,0
+2021,regular,14,cfp,9,Baylor,Big 12,0,0
+2021,regular,14,cfp,10,Oregon,Pac-12,0,0
+2021,regular,14,cfp,12,BYU,FBS Independents,0,0
+2021,regular,14,cfp,17,Utah,Pac-12,0,0
+2021,regular,14,cfp,3,Alabama,SEC,0,0
+2021,regular,14,cfp,8,Ole Miss,SEC,0,0
+2021,regular,14,cfp,22,Arkansas,SEC,0,0
+2021,regular,14,cfp,25,Texas A&M,SEC,0,0
+2021,regular,14,cfp,7,Ohio State,Big Ten,0,0
+2021,regular,14,cfp,11,Michigan State,Big Ten,0,0
+2021,regular,14,cfp,2,Michigan,Big Ten,0,0
+2021,regular,14,cfp,13,Iowa,Big Ten,0,0
+2021,regular,14,cfp,14,Oklahoma,Big 12,0,0
+2021,regular,14,cfp,6,Notre Dame,FBS Independents,0,0
+2021,regular,14,cfp,24,Louisiana,Sun Belt,0,0
+2021,regular,14,cfp,21,Houston,American Athletic,0,0
+2021,regular,14,cfp,4,Cincinnati,American Athletic,0,0
+2021,regular,14,cfp,20,Clemson,ACC,0,0
+2021,regular,14,cfp,18,NC State,ACC,0,0
+2021,regular,14,cfp,16,Wake Forest,ACC,0,0
+2021,regular,14,cfp,15,Pittsburgh,ACC,0,0
+2021,regular,14,cfp,19,San Diego State,Mountain West,0,0
+2021,regular,14,ap,1,Georgia,SEC,62,1550
+2021,regular,14,ap,25,Kentucky,SEC,0,82
+2021,regular,14,ap,5,Oklahoma State,Big 12,0,1291
+2021,regular,14,ap,9,Baylor,Big 12,0,1066
+2021,regular,14,ap,10,Oregon,Pac-12,0,932
+2021,regular,14,ap,12,BYU,FBS Independents,0,839
+2021,regular,14,ap,14,Utah,Pac-12,0,667
+2021,regular,14,ap,4,Alabama,SEC,0,1388
+2021,regular,14,ap,8,Ole Miss,SEC,0,1105
+2021,regular,14,ap,23,Arkansas,SEC,0,214
+2021,regular,14,ap,24,Texas A&M,SEC,0,117
+2021,regular,14,ap,7,Ohio State,Big Ten,0,1147
+2021,regular,14,ap,11,Michigan State,Big Ten,0,877
+2021,regular,14,ap,2,Michigan,Big Ten,0,1449
+2021,regular,14,ap,15,Iowa,Big Ten,0,662
+2021,regular,14,ap,13,Oklahoma,Big 12,0,837
+2021,regular,14,ap,6,Notre Dame,FBS Independents,0,1264
+2021,regular,14,ap,20,Louisiana,Sun Belt,0,317
+2021,regular,14,ap,16,Houston,American Athletic,0,603
+2021,regular,14,ap,3,Cincinnati,American Athletic,0,1422
+2021,regular,14,ap,22,Clemson,ACC,0,269
+2021,regular,14,ap,21,NC State,ACC,0,310
+2021,regular,14,ap,18,Wake Forest,ACC,0,485
+2021,regular,14,ap,17,Pittsburgh,ACC,0,589
+2021,regular,14,ap,19,San Diego State,Mountain West,0,416
+2021,regular,13,cfp,1,Georgia,SEC,0,0
+2021,regular,13,cfp,7,Oklahoma State,Big 12,0,0
+2021,regular,13,cfp,8,Baylor,Big 12,0,0
+2021,regular,13,cfp,11,Oregon,Pac-12,0,0
+2021,regular,13,cfp,13,BYU,FBS Independents,0,0
+2021,regular,13,cfp,19,Utah,Pac-12,0,0
+2021,regular,13,cfp,22,UTSA,Conference USA,0,0
+2021,regular,13,cfp,3,Alabama,SEC,0,0
+2021,regular,13,cfp,9,Ole Miss,SEC,0,0
+2021,regular,13,cfp,25,Arkansas,SEC,0,0
+2021,regular,13,cfp,15,Texas A&M,SEC,0,0
+2021,regular,13,cfp,2,Ohio State,Big Ten,0,0
+2021,regular,13,cfp,12,Michigan State,Big Ten,0,0
+2021,regular,13,cfp,5,Michigan,Big Ten,0,0
+2021,regular,13,cfp,14,Wisconsin,Big Ten,0,0
+2021,regular,13,cfp,16,Iowa,Big Ten,0,0
+2021,regular,13,cfp,10,Oklahoma,Big 12,0,0
+2021,regular,13,cfp,6,Notre Dame,FBS Independents,0,0
+2021,regular,13,cfp,24,Houston,American Athletic,0,0
+2021,regular,13,cfp,4,Cincinnati,American Athletic,0,0
+2021,regular,13,cfp,23,Clemson,ACC,0,0
+2021,regular,13,cfp,20,NC State,ACC,0,0
+2021,regular,13,cfp,18,Wake Forest,ACC,0,0
+2021,regular,13,cfp,17,Pittsburgh,ACC,0,0
+2021,regular,13,cfp,21,San Diego State,Mountain West,0,0
+2021,regular,13,ap,1,Georgia,SEC,62,1550
+2021,regular,13,ap,7,Oklahoma State,Big 12,0,1209
+2021,regular,13,ap,9,Baylor,Big 12,0,1046
+2021,regular,13,ap,11,Oregon,Pac-12,0,849
+2021,regular,13,ap,13,BYU,FBS Independents,0,771
+2021,regular,13,ap,16,Utah,Pac-12,0,561
+2021,regular,13,ap,15,UTSA,Conference USA,0,583
+2021,regular,13,ap,3,Alabama,SEC,0,1423
+2021,regular,13,ap,8,Ole Miss,SEC,0,1060
+2021,regular,13,ap,25,Arkansas,SEC,0,105
+2021,regular,13,ap,14,Texas A&M,SEC,0,628
+2021,regular,13,ap,2,Ohio State,Big Ten,0,1434
+2021,regular,13,ap,12,Michigan State,Big Ten,0,778
+2021,regular,13,ap,6,Michigan,Big Ten,0,1246
+2021,regular,13,ap,18,Wisconsin,Big Ten,0,517
+2021,regular,13,ap,17,Iowa,Big Ten,0,538
+2021,regular,13,ap,10,Oklahoma,Big 12,0,1001
+2021,regular,13,ap,5,Notre Dame,FBS Independents,0,1262
+2021,regular,13,ap,23,Louisiana,Sun Belt,0,246
+2021,regular,13,ap,19,Houston,American Athletic,0,516
+2021,regular,13,ap,4,Cincinnati,American Athletic,0,1416
+2021,regular,13,ap,24,NC State,ACC,0,141
+2021,regular,13,ap,21,Wake Forest,ACC,0,344
+2021,regular,13,ap,20,Pittsburgh,ACC,0,445
+2021,regular,13,ap,22,San Diego State,Mountain West,0,273
+2021,regular,12,cfp,1,Georgia,SEC,0,0
+2021,regular,12,cfp,9,Oklahoma State,Big 12,0,0
+2021,regular,12,cfp,11,Baylor,Big 12,0,0
+2021,regular,12,cfp,3,Oregon,Pac-12,0,0
+2021,regular,12,cfp,14,BYU,FBS Independents,0,0
+2021,regular,12,cfp,23,Utah,Pac-12,0,0
+2021,regular,12,cfp,22,UTSA,Conference USA,0,0
+2021,regular,12,cfp,2,Alabama,SEC,0,0
+2021,regular,12,cfp,12,Ole Miss,SEC,0,0
+2021,regular,12,cfp,25,Mississippi State,SEC,0,0
+2021,regular,12,cfp,21,Arkansas,SEC,0,0
+2021,regular,12,cfp,16,Texas A&M,SEC,0,0
+2021,regular,12,cfp,4,Ohio State,Big Ten,0,0
+2021,regular,12,cfp,7,Michigan State,Big Ten,0,0
+2021,regular,12,cfp,6,Michigan,Big Ten,0,0
+2021,regular,12,cfp,15,Wisconsin,Big Ten,0,0
+2021,regular,12,cfp,17,Iowa,Big Ten,0,0
+2021,regular,12,cfp,13,Oklahoma,Big 12,0,0
+2021,regular,12,cfp,8,Notre Dame,FBS Independents,0,0
+2021,regular,12,cfp,24,Houston,American Athletic,0,0
+2021,regular,12,cfp,5,Cincinnati,American Athletic,0,0
+2021,regular,12,cfp,20,NC State,ACC,0,0
+2021,regular,12,cfp,10,Wake Forest,ACC,0,0
+2021,regular,12,cfp,18,Pittsburgh,ACC,0,0
+2021,regular,12,cfp,19,San Diego State,Mountain West,0,0
+2021,regular,12,ap,1,Georgia,SEC,62,1550
+2021,regular,12,ap,9,Oklahoma State,Big 12,0,1106
+2021,regular,12,ap,11,Baylor,Big 12,0,882
+2021,regular,12,ap,4,Oregon,Pac-12,0,1353
+2021,regular,12,ap,14,BYU,FBS Independents,0,671
+2021,regular,12,ap,24,Utah,Pac-12,0,141
+2021,regular,12,ap,15,UTSA,Conference USA,0,591
+2021,regular,12,ap,2,Alabama,SEC,0,1449
+2021,regular,12,ap,10,Ole Miss,SEC,0,943
+2021,regular,12,ap,21,Arkansas,SEC,0,277
+2021,regular,12,ap,16,Texas A&M,SEC,0,583
+2021,regular,12,ap,5,Ohio State,Big Ten,0,1341
+2021,regular,12,ap,7,Michigan State,Big Ten,0,1161
+2021,regular,12,ap,8,Michigan,Big Ten,0,1134
+2021,regular,12,ap,19,Wisconsin,Big Ten,0,467
+2021,regular,12,ap,18,Iowa,Big Ten,0,491
+2021,regular,12,ap,12,Oklahoma,Big 12,0,870
+2021,regular,12,ap,6,Notre Dame,FBS Independents,0,1175
+2021,regular,12,ap,22,Louisiana,Sun Belt,0,261
+2021,regular,12,ap,17,Houston,American Athletic,0,509
+2021,regular,12,ap,3,Cincinnati,American Athletic,0,1420
+2021,regular,12,ap,25,NC State,ACC,0,95
+2021,regular,12,ap,13,Wake Forest,ACC,0,851
+2021,regular,12,ap,20,Pittsburgh,ACC,0,358
+2021,regular,12,ap,23,San Diego State,Mountain West,0,239
+2021,regular,11,cfp,1,Georgia,SEC,0,0
+2021,regular,11,cfp,10,Oklahoma State,Big 12,0,0
+2021,regular,11,cfp,13,Baylor,Big 12,0,0
+2021,regular,11,cfp,3,Oregon,Pac-12,0,0
+2021,regular,11,cfp,14,BYU,FBS Independents,0,0
+2021,regular,11,cfp,17,Auburn,SEC,0,0
+2021,regular,11,cfp,24,Utah,Pac-12,0,0
+2021,regular,11,cfp,23,UTSA,Conference USA,0,0
+2021,regular,11,cfp,2,Alabama,SEC,0,0
+2021,regular,11,cfp,15,Ole Miss,SEC,0,0
+2021,regular,11,cfp,25,Arkansas,SEC,0,0
+2021,regular,11,cfp,11,Texas A&M,SEC,0,0
+2021,regular,11,cfp,4,Ohio State,Big Ten,0,0
+2021,regular,11,cfp,7,Michigan State,Big Ten,0,0
+2021,regular,11,cfp,6,Michigan,Big Ten,0,0
+2021,regular,11,cfp,18,Wisconsin,Big Ten,0,0
+2021,regular,11,cfp,20,Iowa,Big Ten,0,0
+2021,regular,11,cfp,19,Purdue,Big Ten,0,0
+2021,regular,11,cfp,8,Oklahoma,Big 12,0,0
+2021,regular,11,cfp,9,Notre Dame,FBS Independents,0,0
+2021,regular,11,cfp,5,Cincinnati,American Athletic,0,0
+2021,regular,11,cfp,16,NC State,ACC,0,0
+2021,regular,11,cfp,12,Wake Forest,ACC,0,0
+2021,regular,11,cfp,21,Pittsburgh,ACC,0,0
+2021,regular,11,cfp,22,San Diego State,Mountain West,0,0
+2021,regular,11,ap,1,Georgia,SEC,63,1575
+2021,regular,11,ap,10,Oklahoma State,Big 12,0,1038
+2021,regular,11,ap,18,Baylor,Big 12,0,464
+2021,regular,11,ap,5,Oregon,Pac-12,0,1319
+2021,regular,11,ap,14,BYU,FBS Independents,0,636
+2021,regular,11,ap,16,Auburn,SEC,0,478
+2021,regular,11,ap,15,UTSA,Conference USA,0,606
+2021,regular,11,ap,3,Alabama,SEC,0,1436
+2021,regular,11,ap,12,Ole Miss,SEC,0,837
+2021,regular,11,ap,11,Texas A&M,SEC,0,1006
+2021,regular,11,ap,6,Ohio State,Big Ten,0,1293
+2021,regular,11,ap,8,Michigan State,Big Ten,0,1096
+2021,regular,11,ap,9,Michigan,Big Ten,0,1072
+2021,regular,11,ap,23,Penn State,Big Ten,0,245
+2021,regular,11,ap,20,Wisconsin,Big Ten,0,286
+2021,regular,11,ap,19,Iowa,Big Ten,0,437
+2021,regular,11,ap,4,Oklahoma,Big 12,0,1406
+2021,regular,11,ap,7,Notre Dame,FBS Independents,0,1139
+2021,regular,11,ap,24,Louisiana,Sun Belt,0,208
+2021,regular,11,ap,22,Coastal Carolina,Sun Belt,0,264
+2021,regular,11,ap,17,Houston,American Athletic,0,467
+2021,regular,11,ap,2,Cincinnati,American Athletic,0,1440
+2021,regular,11,ap,21,NC State,ACC,0,268
+2021,regular,11,ap,13,Wake Forest,ACC,0,763
+2021,regular,11,ap,25,Pittsburgh,ACC,0,194
+2021,regular,15,cfp,3,Georgia,SEC,0,0
+2021,regular,15,cfp,22,Kentucky,SEC,0,0
+2021,regular,15,cfp,9,Oklahoma State,Big 12,0,0
+2021,regular,15,cfp,7,Baylor,Big 12,0,0
+2021,regular,15,cfp,14,Oregon,Pac-12,0,0
+2021,regular,15,cfp,13,BYU,FBS Independents,0,0
+2021,regular,15,cfp,11,Utah,Pac-12,0,0
+2021,regular,15,cfp,1,Alabama,SEC,0,0
+2021,regular,15,cfp,8,Ole Miss,SEC,0,0
+2021,regular,15,cfp,21,Arkansas,SEC,0,0
+2021,regular,15,cfp,25,Texas A&M,SEC,0,0
+2021,regular,15,cfp,6,Ohio State,Big Ten,0,0
+2021,regular,15,cfp,10,Michigan State,Big Ten,0,0
+2021,regular,15,cfp,2,Michigan,Big Ten,0,0
+2021,regular,15,cfp,15,Iowa,Big Ten,0,0
+2021,regular,15,cfp,16,Oklahoma,Big 12,0,0
+2021,regular,15,cfp,5,Notre Dame,FBS Independents,0,0
+2021,regular,15,cfp,23,Louisiana,Sun Belt,0,0
+2021,regular,15,cfp,20,Houston,American Athletic,0,0
+2021,regular,15,cfp,4,Cincinnati,American Athletic,0,0
+2021,regular,15,cfp,19,Clemson,ACC,0,0
+2021,regular,15,cfp,18,NC State,ACC,0,0
+2021,regular,15,cfp,17,Wake Forest,ACC,0,0
+2021,regular,15,cfp,12,Pittsburgh,ACC,0,0
+2021,regular,15,cfp,24,San Diego State,Mountain West,0,0
+2021,regular,15,ap,3,Georgia,SEC,0,1408
+2021,regular,15,ap,25,Kentucky,SEC,0,129
+2021,regular,15,ap,9,Oklahoma State,Big 12,0,1060
+2021,regular,15,ap,6,Baylor,Big 12,0,1228
+2021,regular,15,ap,15,Oregon,Pac-12,0,594
+2021,regular,15,ap,12,BYU,FBS Independents,0,866
+2021,regular,15,ap,10,Utah,Pac-12,0,929
+2021,regular,15,ap,24,UTSA,Conference USA,0,146
+2021,regular,15,ap,1,Alabama,SEC,50,1535
+2021,regular,15,ap,8,Ole Miss,SEC,0,1101
+2021,regular,15,ap,22,Arkansas,SEC,0,279
+2021,regular,15,ap,23,Texas A&M,SEC,0,171
+2021,regular,15,ap,7,Ohio State,Big Ten,0,1177
+2021,regular,15,ap,11,Michigan State,Big Ten,0,895
+2021,regular,15,ap,2,Michigan,Big Ten,9,1480
+2021,regular,15,ap,17,Iowa,Big Ten,0,446
+2021,regular,15,ap,14,Oklahoma,Big 12,0,807
+2021,regular,15,ap,5,Notre Dame,FBS Independents,0,1280
+2021,regular,15,ap,16,Louisiana,Sun Belt,0,490
+2021,regular,15,ap,21,Houston,American Athletic,0,358
+2021,regular,15,ap,4,Cincinnati,American Athletic,3,1404
+2021,regular,15,ap,19,Clemson,ACC,0,395
+2021,regular,15,ap,18,NC State,ACC,0,404
+2021,regular,15,ap,20,Wake Forest,ACC,0,393
+2021,regular,15,ap,13,Pittsburgh,ACC,0,838
+2021,postseason,1,ap,1,Georgia,SEC,61,1525
+2021,postseason,1,ap,2,Alabama,SEC,0,1464
+2021,postseason,1,ap,3,Michigan,Big Ten,0,1361
+2021,postseason,1,ap,4,Cincinnati,American Athletic,0,1349
+2021,postseason,1,ap,5,Baylor,Big 12,0,1259
+2021,postseason,1,ap,6,Ohio State,Big Ten,0,1247
+2021,postseason,1,ap,7,Oklahoma State,Big 12,0,1177
+2021,postseason,1,ap,8,Notre Dame,FBS Independents,0,1039
+2021,postseason,1,ap,9,Michigan State,Big Ten,0,1026
+2021,postseason,1,ap,10,Oklahoma,Big 12,0,966
+2021,postseason,1,ap,11,Ole Miss,SEC,0,926
+2021,postseason,1,ap,12,Utah,Pac-12,0,851
+2021,postseason,1,ap,13,Pittsburgh,ACC,0,741
+2021,postseason,1,ap,14,Clemson,ACC,0,538
+2021,postseason,1,ap,15,Wake Forest,ACC,0,533
+2021,postseason,1,ap,16,Louisiana,Sun Belt,0,517
+2021,postseason,1,ap,17,Houston,American Athletic,0,513
+2021,postseason,1,ap,18,Kentucky,SEC,0,446
+2021,postseason,1,ap,19,BYU,FBS Independents,0,435
+2021,postseason,1,ap,20,NC State,ACC,0,382
+2021,postseason,1,ap,21,Arkansas,SEC,0,371
+2021,postseason,1,ap,22,Oregon,Pac-12,0,364
+2021,postseason,1,ap,23,Iowa,Big Ten,0,171
+2021,postseason,1,ap,24,Utah State,Mountain West,0,163
+2021,postseason,1,ap,25,San Diego State,Mountain West,0,137
