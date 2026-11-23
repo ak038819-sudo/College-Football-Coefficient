@@ -286,9 +286,30 @@ def test_a_per_team_archive_counts_teams_that_played(tmp_path):
     conn.close()
 
 
+def test_a_poll_released_in_a_week_with_no_games_is_still_a_slot(tmp_path):
+    """The denominator used to be the game weeks plus one, which is a guess,
+    and the guess was low: the preseason poll falls in no game week, so 1982
+    reported 16 releases of 15 and the page showed more than all of
+    something. A numerator above its denominator is a defect wherever it
+    appears, so it is pinned here rather than left to the real-archive test."""
+    conn = _wide_db(tmp_path)
+    weeks = {week for (week,) in
+             conn.execute("SELECT DISTINCT week FROM games WHERE season_year = 2016")}
+    unplayed = max(weeks) + 5
+    conn.executemany("INSERT INTO poll_rankings VALUES (?,?,?,?,?,?)",
+                     [(2016, "regular", week, "ap", 1, "T1")
+                      for week in sorted(weeks) + [unplayed]])
+    conn.commit()
+    have, of = build_coverage(conn)["seasons"]["2016"]["polls"]
+    assert have == len(weeks) + 1
+    assert have <= of, 'a release in a week with no game is a slot, not an overflow'
+    conn.close()
+
+
 def test_polls_count_releases_and_not_ranked_teams(tmp_path):
-    # 25 teams in one week is one release, not 25. The denominator is the
-    # season's weeks plus the postseason release.
+    # 25 teams in one week is one release, not 25. The denominator is every
+    # release slot either source attests: the weeks games were played in, and
+    # the weeks a poll was actually released in.
     conn = _wide_db(tmp_path)
     conn.executemany("INSERT INTO poll_rankings VALUES (?,?,?,?,?,?)",
                      [(2016, "regular", 1, "ap", n, f"T{n}") for n in range(1, 26)] +

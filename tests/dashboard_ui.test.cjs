@@ -195,12 +195,25 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    assert.equal(d.querySelector('.rank-boards').dataset.boards,String(now),
      'the row declares how many boards it holds');
    assert.ok(boards().every(b=>b.querySelector('.mini-board li')),'no board is drawn empty');
-   // Polls are exported for the current season only, so a past season has none.
+   // A past season's ballots come out of that season's timeline file, and the
+   // archive widens: 1998 held no poll at all until the 1936-2025 backfill
+   // landed, and it now holds AP and no CFP. So the expectation is DERIVED
+   // from the payload rather than pinned to a count -- pinning it is what
+   // broke this test when the polls arrived.
    await route('#section=rankings&view=top25&season=1998',()=>d.querySelector('.rank-boards'));
-   assert.equal(boards().length,1,'a season with no poll shows the Elo board alone');
-   assert.equal(d.querySelector('.rank-boards').dataset.boards,'1');
+   await until(w,()=>!/Looking for the 1998 ballots/.test(d.querySelector('#content').textContent));
+   const titles={ap:'AP Top 25',cfp:'CFP Rankings'};
+   const tracks=(w.__CFB_ELO_TIMELINE__&&w.__CFB_ELO_TIMELINE__[1998]||{}).polls||{};
+   const held=Object.keys(titles).filter(k=>((tracks[k]||{}).rows||[]).length);
+   const absent=Object.keys(titles).filter(k=>!held.includes(k));
+   assert.ok(absent.length,'1998 must still be missing a poll for this test to mean anything');
+   assert.equal(boards().length,held.length+1,'one column per poll the archive holds, plus Elo');
+   assert.equal(d.querySelector('.rank-boards').dataset.boards,String(held.length+1));
    const note=d.querySelector('#content .section-note')?.textContent||'';
-   assert.match(note,/AP Top 25 and CFP Rankings/,'the note names the polls that are missing');
+   for (const key of absent)
+     assert.match(note,new RegExp(titles[key]),'the note names the poll that is missing');
+   for (const key of held)
+     assert.ok(!new RegExp(titles[key]).test(note),'a poll the archive holds is not called missing');
    assert.match(note,/1998/);
   });
   await t.test('the Elo page explains each rating, and the detail joins the right team-season',async()=>{
