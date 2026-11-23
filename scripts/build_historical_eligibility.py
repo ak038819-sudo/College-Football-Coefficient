@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Season-by-season major-college eligibility for the 1946-1979 archive.
+"""Season-by-season major-college eligibility for the 1869-1979 archive.
 
 Membership moved. A school that was major-college in 1952 need not have
 been in 1968, and the plan is explicit that present-day FBS says nothing
@@ -24,7 +24,7 @@ import sqlite3
 from collections import defaultdict
 from pathlib import Path
 
-FIRST, LAST = 1946, 1979
+FIRST, LAST = 1869, 1979
 # The provider's own label for the top tier. Everything else it says is a
 # lower division; an empty string is silence, not a division.
 MAJOR = 'fbs'
@@ -84,7 +84,7 @@ def verdict(game_classes, record_class):
 
 def build(archive, records, first=FIRST, last=LAST):
     if first < FIRST or last > LAST or last < first:
-        raise ValueError('Phase 3 range must be within 1946-1979')
+        raise ValueError('Historical range must be within 1869-1979')
     games = from_games(archive, first, last)
     lines = from_records(records, first, last)
     rows = []

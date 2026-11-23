@@ -11,17 +11,17 @@
 # evidence that the import is faithful to collegefootballdata.com -- not that
 # the history is complete. The independent references under "Review before
 # promotion" in docs/historical-expansion-phase3.md are a separate step.
-name: Historical source reconciliation (1946-1979)
+name: Historical source reconciliation (1869-1979)
 
 on:
   workflow_dispatch:
     inputs:
       start:
-        description: "First season to reconcile (1946-1979)."
+        description: "First season to reconcile (1869-1979)."
         type: string
-        default: "1946"
+        default: "1869"
       end:
-        description: "Last season to reconcile (1946-1979)."
+        description: "Last season to reconcile (1869-1979)."
         type: string
         default: "1979"
       force:
@@ -86,9 +86,9 @@ jobs:
               first, last = int(start), int(end)
           except ValueError:
               sys.exit(f'::error::start and end must be years: {start}, {end}')
-          if not 1946 <= first <= last <= 1979:
-              sys.exit('::error::Phase 3 is 1946-1979, and start must not be '
-                       f'after end: got {first}-{last}')
+          if not 1869 <= first <= last <= 1979:
+              sys.exit('::error::The historical archive is 1869-1979, and start '
+                       f'must not be after end: got {first}-{last}')
           print(f'Reconciling {first}-{last}')
           PY
         env:

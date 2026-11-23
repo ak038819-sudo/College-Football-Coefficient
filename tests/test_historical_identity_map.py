@@ -1,4 +1,4 @@
-"""The candidate identity map for the 1946-1979 schools.
+"""The candidate identity map for the 1869-1979 schools.
 
 The danger in this step is not a crash, it is a quiet merge: two schools
 that look alike becoming one, or a defunct program being resolved into the
@@ -245,12 +245,12 @@ class TestTheSummary:
 
 
 class TestItTouchesNothingItShouldNot:
-    def test_the_range_is_phase_three_and_nothing_wider(self, archive,
+    def test_the_range_is_the_archive_and_nothing_wider(self, archive,
                                                         records):
         with sqlite3.connect(f'file:{archive}?mode=ro', uri=True) as a, \
                 sqlite3.connect(f'file:{records}?mode=ro', uri=True) as r:
-            for first, last in ((1945, 1950), (1950, 1980), (1960, 1950)):
-                with pytest.raises(ValueError, match='1946-1979'):
+            for first, last in ((1868, 1950), (1950, 1980), (1960, 1950)):
+                with pytest.raises(ValueError, match='1869-1979'):
                     identity.build(a, r, first, last)
 
     def test_both_databases_are_opened_read_only(self, archive, records,
@@ -478,7 +478,7 @@ class TestTheCommittedMap:
     def test_the_evidence_columns_are_filled_for_every_name(self, committed):
         for row in committed:
             assert int(row['games']) > 0, row['raw_name']
-            assert 1946 <= int(row['first_season']) <= int(row['last_season']) <= 1979
+            assert 1869 <= int(row['first_season']) <= int(row['last_season']) <= 1979
             assert int(row['as_home']) + int(row['as_away']) == int(row['games'])
 
     def test_every_unresolved_name_has_been_ruled_on(self, committed):
