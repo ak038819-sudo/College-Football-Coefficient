@@ -68,8 +68,8 @@ def uploads(steps):
 
 class TestItOnlyRunsWhenAsked:
     def test_there_is_no_trigger_but_a_dispatch(self, workflow):
-        # Thirty-four seasons of somebody else's API allowance is not
-        # something to run on a push or a timer.
+        # A hundred and eleven seasons of somebody else's API allowance is
+        # not something to run on a push or a timer.
         assert set(workflow[True] if True in workflow
                    else workflow['on']) == {'workflow_dispatch'}
 
@@ -77,8 +77,11 @@ class TestItOnlyRunsWhenAsked:
         inputs = (workflow[True] if True in workflow
                   else workflow['on'])['workflow_dispatch']['inputs']
         assert {'start', 'end'} <= set(inputs)
-        assert inputs['start']['default'] == '1948'
-        assert inputs['end']['default'] == '1959'
+        # The first Phase 4 batch, and inside the range the guard allows.
+        assert inputs['start']['default'] == '1869'
+        assert inputs['end']['default'] == '1899'
+        for name in ('start', 'end'):
+            assert 1869 <= int(inputs[name]['default']) <= 1979
 
     def test_a_queued_run_is_not_cancelled_by_the_next_one(self, workflow):
         # A cancelled import loses every season fetched since its last
@@ -170,10 +173,12 @@ class TestTheRangeIsCheckedBeforeTheProviderIs:
                          if 'import the batch' in name)
         assert check < import_at
 
-    def test_phase_three_is_the_only_range_it_will_take(self, text):
+    def test_the_whole_staged_archive_is_the_range_it_will_take(self, text):
+        # Widened to 1869 for Phase 4. 1980 onward belongs to the
+        # production pipeline, not this staging chain.
         body = text.split('Check the credential and the range', 1)[1]
         body = body.split('- name:', 1)[0]
-        assert '1946 <= first <= last <= 1979' in body
+        assert '1869 <= first <= last <= 1979' in body
 
     def test_a_missing_key_fails_the_run_rather_than_the_request(self, text):
         assert 'CFBD_API_KEY repository secret is missing' in text

@@ -168,6 +168,10 @@ def test_the_written_csv_round_trips(tmp_path, monkeypatch):
 
 READERS = {'src/fetch_cfbd_recruiting.py', 'src/load_recruiting.py',
            'run_pipeline.py', 'src/export_people_pages.py',
+           # Added 2026-11-16 with the Data Coverage page's recruiting row. It
+           # reads one number -- how many of a season's teams signed a class
+           # this database can attribute -- and publishes no recruit.
+           'src/coverage.py',
            # Added 2026-11-18, the change that finally publishes this archive
            # as itself: the exporter that writes the class and signee
            # payloads, and the static export that calls it. Both publish what

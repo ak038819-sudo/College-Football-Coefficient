@@ -213,6 +213,15 @@ def main() -> None:
             run([python, "src/load_recruiting.py", "--db", str(DB_PATH)],
                 "Load recruiting classes and recruits")
 
+        # Returning production. Display only -- the Elo preseason step keeps its
+        # flat offseason_retention and never reads this table. It loads after
+        # the teams exist because it refuses an unresolvable school rather than
+        # dropping the row: this feed is FBS-only, so a name that will not
+        # resolve means the identity map is wrong.
+        if list(Path("data/raw").glob("returning_production_*.csv")):
+            run([python, "src/load_returning_production.py", "--db", str(DB_PATH)],
+                "Load returning production")
+
         for snapshot_path in sorted(Path("data/raw").glob("membership_*.csv")):
             year_str = snapshot_path.stem.replace("membership_", "")
             if year_str.isdigit():
