@@ -1,4 +1,4 @@
-"""Phase 3 backfill audit tests using synthetic Phase 2 staging schema."""
+"""Historical backfill audit tests using synthetic Phase 2 staging schema."""
 import importlib.util
 import json
 import sqlite3
@@ -54,6 +54,25 @@ def test_complete_season_preserves_ties_and_unknown_classification():
         postseason = partition(rows, 1946, "postseason")
         assert postseason["blockers"] == "checkpoint_incomplete;source_count_mismatch"
         assert postseason["checkpoint"] == "missing"
+
+
+def test_the_earliest_season_anyone_played_is_auditable():
+    """1869 is in range since Phase 4 widened the archive, and a two-game
+    season is audited the same way a six-hundred-game one is."""
+    with make_db() as db:
+        db.execute("INSERT INTO archive_fetches VALUES (1869,'regular','complete',2)")
+        db.execute("INSERT INTO archive_fetches VALUES (1869,'postseason','complete',0)")
+        db.executescript("""
+            INSERT INTO archive_games VALUES
+                ('g1',1869,'regular','Rutgers','Princeton',6,4,NULL,NULL,'1869-11-06');
+            INSERT INTO archive_games VALUES
+                ('g2',1869,'regular','Princeton','Rutgers',8,0,NULL,NULL,'1869-11-13');
+        """)
+        rows = audit_module.audit(db, 1869, 1869)
+        regular = partition(rows, 1869, "regular")
+        assert regular["blockers"] == ""
+        assert regular["staged_count"] == 2
+        assert regular["unknown_classification"] == 2
 
 
 def test_mismatched_count_and_invalid_team_block_partition():
@@ -134,7 +153,7 @@ def test_audit_covers_every_requested_season_and_type():
         ]
 
 
-@pytest.mark.parametrize("first,last", [(1945, 1946), (1946, 1980), (1950, 1949)])
+@pytest.mark.parametrize("first,last", [(1868, 1946), (1946, 1980), (1950, 1949)])
 def test_invalid_range(first, last):
     with make_db() as db:
         with pytest.raises(ValueError):

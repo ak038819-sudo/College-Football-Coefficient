@@ -125,6 +125,36 @@ the Second World War. That the curve has those notches in the right
 places is the best evidence available here that the feed is the period's
 real shape and not a partial scrape.
 
+## Staging, 1869–1945
+
+`.github/workflows/historical-backfill.yml` now takes **1869–1979**, and
+Phase 4 stages into **the same chain Phase 3 built** rather than opening a
+second one. There is one archive, so there is one staging database.
+
+That is safe because of two properties the backfill already had. The
+importer checkpoints per season and season type, so a batch covering
+ground already staged reports `SKIP` and refetches nothing — the 1946–1979
+seasons are untouched by any Phase 4 run. And every gate that reads this
+database filters by season (`WHERE season BETWEEN ? AND ?`), so widening
+the archive cannot change what any of them says about 1946–1979; Phase 3's
+results stand as recorded.
+
+Batches follow the plan's suggestion, and the coverage matrix supports the
+boundaries — the first is light and the last is dense:
+
+| batch | games |
+| --- | --- |
+| 1869–1899 | 2,596 |
+| 1900–1919 | 8,467 |
+| 1920–1939 | 12,543 |
+| 1940–1945 | 3,380 |
+| total | 26,986 |
+
+The Phase 3 gates — reconciliation, identity, eligibility, preservation —
+still carry their own 1946–1979 ranges and are **not** widened here.
+Widening them is its own piece of work, and the identity gate in
+particular has 1,214 names to face rather than 405.
+
 ### What this settles, and what it does not
 
 It settles that Phase 4 does not need a second provider to exist. It does
