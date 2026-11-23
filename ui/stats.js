@@ -174,5 +174,77 @@
       });
     });
   }
-  return {categories,labels,num,sortRows,filterRows,aggregatePlayers,aggregateTeams,enhanceTable,cellKey,compareCells,columnKeys,sortCells};
+  /* ---- Taking a table away with you -------------------------------------
+   *
+   * Every board on this site renders through enhanceTable or SortableTable,
+   * so one reader of the finished DOM turns all of them into a file. Reading
+   * the DOM rather than the payload behind it is deliberate: what downloads is
+   * exactly the table on screen, with the filters, the season and the sort the
+   * reader chose, and no view has to be taught to export itself.
+   */
+
+  /* One cell's value: WHAT THE CELL SAYS, falling back to `data-sort` only
+   * where it says nothing.
+   *
+   * data-sort is tempting and wrong as the first choice. It is a SORT KEY, not
+   * a value, and the two differ exactly where it exists: the Elo board's
+   * Record column sorts on wins, so a data-sort-first export turned '8-1' into
+   * '8', and its Last 5 column sorts on an unrounded float, so the same export
+   * published '-31.609999999999996'. The promise this control makes is that
+   * the file is the table on screen. */
+  function csvValue(cell) {
+    if (!cell) return '';
+    const text = csvCell(cell.textContent || '');
+    if (text !== '') return text;
+    const keyed = cell.getAttribute && cell.getAttribute('data-sort');
+    return keyed == null ? '' : csvCell(keyed);
+  }
+
+  /* The page's typography is not a spreadsheet's. An em dash means "no value"
+   * and must become an empty cell, not the literal character; a real minus sign
+   * (U+2212) is a hyphen to every parser there is; and a thousands separator
+   * inside an otherwise bare number stops it being a number. Nothing else is
+   * touched -- a '%' is a unit the reader asked to see, and rewriting a team
+   * name would be this function exceeding its brief. */
+  function csvCell(raw) {
+    let text = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
+    // A triangle is this site's typography for a sign -- the Elo board draws a
+    // change as '▲65.0'. Dropping it would turn a fall into a rise, so it
+    // becomes the sign it stands for rather than a character no parser knows.
+    text = text.replace(/▲\s*/g, '+').replace(/▼\s*/g, '-');
+    text = text.replace(/−/g, '-');
+    if (text === '—' || text === '-' || text === '–') return '';
+    if (/^-?[\d,]+(\.\d+)?%?$/.test(text)) text = text.replace(/,/g, '');
+    return text;
+  }
+
+  /* RFC 4180: a field is quoted when it holds a comma, a quote or a newline,
+   * and an internal quote is doubled. */
+  function csvField(text) {
+    return /[",\n\r]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+  }
+
+  /* A table as CSV, header row first, or '' when there is nothing to take.
+   *
+   * The header comes from the LAST head row, which is the one naming the
+   * columns: a grouped table (the game page's Matchup) puts the group names in
+   * the row above, and they span several columns each. The sort arrow a header
+   * button carries is display, not part of the column's name. */
+  function tableCsv(table) {
+    if (!table || !table.tHead || !table.tBodies || !table.tBodies.length) return '';
+    const headRows = table.tHead.rows;
+    if (!headRows.length) return '';
+    const head = [...headRows[headRows.length - 1].cells]
+      .map(cell => csvCell((cell.textContent || '').replace(/[▲▼]\s*$/, '')));
+    // A row the reader filtered out is not on screen, and the promise of this
+    // control is the table as shown. The search boxes hide rows with
+    // `row.hidden`, which leaves them in the DOM and in `rows`.
+    const body = [...table.tBodies[0].rows]
+      .filter(row => row.cells.length && !row.hidden)
+      .map(row => [...row.cells].map(csvValue));
+    if (!body.length) return '';
+    return [head, ...body].map(cells => cells.map(csvField).join(',')).join('\r\n') + '\r\n';
+  }
+
+  return {categories,labels,num,sortRows,filterRows,aggregatePlayers,aggregateTeams,enhanceTable,cellKey,compareCells,columnKeys,sortCells,csvCell,tableCsv};
 });
