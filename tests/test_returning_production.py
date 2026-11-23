@@ -179,28 +179,50 @@ def test_one_season_without_an_end_year(monkeypatch, tmp_path):
     assert asked == [2024]
 
 
-# ---- the data stays inert until a fit says otherwise -------------------------
+# ---- the data describes a roster and rates nothing ---------------------------
 
-# Recorded deliberately on 2026-10-11, as the test below asks. The fetcher
-# writes these files and the calibrator reads them to answer whether they help
-# (docs/returning-production.md: they do not, by a held-out margin of 0.002%).
-# Neither runs in the pipeline, so no published number depends on them. A
-# third name here would mean returning production had reached the live model,
-# which is a decision for a person and not a side effect of a refactor.
+# The fit was run on 2026-10-11 and found nothing: returning production did not
+# beat the flat 0.8 offseason regression already in the Elo configuration, by a
+# held-out margin of 0.002% (docs/returning-production.md). The decision was to
+# KEEP it as its own measurement, so it now has a table and a board -- and the
+# gate below is what keeps that from drifting into the ratings.
 ALLOWED_READERS = {
     "src/fetch_cfbd_returning_production.py",
     "src/calibrate_returning_retention.py",
+    # Added when the archive was finally given a table and a page of its own.
+    # The rejection said to KEEP it as its own measurement, so these three
+    # carry it from the committed CSVs to a board a reader can look at and
+    # nowhere else: the loader, the pipeline step that calls the loader, and
+    # the exporter that writes the season payloads.
+    "src/load_returning_production.py",
+    "src/export_static_data.py",
+    "run_pipeline.py",
 }
 
+# The ratings. A name appearing here that reads returning production would mean
+# the feed had become a rating input after it was measured and rejected, which
+# is a decision for a person and not a side effect of a refactor.
+RATING_MODULES = (
+    "src/build_elo.py", "src/calibrate_elo.py", "src/build_coefficients.py",
+    "src/build_hybrid_coefficients.py", "src/build_coe2_rollups.py",
+    "src/build_conference_coe2.py", "src/build_bowling_merits.py",
+    "src/export_merits.py", "src/elo_timeline.py", "src/export_team_pages.py",
+    "build_dashboard.py",
+)
 
-def test_no_published_number_depends_on_returning_production():
-    """The fit found nothing, so the live model must still not read this.
 
-    When something does, the set above is where that is recorded on purpose.
+def test_only_the_named_files_read_returning_production():
+    """Every reader is listed above on purpose, with a reason.
+
+    The set is the record of what this feed is allowed to touch. Widening it
+    is a deliberate edit; growing into the ratings by accident is what it
+    exists to stop.
     """
     repo = Path(__file__).resolve().parents[1]
+    candidates = list((repo / "src").rglob("*.py"))
+    candidates += [repo / "build_dashboard.py", repo / "run_pipeline.py"]
     readers = []
-    for path in list((repo / "src").rglob("*.py")) + [repo / "build_dashboard.py"]:
+    for path in candidates:
         if not path.exists():
             continue
         name = path.relative_to(repo).as_posix()
@@ -211,11 +233,33 @@ def test_no_published_number_depends_on_returning_production():
     assert readers == [], f"returning production is now read by {readers}"
 
 
-def test_the_pipeline_entry_points_do_not_read_it():
-    """Named explicitly, because the set above could be widened by habit."""
+def test_no_rating_reads_it():
+    """Named one by one, because the set above could be widened by habit."""
     repo = Path(__file__).resolve().parents[1]
-    for name in ("src/run_pipeline.py", "src/build_elo.py", "build_dashboard.py",
-                 "src/export_team_pages.py"):
+    checked = 0
+    for name in RATING_MODULES:
         path = repo / name
-        if path.exists():
-            assert "returning_production" not in path.read_text(encoding="utf-8"), name
+        if not path.exists():
+            continue
+        checked += 1
+        assert "returning_production" not in path.read_text(encoding="utf-8"), name
+    assert checked >= 8, "the rating modules were renamed; this list stopped checking them"
+
+
+def test_the_pipeline_only_loads_it_and_never_rates_with_it():
+    """run_pipeline.py is the ONE entry point allowed to mention it.
+
+    It calls the loader so a fresh database carries the table, which is what
+    makes the board reachable. It must not reach the Elo configuration.
+    """
+    repo = Path(__file__).resolve().parents[1]
+    text = (repo / "run_pipeline.py").read_text(encoding="utf-8")
+    assert "load_returning_production" in text, (
+        "a fresh database would have no table and the board would be empty")
+    # Every mention outside a comment must be that one step. A rating would
+    # have to pass the table somewhere, and that shows up as a third line.
+    code = [line.strip() for line in text.splitlines()
+            if "returning" in line and not line.strip().startswith("#")]
+    assert code == ['if list(Path("data/raw").glob("returning_production_*.csv")):',
+                    'run([python, "src/load_returning_production.py", "--db", str(DB_PATH)],',
+                    '"Load returning production")'], code

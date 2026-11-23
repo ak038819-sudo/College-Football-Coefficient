@@ -171,18 +171,24 @@ READERS = {'src/fetch_cfbd_recruiting.py', 'src/load_recruiting.py',
            # Added 2026-11-16 with the Data Coverage page's recruiting row. It
            # reads one number -- how many of a season's teams signed a class
            # this database can attribute -- and publishes no recruit.
-           'src/coverage.py'}
+           'src/coverage.py',
+           # Added 2026-11-18, the change that finally publishes this archive
+           # as itself: the exporter that writes the class and signee
+           # payloads, and the static export that calls it. Both publish what
+           # the service said; neither feeds a rating.
+           'src/export_recruiting.py', 'src/export_static_data.py'}
 
 
 def test_only_the_named_files_read_the_recruiting_archive():
-    """Five files touch this archive: the fetcher that writes it, the loader
-    that reads it into the database, the pipeline that calls the loader, the
-    people exporter, which publishes each coach's class ranks, and the coverage
-    report, which counts how many teams have a class.
+    """Every file that touches this archive is named in READERS, with a
+    reason: the fetcher that writes it, the loader that reads it into the
+    database, the pipeline that calls the loader, the people exporter, which
+    publishes each coach's class ranks, and the recruiting exporter and static
+    export, which publish the classes and signees themselves.
 
-    A fifth appearing is how an input nobody checked becomes a published
-    number, so widening the set above is the deliberate act that says someone
-    looked at the data first."""
+    One appearing that is NOT listed is how an input nobody checked becomes a
+    published number, so widening the set above is the deliberate act that
+    says someone looked at the data first."""
     root = Path(__file__).resolve().parents[1]
     offenders = []
     for path in list((root / 'src').rglob('*.py')) + [root / 'build_dashboard.py',
