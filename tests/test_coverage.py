@@ -341,18 +341,41 @@ def test_every_later_archive_survives_a_database_that_never_loaded_it(tmp_path):
     """)
     conn.commit()
     row = build_coverage(conn)["seasons"]["2016"]
-    for key in ("drives", "lines", "box_scores", "season_stats", "rosters",
-                "coaches", "recruiting", "polls"):
+    for key in ("drives", "lines", "box_scores", "team_box", "season_stats",
+                "rosters", "coaches", "recruiting", "polls"):
         assert row[key][0] == 0, key
     assert row["polls"] == [0, 0], "no week column means no denominator, not week 1"
     conn.close()
 
 
-def test_the_eight_later_archives_are_all_described(tmp_path):
-    added = {"drives", "lines", "box_scores", "season_stats", "rosters",
-             "coaches", "recruiting", "polls"}
+def test_team_box_scores_count_games_and_not_rows(tmp_path):
+    """One game holds two teams and dozens of categories apiece: the archive
+    is stored long, so counting rows would report a season as many times
+    over-complete."""
+    conn = _wide_db(tmp_path)
+    conn.executescript("""
+        CREATE TABLE game_team_stats (game_id INTEGER, team_id INTEGER,
+            season_year INTEGER, category TEXT, stat TEXT,
+            PRIMARY KEY (game_id, team_id, category));
+    """)
+    game = conn.execute("SELECT game_id FROM games WHERE season_year = 2016 "
+                        "AND home_score IS NOT NULL LIMIT 1").fetchone()[0]
+    conn.executemany("INSERT INTO game_team_stats VALUES (?,?,?,?,?)",
+                     [(game, team, 2016, category, "1")
+                      for team in (10, 20)
+                      for category in ("firstDowns", "totalYards", "sacks")])
+    conn.commit()
+    have, of = build_coverage(conn)["seasons"]["2016"]["team_box"]
+    assert have == 1, 'six rows over one game is one game with a box score'
+    assert have <= of
+    conn.close()
+
+
+def test_the_nine_later_archives_are_all_described(tmp_path):
+    added = {"drives", "lines", "box_scores", "team_box", "season_stats",
+             "rosters", "coaches", "recruiting", "polls"}
     assert added <= set(KEYS)
-    assert len(KEYS) == 14, "six original dimensions plus the eight added here"
+    assert len(KEYS) == 15, "six original dimensions plus the nine added here"
     for d in DIMENSIONS:
         assert d["label"] and d["source"] and d["absent"].endswith(".")
 
