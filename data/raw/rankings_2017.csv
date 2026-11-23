@@ -1,0 +1,551 @@
+season_year,season_type,week,poll,rank,school,conference,first_place_votes,points
+2017,regular,4,ap,11,Georgia,SEC,0,940
+2017,regular,4,ap,20,Florida,SEC,0,308
+2017,regular,4,ap,6,Oklahoma State,Big 12,0,1154
+2017,regular,4,ap,16,TCU,Big 12,0,553
+2017,regular,4,ap,24,Oregon,Pac-12,0,158
+2017,regular,4,ap,7,Washington,Pac-12,0,1141
+2017,regular,4,ap,18,Washington State,Pac-12,0,419
+2017,regular,4,ap,5,USC,Pac-12,0,1241
+2017,regular,4,ap,15,Auburn,SEC,0,596
+2017,regular,4,ap,25,LSU,SEC,0,153
+2017,regular,4,ap,23,Utah,Pac-12,0,194
+2017,regular,4,ap,1,Alabama,SEC,45,1504
+2017,regular,4,ap,17,Mississippi State,SEC,0,532
+2017,regular,4,ap,10,Ohio State,Big Ten,0,1015
+2017,regular,4,ap,8,Michigan,Big Ten,0,1081
+2017,regular,4,ap,4,Penn State,Big Ten,0,1306
+2017,regular,4,ap,9,Wisconsin,Big Ten,0,1031
+2017,regular,4,ap,3,Oklahoma,Big 12,1,1432
+2017,regular,4,ap,21,South Florida,American Athletic,0,272
+2017,regular,4,ap,12,Florida State,ACC,0,922
+2017,regular,4,ap,2,Clemson,ACC,15,1446
+2017,regular,4,ap,13,Virginia Tech,ACC,0,730
+2017,regular,4,ap,14,Miami,ACC,0,606
+2017,regular,4,ap,19,Louisville,ACC,0,356
+2017,regular,4,ap,22,San Diego State,Mountain West,0,201
+2017,regular,3,ap,13,Georgia,SEC,0,882
+2017,regular,3,ap,24,Florida,SEC,0,146
+2017,regular,3,ap,23,Tennessee,SEC,0,159
+2017,regular,3,ap,9,Oklahoma State,Big 12,0,1002
+2017,regular,3,ap,18,Kansas State,Big 12,0,475
+2017,regular,3,ap,20,TCU,Big 12,0,352
+2017,regular,3,ap,19,Stanford,Pac-12,0,364
+2017,regular,3,ap,6,Washington,Pac-12,0,1124
+2017,regular,3,ap,21,Washington State,Pac-12,0,233
+2017,regular,3,ap,4,USC,Pac-12,0,1324
+2017,regular,3,ap,15,Auburn,SEC,0,591
+2017,regular,3,ap,12,LSU,SEC,0,935
+2017,regular,3,ap,25,UCLA,Pac-12,0,119
+2017,regular,3,ap,1,Alabama,SEC,58,1522
+2017,regular,3,ap,8,Ohio State,Big Ten,0,1003
+2017,regular,3,ap,7,Michigan,Big Ten,0,1107
+2017,regular,3,ap,5,Penn State,Big Ten,0,1299
+2017,regular,3,ap,10,Wisconsin,Big Ten,0,993
+2017,regular,3,ap,2,Oklahoma,Big 12,2,1447
+2017,regular,3,ap,22,South Florida,American Athletic,0,188
+2017,regular,3,ap,11,Florida State,ACC,0,944
+2017,regular,3,ap,3,Clemson,ACC,1,1380
+2017,regular,3,ap,16,Virginia Tech,ACC,0,559
+2017,regular,3,ap,17,Miami,ACC,0,542
+2017,regular,3,ap,14,Louisville,ACC,0,658
+2017,regular,2,ap,15,Georgia,SEC,0,685
+2017,regular,2,ap,22,Florida,SEC,0,164
+2017,regular,2,ap,25,Tennessee,SEC,0,124
+2017,regular,2,ap,11,Oklahoma State,Big 12,0,950
+2017,regular,2,ap,19,Kansas State,Big 12,0,398
+2017,regular,2,ap,23,TCU,Big 12,0,154
+2017,regular,2,ap,14,Stanford,Pac-12,0,772
+2017,regular,2,ap,7,Washington,Pac-12,0,1083
+2017,regular,2,ap,20,Washington State,Pac-12,0,216
+2017,regular,2,ap,6,USC,Pac-12,0,1224
+2017,regular,2,ap,13,Auburn,SEC,0,873
+2017,regular,2,ap,12,LSU,SEC,0,898
+2017,regular,2,ap,1,Alabama,SEC,60,1524
+2017,regular,2,ap,2,Ohio State,Big Ten,1,1445
+2017,regular,2,ap,8,Michigan,Big Ten,0,1051
+2017,regular,2,ap,4,Penn State,Big Ten,0,1303
+2017,regular,2,ap,9,Wisconsin,Big Ten,0,979
+2017,regular,2,ap,5,Oklahoma,Big 12,0,1253
+2017,regular,2,ap,24,Notre Dame,FBS Independents,0,141
+2017,regular,2,ap,21,South Florida,American Athletic,0,207
+2017,regular,2,ap,10,Florida State,ACC,0,976
+2017,regular,2,ap,3,Clemson,ACC,0,1317
+2017,regular,2,ap,18,Virginia Tech,ACC,0,490
+2017,regular,2,ap,16,Miami,ACC,0,537
+2017,regular,2,ap,17,Louisville,ACC,0,529
+2017,regular,1,ap,15,Georgia,SEC,0,690
+2017,regular,1,ap,17,Florida,SEC,0,624
+2017,regular,1,ap,25,Tennessee,SEC,0,114
+2017,regular,1,ap,10,Oklahoma State,Big 12,0,889
+2017,regular,1,ap,20,Kansas State,Big 12,0,317
+2017,regular,1,ap,22,West Virginia,Big 12,0,207
+2017,regular,1,ap,14,Stanford,Pac-12,0,695
+2017,regular,1,ap,8,Washington,Pac-12,0,1150
+2017,regular,1,ap,24,Washington State,Pac-12,0,133
+2017,regular,1,ap,4,USC,Pac-12,2,1325
+2017,regular,1,ap,12,Auburn,SEC,0,880
+2017,regular,1,ap,13,LSU,SEC,0,784
+2017,regular,1,ap,1,Alabama,SEC,52,1513
+2017,regular,1,ap,2,Ohio State,Big Ten,3,1414
+2017,regular,1,ap,11,Michigan,Big Ten,0,881
+2017,regular,1,ap,6,Penn State,Big Ten,0,1196
+2017,regular,1,ap,9,Wisconsin,Big Ten,0,926
+2017,regular,1,ap,23,Texas,Big 12,0,173
+2017,regular,1,ap,7,Oklahoma,Big 12,0,1170
+2017,regular,1,ap,19,South Florida,American Athletic,0,327
+2017,regular,1,ap,3,Florida State,ACC,4,1396
+2017,regular,1,ap,5,Clemson,ACC,0,1201
+2017,regular,1,ap,21,Virginia Tech,ACC,0,240
+2017,regular,1,ap,18,Miami,ACC,0,492
+2017,regular,1,ap,16,Louisville,ACC,0,629
+2017,regular,15,ap,3,Georgia,SEC,0,1409
+2017,regular,15,ap,17,Oklahoma State,Big 12,0,549
+2017,regular,15,ap,13,TCU,Big 12,0,816
+2017,regular,15,ap,15,Stanford,Pac-12,0,629
+2017,regular,15,ap,12,Washington,Pac-12,0,820
+2017,regular,15,ap,21,Washington State,Pac-12,0,342
+2017,regular,15,ap,8,USC,Pac-12,0,1101
+2017,regular,15,ap,7,Auburn,SEC,0,1123
+2017,regular,15,ap,16,LSU,SEC,0,599
+2017,regular,15,ap,4,Alabama,SEC,0,1307
+2017,regular,15,ap,24,Mississippi State,SEC,0,103
+2017,regular,15,ap,5,Ohio State,Big Ten,0,1300
+2017,regular,15,ap,18,Michigan State,Big Ten,0,487
+2017,regular,15,ap,9,Penn State,Big Ten,0,1008
+2017,regular,15,ap,6,Wisconsin,Big Ten,0,1162
+2017,regular,15,ap,20,Northwestern,Big Ten,0,398
+2017,regular,15,ap,2,Oklahoma,Big 12,18,1474
+2017,regular,15,ap,14,Notre Dame,FBS Independents,0,632
+2017,regular,15,ap,23,South Florida,American Athletic,0,115
+2017,regular,15,ap,10,UCF,American Athletic,0,983
+2017,regular,15,ap,19,Memphis,American Athletic,0,475
+2017,regular,15,ap,1,Clemson,ACC,43,1506
+2017,regular,15,ap,22,Virginia Tech,ACC,0,323
+2017,regular,15,ap,11,Miami,ACC,0,948
+2017,regular,15,ap,25,Boise State,Mountain West,0,59
+2017,regular,15,cfp,3,Georgia,SEC,0,0
+2017,regular,15,cfp,19,Oklahoma State,Big 12,0,0
+2017,regular,15,cfp,15,TCU,Big 12,0,0
+2017,regular,15,cfp,13,Stanford,Pac-12,0,0
+2017,regular,15,cfp,11,Washington,Pac-12,0,0
+2017,regular,15,cfp,18,Washington State,Pac-12,0,0
+2017,regular,15,cfp,8,USC,Pac-12,0,0
+2017,regular,15,cfp,7,Auburn,SEC,0,0
+2017,regular,15,cfp,17,LSU,SEC,0,0
+2017,regular,15,cfp,4,Alabama,SEC,0,0
+2017,regular,15,cfp,23,Mississippi State,SEC,0,0
+2017,regular,15,cfp,5,Ohio State,Big Ten,0,0
+2017,regular,15,cfp,16,Michigan State,Big Ten,0,0
+2017,regular,15,cfp,9,Penn State,Big Ten,0,0
+2017,regular,15,cfp,6,Wisconsin,Big Ten,0,0
+2017,regular,15,cfp,21,Northwestern,Big Ten,0,0
+2017,regular,15,cfp,2,Oklahoma,Big 12,0,0
+2017,regular,15,cfp,14,Notre Dame,FBS Independents,0,0
+2017,regular,15,cfp,12,UCF,American Athletic,0,0
+2017,regular,15,cfp,20,Memphis,American Athletic,0,0
+2017,regular,15,cfp,1,Clemson,ACC,0,0
+2017,regular,15,cfp,24,NC State,ACC,0,0
+2017,regular,15,cfp,22,Virginia Tech,ACC,0,0
+2017,regular,15,cfp,10,Miami,ACC,0,0
+2017,regular,15,cfp,25,Boise State,Mountain West,0,0
+2017,regular,14,ap,6,Georgia,SEC,0,1246
+2017,regular,14,ap,18,Oklahoma State,Big 12,0,532
+2017,regular,14,ap,10,TCU,Big 12,0,956
+2017,regular,14,ap,14,Stanford,Pac-12,0,693
+2017,regular,14,ap,13,Washington,Pac-12,0,764
+2017,regular,14,ap,21,Washington State,Pac-12,0,328
+2017,regular,14,ap,11,USC,Pac-12,0,936
+2017,regular,14,ap,4,Auburn,SEC,0,1374
+2017,regular,14,ap,17,LSU,SEC,0,566
+2017,regular,14,ap,5,Alabama,SEC,0,1254
+2017,regular,14,ap,24,Mississippi State,SEC,0,88
+2017,regular,14,ap,8,Ohio State,Big Ten,0,1112
+2017,regular,14,ap,19,Michigan State,Big Ten,0,457
+2017,regular,14,ap,9,Penn State,Big Ten,0,960
+2017,regular,14,ap,3,Wisconsin,Big Ten,10,1405
+2017,regular,14,ap,20,Northwestern,Big Ten,0,378
+2017,regular,14,ap,2,Oklahoma,Big 12,24,1461
+2017,regular,14,ap,15,Notre Dame,FBS Independents,0,592
+2017,regular,14,ap,23,South Florida,American Athletic,0,114
+2017,regular,14,ap,12,UCF,American Athletic,0,906
+2017,regular,14,ap,16,Memphis,American Athletic,0,582
+2017,regular,14,ap,1,Clemson,ACC,27,1478
+2017,regular,14,ap,22,Virginia Tech,ACC,0,298
+2017,regular,14,ap,7,Miami,ACC,0,1119
+2017,regular,14,ap,25,Fresno State,Mountain West,0,57
+2017,regular,14,cfp,6,Georgia,SEC,0,0
+2017,regular,14,cfp,19,Oklahoma State,Big 12,0,0
+2017,regular,14,cfp,11,TCU,Big 12,0,0
+2017,regular,14,cfp,12,Stanford,Pac-12,0,0
+2017,regular,14,cfp,13,Washington,Pac-12,0,0
+2017,regular,14,cfp,18,Washington State,Pac-12,0,0
+2017,regular,14,cfp,10,USC,Pac-12,0,0
+2017,regular,14,cfp,2,Auburn,SEC,0,0
+2017,regular,14,cfp,17,LSU,SEC,0,0
+2017,regular,14,cfp,5,Alabama,SEC,0,0
+2017,regular,14,cfp,23,Mississippi State,SEC,0,0
+2017,regular,14,cfp,8,Ohio State,Big Ten,0,0
+2017,regular,14,cfp,16,Michigan State,Big Ten,0,0
+2017,regular,14,cfp,9,Penn State,Big Ten,0,0
+2017,regular,14,cfp,4,Wisconsin,Big Ten,0,0
+2017,regular,14,cfp,21,Northwestern,Big Ten,0,0
+2017,regular,14,cfp,3,Oklahoma,Big 12,0,0
+2017,regular,14,cfp,15,Notre Dame,FBS Independents,0,0
+2017,regular,14,cfp,14,UCF,American Athletic,0,0
+2017,regular,14,cfp,20,Memphis,American Athletic,0,0
+2017,regular,14,cfp,1,Clemson,ACC,0,0
+2017,regular,14,cfp,24,NC State,ACC,0,0
+2017,regular,14,cfp,22,Virginia Tech,ACC,0,0
+2017,regular,14,cfp,7,Miami,ACC,0,0
+2017,regular,14,cfp,25,Fresno State,Mountain West,0,0
+2017,regular,13,ap,7,Georgia,SEC,0,1157
+2017,regular,13,ap,18,Oklahoma State,Big 12,0,422
+2017,regular,13,ap,10,TCU,Big 12,0,906
+2017,regular,13,ap,20,Stanford,Pac-12,0,407
+2017,regular,13,ap,15,Washington,Pac-12,0,613
+2017,regular,13,ap,14,Washington State,Pac-12,0,697
+2017,regular,13,ap,11,USC,Pac-12,0,891
+2017,regular,13,ap,6,Auburn,SEC,0,1203
+2017,regular,13,ap,19,LSU,SEC,0,415
+2017,regular,13,ap,1,Alabama,SEC,58,1522
+2017,regular,13,ap,16,Mississippi State,SEC,0,573
+2017,regular,13,ap,8,Ohio State,Big Ten,0,1064
+2017,regular,13,ap,21,Michigan State,Big Ten,0,366
+2017,regular,13,ap,12,Penn State,Big Ten,0,888
+2017,regular,13,ap,5,Wisconsin,Big Ten,0,1328
+2017,regular,13,ap,23,Northwestern,Big Ten,0,232
+2017,regular,13,ap,3,Oklahoma,Big 12,0,1370
+2017,regular,13,ap,9,Notre Dame,FBS Independents,0,1023
+2017,regular,13,ap,22,South Florida,American Athletic,0,247
+2017,regular,13,ap,13,UCF,American Athletic,0,833
+2017,regular,13,ap,17,Memphis,American Athletic,0,496
+2017,regular,13,ap,4,Clemson,ACC,0,1355
+2017,regular,13,ap,24,Virginia Tech,ACC,0,136
+2017,regular,13,ap,2,Miami,ACC,3,1433
+2017,regular,13,ap,25,Boise State,Mountain West,0,96
+2017,regular,13,cfp,7,Georgia,SEC,0,0
+2017,regular,13,cfp,24,South Carolina,SEC,0,0
+2017,regular,13,cfp,19,Oklahoma State,Big 12,0,0
+2017,regular,13,cfp,12,TCU,Big 12,0,0
+2017,regular,13,cfp,21,Stanford,Pac-12,0,0
+2017,regular,13,cfp,17,Washington,Pac-12,0,0
+2017,regular,13,cfp,13,Washington State,Pac-12,0,0
+2017,regular,13,cfp,11,USC,Pac-12,0,0
+2017,regular,13,cfp,6,Auburn,SEC,0,0
+2017,regular,13,cfp,18,LSU,SEC,0,0
+2017,regular,13,cfp,1,Alabama,SEC,0,0
+2017,regular,13,cfp,14,Mississippi State,SEC,0,0
+2017,regular,13,cfp,9,Ohio State,Big Ten,0,0
+2017,regular,13,cfp,16,Michigan State,Big Ten,0,0
+2017,regular,13,cfp,10,Penn State,Big Ten,0,0
+2017,regular,13,cfp,5,Wisconsin,Big Ten,0,0
+2017,regular,13,cfp,22,Northwestern,Big Ten,0,0
+2017,regular,13,cfp,4,Oklahoma,Big 12,0,0
+2017,regular,13,cfp,8,Notre Dame,FBS Independents,0,0
+2017,regular,13,cfp,15,UCF,American Athletic,0,0
+2017,regular,13,cfp,20,Memphis,American Athletic,0,0
+2017,regular,13,cfp,3,Clemson,ACC,0,0
+2017,regular,13,cfp,25,Virginia Tech,ACC,0,0
+2017,regular,13,cfp,2,Miami,ACC,0,0
+2017,regular,13,cfp,23,Boise State,Mountain West,0,0
+2017,regular,12,ap,7,Georgia,SEC,0,1151
+2017,regular,12,ap,10,Oklahoma State,Big 12,0,898
+2017,regular,12,ap,11,TCU,Big 12,0,875
+2017,regular,12,ap,24,West Virginia,Big 12,0,222
+2017,regular,12,ap,20,Stanford,Pac-12,0,287
+2017,regular,12,ap,16,Washington,Pac-12,0,575
+2017,regular,12,ap,15,Washington State,Pac-12,0,614
+2017,regular,12,ap,12,USC,Pac-12,0,866
+2017,regular,12,ap,6,Auburn,SEC,0,1199
+2017,regular,12,ap,21,LSU,SEC,0,276
+2017,regular,12,ap,1,Alabama,SEC,57,1521
+2017,regular,12,ap,17,Mississippi State,SEC,0,492
+2017,regular,12,ap,8,Ohio State,Big Ten,0,1036
+2017,regular,12,ap,22,Michigan State,Big Ten,0,259
+2017,regular,12,ap,19,Michigan,Big Ten,0,315
+2017,regular,12,ap,13,Penn State,Big Ten,0,818
+2017,regular,12,ap,5,Wisconsin,Big Ten,0,1322
+2017,regular,12,ap,3,Oklahoma,Big 12,0,1367
+2017,regular,12,ap,9,Notre Dame,FBS Independents,0,1001
+2017,regular,12,ap,23,South Florida,American Athletic,0,236
+2017,regular,12,ap,14,UCF,American Athletic,0,807
+2017,regular,12,ap,18,Memphis,American Athletic,0,437
+2017,regular,12,ap,4,Clemson,ACC,0,1358
+2017,regular,12,ap,25,NC State,ACC,0,178
+2017,regular,12,ap,2,Miami,ACC,4,1438
+2017,regular,12,cfp,7,Georgia,SEC,0,0
+2017,regular,12,cfp,13,Oklahoma State,Big 12,0,0
+2017,regular,12,cfp,12,TCU,Big 12,0,0
+2017,regular,12,cfp,22,Stanford,Pac-12,0,0
+2017,regular,12,cfp,18,Washington,Pac-12,0,0
+2017,regular,12,cfp,14,Washington State,Pac-12,0,0
+2017,regular,12,cfp,11,USC,Pac-12,0,0
+2017,regular,12,cfp,6,Auburn,SEC,0,0
+2017,regular,12,cfp,20,LSU,SEC,0,0
+2017,regular,12,cfp,1,Alabama,SEC,0,0
+2017,regular,12,cfp,16,Mississippi State,SEC,0,0
+2017,regular,12,cfp,9,Ohio State,Big Ten,0,0
+2017,regular,12,cfp,17,Michigan State,Big Ten,0,0
+2017,regular,12,cfp,24,Michigan,Big Ten,0,0
+2017,regular,12,cfp,10,Penn State,Big Ten,0,0
+2017,regular,12,cfp,5,Wisconsin,Big Ten,0,0
+2017,regular,12,cfp,23,Northwestern,Big Ten,0,0
+2017,regular,12,cfp,4,Oklahoma,Big 12,0,0
+2017,regular,12,cfp,8,Notre Dame,FBS Independents,0,0
+2017,regular,12,cfp,15,UCF,American Athletic,0,0
+2017,regular,12,cfp,21,Memphis,American Athletic,0,0
+2017,regular,12,cfp,2,Clemson,ACC,0,0
+2017,regular,12,cfp,19,NC State,ACC,0,0
+2017,regular,12,cfp,3,Miami,ACC,0,0
+2017,regular,12,cfp,25,Boise State,Mountain West,0,0
+2017,regular,11,ap,2,Georgia,SEC,5,1468
+2017,regular,11,ap,12,Oklahoma State,Big 12,0,766
+2017,regular,11,ap,24,Iowa State,Big 12,0,155
+2017,regular,11,ap,8,TCU,Big 12,0,1087
+2017,regular,11,ap,23,West Virginia,Big 12,0,163
+2017,regular,11,ap,9,Washington,Pac-12,0,1061
+2017,regular,11,ap,19,Washington State,Pac-12,0,420
+2017,regular,11,ap,15,USC,Pac-12,0,718
+2017,regular,11,ap,10,Auburn,SEC,0,875
+2017,regular,11,ap,1,Alabama,SEC,56,1520
+2017,regular,11,ap,18,Mississippi State,SEC,0,464
+2017,regular,11,ap,11,Ohio State,Big Ten,0,781
+2017,regular,11,ap,13,Michigan State,Big Ten,0,760
+2017,regular,11,ap,21,Michigan,Big Ten,0,184
+2017,regular,11,ap,16,Penn State,Big Ten,0,717
+2017,regular,11,ap,6,Wisconsin,Big Ten,0,1256
+2017,regular,11,ap,25,Iowa,Big Ten,0,147
+2017,regular,11,ap,5,Oklahoma,Big 12,0,1258
+2017,regular,11,ap,3,Notre Dame,FBS Independents,0,1357
+2017,regular,11,ap,22,South Florida,American Athletic,0,177
+2017,regular,11,ap,14,UCF,American Athletic,0,736
+2017,regular,11,ap,20,Memphis,American Athletic,0,376
+2017,regular,11,ap,4,Clemson,ACC,0,1289
+2017,regular,11,ap,17,Virginia Tech,ACC,0,537
+2017,regular,11,ap,7,Miami,ACC,0,1220
+2017,regular,11,cfp,1,Georgia,SEC,0,0
+2017,regular,11,cfp,15,Oklahoma State,Big 12,0,0
+2017,regular,11,cfp,21,Iowa State,Big 12,0,0
+2017,regular,11,cfp,6,TCU,Big 12,0,0
+2017,regular,11,cfp,9,Washington,Pac-12,0,0
+2017,regular,11,cfp,19,Washington State,Pac-12,0,0
+2017,regular,11,cfp,11,USC,Pac-12,0,0
+2017,regular,11,cfp,10,Auburn,SEC,0,0
+2017,regular,11,cfp,24,LSU,SEC,0,0
+2017,regular,11,cfp,2,Alabama,SEC,0,0
+2017,regular,11,cfp,16,Mississippi State,SEC,0,0
+2017,regular,11,cfp,13,Ohio State,Big Ten,0,0
+2017,regular,11,cfp,12,Michigan State,Big Ten,0,0
+2017,regular,11,cfp,14,Penn State,Big Ten,0,0
+2017,regular,11,cfp,8,Wisconsin,Big Ten,0,0
+2017,regular,11,cfp,20,Iowa,Big Ten,0,0
+2017,regular,11,cfp,25,Northwestern,Big Ten,0,0
+2017,regular,11,cfp,5,Oklahoma,Big 12,0,0
+2017,regular,11,cfp,3,Notre Dame,FBS Independents,0,0
+2017,regular,11,cfp,18,UCF,American Athletic,0,0
+2017,regular,11,cfp,22,Memphis,American Athletic,0,0
+2017,regular,11,cfp,4,Clemson,ACC,0,0
+2017,regular,11,cfp,23,NC State,ACC,0,0
+2017,regular,11,cfp,17,Virginia Tech,ACC,0,0
+2017,regular,11,cfp,7,Miami,ACC,0,0
+2017,regular,10,ap,2,Georgia,SEC,2,1465
+2017,regular,10,ap,11,Oklahoma State,Big 12,0,936
+2017,regular,10,ap,14,Iowa State,Big 12,0,670
+2017,regular,10,ap,10,TCU,Big 12,0,942
+2017,regular,10,ap,18,Stanford,Pac-12,0,434
+2017,regular,10,ap,12,Washington,Pac-12,0,874
+2017,regular,10,ap,25,Washington State,Pac-12,0,122
+2017,regular,10,ap,17,USC,Pac-12,0,562
+2017,regular,10,ap,16,Auburn,SEC,0,576
+2017,regular,10,ap,19,LSU,SEC,0,338
+2017,regular,10,ap,23,Arizona,Pac-12,0,204
+2017,regular,10,ap,1,Alabama,SEC,59,1523
+2017,regular,10,ap,21,Mississippi State,SEC,0,279
+2017,regular,10,ap,3,Ohio State,Big Ten,0,1332
+2017,regular,10,ap,24,Michigan State,Big Ten,0,136
+2017,regular,10,ap,7,Penn State,Big Ten,0,1189
+2017,regular,10,ap,4,Wisconsin,Big Ten,0,1256
+2017,regular,10,ap,8,Oklahoma,Big 12,0,1147
+2017,regular,10,ap,5,Notre Dame,FBS Independents,0,1254
+2017,regular,10,ap,15,UCF,American Athletic,0,654
+2017,regular,10,ap,22,Memphis,American Athletic,0,270
+2017,regular,10,ap,6,Clemson,ACC,0,1196
+2017,regular,10,ap,20,NC State,ACC,0,333
+2017,regular,10,ap,13,Virginia Tech,ACC,0,837
+2017,regular,10,ap,9,Miami,ACC,0,1075
+2017,regular,10,cfp,1,Georgia,SEC,0,0
+2017,regular,10,cfp,11,Oklahoma State,Big 12,0,0
+2017,regular,10,cfp,15,Iowa State,Big 12,0,0
+2017,regular,10,cfp,8,TCU,Big 12,0,0
+2017,regular,10,cfp,21,Stanford,Pac-12,0,0
+2017,regular,10,cfp,12,Washington,Pac-12,0,0
+2017,regular,10,cfp,25,Washington State,Pac-12,0,0
+2017,regular,10,cfp,17,USC,Pac-12,0,0
+2017,regular,10,cfp,14,Auburn,SEC,0,0
+2017,regular,10,cfp,19,LSU,SEC,0,0
+2017,regular,10,cfp,22,Arizona,Pac-12,0,0
+2017,regular,10,cfp,2,Alabama,SEC,0,0
+2017,regular,10,cfp,16,Mississippi State,SEC,0,0
+2017,regular,10,cfp,6,Ohio State,Big Ten,0,0
+2017,regular,10,cfp,24,Michigan State,Big Ten,0,0
+2017,regular,10,cfp,7,Penn State,Big Ten,0,0
+2017,regular,10,cfp,9,Wisconsin,Big Ten,0,0
+2017,regular,10,cfp,5,Oklahoma,Big 12,0,0
+2017,regular,10,cfp,3,Notre Dame,FBS Independents,0,0
+2017,regular,10,cfp,18,UCF,American Athletic,0,0
+2017,regular,10,cfp,23,Memphis,American Athletic,0,0
+2017,regular,10,cfp,4,Clemson,ACC,0,0
+2017,regular,10,cfp,20,NC State,ACC,0,0
+2017,regular,10,cfp,13,Virginia Tech,ACC,0,0
+2017,regular,10,cfp,10,Miami,ACC,0,0
+2017,regular,9,ap,3,Georgia,SEC,0,1409
+2017,regular,9,ap,11,Oklahoma State,Big 12,0,894
+2017,regular,9,ap,25,Iowa State,Big 12,0,98
+2017,regular,9,ap,4,TCU,Big 12,0,1327
+2017,regular,9,ap,22,West Virginia,Big 12,0,196
+2017,regular,9,ap,20,Stanford,Pac-12,0,344
+2017,regular,9,ap,12,Washington,Pac-12,0,836
+2017,regular,9,ap,15,Washington State,Pac-12,0,648
+2017,regular,9,ap,21,USC,Pac-12,0,319
+2017,regular,9,ap,19,Auburn,SEC,0,397
+2017,regular,9,ap,23,LSU,SEC,0,182
+2017,regular,9,ap,1,Alabama,SEC,61,1525
+2017,regular,9,ap,6,Ohio State,Big Ten,0,1165
+2017,regular,9,ap,16,Michigan State,Big Ten,0,615
+2017,regular,9,ap,2,Penn State,Big Ten,0,1444
+2017,regular,9,ap,5,Wisconsin,Big Ten,0,1241
+2017,regular,9,ap,10,Oklahoma,Big 12,0,1040
+2017,regular,9,ap,9,Notre Dame,FBS Independents,0,1066
+2017,regular,9,ap,17,South Florida,American Athletic,0,604
+2017,regular,9,ap,18,UCF,American Athletic,0,500
+2017,regular,9,ap,24,Memphis,American Athletic,0,111
+2017,regular,9,ap,7,Clemson,ACC,0,1113
+2017,regular,9,ap,14,NC State,ACC,0,666
+2017,regular,9,ap,13,Virginia Tech,ACC,0,791
+2017,regular,9,ap,8,Miami,ACC,0,1101
+2017,regular,8,ap,3,Georgia,SEC,0,1417
+2017,regular,8,ap,10,Oklahoma State,Big 12,0,900
+2017,regular,8,ap,4,TCU,Big 12,0,1322
+2017,regular,8,ap,23,West Virginia,Big 12,0,157
+2017,regular,8,ap,22,Stanford,Pac-12,0,274
+2017,regular,8,ap,12,Washington,Pac-12,0,811
+2017,regular,8,ap,15,Washington State,Pac-12,0,578
+2017,regular,8,ap,11,USC,Pac-12,0,886
+2017,regular,8,ap,21,Auburn,SEC,0,303
+2017,regular,8,ap,24,LSU,SEC,0,108
+2017,regular,8,ap,1,Alabama,SEC,61,1525
+2017,regular,8,ap,6,Ohio State,Big Ten,0,1184
+2017,regular,8,ap,18,Michigan State,Big Ten,0,563
+2017,regular,8,ap,19,Michigan,Big Ten,0,558
+2017,regular,8,ap,2,Penn State,Big Ten,0,1432
+2017,regular,8,ap,5,Wisconsin,Big Ten,0,1241
+2017,regular,8,ap,9,Oklahoma,Big 12,0,1066
+2017,regular,8,ap,13,Notre Dame,FBS Independents,0,798
+2017,regular,8,ap,16,South Florida,American Athletic,0,573
+2017,regular,8,ap,20,UCF,American Athletic,0,387
+2017,regular,8,ap,25,Memphis,American Athletic,0,62
+2017,regular,8,ap,7,Clemson,ACC,0,1117
+2017,regular,8,ap,16,NC State,ACC,0,573
+2017,regular,8,ap,14,Virginia Tech,ACC,0,727
+2017,regular,8,ap,8,Miami,ACC,0,1109
+2017,regular,7,ap,4,Georgia,SEC,0,1327
+2017,regular,7,ap,14,Oklahoma State,Big 12,0,712
+2017,regular,7,ap,24,Texas Tech,Big 12,0,105
+2017,regular,7,ap,6,TCU,Big 12,0,1192
+2017,regular,7,ap,23,Stanford,Pac-12,0,109
+2017,regular,7,ap,5,Washington,Pac-12,0,1284
+2017,regular,7,ap,8,Washington State,Pac-12,0,1094
+2017,regular,7,ap,13,USC,Pac-12,0,795
+2017,regular,7,ap,10,Auburn,SEC,0,914
+2017,regular,7,ap,1,Alabama,SEC,43,1507
+2017,regular,7,ap,9,Ohio State,Big Ten,0,1051
+2017,regular,7,ap,21,Michigan State,Big Ten,0,416
+2017,regular,7,ap,17,Michigan,Big Ten,0,524
+2017,regular,7,ap,3,Penn State,Big Ten,0,1370
+2017,regular,7,ap,7,Wisconsin,Big Ten,0,1127
+2017,regular,7,ap,12,Oklahoma,Big 12,0,851
+2017,regular,7,ap,16,Notre Dame,FBS Independents,0,583
+2017,regular,7,ap,18,South Florida,American Athletic,0,482
+2017,regular,7,ap,22,UCF,American Athletic,0,274
+2017,regular,7,ap,25,Navy,American Athletic,0,74
+2017,regular,7,ap,2,Clemson,ACC,18,1481
+2017,regular,7,ap,20,NC State,ACC,0,421
+2017,regular,7,ap,15,Virginia Tech,ACC,0,617
+2017,regular,7,ap,11,Miami,ACC,0,908
+2017,regular,7,ap,19,San Diego State,Mountain West,0,465
+2017,regular,6,ap,5,Georgia,SEC,0,1237
+2017,regular,6,ap,21,Florida,SEC,0,349
+2017,regular,6,ap,15,Oklahoma State,Big 12,0,664
+2017,regular,6,ap,8,TCU,Big 12,0,1079
+2017,regular,6,ap,23,West Virginia,Big 12,0,221
+2017,regular,6,ap,6,Washington,Pac-12,0,1218
+2017,regular,6,ap,11,Washington State,Pac-12,0,980
+2017,regular,6,ap,14,USC,Pac-12,0,713
+2017,regular,6,ap,12,Auburn,SEC,0,802
+2017,regular,6,ap,20,Utah,Pac-12,0,358
+2017,regular,6,ap,1,Alabama,SEC,44,1506
+2017,regular,6,ap,10,Ohio State,Big Ten,0,1016
+2017,regular,6,ap,7,Michigan,Big Ten,0,1115
+2017,regular,6,ap,4,Penn State,Big Ten,0,1325
+2017,regular,6,ap,9,Wisconsin,Big Ten,0,1028
+2017,regular,6,ap,3,Oklahoma,Big 12,0,1392
+2017,regular,6,ap,21,Notre Dame,FBS Independents,0,349
+2017,regular,6,ap,18,South Florida,American Athletic,0,440
+2017,regular,6,ap,25,UCF,American Athletic,0,120
+2017,regular,6,ap,2,Clemson,ACC,17,1475
+2017,regular,6,ap,24,NC State,ACC,0,149
+2017,regular,6,ap,16,Virginia Tech,ACC,0,549
+2017,regular,6,ap,13,Miami,ACC,0,782
+2017,regular,6,ap,17,Louisville,ACC,0,507
+2017,regular,6,ap,19,San Diego State,Mountain West,0,373
+2017,regular,5,ap,7,Georgia,SEC,0,1136
+2017,regular,5,ap,21,Florida,SEC,0,342
+2017,regular,5,ap,15,Oklahoma State,Big 12,0,665
+2017,regular,5,ap,9,TCU,Big 12,0,1028
+2017,regular,5,ap,23,West Virginia,Big 12,0,212
+2017,regular,5,ap,6,Washington,Pac-12,0,1188
+2017,regular,5,ap,16,Washington State,Pac-12,0,551
+2017,regular,5,ap,5,USC,Pac-12,0,1247
+2017,regular,5,ap,13,Auburn,SEC,0,701
+2017,regular,5,ap,25,LSU,SEC,0,92
+2017,regular,5,ap,20,Utah,Pac-12,0,356
+2017,regular,5,ap,1,Alabama,SEC,52,1515
+2017,regular,5,ap,24,Mississippi State,SEC,0,148
+2017,regular,5,ap,11,Ohio State,Big Ten,0,1016
+2017,regular,5,ap,8,Michigan,Big Ten,0,1088
+2017,regular,5,ap,4,Penn State,Big Ten,0,1304
+2017,regular,5,ap,10,Wisconsin,Big Ten,0,1023
+2017,regular,5,ap,3,Oklahoma,Big 12,1,1397
+2017,regular,5,ap,22,Notre Dame,FBS Independents,0,246
+2017,regular,5,ap,18,South Florida,American Athletic,0,406
+2017,regular,5,ap,2,Clemson,ACC,8,1458
+2017,regular,5,ap,12,Virginia Tech,ACC,0,828
+2017,regular,5,ap,14,Miami,ACC,0,693
+2017,regular,5,ap,17,Louisville,ACC,0,502
+2017,regular,5,ap,19,San Diego State,Mountain West,0,365
+2017,postseason,1,ap,1,Alabama,SEC,57,1521
+2017,postseason,1,ap,2,Georgia,SEC,0,1454
+2017,postseason,1,ap,3,Oklahoma,Big 12,0,1374
+2017,postseason,1,ap,4,Clemson,ACC,0,1292
+2017,postseason,1,ap,5,Ohio State,Big Ten,0,1286
+2017,postseason,1,ap,6,UCF,American Athletic,4,1248
+2017,postseason,1,ap,7,Wisconsin,Big Ten,0,1194
+2017,postseason,1,ap,8,Penn State,Big Ten,0,1120
+2017,postseason,1,ap,9,TCU,Big 12,0,974
+2017,postseason,1,ap,10,Auburn,SEC,0,917
+2017,postseason,1,ap,11,Notre Dame,FBS Independents,0,857
+2017,postseason,1,ap,12,USC,Pac-12,0,839
+2017,postseason,1,ap,13,Miami,ACC,0,769
+2017,postseason,1,ap,14,Oklahoma State,Big 12,0,758
+2017,postseason,1,ap,15,Michigan State,Big Ten,0,705
+2017,postseason,1,ap,16,Washington,Pac-12,0,668
+2017,postseason,1,ap,17,Northwestern,Big Ten,0,528
+2017,postseason,1,ap,18,LSU,SEC,0,368
+2017,postseason,1,ap,19,Mississippi State,SEC,0,359
+2017,postseason,1,ap,20,Stanford,Pac-12,0,336
+2017,postseason,1,ap,21,South Florida,American Athletic,0,267
+2017,postseason,1,ap,22,Boise State,Mountain West,0,251
+2017,postseason,1,ap,23,NC State,ACC,0,232
+2017,postseason,1,ap,24,Virginia Tech,ACC,0,126
+2017,postseason,1,ap,25,Memphis,American Athletic,0,119
