@@ -214,14 +214,35 @@ def build_coverage(conn: sqlite3.Connection, box_scores: dict | None = None) -> 
 
     # Polls are counted in RELEASES, not teams: a week either had one or did
     # not, and 25 of 25 teams ranked says nothing about the weeks with no poll
-    # at all. The denominator is the season's own regular-season weeks plus one
-    # for the final postseason release.
+    # at all.
     poll_weeks = _season_counts(conn, "poll_rankings", """
         SELECT season_year, COUNT(DISTINCT season_type || '-' || week)
         FROM poll_rankings GROUP BY 1""")
     game_cols = {r[1] for r in conn.execute("PRAGMA table_info(games)")}
-    weeks = _counts(conn, """SELECT season_year, MAX(week) FROM games
-                             WHERE week IS NOT NULL GROUP BY 1""") if "week" in game_cols else {}
+    # The denominator is every release slot either source attests: the weeks
+    # games were played in, and the weeks a poll was actually released in.
+    #
+    # WHY NOT THE GAME WEEKS ALONE. It was `MAX(week) + 1`, a guess, and the
+    # guess was low: a poll is released in weeks no game falls in -- the
+    # preseason poll above all -- so 1982 held 16 releases against 15 slots
+    # and the coverage page reported more than all of something. There is no
+    # independent register of how many polls a season should have, so the
+    # honest claim is against what is attested rather than against a number
+    # invented here.
+    slots = {}
+    if "week" in game_cols:
+        # A bootstrap `games` need not carry game_phase, and a missing column
+        # would be an OperationalError rather than a missing dimension.
+        phase = ("CASE WHEN game_phase = 'regular' THEN 'regular' "
+                 "ELSE 'postseason' END" if "game_phase" in game_cols else "'regular'")
+        halves = [f"""SELECT DISTINCT season_year, {phase} AS season_type, week
+                      FROM games WHERE week IS NOT NULL"""]
+        if _table_exists(conn, "poll_rankings"):
+            halves.append(
+                "SELECT DISTINCT season_year, season_type, week FROM poll_rankings")
+        slots = _counts(conn, f"""
+            SELECT season_year, COUNT(*) FROM ({" UNION ".join(halves)})
+            GROUP BY 1""")
 
     box = {int(k): int(v) for k, v in (box_scores or {}).items()}
 
@@ -242,7 +263,7 @@ def build_coverage(conn: sqlite3.Connection, box_scores: dict | None = None) -> 
             "rosters": [rosters.get(season, 0), n_teams],
             "coaches": [coaches.get(season, 0), n_teams],
             "recruiting": [recruiting.get(season, 0), n_teams],
-            "polls": [poll_weeks.get(season, 0), weeks.get(season, 0) + 1 if weeks.get(season) else 0],
+            "polls": [poll_weeks.get(season, 0), slots.get(season, 0)],
         }
 
     # First season that actually has each dimension, alongside the source's own
