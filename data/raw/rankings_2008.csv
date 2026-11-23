@@ -1,0 +1,401 @@
+season_year,season_type,week,poll,rank,school,conference,first_place_votes,points
+2008,regular,15,ap,21,Michigan State,Big Ten,0,0
+2008,regular,15,ap,10,Ohio State,Big Ten,0,0
+2008,regular,15,ap,24,Northwestern,Big Ten,0,0
+2008,regular,15,ap,5,USC,Pac-10,0,0
+2008,regular,15,ap,25,Oregon State,Pac-10,0,0
+2008,regular,15,ap,16,Oregon,Pac-10,0,0
+2008,regular,15,ap,23,Pittsburgh,Big East,0,0
+2008,regular,15,ap,6,Penn State,Big Ten,0,0
+2008,regular,15,ap,19,Missouri,Big 12,0,0
+2008,regular,15,ap,3,Texas,Big 12,0,0
+2008,regular,15,ap,8,Texas Tech,Big 12,0,0
+2008,regular,15,ap,4,Oklahoma,Big 12,0,0
+2008,regular,15,ap,14,Oklahoma State,Big 12,0,0
+2008,regular,15,ap,7,Utah,Mountain West,0,0
+2008,regular,15,ap,20,BYU,Mountain West,0,0
+2008,regular,15,ap,13,Cincinnati,Big East,0,0
+2008,regular,15,ap,11,TCU,Mountain West,0,0
+2008,regular,15,ap,9,Boise State,Western Athletic,0,0
+2008,regular,15,ap,17,Georgia,SEC,0,0
+2008,regular,15,ap,2,Florida,SEC,3,0
+2008,regular,15,ap,1,Alabama,SEC,62,0
+2008,regular,15,ap,22,Ole Miss,SEC,0,0
+2008,regular,15,ap,12,Ball State,Mid-American,0,0
+2008,regular,15,ap,18,Boston College,ACC,0,0
+2008,regular,15,ap,15,Georgia Tech,ACC,0,0
+2008,regular,14,ap,22,Michigan State,Big Ten,0,0
+2008,regular,14,ap,10,Ohio State,Big Ten,0,0
+2008,regular,14,ap,24,Northwestern,Big Ten,0,0
+2008,regular,14,ap,5,USC,Pac-10,0,0
+2008,regular,14,ap,17,Oregon State,Pac-10,0,0
+2008,regular,14,ap,19,Oregon,Pac-10,0,0
+2008,regular,14,ap,6,Penn State,Big Ten,0,0
+2008,regular,14,ap,12,Missouri,Big 12,0,0
+2008,regular,14,ap,4,Texas,Big 12,0,0
+2008,regular,14,ap,7,Texas Tech,Big 12,0,0
+2008,regular,14,ap,3,Oklahoma,Big 12,0,0
+2008,regular,14,ap,11,Oklahoma State,Big 12,0,0
+2008,regular,14,ap,8,Utah,Mountain West,0,0
+2008,regular,14,ap,20,BYU,Mountain West,0,0
+2008,regular,14,ap,16,Cincinnati,Big East,0,0
+2008,regular,14,ap,14,TCU,Mountain West,0,0
+2008,regular,14,ap,9,Boise State,Western Athletic,0,0
+2008,regular,14,ap,13,Georgia,SEC,0,0
+2008,regular,14,ap,2,Florida,SEC,2,0
+2008,regular,14,ap,1,Alabama,SEC,63,0
+2008,regular,14,ap,25,Ole Miss,SEC,0,0
+2008,regular,14,ap,15,Ball State,Mid-American,0,0
+2008,regular,14,ap,23,Florida State,ACC,0,0
+2008,regular,14,ap,20,Boston College,ACC,0,0
+2008,regular,14,ap,18,Georgia Tech,ACC,0,0
+2008,regular,13,ap,17,Michigan State,Big Ten,0,0
+2008,regular,13,ap,10,Ohio State,Big Ten,0,0
+2008,regular,13,ap,6,USC,Pac-10,0,0
+2008,regular,13,ap,21,Oregon State,Pac-10,0,0
+2008,regular,13,ap,24,Oregon,Pac-10,0,0
+2008,regular,13,ap,20,Pittsburgh,Big East,0,0
+2008,regular,13,ap,7,Penn State,Big Ten,0,0
+2008,regular,13,ap,12,Missouri,Big 12,0,0
+2008,regular,13,ap,4,Texas,Big 12,0,0
+2008,regular,13,ap,2,Texas Tech,Big 12,21,0
+2008,regular,13,ap,5,Oklahoma,Big 12,0,0
+2008,regular,13,ap,11,Oklahoma State,Big 12,0,0
+2008,regular,13,ap,8,Utah,Mountain West,0,0
+2008,regular,13,ap,16,BYU,Mountain West,0,0
+2008,regular,13,ap,22,Maryland,ACC,0,0
+2008,regular,13,ap,19,Cincinnati,Big East,0,0
+2008,regular,13,ap,15,TCU,Mountain West,0,0
+2008,regular,13,ap,9,Boise State,Western Athletic,0,0
+2008,regular,13,ap,13,Georgia,SEC,0,0
+2008,regular,13,ap,3,Florida,SEC,2,0
+2008,regular,13,ap,18,LSU,SEC,0,0
+2008,regular,13,ap,1,Alabama,SEC,42,0
+2008,regular,13,ap,14,Ball State,Mid-American,0,0
+2008,regular,13,ap,23,Miami,ACC,0,0
+2008,regular,13,ap,25,North Carolina,ACC,0,0
+2008,regular,12,ap,18,Michigan State,Big Ten,0,0
+2008,regular,12,ap,10,Ohio State,Big Ten,0,0
+2008,regular,12,ap,6,USC,Pac-10,0,0
+2008,regular,12,ap,23,Oregon State,Pac-10,0,0
+2008,regular,12,ap,21,Pittsburgh,Big East,0,0
+2008,regular,12,ap,7,Penn State,Big Ten,0,0
+2008,regular,12,ap,12,Missouri,Big 12,0,0
+2008,regular,12,ap,4,Texas,Big 12,0,0
+2008,regular,12,ap,2,Texas Tech,Big 12,21,0
+2008,regular,12,ap,5,Oklahoma,Big 12,0,0
+2008,regular,12,ap,11,Oklahoma State,Big 12,0,0
+2008,regular,12,ap,8,Utah,Mountain West,0,0
+2008,regular,12,ap,16,BYU,Mountain West,0,0
+2008,regular,12,ap,22,Cincinnati,Big East,0,0
+2008,regular,12,ap,25,Tulsa,Conference USA,0,0
+2008,regular,12,ap,15,TCU,Mountain West,0,0
+2008,regular,12,ap,9,Boise State,Western Athletic,0,0
+2008,regular,12,ap,13,Georgia,SEC,0,0
+2008,regular,12,ap,3,Florida,SEC,0,0
+2008,regular,12,ap,24,South Carolina,SEC,0,0
+2008,regular,12,ap,19,LSU,SEC,0,0
+2008,regular,12,ap,1,Alabama,SEC,44,0
+2008,regular,12,ap,14,Ball State,Mid-American,0,0
+2008,regular,12,ap,20,Florida State,ACC,0,0
+2008,regular,12,ap,17,North Carolina,ACC,0,0
+2008,regular,11,ap,18,Michigan State,Big Ten,0,0
+2008,regular,11,ap,12,Ohio State,Big Ten,0,0
+2008,regular,11,ap,7,USC,Pac-10,0,0
+2008,regular,11,ap,21,California,Pac-10,0,0
+2008,regular,11,ap,25,Pittsburgh,Big East,0,0
+2008,regular,11,ap,20,West Virginia,Big East,0,0
+2008,regular,11,ap,3,Penn State,Big Ten,6,0
+2008,regular,11,ap,13,Missouri,Big 12,0,0
+2008,regular,11,ap,5,Texas,Big 12,0,0
+2008,regular,11,ap,2,Texas Tech,Big 12,12,0
+2008,regular,11,ap,6,Oklahoma,Big 12,0,0
+2008,regular,11,ap,8,Oklahoma State,Big 12,0,0
+2008,regular,11,ap,10,Utah,Mountain West,0,0
+2008,regular,11,ap,17,BYU,Mountain West,0,0
+2008,regular,11,ap,23,Maryland,ACC,0,0
+2008,regular,11,ap,11,TCU,Mountain West,0,0
+2008,regular,11,ap,9,Boise State,Western Athletic,0,0
+2008,regular,11,ap,14,Georgia,SEC,0,0
+2008,regular,11,ap,4,Florida,SEC,1,0
+2008,regular,11,ap,15,LSU,SEC,0,0
+2008,regular,11,ap,1,Alabama,SEC,46,0
+2008,regular,11,ap,16,Ball State,Mid-American,0,0
+2008,regular,11,ap,24,Florida State,ACC,0,0
+2008,regular,11,ap,22,Georgia Tech,ACC,0,0
+2008,regular,11,ap,19,North Carolina,ACC,0,0
+2008,regular,10,ap,22,Michigan State,Big Ten,0,0
+2008,regular,10,ap,13,Ohio State,Big Ten,0,0
+2008,regular,10,ap,20,Minnesota,Big Ten,0,0
+2008,regular,10,ap,7,USC,Pac-10,0,0
+2008,regular,10,ap,23,Oregon,Pac-10,0,0
+2008,regular,10,ap,3,Penn State,Big Ten,0,0
+2008,regular,10,ap,14,Missouri,Big 12,0,0
+2008,regular,10,ap,1,Texas,Big 12,65,0
+2008,regular,10,ap,6,Texas Tech,Big 12,0,0
+2008,regular,10,ap,4,Oklahoma,Big 12,0,0
+2008,regular,10,ap,9,Oklahoma State,Big 12,0,0
+2008,regular,10,ap,10,Utah,Mountain West,0,0
+2008,regular,10,ap,17,BYU,Mountain West,0,0
+2008,regular,10,ap,25,Maryland,ACC,0,0
+2008,regular,10,ap,24,South Florida,Big East,0,0
+2008,regular,10,ap,19,Tulsa,Conference USA,0,0
+2008,regular,10,ap,12,TCU,Mountain West,0,0
+2008,regular,10,ap,11,Boise State,Western Athletic,0,0
+2008,regular,10,ap,8,Georgia,SEC,0,0
+2008,regular,10,ap,5,Florida,SEC,0,0
+2008,regular,10,ap,15,LSU,SEC,0,0
+2008,regular,10,ap,2,Alabama,SEC,0,0
+2008,regular,10,ap,18,Ball State,Mid-American,0,0
+2008,regular,10,ap,16,Florida State,ACC,0,0
+2008,regular,10,ap,21,North Carolina,ACC,0,0
+2008,regular,8,ap,20,Michigan State,Big Ten,0,0
+2008,regular,8,ap,12,Ohio State,Big Ten,0,0
+2008,regular,8,ap,6,USC,Pac-10,0,0
+2008,regular,8,ap,25,California,Pac-10,0,0
+2008,regular,8,ap,23,Pittsburgh,Big East,0,0
+2008,regular,8,ap,3,Penn State,Big Ten,0,0
+2008,regular,8,ap,11,Missouri,Big 12,0,0
+2008,regular,8,ap,16,Kansas,Big 12,0,0
+2008,regular,8,ap,1,Texas,Big 12,39,0
+2008,regular,8,ap,7,Texas Tech,Big 12,0,0
+2008,regular,8,ap,4,Oklahoma,Big 12,0,0
+2008,regular,8,ap,8,Oklahoma State,Big 12,0,0
+2008,regular,8,ap,14,Utah,Mountain West,0,0
+2008,regular,8,ap,9,BYU,Mountain West,0,0
+2008,regular,8,ap,19,South Florida,Big East,0,0
+2008,regular,8,ap,15,Boise State,Western Athletic,0,0
+2008,regular,8,ap,10,Georgia,SEC,0,0
+2008,regular,8,ap,5,Florida,SEC,0,0
+2008,regular,8,ap,22,Vanderbilt,SEC,0,0
+2008,regular,8,ap,13,LSU,SEC,0,0
+2008,regular,8,ap,2,Alabama,SEC,26,0
+2008,regular,8,ap,24,Ball State,Mid-American,0,0
+2008,regular,8,ap,21,Wake Forest,ACC,0,0
+2008,regular,8,ap,17,Virginia Tech,ACC,0,0
+2008,regular,8,ap,18,North Carolina,ACC,0,0
+2008,regular,7,ap,23,Michigan State,Big Ten,0,0
+2008,regular,7,ap,12,Ohio State,Big Ten,0,0
+2008,regular,7,ap,8,USC,Pac-10,0,0
+2008,regular,7,ap,24,Pittsburgh,Big East,0,0
+2008,regular,7,ap,6,Penn State,Big Ten,0,0
+2008,regular,7,ap,3,Missouri,Big 12,1,0
+2008,regular,7,ap,16,Kansas,Big 12,0,0
+2008,regular,7,ap,5,Texas,Big 12,0,0
+2008,regular,7,ap,7,Texas Tech,Big 12,0,0
+2008,regular,7,ap,1,Oklahoma,Big 12,51,0
+2008,regular,7,ap,17,Oklahoma State,Big 12,0,0
+2008,regular,7,ap,14,Utah,Mountain West,0,0
+2008,regular,7,ap,9,BYU,Mountain West,0,0
+2008,regular,7,ap,19,South Florida,Big East,0,0
+2008,regular,7,ap,15,Boise State,Western Athletic,0,0
+2008,regular,7,ap,10,Georgia,SEC,0,0
+2008,regular,7,ap,11,Florida,SEC,0,0
+2008,regular,7,ap,13,Vanderbilt,SEC,0,0
+2008,regular,7,ap,20,Auburn,SEC,0,0
+2008,regular,7,ap,4,LSU,SEC,0,0
+2008,regular,7,ap,2,Alabama,SEC,13,0
+2008,regular,7,ap,25,Ball State,Mid-American,0,0
+2008,regular,7,ap,21,Wake Forest,ACC,0,0
+2008,regular,7,ap,18,Virginia Tech,ACC,0,0
+2008,regular,7,ap,22,North Carolina,ACC,0,0
+2008,regular,5,ap,22,Illinois,Big Ten,0,0
+2008,regular,5,ap,9,Wisconsin,Big Ten,0,0
+2008,regular,5,ap,14,Ohio State,Big Ten,0,0
+2008,regular,5,ap,1,USC,Pac-10,62,0
+2008,regular,5,ap,12,Penn State,Big Ten,0,0
+2008,regular,5,ap,6,Missouri,Big 12,0,0
+2008,regular,5,ap,18,Kansas,Big 12,0,0
+2008,regular,5,ap,7,Texas,Big 12,0,0
+2008,regular,5,ap,10,Texas Tech,Big 12,0,0
+2008,regular,5,ap,2,Oklahoma,Big 12,0,0
+2008,regular,5,ap,17,Utah,Mountain West,0,0
+2008,regular,5,ap,11,BYU,Mountain West,0,0
+2008,regular,5,ap,13,South Florida,Big East,0,0
+2008,regular,5,ap,23,East Carolina,Conference USA,0,0
+2008,regular,5,ap,24,TCU,Mountain West,0,0
+2008,regular,5,ap,19,Boise State,Western Athletic,0,0
+2008,regular,5,ap,3,Georgia,SEC,2,0
+2008,regular,5,ap,4,Florida,SEC,1,0
+2008,regular,5,ap,21,Vanderbilt,SEC,0,0
+2008,regular,5,ap,25,Fresno State,Western Athletic,0,0
+2008,regular,5,ap,15,Auburn,SEC,0,0
+2008,regular,5,ap,5,LSU,SEC,0,0
+2008,regular,5,ap,8,Alabama,SEC,0,0
+2008,regular,5,ap,20,Clemson,ACC,0,0
+2008,regular,5,ap,16,Wake Forest,ACC,0,0
+2008,regular,4,ap,22,Illinois,Big Ten,0,0
+2008,regular,4,ap,8,Wisconsin,Big Ten,0,0
+2008,regular,4,ap,13,Ohio State,Big Ten,0,0
+2008,regular,4,ap,1,USC,Pac-10,61,0
+2008,regular,4,ap,17,Oregon,Pac-10,0,0
+2008,regular,4,ap,21,West Virginia,Big East,0,0
+2008,regular,4,ap,16,Penn State,Big Ten,0,0
+2008,regular,4,ap,5,Missouri,Big 12,0,0
+2008,regular,4,ap,19,Kansas,Big 12,0,0
+2008,regular,4,ap,7,Texas,Big 12,0,0
+2008,regular,4,ap,11,Texas Tech,Big 12,0,0
+2008,regular,4,ap,2,Oklahoma,Big 12,0,0
+2008,regular,4,ap,20,Utah,Mountain West,0,0
+2008,regular,4,ap,14,BYU,Mountain West,0,0
+2008,regular,4,ap,12,South Florida,Big East,0,0
+2008,regular,4,ap,15,East Carolina,Conference USA,0,0
+2008,regular,4,ap,3,Georgia,SEC,2,0
+2008,regular,4,ap,4,Florida,SEC,1,0
+2008,regular,4,ap,25,Fresno State,Western Athletic,0,0
+2008,regular,4,ap,10,Auburn,SEC,0,0
+2008,regular,4,ap,6,LSU,SEC,0,0
+2008,regular,4,ap,9,Alabama,SEC,0,0
+2008,regular,4,ap,24,Florida State,ACC,0,0
+2008,regular,4,ap,23,Clemson,ACC,0,0
+2008,regular,4,ap,18,Wake Forest,ACC,0,0
+2008,regular,3,ap,24,Illinois,Big Ten,0,0
+2008,regular,3,ap,10,Wisconsin,Big Ten,0,0
+2008,regular,3,ap,5,Ohio State,Big Ten,1,0
+2008,regular,3,ap,1,USC,Pac-10,33,0
+2008,regular,3,ap,15,Arizona State,Pac-10,0,0
+2008,regular,3,ap,23,California,Pac-10,0,0
+2008,regular,3,ap,16,Oregon,Pac-10,0,0
+2008,regular,3,ap,25,West Virginia,Big East,0,0
+2008,regular,3,ap,17,Penn State,Big Ten,0,0
+2008,regular,3,ap,6,Missouri,Big 12,1,0
+2008,regular,3,ap,13,Kansas,Big 12,0,0
+2008,regular,3,ap,8,Texas,Big 12,0,0
+2008,regular,3,ap,12,Texas Tech,Big 12,0,0
+2008,regular,3,ap,3,Oklahoma,Big 12,2,0
+2008,regular,3,ap,22,Utah,Mountain West,0,0
+2008,regular,3,ap,18,BYU,Mountain West,0,0
+2008,regular,3,ap,19,South Florida,Big East,0,0
+2008,regular,3,ap,14,East Carolina,Conference USA,0,0
+2008,regular,3,ap,2,Georgia,SEC,23,0
+2008,regular,3,ap,4,Florida,SEC,4,0
+2008,regular,3,ap,21,Fresno State,Western Athletic,0,0
+2008,regular,3,ap,9,Auburn,SEC,0,0
+2008,regular,3,ap,7,LSU,SEC,1,0
+2008,regular,3,ap,11,Alabama,SEC,0,0
+2008,regular,3,ap,20,Wake Forest,ACC,0,0
+2008,regular,2,ap,24,Illinois,Big Ten,0,0
+2008,regular,2,ap,11,Wisconsin,Big Ten,0,0
+2008,regular,2,ap,3,Ohio State,Big Ten,15,0
+2008,regular,2,ap,1,USC,Pac-10,21,0
+2008,regular,2,ap,23,UCLA,Pac-10,0,0
+2008,regular,2,ap,15,Arizona State,Pac-10,0,0
+2008,regular,2,ap,18,Oregon,Pac-10,0,0
+2008,regular,2,ap,8,West Virginia,Big East,0,0
+2008,regular,2,ap,19,Penn State,Big Ten,0,0
+2008,regular,2,ap,6,Missouri,Big 12,1,0
+2008,regular,2,ap,14,Kansas,Big 12,0,0
+2008,regular,2,ap,10,Texas,Big 12,0,0
+2008,regular,2,ap,12,Texas Tech,Big 12,0,0
+2008,regular,2,ap,4,Oklahoma,Big 12,2,0
+2008,regular,2,ap,22,Utah,Mountain West,0,0
+2008,regular,2,ap,15,BYU,Mountain West,0,0
+2008,regular,2,ap,17,South Florida,Big East,0,0
+2008,regular,2,ap,2,Georgia,SEC,20,0
+2008,regular,2,ap,5,Florida,SEC,5,0
+2008,regular,2,ap,24,South Carolina,SEC,0,0
+2008,regular,2,ap,21,Fresno State,Western Athletic,0,0
+2008,regular,2,ap,9,Auburn,SEC,0,0
+2008,regular,2,ap,7,LSU,SEC,1,0
+2008,regular,2,ap,13,Alabama,SEC,0,0
+2008,regular,2,ap,20,Wake Forest,ACC,0,0
+2008,regular,1,ap,20,Illinois,Big Ten,0,0
+2008,regular,1,ap,13,Wisconsin,Big Ten,0,0
+2008,regular,1,ap,2,Ohio State,Big Ten,21,0
+2008,regular,1,ap,3,USC,Pac-10,12,0
+2008,regular,1,ap,15,Arizona State,Pac-10,0,0
+2008,regular,1,ap,21,Oregon,Pac-10,0,0
+2008,regular,1,ap,25,Pittsburgh,Big East,0,0
+2008,regular,1,ap,8,West Virginia,Big East,0,0
+2008,regular,1,ap,22,Penn State,Big Ten,0,0
+2008,regular,1,ap,6,Missouri,Big 12,0,0
+2008,regular,1,ap,14,Kansas,Big 12,0,0
+2008,regular,1,ap,11,Texas,Big 12,0,0
+2008,regular,1,ap,12,Texas Tech,Big 12,0,0
+2008,regular,1,ap,4,Oklahoma,Big 12,4,0
+2008,regular,1,ap,16,BYU,Mountain West,0,0
+2008,regular,1,ap,19,South Florida,Big East,0,0
+2008,regular,1,ap,1,Georgia,SEC,22,0
+2008,regular,1,ap,5,Florida,SEC,6,0
+2008,regular,1,ap,18,Tennessee,SEC,0,0
+2008,regular,1,ap,10,Auburn,SEC,0,0
+2008,regular,1,ap,7,LSU,SEC,0,0
+2008,regular,1,ap,24,Alabama,SEC,0,0
+2008,regular,1,ap,9,Clemson,ACC,0,0
+2008,regular,1,ap,23,Wake Forest,ACC,0,0
+2008,regular,1,ap,17,Virginia Tech,ACC,0,0
+2008,regular,6,ap,18,Wisconsin,Big Ten,0,0
+2008,regular,6,ap,14,Ohio State,Big Ten,0,0
+2008,regular,6,ap,9,USC,Pac-10,0,0
+2008,regular,6,ap,23,Oregon,Pac-10,0,0
+2008,regular,6,ap,6,Penn State,Big Ten,0,0
+2008,regular,6,ap,4,Missouri,Big 12,1,0
+2008,regular,6,ap,16,Kansas,Big 12,0,0
+2008,regular,6,ap,5,Texas,Big 12,0,0
+2008,regular,6,ap,7,Texas Tech,Big 12,0,0
+2008,regular,6,ap,1,Oklahoma,Big 12,43,0
+2008,regular,6,ap,21,Oklahoma State,Big 12,0,0
+2008,regular,6,ap,15,Utah,Mountain West,0,0
+2008,regular,6,ap,8,BYU,Mountain West,0,0
+2008,regular,6,ap,24,UConn,Big East,0,0
+2008,regular,6,ap,10,South Florida,Big East,0,0
+2008,regular,6,ap,17,Boise State,Western Athletic,0,0
+2008,regular,6,ap,11,Georgia,SEC,0,0
+2008,regular,6,ap,12,Florida,SEC,0,0
+2008,regular,6,ap,19,Vanderbilt,SEC,0,0
+2008,regular,6,ap,22,Fresno State,Western Athletic,0,0
+2008,regular,6,ap,13,Auburn,SEC,0,0
+2008,regular,6,ap,3,LSU,SEC,0,0
+2008,regular,6,ap,2,Alabama,SEC,21,0
+2008,regular,6,ap,25,Wake Forest,ACC,0,0
+2008,regular,6,ap,20,Virginia Tech,ACC,0,0
+2008,regular,9,ap,10,Ohio State,Big Ten,0,0
+2008,regular,9,ap,25,Minnesota,Big Ten,0,0
+2008,regular,9,ap,6,USC,Pac-10,0,0
+2008,regular,9,ap,17,Pittsburgh,Big East,0,0
+2008,regular,9,ap,3,Penn State,Big Ten,0,0
+2008,regular,9,ap,16,Missouri,Big 12,0,0
+2008,regular,9,ap,19,Kansas,Big 12,0,0
+2008,regular,9,ap,1,Texas,Big 12,65,0
+2008,regular,9,ap,8,Texas Tech,Big 12,0,0
+2008,regular,9,ap,4,Oklahoma,Big 12,0,0
+2008,regular,9,ap,7,Oklahoma State,Big 12,0,0
+2008,regular,9,ap,12,Utah,Mountain West,0,0
+2008,regular,9,ap,18,BYU,Mountain West,0,0
+2008,regular,9,ap,14,South Florida,Big East,0,0
+2008,regular,9,ap,22,Tulsa,Conference USA,0,0
+2008,regular,9,ap,15,TCU,Mountain West,0,0
+2008,regular,9,ap,13,Boise State,Western Athletic,0,0
+2008,regular,9,ap,9,Georgia,SEC,0,0
+2008,regular,9,ap,5,Florida,SEC,0,0
+2008,regular,9,ap,11,LSU,SEC,0,0
+2008,regular,9,ap,2,Alabama,SEC,0,0
+2008,regular,9,ap,20,Ball State,Mid-American,0,0
+2008,regular,9,ap,24,Florida State,ACC,0,0
+2008,regular,9,ap,23,Boston College,ACC,0,0
+2008,regular,9,ap,21,Georgia Tech,ACC,0,0
+2008,postseason,1,ap,1,Florida,SEC,48,0
+2008,postseason,1,ap,2,Utah,Mountain West,16,0
+2008,postseason,1,ap,3,USC,Pac-10,1,0
+2008,postseason,1,ap,4,Texas,Big 12,0,0
+2008,postseason,1,ap,5,Oklahoma,Big 12,0,0
+2008,postseason,1,ap,6,Alabama,SEC,0,0
+2008,postseason,1,ap,7,TCU,Mountain West,0,0
+2008,postseason,1,ap,8,Penn State,Big Ten,0,0
+2008,postseason,1,ap,9,Ohio State,Big Ten,0,0
+2008,postseason,1,ap,10,Oregon,Pac-10,0,0
+2008,postseason,1,ap,11,Boise State,Western Athletic,0,0
+2008,postseason,1,ap,12,Texas Tech,Big 12,0,0
+2008,postseason,1,ap,13,Georgia,SEC,0,0
+2008,postseason,1,ap,14,Ole Miss,SEC,0,0
+2008,postseason,1,ap,15,Virginia Tech,ACC,0,0
+2008,postseason,1,ap,16,Oklahoma State,Big 12,0,0
+2008,postseason,1,ap,17,Cincinnati,Big East,0,0
+2008,postseason,1,ap,18,Oregon State,Pac-10,0,0
+2008,postseason,1,ap,19,Missouri,Big 12,0,0
+2008,postseason,1,ap,20,Iowa,Big Ten,0,0
+2008,postseason,1,ap,21,Florida State,ACC,0,0
+2008,postseason,1,ap,22,Georgia Tech,ACC,0,0
+2008,postseason,1,ap,23,West Virginia,Big East,0,0
+2008,postseason,1,ap,24,Michigan State,Big Ten,0,0
+2008,postseason,1,ap,25,BYU,Mountain West,0,0
