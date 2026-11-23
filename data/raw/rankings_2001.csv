@@ -1,0 +1,351 @@
+season_year,season_type,week,poll,rank,school,conference,first_place_votes,points
+2001,regular,16,ap,6,Maryland,ACC,0,0
+2001,regular,16,ap,7,Illinois,Big Ten,0,0
+2001,regular,16,ap,17,Michigan,Big Ten,0,0
+2001,regular,16,ap,22,Ohio State,Big Ten,0,0
+2001,regular,16,ap,21,Washington,Pac-10,0,0
+2001,regular,16,ap,11,Stanford,Pac-10,0,0
+2001,regular,16,ap,2,Oregon,Pac-10,0,0
+2001,regular,16,ap,13,Washington State,Pac-10,0,0
+2001,regular,16,ap,1,Miami,Big East,72,0
+2001,regular,16,ap,18,Syracuse,Big East,0,0
+2001,regular,16,ap,15,Virginia Tech,Big East,0,0
+2001,regular,16,ap,24,Florida State,ACC,0,0
+2001,regular,16,ap,4,Nebraska,Big 12,0,0
+2001,regular,16,ap,3,Colorado,Big 12,0,0
+2001,regular,16,ap,9,Texas,Big 12,0,0
+2001,regular,16,ap,10,Oklahoma,Big 12,0,0
+2001,regular,16,ap,23,Louisville,Conference USA,0,0
+2001,regular,16,ap,19,BYU,Mountain West,0,0
+2001,regular,16,ap,16,Georgia,SEC,0,0
+2001,regular,16,ap,5,Florida,SEC,0,0
+2001,regular,16,ap,8,Tennessee,SEC,0,0
+2001,regular,16,ap,14,South Carolina,SEC,0,0
+2001,regular,16,ap,20,Fresno State,Western Athletic,0,0
+2001,regular,16,ap,12,LSU,SEC,0,0
+2001,regular,16,ap,25,Toledo,Mid-American,0,0
+2001,regular,15,ap,7,Maryland,ACC,0,0
+2001,regular,15,ap,8,Illinois,Big Ten,0,0
+2001,regular,15,ap,17,Michigan,Big Ten,0,0
+2001,regular,15,ap,23,Ohio State,Big Ten,0,0
+2001,regular,15,ap,19,Washington,Pac-10,0,0
+2001,regular,15,ap,12,Stanford,Pac-10,0,0
+2001,regular,15,ap,4,Oregon,Pac-10,0,0
+2001,regular,15,ap,13,Washington State,Pac-10,0,0
+2001,regular,15,ap,1,Miami,Big East,71,0
+2001,regular,15,ap,18,Syracuse,Big East,0,0
+2001,regular,15,ap,14,Virginia Tech,Big East,0,0
+2001,regular,15,ap,6,Nebraska,Big 12,0,0
+2001,regular,15,ap,9,Colorado,Big 12,0,0
+2001,regular,15,ap,3,Texas,Big 12,0,0
+2001,regular,15,ap,11,Oklahoma,Big 12,0,0
+2001,regular,15,ap,24,Louisville,Conference USA,0,0
+2001,regular,15,ap,20,Marshall,Mid-American,0,0
+2001,regular,15,ap,10,BYU,Mountain West,0,0
+2001,regular,15,ap,16,Georgia,SEC,0,0
+2001,regular,15,ap,2,Florida,SEC,1,0
+2001,regular,15,ap,5,Tennessee,SEC,0,0
+2001,regular,15,ap,15,South Carolina,SEC,0,0
+2001,regular,15,ap,21,Fresno State,Western Athletic,0,0
+2001,regular,15,ap,25,Auburn,SEC,0,0
+2001,regular,15,ap,22,LSU,SEC,0,0
+2001,regular,14,ap,8,Maryland,ACC,0,0
+2001,regular,14,ap,10,Illinois,Big Ten,0,0
+2001,regular,14,ap,11,Michigan,Big Ten,0,0
+2001,regular,14,ap,12,Washington,Pac-10,0,0
+2001,regular,14,ap,13,Stanford,Pac-10,0,0
+2001,regular,14,ap,6,Oregon,Pac-10,0,0
+2001,regular,14,ap,15,Washington State,Pac-10,0,0
+2001,regular,14,ap,21,Georgia Tech,ACC,0,0
+2001,regular,14,ap,1,Miami,Big East,52,0
+2001,regular,14,ap,22,Syracuse,Big East,0,0
+2001,regular,14,ap,16,Virginia Tech,Big East,0,0
+2001,regular,14,ap,25,Boston College,Big East,0,0
+2001,regular,14,ap,2,Nebraska,Big 12,20,0
+2001,regular,14,ap,14,Colorado,Big 12,0,0
+2001,regular,14,ap,5,Texas,Big 12,0,0
+2001,regular,14,ap,4,Oklahoma,Big 12,0,0
+2001,regular,14,ap,17,Louisville,Conference USA,0,0
+2001,regular,14,ap,20,Marshall,Mid-American,0,0
+2001,regular,14,ap,9,BYU,Mountain West,0,0
+2001,regular,14,ap,19,Georgia,SEC,0,0
+2001,regular,14,ap,3,Florida,SEC,0,0
+2001,regular,14,ap,7,Tennessee,SEC,0,0
+2001,regular,14,ap,18,South Carolina,SEC,0,0
+2001,regular,14,ap,23,Fresno State,Western Athletic,0,0
+2001,regular,14,ap,24,Arkansas,SEC,0,0
+2001,regular,13,ap,10,Maryland,ACC,0,0
+2001,regular,13,ap,12,Illinois,Big Ten,0,0
+2001,regular,13,ap,11,Michigan,Big Ten,0,0
+2001,regular,13,ap,25,Ohio State,Big Ten,0,0
+2001,regular,13,ap,20,UCLA,Pac-10,0,0
+2001,regular,13,ap,16,Washington,Pac-10,0,0
+2001,regular,13,ap,13,Stanford,Pac-10,0,0
+2001,regular,13,ap,7,Oregon,Pac-10,0,0
+2001,regular,13,ap,9,Washington State,Pac-10,0,0
+2001,regular,13,ap,1,Miami,Big East,44,0
+2001,regular,13,ap,14,Syracuse,Big East,0,0
+2001,regular,13,ap,18,Virginia Tech,Big East,0,0
+2001,regular,13,ap,21,Florida State,ACC,0,0
+2001,regular,13,ap,2,Nebraska,Big 12,28,0
+2001,regular,13,ap,15,Colorado,Big 12,0,0
+2001,regular,13,ap,5,Texas,Big 12,0,0
+2001,regular,13,ap,3,Oklahoma,Big 12,0,0
+2001,regular,13,ap,19,Louisville,Conference USA,0,0
+2001,regular,13,ap,24,Marshall,Mid-American,0,0
+2001,regular,13,ap,8,BYU,Mountain West,0,0
+2001,regular,13,ap,23,Georgia,SEC,0,0
+2001,regular,13,ap,4,Florida,SEC,0,0
+2001,regular,13,ap,6,Tennessee,SEC,0,0
+2001,regular,13,ap,22,South Carolina,SEC,0,0
+2001,regular,13,ap,17,Auburn,SEC,0,0
+2001,regular,12,ap,13,Maryland,ACC,0,0
+2001,regular,12,ap,22,Michigan State,Big Ten,0,0
+2001,regular,12,ap,15,Illinois,Big Ten,0,0
+2001,regular,12,ap,12,Michigan,Big Ten,0,0
+2001,regular,12,ap,17,UCLA,Pac-10,0,0
+2001,regular,12,ap,8,Washington,Pac-10,0,0
+2001,regular,12,ap,16,Stanford,Pac-10,0,0
+2001,regular,12,ap,7,Oregon,Pac-10,0,0
+2001,regular,12,ap,11,Washington State,Pac-10,0,0
+2001,regular,12,ap,20,Georgia Tech,ACC,0,0
+2001,regular,12,ap,1,Miami,Big East,55,0
+2001,regular,12,ap,18,Syracuse,Big East,0,0
+2001,regular,12,ap,23,Virginia Tech,Big East,0,0
+2001,regular,12,ap,10,Florida State,ACC,0,0
+2001,regular,12,ap,2,Nebraska,Big 12,17,0
+2001,regular,12,ap,21,Colorado,Big 12,0,0
+2001,regular,12,ap,5,Texas,Big 12,0,0
+2001,regular,12,ap,3,Oklahoma,Big 12,0,0
+2001,regular,12,ap,25,Louisville,Conference USA,0,0
+2001,regular,12,ap,9,BYU,Mountain West,0,0
+2001,regular,12,ap,19,Georgia,SEC,0,0
+2001,regular,12,ap,4,Florida,SEC,0,0
+2001,regular,12,ap,6,Tennessee,SEC,0,0
+2001,regular,12,ap,14,South Carolina,SEC,0,0
+2001,regular,12,ap,24,Auburn,SEC,0,0
+2001,regular,11,ap,15,Maryland,ACC,0,0
+2001,regular,11,ap,22,North Carolina,ACC,0,0
+2001,regular,11,ap,21,Illinois,Big Ten,0,0
+2001,regular,11,ap,6,Michigan,Big Ten,0,0
+2001,regular,11,ap,20,Purdue,Big Ten,0,0
+2001,regular,11,ap,9,UCLA,Pac-10,0,0
+2001,regular,11,ap,11,Washington,Pac-10,0,0
+2001,regular,11,ap,10,Stanford,Pac-10,0,0
+2001,regular,11,ap,8,Oregon,Pac-10,0,0
+2001,regular,11,ap,16,Washington State,Pac-10,0,0
+2001,regular,11,ap,23,Georgia Tech,ACC,0,0
+2001,regular,11,ap,1,Miami,Big East,55,0
+2001,regular,11,ap,19,Syracuse,Big East,0,0
+2001,regular,11,ap,12,Virginia Tech,Big East,0,0
+2001,regular,11,ap,14,Florida State,ACC,0,0
+2001,regular,11,ap,2,Nebraska,Big 12,17,0
+2001,regular,11,ap,25,Colorado,Big 12,0,0
+2001,regular,11,ap,5,Texas,Big 12,0,0
+2001,regular,11,ap,24,Texas A&M,Big 12,0,0
+2001,regular,11,ap,3,Oklahoma,Big 12,0,0
+2001,regular,11,ap,13,BYU,Mountain West,0,0
+2001,regular,11,ap,18,Georgia,SEC,0,0
+2001,regular,11,ap,4,Florida,SEC,0,0
+2001,regular,11,ap,7,Tennessee,SEC,0,0
+2001,regular,11,ap,17,South Carolina,SEC,0,0
+2001,regular,10,ap,10,Maryland,ACC,0,0
+2001,regular,10,ap,23,North Carolina,ACC,0,0
+2001,regular,10,ap,22,Illinois,Big Ten,0,0
+2001,regular,10,ap,8,Michigan,Big Ten,0,0
+2001,regular,10,ap,24,Purdue,Big Ten,0,0
+2001,regular,10,ap,4,UCLA,Pac-10,1,0
+2001,regular,10,ap,13,Washington,Pac-10,0,0
+2001,regular,10,ap,20,Stanford,Pac-10,0,0
+2001,regular,10,ap,11,Oregon,Pac-10,0,0
+2001,regular,10,ap,14,Washington State,Pac-10,0,0
+2001,regular,10,ap,21,Georgia Tech,ACC,0,0
+2001,regular,10,ap,1,Miami,Big East,47,0
+2001,regular,10,ap,5,Virginia Tech,Big East,0,0
+2001,regular,10,ap,19,Florida State,ACC,0,0
+2001,regular,10,ap,3,Nebraska,Big 12,2,0
+2001,regular,10,ap,25,Colorado,Big 12,0,0
+2001,regular,10,ap,7,Texas,Big 12,0,0
+2001,regular,10,ap,2,Oklahoma,Big 12,22,0
+2001,regular,10,ap,16,BYU,Mountain West,0,0
+2001,regular,10,ap,15,Georgia,SEC,0,0
+2001,regular,10,ap,6,Florida,SEC,0,0
+2001,regular,10,ap,9,Tennessee,SEC,0,0
+2001,regular,10,ap,12,South Carolina,SEC,0,0
+2001,regular,10,ap,18,Fresno State,Western Athletic,0,0
+2001,regular,10,ap,17,Auburn,SEC,0,0
+2001,regular,8,ap,22,Maryland,ACC,0,0
+2001,regular,8,ap,16,Clemson,ACC,0,0
+2001,regular,8,ap,12,Michigan,Big Ten,0,0
+2001,regular,8,ap,21,Ohio State,Big Ten,0,0
+2001,regular,8,ap,17,Purdue,Big Ten,0,0
+2001,regular,8,ap,7,UCLA,Pac-10,0,0
+2001,regular,8,ap,10,Washington,Pac-10,0,0
+2001,regular,8,ap,23,Stanford,Pac-10,0,0
+2001,regular,8,ap,5,Oregon,Pac-10,0,0
+2001,regular,8,ap,15,Georgia Tech,ACC,0,0
+2001,regular,8,ap,2,Miami,Big East,23,0
+2001,regular,8,ap,6,Virginia Tech,Big East,0,0
+2001,regular,8,ap,14,Florida State,ACC,0,0
+2001,regular,8,ap,4,Nebraska,Big 12,2,0
+2001,regular,8,ap,20,Colorado,Big 12,0,0
+2001,regular,8,ap,24,Kansas State,Big 12,0,0
+2001,regular,8,ap,11,Texas,Big 12,0,0
+2001,regular,8,ap,25,Texas A&M,Big 12,0,0
+2001,regular,8,ap,3,Oklahoma,Big 12,16,0
+2001,regular,8,ap,18,BYU,Mountain West,0,0
+2001,regular,8,ap,19,Georgia,SEC,0,0
+2001,regular,8,ap,1,Florida,SEC,30,0
+2001,regular,8,ap,13,Tennessee,SEC,0,0
+2001,regular,8,ap,9,South Carolina,SEC,0,0
+2001,regular,8,ap,8,Fresno State,Western Athletic,1,0
+2001,regular,7,ap,25,Maryland,ACC,0,0
+2001,regular,7,ap,19,Clemson,ACC,0,0
+2001,regular,7,ap,15,Michigan,Big Ten,0,0
+2001,regular,7,ap,21,Purdue,Big Ten,0,0
+2001,regular,7,ap,14,Northwestern,Big Ten,0,0
+2001,regular,7,ap,9,UCLA,Pac-10,0,0
+2001,regular,7,ap,11,Washington,Pac-10,0,0
+2001,regular,7,ap,22,Stanford,Pac-10,0,0
+2001,regular,7,ap,7,Oregon,Pac-10,0,0
+2001,regular,7,ap,17,Georgia Tech,ACC,0,0
+2001,regular,7,ap,1,Miami,Big East,34,0
+2001,regular,7,ap,8,Virginia Tech,Big East,0,0
+2001,regular,7,ap,16,Florida State,ACC,0,0
+2001,regular,7,ap,4,Nebraska,Big 12,2,0
+2001,regular,7,ap,12,Kansas State,Big 12,0,0
+2001,regular,7,ap,5,Texas,Big 12,4,0
+2001,regular,7,ap,24,Texas A&M,Big 12,0,0
+2001,regular,7,ap,3,Oklahoma,Big 12,9,0
+2001,regular,7,ap,20,BYU,Mountain West,0,0
+2001,regular,7,ap,2,Florida,SEC,22,0
+2001,regular,7,ap,6,Tennessee,SEC,7,0
+2001,regular,7,ap,13,South Carolina,SEC,0,0
+2001,regular,7,ap,10,Fresno State,Western Athletic,1,0
+2001,regular,7,ap,18,LSU,SEC,0,0
+2001,regular,7,ap,23,Toledo,Mid-American,0,0
+2001,regular,6,ap,23,Michigan State,Big Ten,0,0
+2001,regular,6,ap,22,Illinois,Big Ten,0,0
+2001,regular,6,ap,17,Michigan,Big Ten,0,0
+2001,regular,6,ap,24,Purdue,Big Ten,0,0
+2001,regular,6,ap,16,Northwestern,Big Ten,0,0
+2001,regular,6,ap,12,UCLA,Pac-10,0,0
+2001,regular,6,ap,13,Washington,Pac-10,0,0
+2001,regular,6,ap,19,Oregon State,Pac-10,0,0
+2001,regular,6,ap,6,Oregon,Pac-10,0,0
+2001,regular,6,ap,9,Georgia Tech,ACC,0,0
+2001,regular,6,ap,1,Miami,Big East,39,0
+2001,regular,6,ap,8,Virginia Tech,Big East,0,0
+2001,regular,6,ap,18,Florida State,ACC,0,0
+2001,regular,6,ap,4,Nebraska,Big 12,2,0
+2001,regular,6,ap,11,Kansas State,Big 12,0,0
+2001,regular,6,ap,5,Texas,Big 12,4,0
+2001,regular,6,ap,3,Oklahoma,Big 12,11,0
+2001,regular,6,ap,20,BYU,Mountain West,0,0
+2001,regular,6,ap,2,Florida,SEC,15,0
+2001,regular,6,ap,7,Tennessee,SEC,0,0
+2001,regular,6,ap,15,South Carolina,SEC,0,0
+2001,regular,6,ap,10,Fresno State,Western Athletic,1,0
+2001,regular,6,ap,14,LSU,SEC,0,0
+2001,regular,6,ap,25,Toledo,Mid-American,0,0
+2001,regular,6,ap,21,Mississippi State,SEC,0,0
+2001,regular,3,ap,20,Clemson,ACC,0,0
+2001,regular,3,ap,23,Wisconsin,Big Ten,0,0
+2001,regular,3,ap,11,Michigan,Big Ten,0,0
+2001,regular,3,ap,24,Ohio State,Big Ten,0,0
+2001,regular,3,ap,16,Northwestern,Big Ten,0,0
+2001,regular,3,ap,14,UCLA,Pac-10,0,0
+2001,regular,3,ap,15,Washington,Pac-10,0,0
+2001,regular,3,ap,22,Oregon State,Pac-10,0,0
+2001,regular,3,ap,7,Oregon,Pac-10,0,0
+2001,regular,3,ap,10,Georgia Tech,ACC,0,0
+2001,regular,3,ap,1,Miami,Big East,37,0
+2001,regular,3,ap,9,Virginia Tech,Big East,0,0
+2001,regular,3,ap,6,Florida State,ACC,0,0
+2001,regular,3,ap,5,Nebraska,Big 12,2,0
+2001,regular,3,ap,12,Kansas State,Big 12,0,0
+2001,regular,3,ap,4,Texas,Big 12,4,0
+2001,regular,3,ap,3,Oklahoma,Big 12,10,0
+2001,regular,3,ap,25,Georgia,SEC,0,0
+2001,regular,3,ap,2,Florida,SEC,19,0
+2001,regular,3,ap,8,Tennessee,SEC,0,0
+2001,regular,3,ap,21,South Carolina,SEC,0,0
+2001,regular,3,ap,19,Fresno State,Western Athletic,0,0
+2001,regular,3,ap,13,LSU,SEC,0,0
+2001,regular,3,ap,18,Mississippi State,SEC,0,0
+2001,regular,3,ap,17,Notre Dame,FBS Independents,0,0
+2001,regular,2,ap,19,Clemson,ACC,0,0
+2001,regular,2,ap,22,Wisconsin,Big Ten,0,0
+2001,regular,2,ap,12,Michigan,Big Ten,0,0
+2001,regular,2,ap,23,Ohio State,Big Ten,0,0
+2001,regular,2,ap,16,Northwestern,Big Ten,0,0
+2001,regular,2,ap,17,UCLA,Pac-10,0,0
+2001,regular,2,ap,15,Washington,Pac-10,0,0
+2001,regular,2,ap,10,Oregon State,Pac-10,0,0
+2001,regular,2,ap,7,Oregon,Pac-10,1,0
+2001,regular,2,ap,11,Georgia Tech,ACC,0,0
+2001,regular,2,ap,2,Miami,Big East,33,0
+2001,regular,2,ap,9,Virginia Tech,Big East,0,0
+2001,regular,2,ap,6,Florida State,ACC,0,0
+2001,regular,2,ap,4,Nebraska,Big 12,3,0
+2001,regular,2,ap,13,Kansas State,Big 12,0,0
+2001,regular,2,ap,5,Texas,Big 12,4,0
+2001,regular,2,ap,3,Oklahoma,Big 12,10,0
+2001,regular,2,ap,24,Colorado State,Mountain West,0,0
+2001,regular,2,ap,1,Florida,SEC,21,0
+2001,regular,2,ap,8,Tennessee,SEC,0,0
+2001,regular,2,ap,21,South Carolina,SEC,0,0
+2001,regular,2,ap,14,LSU,SEC,0,0
+2001,regular,2,ap,25,Alabama,SEC,0,0
+2001,regular,2,ap,20,Mississippi State,SEC,0,0
+2001,regular,2,ap,18,Notre Dame,FBS Independents,0,0
+2001,regular,1,ap,19,Clemson,ACC,0,0
+2001,regular,1,ap,22,Wisconsin,Big Ten,0,0
+2001,regular,1,ap,12,Michigan,Big Ten,0,0
+2001,regular,1,ap,23,Ohio State,Big Ten,0,0
+2001,regular,1,ap,16,Northwestern,Big Ten,0,0
+2001,regular,1,ap,17,UCLA,Pac-10,0,0
+2001,regular,1,ap,15,Washington,Pac-10,0,0
+2001,regular,1,ap,11,Oregon State,Pac-10,0,0
+2001,regular,1,ap,7,Oregon,Pac-10,0,0
+2001,regular,1,ap,10,Georgia Tech,ACC,0,0
+2001,regular,1,ap,2,Miami,Big East,33,0
+2001,regular,1,ap,9,Virginia Tech,Big East,0,0
+2001,regular,1,ap,6,Florida State,ACC,0,0
+2001,regular,1,ap,4,Nebraska,Big 12,4,0
+2001,regular,1,ap,13,Kansas State,Big 12,0,0
+2001,regular,1,ap,5,Texas,Big 12,5,0
+2001,regular,1,ap,3,Oklahoma,Big 12,10,0
+2001,regular,1,ap,24,Colorado State,Mountain West,0,0
+2001,regular,1,ap,1,Florida,SEC,20,0
+2001,regular,1,ap,8,Tennessee,SEC,0,0
+2001,regular,1,ap,21,South Carolina,SEC,0,0
+2001,regular,1,ap,14,LSU,SEC,0,0
+2001,regular,1,ap,25,Alabama,SEC,0,0
+2001,regular,1,ap,20,Mississippi State,SEC,0,0
+2001,regular,1,ap,18,Notre Dame,FBS Independents,0,0
+2001,postseason,1,ap,1,Miami,Big East,72,0
+2001,postseason,1,ap,2,Oregon,Pac-10,0,0
+2001,postseason,1,ap,3,Colorado,Big 12,0,0
+2001,postseason,1,ap,4,Nebraska,Big 12,0,0
+2001,postseason,1,ap,5,Florida,SEC,0,0
+2001,postseason,1,ap,6,Maryland,ACC,0,0
+2001,postseason,1,ap,7,Illinois,Big Ten,0,0
+2001,postseason,1,ap,8,Tennessee,SEC,0,0
+2001,postseason,1,ap,9,Texas,Big 12,0,0
+2001,postseason,1,ap,10,Oklahoma,Big 12,0,0
+2001,postseason,1,ap,11,Stanford,Pac-10,0,0
+2001,postseason,1,ap,12,LSU,SEC,0,0
+2001,postseason,1,ap,13,Washington State,Pac-10,0,0
+2001,postseason,1,ap,14,South Carolina,SEC,0,0
+2001,postseason,1,ap,15,Virginia Tech,Big East,0,0
+2001,postseason,1,ap,16,Georgia,SEC,0,0
+2001,postseason,1,ap,17,Michigan,Big Ten,0,0
+2001,postseason,1,ap,18,Syracuse,Big East,0,0
+2001,postseason,1,ap,19,BYU,Mountain West,0,0
+2001,postseason,1,ap,20,Fresno State,Western Athletic,0,0
+2001,postseason,1,ap,21,Washington,Pac-10,0,0
+2001,postseason,1,ap,22,Ohio State,Big Ten,0,0
+2001,postseason,1,ap,23,Louisville,Conference USA,0,0
+2001,postseason,1,ap,24,Florida State,ACC,0,0
+2001,postseason,1,ap,25,Toledo,Mid-American,0,0
