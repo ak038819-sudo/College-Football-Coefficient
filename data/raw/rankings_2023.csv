@@ -1,0 +1,576 @@
+season_year,season_type,week,poll,rank,school,conference,first_place_votes,points
+2023,regular,12,cfp,1,Georgia,SEC,0,0
+2023,regular,12,cfp,18,Tennessee,SEC,0,0
+2023,regular,12,cfp,23,Oklahoma State,Big 12,0,0
+2023,regular,12,cfp,21,Kansas State,Big 12,0,0
+2023,regular,12,cfp,25,Kansas,Big 12,0,0
+2023,regular,12,cfp,15,LSU,SEC,0,0
+2023,regular,12,cfp,11,Oregon State,Pac-12,0,0
+2023,regular,12,cfp,17,Arizona,Pac-12,0,0
+2023,regular,12,cfp,8,Alabama,SEC,0,0
+2023,regular,12,cfp,13,Ole Miss,SEC,0,0
+2023,regular,12,cfp,6,Oregon,Pac-12,0,0
+2023,regular,12,cfp,5,Washington,Pac-12,0,0
+2023,regular,12,cfp,22,Utah,Pac-12,0,0
+2023,regular,12,cfp,9,Missouri,SEC,0,0
+2023,regular,12,cfp,2,Ohio State,Big Ten,0,0
+2023,regular,12,cfp,3,Michigan,Big Ten,0,0
+2023,regular,12,cfp,12,Penn State,Big Ten,0,0
+2023,regular,12,cfp,16,Iowa,Big Ten,0,0
+2023,regular,12,cfp,7,Texas,Big 12,0,0
+2023,regular,12,cfp,14,Oklahoma,Big 12,0,0
+2023,regular,12,cfp,19,Notre Dame,FBS Independents,0,0
+2023,regular,12,cfp,24,Tulane,American Athletic,0,0
+2023,regular,12,cfp,4,Florida State,ACC,0,0
+2023,regular,12,cfp,10,Louisville,ACC,0,0
+2023,regular,12,cfp,20,North Carolina,ACC,0,0
+2023,regular,12,ap,1,Georgia,SEC,54,1540
+2023,regular,12,ap,21,Tennessee,SEC,0,333
+2023,regular,12,ap,24,Oklahoma State,Big 12,0,178
+2023,regular,12,ap,23,Kansas State,Big 12,0,240
+2023,regular,12,ap,15,LSU,SEC,0,703
+2023,regular,12,ap,10,Oregon State,Pac-12,0,934
+2023,regular,12,ap,18,James Madison,Sun Belt,0,405
+2023,regular,12,ap,19,Arizona,Pac-12,0,387
+2023,regular,12,ap,8,Alabama,SEC,0,1141
+2023,regular,12,ap,13,Ole Miss,SEC,0,810
+2023,regular,12,ap,6,Oregon,Pac-12,0,1218
+2023,regular,12,ap,5,Washington,Pac-12,0,1322
+2023,regular,12,ap,16,Utah,Pac-12,0,543
+2023,regular,12,ap,11,Missouri,SEC,0,917
+2023,regular,12,ap,3,Ohio State,Big Ten,1,1433
+2023,regular,12,ap,2,Michigan,Big Ten,7,1464
+2023,regular,12,ap,12,Penn State,Big Ten,0,857
+2023,regular,12,ap,25,Liberty,Conference USA,0,133
+2023,regular,12,ap,7,Texas,Big 12,0,1180
+2023,regular,12,ap,14,Oklahoma,Big 12,0,733
+2023,regular,12,ap,20,Notre Dame,FBS Independents,0,359
+2023,regular,12,ap,17,Tulane,American Athletic,0,412
+2023,regular,12,ap,4,Florida State,ACC,0,1366
+2023,regular,12,ap,9,Louisville,ACC,0,1002
+2023,regular,12,ap,22,North Carolina,ACC,0,265
+2023,regular,11,cfp,2,Georgia,SEC,0,0
+2023,regular,11,cfp,13,Tennessee,SEC,0,0
+2023,regular,11,cfp,15,Oklahoma State,Big 12,0,0
+2023,regular,11,cfp,25,Kansas State,Big 12,0,0
+2023,regular,11,cfp,16,Kansas,Big 12,0,0
+2023,regular,11,cfp,19,LSU,SEC,0,0
+2023,regular,11,cfp,12,Oregon State,Pac-12,0,0
+2023,regular,11,cfp,21,Arizona,Pac-12,0,0
+2023,regular,11,cfp,8,Alabama,SEC,0,0
+2023,regular,11,cfp,9,Ole Miss,SEC,0,0
+2023,regular,11,cfp,6,Oregon,Pac-12,0,0
+2023,regular,11,cfp,5,Washington,Pac-12,0,0
+2023,regular,11,cfp,18,Utah,Pac-12,0,0
+2023,regular,11,cfp,14,Missouri,SEC,0,0
+2023,regular,11,cfp,1,Ohio State,Big Ten,0,0
+2023,regular,11,cfp,3,Michigan,Big Ten,0,0
+2023,regular,11,cfp,10,Penn State,Big Ten,0,0
+2023,regular,11,cfp,22,Iowa,Big Ten,0,0
+2023,regular,11,cfp,7,Texas,Big 12,0,0
+2023,regular,11,cfp,17,Oklahoma,Big 12,0,0
+2023,regular,11,cfp,20,Notre Dame,FBS Independents,0,0
+2023,regular,11,cfp,23,Tulane,American Athletic,0,0
+2023,regular,11,cfp,4,Florida State,ACC,0,0
+2023,regular,11,cfp,11,Louisville,ACC,0,0
+2023,regular,11,cfp,24,North Carolina,ACC,0,0
+2023,regular,11,ap,1,Georgia,SEC,49,1558
+2023,regular,11,ap,14,Tennessee,SEC,0,703
+2023,regular,11,ap,15,Oklahoma State,Big 12,0,660
+2023,regular,11,ap,19,Kansas,Big 12,0,496
+2023,regular,11,ap,18,LSU,SEC,0,532
+2023,regular,11,ap,12,Oregon State,Pac-12,0,772
+2023,regular,11,ap,21,James Madison,Sun Belt,0,294
+2023,regular,11,ap,23,Arizona,Pac-12,0,176
+2023,regular,11,ap,8,Alabama,SEC,0,1143
+2023,regular,11,ap,10,Ole Miss,SEC,0,1027
+2023,regular,11,ap,6,Oregon,Pac-12,0,1240
+2023,regular,11,ap,5,Washington,Pac-12,0,1333
+2023,regular,11,ap,13,Utah,Pac-12,0,734
+2023,regular,11,ap,16,Missouri,SEC,0,644
+2023,regular,11,ap,3,Ohio State,Big Ten,3,1453
+2023,regular,11,ap,2,Michigan,Big Ten,9,1485
+2023,regular,11,ap,9,Penn State,Big Ten,0,1075
+2023,regular,11,ap,25,Liberty,Conference USA,0,85
+2023,regular,11,ap,7,Texas,Big 12,0,1190
+2023,regular,11,ap,17,Oklahoma,Big 12,0,547
+2023,regular,11,ap,22,Notre Dame,FBS Independents,0,270
+2023,regular,11,ap,20,Tulane,American Athletic,0,351
+2023,regular,11,ap,4,Florida State,ACC,2,1411
+2023,regular,11,ap,11,Louisville,ACC,0,926
+2023,regular,11,ap,24,North Carolina,ACC,0,95
+2023,regular,10,cfp,2,Georgia,SEC,0,0
+2023,regular,10,cfp,17,Tennessee,SEC,0,0
+2023,regular,10,cfp,22,Oklahoma State,Big 12,0,0
+2023,regular,10,cfp,23,Kansas State,Big 12,0,0
+2023,regular,10,cfp,21,Kansas,Big 12,0,0
+2023,regular,10,cfp,14,LSU,SEC,0,0
+2023,regular,10,cfp,16,Oregon State,Pac-12,0,0
+2023,regular,10,cfp,20,USC,Pac-12,0,0
+2023,regular,10,cfp,19,UCLA,Pac-12,0,0
+2023,regular,10,cfp,8,Alabama,SEC,0,0
+2023,regular,10,cfp,10,Ole Miss,SEC,0,0
+2023,regular,10,cfp,6,Oregon,Pac-12,0,0
+2023,regular,10,cfp,5,Washington,Pac-12,0,0
+2023,regular,10,cfp,18,Utah,Pac-12,0,0
+2023,regular,10,cfp,12,Missouri,SEC,0,0
+2023,regular,10,cfp,1,Ohio State,Big Ten,0,0
+2023,regular,10,cfp,3,Michigan,Big Ten,0,0
+2023,regular,10,cfp,11,Penn State,Big Ten,0,0
+2023,regular,10,cfp,7,Texas,Big 12,0,0
+2023,regular,10,cfp,9,Oklahoma,Big 12,0,0
+2023,regular,10,cfp,15,Notre Dame,FBS Independents,0,0
+2023,regular,10,cfp,24,Tulane,American Athletic,0,0
+2023,regular,10,cfp,4,Florida State,ACC,0,0
+2023,regular,10,cfp,13,Louisville,ACC,0,0
+2023,regular,10,cfp,25,Air Force,Mountain West,0,0
+2023,regular,10,ap,1,Georgia,SEC,48,1553
+2023,regular,10,ap,19,Tennessee,SEC,0,473
+2023,regular,10,ap,25,Kansas State,Big 12,0,112
+2023,regular,10,ap,22,Kansas,Big 12,0,250
+2023,regular,10,ap,13,LSU,SEC,0,816
+2023,regular,10,ap,16,Oregon State,Pac-12,0,557
+2023,regular,10,ap,23,James Madison,Sun Belt,0,192
+2023,regular,10,ap,24,USC,Pac-12,0,139
+2023,regular,10,ap,20,UCLA,Pac-12,0,331
+2023,regular,10,ap,8,Alabama,SEC,0,1114
+2023,regular,10,ap,11,Ole Miss,SEC,0,990
+2023,regular,10,ap,6,Oregon,Pac-12,0,1235
+2023,regular,10,ap,5,Washington,Pac-12,0,1327
+2023,regular,10,ap,18,Utah,Pac-12,0,510
+2023,regular,10,ap,14,Missouri,SEC,0,714
+2023,regular,10,ap,3,Ohio State,Big Ten,3,1446
+2023,regular,10,ap,2,Michigan,Big Ten,9,1494
+2023,regular,10,ap,9,Penn State,Big Ten,0,1044
+2023,regular,10,ap,7,Texas,Big 12,0,1189
+2023,regular,10,ap,10,Oklahoma,Big 12,0,1010
+2023,regular,10,ap,12,Notre Dame,FBS Independents,0,847
+2023,regular,10,ap,21,Tulane,American Athletic,0,303
+2023,regular,10,ap,4,Florida State,ACC,3,1421
+2023,regular,10,ap,15,Louisville,ACC,0,666
+2023,regular,10,ap,17,Air Force,Mountain West,0,526
+2023,regular,9,ap,1,Georgia,SEC,38,1536
+2023,regular,9,ap,21,Tennessee,SEC,0,306
+2023,regular,9,ap,15,LSU,SEC,0,687
+2023,regular,9,ap,11,Oregon State,Pac-12,0,922
+2023,regular,9,ap,25,James Madison,Sun Belt,0,167
+2023,regular,9,ap,24,USC,Pac-12,0,193
+2023,regular,9,ap,23,UCLA,Pac-12,0,243
+2023,regular,9,ap,9,Alabama,SEC,0,1071
+2023,regular,9,ap,12,Ole Miss,SEC,0,889
+2023,regular,9,ap,8,Oregon,Pac-12,0,1133
+2023,regular,9,ap,5,Washington,Pac-12,0,1325
+2023,regular,9,ap,13,Utah,Pac-12,0,868
+2023,regular,9,ap,16,Missouri,SEC,0,594
+2023,regular,9,ap,3,Ohio State,Big Ten,3,1454
+2023,regular,9,ap,2,Michigan,Big Ten,19,1504
+2023,regular,9,ap,10,Penn State,Big Ten,0,999
+2023,regular,9,ap,7,Texas,Big 12,0,1150
+2023,regular,9,ap,6,Oklahoma,Big 12,0,1267
+2023,regular,9,ap,14,Notre Dame,FBS Independents,0,718
+2023,regular,9,ap,22,Tulane,American Athletic,0,248
+2023,regular,9,ap,4,Florida State,ACC,3,1408
+2023,regular,9,ap,18,Louisville,ACC,0,420
+2023,regular,9,ap,20,Duke,ACC,0,371
+2023,regular,9,ap,17,North Carolina,ACC,0,506
+2023,regular,9,ap,19,Air Force,Mountain West,0,395
+2023,regular,8,ap,1,Georgia,SEC,43,1541
+2023,regular,8,ap,17,Tennessee,SEC,0,557
+2023,regular,8,ap,19,LSU,SEC,0,493
+2023,regular,8,ap,12,Oregon State,Pac-12,0,834
+2023,regular,8,ap,18,USC,Pac-12,0,530
+2023,regular,8,ap,25,UCLA,Pac-12,0,122
+2023,regular,8,ap,11,Alabama,SEC,0,987
+2023,regular,8,ap,13,Ole Miss,SEC,0,825
+2023,regular,8,ap,9,Oregon,Pac-12,0,1034
+2023,regular,8,ap,5,Washington,Pac-12,2,1355
+2023,regular,8,ap,14,Utah,Pac-12,0,695
+2023,regular,8,ap,20,Missouri,SEC,0,365
+2023,regular,8,ap,3,Ohio State,Big Ten,1,1393
+2023,regular,8,ap,2,Michigan,Big Ten,16,1492
+2023,regular,8,ap,7,Penn State,Big Ten,0,1253
+2023,regular,8,ap,24,Iowa,Big Ten,0,125
+2023,regular,8,ap,8,Texas,Big 12,0,1098
+2023,regular,8,ap,6,Oklahoma,Big 12,0,1277
+2023,regular,8,ap,15,Notre Dame,FBS Independents,0,664
+2023,regular,8,ap,23,Tulane,American Athletic,0,137
+2023,regular,8,ap,4,Florida State,ACC,1,1388
+2023,regular,8,ap,21,Louisville,ACC,0,309
+2023,regular,8,ap,16,Duke,ACC,0,593
+2023,regular,8,ap,10,North Carolina,ACC,0,1011
+2023,regular,8,ap,22,Air Force,Mountain West,0,245
+2023,regular,7,ap,1,Georgia,SEC,50,1559
+2023,regular,7,ap,19,Tennessee,SEC,0,412
+2023,regular,7,ap,24,Kentucky,SEC,0,99
+2023,regular,7,ap,23,Kansas,Big 12,0,103
+2023,regular,7,ap,22,LSU,SEC,0,321
+2023,regular,7,ap,15,Oregon State,Pac-12,0,725
+2023,regular,7,ap,19,Washington State,Pac-12,0,412
+2023,regular,7,ap,10,USC,Pac-12,0,999
+2023,regular,7,ap,18,UCLA,Pac-12,0,438
+2023,regular,7,ap,11,Alabama,SEC,0,971
+2023,regular,7,ap,13,Ole Miss,SEC,0,748
+2023,regular,7,ap,8,Oregon,Pac-12,0,1150
+2023,regular,7,ap,7,Washington,Pac-12,0,1239
+2023,regular,7,ap,16,Utah,Pac-12,0,567
+2023,regular,7,ap,3,Ohio State,Big Ten,1,1408
+2023,regular,7,ap,2,Michigan,Big Ten,11,1489
+2023,regular,7,ap,6,Penn State,Big Ten,0,1273
+2023,regular,7,ap,9,Texas,Big 12,0,1052
+2023,regular,7,ap,5,Oklahoma,Big 12,0,1278
+2023,regular,7,ap,21,Notre Dame,FBS Independents,0,374
+2023,regular,7,ap,4,Florida State,ACC,1,1389
+2023,regular,7,ap,14,Louisville,ACC,0,731
+2023,regular,7,ap,17,Duke,ACC,0,479
+2023,regular,7,ap,12,North Carolina,ACC,0,894
+2023,regular,7,ap,25,Miami,ACC,0,74
+2023,regular,6,ap,1,Georgia,SEC,35,1501
+2023,regular,6,ap,22,Tennessee,SEC,0,306
+2023,regular,6,ap,20,Kentucky,SEC,0,344
+2023,regular,6,ap,23,LSU,SEC,0,149
+2023,regular,6,ap,15,Oregon State,Pac-12,0,633
+2023,regular,6,ap,13,Washington State,Pac-12,0,765
+2023,regular,6,ap,9,USC,Pac-12,0,1077
+2023,regular,6,ap,11,Alabama,SEC,0,921
+2023,regular,6,ap,16,Ole Miss,SEC,0,616
+2023,regular,6,ap,8,Oregon,Pac-12,0,1113
+2023,regular,6,ap,7,Washington,Pac-12,0,1213
+2023,regular,6,ap,18,Utah,Pac-12,0,454
+2023,regular,6,ap,21,Missouri,SEC,0,329
+2023,regular,6,ap,4,Ohio State,Big Ten,1,1357
+2023,regular,6,ap,2,Michigan,Big Ten,12,1436
+2023,regular,6,ap,6,Penn State,Big Ten,0,1227
+2023,regular,6,ap,3,Texas,Big 12,10,1426
+2023,regular,6,ap,12,Oklahoma,Big 12,0,840
+2023,regular,6,ap,10,Notre Dame,FBS Independents,0,975
+2023,regular,6,ap,5,Florida State,ACC,4,1336
+2023,regular,6,ap,25,Louisville,ACC,0,90
+2023,regular,6,ap,19,Duke,ACC,0,384
+2023,regular,6,ap,14,North Carolina,ACC,0,726
+2023,regular,6,ap,17,Miami,ACC,0,589
+2023,regular,6,ap,24,Fresno State,Mountain West,0,130
+2023,regular,5,ap,1,Georgia,SEC,55,1562
+2023,regular,5,ap,22,Florida,SEC,0,235
+2023,regular,5,ap,21,Tennessee,SEC,0,260
+2023,regular,5,ap,24,Kansas,Big 12,0,132
+2023,regular,5,ap,13,LSU,SEC,0,813
+2023,regular,5,ap,19,Oregon State,Pac-12,0,366
+2023,regular,5,ap,16,Washington State,Pac-12,0,652
+2023,regular,5,ap,8,USC,Pac-12,0,1169
+2023,regular,5,ap,12,Alabama,SEC,0,862
+2023,regular,5,ap,20,Ole Miss,SEC,0,349
+2023,regular,5,ap,9,Oregon,Pac-12,0,1076
+2023,regular,5,ap,7,Washington,Pac-12,1,1228
+2023,regular,5,ap,10,Utah,Pac-12,0,981
+2023,regular,5,ap,23,Missouri,SEC,0,197
+2023,regular,5,ap,4,Ohio State,Big Ten,1,1370
+2023,regular,5,ap,2,Michigan,Big Ten,1,1445
+2023,regular,5,ap,6,Penn State,Big Ten,0,1244
+2023,regular,5,ap,3,Texas,Big 12,2,1401
+2023,regular,5,ap,14,Oklahoma,Big 12,0,716
+2023,regular,5,ap,11,Notre Dame,FBS Independents,0,904
+2023,regular,5,ap,5,Florida State,ACC,3,1351
+2023,regular,5,ap,17,Duke,ACC,0,648
+2023,regular,5,ap,15,North Carolina,ACC,0,659
+2023,regular,5,ap,18,Miami,ACC,0,523
+2023,regular,5,ap,25,Fresno State,Mountain West,0,64
+2023,regular,4,ap,1,Georgia,SEC,57,1566
+2023,regular,4,ap,25,Florida,SEC,0,103
+2023,regular,4,ap,23,Tennessee,SEC,0,198
+2023,regular,4,ap,12,LSU,SEC,0,805
+2023,regular,4,ap,14,Oregon State,Pac-12,0,715
+2023,regular,4,ap,21,Washington State,Pac-12,0,278
+2023,regular,4,ap,5,USC,Pac-12,0,1296
+2023,regular,4,ap,22,UCLA,Pac-12,0,204
+2023,regular,4,ap,13,Alabama,SEC,0,796
+2023,regular,4,ap,15,Ole Miss,SEC,0,657
+2023,regular,4,ap,10,Oregon,Pac-12,0,942
+2023,regular,4,ap,8,Washington,Pac-12,0,1194
+2023,regular,4,ap,11,Utah,Pac-12,0,921
+2023,regular,4,ap,19,Colorado,Pac-12,0,509
+2023,regular,4,ap,6,Ohio State,Big Ten,0,1291
+2023,regular,4,ap,2,Michigan,Big Ten,2,1481
+2023,regular,4,ap,7,Penn State,Big Ten,0,1217
+2023,regular,4,ap,24,Iowa,Big Ten,0,125
+2023,regular,4,ap,3,Texas,Big 12,3,1380
+2023,regular,4,ap,16,Oklahoma,Big 12,0,606
+2023,regular,4,ap,9,Notre Dame,FBS Independents,0,1066
+2023,regular,4,ap,4,Florida State,ACC,1,1378
+2023,regular,4,ap,18,Duke,ACC,0,530
+2023,regular,4,ap,17,North Carolina,ACC,0,567
+2023,regular,4,ap,20,Miami,ACC,0,359
+2023,regular,13,cfp,1,Georgia,SEC,0,0
+2023,regular,13,cfp,21,Tennessee,SEC,0,0
+2023,regular,13,cfp,20,Oklahoma State,Big 12,0,0
+2023,regular,13,cfp,19,Kansas State,Big 12,0,0
+2023,regular,13,cfp,14,LSU,SEC,0,0
+2023,regular,13,cfp,16,Oregon State,Pac-12,0,0
+2023,regular,13,cfp,15,Arizona,Pac-12,0,0
+2023,regular,13,cfp,8,Alabama,SEC,0,0
+2023,regular,13,cfp,12,Ole Miss,SEC,0,0
+2023,regular,13,cfp,6,Oregon,Pac-12,0,0
+2023,regular,13,cfp,4,Washington,Pac-12,0,0
+2023,regular,13,cfp,9,Missouri,SEC,0,0
+2023,regular,13,cfp,2,Ohio State,Big Ten,0,0
+2023,regular,13,cfp,3,Michigan,Big Ten,0,0
+2023,regular,13,cfp,11,Penn State,Big Ten,0,0
+2023,regular,13,cfp,25,Liberty,Conference USA,0,0
+2023,regular,13,cfp,17,Iowa,Big Ten,0,0
+2023,regular,13,cfp,7,Texas,Big 12,0,0
+2023,regular,13,cfp,13,Oklahoma,Big 12,0,0
+2023,regular,13,cfp,18,Notre Dame,FBS Independents,0,0
+2023,regular,13,cfp,23,Tulane,American Athletic,0,0
+2023,regular,13,cfp,5,Florida State,ACC,0,0
+2023,regular,13,cfp,10,Louisville,ACC,0,0
+2023,regular,13,cfp,22,NC State,ACC,0,0
+2023,regular,13,cfp,24,Clemson,ACC,0,0
+2023,regular,13,ap,1,Georgia,SEC,61,1549
+2023,regular,13,ap,25,Tennessee,SEC,0,72
+2023,regular,13,ap,21,Oklahoma State,Big 12,0,329
+2023,regular,13,ap,19,Kansas State,Big 12,0,418
+2023,regular,13,ap,14,LSU,SEC,0,748
+2023,regular,13,ap,23,Toledo,Mid-American,0,118
+2023,regular,13,ap,15,Oregon State,Pac-12,0,714
+2023,regular,13,ap,24,James Madison,Sun Belt,0,75
+2023,regular,13,ap,16,Arizona,Pac-12,0,625
+2023,regular,13,ap,8,Alabama,SEC,0,1138
+2023,regular,13,ap,12,Ole Miss,SEC,0,878
+2023,regular,13,ap,6,Oregon,Pac-12,0,1219
+2023,regular,13,ap,4,Washington,Pac-12,0,1367
+2023,regular,13,ap,10,Missouri,SEC,0,964
+2023,regular,13,ap,2,Ohio State,Big Ten,1,1447
+2023,regular,13,ap,3,Michigan,Big Ten,0,1440
+2023,regular,13,ap,11,Penn State,Big Ten,0,894
+2023,regular,13,ap,22,Liberty,Conference USA,0,229
+2023,regular,13,ap,20,Iowa,Big Ten,0,332
+2023,regular,13,ap,7,Texas,Big 12,0,1180
+2023,regular,13,ap,13,Oklahoma,Big 12,0,766
+2023,regular,13,ap,17,Notre Dame,FBS Independents,0,503
+2023,regular,13,ap,18,Tulane,American Athletic,0,499
+2023,regular,13,ap,5,Florida State,ACC,0,1324
+2023,regular,13,ap,9,Louisville,ACC,0,1017
+2023,regular,3,ap,1,Georgia,SEC,55,1540
+2023,regular,3,ap,11,Tennessee,SEC,0,929
+2023,regular,3,ap,15,Kansas State,Big 12,0,636
+2023,regular,3,ap,14,LSU,SEC,0,667
+2023,regular,3,ap,16,Oregon State,Pac-12,0,605
+2023,regular,3,ap,23,Washington State,Pac-12,0,129
+2023,regular,3,ap,5,USC,Pac-12,0,1269
+2023,regular,3,ap,24,UCLA,Pac-12,0,107
+2023,regular,3,ap,10,Alabama,SEC,0,953
+2023,regular,3,ap,17,Ole Miss,SEC,0,505
+2023,regular,3,ap,13,Oregon,Pac-12,0,827
+2023,regular,3,ap,8,Washington,Pac-12,0,1102
+2023,regular,3,ap,12,Utah,Pac-12,0,847
+2023,regular,3,ap,18,Colorado,Pac-12,0,481
+2023,regular,3,ap,6,Ohio State,Big Ten,0,1265
+2023,regular,3,ap,2,Michigan,Big Ten,2,1458
+2023,regular,3,ap,7,Penn State,Big Ten,0,1204
+2023,regular,3,ap,25,Iowa,Big Ten,0,106
+2023,regular,3,ap,4,Texas,Big 12,2,1338
+2023,regular,3,ap,19,Oklahoma,Big 12,0,453
+2023,regular,3,ap,9,Notre Dame,FBS Independents,0,1015
+2023,regular,3,ap,3,Florida State,ACC,3,1413
+2023,regular,3,ap,21,Duke,ACC,0,421
+2023,regular,3,ap,20,North Carolina,ACC,0,444
+2023,regular,3,ap,22,Miami,ACC,0,230
+2023,regular,2,ap,1,Georgia,SEC,58,1569
+2023,regular,2,ap,9,Tennessee,SEC,0,975
+2023,regular,2,ap,15,Kansas State,Big 12,0,579
+2023,regular,2,ap,14,LSU,SEC,0,706
+2023,regular,2,ap,16,Oregon State,Pac-12,0,558
+2023,regular,2,ap,6,USC,Pac-12,0,1255
+2023,regular,2,ap,3,Alabama,SEC,0,1424
+2023,regular,2,ap,20,Ole Miss,SEC,0,379
+2023,regular,2,ap,13,Oregon,Pac-12,0,823
+2023,regular,2,ap,8,Washington,Pac-12,0,1107
+2023,regular,2,ap,12,Utah,Pac-12,0,919
+2023,regular,2,ap,22,Colorado,Pac-12,0,269
+2023,regular,2,ap,23,Texas A&M,SEC,0,267
+2023,regular,2,ap,5,Ohio State,Big Ten,0,1308
+2023,regular,2,ap,2,Michigan,Big Ten,2,1485
+2023,regular,2,ap,7,Penn State,Big Ten,0,1212
+2023,regular,2,ap,19,Wisconsin,Big Ten,0,407
+2023,regular,2,ap,11,Texas,Big 12,0,935
+2023,regular,2,ap,18,Oklahoma,Big 12,0,426
+2023,regular,2,ap,10,Notre Dame,FBS Independents,0,967
+2023,regular,2,ap,24,Tulane,American Athletic,0,241
+2023,regular,2,ap,4,Florida State,ACC,3,1384
+2023,regular,2,ap,21,Duke,ACC,0,343
+2023,regular,2,ap,17,North Carolina,ACC,0,551
+2023,regular,2,ap,25,Clemson,ACC,0,141
+2023,regular,1,ap,1,Georgia,SEC,60,1572
+2023,regular,1,ap,12,Tennessee,SEC,0,868
+2023,regular,1,ap,16,Kansas State,Big 12,0,501
+2023,regular,1,ap,17,TCU,Big 12,0,416
+2023,regular,1,ap,5,LSU,SEC,0,1276
+2023,regular,1,ap,18,Oregon State,Pac-12,0,406
+2023,regular,1,ap,6,USC,Pac-12,0,1245
+2023,regular,1,ap,4,Alabama,SEC,0,1398
+2023,regular,1,ap,22,Ole Miss,SEC,0,281
+2023,regular,1,ap,15,Oregon,Pac-12,0,732
+2023,regular,1,ap,10,Washington,Pac-12,0,977
+2023,regular,1,ap,14,Utah,Pac-12,0,811
+2023,regular,1,ap,23,Texas A&M,SEC,0,227
+2023,regular,1,ap,3,Ohio State,Big Ten,1,1400
+2023,regular,1,ap,2,Michigan,Big Ten,2,1490
+2023,regular,1,ap,7,Penn State,Big Ten,0,1177
+2023,regular,1,ap,19,Wisconsin,Big Ten,0,386
+2023,regular,1,ap,25,Iowa,Big Ten,0,131
+2023,regular,1,ap,11,Texas,Big 12,0,882
+2023,regular,1,ap,20,Oklahoma,Big 12,0,296
+2023,regular,1,ap,13,Notre Dame,FBS Independents,0,863
+2023,regular,1,ap,24,Tulane,American Athletic,0,224
+2023,regular,1,ap,8,Florida State,ACC,0,1147
+2023,regular,1,ap,21,North Carolina,ACC,0,292
+2023,regular,1,ap,9,Clemson,ACC,0,1032
+2023,regular,15,cfp,5,Georgia,SEC,0,0
+2023,regular,15,cfp,21,Tennessee,SEC,0,0
+2023,regular,15,cfp,20,Oklahoma State,Big 12,0,0
+2023,regular,15,cfp,25,Kansas State,Big 12,0,0
+2023,regular,15,cfp,13,LSU,SEC,0,0
+2023,regular,15,cfp,19,Oregon State,Pac-12,0,0
+2023,regular,15,cfp,14,Arizona,Pac-12,0,0
+2023,regular,15,cfp,4,Alabama,SEC,0,0
+2023,regular,15,cfp,11,Ole Miss,SEC,0,0
+2023,regular,15,cfp,8,Oregon,Pac-12,0,0
+2023,regular,15,cfp,2,Washington,Pac-12,0,0
+2023,regular,15,cfp,9,Missouri,SEC,0,0
+2023,regular,15,cfp,7,Ohio State,Big Ten,0,0
+2023,regular,15,cfp,1,Michigan,Big Ten,0,0
+2023,regular,15,cfp,10,Penn State,Big Ten,0,0
+2023,regular,15,cfp,23,Liberty,Conference USA,0,0
+2023,regular,15,cfp,17,Iowa,Big Ten,0,0
+2023,regular,15,cfp,3,Texas,Big 12,0,0
+2023,regular,15,cfp,12,Oklahoma,Big 12,0,0
+2023,regular,15,cfp,16,Notre Dame,FBS Independents,0,0
+2023,regular,15,cfp,24,SMU,American Athletic,0,0
+2023,regular,15,cfp,5,Florida State,ACC,0,0
+2023,regular,15,cfp,15,Louisville,ACC,0,0
+2023,regular,15,cfp,18,NC State,ACC,0,0
+2023,regular,15,cfp,22,Clemson,ACC,0,0
+2023,regular,15,ap,6,Georgia,SEC,0,1256
+2023,regular,15,ap,25,Tennessee,SEC,0,98
+2023,regular,15,ap,22,Oklahoma State,Big 12,0,256
+2023,regular,15,ap,13,LSU,SEC,0,823
+2023,regular,15,ap,21,Oregon State,Pac-12,0,309
+2023,regular,15,ap,24,James Madison,Sun Belt,0,177
+2023,regular,15,ap,14,Arizona,Pac-12,0,740
+2023,regular,15,ap,5,Alabama,SEC,0,1329
+2023,regular,15,ap,11,Ole Miss,SEC,0,944
+2023,regular,15,ap,8,Oregon,Pac-12,0,1119
+2023,regular,15,ap,2,Washington,Pac-12,11,1499
+2023,regular,15,ap,9,Missouri,SEC,0,1014
+2023,regular,15,ap,7,Ohio State,Big Ten,0,1185
+2023,regular,15,ap,1,Michigan,Big Ten,51,1539
+2023,regular,15,ap,10,Penn State,Big Ten,0,960
+2023,regular,15,ap,18,Liberty,Conference USA,0,424
+2023,regular,15,ap,20,Iowa,Big Ten,0,356
+2023,regular,15,ap,3,Texas,Big 12,0,1375
+2023,regular,15,ap,12,Oklahoma,Big 12,0,867
+2023,regular,15,ap,15,Notre Dame,FBS Independents,0,634
+2023,regular,15,ap,17,SMU,American Athletic,0,432
+2023,regular,15,ap,23,Tulane,American Athletic,0,201
+2023,regular,15,ap,4,Florida State,ACC,0,1358
+2023,regular,15,ap,16,Louisville,ACC,0,584
+2023,regular,15,ap,19,NC State,ACC,0,377
+2023,regular,14,cfp,1,Georgia,SEC,0,0
+2023,regular,14,cfp,21,Tennessee,SEC,0,0
+2023,regular,14,cfp,18,Oklahoma State,Big 12,0,0
+2023,regular,14,cfp,25,Kansas State,Big 12,0,0
+2023,regular,14,cfp,13,LSU,SEC,0,0
+2023,regular,14,cfp,20,Oregon State,Pac-12,0,0
+2023,regular,14,cfp,15,Arizona,Pac-12,0,0
+2023,regular,14,cfp,8,Alabama,SEC,0,0
+2023,regular,14,cfp,11,Ole Miss,SEC,0,0
+2023,regular,14,cfp,5,Oregon,Pac-12,0,0
+2023,regular,14,cfp,3,Washington,Pac-12,0,0
+2023,regular,14,cfp,9,Missouri,SEC,0,0
+2023,regular,14,cfp,6,Ohio State,Big Ten,0,0
+2023,regular,14,cfp,2,Michigan,Big Ten,0,0
+2023,regular,14,cfp,10,Penn State,Big Ten,0,0
+2023,regular,14,cfp,24,Liberty,Conference USA,0,0
+2023,regular,14,cfp,16,Iowa,Big Ten,0,0
+2023,regular,14,cfp,7,Texas,Big 12,0,0
+2023,regular,14,cfp,12,Oklahoma,Big 12,0,0
+2023,regular,14,cfp,17,Notre Dame,FBS Independents,0,0
+2023,regular,14,cfp,22,Tulane,American Athletic,0,0
+2023,regular,14,cfp,4,Florida State,ACC,0,0
+2023,regular,14,cfp,14,Louisville,ACC,0,0
+2023,regular,14,cfp,19,NC State,ACC,0,0
+2023,regular,14,cfp,23,Clemson,ACC,0,0
+2023,regular,14,ap,1,Georgia,SEC,52,1540
+2023,regular,14,ap,19,Oklahoma State,Big 12,0,407
+2023,regular,14,ap,13,LSU,SEC,0,809
+2023,regular,14,ap,23,Toledo,Mid-American,0,176
+2023,regular,14,ap,21,Oregon State,Pac-12,0,269
+2023,regular,14,ap,24,James Madison,Sun Belt,0,121
+2023,regular,14,ap,14,Arizona,Pac-12,0,712
+2023,regular,14,ap,8,Alabama,SEC,0,1125
+2023,regular,14,ap,11,Ole Miss,SEC,0,936
+2023,regular,14,ap,5,Oregon,Pac-12,0,1277
+2023,regular,14,ap,3,Washington,Pac-12,0,1413
+2023,regular,14,ap,9,Missouri,SEC,0,1011
+2023,regular,14,ap,6,Ohio State,Big Ten,0,1251
+2023,regular,14,ap,2,Michigan,Big Ten,10,1495
+2023,regular,14,ap,10,Penn State,Big Ten,0,961
+2023,regular,14,ap,20,Liberty,Conference USA,0,293
+2023,regular,14,ap,18,Iowa,Big Ten,0,458
+2023,regular,14,ap,7,Texas,Big 12,0,1205
+2023,regular,14,ap,12,Oklahoma,Big 12,0,857
+2023,regular,14,ap,16,Notre Dame,FBS Independents,0,592
+2023,regular,14,ap,25,SMU,American Athletic,0,108
+2023,regular,14,ap,17,Tulane,American Athletic,0,557
+2023,regular,14,ap,4,Florida State,ACC,0,1358
+2023,regular,14,ap,15,Louisville,ACC,0,689
+2023,regular,14,ap,21,NC State,ACC,0,269
+2023,postseason,1,cfp,1,Michigan,Big Ten,61,0
+2023,postseason,1,cfp,2,Washington,Pac-12,0,0
+2023,postseason,1,cfp,3,Texas,Big 12,0,0
+2023,postseason,1,cfp,4,Georgia,SEC,0,0
+2023,postseason,1,cfp,5,Alabama,SEC,0,0
+2023,postseason,1,cfp,6,Florida State,ACC,0,0
+2023,postseason,1,cfp,6,Oregon,Pac-12,0,0
+2023,postseason,1,cfp,8,Missouri,SEC,0,0
+2023,postseason,1,cfp,9,Ole Miss,SEC,0,0
+2023,postseason,1,cfp,10,Ohio State,Big Ten,0,0
+2023,postseason,1,cfp,11,Arizona,Pac-12,0,0
+2023,postseason,1,cfp,12,LSU,SEC,0,0
+2023,postseason,1,cfp,13,Penn State,Big Ten,0,0
+2023,postseason,1,cfp,14,Notre Dame,FBS Independents,0,0
+2023,postseason,1,cfp,15,Oklahoma,Big 12,0,0
+2023,postseason,1,cfp,16,Oklahoma State,Big 12,0,0
+2023,postseason,1,cfp,17,Tennessee,SEC,0,0
+2023,postseason,1,cfp,18,Kansas State,Big 12,0,0
+2023,postseason,1,cfp,19,Louisville,ACC,0,0
+2023,postseason,1,cfp,20,Clemson,ACC,0,0
+2023,postseason,1,cfp,21,NC State,ACC,0,0
+2023,postseason,1,cfp,22,SMU,American Athletic,0,0
+2023,postseason,1,cfp,23,Kansas,Big 12,0,0
+2023,postseason,1,cfp,24,Iowa,Big Ten,0,0
+2023,postseason,1,cfp,25,Liberty,Conference USA,0,0
+2023,postseason,1,ap,1,Michigan,Big Ten,61,1525
+2023,postseason,1,ap,2,Washington,Pac-12,0,1459
+2023,postseason,1,ap,3,Texas,Big 12,0,1356
+2023,postseason,1,ap,4,Georgia,SEC,0,1328
+2023,postseason,1,ap,5,Alabama,SEC,0,1321
+2023,postseason,1,ap,6,Florida State,ACC,0,1175
+2023,postseason,1,ap,6,Oregon,Pac-12,0,1175
+2023,postseason,1,ap,8,Missouri,SEC,0,1092
+2023,postseason,1,ap,9,Mississippi State,SEC,0,1030
+2023,postseason,1,ap,10,Ohio State,Big Ten,0,1006
+2023,postseason,1,ap,11,Arizona,Pac-12,0,861
+2023,postseason,1,ap,12,LSU,SEC,0,853
+2023,postseason,1,ap,13,Penn State,Big Ten,0,796
+2023,postseason,1,ap,14,Notre Dame,FBS Independents,0,745
+2023,postseason,1,ap,15,Oklahoma,Big 12,0,691
+2023,postseason,1,ap,16,Oklahoma State,Big 12,0,528
+2023,postseason,1,ap,17,Tennessee,SEC,0,442
+2023,postseason,1,ap,18,Kansas State,Big 12,0,402
+2023,postseason,1,ap,19,Louisville,ACC,0,398
+2023,postseason,1,ap,20,Clemson,ACC,0,327
+2023,postseason,1,ap,21,NC State,ACC,0,244
+2023,postseason,1,ap,22,SMU,American Athletic,0,183
+2023,postseason,1,ap,23,Kansas,Big 12,0,153
+2023,postseason,1,ap,24,Iowa,Big Ten,0,150
+2023,postseason,1,ap,25,Liberty,Conference USA,0,139
