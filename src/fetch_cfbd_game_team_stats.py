@@ -55,9 +55,12 @@ import cfbd_http
 BASE = "https://api.collegefootballdata.com"
 OUT_DIR = Path("data/raw")
 # Where box scores begin for this archive. `games` starts in 1869, but
-# /games/teams has nothing like that reach; the probe reports where it really
-# begins. This is a floor on what to ask for, not a claim about what exists.
-FIRST_SEASON = 2001
+# /games/teams has nothing like that reach. MEASURED, not assumed: the
+# 2001-2025 backfill of 2026-11-23 asked for every week of 2001, 2002 and
+# 2003 and the endpoint returned nothing for any of them, then 699 games for
+# 2004. The floor moved from 2001 to 2004 so a re-run does not spend three
+# seasons of requests re-establishing that.
+FIRST_SEASON = 2004
 
 GAME_KNOWN = {"id", "teams"}
 # (CSV column, key in CFBD's team object).

@@ -116,6 +116,9 @@ DIMENSIONS = [
     {"key": "box_scores", "label": "Player box scores",
      "source": "CollegeFootballData.com /games/players",
      "absent": "Per-game player lines were not collected for this season."},
+    {"key": "team_box", "label": "Team box scores",
+     "source": "CollegeFootballData.com /games/teams",
+     "absent": "No team box score was collected for this season."},
     {"key": "season_stats", "label": "Player season statistics",
      "source": "CollegeFootballData.com /stats/player/season",
      "absent": "Season statistics were not collected for this season."},
@@ -244,6 +247,12 @@ def build_coverage(conn: sqlite3.Connection, box_scores: dict | None = None) -> 
             SELECT season_year, COUNT(*) FROM ({" UNION ".join(halves)})
             GROUP BY 1""")
 
+    # Games with a conventional team box score. Counted in GAMES, like the
+    # per-game archives above, not in the rows the endpoint returned.
+    team_box = _season_counts(conn, "game_team_stats", """
+        SELECT g.season_year, COUNT(DISTINCT t.game_id) FROM game_team_stats t
+        JOIN games g ON g.game_id = t.game_id GROUP BY 1""")
+
     box = {int(k): int(v) for k, v in (box_scores or {}).items()}
 
     seasons = {}
@@ -259,6 +268,7 @@ def build_coverage(conn: sqlite3.Connection, box_scores: dict | None = None) -> 
             "drives": [drives.get(season, 0), done],
             "lines": [lines.get(season, 0), done],
             "box_scores": [box.get(season, 0), done],
+            "team_box": [team_box.get(season, 0), done],
             "season_stats": [season_stats.get(season, 0), n_teams],
             "rosters": [rosters.get(season, 0), n_teams],
             "coaches": [coaches.get(season, 0), n_teams],
@@ -282,6 +292,7 @@ def build_coverage(conn: sqlite3.Connection, box_scores: dict | None = None) -> 
                          "drives": _first_season("fetch_cfbd_drives"),
                          "lines": _first_season("fetch_cfbd_lines"),
                          "box_scores": _first_season("fetch_cfbd_players"),
+                         "team_box": _first_season("fetch_cfbd_game_team_stats"),
                          "season_stats": _first_season("fetch_cfbd_player_season_stats"),
                          "rosters": _first_season("fetch_cfbd_rosters"),
                          "recruiting": _first_season("fetch_cfbd_recruiting")},
