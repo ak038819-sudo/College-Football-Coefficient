@@ -1,0 +1,140 @@
+# Phase 4's first step: what does the provider have before 1946?
+#
+# A PROBE. It asks the provider for every season in the range and writes
+# down the shape of each answer -- how many games, how many carry scores,
+# dates, venues, classifications, which school names appear. It stages
+# nothing, opens no database, builds no rating and touches no `ui/`, so no
+# deploy follows and there is no chain to carry between runs.
+#
+# This is the only historical workflow that needs the CFBD key, because it
+# is the only one that asks the provider anything. Phase 3's gates all run
+# on what the backfill already staged.
+#
+# An empty season here is a GAP TO CONFIRM against another source, never
+# evidence that no games were played. A season whose request FAILED is
+# neither, and the run exits non-zero so a partial probe cannot be read as
+# a complete one.
+name: Early football coverage probe (1869-1945)
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "First season (1869-1945)."
+        type: string
+        default: "1869"
+      end:
+        description: "Last season (1869-1945)."
+        type: string
+        default: "1945"
+      pause:
+        description: "Seconds between requests."
+        type: string
+        default: "0.5"
+
+concurrency:
+  group: early-football-probe
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      REPORT: ${{ github.workspace }}/report
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      # No pip install: the script is standard library only.
+
+      - name: Check the range
+        run: |
+          python - <<'PY'
+          import os
+          import sys
+          start, end = os.environ['START'], os.environ['END']
+          try:
+              first, last = int(start), int(end)
+          except ValueError:
+              sys.exit(f'::error::start and end must be years: {start}, {end}')
+          if not 1869 <= first <= last <= 1945:
+              sys.exit('::error::Phase 4 is 1869-1945, and start must not be '
+                       f'after end: got {first}-{last}')
+          print(f'Probing {first}-{last}')
+          PY
+        env:
+          START: ${{ inputs.start }}
+          END: ${{ inputs.end }}
+
+      - name: Ask the provider what it has
+        run: |
+          set -o pipefail
+          python scripts/probe_early_football_coverage.py \
+            --out "$REPORT" \
+            --start "${{ inputs.start }}" \
+            --end "${{ inputs.end }}" \
+            --pause "${{ inputs.pause }}" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+
+      - name: Lay the coverage out season by season
+        if: always()
+        run: |
+          set -o pipefail
+          if [ ! -f "$REPORT/early_coverage_summary.json" ]; then
+            echo "No report was written."
+            exit 0
+          fi
+          # Printed, not only filed: the artifact store is not reachable
+          # from every place this gets read from.
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          report = Path(os.environ['REPORT'])
+          summary = json.loads(
+              (report / 'early_coverage_summary.json').read_text())
+          seasons, fields = summary['seasons'], summary['fields']
+          lines = ['', '### Early coverage, '
+                   f"{summary['years'][0]}-{summary['years'][1]}", '',
+                   f"**{summary['games']} games** over "
+                   f"{seasons['with_games']} of {seasons['requested']} "
+                   f"seasons, {summary['distinct_schools']} school names. "
+                   f"{seasons['empty']} seasons came back empty and "
+                   f"{seasons['incomplete']} could not be asked.", '',
+                   '| field | games |', '| --- | --- |']
+          lines += [f"| {name.replace('_', ' ')} | {count} |"
+                    for name, count in fields.items()]
+          lines += ['', '| season | games |', '| --- | --- |']
+          lines += [f'| {season} | {count} |' for season, count
+                    in summary['games_by_season'].items()]
+          if summary['empty_seasons']:
+              lines += ['', 'Empty seasons, to confirm against another '
+                        'source rather than read as seasons without '
+                        'football: '
+                        + ', '.join(str(y) for y in summary['empty_seasons'])]
+          if summary['incomplete_seasons']:
+              lines += ['', '**These seasons were never answered, so '
+                        'nothing above speaks for them:** '
+                        + ', '.join(str(y)
+                                    for y in summary['incomplete_seasons'])]
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+              out.write('\n'.join(lines) + '\n')
+          print('\n'.join(lines))
+          PY
+
+      - name: Publish the coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: early-coverage-${{ inputs.start }}-${{ inputs.end }}
+          path: ${{ env.REPORT }}
+          if-no-files-found: ignore
+          retention-days: 90
