@@ -1127,15 +1127,21 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
         if signee_dir.exists():
             shutil.rmtree(signee_dir)                                # no orphan seasons
         signees = build_recruiting_signees(conn)
-        seasons = {}
+        # NOT `seasons`: that name already holds the list of per-season game
+        # files this function built above, and the manifest's own top-level
+        # "seasons" is that list. Reusing the name here replaced it with this
+        # dict, and the only symptom was a TypeError in the closing print --
+        # by which point a manifest naming no season files had been written.
+        signee_seasons = {}
         if signees:
             signee_dir.mkdir(parents=True)
             for season, payload in sorted(signees.items()):
                 v = _write_js(signee_dir / f"{season}.js",
                               f"(window.__CFB_SIGNEES__=window.__CFB_SIGNEES__||{{}})[{season}]",
                               payload)
-                seasons[str(season)] = f"data/recruiting/{season}.js?v={v}"
-        recruiting = {"classes": f"data/recruiting_classes.js?v={cv}", "seasons": seasons}
+                signee_seasons[str(season)] = f"data/recruiting/{season}.js?v={v}"
+        recruiting = {"classes": f"data/recruiting_classes.js?v={cv}",
+                      "seasons": signee_seasons}
         print(f"recruiting: {len(recruiting_classes['classes'])} classes and "
               f"{sum(len(p['teams']) for p in signees.values())} team-seasons of signees")
 

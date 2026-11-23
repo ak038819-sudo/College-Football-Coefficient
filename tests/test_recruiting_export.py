@@ -138,3 +138,32 @@ def test_a_database_with_no_players_table_still_publishes_the_signees():
         state_province TEXT);""")
     conn.execute("INSERT INTO recruits VALUES ('r1',2024,500,'A','QB',4,0.9,1,10,'HS','M','AL')")
     assert ex.build_signees(conn)[2024]["teams"]["10"][0][5] is None
+
+
+# ---- the manifest the exporter writes around these payloads ----------------
+
+def test_the_recruiting_block_does_not_clobber_the_manifests_season_list():
+    """`export()` builds a list of per-season game files in a local called
+    `seasons`, and the manifest's own top-level "seasons" IS that list. The
+    recruiting block later needed a season map of its own and reused the name,
+    so the manifest shipped the recruiting dict in its place.
+
+    The only symptom was a TypeError in the closing print, long after a
+    manifest naming no season file had been written -- and a published site
+    whose every game file was unreachable. So this reads the source: each
+    assignment to a name the manifest depends on has to be the one the
+    manifest means.
+    """
+    import ast
+    source = (REPO / "src" / "export_static_data.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    export = next(node for node in ast.walk(tree)
+                  if isinstance(node, ast.FunctionDef) and node.name == "export")
+    assigned = [target.id
+                for node in ast.walk(export)
+                for target in getattr(node, "targets", [])
+                if isinstance(target, ast.Name)]
+    assert assigned.count("seasons") == 1, (
+        "`seasons` is assigned more than once in export(); the manifest's "
+        "top-level \"seasons\" is whichever assignment ran last. Give the "
+        "other one a name of its own.")
