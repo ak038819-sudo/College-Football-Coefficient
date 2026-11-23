@@ -155,6 +155,46 @@ still carry their own 1946–1979 ranges and are **not** widened here.
 Widening them is its own piece of work, and the identity gate in
 particular has 1,214 names to face rather than 405.
 
+### Staged, 2026-11-23
+
+Four batch runs, every one green, each staging exactly what the probe
+predicted:
+
+| batch | run | games |
+| --- | --- | --- |
+| 1869–1899 | [45143890880](https://github.com/ak038819-sudo/College-Football-Coefficient/actions/runs/45143890880) | 2,596 |
+| 1900–1919 | [45144499737](https://github.com/ak038819-sudo/College-Football-Coefficient/actions/runs/45144499737) | 8,467 |
+| 1920–1939 | [45144839012](https://github.com/ak038819-sudo/College-Football-Coefficient/actions/runs/45144839012) | 12,543 |
+| 1940–1945 | [45145094081](https://github.com/ak038819-sudo/College-Football-Coefficient/actions/runs/45145094081) | 3,380 |
+
+A fifth run over the whole range,
+[45145340734](https://github.com/ak038819-sudo/College-Football-Coefficient/actions/runs/45145340734),
+answered **SKIP for all 222 partitions** and fetched nothing. That is the
+checkpointing proven end to end across the widened range, and it gives one
+audit over the whole archive:
+
+| | |
+| --- | --- |
+| staged games, 1869–1979 | **49,692** |
+| completed season-and-type partitions | 222 |
+| missing scores | 0 |
+| missing dates | 0 |
+| ties | 2,349 |
+| games with a classification unknown on one side or both | 10,828 |
+| blocked partitions | **1** |
+
+The arithmetic closes: 22,706 games from Phase 3 plus 26,986 from Phase 4
+is 49,692, and the ties add up the same way (680 + 137 + 515 + 856 + 161).
+Phase 3's seasons were not touched — every one of them skipped.
+
+**The one blocked partition is 1871 regular**, flagged
+`empty_regular_season_requires_source_review`. The gate found the same
+thing the probe did and refused to pass it, which is the behaviour both
+were built for: an empty regular season goes to a person, not through.
+
+Nothing is promoted. `production_promotion_allowed` is `false`, no rating
+reads any of this, and `ui/` is untouched.
+
 ### What this settles, and what it does not
 
 It settles that Phase 4 does not need a second provider to exist. It does
