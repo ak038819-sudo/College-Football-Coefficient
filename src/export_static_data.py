@@ -782,6 +782,81 @@ def write_game_log_shards(out_dir: Path, logs: dict) -> dict:
             "index": write_game_log_index(out_dir, build_game_log_index(logs))}
 
 
+# ---- The betting market, one number per game -------------------------------
+#
+# game_lines has held 40,490 rows since 2013 -- eleven providers over fourteen
+# seasons -- and src/measure_vs_market.py was its only reader, for the one
+# aggregate behind the track-record page. No game page had ever shown a line.
+#
+# The provider choice is NOT made again here. measure_vs_market.PROVIDER_PREFERENCE
+# and best_line() already decide which book speaks for a game, and they were
+# reviewed when the track record was built; reimplementing the choice would let
+# a game page quote one number while the page measuring the model against it
+# quoted another.
+MARKET_FIELDS = ["game_id", "market_home_margin", "over_under", "provider", "closing"]
+
+
+def build_market_lines(conn: sqlite3.Connection) -> dict:
+    """{season: payload} of one line per priced game.
+
+    `market_home_margin` is the market's expected HOME margin, in the direction
+    every margin in this database runs (+7 is "home by 7"), not CFBD's own
+    opposite-signed `spread`.
+
+    `closing` says whether this is a CLOSING line. CFBD serves the current
+    number for a game yet to kick off and the closing one once it has finished,
+    in the same column, so a file fetched mid-season holds both and nothing in
+    the row says which. The snapshot's own record of the result separates them:
+    a capture taken before the game ended cannot carry its score. A page must
+    not call a number captured in October a game's closing line.
+    """
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                        "AND name='game_lines'").fetchone():
+        return {}
+    sys.path.insert(0, str(REPO / "src"))
+    from measure_vs_market import best_line
+
+    rows = defaultdict(list)
+    for gid, season, provider, margin, total, home, away in conn.execute(
+            "SELECT game_id, season_year, provider, market_home_margin, over_under, "
+            "snapshot_home_score, snapshot_away_score FROM game_lines "
+            "WHERE market_home_margin IS NOT NULL"):
+        rows[(int(season), int(gid))].append(
+            (provider, float(margin), total, home is not None and away is not None))
+
+    out = defaultdict(list)
+    for (season, gid), lines in sorted(rows.items()):
+        chosen = best_line([(provider, margin) for provider, margin, _, _ in lines])
+        if not chosen:
+            continue
+        provider, margin = chosen
+        # The total and the closing flag belong to the SAME capture as the
+        # spread, never to whichever other book happened to report one.
+        total, closing = next((t, c) for p, _, t, c in lines if p == provider)
+        out[season].append([gid, round(margin, 1),
+                            None if total is None else round(float(total), 1),
+                            provider, 1 if closing else 0])
+    return {season: {"season": season, "fields": MARKET_FIELDS, "games": games}
+            for season, games in out.items()}
+
+
+def write_market_lines(out_dir: Path, payloads: dict) -> dict:
+    """One file per season that HAS lines, so the other 33 cost no request."""
+    lines_dir = out_dir / "lines"
+    if lines_dir.exists():
+        shutil.rmtree(lines_dir)                                 # no orphan seasons
+    if not payloads:
+        return {}
+    lines_dir.mkdir(parents=True)
+    files = {}
+    for season, payload in sorted(payloads.items()):
+        version = _write_js(
+            lines_dir / f"{season}.js",
+            f"(window.__CFB_LINES__=window.__CFB_LINES__||{{}})[{season}]", payload)
+        files[str(season)] = f"data/lines/{season}.js?v={version}"
+    return files
+
+
 def _write_js(path: Path, global_expr: str, payload) -> str:
     body = json.dumps(payload, separators=(",", ":"))
     path.write_text(f"{global_expr}={body};\n", encoding="utf-8")
@@ -843,6 +918,7 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
             continue
         archives[season] = selected
         players[str(season)] = write_box_score_shards(players_dir, season, selected)
+    market_lines = write_market_lines(out_dir, build_market_lines(conn))
     # Drive-by-drive records, sharded the same way and for the same reason.
     drives_dir = out_dir / "drives"
     if drives_dir.exists():
@@ -962,6 +1038,10 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                 "model_params": model_params(),
                 # P1-08: what each season actually has, so an absent metric can say
                 # why it is absent instead of rendering as a zero.
+                # One closing line per priced game, 2013-2026, in its own file
+                # per season: only fourteen seasons have any, so the other
+                # thirty-three cost a reader no request at all.
+                **({"lines": market_lines} if market_lines else {}),
                 # The box-score archive is files on disk, not a table, so its
                 # coverage is counted here where the archives are already read
                 # rather than by opening all 23 of them a second time.

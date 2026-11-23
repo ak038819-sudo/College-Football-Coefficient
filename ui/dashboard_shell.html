@@ -9833,6 +9833,103 @@ function loadPlayerArchive(season, gameId) {
   if (!wanted.length) return Promise.resolve(archive());
   return Promise.all(wanted.map(loadDataScript)).then(archive);
 }
+// ---------------- The betting market, for one game ----------------
+//
+// game_lines has held eleven providers' numbers since 2013 and reached a
+// reader only as one aggregate on the Track Record page. This is that archive
+// on the game it describes.
+//
+// NOTHING HERE IS A RATING INPUT, and the panel says so. The value of a
+// benchmark the model cannot see is exactly that it cannot see it.
+
+function marketLineEntry(season) {
+  const file = (STATIC_MANIFEST.lines || {})[String(season)];
+  return file || null;
+}
+
+function loadMarketLine(season, gameId) {
+  const file = marketLineEntry(season);
+  if (!file) return Promise.resolve(null);
+  return loadDataScript(file).then(() => {
+    const payload = (window.__CFB_LINES__ || {})[season];
+    if (!payload || !payload.fields) return null;
+    const row = (payload.games || []).find(line => Number(line[0]) === Number(gameId));
+    return row ? Object.fromEntries(payload.fields.map((f, i) => [f, row[i]])) : null;
+  });
+}
+
+// "Home by 7" as the side and the number a reader recognises. A margin of 0 is
+// a pick'em, which is a real line and not a missing one.
+function marketSpreadText(margin, awayName, homeName) {
+  if (margin == null) return null;
+  const value = Number(margin);
+  if (!Number.isFinite(value)) return null;
+  if (value === 0) return 'Pick’em';
+  const side = value > 0 ? homeName : awayName;
+  return side + ' by ' + Math.abs(value).toFixed(1).replace(/\.0$/, '');
+}
+
+// Fill the slot the game page left for a line, or take the slot away.
+//
+// BOTH callbacks are guarded on `version`. Without the guard on the FAILURE
+// side, a reader who moves to a game in another season while the first
+// season's request is still in flight loses the new page's slot when the old
+// request fails -- and the new request, even when it succeeds, then finds no
+// slot and the panel never appears at all.
+function hydrateMarketLine(season, id, game, awayName, homeName, version) {
+  return loadMarketLine(season, id).then(line => {
+    if (version !== renderVersion) return;
+    const slot = document.getElementById('gp-market-slot');
+    if (slot) slot.outerHTML = gameMarketPanel(line, game, awayName, homeName);
+  }).catch(() => {
+    if (version !== renderVersion) return;
+    document.getElementById('gp-market-slot')?.remove();
+  });
+}
+
+function gameMarketPanel(line, game, awayName, homeName) {
+  if (!line || line.market_home_margin == null) return '';
+  const margin = Number(line.market_home_margin);
+  const spread = marketSpreadText(margin, awayName, homeName);
+  if (!spread) return '';
+  const closing = Number(line.closing) === 1;
+  const facts = [['Spread', spread]];
+  if (line.over_under != null) facts.push(['Total', String(Number(line.over_under))]);
+
+  // Against the result. `== null` BEFORE any coercion: Number(null) is 0, and
+  // a game with no score would otherwise be scored as a 0-0 push.
+  const hs = game.home_score, as = game.away_score;
+  if (game.completed && hs != null && as != null) {
+    const actual = Number(hs) - Number(as);
+    const against = actual - margin;                    // + = home beat the line
+    const covered = against > 0 ? homeName : against < 0 ? awayName : null;
+    facts.push(['Against the spread', covered == null ? 'Push'
+      : covered + ' covered by ' + Math.abs(against).toFixed(1).replace(/\.0$/, '')]);
+    if (line.over_under != null) {
+      const total = Number(hs) + Number(as), diff = total - Number(line.over_under);
+      facts.push(['Against the total', total + ' points, ' +
+        (diff > 0 ? Math.abs(diff).toFixed(1).replace(/\.0$/, '') + ' over'
+          : diff < 0 ? Math.abs(diff).toFixed(1).replace(/\.0$/, '') + ' under' : 'exactly the number')]);
+    }
+  }
+
+  const provider = line.provider ? esc(String(line.provider)) : 'a single book';
+  return '<div class="panel" id="gp-market"><h2 class="section-title">The market</h2>' +
+    '<div class="gp-facts">' + facts.map(([label, value]) =>
+      '<div class="gp-fact"><b>' + esc(label) + '</b>' + esc(value) + '</div>').join('') +
+    '</div>' +
+    '<p class="section-note">' +
+    (closing ? 'The <b>closing</b> line from ' : 'The line from ') + provider +
+    (closing ? '' : ', captured before this game ended and so not a closing number') +
+    ', as recorded by CollegeFootballData.com. The spread is the market’s expected ' +
+    'margin for the home team, which is the direction every margin on this site runs.</p>' +
+    '<p class="section-note">No rating on this site reads this number. That is the point of ' +
+    'it: a forecast the model cannot see is the only one worth being measured against, and ' +
+    'over ' + (((STATIC_MANIFEST.market || {}).overall || {}).games || 0).toLocaleString() +
+    ' games the market has been the better forecaster. ' +
+    '<a href="#section=accuracy">Track Record →</a></p></div>';
+}
+
 // CFBD's per-game efficiency for one game, as a column group for the Matchup
 // table, or null when the game has none (coverage begins in 2001).
 //
@@ -10371,7 +10468,12 @@ function hydrateGamePage(version) {
         gameStory(g, d, season, an, hn) + gameVenuePanel(g, hn) +
         (g.completed && driveArchiveEntry(season) ? '<div id="gp-drives" class="panel"><h2 class="section-title">Scoring summary</h2><p class="empty-note">Loading drives…</p></div>' : '') +
         (g.completed ? '<div id="gp-players" class="panel"><h2 class="section-title">Player box score</h2><p class="empty-note">Loading player stats…</p></div>' : '') +
+        // No placeholder: only fourteen seasons have a line at all, and a
+        // panel saying "loading" that then vanishes on every pre-2013 game
+        // is worse than one that simply appears when there is something.
+        (marketLineEntry(season) ? '<div id="gp-market-slot"></div>' : '') +
         '<div class="panel" id="gp-series"><h2 class="section-title">Series history</h2><p class="empty-note">Loading meetings…</p></div>' + more;
+      if (marketLineEntry(season)) hydrateMarketLine(season, id, g, an, hn, version);
       if (!g.completed) hydrateGameScouting(g, season, an, hn, version);
       if (g.completed) Promise.all([loadPlayerArchive(season, id), loadRoster(season).catch(() => null)])
         .then(([archive, rosterData]) => {
