@@ -27,7 +27,7 @@
          ratings payload inline, so an offline launch shows the last ratings
          this browser saw rather than a browser error.
 
-     ui/data/live_scores.json   network-first
+     ui/data/live_scores.json, ui/data/nba_live.json   network-first
          A scoreboard is worth nothing when it is stale, but a last-known
          scoreboard beats an empty one, so the last good copy is kept.
 
@@ -138,7 +138,13 @@ function isDocument(request, url) {
 }
 
 function isLiveFeed(url) {
-  return url.pathname.endsWith('/data/live_scores.json');
+  // Both leagues' live scoreboards. The NBA's is a separate file because
+  // src/nba/publish.py swaps the whole of ui/data/nba/ on every refresh, and
+  // it carries no `?v=` stamp -- so without naming it here it would fall to
+  // stale-while-revalidate and the installed app would draw a cached score
+  // over a game that has moved on.
+  return url.pathname.endsWith('/data/live_scores.json')
+    || url.pathname.endsWith('/data/nba_live.json');
 }
 
 function isFont(url) {

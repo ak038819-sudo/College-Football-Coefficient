@@ -1,4 +1,11 @@
-# Phase 3: the 1946-1979 backfill, one batch a run.
+# The historical backfill, 1869-1979, one batch a run.
+#
+# ONE ARCHIVE, ONE CHAIN. Phase 3 staged 1946-1979 here; Phase 4 extends
+# the same chain back to 1869 rather than opening a second one. The
+# importer checkpoints per season and season type, so a batch that covers
+# ground already staged SKIPS it and the earlier seasons are simply added
+# beside the later ones. Every gate that reads this database filters by
+# season, so widening the archive does not change what any of them say.
 #
 # WHY A WORKFLOW AND NOT A SCRIPT RUN BY HAND: api.collegefootballdata.com is
 # unreachable from the containers this repository is worked in, and the key is
@@ -17,19 +24,19 @@
 # built, and `ui/` is untouched, so no deploy follows. Promotion waits on the
 # source reconciliation and the identity map that docs/historical-expansion-
 # phase3.md requires, and on Austin's own say-so.
-name: Historical backfill (1946-1979)
+name: Historical backfill (1869-1979)
 
 on:
   workflow_dispatch:
     inputs:
       start:
-        description: "First season of this batch (1946-1979)."
+        description: "First season of this batch (1869-1979)."
         type: string
-        default: "1948"
+        default: "1869"
       end:
-        description: "Last season of this batch (1946-1979)."
+        description: "Last season of this batch (1869-1979)."
         type: string
-        default: "1959"
+        default: "1899"
       force:
         description: "Re-fetch seasons already marked complete."
         type: boolean
@@ -100,9 +107,9 @@ jobs:
               first, last = int(start), int(end)
           except ValueError:
               sys.exit(f'::error::start and end must be years: {start}, {end}')
-          if not 1946 <= first <= last <= 1979:
-              sys.exit('::error::Phase 3 is 1946-1979, and start must not be '
-                       f'after end: got {first}-{last}')
+          if not 1869 <= first <= last <= 1979:
+              sys.exit('::error::The historical archive is 1869-1979, and start '
+                       f'must not be after end: got {first}-{last}')
           print(f'Batch {first}-{last}')
           PY
         env:
