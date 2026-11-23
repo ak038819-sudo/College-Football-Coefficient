@@ -1,0 +1,1 @@
+window.NBA_PLAYER=(window.NBA_PLAYER||{});window.NBA_PLAYER[4684682]={"b":{"b":"2002-12-10T08:00Z","c":["Durham","NC","USA"],"h":83,"i":4684682,"j":"13","n":"Jonas Aidoo","p":"Center","pa":"C","s":"J. Aidoo","w":240,"x":0},"s":[]};
