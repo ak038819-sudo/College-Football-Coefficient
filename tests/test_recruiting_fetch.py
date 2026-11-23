@@ -167,13 +167,18 @@ def test_the_written_csv_round_trips(tmp_path, monkeypatch):
 # ---- nothing published reads it yet -----------------------------------------
 
 READERS = {'src/fetch_cfbd_recruiting.py', 'src/load_recruiting.py',
-           'run_pipeline.py', 'src/export_people_pages.py'}
+           'run_pipeline.py', 'src/export_people_pages.py',
+           # Added 2026-11-16 with the Data Coverage page's recruiting row. It
+           # reads one number -- how many of a season's teams signed a class
+           # this database can attribute -- and publishes no recruit.
+           'src/coverage.py'}
 
 
 def test_only_the_named_files_read_the_recruiting_archive():
-    """Four files touch this archive: the fetcher that writes it, the loader
-    that reads it into the database, the pipeline that calls the loader, and
-    the people exporter, which publishes each coach's class ranks.
+    """Five files touch this archive: the fetcher that writes it, the loader
+    that reads it into the database, the pipeline that calls the loader, the
+    people exporter, which publishes each coach's class ranks, and the coverage
+    report, which counts how many teams have a class.
 
     A fifth appearing is how an input nobody checked becomes a published
     number, so widening the set above is the deliberate act that says someone
