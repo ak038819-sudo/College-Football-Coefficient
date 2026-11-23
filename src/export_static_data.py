@@ -81,7 +81,17 @@ DETAIL_FIELDS = ["game_id",
                  # Per-period scores as "7-10-3-14", appended LAST so existing
                  # positions never move. Null for a season fetched before the
                  # games fetcher kept them.
-                 "home_line_scores", "away_line_scores"]
+                 "home_line_scores", "away_line_scores",
+                 # CFBD's per-game efficiency (game_team_advanced), appended LAST
+                 # so existing positions never move. Each side carries its OWN
+                 # OFFENSE only: in all 22,500 games of the 2001-2026 archive a
+                 # team's def_* columns are its opponent's off_* columns exactly,
+                 # so storing both would be the same numbers twice. Garbage time
+                 # is excluded by the provider, so `plays` is smaller than the
+                 # game's real play count and is shown as the sample these three
+                 # averages rest on. Null before 2001, never 0.
+                 "home_plays", "home_ppa", "home_explosiveness",
+                 "away_plays", "away_ppa", "away_explosiveness"]
 SERIES_FIELDS = ["game_id", "season", "date", "kickoff_utc", "home_id", "away_id", "home_score", "away_score",
                  "p_home", "home_elo_change", "home_pre_elo", "away_pre_elo", "phase", "neutral", "ot"]
 SERIES_SHARDS = 32
@@ -167,6 +177,22 @@ def build_season_payloads(conn: sqlite3.Connection, upcoming: dict) -> dict:
     return payloads
 
 
+def _efficiency(row) -> tuple:
+    """One side's (plays, PPA, explosiveness), rounded for the wire.
+
+    `plays` is a count and stays an integer; the two averages keep three
+    decimals, which is finer than anything the page prints and leaves room for
+    a reader who sorts on them. A side with no row yields three nulls -- never
+    zeros, which would claim the offence ran no plays and gained nothing.
+    """
+    if not row:
+        return (None, None, None)
+    plays, ppa, expl = row
+    return (None if plays is None else int(plays),
+            None if ppa is None else round(ppa, 3),
+            None if expl is None else round(expl, 3))
+
+
 def build_game_details(conn: sqlite3.Connection) -> dict:
     """
     {season: payload} of each completed game's stored CoE 2.0 inputs, per side: the Elo and
@@ -186,6 +212,15 @@ def build_game_details(conn: sqlite3.Connection) -> dict:
         sr_side = {(g, t): (sr, d, x, plus, model) for g, t, sr, d, x, plus, model in conn.execute(
             "SELECT game_id, team_id, success_rate_team, sr_diff, xsr_diff, sr_plus, performance_model "
             "FROM elo_game_history")}
+    # Per-game efficiency, each team's own offence. A game whose row is missing
+    # for one side keeps the other side's numbers rather than dropping both: the
+    # columns are independent measurements of two offences, not a pair.
+    eff = {}
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                    "AND name='game_team_advanced'").fetchone():
+        eff = {(g, t): (plays, ppa, expl) for g, t, plays, ppa, expl in conn.execute(
+            "SELECT game_id, team_id, off_plays, off_ppa, off_explosiveness "
+            "FROM game_team_advanced")}
     game_cols = {r[1] for r in conn.execute("PRAGMA table_info(games)")}
     lines = {}
     if {"home_line_scores", "away_line_scores"} <= game_cols:
@@ -206,7 +241,9 @@ def build_game_details(conn: sqlite3.Connection) -> dict:
                             r(hs_sr[0]), r(hs_sr[1]), r(hs_sr[2]), r(hs_sr[3]),
                             r(as_sr[0]), r(as_sr[1]), r(as_sr[2]), r(as_sr[3]),
                             hs_sr[4] or as_sr[4],
-                            *lines.get(gid, (None, None))])
+                            *lines.get(gid, (None, None)),
+                            *_efficiency(eff.get((gid, home))),
+                            *_efficiency(eff.get((gid, away)))])
     return {s: {"season": s, "fields": DETAIL_FIELDS, "params": params, "games": rows} for s, rows in out.items()}
 
 
@@ -795,6 +832,81 @@ def write_returning_production(out_dir: Path, payloads: dict) -> dict:
     return files
 
 
+# ---- The betting market, one number per game -------------------------------
+#
+# game_lines has held 40,490 rows since 2013 -- eleven providers over fourteen
+# seasons -- and src/measure_vs_market.py was its only reader, for the one
+# aggregate behind the track-record page. No game page had ever shown a line.
+#
+# The provider choice is NOT made again here. measure_vs_market.PROVIDER_PREFERENCE
+# and best_line() already decide which book speaks for a game, and they were
+# reviewed when the track record was built; reimplementing the choice would let
+# a game page quote one number while the page measuring the model against it
+# quoted another.
+MARKET_FIELDS = ["game_id", "market_home_margin", "over_under", "provider", "closing"]
+
+
+def build_market_lines(conn: sqlite3.Connection) -> dict:
+    """{season: payload} of one line per priced game.
+
+    `market_home_margin` is the market's expected HOME margin, in the direction
+    every margin in this database runs (+7 is "home by 7"), not CFBD's own
+    opposite-signed `spread`.
+
+    `closing` says whether this is a CLOSING line. CFBD serves the current
+    number for a game yet to kick off and the closing one once it has finished,
+    in the same column, so a file fetched mid-season holds both and nothing in
+    the row says which. The snapshot's own record of the result separates them:
+    a capture taken before the game ended cannot carry its score. A page must
+    not call a number captured in October a game's closing line.
+    """
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                        "AND name='game_lines'").fetchone():
+        return {}
+    sys.path.insert(0, str(REPO / "src"))
+    from measure_vs_market import best_line
+
+    rows = defaultdict(list)
+    for gid, season, provider, margin, total, home, away in conn.execute(
+            "SELECT game_id, season_year, provider, market_home_margin, over_under, "
+            "snapshot_home_score, snapshot_away_score FROM game_lines "
+            "WHERE market_home_margin IS NOT NULL"):
+        rows[(int(season), int(gid))].append(
+            (provider, float(margin), total, home is not None and away is not None))
+
+    out = defaultdict(list)
+    for (season, gid), lines in sorted(rows.items()):
+        chosen = best_line([(provider, margin) for provider, margin, _, _ in lines])
+        if not chosen:
+            continue
+        provider, margin = chosen
+        # The total and the closing flag belong to the SAME capture as the
+        # spread, never to whichever other book happened to report one.
+        total, closing = next((t, c) for p, _, t, c in lines if p == provider)
+        out[season].append([gid, round(margin, 1),
+                            None if total is None else round(float(total), 1),
+                            provider, 1 if closing else 0])
+    return {season: {"season": season, "fields": MARKET_FIELDS, "games": games}
+            for season, games in out.items()}
+
+
+def write_market_lines(out_dir: Path, payloads: dict) -> dict:
+    """One file per season that HAS lines, so the other 33 cost no request."""
+    lines_dir = out_dir / "lines"
+    if lines_dir.exists():
+        shutil.rmtree(lines_dir)                                 # no orphan seasons
+    if not payloads:
+        return {}
+    lines_dir.mkdir(parents=True)
+    files = {}
+    for season, payload in sorted(payloads.items()):
+        version = _write_js(
+            lines_dir / f"{season}.js",
+            f"(window.__CFB_LINES__=window.__CFB_LINES__||{{}})[{season}]", payload)
+        files[str(season)] = f"data/lines/{season}.js?v={version}"
+    return files
+
+
 def _write_js(path: Path, global_expr: str, payload) -> str:
     body = json.dumps(payload, separators=(",", ":"))
     path.write_text(f"{global_expr}={body};\n", encoding="utf-8")
@@ -857,6 +969,7 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
         archives[season] = selected
         players[str(season)] = write_box_score_shards(players_dir, season, selected)
     returning = write_returning_production(out_dir, build_returning_production(conn))
+    market_lines = write_market_lines(out_dir, build_market_lines(conn))
     # Drive-by-drive records, sharded the same way and for the same reason.
     drives_dir = out_dir / "drives"
     if drives_dir.exists():
@@ -980,7 +1093,15 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                 # when the archive has not been loaded, so the view can be
                 # missing instead of drawing an empty board.
                 **({"returning": returning} if returning else {}),
-                "coverage": build_coverage(conn),
+                # One closing line per priced game, 2013-2026, in its own file
+                # per season: only fourteen seasons have any, so the other
+                # thirty-three cost a reader no request at all.
+                **({"lines": market_lines} if market_lines else {}),
+                # The box-score archive is files on disk, not a table, so its
+                # coverage is counted here where the archives are already read
+                # rather than by opening all 23 of them a second time.
+                "coverage": build_coverage(
+                    conn, box_scores={season: len(games) for season, games in archives.items()}),
                 # The model's own track record, from the validation harness that
                 # has been scoring it all along (see src/accuracy.py). Absent,
                 # not empty, when no report has been generated, so the page can

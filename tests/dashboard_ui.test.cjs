@@ -97,14 +97,27 @@ test('dashboard navigation, discovery, leaders, tools and stadium interactions',
    assert.ok(matchup,'the matchup table is missing');
    assert.equal(d.querySelectorAll('table.gp-matchup').length,1,'the three panels must not come back');
    const groups=[...matchup.querySelectorAll('thead tr:first-child th.gp-group')].map(h=>h.textContent.trim());
-   assert.deepEqual(groups,['Elo','Game Merits','Efficiency']);
+   // What the PROVIDER measured and what the MODEL derived from it are two
+   // groups, not one: Success Rate, PPA and Explosiveness come off CFBD's
+   // per-game feed, and SRDiff / xSRDiff / SR+ are the Elo engine's layer.
+   assert.deepEqual(groups,['Elo','Game Merits','Efficiency','xSRDiff layer']);
    const metrics=[...matchup.querySelectorAll('thead tr:last-child th')].map(h=>h.textContent.trim());
-   assert.deepEqual(metrics,['Team','Before','Win chance','After','\u0394 Elo','Result','Hybrid','P',
-     'Game Merits','Success Rate','SRDiff','xSRDiff','SR+']);
+   // The Elo and Game Merits columns are fixed; the Efficiency group's are not.
+   // How many it has depends on what the export carried for THIS game, so
+   // pinning the full list here would make a data refresh fail the build.
+   assert.deepEqual(metrics.slice(0,9),['Team','Before','Win chance','After','\u0394 Elo','Result','Hybrid','P',
+     'Game Merits']);
+   assert.deepEqual(metrics.slice(-3),['SRDiff','xSRDiff','SR+']);
+   assert.ok(metrics.includes('Success Rate'),'Success Rate belongs with the measured group');
+   for(const name of metrics.slice(9,-3)) {
+     assert.ok(['Plays','Success Rate','PPA','Explosiveness'].includes(name),'unexpected efficiency column: '+name);
+   }
    // Each group header spans exactly the metric columns beneath it, or the
    // body cells land under the wrong headings.
    const spans=[...matchup.querySelectorAll('thead tr:first-child th.gp-group')].map(h=>Number(h.getAttribute('colspan')));
-   assert.deepEqual(spans,[4,4,4]);
+   assert.deepEqual(spans.slice(0,2),[4,4]);
+   assert.equal(spans[3],3,'the xSRDiff layer is three columns');
+   assert.equal(spans[2],metrics.length-1-4-4-3,'the Efficiency header must span its own columns');
    assert.equal(spans.reduce((a,b)=>a+b,0)+1,metrics.length);
    const bodyRows=[...matchup.querySelectorAll('tbody tr')];
    assert.equal(bodyRows.length,2,'one row per team');
