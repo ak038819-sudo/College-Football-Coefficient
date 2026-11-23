@@ -111,7 +111,10 @@ def test_the_detail_export_carries_the_periods(tmp_path):
       INSERT INTO hybrid_game_ratings VALUES (7, 1, 0.5, 0.5, 1600, 0.6, 'W'), (7, 2, 0.1, 0.1, 1500, 0.4, 'L');
     """)
     payload = ex.build_game_details(conn)[2026]
-    assert payload["fields"][-2:] == ["home_line_scores", "away_line_scores"]
+    # The per-period scores are no longer the last pair -- per-game efficiency
+    # was appended after them -- but they must still sit where they were put.
+    assert payload["fields"].index("home_line_scores") == 20
+    assert payload["fields"].index("away_line_scores") == 21
     row = dict(zip(payload["fields"], payload["games"][0]))
     assert (row["home_line_scores"], row["away_line_scores"]) == ("7-7-0-7", "3-7-7-0")
     # Appending must not move an existing position.
