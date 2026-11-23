@@ -1,0 +1,576 @@
+season_year,season_type,week,poll,rank,school,conference,first_place_votes,points
+2025,regular,1,ap,1,Texas,SEC,25,1552
+2025,regular,1,ap,2,Penn State,Big Ten,23,1547
+2025,regular,1,ap,3,Ohio State,Big Ten,11,1472
+2025,regular,1,ap,4,Clemson,ACC,4,1398
+2025,regular,1,ap,5,Georgia,SEC,1,1331
+2025,regular,1,ap,6,Notre Dame,FBS Independents,0,1325
+2025,regular,1,ap,7,Oregon,Big Ten,1,1236
+2025,regular,1,ap,8,Alabama,SEC,0,1179
+2025,regular,1,ap,9,LSU,SEC,0,1174
+2025,regular,1,ap,10,Miami,ACC,0,889
+2025,regular,1,ap,11,Arizona State,Big 12,0,791
+2025,regular,1,ap,12,Illinois,Big Ten,0,713
+2025,regular,1,ap,13,South Carolina,SEC,0,667
+2025,regular,1,ap,14,Michigan,Big Ten,0,662
+2025,regular,1,ap,15,Florida,SEC,0,626
+2025,regular,1,ap,16,SMU,ACC,0,565
+2025,regular,1,ap,17,Kansas State,Big 12,0,512
+2025,regular,1,ap,18,Oklahoma,SEC,0,463
+2025,regular,1,ap,19,Texas A&M,SEC,0,434
+2025,regular,1,ap,20,Indiana,Big Ten,0,423
+2025,regular,1,ap,21,Ole Miss,SEC,0,370
+2025,regular,1,ap,22,Iowa State,Big 12,0,309
+2025,regular,1,ap,23,Texas Tech,Big 12,0,274
+2025,regular,1,ap,24,Tennessee,SEC,0,192
+2025,regular,1,ap,25,Boise State,Mountain West,0,191
+2025,regular,2,ap,1,Ohio State,Big Ten,55,1636
+2025,regular,2,ap,2,Penn State,Big Ten,7,1558
+2025,regular,2,ap,3,LSU,SEC,3,1514
+2025,regular,2,ap,4,Georgia,SEC,0,1410
+2025,regular,2,ap,5,Miami,ACC,0,1360
+2025,regular,2,ap,6,Oregon,Big Ten,0,1302
+2025,regular,2,ap,7,Texas,SEC,0,1293
+2025,regular,2,ap,8,Clemson,ACC,0,1135
+2025,regular,2,ap,9,Notre Dame,FBS Independents,0,1068
+2025,regular,2,ap,10,South Carolina,SEC,0,882
+2025,regular,2,ap,11,Illinois,Big Ten,0,855
+2025,regular,2,ap,12,Arizona State,Big 12,0,850
+2025,regular,2,ap,13,Florida,SEC,0,737
+2025,regular,2,ap,14,Florida State,ACC,0,705
+2025,regular,2,ap,15,Michigan,Big Ten,0,686
+2025,regular,2,ap,16,Iowa State,Big 12,0,566
+2025,regular,2,ap,17,SMU,ACC,0,561
+2025,regular,2,ap,18,Oklahoma,SEC,0,519
+2025,regular,2,ap,19,Texas A&M,SEC,0,424
+2025,regular,2,ap,20,Ole Miss,SEC,0,393
+2025,regular,2,ap,21,Alabama,SEC,0,360
+2025,regular,2,ap,22,Tennessee,SEC,0,339
+2025,regular,2,ap,23,Indiana,Big Ten,0,257
+2025,regular,2,ap,24,Texas Tech,Big 12,0,247
+2025,regular,2,ap,25,Utah,Big 12,0,227
+2025,regular,3,ap,1,Ohio State,Big Ten,57,1614
+2025,regular,3,ap,2,Penn State,Big Ten,5,1524
+2025,regular,3,ap,3,LSU,SEC,2,1487
+2025,regular,3,ap,4,Oregon,Big Ten,1,1375
+2025,regular,3,ap,5,Miami,ACC,0,1360
+2025,regular,3,ap,6,Georgia,SEC,0,1350
+2025,regular,3,ap,7,Texas,SEC,0,1248
+2025,regular,3,ap,8,Notre Dame,FBS Independents,0,1086
+2025,regular,3,ap,9,Illinois,Big Ten,0,1001
+2025,regular,3,ap,10,Florida State,ACC,0,954
+2025,regular,3,ap,11,South Carolina,SEC,0,927
+2025,regular,3,ap,12,Clemson,ACC,0,894
+2025,regular,3,ap,13,Oklahoma,SEC,0,893
+2025,regular,3,ap,14,Iowa State,Big 12,0,794
+2025,regular,3,ap,15,Tennessee,SEC,0,537
+2025,regular,3,ap,16,Texas A&M,SEC,0,532
+2025,regular,3,ap,17,Ole Miss,SEC,0,518
+2025,regular,3,ap,18,South Florida,American Athletic,0,444
+2025,regular,3,ap,19,Alabama,SEC,0,396
+2025,regular,3,ap,20,Utah,Big 12,0,361
+2025,regular,3,ap,21,Texas Tech,Big 12,0,347
+2025,regular,3,ap,22,Indiana,Big Ten,0,331
+2025,regular,3,ap,23,Michigan,Big Ten,0,250
+2025,regular,3,ap,24,Auburn,SEC,0,172
+2025,regular,3,ap,25,Missouri,SEC,0,109
+2025,regular,4,ap,1,Ohio State,Big Ten,55,1631
+2025,regular,4,ap,2,Penn State,Big Ten,5,1490
+2025,regular,4,ap,3,LSU,SEC,2,1470
+2025,regular,4,ap,4,Miami,ACC,3,1434
+2025,regular,4,ap,5,Georgia,SEC,0,1428
+2025,regular,4,ap,6,Oregon,Big Ten,1,1423
+2025,regular,4,ap,7,Florida State,ACC,0,1123
+2025,regular,4,ap,8,Texas,SEC,0,1111
+2025,regular,4,ap,9,Illinois,Big Ten,0,1110
+2025,regular,4,ap,10,Texas A&M,SEC,0,1101
+2025,regular,4,ap,11,Oklahoma,SEC,0,1056
+2025,regular,4,ap,12,Iowa State,Big 12,0,820
+2025,regular,4,ap,13,Ole Miss,SEC,0,748
+2025,regular,4,ap,14,Alabama,SEC,0,599
+2025,regular,4,ap,15,Tennessee,SEC,0,583
+2025,regular,4,ap,16,Utah,Big 12,0,573
+2025,regular,4,ap,17,Texas Tech,Big 12,0,538
+2025,regular,4,ap,18,Georgia Tech,ACC,0,511
+2025,regular,4,ap,19,Indiana,Big Ten,0,458
+2025,regular,4,ap,20,Vanderbilt,SEC,0,397
+2025,regular,4,ap,21,Michigan,Big Ten,0,356
+2025,regular,4,ap,22,Auburn,SEC,0,344
+2025,regular,4,ap,23,Missouri,SEC,0,292
+2025,regular,4,ap,24,Notre Dame,FBS Independents,0,207
+2025,regular,4,ap,25,USC,Big Ten,0,105
+2025,regular,5,ap,1,Ohio State,Big Ten,52,1629
+2025,regular,5,ap,2,Miami,ACC,7,1479
+2025,regular,5,ap,3,Penn State,Big Ten,5,1460
+2025,regular,5,ap,4,LSU,SEC,0,1433
+2025,regular,5,ap,5,Georgia,SEC,0,1420
+2025,regular,5,ap,6,Oregon,Big Ten,1,1404
+2025,regular,5,ap,7,Oklahoma,SEC,1,1194
+2025,regular,5,ap,8,Florida State,ACC,0,1183
+2025,regular,5,ap,9,Texas A&M,SEC,0,1072
+2025,regular,5,ap,10,Texas,SEC,0,1057
+2025,regular,5,ap,11,Indiana,Big Ten,0,990
+2025,regular,5,ap,12,Texas Tech,Big 12,0,890
+2025,regular,5,ap,13,Ole Miss,SEC,0,843
+2025,regular,5,ap,14,Iowa State,Big 12,0,779
+2025,regular,5,ap,15,Tennessee,SEC,0,635
+2025,regular,5,ap,16,Georgia Tech,ACC,0,598
+2025,regular,5,ap,17,Alabama,SEC,0,595
+2025,regular,5,ap,18,Vanderbilt,SEC,0,546
+2025,regular,5,ap,19,Michigan,Big Ten,0,458
+2025,regular,5,ap,20,Missouri,SEC,0,452
+2025,regular,5,ap,21,USC,Big Ten,0,264
+2025,regular,5,ap,22,Notre Dame,FBS Independents,0,219
+2025,regular,5,ap,23,Illinois,Big Ten,0,145
+2025,regular,5,ap,24,TCU,Big 12,0,138
+2025,regular,5,ap,25,BYU,Big 12,0,131
+2025,regular,6,ap,1,Ohio State,Big Ten,46,1626
+2025,regular,6,ap,2,Oregon,Big Ten,16,1589
+2025,regular,6,ap,3,Miami,ACC,4,1529
+2025,regular,6,ap,4,Ole Miss,SEC,0,1354
+2025,regular,6,ap,5,Oklahoma,SEC,0,1313
+2025,regular,6,ap,6,Texas A&M,SEC,0,1308
+2025,regular,6,ap,7,Penn State,Big Ten,0,1179
+2025,regular,6,ap,8,Indiana,Big Ten,0,1156
+2025,regular,6,ap,9,Texas,SEC,0,1071
+2025,regular,6,ap,10,Alabama,SEC,0,1057
+2025,regular,6,ap,11,Texas Tech,Big 12,0,967
+2025,regular,6,ap,12,Georgia,SEC,0,965
+2025,regular,6,ap,13,LSU,SEC,0,838
+2025,regular,6,ap,14,Iowa State,Big 12,0,830
+2025,regular,6,ap,15,Tennessee,SEC,0,697
+2025,regular,6,ap,16,Vanderbilt,SEC,0,640
+2025,regular,6,ap,17,Georgia Tech,ACC,0,549
+2025,regular,6,ap,18,Florida State,ACC,0,535
+2025,regular,6,ap,19,Missouri,SEC,0,528
+2025,regular,6,ap,20,Michigan,Big Ten,0,422
+2025,regular,6,ap,21,Notre Dame,FBS Independents,0,333
+2025,regular,6,ap,22,Illinois,Big Ten,0,271
+2025,regular,6,ap,23,BYU,Big 12,0,191
+2025,regular,6,ap,24,Virginia,ACC,0,125
+2025,regular,6,ap,25,Arizona State,Big 12,0,107
+2025,regular,7,ap,1,Ohio State,Big Ten,40,1620
+2025,regular,7,ap,2,Miami,ACC,21,1579
+2025,regular,7,ap,3,Oregon,Big Ten,5,1542
+2025,regular,7,ap,4,Ole Miss,SEC,0,1376
+2025,regular,7,ap,5,Texas A&M,SEC,0,1361
+2025,regular,7,ap,6,Oklahoma,SEC,0,1346
+2025,regular,7,ap,7,Indiana,Big Ten,0,1213
+2025,regular,7,ap,8,Alabama,SEC,0,1202
+2025,regular,7,ap,9,Texas Tech,Big 12,0,1135
+2025,regular,7,ap,10,Georgia,SEC,0,1084
+2025,regular,7,ap,11,LSU,SEC,0,949
+2025,regular,7,ap,12,Tennessee,SEC,0,892
+2025,regular,7,ap,13,Georgia Tech,ACC,0,782
+2025,regular,7,ap,14,Missouri,SEC,0,775
+2025,regular,7,ap,15,Michigan,Big Ten,0,707
+2025,regular,7,ap,16,Notre Dame,FBS Independents,0,610
+2025,regular,7,ap,17,Illinois,Big Ten,0,522
+2025,regular,7,ap,18,BYU,Big 12,0,463
+2025,regular,7,ap,19,Virginia,ACC,0,452
+2025,regular,7,ap,20,Vanderbilt,SEC,0,407
+2025,regular,7,ap,21,Arizona State,Big 12,0,214
+2025,regular,7,ap,22,Iowa State,Big 12,0,165
+2025,regular,7,ap,23,Memphis,American Athletic,0,153
+2025,regular,7,ap,24,South Florida,American Athletic,0,150
+2025,regular,7,ap,25,Florida State,ACC,0,147
+2025,regular,8,ap,1,Ohio State,Big Ten,50,1631
+2025,regular,8,ap,2,Miami,ACC,13,1582
+2025,regular,8,ap,3,Indiana,Big Ten,3,1531
+2025,regular,8,ap,4,Texas A&M,SEC,0,1433
+2025,regular,8,ap,5,Ole Miss,SEC,0,1331
+2025,regular,8,ap,6,Alabama,SEC,0,1315
+2025,regular,8,ap,7,Texas Tech,Big 12,0,1266
+2025,regular,8,ap,8,Oregon,Big Ten,0,1175
+2025,regular,8,ap,9,Georgia,SEC,0,1148
+2025,regular,8,ap,10,LSU,SEC,0,1012
+2025,regular,8,ap,11,Tennessee,SEC,0,939
+2025,regular,8,ap,12,Georgia Tech,ACC,0,904
+2025,regular,8,ap,13,Notre Dame,FBS Independents,0,793
+2025,regular,8,ap,14,Oklahoma,SEC,0,786
+2025,regular,8,ap,15,BYU,Big 12,0,655
+2025,regular,8,ap,16,Missouri,SEC,0,649
+2025,regular,8,ap,17,Vanderbilt,SEC,0,547
+2025,regular,8,ap,18,Virginia,ACC,0,521
+2025,regular,8,ap,19,South Florida,American Athletic,0,398
+2025,regular,8,ap,20,USC,Big Ten,0,361
+2025,regular,8,ap,21,Texas,SEC,0,319
+2025,regular,8,ap,22,Memphis,American Athletic,0,285
+2025,regular,8,ap,23,Utah,Big 12,0,261
+2025,regular,8,ap,24,Cincinnati,Big 12,0,184
+2025,regular,8,ap,25,Nebraska,Big Ten,0,149
+2025,regular,9,ap,1,Ohio State,Big Ten,60,1643
+2025,regular,9,ap,2,Indiana,Big Ten,6,1583
+2025,regular,9,ap,3,Texas A&M,SEC,0,1499
+2025,regular,9,ap,4,Alabama,SEC,0,1463
+2025,regular,9,ap,5,Georgia,SEC,0,1360
+2025,regular,9,ap,6,Oregon,Big Ten,0,1317
+2025,regular,9,ap,7,Georgia Tech,ACC,0,1143
+2025,regular,9,ap,8,Ole Miss,SEC,0,1119
+2025,regular,9,ap,9,Miami,ACC,0,1073
+2025,regular,9,ap,10,Vanderbilt,SEC,0,1031
+2025,regular,9,ap,11,BYU,Big 12,0,975
+2025,regular,9,ap,12,Notre Dame,FBS Independents,0,964
+2025,regular,9,ap,13,Oklahoma,SEC,0,882
+2025,regular,9,ap,14,Texas Tech,Big 12,0,782
+2025,regular,9,ap,15,Missouri,SEC,0,748
+2025,regular,9,ap,16,Virginia,ACC,0,624
+2025,regular,9,ap,17,Tennessee,SEC,0,527
+2025,regular,9,ap,18,South Florida,American Athletic,0,501
+2025,regular,9,ap,19,Louisville,ACC,0,458
+2025,regular,9,ap,20,LSU,SEC,0,388
+2025,regular,9,ap,21,Cincinnati,Big 12,0,350
+2025,regular,9,ap,22,Texas,SEC,0,318
+2025,regular,9,ap,23,Illinois,Big Ten,0,168
+2025,regular,9,ap,24,Arizona State,Big 12,0,155
+2025,regular,9,ap,25,Michigan,Big Ten,0,123
+2025,regular,10,ap,1,Ohio State,Big Ten,54,1633
+2025,regular,10,ap,2,Indiana,Big Ten,11,1589
+2025,regular,10,ap,3,Texas A&M,SEC,1,1523
+2025,regular,10,ap,4,Alabama,SEC,0,1445
+2025,regular,10,ap,5,Georgia,SEC,0,1359
+2025,regular,10,ap,6,Oregon,Big Ten,0,1249
+2025,regular,10,ap,7,Ole Miss,SEC,0,1212
+2025,regular,10,ap,8,Georgia Tech,ACC,0,1172
+2025,regular,10,ap,9,Vanderbilt,SEC,0,1098
+2025,regular,10,ap,10,BYU,Big 12,0,1069
+2025,regular,10,ap,10,Miami,ACC,0,1069
+2025,regular,10,ap,12,Notre Dame,FBS Independents,0,944
+2025,regular,10,ap,13,Texas Tech,Big 12,0,876
+2025,regular,10,ap,14,Tennessee,SEC,0,684
+2025,regular,10,ap,15,Virginia,ACC,0,660
+2025,regular,10,ap,16,Louisville,ACC,0,647
+2025,regular,10,ap,17,Cincinnati,Big 12,0,609
+2025,regular,10,ap,18,Oklahoma,SEC,0,485
+2025,regular,10,ap,19,Missouri,SEC,0,447
+2025,regular,10,ap,20,Texas,SEC,0,371
+2025,regular,10,ap,21,Michigan,Big Ten,0,264
+2025,regular,10,ap,22,Houston,Big 12,0,256
+2025,regular,10,ap,23,USC,Big Ten,0,215
+2025,regular,10,ap,24,Utah,Big 12,0,162
+2025,regular,10,ap,25,Memphis,American Athletic,0,130
+2025,regular,11,cfp,1,Ohio State,Big Ten,0,0
+2025,regular,11,cfp,2,Indiana,Big Ten,0,0
+2025,regular,11,cfp,3,Texas A&M,SEC,0,0
+2025,regular,11,cfp,4,Alabama,SEC,0,0
+2025,regular,11,cfp,5,Georgia,SEC,0,0
+2025,regular,11,cfp,6,Ole Miss,SEC,0,0
+2025,regular,11,cfp,7,BYU,Big 12,0,0
+2025,regular,11,cfp,8,Texas Tech,Big 12,0,0
+2025,regular,11,cfp,9,Oregon,Big Ten,0,0
+2025,regular,11,cfp,10,Notre Dame,FBS Independents,0,0
+2025,regular,11,cfp,11,Texas,SEC,0,0
+2025,regular,11,cfp,12,Oklahoma,SEC,0,0
+2025,regular,11,cfp,13,Utah,Big 12,0,0
+2025,regular,11,cfp,14,Virginia,ACC,0,0
+2025,regular,11,cfp,15,Louisville,ACC,0,0
+2025,regular,11,cfp,16,Vanderbilt,SEC,0,0
+2025,regular,11,cfp,17,Georgia Tech,ACC,0,0
+2025,regular,11,cfp,18,Miami,ACC,0,0
+2025,regular,11,cfp,19,USC,Big Ten,0,0
+2025,regular,11,cfp,20,Iowa,Big Ten,0,0
+2025,regular,11,cfp,21,Michigan,Big Ten,0,0
+2025,regular,11,cfp,22,Missouri,SEC,0,0
+2025,regular,11,cfp,23,Washington,Big Ten,0,0
+2025,regular,11,cfp,24,Pittsburgh,ACC,0,0
+2025,regular,11,cfp,25,Tennessee,SEC,0,0
+2025,regular,11,ap,1,Ohio State,Big Ten,54,1633
+2025,regular,11,ap,2,Indiana,Big Ten,11,1591
+2025,regular,11,ap,3,Texas A&M,SEC,1,1523
+2025,regular,11,ap,4,Alabama,SEC,0,1447
+2025,regular,11,ap,5,Georgia,SEC,0,1364
+2025,regular,11,ap,6,Oregon,Big Ten,0,1293
+2025,regular,11,ap,7,Ole Miss,SEC,0,1263
+2025,regular,11,ap,8,BYU,Big 12,0,1207
+2025,regular,11,ap,9,Texas Tech,Big 12,0,1091
+2025,regular,11,ap,10,Notre Dame,FBS Independents,0,1071
+2025,regular,11,ap,11,Oklahoma,SEC,0,850
+2025,regular,11,ap,12,Virginia,ACC,0,838
+2025,regular,11,ap,13,Texas,SEC,0,835
+2025,regular,11,ap,14,Louisville,ACC,0,827
+2025,regular,11,ap,15,Vanderbilt,SEC,0,698
+2025,regular,11,ap,16,Georgia Tech,ACC,0,667
+2025,regular,11,ap,17,Utah,Big 12,0,560
+2025,regular,11,ap,18,Miami,ACC,0,558
+2025,regular,11,ap,19,Missouri,SEC,0,491
+2025,regular,11,ap,20,USC,Big Ten,0,453
+2025,regular,11,ap,21,Michigan,Big Ten,0,344
+2025,regular,11,ap,22,Memphis,American Athletic,0,224
+2025,regular,11,ap,23,Tennessee,SEC,0,171
+2025,regular,11,ap,24,Washington,Big Ten,0,110
+2025,regular,11,ap,25,Cincinnati,Big 12,0,77
+2025,regular,12,ap,1,Ohio State,Big Ten,55,1610
+2025,regular,12,ap,2,Indiana,Big Ten,6,1549
+2025,regular,12,ap,3,Texas A&M,SEC,4,1518
+2025,regular,12,ap,4,Alabama,SEC,0,1427
+2025,regular,12,ap,5,Georgia,SEC,0,1353
+2025,regular,12,ap,6,Ole Miss,SEC,0,1248
+2025,regular,12,ap,7,Oregon,Big Ten,0,1245
+2025,regular,12,ap,8,Texas Tech,Big 12,0,1211
+2025,regular,12,ap,9,Notre Dame,FBS Independents,0,1102
+2025,regular,12,ap,10,Texas,SEC,0,961
+2025,regular,12,ap,11,Oklahoma,SEC,0,928
+2025,regular,12,ap,12,BYU,Big 12,0,898
+2025,regular,12,ap,13,Vanderbilt,SEC,0,821
+2025,regular,12,ap,14,Georgia Tech,ACC,0,788
+2025,regular,12,ap,15,Utah,Big 12,0,695
+2025,regular,12,ap,16,Miami,ACC,0,683
+2025,regular,12,ap,17,USC,Big Ten,0,645
+2025,regular,12,ap,18,Michigan,Big Ten,0,498
+2025,regular,12,ap,19,Louisville,ACC,0,326
+2025,regular,12,ap,20,Virginia,ACC,0,313
+2025,regular,12,ap,21,Tennessee,SEC,0,276
+2025,regular,12,ap,22,Cincinnati,Big 12,0,224
+2025,regular,12,ap,23,Pittsburgh,ACC,0,201
+2025,regular,12,ap,24,James Madison,Sun Belt,0,167
+2025,regular,12,ap,25,South Florida,American Athletic,0,116
+2025,regular,12,cfp,1,Ohio State,Big Ten,0,0
+2025,regular,12,cfp,2,Indiana,Big Ten,0,0
+2025,regular,12,cfp,3,Texas A&M,SEC,0,0
+2025,regular,12,cfp,4,Alabama,SEC,0,0
+2025,regular,12,cfp,5,Georgia,SEC,0,0
+2025,regular,12,cfp,6,Texas Tech,Big 12,0,0
+2025,regular,12,cfp,7,Ole Miss,SEC,0,0
+2025,regular,12,cfp,8,Oregon,Big Ten,0,0
+2025,regular,12,cfp,9,Notre Dame,FBS Independents,0,0
+2025,regular,12,cfp,10,Texas,SEC,0,0
+2025,regular,12,cfp,11,Oklahoma,SEC,0,0
+2025,regular,12,cfp,12,BYU,Big 12,0,0
+2025,regular,12,cfp,13,Utah,Big 12,0,0
+2025,regular,12,cfp,14,Vanderbilt,SEC,0,0
+2025,regular,12,cfp,15,Miami,ACC,0,0
+2025,regular,12,cfp,16,Georgia Tech,ACC,0,0
+2025,regular,12,cfp,17,USC,Big Ten,0,0
+2025,regular,12,cfp,18,Michigan,Big Ten,0,0
+2025,regular,12,cfp,19,Virginia,ACC,0,0
+2025,regular,12,cfp,20,Louisville,ACC,0,0
+2025,regular,12,cfp,21,Iowa,Big Ten,0,0
+2025,regular,12,cfp,22,Pittsburgh,ACC,0,0
+2025,regular,12,cfp,23,Tennessee,SEC,0,0
+2025,regular,12,cfp,24,South Florida,American Athletic,0,0
+2025,regular,12,cfp,25,Cincinnati,Big 12,0,0
+2025,regular,13,cfp,1,Ohio State,Big Ten,0,0
+2025,regular,13,cfp,2,Indiana,Big Ten,0,0
+2025,regular,13,cfp,3,Texas A&M,SEC,0,0
+2025,regular,13,cfp,4,Georgia,SEC,0,0
+2025,regular,13,cfp,5,Texas Tech,Big 12,0,0
+2025,regular,13,cfp,6,Ole Miss,SEC,0,0
+2025,regular,13,cfp,7,Oregon,Big Ten,0,0
+2025,regular,13,cfp,8,Oklahoma,SEC,0,0
+2025,regular,13,cfp,9,Notre Dame,FBS Independents,0,0
+2025,regular,13,cfp,10,Alabama,SEC,0,0
+2025,regular,13,cfp,11,BYU,Big 12,0,0
+2025,regular,13,cfp,12,Utah,Big 12,0,0
+2025,regular,13,cfp,13,Miami,ACC,0,0
+2025,regular,13,cfp,14,Vanderbilt,SEC,0,0
+2025,regular,13,cfp,15,USC,Big Ten,0,0
+2025,regular,13,cfp,16,Georgia Tech,ACC,0,0
+2025,regular,13,cfp,17,Texas,SEC,0,0
+2025,regular,13,cfp,18,Michigan,Big Ten,0,0
+2025,regular,13,cfp,19,Virginia,ACC,0,0
+2025,regular,13,cfp,20,Tennessee,SEC,0,0
+2025,regular,13,cfp,21,Illinois,Big Ten,0,0
+2025,regular,13,cfp,22,Missouri,SEC,0,0
+2025,regular,13,cfp,23,Houston,Big 12,0,0
+2025,regular,13,cfp,24,Tulane,American Athletic,0,0
+2025,regular,13,cfp,25,Arizona State,Big 12,0,0
+2025,regular,13,ap,1,Ohio State,Big Ten,57,1639
+2025,regular,13,ap,2,Indiana,Big Ten,8,1588
+2025,regular,13,ap,3,Texas A&M,SEC,1,1520
+2025,regular,13,ap,4,Georgia,SEC,0,1447
+2025,regular,13,ap,5,Ole Miss,SEC,0,1331
+2025,regular,13,ap,6,Oregon,Big Ten,0,1299
+2025,regular,13,ap,6,Texas Tech,Big 12,0,1299
+2025,regular,13,ap,8,Oklahoma,SEC,0,1162
+2025,regular,13,ap,9,Notre Dame,FBS Independents,0,1130
+2025,regular,13,ap,10,Alabama,SEC,0,1062
+2025,regular,13,ap,11,BYU,Big 12,0,992
+2025,regular,13,ap,12,Vanderbilt,SEC,0,833
+2025,regular,13,ap,13,Utah,Big 12,0,795
+2025,regular,13,ap,14,Miami,ACC,0,773
+2025,regular,13,ap,15,Georgia Tech,ACC,0,768
+2025,regular,13,ap,16,USC,Big Ten,0,707
+2025,regular,13,ap,17,Texas,SEC,0,564
+2025,regular,13,ap,18,Michigan,Big Ten,0,547
+2025,regular,13,ap,19,Virginia,ACC,0,476
+2025,regular,13,ap,20,Tennessee,SEC,0,360
+2025,regular,13,ap,21,James Madison,Sun Belt,0,294
+2025,regular,13,ap,22,North Texas,American Athletic,0,186
+2025,regular,13,ap,23,Missouri,SEC,0,173
+2025,regular,13,ap,24,Tulane,American Athletic,0,167
+2025,regular,13,ap,25,Houston,Big 12,0,107
+2025,regular,14,ap,1,Ohio State,Big Ten,58,1640
+2025,regular,14,ap,2,Indiana,Big Ten,7,1587
+2025,regular,14,ap,3,Texas A&M,SEC,1,1522
+2025,regular,14,ap,4,Georgia,SEC,0,1444
+2025,regular,14,ap,5,Oregon,Big Ten,0,1326
+2025,regular,14,ap,6,Ole Miss,SEC,0,1320
+2025,regular,14,ap,7,Texas Tech,Big 12,0,1295
+2025,regular,14,ap,8,Oklahoma,SEC,0,1169
+2025,regular,14,ap,9,Notre Dame,FBS Independents,0,1117
+2025,regular,14,ap,10,Alabama,SEC,0,1056
+2025,regular,14,ap,11,BYU,Big 12,0,1014
+2025,regular,14,ap,12,Vanderbilt,SEC,0,876
+2025,regular,14,ap,13,Miami,ACC,0,849
+2025,regular,14,ap,14,Utah,Big 12,0,809
+2025,regular,14,ap,15,Michigan,Big Ten,0,664
+2025,regular,14,ap,16,Texas,SEC,0,646
+2025,regular,14,ap,17,Virginia,ACC,0,556
+2025,regular,14,ap,18,Tennessee,SEC,0,473
+2025,regular,14,ap,19,USC,Big Ten,0,464
+2025,regular,14,ap,20,James Madison,Sun Belt,0,331
+2025,regular,14,ap,21,North Texas,American Athletic,0,288
+2025,regular,14,ap,22,Tulane,American Athletic,0,255
+2025,regular,14,ap,23,Georgia Tech,ACC,0,228
+2025,regular,14,ap,24,Pittsburgh,ACC,0,174
+2025,regular,14,ap,25,SMU,ACC,0,121
+2025,regular,14,cfp,1,Ohio State,Big Ten,0,0
+2025,regular,14,cfp,2,Indiana,Big Ten,0,0
+2025,regular,14,cfp,3,Texas A&M,SEC,0,0
+2025,regular,14,cfp,4,Georgia,SEC,0,0
+2025,regular,14,cfp,5,Texas Tech,Big 12,0,0
+2025,regular,14,cfp,6,Oregon,Big Ten,0,0
+2025,regular,14,cfp,7,Ole Miss,SEC,0,0
+2025,regular,14,cfp,8,Oklahoma,SEC,0,0
+2025,regular,14,cfp,9,Notre Dame,FBS Independents,0,0
+2025,regular,14,cfp,10,Alabama,SEC,0,0
+2025,regular,14,cfp,11,BYU,Big 12,0,0
+2025,regular,14,cfp,12,Miami,ACC,0,0
+2025,regular,14,cfp,13,Utah,Big 12,0,0
+2025,regular,14,cfp,14,Vanderbilt,SEC,0,0
+2025,regular,14,cfp,15,Michigan,Big Ten,0,0
+2025,regular,14,cfp,16,Texas,SEC,0,0
+2025,regular,14,cfp,17,USC,Big Ten,0,0
+2025,regular,14,cfp,18,Virginia,ACC,0,0
+2025,regular,14,cfp,19,Tennessee,SEC,0,0
+2025,regular,14,cfp,20,Arizona State,Big 12,0,0
+2025,regular,14,cfp,21,SMU,ACC,0,0
+2025,regular,14,cfp,22,Pittsburgh,ACC,0,0
+2025,regular,14,cfp,23,Georgia Tech,ACC,0,0
+2025,regular,14,cfp,24,Tulane,American Athletic,0,0
+2025,regular,14,cfp,25,Arizona,Big 12,0,0
+2025,regular,15,ap,1,Ohio State,Big Ten,61,1645
+2025,regular,15,ap,2,Indiana,Big Ten,5,1589
+2025,regular,15,ap,3,Georgia,SEC,0,1504
+2025,regular,15,ap,4,Oregon,Big Ten,0,1396
+2025,regular,15,ap,5,Texas Tech,Big 12,0,1366
+2025,regular,15,ap,6,Ole Miss,SEC,0,1350
+2025,regular,15,ap,7,Texas A&M,SEC,0,1282
+2025,regular,15,ap,8,Oklahoma,SEC,0,1140
+2025,regular,15,ap,9,Notre Dame,FBS Independents,0,1100
+2025,regular,15,ap,10,Alabama,SEC,0,1053
+2025,regular,15,ap,11,BYU,Big 12,0,982
+2025,regular,15,ap,12,Miami,ACC,0,898
+2025,regular,15,ap,13,Vanderbilt,SEC,0,871
+2025,regular,15,ap,14,Texas,SEC,0,861
+2025,regular,15,ap,15,Utah,Big 12,0,739
+2025,regular,15,ap,16,Virginia,ACC,0,637
+2025,regular,15,ap,17,USC,Big Ten,0,566
+2025,regular,15,ap,18,Michigan,Big Ten,0,441
+2025,regular,15,ap,19,James Madison,Sun Belt,0,417
+2025,regular,15,ap,20,North Texas,American Athletic,0,402
+2025,regular,15,ap,21,Tulane,American Athletic,0,373
+2025,regular,15,ap,22,Arizona,Big 12,0,257
+2025,regular,15,ap,23,Navy,American Athletic,0,146
+2025,regular,15,ap,24,Georgia Tech,ACC,0,90
+2025,regular,15,ap,25,Missouri,SEC,0,73
+2025,regular,15,cfp,1,Ohio State,Big Ten,0,0
+2025,regular,15,cfp,2,Indiana,Big Ten,0,0
+2025,regular,15,cfp,3,Georgia,SEC,0,0
+2025,regular,15,cfp,4,Texas Tech,Big 12,0,0
+2025,regular,15,cfp,5,Oregon,Big Ten,0,0
+2025,regular,15,cfp,6,Ole Miss,SEC,0,0
+2025,regular,15,cfp,7,Texas A&M,SEC,0,0
+2025,regular,15,cfp,8,Oklahoma,SEC,0,0
+2025,regular,15,cfp,9,Alabama,SEC,0,0
+2025,regular,15,cfp,10,Notre Dame,FBS Independents,0,0
+2025,regular,15,cfp,11,BYU,Big 12,0,0
+2025,regular,15,cfp,12,Miami,ACC,0,0
+2025,regular,15,cfp,13,Texas,SEC,0,0
+2025,regular,15,cfp,14,Vanderbilt,SEC,0,0
+2025,regular,15,cfp,15,Utah,Big 12,0,0
+2025,regular,15,cfp,16,USC,Big Ten,0,0
+2025,regular,15,cfp,17,Virginia,ACC,0,0
+2025,regular,15,cfp,18,Arizona,Big 12,0,0
+2025,regular,15,cfp,19,Michigan,Big Ten,0,0
+2025,regular,15,cfp,20,Tulane,American Athletic,0,0
+2025,regular,15,cfp,21,Houston,Big 12,0,0
+2025,regular,15,cfp,22,Georgia Tech,ACC,0,0
+2025,regular,15,cfp,23,Iowa,Big Ten,0,0
+2025,regular,15,cfp,24,North Texas,American Athletic,0,0
+2025,regular,15,cfp,25,James Madison,Sun Belt,0,0
+2025,regular,16,ap,1,Indiana,Big Ten,66,1650
+2025,regular,16,ap,2,Georgia,SEC,0,1550
+2025,regular,16,ap,3,Ohio State,Big Ten,0,1538
+2025,regular,16,ap,4,Texas Tech,Big 12,0,1452
+2025,regular,16,ap,5,Oregon,Big Ten,0,1358
+2025,regular,16,ap,6,Ole Miss,SEC,0,1323
+2025,regular,16,ap,7,Texas A&M,SEC,0,1278
+2025,regular,16,ap,8,Oklahoma,SEC,0,1154
+2025,regular,16,ap,9,Notre Dame,FBS Independents,0,1094
+2025,regular,16,ap,10,Miami,ACC,0,1017
+2025,regular,16,ap,11,Alabama,SEC,0,973
+2025,regular,16,ap,12,BYU,Big 12,0,899
+2025,regular,16,ap,13,Vanderbilt,SEC,0,880
+2025,regular,16,ap,14,Texas,SEC,0,872
+2025,regular,16,ap,15,Utah,Big 12,0,748
+2025,regular,16,ap,16,USC,Big Ten,0,609
+2025,regular,16,ap,17,Tulane,American Athletic,0,521
+2025,regular,16,ap,18,Michigan,Big Ten,0,503
+2025,regular,16,ap,19,James Madison,Sun Belt,0,490
+2025,regular,16,ap,20,Virginia,ACC,0,323
+2025,regular,16,ap,21,Arizona,Big 12,0,322
+2025,regular,16,ap,22,Navy,American Athletic,0,173
+2025,regular,16,ap,23,North Texas,American Athletic,0,151
+2025,regular,16,ap,24,Georgia Tech,ACC,0,147
+2025,regular,16,ap,25,Missouri,SEC,0,92
+2025,regular,16,cfp,1,Indiana,Big Ten,0,0
+2025,regular,16,cfp,2,Ohio State,Big Ten,0,0
+2025,regular,16,cfp,3,Georgia,SEC,0,0
+2025,regular,16,cfp,4,Texas Tech,Big 12,0,0
+2025,regular,16,cfp,5,Oregon,Big Ten,0,0
+2025,regular,16,cfp,6,Ole Miss,SEC,0,0
+2025,regular,16,cfp,7,Texas A&M,SEC,0,0
+2025,regular,16,cfp,8,Oklahoma,SEC,0,0
+2025,regular,16,cfp,9,Alabama,SEC,0,0
+2025,regular,16,cfp,10,Miami,ACC,0,0
+2025,regular,16,cfp,11,Notre Dame,FBS Independents,0,0
+2025,regular,16,cfp,12,BYU,Big 12,0,0
+2025,regular,16,cfp,13,Texas,SEC,0,0
+2025,regular,16,cfp,14,Vanderbilt,SEC,0,0
+2025,regular,16,cfp,15,Utah,Big 12,0,0
+2025,regular,16,cfp,16,USC,Big Ten,0,0
+2025,regular,16,cfp,17,Arizona,Big 12,0,0
+2025,regular,16,cfp,18,Michigan,Big Ten,0,0
+2025,regular,16,cfp,19,Virginia,ACC,0,0
+2025,regular,16,cfp,20,Tulane,American Athletic,0,0
+2025,regular,16,cfp,21,Houston,Big 12,0,0
+2025,regular,16,cfp,22,Georgia Tech,ACC,0,0
+2025,regular,16,cfp,23,Iowa,Big Ten,0,0
+2025,regular,16,cfp,24,James Madison,Sun Belt,0,0
+2025,regular,16,cfp,25,North Texas,American Athletic,0,0
+2025,postseason,1,ap,1,Indiana,Big Ten,66,1650
+2025,postseason,1,ap,2,Miami,ACC,0,1584
+2025,postseason,1,ap,3,Ole Miss,SEC,0,1492
+2025,postseason,1,ap,4,Oregon,Big Ten,0,1429
+2025,postseason,1,ap,5,Ohio State,Big Ten,0,1378
+2025,postseason,1,ap,6,Georgia,SEC,0,1364
+2025,postseason,1,ap,7,Texas Tech,Big 12,0,1232
+2025,postseason,1,ap,8,Texas A&M,SEC,0,1157
+2025,postseason,1,ap,9,Alabama,SEC,0,1065
+2025,postseason,1,ap,10,Notre Dame,FBS Independents,0,1049
+2025,postseason,1,ap,11,BYU,Big 12,0,961
+2025,postseason,1,ap,12,Texas,SEC,0,952
+2025,postseason,1,ap,13,Oklahoma,SEC,0,941
+2025,postseason,1,ap,14,Utah,Big 12,0,812
+2025,postseason,1,ap,15,Vanderbilt,SEC,0,623
+2025,postseason,1,ap,16,Virginia,ACC,0,603
+2025,postseason,1,ap,17,Iowa,Big Ten,0,430
+2025,postseason,1,ap,18,Tulane,American Athletic,0,404
+2025,postseason,1,ap,19,James Madison,Sun Belt,0,399
+2025,postseason,1,ap,20,USC,Big Ten,0,378
+2025,postseason,1,ap,21,Michigan,Big Ten,0,276
+2025,postseason,1,ap,22,Houston,Big 12,0,270
+2025,postseason,1,ap,23,Navy,American Athletic,0,227
+2025,postseason,1,ap,24,North Texas,American Athletic,0,191
+2025,postseason,1,ap,25,TCU,Big 12,0,125
