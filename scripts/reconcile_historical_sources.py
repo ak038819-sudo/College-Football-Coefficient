@@ -301,6 +301,12 @@ def reconcile(archive, records, first=FIRST, last=LAST):
 
 
 UNMATCHED_SHOWN = 40
+# How many disagreeing team-seasons are named in the summary. The counts are
+# exact either way; this only bounds the JSON.
+MISMATCHES_SHOWN = 25
+# The four numbers of a won-lost-tied line, in the order a mismatch reports
+# them: games, wins, losses, ties.
+TALLY = ("games", "wins", "losses", "ties")
 
 
 def summarize(rows, first, last):
@@ -318,6 +324,16 @@ def summarize(rows, first, last):
     # Most seasons first: a name the records feed never carries in thirty
     # years is a different problem from one missing in a single season.
     ranked = sorted(unmatched.items(), key=lambda pair: (-pair[1], pair[0]))
+    # The mismatches NAMED, not just counted. These are the findings that say
+    # the two feeds disagree about a team-season that both of them carry --
+    # the most serious thing this gate can report, and the only kind a person
+    # has to look at row by row. Counting them alone leaves the actual rows
+    # readable only in a rendered run summary and a report artifact, so they
+    # go in the machine-readable summary too.
+    disagreeing = [row for row in rows
+                   if any(finding.endswith('_mismatch')
+                          for finding in (row['findings'] or '').split(';'))]
+    disagreeing.sort(key=lambda row: (row['season'], row['team_raw']))
     return {
         "years": [first, last],
         "team_seasons": len(rows),
@@ -330,6 +346,19 @@ def summarize(rows, first, last):
                                      if row.get("empty_reference_line")),
         "unmatched_team_names": len(unmatched),
         "unmatched_team_seasons_by_name": dict(ranked[:UNMATCHED_SHOWN]),
+        "mismatched_team_seasons": len(disagreeing),
+        "mismatches": [
+            {"season": row["season"], "team_raw": row["team_raw"],
+             "findings": row["findings"],
+             # .get, because summarize() is also handed rows built by
+             # hand; a real row from reconcile() always carries all eight.
+             "staged": {kind: [row.get(f"staged_{kind}_{field}")
+                               for field in TALLY]
+                        for kind in SEASON_TYPES},
+             "reference": {kind: [row.get(f"reference_{kind}_{field}")
+                                  for field in TALLY]
+                           for kind in SEASON_TYPES}}
+            for row in disagreeing[:MISMATCHES_SHOWN]],
         "production_promotion_allowed": False,
         "note": "Both feeds are collegefootballdata.com, so agreement means "
                 "the import is faithful to the provider, not that the "

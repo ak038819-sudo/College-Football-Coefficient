@@ -451,6 +451,49 @@ class TestTheSummary:
         assert summary['seasons_with_findings'] == {'1950': 1, '1951': 1}
         assert summary['production_promotion_allowed'] is False
 
+    def test_a_mismatch_is_named_and_not_merely_counted(self, archive,
+                                                        tmp_path):
+        """The two feeds disagreeing about a team-season both carry is the
+        worst thing this gate can find, and the only kind of finding a
+        person has to read row by row. Counting them left the rows visible
+        only in a rendered run summary and a report artifact, so the
+        numbers are in the JSON too.
+        """
+        game(archive, 1, 'Army', 'Navy', 21, 0)
+        rows = run(archive, tmp_path, {1950: [
+            # The records feed says Army went 2-0. One game is staged.
+            record('Army', regular=(2, 2, 0, 0)),
+            record('Navy', regular=(1, 0, 1, 0))]})
+        summary = reconciler.summarize(rows, 1950, 1950)
+        assert summary['mismatched_team_seasons'] == 1
+        named = summary['mismatches']
+        assert len(named) == 1
+        assert named[0]['season'] == 1950
+        assert named[0]['team_raw'] == 'Army'
+        assert 'mismatch' in named[0]['findings']
+        # games, wins, losses, ties -- from both feeds, so the row can be
+        # read without opening the CSV.
+        assert named[0]['staged']['regular'] == [1, 1, 0, 0]
+        assert named[0]['reference']['regular'] == [2, 2, 0, 0]
+
+    def test_a_name_the_records_feed_never_carries_is_not_a_mismatch(self):
+        # no_reference_line is the identity map's work list, not a
+        # disagreement: there is nothing to disagree with.
+        summary = reconciler.summarize(
+            [{'season': 1890, 'team_raw': 'Ursinus',
+              'findings': 'no_reference_line', 'reconciled': False}],
+            1890, 1890)
+        assert summary['mismatched_team_seasons'] == 0
+        assert summary['mismatches'] == []
+
+    def test_the_named_mismatches_are_bounded_but_the_count_is_not(self):
+        rows = [{'season': 1900 + index, 'team_raw': f'Team {index:03d}',
+                 'findings': 'regular_result_mismatch', 'reconciled': False}
+                for index in range(40)]
+        summary = reconciler.summarize(rows, 1900, 1939)
+        assert summary['mismatched_team_seasons'] == 40
+        assert len(summary['mismatches']) == 25
+
     def test_it_says_the_two_feeds_are_the_same_provider(self):
         summary = reconciler.summarize([], 1946, 1979)
         assert 'collegefootballdata.com' in summary['note']
