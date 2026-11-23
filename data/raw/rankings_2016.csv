@@ -1,0 +1,551 @@
+season_year,season_type,week,poll,rank,school,conference,first_place_votes,points
+2016,regular,11,ap,22,Florida,SEC,0,390
+2016,regular,11,ap,17,Oklahoma State,Big 12,0,516
+2016,regular,11,ap,25,Baylor,Big 12,0,90
+2016,regular,11,ap,11,West Virginia,Big 12,0,805
+2016,regular,11,ap,4,Washington,Pac-12,0,1364
+2016,regular,11,ap,23,Washington State,Pac-12,0,305
+2016,regular,11,ap,8,Auburn,SEC,0,1081
+2016,regular,11,ap,19,LSU,SEC,0,454
+2016,regular,11,ap,13,Utah,Pac-12,0,686
+2016,regular,11,ap,16,Colorado,Pac-12,0,550
+2016,regular,11,ap,1,Alabama,SEC,60,1524
+2016,regular,11,ap,14,Western Michigan,Mid-American,0,583
+2016,regular,11,ap,10,Texas A&M,SEC,0,820
+2016,regular,11,ap,6,Ohio State,Big Ten,0,1245
+2016,regular,11,ap,2,Michigan,Big Ten,1,1432
+2016,regular,11,ap,12,Penn State,Big Ten,0,752
+2016,regular,11,ap,7,Wisconsin,Big Ten,0,1159
+2016,regular,11,ap,21,Nebraska,Big Ten,0,434
+2016,regular,11,ap,9,Oklahoma,Big 12,0,996
+2016,regular,11,ap,20,Florida State,ACC,0,450
+2016,regular,11,ap,3,Clemson,ACC,0,1408
+2016,regular,11,ap,18,Virginia Tech,ACC,0,479
+2016,regular,11,ap,15,North Carolina,ACC,0,559
+2016,regular,11,ap,5,Louisville,ACC,0,1255
+2016,regular,11,ap,24,Boise State,Mountain West,0,226
+2016,regular,11,cfp,13,Oklahoma State,Big 12,0,0
+2016,regular,11,cfp,16,West Virginia,Big 12,0,0
+2016,regular,11,cfp,4,Washington,Pac-12,0,0
+2016,regular,11,cfp,23,Washington State,Pac-12,0,0
+2016,regular,11,cfp,20,USC,Pac-12,0,0
+2016,regular,11,cfp,9,Auburn,SEC,0,0
+2016,regular,11,cfp,24,LSU,SEC,0,0
+2016,regular,11,cfp,15,Utah,Pac-12,0,0
+2016,regular,11,cfp,12,Colorado,Pac-12,0,0
+2016,regular,11,cfp,1,Alabama,SEC,0,0
+2016,regular,11,cfp,25,Arkansas,SEC,0,0
+2016,regular,11,cfp,21,Western Michigan,Mid-American,0,0
+2016,regular,11,cfp,8,Texas A&M,SEC,0,0
+2016,regular,11,cfp,5,Ohio State,Big Ten,0,0
+2016,regular,11,cfp,3,Michigan,Big Ten,0,0
+2016,regular,11,cfp,10,Penn State,Big Ten,0,0
+2016,regular,11,cfp,7,Wisconsin,Big Ten,0,0
+2016,regular,11,cfp,19,Nebraska,Big Ten,0,0
+2016,regular,11,cfp,11,Oklahoma,Big 12,0,0
+2016,regular,11,cfp,18,Florida State,ACC,0,0
+2016,regular,11,cfp,2,Clemson,ACC,0,0
+2016,regular,11,cfp,14,Virginia Tech,ACC,0,0
+2016,regular,11,cfp,17,North Carolina,ACC,0,0
+2016,regular,11,cfp,6,Louisville,ACC,0,0
+2016,regular,11,cfp,22,Boise State,Mountain West,0,0
+2016,regular,10,ap,10,Florida,SEC,0,929
+2016,regular,10,ap,22,Oklahoma State,Big 12,0,355
+2016,regular,10,ap,13,Baylor,Big 12,0,693
+2016,regular,10,ap,14,West Virginia,Big 12,0,620
+2016,regular,10,ap,4,Washington,Pac-12,0,1369
+2016,regular,10,ap,25,Washington State,Pac-12,0,139
+2016,regular,10,ap,11,Auburn,SEC,0,927
+2016,regular,10,ap,15,LSU,SEC,0,586
+2016,regular,10,ap,16,Utah,Pac-12,0,506
+2016,regular,10,ap,21,Colorado,Pac-12,0,375
+2016,regular,10,ap,1,Alabama,SEC,60,1524
+2016,regular,10,ap,17,Western Michigan,Mid-American,0,481
+2016,regular,10,ap,7,Texas A&M,SEC,0,1150
+2016,regular,10,ap,6,Ohio State,Big Ten,0,1207
+2016,regular,10,ap,2,Michigan,Big Ten,1,1435
+2016,regular,10,ap,20,Penn State,Big Ten,0,390
+2016,regular,10,ap,8,Wisconsin,Big Ten,0,1122
+2016,regular,10,ap,9,Nebraska,Big Ten,0,951
+2016,regular,10,ap,12,Oklahoma,Big 12,0,835
+2016,regular,10,ap,19,Florida State,ACC,0,409
+2016,regular,10,ap,3,Clemson,ACC,0,1401
+2016,regular,10,ap,23,Virginia Tech,ACC,0,345
+2016,regular,10,ap,18,North Carolina,ACC,0,423
+2016,regular,10,ap,5,Louisville,ACC,0,1262
+2016,regular,10,ap,24,Boise State,Mountain West,0,203
+2016,regular,10,cfp,11,Florida,SEC,0,0
+2016,regular,10,cfp,18,Oklahoma State,Big 12,0,0
+2016,regular,10,cfp,17,Baylor,Big 12,0,0
+2016,regular,10,cfp,20,West Virginia,Big 12,0,0
+2016,regular,10,cfp,5,Washington,Pac-12,0,0
+2016,regular,10,cfp,25,Washington State,Pac-12,0,0
+2016,regular,10,cfp,9,Auburn,SEC,0,0
+2016,regular,10,cfp,13,LSU,SEC,0,0
+2016,regular,10,cfp,16,Utah,Pac-12,0,0
+2016,regular,10,cfp,15,Colorado,Pac-12,0,0
+2016,regular,10,cfp,1,Alabama,SEC,0,0
+2016,regular,10,cfp,23,Western Michigan,Mid-American,0,0
+2016,regular,10,cfp,4,Texas A&M,SEC,0,0
+2016,regular,10,cfp,6,Ohio State,Big Ten,0,0
+2016,regular,10,cfp,3,Michigan,Big Ten,0,0
+2016,regular,10,cfp,12,Penn State,Big Ten,0,0
+2016,regular,10,cfp,8,Wisconsin,Big Ten,0,0
+2016,regular,10,cfp,10,Nebraska,Big Ten,0,0
+2016,regular,10,cfp,14,Oklahoma,Big 12,0,0
+2016,regular,10,cfp,22,Florida State,ACC,0,0
+2016,regular,10,cfp,2,Clemson,ACC,0,0
+2016,regular,10,cfp,19,Virginia Tech,ACC,0,0
+2016,regular,10,cfp,21,North Carolina,ACC,0,0
+2016,regular,10,cfp,7,Louisville,ACC,0,0
+2016,regular,10,cfp,24,Boise State,Mountain West,0,0
+2016,regular,9,ap,14,Florida,SEC,0,654
+2016,regular,9,ap,18,Tennessee,SEC,0,572
+2016,regular,9,ap,8,Baylor,Big 12,0,1063
+2016,regular,9,ap,10,West Virginia,Big 12,0,997
+2016,regular,9,ap,4,Washington,Pac-12,0,1373
+2016,regular,9,ap,15,Auburn,SEC,0,641
+2016,regular,9,ap,19,LSU,SEC,0,352
+2016,regular,9,ap,17,Utah,Pac-12,0,584
+2016,regular,9,ap,23,Colorado,Pac-12,0,207
+2016,regular,9,ap,1,Alabama,SEC,60,1524
+2016,regular,9,ap,20,Western Michigan,Mid-American,0,349
+2016,regular,9,ap,9,Texas A&M,SEC,0,1007
+2016,regular,9,ap,6,Ohio State,Big Ten,0,1143
+2016,regular,9,ap,2,Michigan,Big Ten,1,1446
+2016,regular,9,ap,24,Penn State,Big Ten,0,193
+2016,regular,9,ap,11,Wisconsin,Big Ten,0,980
+2016,regular,9,ap,7,Nebraska,Big Ten,0,1083
+2016,regular,9,ap,16,Oklahoma,Big 12,0,626
+2016,regular,9,ap,22,Navy,American Athletic,0,251
+2016,regular,9,ap,12,Florida State,ACC,0,725
+2016,regular,9,ap,3,Clemson,ACC,0,1382
+2016,regular,9,ap,25,Virginia Tech,ACC,0,110
+2016,regular,9,ap,21,North Carolina,ACC,0,328
+2016,regular,9,ap,5,Louisville,ACC,0,1276
+2016,regular,9,ap,13,Boise State,Mountain West,0,716
+2016,regular,8,ap,15,Florida,SEC,0,626
+2016,regular,8,ap,18,Tennessee,SEC,0,550
+2016,regular,8,ap,9,Baylor,Big 12,0,1021
+2016,regular,8,ap,12,West Virginia,Big 12,0,744
+2016,regular,8,ap,5,Washington,Pac-12,0,1304
+2016,regular,8,ap,21,Auburn,SEC,0,277
+2016,regular,8,ap,25,LSU,SEC,0,123
+2016,regular,8,ap,19,Utah,Pac-12,0,479
+2016,regular,8,ap,1,Alabama,SEC,60,1524
+2016,regular,8,ap,23,Ole Miss,SEC,0,188
+2016,regular,8,ap,17,Arkansas,SEC,0,584
+2016,regular,8,ap,20,Western Michigan,Mid-American,0,285
+2016,regular,8,ap,6,Texas A&M,SEC,0,1218
+2016,regular,8,ap,2,Ohio State,Big Ten,0,1457
+2016,regular,8,ap,3,Michigan,Big Ten,1,1368
+2016,regular,8,ap,10,Wisconsin,Big Ten,0,935
+2016,regular,8,ap,8,Nebraska,Big Ten,0,1037
+2016,regular,8,ap,16,Oklahoma,Big 12,0,612
+2016,regular,8,ap,11,Houston,American Athletic,0,766
+2016,regular,8,ap,24,Navy,American Athletic,0,163
+2016,regular,8,ap,13,Florida State,ACC,0,733
+2016,regular,8,ap,4,Clemson,ACC,0,1337
+2016,regular,8,ap,22,North Carolina,ACC,0,254
+2016,regular,8,ap,7,Louisville,ACC,0,1168
+2016,regular,8,ap,14,Boise State,Mountain West,0,694
+2016,regular,7,ap,18,Florida,SEC,0,483
+2016,regular,7,ap,9,Tennessee,SEC,0,962
+2016,regular,7,ap,11,Baylor,Big 12,0,934
+2016,regular,7,ap,20,West Virginia,Big 12,0,424
+2016,regular,7,ap,5,Washington,Pac-12,0,1286
+2016,regular,7,ap,23,Auburn,SEC,0,166
+2016,regular,7,ap,21,Utah,Pac-12,0,287
+2016,regular,7,ap,1,Alabama,SEC,56,1520
+2016,regular,7,ap,12,Ole Miss,SEC,0,800
+2016,regular,7,ap,22,Arkansas,SEC,0,203
+2016,regular,7,ap,24,Western Michigan,Mid-American,0,154
+2016,regular,7,ap,6,Texas A&M,SEC,0,1202
+2016,regular,7,ap,2,Ohio State,Big Ten,2,1444
+2016,regular,7,ap,4,Michigan,Big Ten,1,1339
+2016,regular,7,ap,8,Wisconsin,Big Ten,0,1020
+2016,regular,7,ap,10,Nebraska,Big Ten,0,958
+2016,regular,7,ap,19,Oklahoma,Big 12,0,476
+2016,regular,7,ap,13,Houston,American Athletic,0,701
+2016,regular,7,ap,25,Navy,American Athletic,0,122
+2016,regular,7,ap,14,Florida State,ACC,0,628
+2016,regular,7,ap,3,Clemson,ACC,2,1406
+2016,regular,7,ap,17,Virginia Tech,ACC,0,546
+2016,regular,7,ap,16,Miami,ACC,0,576
+2016,regular,7,ap,7,Louisville,ACC,0,1193
+2016,regular,7,ap,15,Boise State,Mountain West,0,590
+2016,regular,6,ap,18,Florida,SEC,0,391
+2016,regular,6,ap,9,Tennessee,SEC,0,1045
+2016,regular,6,ap,13,Baylor,Big 12,0,805
+2016,regular,6,ap,22,West Virginia,Big 12,0,240
+2016,regular,6,ap,15,Stanford,Pac-12,0,711
+2016,regular,6,ap,5,Washington,Pac-12,0,1234
+2016,regular,6,ap,24,Utah,Pac-12,0,86
+2016,regular,6,ap,21,Colorado,Pac-12,0,276
+2016,regular,6,ap,1,Alabama,SEC,53,1514
+2016,regular,6,ap,14,Ole Miss,SEC,0,712
+2016,regular,6,ap,16,Arkansas,SEC,0,528
+2016,regular,6,ap,8,Texas A&M,SEC,0,1113
+2016,regular,6,ap,2,Ohio State,Big Ten,6,1451
+2016,regular,6,ap,4,Michigan,Big Ten,1,1334
+2016,regular,6,ap,11,Wisconsin,Big Ten,0,882
+2016,regular,6,ap,12,Nebraska,Big Ten,0,821
+2016,regular,6,ap,20,Oklahoma,Big 12,0,324
+2016,regular,6,ap,6,Houston,American Athletic,0,1233
+2016,regular,6,ap,23,Florida State,ACC,0,230
+2016,regular,6,ap,3,Clemson,ACC,1,1403
+2016,regular,6,ap,25,Virginia Tech,ACC,0,85
+2016,regular,6,ap,10,Miami,ACC,0,909
+2016,regular,6,ap,17,North Carolina,ACC,0,497
+2016,regular,6,ap,7,Louisville,ACC,0,1160
+2016,regular,6,ap,19,Boise State,Mountain West,0,385
+2016,regular,5,ap,25,Georgia,SEC,0,142
+2016,regular,5,ap,23,Florida,SEC,0,176
+2016,regular,5,ap,11,Tennessee,SEC,0,909
+2016,regular,5,ap,13,Baylor,Big 12,0,729
+2016,regular,5,ap,21,TCU,Big 12,0,239
+2016,regular,5,ap,7,Stanford,Pac-12,0,1166
+2016,regular,5,ap,10,Washington,Pac-12,0,986
+2016,regular,5,ap,18,Utah,Pac-12,0,493
+2016,regular,5,ap,1,Alabama,SEC,50,1511
+2016,regular,5,ap,16,Ole Miss,SEC,0,540
+2016,regular,5,ap,20,Arkansas,SEC,0,241
+2016,regular,5,ap,9,Texas A&M,SEC,0,1036
+2016,regular,5,ap,2,Ohio State,Big Ten,4,1440
+2016,regular,5,ap,17,Michigan State,Big Ten,0,527
+2016,regular,5,ap,4,Michigan,Big Ten,1,1292
+2016,regular,5,ap,8,Wisconsin,Big Ten,0,1084
+2016,regular,5,ap,15,Nebraska,Big Ten,0,640
+2016,regular,5,ap,22,Texas,Big 12,0,217
+2016,regular,5,ap,6,Houston,American Athletic,0,1239
+2016,regular,5,ap,12,Florida State,ACC,0,804
+2016,regular,5,ap,5,Clemson,ACC,0,1267
+2016,regular,5,ap,14,Miami,ACC,0,696
+2016,regular,5,ap,3,Louisville,ACC,6,1409
+2016,regular,5,ap,24,Boise State,Mountain West,0,163
+2016,regular,5,ap,19,San Diego State,Mountain West,0,304
+2016,regular,4,ap,12,Georgia,SEC,0,726
+2016,regular,4,ap,19,Florida,SEC,0,479
+2016,regular,4,ap,14,Tennessee,SEC,0,707
+2016,regular,4,ap,16,Baylor,Big 12,0,529
+2016,regular,4,ap,7,Stanford,Pac-12,0,1195
+2016,regular,4,ap,9,Washington,Pac-12,0,1040
+2016,regular,4,ap,18,LSU,SEC,0,517
+2016,regular,4,ap,24,Utah,Pac-12,0,154
+2016,regular,4,ap,1,Alabama,SEC,50,1510
+2016,regular,4,ap,23,Ole Miss,SEC,0,172
+2016,regular,4,ap,17,Arkansas,SEC,0,528
+2016,regular,4,ap,10,Texas A&M,SEC,0,890
+2016,regular,4,ap,2,Ohio State,Big Ten,4,1442
+2016,regular,4,ap,8,Michigan State,Big Ten,0,1084
+2016,regular,4,ap,4,Michigan,Big Ten,1,1277
+2016,regular,4,ap,11,Wisconsin,Big Ten,0,828
+2016,regular,4,ap,20,Nebraska,Big Ten,0,420
+2016,regular,4,ap,21,Texas,Big 12,0,196
+2016,regular,4,ap,25,Oklahoma,Big 12,0,139
+2016,regular,4,ap,6,Houston,American Athletic,0,1245
+2016,regular,4,ap,13,Florida State,ACC,0,722
+2016,regular,4,ap,5,Clemson,ACC,0,1258
+2016,regular,4,ap,15,Miami,ACC,0,565
+2016,regular,4,ap,3,Louisville,ACC,6,1406
+2016,regular,4,ap,22,San Diego State,Mountain West,0,183
+2016,regular,3,ap,16,Georgia,SEC,0,584
+2016,regular,3,ap,23,Florida,SEC,0,205
+2016,regular,3,ap,15,Tennessee,SEC,0,665
+2016,regular,3,ap,21,Baylor,Big 12,0,305
+2016,regular,3,ap,22,Oregon,Pac-12,0,292
+2016,regular,3,ap,7,Stanford,Pac-12,0,1137
+2016,regular,3,ap,8,Washington,Pac-12,0,983
+2016,regular,3,ap,20,LSU,SEC,0,391
+2016,regular,3,ap,1,Alabama,SEC,56,1520
+2016,regular,3,ap,19,Ole Miss,SEC,0,473
+2016,regular,3,ap,24,Arkansas,SEC,0,198
+2016,regular,3,ap,17,Texas A&M,SEC,0,564
+2016,regular,3,ap,3,Ohio State,Big Ten,0,1359
+2016,regular,3,ap,12,Michigan State,Big Ten,0,747
+2016,regular,3,ap,4,Michigan,Big Ten,1,1298
+2016,regular,3,ap,9,Wisconsin,Big Ten,0,893
+2016,regular,3,ap,13,Iowa,Big Ten,0,694
+2016,regular,3,ap,11,Texas,Big 12,0,872
+2016,regular,3,ap,14,Oklahoma,Big 12,0,686
+2016,regular,3,ap,18,Notre Dame,FBS Independents,0,526
+2016,regular,3,ap,6,Houston,American Athletic,0,1264
+2016,regular,3,ap,2,Florida State,ACC,4,1437
+2016,regular,3,ap,5,Clemson,ACC,0,1284
+2016,regular,3,ap,25,Miami,ACC,0,197
+2016,regular,3,ap,10,Louisville,ACC,0,890
+2016,regular,2,ap,9,Georgia,SEC,0,877
+2016,regular,2,ap,17,Tennessee,SEC,0,573
+2016,regular,2,ap,22,Oklahoma State,Big 12,0,409
+2016,regular,2,ap,23,Baylor,Big 12,0,296
+2016,regular,2,ap,15,TCU,Big 12,0,635
+2016,regular,2,ap,24,Oregon,Pac-12,0,242
+2016,regular,2,ap,7,Stanford,Pac-12,0,1140
+2016,regular,2,ap,8,Washington,Pac-12,0,884
+2016,regular,2,ap,21,LSU,SEC,0,423
+2016,regular,2,ap,1,Alabama,SEC,54,1518
+2016,regular,2,ap,19,Ole Miss,SEC,0,493
+2016,regular,2,ap,20,Texas A&M,SEC,0,477
+2016,regular,2,ap,4,Ohio State,Big Ten,0,1324
+2016,regular,2,ap,12,Michigan State,Big Ten,0,722
+2016,regular,2,ap,5,Michigan,Big Ten,1,1261
+2016,regular,2,ap,10,Wisconsin,Big Ten,0,759
+2016,regular,2,ap,16,Iowa,Big Ten,0,588
+2016,regular,2,ap,11,Texas,Big 12,0,743
+2016,regular,2,ap,14,Oklahoma,Big 12,0,664
+2016,regular,2,ap,18,Notre Dame,FBS Independents,0,528
+2016,regular,2,ap,6,Houston,American Athletic,0,1243
+2016,regular,2,ap,3,Florida State,ACC,4,1413
+2016,regular,2,ap,2,Clemson,ACC,2,1416
+2016,regular,2,ap,25,Miami,ACC,0,137
+2016,regular,2,ap,13,Louisville,ACC,0,686
+2016,regular,1,ap,18,Georgia,SEC,0,448
+2016,regular,1,ap,25,Florida,SEC,0,180
+2016,regular,1,ap,9,Tennessee,SEC,0,1021
+2016,regular,1,ap,21,Oklahoma State,Big 12,0,316
+2016,regular,1,ap,23,Baylor,Big 12,0,280
+2016,regular,1,ap,13,TCU,Big 12,0,707
+2016,regular,1,ap,24,Oregon,Pac-12,0,218
+2016,regular,1,ap,8,Stanford,Pac-12,0,1029
+2016,regular,1,ap,14,Washington,Pac-12,0,651
+2016,regular,1,ap,20,USC,Pac-12,0,344
+2016,regular,1,ap,5,LSU,SEC,1,1269
+2016,regular,1,ap,16,UCLA,Pac-12,0,496
+2016,regular,1,ap,1,Alabama,SEC,33,1469
+2016,regular,1,ap,11,Ole Miss,SEC,0,718
+2016,regular,1,ap,6,Ohio State,Big Ten,1,1224
+2016,regular,1,ap,12,Michigan State,Big Ten,0,710
+2016,regular,1,ap,7,Michigan,Big Ten,1,1147
+2016,regular,1,ap,17,Iowa,Big Ten,0,484
+2016,regular,1,ap,3,Oklahoma,Big 12,4,1352
+2016,regular,1,ap,10,Notre Dame,FBS Independents,0,1006
+2016,regular,1,ap,15,Houston,American Athletic,0,644
+2016,regular,1,ap,4,Florida State,ACC,5,1325
+2016,regular,1,ap,2,Clemson,ACC,16,1443
+2016,regular,1,ap,22,North Carolina,ACC,0,283
+2016,regular,1,ap,19,Louisville,ACC,0,447
+2016,regular,15,ap,20,Florida,SEC,0,331
+2016,regular,15,ap,13,Oklahoma State,Big 12,0,800
+2016,regular,15,ap,14,West Virginia,Big 12,0,788
+2016,regular,15,ap,16,Stanford,Pac-12,0,508
+2016,regular,15,ap,4,Washington,Pac-12,0,1329
+2016,regular,15,ap,9,USC,Pac-12,0,1040
+2016,regular,15,ap,17,Auburn,SEC,0,493
+2016,regular,15,ap,19,LSU,SEC,0,351
+2016,regular,15,ap,11,Colorado,Pac-12,0,886
+2016,regular,15,ap,1,Alabama,SEC,61,1525
+2016,regular,15,ap,12,Western Michigan,Mid-American,0,871
+2016,regular,15,ap,2,Ohio State,Big Ten,0,1444
+2016,regular,15,ap,6,Michigan,Big Ten,0,1249
+2016,regular,15,ap,5,Penn State,Big Ten,0,1252
+2016,regular,15,ap,8,Wisconsin,Big Ten,0,1054
+2016,regular,15,ap,24,Nebraska,Big Ten,0,196
+2016,regular,15,ap,21,Iowa,Big Ten,0,272
+2016,regular,15,ap,7,Oklahoma,Big 12,0,1173
+2016,regular,15,ap,23,Temple,American Athletic,0,229
+2016,regular,15,ap,25,South Florida,American Athletic,0,173
+2016,regular,15,ap,10,Florida State,ACC,0,889
+2016,regular,15,ap,3,Clemson,ACC,0,1396
+2016,regular,15,ap,18,Virginia Tech,ACC,0,372
+2016,regular,15,ap,22,Pittsburgh,ACC,0,237
+2016,regular,15,ap,15,Louisville,ACC,0,542
+2016,regular,15,cfp,17,Florida,SEC,0,0
+2016,regular,15,cfp,21,Tennessee,SEC,0,0
+2016,regular,15,cfp,12,Oklahoma State,Big 12,0,0
+2016,regular,15,cfp,16,West Virginia,Big 12,0,0
+2016,regular,15,cfp,18,Stanford,Pac-12,0,0
+2016,regular,15,cfp,4,Washington,Pac-12,0,0
+2016,regular,15,cfp,9,USC,Pac-12,0,0
+2016,regular,15,cfp,14,Auburn,SEC,0,0
+2016,regular,15,cfp,20,LSU,SEC,0,0
+2016,regular,15,cfp,19,Utah,Pac-12,0,0
+2016,regular,15,cfp,10,Colorado,Pac-12,0,0
+2016,regular,15,cfp,1,Alabama,SEC,0,0
+2016,regular,15,cfp,15,Western Michigan,Mid-American,0,0
+2016,regular,15,cfp,3,Ohio State,Big Ten,0,0
+2016,regular,15,cfp,6,Michigan,Big Ten,0,0
+2016,regular,15,cfp,5,Penn State,Big Ten,0,0
+2016,regular,15,cfp,8,Wisconsin,Big Ten,0,0
+2016,regular,15,cfp,7,Oklahoma,Big 12,0,0
+2016,regular,15,cfp,24,Temple,American Athletic,0,0
+2016,regular,15,cfp,25,Navy,American Athletic,0,0
+2016,regular,15,cfp,11,Florida State,ACC,0,0
+2016,regular,15,cfp,2,Clemson,ACC,0,0
+2016,regular,15,cfp,22,Virginia Tech,ACC,0,0
+2016,regular,15,cfp,23,Pittsburgh,ACC,0,0
+2016,regular,15,cfp,13,Louisville,ACC,0,0
+2016,regular,14,ap,15,Florida,SEC,0,471
+2016,regular,14,ap,11,Oklahoma State,Big 12,0,931
+2016,regular,14,ap,14,West Virginia,Big 12,0,726
+2016,regular,14,ap,17,Stanford,Pac-12,0,452
+2016,regular,14,ap,4,Washington,Pac-12,0,1298
+2016,regular,14,ap,10,USC,Pac-12,0,948
+2016,regular,14,ap,18,Auburn,SEC,0,423
+2016,regular,14,ap,21,LSU,SEC,0,338
+2016,regular,14,ap,9,Colorado,Pac-12,0,1035
+2016,regular,14,ap,1,Alabama,SEC,61,1525
+2016,regular,14,ap,13,Western Michigan,Mid-American,0,807
+2016,regular,14,ap,2,Ohio State,Big Ten,0,1456
+2016,regular,14,ap,5,Michigan,Big Ten,0,1264
+2016,regular,14,ap,8,Penn State,Big Ten,0,1118
+2016,regular,14,ap,6,Wisconsin,Big Ten,0,1237
+2016,regular,14,ap,23,Nebraska,Big Ten,0,181
+2016,regular,14,ap,22,Iowa,Big Ten,0,217
+2016,regular,14,ap,7,Oklahoma,Big 12,0,1141
+2016,regular,14,ap,24,South Florida,American Athletic,0,168
+2016,regular,14,ap,20,Navy,American Athletic,0,387
+2016,regular,14,ap,12,Florida State,ACC,0,847
+2016,regular,14,ap,3,Clemson,ACC,0,1383
+2016,regular,14,ap,19,Virginia Tech,ACC,0,420
+2016,regular,14,ap,24,Pittsburgh,ACC,0,168
+2016,regular,14,ap,16,Louisville,ACC,0,468
+2016,regular,14,cfp,15,Florida,SEC,0,0
+2016,regular,14,cfp,22,Tennessee,SEC,0,0
+2016,regular,14,cfp,10,Oklahoma State,Big 12,0,0
+2016,regular,14,cfp,16,West Virginia,Big 12,0,0
+2016,regular,14,cfp,18,Stanford,Pac-12,0,0
+2016,regular,14,cfp,4,Washington,Pac-12,0,0
+2016,regular,14,cfp,11,USC,Pac-12,0,0
+2016,regular,14,cfp,14,Auburn,SEC,0,0
+2016,regular,14,cfp,21,LSU,SEC,0,0
+2016,regular,14,cfp,20,Utah,Pac-12,0,0
+2016,regular,14,cfp,8,Colorado,Pac-12,0,0
+2016,regular,14,cfp,1,Alabama,SEC,0,0
+2016,regular,14,cfp,17,Western Michigan,Mid-American,0,0
+2016,regular,14,cfp,2,Ohio State,Big Ten,0,0
+2016,regular,14,cfp,5,Michigan,Big Ten,0,0
+2016,regular,14,cfp,7,Penn State,Big Ten,0,0
+2016,regular,14,cfp,6,Wisconsin,Big Ten,0,0
+2016,regular,14,cfp,9,Oklahoma,Big 12,0,0
+2016,regular,14,cfp,24,Houston,American Athletic,0,0
+2016,regular,14,cfp,19,Navy,American Athletic,0,0
+2016,regular,14,cfp,12,Florida State,ACC,0,0
+2016,regular,14,cfp,3,Clemson,ACC,0,0
+2016,regular,14,cfp,23,Virginia Tech,ACC,0,0
+2016,regular,14,cfp,25,Pittsburgh,ACC,0,0
+2016,regular,14,cfp,13,Louisville,ACC,0,0
+2016,regular,13,ap,13,Florida,SEC,0,703
+2016,regular,13,ap,24,Tennessee,SEC,0,133
+2016,regular,13,ap,10,Oklahoma State,Big 12,0,868
+2016,regular,13,ap,19,West Virginia,Big 12,0,448
+2016,regular,13,ap,6,Washington,Pac-12,0,1220
+2016,regular,13,ap,23,Washington State,Pac-12,0,186
+2016,regular,13,ap,12,USC,Pac-12,0,811
+2016,regular,13,ap,16,Auburn,SEC,0,613
+2016,regular,13,ap,25,LSU,SEC,0,84
+2016,regular,13,ap,21,Utah,Pac-12,0,280
+2016,regular,13,ap,9,Colorado,Pac-12,0,997
+2016,regular,13,ap,1,Alabama,SEC,61,1525
+2016,regular,13,ap,14,Western Michigan,Mid-American,0,701
+2016,regular,13,ap,22,Texas A&M,SEC,0,253
+2016,regular,13,ap,2,Ohio State,Big Ten,0,1455
+2016,regular,13,ap,3,Michigan,Big Ten,0,1370
+2016,regular,13,ap,8,Penn State,Big Ten,0,1091
+2016,regular,13,ap,5,Wisconsin,Big Ten,0,1255
+2016,regular,13,ap,17,Nebraska,Big Ten,0,593
+2016,regular,13,ap,7,Oklahoma,Big 12,0,1169
+2016,regular,13,ap,18,Houston,American Athletic,0,490
+2016,regular,13,ap,15,Florida State,ACC,0,661
+2016,regular,13,ap,4,Clemson,ACC,0,1347
+2016,regular,13,ap,11,Louisville,ACC,0,830
+2016,regular,13,ap,20,Boise State,Mountain West,0,389
+2016,regular,13,cfp,15,Florida,SEC,0,0
+2016,regular,13,cfp,17,Tennessee,SEC,0,0
+2016,regular,13,cfp,10,Oklahoma State,Big 12,0,0
+2016,regular,13,cfp,18,West Virginia,Big 12,0,0
+2016,regular,13,cfp,24,Stanford,Pac-12,0,0
+2016,regular,13,cfp,5,Washington,Pac-12,0,0
+2016,regular,13,cfp,23,Washington State,Pac-12,0,0
+2016,regular,13,cfp,12,USC,Pac-12,0,0
+2016,regular,13,cfp,13,Auburn,SEC,0,0
+2016,regular,13,cfp,22,Utah,Pac-12,0,0
+2016,regular,13,cfp,9,Colorado,Pac-12,0,0
+2016,regular,13,cfp,1,Alabama,SEC,0,0
+2016,regular,13,cfp,21,Western Michigan,Mid-American,0,0
+2016,regular,13,cfp,2,Ohio State,Big Ten,0,0
+2016,regular,13,cfp,3,Michigan,Big Ten,0,0
+2016,regular,13,cfp,7,Penn State,Big Ten,0,0
+2016,regular,13,cfp,6,Wisconsin,Big Ten,0,0
+2016,regular,13,cfp,16,Nebraska,Big Ten,0,0
+2016,regular,13,cfp,8,Oklahoma,Big 12,0,0
+2016,regular,13,cfp,20,Houston,American Athletic,0,0
+2016,regular,13,cfp,25,Navy,American Athletic,0,0
+2016,regular,13,cfp,14,Florida State,ACC,0,0
+2016,regular,13,cfp,4,Clemson,ACC,0,0
+2016,regular,13,cfp,11,Louisville,ACC,0,0
+2016,regular,13,cfp,19,Boise State,Mountain West,0,0
+2016,regular,12,ap,21,Florida,SEC,0,435
+2016,regular,12,ap,13,Oklahoma State,Big 12,0,659
+2016,regular,12,ap,10,West Virginia,Big 12,0,920
+2016,regular,12,ap,7,Washington,Pac-12,0,1150
+2016,regular,12,ap,20,Washington State,Pac-12,0,501
+2016,regular,12,ap,15,USC,Pac-12,0,584
+2016,regular,12,ap,18,Auburn,SEC,0,543
+2016,regular,12,ap,16,LSU,SEC,0,582
+2016,regular,12,ap,11,Utah,Pac-12,0,807
+2016,regular,12,ap,12,Colorado,Pac-12,0,797
+2016,regular,12,ap,1,Alabama,SEC,61,1525
+2016,regular,12,ap,14,Western Michigan,Mid-American,0,634
+2016,regular,12,ap,23,Texas A&M,SEC,0,238
+2016,regular,12,ap,2,Ohio State,Big Ten,0,1455
+2016,regular,12,ap,4,Michigan,Big Ten,0,1323
+2016,regular,12,ap,9,Penn State,Big Ten,0,961
+2016,regular,12,ap,6,Wisconsin,Big Ten,0,1214
+2016,regular,12,ap,19,Nebraska,Big Ten,0,504
+2016,regular,12,ap,8,Oklahoma,Big 12,0,1064
+2016,regular,12,ap,25,Troy,Sun Belt,0,63
+2016,regular,12,ap,17,Florida State,ACC,0,569
+2016,regular,12,ap,5,Clemson,ACC,0,1304
+2016,regular,12,ap,3,Louisville,ACC,0,1357
+2016,regular,12,ap,22,Boise State,Mountain West,0,315
+2016,regular,12,ap,24,San Diego State,Mountain West,0,97
+2016,regular,12,cfp,23,Florida,SEC,0,0
+2016,regular,12,cfp,19,Tennessee,SEC,0,0
+2016,regular,12,cfp,11,Oklahoma State,Big 12,0,0
+2016,regular,12,cfp,14,West Virginia,Big 12,0,0
+2016,regular,12,cfp,24,Stanford,Pac-12,0,0
+2016,regular,12,cfp,6,Washington,Pac-12,0,0
+2016,regular,12,cfp,22,Washington State,Pac-12,0,0
+2016,regular,12,cfp,13,USC,Pac-12,0,0
+2016,regular,12,cfp,15,Auburn,SEC,0,0
+2016,regular,12,cfp,16,LSU,SEC,0,0
+2016,regular,12,cfp,12,Utah,Pac-12,0,0
+2016,regular,12,cfp,10,Colorado,Pac-12,0,0
+2016,regular,12,cfp,1,Alabama,SEC,0,0
+2016,regular,12,cfp,21,Western Michigan,Mid-American,0,0
+2016,regular,12,cfp,25,Texas A&M,SEC,0,0
+2016,regular,12,cfp,2,Ohio State,Big Ten,0,0
+2016,regular,12,cfp,3,Michigan,Big Ten,0,0
+2016,regular,12,cfp,8,Penn State,Big Ten,0,0
+2016,regular,12,cfp,7,Wisconsin,Big Ten,0,0
+2016,regular,12,cfp,18,Nebraska,Big Ten,0,0
+2016,regular,12,cfp,9,Oklahoma,Big 12,0,0
+2016,regular,12,cfp,17,Florida State,ACC,0,0
+2016,regular,12,cfp,4,Clemson,ACC,0,0
+2016,regular,12,cfp,5,Louisville,ACC,0,0
+2016,regular,12,cfp,20,Boise State,Mountain West,0,0
+2016,postseason,1,ap,1,Clemson,ACC,60,1500
+2016,postseason,1,ap,2,Alabama,SEC,0,1440
+2016,postseason,1,ap,3,USC,Pac-12,0,1292
+2016,postseason,1,ap,4,Washington,Pac-12,0,1277
+2016,postseason,1,ap,5,Oklahoma,Big 12,0,1252
+2016,postseason,1,ap,6,Ohio State,Big Ten,0,1240
+2016,postseason,1,ap,7,Penn State,Big Ten,0,1130
+2016,postseason,1,ap,8,Florida State,ACC,0,1105
+2016,postseason,1,ap,9,Wisconsin,Big Ten,0,1032
+2016,postseason,1,ap,10,Michigan,Big Ten,0,1001
+2016,postseason,1,ap,11,Oklahoma State,Big 12,0,920
+2016,postseason,1,ap,12,Stanford,Pac-12,0,730
+2016,postseason,1,ap,13,LSU,SEC,0,651
+2016,postseason,1,ap,14,Florida,SEC,0,640
+2016,postseason,1,ap,15,Western Michigan,Mid-American,0,619
+2016,postseason,1,ap,16,Virginia Tech,ACC,0,610
+2016,postseason,1,ap,17,Colorado,Pac-12,0,585
+2016,postseason,1,ap,18,West Virginia,Big 12,0,368
+2016,postseason,1,ap,19,South Florida,American Athletic,0,358
+2016,postseason,1,ap,20,Miami,ACC,0,338
+2016,postseason,1,ap,21,Louisville,ACC,0,277
+2016,postseason,1,ap,22,Tennessee,SEC,0,253
+2016,postseason,1,ap,23,Utah,Pac-12,0,222
+2016,postseason,1,ap,24,Auburn,SEC,0,206
+2016,postseason,1,ap,25,San Diego State,Mountain West,0,113
