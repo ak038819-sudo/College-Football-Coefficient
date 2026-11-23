@@ -1,0 +1,551 @@
+season_year,season_type,week,poll,rank,school,conference,first_place_votes,points
+2018,regular,11,ap,5,Georgia,SEC,0,1263
+2018,regular,11,ap,19,Florida,SEC,0,400
+2018,regular,11,ap,12,Kentucky,SEC,0,780
+2018,regular,11,ap,23,Iowa State,Big 12,0,230
+2018,regular,11,ap,7,West Virginia,Big 12,0,1065
+2018,regular,11,ap,20,Washington,Pac-12,0,342
+2018,regular,11,ap,10,Washington State,Pac-12,0,1010
+2018,regular,11,ap,9,LSU,SEC,0,1020
+2018,regular,11,ap,1,Alabama,SEC,60,1500
+2018,regular,11,ap,18,Mississippi State,SEC,0,486
+2018,regular,11,ap,8,Ohio State,Big Ten,0,1025
+2018,regular,11,ap,24,Michigan State,Big Ten,0,215
+2018,regular,11,ap,4,Michigan,Big Ten,0,1304
+2018,regular,11,ap,21,Penn State,Big Ten,0,278
+2018,regular,11,ap,15,Texas,Big 12,0,559
+2018,regular,11,ap,6,Oklahoma,Big 12,0,1181
+2018,regular,11,ap,3,Notre Dame,FBS Independents,0,1381
+2018,regular,11,ap,25,Cincinnati,American Athletic,0,141
+2018,regular,11,ap,11,UCF,American Athletic,0,1001
+2018,regular,11,ap,17,Boston College,ACC,0,490
+2018,regular,11,ap,2,Clemson,ACC,0,1435
+2018,regular,11,ap,22,NC State,ACC,0,264
+2018,regular,11,ap,13,Syracuse,ACC,0,624
+2018,regular,11,ap,14,Utah State,Mountain West,0,586
+2018,regular,11,ap,16,Fresno State,Mountain West,0,506
+2018,regular,11,cfp,5,Georgia,SEC,0,0
+2018,regular,11,cfp,15,Florida,SEC,0,0
+2018,regular,11,cfp,11,Kentucky,SEC,0,0
+2018,regular,11,cfp,22,Iowa State,Big 12,0,0
+2018,regular,11,cfp,9,West Virginia,Big 12,0,0
+2018,regular,11,cfp,25,Washington,Pac-12,0,0
+2018,regular,11,cfp,8,Washington State,Pac-12,0,0
+2018,regular,11,cfp,24,Auburn,SEC,0,0
+2018,regular,11,cfp,7,LSU,SEC,0,0
+2018,regular,11,cfp,1,Alabama,SEC,0,0
+2018,regular,11,cfp,16,Mississippi State,SEC,0,0
+2018,regular,11,cfp,10,Ohio State,Big Ten,0,0
+2018,regular,11,cfp,18,Michigan State,Big Ten,0,0
+2018,regular,11,cfp,4,Michigan,Big Ten,0,0
+2018,regular,11,cfp,20,Penn State,Big Ten,0,0
+2018,regular,11,cfp,21,Iowa,Big Ten,0,0
+2018,regular,11,cfp,19,Texas,Big 12,0,0
+2018,regular,11,cfp,6,Oklahoma,Big 12,0,0
+2018,regular,11,cfp,3,Notre Dame,FBS Independents,0,0
+2018,regular,11,cfp,12,UCF,American Athletic,0,0
+2018,regular,11,cfp,17,Boston College,ACC,0,0
+2018,regular,11,cfp,2,Clemson,ACC,0,0
+2018,regular,11,cfp,14,NC State,ACC,0,0
+2018,regular,11,cfp,13,Syracuse,ACC,0,0
+2018,regular,11,cfp,23,Fresno State,Mountain West,0,0
+2018,regular,10,ap,6,Georgia,SEC,0,1202
+2018,regular,10,ap,13,Florida,SEC,0,734
+2018,regular,10,ap,11,Kentucky,SEC,0,905
+2018,regular,10,ap,12,West Virginia,Big 12,0,891
+2018,regular,10,ap,10,Washington State,Pac-12,0,938
+2018,regular,10,ap,4,LSU,SEC,0,1317
+2018,regular,10,ap,16,Utah,Pac-12,0,593
+2018,regular,10,ap,1,Alabama,SEC,60,1500
+2018,regular,10,ap,21,Mississippi State,SEC,0,204
+2018,regular,10,ap,25,Texas A&M,SEC,0,132
+2018,regular,10,ap,8,Ohio State,Big Ten,0,1022
+2018,regular,10,ap,5,Michigan,Big Ten,0,1240
+2018,regular,10,ap,14,Penn State,Big Ten,0,733
+2018,regular,10,ap,19,Iowa,Big Ten,0,323
+2018,regular,10,ap,15,Texas,Big 12,0,719
+2018,regular,10,ap,7,Oklahoma,Big 12,0,1132
+2018,regular,10,ap,3,Notre Dame,FBS Independents,0,1374
+2018,regular,10,ap,9,UCF,American Athletic,0,1014
+2018,regular,10,ap,17,Houston,American Athletic,0,403
+2018,regular,10,ap,24,Boston College,ACC,0,169
+2018,regular,10,ap,2,Clemson,ACC,0,1433
+2018,regular,10,ap,23,Virginia,ACC,0,175
+2018,regular,10,ap,22,Syracuse,ACC,0,192
+2018,regular,10,ap,18,Utah State,Mountain West,0,340
+2018,regular,10,ap,20,Fresno State,Mountain West,0,261
+2018,regular,10,cfp,6,Georgia,SEC,0,0
+2018,regular,10,cfp,11,Florida,SEC,0,0
+2018,regular,10,cfp,9,Kentucky,SEC,0,0
+2018,regular,10,cfp,24,Iowa State,Big 12,0,0
+2018,regular,10,cfp,13,West Virginia,Big 12,0,0
+2018,regular,10,cfp,8,Washington State,Pac-12,0,0
+2018,regular,10,cfp,3,LSU,SEC,0,0
+2018,regular,10,cfp,15,Utah,Pac-12,0,0
+2018,regular,10,cfp,1,Alabama,SEC,0,0
+2018,regular,10,cfp,18,Mississippi State,SEC,0,0
+2018,regular,10,cfp,20,Texas A&M,SEC,0,0
+2018,regular,10,cfp,10,Ohio State,Big Ten,0,0
+2018,regular,10,cfp,5,Michigan,Big Ten,0,0
+2018,regular,10,cfp,14,Penn State,Big Ten,0,0
+2018,regular,10,cfp,16,Iowa,Big Ten,0,0
+2018,regular,10,cfp,17,Texas,Big 12,0,0
+2018,regular,10,cfp,7,Oklahoma,Big 12,0,0
+2018,regular,10,cfp,4,Notre Dame,FBS Independents,0,0
+2018,regular,10,cfp,12,UCF,American Athletic,0,0
+2018,regular,10,cfp,22,Boston College,ACC,0,0
+2018,regular,10,cfp,2,Clemson,ACC,0,0
+2018,regular,10,cfp,21,NC State,ACC,0,0
+2018,regular,10,cfp,25,Virginia,ACC,0,0
+2018,regular,10,cfp,19,Syracuse,ACC,0,0
+2018,regular,10,cfp,23,Fresno State,Mountain West,0,0
+2018,regular,9,ap,7,Georgia,SEC,0,1136
+2018,regular,9,ap,9,Florida,SEC,0,998
+2018,regular,9,ap,12,Kentucky,SEC,0,754
+2018,regular,9,ap,13,West Virginia,Big 12,0,747
+2018,regular,9,ap,19,Oregon,Pac-12,0,450
+2018,regular,9,ap,24,Stanford,Pac-12,0,144
+2018,regular,9,ap,15,Washington,Pac-12,0,677
+2018,regular,9,ap,14,Washington State,Pac-12,0,692
+2018,regular,9,ap,4,LSU,SEC,0,1327
+2018,regular,9,ap,23,Utah,Pac-12,0,180
+2018,regular,9,ap,1,Alabama,SEC,61,1525
+2018,regular,9,ap,16,Texas A&M,SEC,0,622
+2018,regular,9,ap,11,Ohio State,Big Ten,0,958
+2018,regular,9,ap,5,Michigan,Big Ten,0,1250
+2018,regular,9,ap,17,Penn State,Big Ten,0,528
+2018,regular,9,ap,20,Wisconsin,Big Ten,0,357
+2018,regular,9,ap,18,Iowa,Big Ten,0,489
+2018,regular,9,ap,6,Texas,Big 12,0,1186
+2018,regular,9,ap,8,Oklahoma,Big 12,0,1065
+2018,regular,9,ap,3,Notre Dame,FBS Independents,0,1400
+2018,regular,9,ap,25,App State,Sun Belt,0,79
+2018,regular,9,ap,21,South Florida,American Athletic,0,291
+2018,regular,9,ap,10,UCF,American Athletic,0,996
+2018,regular,9,ap,2,Clemson,ACC,0,1454
+2018,regular,9,ap,22,NC State,ACC,0,186
+2018,regular,8,ap,8,Georgia,SEC,0,1085
+2018,regular,8,ap,11,Florida,SEC,0,931
+2018,regular,8,ap,14,Kentucky,SEC,0,678
+2018,regular,8,ap,13,West Virginia,Big 12,0,700
+2018,regular,8,ap,12,Oregon,Pac-12,0,917
+2018,regular,8,ap,15,Washington,Pac-12,0,640
+2018,regular,8,ap,25,Washington State,Pac-12,0,136
+2018,regular,8,ap,5,LSU,SEC,0,1244
+2018,regular,8,ap,1,Alabama,SEC,60,1524
+2018,regular,8,ap,22,Mississippi State,SEC,0,231
+2018,regular,8,ap,17,Texas A&M,SEC,0,551
+2018,regular,8,ap,2,Ohio State,Big Ten,1,1457
+2018,regular,8,ap,24,Michigan State,Big Ten,0,199
+2018,regular,8,ap,6,Michigan,Big Ten,0,1146
+2018,regular,8,ap,18,Penn State,Big Ten,0,523
+2018,regular,8,ap,23,Wisconsin,Big Ten,0,226
+2018,regular,8,ap,19,Iowa,Big Ten,0,266
+2018,regular,8,ap,7,Texas,Big 12,0,1144
+2018,regular,8,ap,9,Oklahoma,Big 12,0,999
+2018,regular,8,ap,4,Notre Dame,FBS Independents,0,1355
+2018,regular,8,ap,21,South Florida,American Athletic,0,242
+2018,regular,8,ap,20,Cincinnati,American Athletic,0,243
+2018,regular,8,ap,10,UCF,American Athletic,0,979
+2018,regular,8,ap,3,Clemson,ACC,0,1392
+2018,regular,8,ap,16,NC State,ACC,0,592
+2018,regular,7,ap,2,Georgia,SEC,0,1426
+2018,regular,7,ap,14,Florida,SEC,0,719
+2018,regular,7,ap,18,Kentucky,SEC,0,485
+2018,regular,7,ap,6,West Virginia,Big 12,0,1174
+2018,regular,7,ap,17,Oregon,Pac-12,0,505
+2018,regular,7,ap,7,Washington,Pac-12,0,1098
+2018,regular,7,ap,21,Auburn,SEC,0,335
+2018,regular,7,ap,13,LSU,SEC,0,794
+2018,regular,7,ap,19,Colorado,Pac-12,0,419
+2018,regular,7,ap,1,Alabama,SEC,59,1522
+2018,regular,7,ap,24,Mississippi State,SEC,0,136
+2018,regular,7,ap,22,Texas A&M,SEC,0,257
+2018,regular,7,ap,3,Ohio State,Big Ten,1,1420
+2018,regular,7,ap,12,Michigan,Big Ten,0,875
+2018,regular,7,ap,8,Penn State,Big Ten,0,1097
+2018,regular,7,ap,15,Wisconsin,Big Ten,0,710
+2018,regular,7,ap,9,Texas,Big 12,0,956
+2018,regular,7,ap,11,Oklahoma,Big 12,0,879
+2018,regular,7,ap,5,Notre Dame,FBS Independents,0,1315
+2018,regular,7,ap,23,South Florida,American Athletic,0,144
+2018,regular,7,ap,25,Cincinnati,American Athletic,0,114
+2018,regular,7,ap,10,UCF,American Athletic,0,917
+2018,regular,7,ap,4,Clemson,ACC,1,1331
+2018,regular,7,ap,20,NC State,ACC,0,342
+2018,regular,7,ap,16,Miami,ACC,0,591
+2018,regular,6,ap,2,Georgia,SEC,0,1405
+2018,regular,6,ap,22,Florida,SEC,0,210
+2018,regular,6,ap,13,Kentucky,SEC,0,707
+2018,regular,6,ap,25,Oklahoma State,Big 12,0,88
+2018,regular,6,ap,9,West Virginia,Big 12,0,998
+2018,regular,6,ap,18,Oregon,Pac-12,0,462
+2018,regular,6,ap,14,Stanford,Pac-12,0,700
+2018,regular,6,ap,10,Washington,Pac-12,0,978
+2018,regular,6,ap,8,Auburn,SEC,0,1002
+2018,regular,6,ap,5,LSU,SEC,0,1233
+2018,regular,6,ap,21,Colorado,Pac-12,0,225
+2018,regular,6,ap,1,Alabama,SEC,58,1497
+2018,regular,6,ap,3,Ohio State,Big Ten,1,1395
+2018,regular,6,ap,20,Michigan State,Big Ten,0,281
+2018,regular,6,ap,15,Michigan,Big Ten,0,687
+2018,regular,6,ap,11,Penn State,Big Ten,0,920
+2018,regular,6,ap,16,Wisconsin,Big Ten,0,642
+2018,regular,6,ap,19,Texas,Big 12,0,403
+2018,regular,6,ap,7,Oklahoma,Big 12,0,1193
+2018,regular,6,ap,6,Notre Dame,FBS Independents,0,1216
+2018,regular,6,ap,12,UCF,American Athletic,0,759
+2018,regular,6,ap,4,Clemson,ACC,1,1278
+2018,regular,6,ap,23,NC State,ACC,0,118
+2018,regular,6,ap,24,Virginia Tech,ACC,0,89
+2018,regular,6,ap,17,Miami,ACC,0,600
+2018,regular,15,ap,6,Georgia,SEC,0,1247
+2018,regular,15,ap,10,Florida,SEC,0,894
+2018,regular,15,ap,16,Kentucky,SEC,0,639
+2018,regular,15,ap,25,Iowa State,Big 12,0,110
+2018,regular,15,ap,15,West Virginia,Big 12,0,694
+2018,regular,15,ap,9,Washington,Pac-12,0,992
+2018,regular,15,ap,12,Washington State,Pac-12,0,845
+2018,regular,15,ap,11,LSU,SEC,0,847
+2018,regular,15,ap,20,Utah,Pac-12,0,362
+2018,regular,15,ap,1,Alabama,SEC,61,1525
+2018,regular,15,ap,18,Mississippi State,SEC,0,375
+2018,regular,15,ap,24,Missouri,SEC,0,133
+2018,regular,15,ap,21,Texas A&M,SEC,0,359
+2018,regular,15,ap,5,Ohio State,Big Ten,0,1254
+2018,regular,15,ap,8,Michigan,Big Ten,0,1076
+2018,regular,15,ap,13,Penn State,Big Ten,0,773
+2018,regular,15,ap,22,Army,FBS Independents,0,209
+2018,regular,15,ap,14,Texas,Big 12,0,763
+2018,regular,15,ap,4,Oklahoma,Big 12,0,1327
+2018,regular,15,ap,3,Notre Dame,FBS Independents,0,1405
+2018,regular,15,ap,7,UCF,American Athletic,0,1158
+2018,regular,15,ap,2,Clemson,ACC,0,1460
+2018,regular,15,ap,17,Syracuse,ACC,0,516
+2018,regular,15,ap,23,Boise State,Mountain West,0,144
+2018,regular,15,ap,19,Fresno State,Mountain West,0,373
+2018,regular,15,cfp,5,Georgia,SEC,0,0
+2018,regular,15,cfp,10,Florida,SEC,0,0
+2018,regular,15,cfp,14,Kentucky,SEC,0,0
+2018,regular,15,cfp,24,Iowa State,Big 12,0,0
+2018,regular,15,cfp,16,West Virginia,Big 12,0,0
+2018,regular,15,cfp,9,Washington,Pac-12,0,0
+2018,regular,15,cfp,13,Washington State,Pac-12,0,0
+2018,regular,15,cfp,11,LSU,SEC,0,0
+2018,regular,15,cfp,17,Utah,Pac-12,0,0
+2018,regular,15,cfp,1,Alabama,SEC,0,0
+2018,regular,15,cfp,18,Mississippi State,SEC,0,0
+2018,regular,15,cfp,23,Missouri,SEC,0,0
+2018,regular,15,cfp,19,Texas A&M,SEC,0,0
+2018,regular,15,cfp,6,Ohio State,Big Ten,0,0
+2018,regular,15,cfp,7,Michigan,Big Ten,0,0
+2018,regular,15,cfp,12,Penn State,Big Ten,0,0
+2018,regular,15,cfp,22,Northwestern,Big Ten,0,0
+2018,regular,15,cfp,15,Texas,Big 12,0,0
+2018,regular,15,cfp,4,Oklahoma,Big 12,0,0
+2018,regular,15,cfp,3,Notre Dame,FBS Independents,0,0
+2018,regular,15,cfp,8,UCF,American Athletic,0,0
+2018,regular,15,cfp,2,Clemson,ACC,0,0
+2018,regular,15,cfp,20,Syracuse,ACC,0,0
+2018,regular,15,cfp,25,Boise State,Mountain West,0,0
+2018,regular,15,cfp,21,Fresno State,Mountain West,0,0
+2018,regular,14,ap,4,Georgia,SEC,0,1336
+2018,regular,14,ap,11,Florida,SEC,0,876
+2018,regular,14,ap,16,Kentucky,SEC,0,602
+2018,regular,14,ap,24,Iowa State,Big 12,0,116
+2018,regular,14,ap,15,West Virginia,Big 12,0,672
+2018,regular,14,ap,10,Washington,Pac-12,0,897
+2018,regular,14,ap,12,Washington State,Pac-12,0,818
+2018,regular,14,ap,12,LSU,SEC,0,818
+2018,regular,14,ap,17,Utah,Pac-12,0,536
+2018,regular,14,ap,1,Alabama,SEC,61,1525
+2018,regular,14,ap,20,Mississippi State,SEC,0,324
+2018,regular,14,ap,22,Texas A&M,SEC,0,283
+2018,regular,14,ap,6,Ohio State,Big Ten,0,1229
+2018,regular,14,ap,8,Michigan,Big Ten,0,1058
+2018,regular,14,ap,14,Penn State,Big Ten,0,751
+2018,regular,14,ap,21,Northwestern,Big Ten,0,322
+2018,regular,14,ap,23,Army,FBS Independents,0,169
+2018,regular,14,ap,9,Texas,Big 12,0,959
+2018,regular,14,ap,5,Oklahoma,Big 12,0,1266
+2018,regular,14,ap,3,Notre Dame,FBS Independents,0,1409
+2018,regular,14,ap,7,UCF,American Athletic,0,1146
+2018,regular,14,ap,2,Clemson,ACC,0,1458
+2018,regular,14,ap,18,Syracuse,ACC,0,475
+2018,regular,14,ap,19,Boise State,Mountain West,0,409
+2018,regular,14,ap,25,Fresno State,Mountain West,0,102
+2018,regular,14,cfp,4,Georgia,SEC,0,0
+2018,regular,14,cfp,9,Florida,SEC,0,0
+2018,regular,14,cfp,15,Kentucky,SEC,0,0
+2018,regular,14,cfp,23,Iowa State,Big 12,0,0
+2018,regular,14,cfp,16,West Virginia,Big 12,0,0
+2018,regular,14,cfp,11,Washington,Pac-12,0,0
+2018,regular,14,cfp,13,Washington State,Pac-12,0,0
+2018,regular,14,cfp,10,LSU,SEC,0,0
+2018,regular,14,cfp,17,Utah,Pac-12,0,0
+2018,regular,14,cfp,1,Alabama,SEC,0,0
+2018,regular,14,cfp,18,Mississippi State,SEC,0,0
+2018,regular,14,cfp,24,Missouri,SEC,0,0
+2018,regular,14,cfp,19,Texas A&M,SEC,0,0
+2018,regular,14,cfp,6,Ohio State,Big Ten,0,0
+2018,regular,14,cfp,7,Michigan,Big Ten,0,0
+2018,regular,14,cfp,12,Penn State,Big Ten,0,0
+2018,regular,14,cfp,21,Northwestern,Big Ten,0,0
+2018,regular,14,cfp,14,Texas,Big 12,0,0
+2018,regular,14,cfp,5,Oklahoma,Big 12,0,0
+2018,regular,14,cfp,3,Notre Dame,FBS Independents,0,0
+2018,regular,14,cfp,8,UCF,American Athletic,0,0
+2018,regular,14,cfp,2,Clemson,ACC,0,0
+2018,regular,14,cfp,20,Syracuse,ACC,0,0
+2018,regular,14,cfp,22,Boise State,Mountain West,0,0
+2018,regular,14,cfp,25,Fresno State,Mountain West,0,0
+2018,regular,13,ap,5,Georgia,SEC,0,1288
+2018,regular,13,ap,13,Florida,SEC,0,707
+2018,regular,13,ap,17,Kentucky,SEC,0,508
+2018,regular,13,ap,25,Iowa State,Big 12,0,123
+2018,regular,13,ap,12,West Virginia,Big 12,0,822
+2018,regular,13,ap,16,Washington,Pac-12,0,631
+2018,regular,13,ap,7,Washington State,Pac-12,0,1149
+2018,regular,13,ap,8,LSU,SEC,0,1064
+2018,regular,13,ap,18,Utah,Pac-12,0,491
+2018,regular,13,ap,1,Alabama,SEC,61,1525
+2018,regular,13,ap,22,Mississippi State,SEC,0,260
+2018,regular,13,ap,10,Ohio State,Big Ten,0,1019
+2018,regular,13,ap,4,Michigan,Big Ten,0,1327
+2018,regular,13,ap,15,Penn State,Big Ten,0,659
+2018,regular,13,ap,20,Northwestern,Big Ten,0,307
+2018,regular,13,ap,23,Army,FBS Independents,0,176
+2018,regular,13,ap,11,Texas,Big 12,0,856
+2018,regular,13,ap,6,Oklahoma,Big 12,0,1182
+2018,regular,13,ap,3,Notre Dame,FBS Independents,0,1412
+2018,regular,13,ap,8,UCF,American Athletic,0,1064
+2018,regular,13,ap,2,Clemson,ACC,0,1455
+2018,regular,13,ap,19,Syracuse,ACC,0,427
+2018,regular,13,ap,24,Pittsburgh,ACC,0,129
+2018,regular,13,ap,14,Utah State,Mountain West,0,667
+2018,regular,13,ap,21,Boise State,Mountain West,0,287
+2018,regular,13,cfp,5,Georgia,SEC,0,0
+2018,regular,13,cfp,11,Florida,SEC,0,0
+2018,regular,13,cfp,15,Kentucky,SEC,0,0
+2018,regular,13,cfp,25,Iowa State,Big 12,0,0
+2018,regular,13,cfp,13,West Virginia,Big 12,0,0
+2018,regular,13,cfp,16,Washington,Pac-12,0,0
+2018,regular,13,cfp,8,Washington State,Pac-12,0,0
+2018,regular,13,cfp,7,LSU,SEC,0,0
+2018,regular,13,cfp,17,Utah,Pac-12,0,0
+2018,regular,13,cfp,1,Alabama,SEC,0,0
+2018,regular,13,cfp,18,Mississippi State,SEC,0,0
+2018,regular,13,cfp,22,Texas A&M,SEC,0,0
+2018,regular,13,cfp,10,Ohio State,Big Ten,0,0
+2018,regular,13,cfp,4,Michigan,Big Ten,0,0
+2018,regular,13,cfp,12,Penn State,Big Ten,0,0
+2018,regular,13,cfp,19,Northwestern,Big Ten,0,0
+2018,regular,13,cfp,14,Texas,Big 12,0,0
+2018,regular,13,cfp,6,Oklahoma,Big 12,0,0
+2018,regular,13,cfp,3,Notre Dame,FBS Independents,0,0
+2018,regular,13,cfp,9,UCF,American Athletic,0,0
+2018,regular,13,cfp,2,Clemson,ACC,0,0
+2018,regular,13,cfp,20,Syracuse,ACC,0,0
+2018,regular,13,cfp,24,Pittsburgh,ACC,0,0
+2018,regular,13,cfp,21,Utah State,Mountain West,0,0
+2018,regular,13,cfp,23,Boise State,Mountain West,0,0
+2018,regular,12,ap,5,Georgia,SEC,0,1288
+2018,regular,12,ap,15,Florida,SEC,0,575
+2018,regular,12,ap,20,Kentucky,SEC,0,337
+2018,regular,12,ap,18,Iowa State,Big 12,0,497
+2018,regular,12,ap,7,West Virginia,Big 12,0,1111
+2018,regular,12,ap,17,Washington,Pac-12,0,501
+2018,regular,12,ap,8,Washington State,Pac-12,0,1052
+2018,regular,12,ap,10,LSU,SEC,0,1019
+2018,regular,12,ap,21,Utah,Pac-12,0,307
+2018,regular,12,ap,1,Alabama,SEC,61,1525
+2018,regular,12,ap,25,Mississippi State,SEC,0,133
+2018,regular,12,ap,9,Ohio State,Big Ten,0,1050
+2018,regular,12,ap,4,Michigan,Big Ten,0,1327
+2018,regular,12,ap,16,Penn State,Big Ten,0,542
+2018,regular,12,ap,24,Northwestern,Big Ten,0,136
+2018,regular,12,ap,13,Texas,Big 12,0,726
+2018,regular,12,ap,6,Oklahoma,Big 12,0,1188
+2018,regular,12,ap,3,Notre Dame,FBS Independents,0,1406
+2018,regular,12,ap,19,Cincinnati,American Athletic,0,344
+2018,regular,12,ap,11,UCF,American Athletic,0,983
+2018,regular,12,ap,22,Boston College,ACC,0,254
+2018,regular,12,ap,2,Clemson,ACC,0,1459
+2018,regular,12,ap,12,Syracuse,ACC,0,787
+2018,regular,12,ap,14,Utah State,Mountain West,0,689
+2018,regular,12,ap,23,Boise State,Mountain West,0,147
+2018,regular,12,cfp,5,Georgia,SEC,0,0
+2018,regular,12,cfp,13,Florida,SEC,0,0
+2018,regular,12,cfp,17,Kentucky,SEC,0,0
+2018,regular,12,cfp,16,Iowa State,Big 12,0,0
+2018,regular,12,cfp,9,West Virginia,Big 12,0,0
+2018,regular,12,cfp,18,Washington,Pac-12,0,0
+2018,regular,12,cfp,8,Washington State,Pac-12,0,0
+2018,regular,12,cfp,7,LSU,SEC,0,0
+2018,regular,12,cfp,19,Utah,Pac-12,0,0
+2018,regular,12,cfp,1,Alabama,SEC,0,0
+2018,regular,12,cfp,21,Mississippi State,SEC,0,0
+2018,regular,12,cfp,10,Ohio State,Big Ten,0,0
+2018,regular,12,cfp,4,Michigan,Big Ten,0,0
+2018,regular,12,cfp,14,Penn State,Big Ten,0,0
+2018,regular,12,cfp,22,Northwestern,Big Ten,0,0
+2018,regular,12,cfp,15,Texas,Big 12,0,0
+2018,regular,12,cfp,6,Oklahoma,Big 12,0,0
+2018,regular,12,cfp,3,Notre Dame,FBS Independents,0,0
+2018,regular,12,cfp,24,Cincinnati,American Athletic,0,0
+2018,regular,12,cfp,11,UCF,American Athletic,0,0
+2018,regular,12,cfp,20,Boston College,ACC,0,0
+2018,regular,12,cfp,2,Clemson,ACC,0,0
+2018,regular,12,cfp,12,Syracuse,ACC,0,0
+2018,regular,12,cfp,23,Utah State,Mountain West,0,0
+2018,regular,12,cfp,25,Boise State,Mountain West,0,0
+2018,regular,5,ap,2,Georgia,SEC,0,1422
+2018,regular,5,ap,17,Kentucky,SEC,0,541
+2018,regular,5,ap,25,Texas Tech,Big 12,0,106
+2018,regular,5,ap,12,West Virginia,Big 12,0,923
+2018,regular,5,ap,19,Oregon,Pac-12,0,297
+2018,regular,5,ap,7,Stanford,Pac-12,0,1143
+2018,regular,5,ap,11,Washington,Pac-12,0,946
+2018,regular,5,ap,24,California,Pac-12,0,118
+2018,regular,5,ap,20,BYU,FBS Independents,0,270
+2018,regular,5,ap,10,Auburn,SEC,0,987
+2018,regular,5,ap,5,LSU,SEC,0,1238
+2018,regular,5,ap,1,Alabama,SEC,60,1523
+2018,regular,5,ap,23,Mississippi State,SEC,0,241
+2018,regular,5,ap,4,Ohio State,Big Ten,0,1363
+2018,regular,5,ap,21,Michigan State,Big Ten,0,256
+2018,regular,5,ap,14,Michigan,Big Ten,0,698
+2018,regular,5,ap,9,Penn State,Big Ten,0,1001
+2018,regular,5,ap,15,Wisconsin,Big Ten,0,662
+2018,regular,5,ap,18,Texas,Big 12,0,308
+2018,regular,5,ap,6,Oklahoma,Big 12,0,1201
+2018,regular,5,ap,8,Notre Dame,FBS Independents,0,1067
+2018,regular,5,ap,13,UCF,American Athletic,0,727
+2018,regular,5,ap,3,Clemson,ACC,1,1409
+2018,regular,5,ap,16,Miami,ACC,0,571
+2018,regular,5,ap,22,Duke,ACC,0,244
+2018,regular,4,ap,2,Georgia,SEC,0,1416
+2018,regular,4,ap,15,Oklahoma State,Big 12,0,587
+2018,regular,4,ap,17,TCU,Big 12,0,502
+2018,regular,4,ap,12,West Virginia,Big 12,0,841
+2018,regular,4,ap,20,Oregon,Pac-12,0,399
+2018,regular,4,ap,7,Stanford,Pac-12,0,1055
+2018,regular,4,ap,10,Washington,Pac-12,0,947
+2018,regular,4,ap,25,BYU,FBS Independents,0,75
+2018,regular,4,ap,9,Auburn,SEC,0,958
+2018,regular,4,ap,6,LSU,SEC,0,1241
+2018,regular,4,ap,1,Alabama,SEC,58,1521
+2018,regular,4,ap,14,Mississippi State,SEC,0,790
+2018,regular,4,ap,22,Texas A&M,SEC,0,193
+2018,regular,4,ap,4,Ohio State,Big Ten,0,1357
+2018,regular,4,ap,24,Michigan State,Big Ten,0,86
+2018,regular,4,ap,19,Michigan,Big Ten,0,448
+2018,regular,4,ap,10,Penn State,Big Ten,0,947
+2018,regular,4,ap,18,Wisconsin,Big Ten,0,486
+2018,regular,4,ap,5,Oklahoma,Big 12,0,1283
+2018,regular,4,ap,8,Notre Dame,FBS Independents,0,1034
+2018,regular,4,ap,16,UCF,American Athletic,0,556
+2018,regular,4,ap,23,Boston College,ACC,0,130
+2018,regular,4,ap,3,Clemson,ACC,3,1405
+2018,regular,4,ap,13,Virginia Tech,ACC,0,816
+2018,regular,4,ap,21,Miami,ACC,0,362
+2018,regular,3,ap,3,Georgia,SEC,0,1407
+2018,regular,3,ap,24,Oklahoma State,Big 12,0,119
+2018,regular,3,ap,15,TCU,Big 12,0,678
+2018,regular,3,ap,14,West Virginia,Big 12,0,793
+2018,regular,3,ap,20,Oregon,Pac-12,0,301
+2018,regular,3,ap,9,Stanford,Pac-12,0,992
+2018,regular,3,ap,10,Washington,Pac-12,0,884
+2018,regular,3,ap,22,USC,Pac-12,0,250
+2018,regular,3,ap,7,Auburn,SEC,0,1224
+2018,regular,3,ap,12,LSU,SEC,0,830
+2018,regular,3,ap,23,Arizona State,Pac-12,0,139
+2018,regular,3,ap,1,Alabama,SEC,54,1517
+2018,regular,3,ap,16,Mississippi State,SEC,0,654
+2018,regular,3,ap,4,Ohio State,Big Ten,0,1288
+2018,regular,3,ap,25,Michigan State,Big Ten,0,104
+2018,regular,3,ap,19,Michigan,Big Ten,0,385
+2018,regular,3,ap,11,Penn State,Big Ten,0,836
+2018,regular,3,ap,6,Wisconsin,Big Ten,1,1227
+2018,regular,3,ap,5,Oklahoma,Big 12,0,1263
+2018,regular,3,ap,8,Notre Dame,FBS Independents,0,1022
+2018,regular,3,ap,18,UCF,American Athletic,0,494
+2018,regular,3,ap,2,Clemson,ACC,6,1430
+2018,regular,3,ap,13,Virginia Tech,ACC,0,794
+2018,regular,3,ap,21,Miami,ACC,0,299
+2018,regular,3,ap,17,Boise State,Mountain West,0,500
+2018,regular,2,ap,3,Georgia,SEC,0,1350
+2018,regular,2,ap,25,Florida,SEC,0,89
+2018,regular,2,ap,24,South Carolina,SEC,0,125
+2018,regular,2,ap,16,TCU,Big 12,0,632
+2018,regular,2,ap,14,West Virginia,Big 12,0,762
+2018,regular,2,ap,23,Oregon,Pac-12,0,217
+2018,regular,2,ap,10,Stanford,Pac-12,0,865
+2018,regular,2,ap,9,Washington,Pac-12,0,870
+2018,regular,2,ap,17,USC,Pac-12,0,628
+2018,regular,2,ap,7,Auburn,SEC,0,1236
+2018,regular,2,ap,11,LSU,SEC,0,801
+2018,regular,2,ap,1,Alabama,SEC,48,1511
+2018,regular,2,ap,18,Mississippi State,SEC,0,538
+2018,regular,2,ap,4,Ohio State,Big Ten,0,1262
+2018,regular,2,ap,15,Michigan State,Big Ten,0,684
+2018,regular,2,ap,21,Michigan,Big Ten,0,318
+2018,regular,2,ap,13,Penn State,Big Ten,0,768
+2018,regular,2,ap,5,Wisconsin,Big Ten,1,1258
+2018,regular,2,ap,6,Oklahoma,Big 12,0,1251
+2018,regular,2,ap,8,Notre Dame,FBS Independents,0,1080
+2018,regular,2,ap,19,UCF,American Athletic,0,407
+2018,regular,2,ap,2,Clemson,ACC,12,1467
+2018,regular,2,ap,12,Virginia Tech,ACC,0,777
+2018,regular,2,ap,22,Miami,ACC,0,241
+2018,regular,2,ap,20,Boise State,Mountain West,0,391
+2018,regular,1,ap,3,Georgia,SEC,0,1350
+2018,regular,1,ap,16,TCU,Big 12,0,533
+2018,regular,1,ap,17,West Virginia,Big 12,0,511
+2018,regular,1,ap,24,Oregon,Pac-12,0,148
+2018,regular,1,ap,13,Stanford,Pac-12,0,778
+2018,regular,1,ap,6,Washington,Pac-12,0,1215
+2018,regular,1,ap,15,USC,Pac-12,0,543
+2018,regular,1,ap,9,Auburn,SEC,0,1013
+2018,regular,1,ap,25,LSU,SEC,0,106
+2018,regular,1,ap,1,Alabama,SEC,42,1505
+2018,regular,1,ap,18,Mississippi State,SEC,0,450
+2018,regular,1,ap,5,Ohio State,Big Ten,0,1256
+2018,regular,1,ap,11,Michigan State,Big Ten,0,877
+2018,regular,1,ap,14,Michigan,Big Ten,0,773
+2018,regular,1,ap,10,Penn State,Big Ten,0,1012
+2018,regular,1,ap,4,Wisconsin,Big Ten,1,1271
+2018,regular,1,ap,23,Texas,Big 12,0,216
+2018,regular,1,ap,7,Oklahoma,Big 12,0,1173
+2018,regular,1,ap,12,Notre Dame,FBS Independents,0,804
+2018,regular,1,ap,21,UCF,American Athletic,0,312
+2018,regular,1,ap,19,Florida State,ACC,0,384
+2018,regular,1,ap,2,Clemson,ACC,18,1476
+2018,regular,1,ap,20,Virginia Tech,ACC,0,351
+2018,regular,1,ap,8,Miami,ACC,0,1027
+2018,regular,1,ap,22,Boise State,Mountain West,0,292
+2018,postseason,1,ap,1,Clemson,ACC,61,1525
+2018,postseason,1,ap,2,Alabama,SEC,0,1462
+2018,postseason,1,ap,3,Ohio State,Big Ten,0,1364
+2018,postseason,1,ap,4,Oklahoma,Big 12,0,1356
+2018,postseason,1,ap,5,Notre Dame,FBS Independents,0,1286
+2018,postseason,1,ap,6,LSU,SEC,0,1119
+2018,postseason,1,ap,7,Florida,SEC,0,1103
+2018,postseason,1,ap,7,Georgia,SEC,0,1103
+2018,postseason,1,ap,9,Texas,Big 12,0,1076
+2018,postseason,1,ap,10,Washington State,Pac-12,0,959
+2018,postseason,1,ap,11,UCF,American Athletic,0,898
+2018,postseason,1,ap,12,Kentucky,SEC,0,820
+2018,postseason,1,ap,13,Washington,Pac-12,0,806
+2018,postseason,1,ap,14,Michigan,Big Ten,0,745
+2018,postseason,1,ap,15,Syracuse,ACC,0,683
+2018,postseason,1,ap,16,Texas A&M,SEC,0,552
+2018,postseason,1,ap,17,Penn State,Big Ten,0,492
+2018,postseason,1,ap,18,Fresno State,Mountain West,0,466
+2018,postseason,1,ap,19,Army,FBS Independents,0,418
+2018,postseason,1,ap,20,West Virginia,Big 12,0,296
+2018,postseason,1,ap,21,Northwestern,Big Ten,0,284
+2018,postseason,1,ap,22,Utah State,Mountain West,0,188
+2018,postseason,1,ap,23,Boise State,Mountain West,0,184
+2018,postseason,1,ap,24,Cincinnati,American Athletic,0,171
+2018,postseason,1,ap,25,Iowa,Big Ten,0,120
