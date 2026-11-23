@@ -52,6 +52,7 @@ from elo_timeline import build_timeline  # noqa: E402
 from build_schedule_strength import build_season as build_schedule_season  # noqa: E402
 from build_adjusted_stats import build_season as build_adjusted_season  # noqa: E402
 from build_awards_payload import build_payload as build_awards_payload  # noqa: E402
+from export_people_boards import build as build_people_boards  # noqa: E402
 from export_recruiting import build_classes as build_recruiting_classes  # noqa: E402
 from export_recruiting import build_signees as build_recruiting_signees  # noqa: E402
 import player_archive  # noqa: E402
@@ -1037,6 +1038,18 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                       table)
         adjusted_stats[str(season)] = f"data/adjusted_stats/{season}.js?v={v}"
 
+    # Browsable People boards: career statistical leaders and coach wins above
+    # expectation. One 69 KB file -- these are summed from 1,112,976 season
+    # statistics, which is not work a browser can do, and the landing page
+    # needs all of them at once.
+    boards_payload = build_people_boards(conn)
+    people_boards = None
+    if boards_payload:
+        bv = _write_js(out_dir / "people_boards.js", "window.__CFB_PEOPLE_BOARDS__",
+                       boards_payload)
+        people_boards = f"data/people_boards.js?v={bv}"
+        print(f"people boards: {len(boards_payload['leaders'])} career boards, "
+              f"{len(boards_payload['coaches'].get('coaches', []))} coaches")
     # Recruiting. Two shapes, because they are read differently: every
     # attributable class in ONE file (93 KB, and the ranking board and a team's
     # whole class history both come out of it), and one file per season for
@@ -1113,6 +1126,10 @@ def export(conn: sqlite3.Connection, out_dir: Path = OUT_DIR) -> dict:
                 # database has none, so the pages can say there are none
                 # instead of fetching a file that is not there.
                 **({"awards": awards} if awards else {}),
+                # Absent rather than empty when the season-statistics archive
+                # was never loaded, so People can stay a search box instead of
+                # offering boards with nothing on them.
+                **({"people_boards": people_boards} if people_boards else {}),
                 # Absent rather than empty when the archive was never loaded,
                 # so the tab and the board can be missing instead of drawing
                 # a team that signed nobody.
