@@ -1,0 +1,626 @@
+season_year,season_type,week,poll,rank,school,conference,first_place_votes,points
+2014,regular,10,ap,21,East Carolina,American Athletic,0,366
+2014,regular,10,ap,9,Georgia,SEC,0,1074
+2014,regular,10,ap,11,Kansas State,Big 12,0,930
+2014,regular,10,ap,12,Baylor,Big 12,0,839
+2014,regular,10,ap,10,TCU,Big 12,0,1030
+2014,regular,10,ap,20,West Virginia,Big 12,0,379
+2014,regular,10,ap,5,Oregon,Pac-12,0,1199
+2014,regular,10,ap,4,Auburn,SEC,0,1267
+2014,regular,10,ap,16,LSU,SEC,0,574
+2014,regular,10,ap,25,UCLA,Pac-12,0,106
+2014,regular,10,ap,18,Utah,Pac-12,0,524
+2014,regular,10,ap,15,Arizona State,Pac-12,0,667
+2014,regular,10,ap,14,Arizona,Pac-12,0,669
+2014,regular,10,ap,3,Alabama,SEC,0,1290
+2014,regular,10,ap,7,Ole Miss,SEC,0,1095
+2014,regular,10,ap,1,Mississippi State,SEC,46,1486
+2014,regular,10,ap,23,Marshall,Conference USA,0,184
+2014,regular,10,ap,13,Ohio State,Big Ten,0,676
+2014,regular,10,ap,8,Michigan State,Big Ten,0,1086
+2014,regular,10,ap,17,Nebraska,Big Ten,0,535
+2014,regular,10,ap,19,Oklahoma,Big 12,0,430
+2014,regular,10,ap,6,Notre Dame,FBS Independents,0,1161
+2014,regular,10,ap,2,Florida State,ACC,14,1453
+2014,regular,10,ap,22,Clemson,ACC,0,265
+2014,regular,10,ap,24,Duke,ACC,0,121
+2014,regular,10,cfp,23,East Carolina,American Athletic,0,0
+2014,regular,10,cfp,11,Georgia,SEC,0,0
+2014,regular,10,cfp,9,Kansas State,Big 12,0,0
+2014,regular,10,cfp,13,Baylor,Big 12,0,0
+2014,regular,10,cfp,7,TCU,Big 12,0,0
+2014,regular,10,cfp,20,West Virginia,Big 12,0,0
+2014,regular,10,cfp,5,Oregon,Pac-12,0,0
+2014,regular,10,cfp,3,Auburn,SEC,0,0
+2014,regular,10,cfp,19,LSU,SEC,0,0
+2014,regular,10,cfp,22,UCLA,Pac-12,0,0
+2014,regular,10,cfp,17,Utah,Pac-12,0,0
+2014,regular,10,cfp,14,Arizona State,Pac-12,0,0
+2014,regular,10,cfp,12,Arizona,Pac-12,0,0
+2014,regular,10,cfp,6,Alabama,SEC,0,0
+2014,regular,10,cfp,4,Ole Miss,SEC,0,0
+2014,regular,10,cfp,1,Mississippi State,SEC,0,0
+2014,regular,10,cfp,16,Ohio State,Big Ten,0,0
+2014,regular,10,cfp,8,Michigan State,Big Ten,0,0
+2014,regular,10,cfp,15,Nebraska,Big Ten,0,0
+2014,regular,10,cfp,18,Oklahoma,Big 12,0,0
+2014,regular,10,cfp,10,Notre Dame,FBS Independents,0,0
+2014,regular,10,cfp,2,Florida State,ACC,0,0
+2014,regular,10,cfp,21,Clemson,ACC,0,0
+2014,regular,10,cfp,24,Duke,ACC,0,0
+2014,regular,10,cfp,25,Louisville,ACC,0,0
+2014,regular,9,ap,18,East Carolina,American Athletic,0,445
+2014,regular,9,ap,9,Georgia,SEC,0,1055
+2014,regular,9,ap,11,Kansas State,Big 12,0,905
+2014,regular,9,ap,12,Baylor,Big 12,0,858
+2014,regular,9,ap,10,TCU,Big 12,0,962
+2014,regular,9,ap,22,West Virginia,Big 12,0,272
+2014,regular,9,ap,6,Oregon,Pac-12,0,1142
+2014,regular,9,ap,20,USC,Pac-12,0,356
+2014,regular,9,ap,5,Auburn,SEC,0,1231
+2014,regular,9,ap,24,LSU,SEC,0,177
+2014,regular,9,ap,25,UCLA,Pac-12,0,118
+2014,regular,9,ap,19,Utah,Pac-12,0,437
+2014,regular,9,ap,14,Arizona State,Pac-12,0,643
+2014,regular,9,ap,15,Arizona,Pac-12,0,639
+2014,regular,9,ap,4,Alabama,SEC,0,1235
+2014,regular,9,ap,3,Ole Miss,SEC,3,1404
+2014,regular,9,ap,1,Mississippi State,SEC,43,1480
+2014,regular,9,ap,23,Marshall,Conference USA,0,184
+2014,regular,9,ap,13,Ohio State,Big Ten,0,753
+2014,regular,9,ap,8,Michigan State,Big Ten,0,1066
+2014,regular,9,ap,16,Nebraska,Big Ten,0,537
+2014,regular,9,ap,17,Oklahoma,Big 12,0,461
+2014,regular,9,ap,7,Notre Dame,FBS Independents,0,1133
+2014,regular,9,ap,2,Florida State,ACC,14,1433
+2014,regular,9,ap,21,Clemson,ACC,0,283
+2014,regular,8,ap,18,East Carolina,American Athletic,0,449
+2014,regular,8,ap,10,Georgia,SEC,0,981
+2014,regular,8,ap,15,Oklahoma State,Big 12,0,620
+2014,regular,8,ap,14,Kansas State,Big 12,0,626
+2014,regular,8,ap,4,Baylor,Big 12,0,1317
+2014,regular,8,ap,12,TCU,Big 12,0,917
+2014,regular,8,ap,9,Oregon,Pac-12,0,1014
+2014,regular,8,ap,23,Stanford,Pac-12,0,223
+2014,regular,8,ap,22,USC,Pac-12,0,258
+2014,regular,8,ap,6,Auburn,SEC,0,1144
+2014,regular,8,ap,20,Utah,Pac-12,0,305
+2014,regular,8,ap,17,Arizona State,Pac-12,0,459
+2014,regular,8,ap,16,Arizona,Pac-12,0,590
+2014,regular,8,ap,7,Alabama,SEC,0,1068
+2014,regular,8,ap,3,Ole Miss,SEC,3,1413
+2014,regular,8,ap,1,Mississippi State,SEC,45,1480
+2014,regular,8,ap,25,Marshall,Conference USA,0,148
+2014,regular,8,ap,21,Texas A&M,SEC,0,264
+2014,regular,8,ap,13,Ohio State,Big Ten,0,648
+2014,regular,8,ap,8,Michigan State,Big Ten,0,1015
+2014,regular,8,ap,19,Nebraska,Big Ten,0,402
+2014,regular,8,ap,11,Oklahoma,Big 12,0,935
+2014,regular,8,ap,5,Notre Dame,FBS Independents,0,1228
+2014,regular,8,ap,2,Florida State,ACC,12,1415
+2014,regular,8,ap,24,Clemson,ACC,0,188
+2014,regular,7,ap,19,East Carolina,American Athletic,0,344
+2014,regular,7,ap,13,Georgia,SEC,0,854
+2014,regular,7,ap,16,Oklahoma State,Big 12,0,527
+2014,regular,7,ap,17,Kansas State,Big 12,0,486
+2014,regular,7,ap,5,Baylor,Big 12,0,1258
+2014,regular,7,ap,9,TCU,Big 12,0,979
+2014,regular,7,ap,12,Oregon,Pac-12,0,888
+2014,regular,7,ap,25,Stanford,Pac-12,0,143
+2014,regular,7,ap,2,Auburn,SEC,23,1459
+2014,regular,7,ap,18,UCLA,Pac-12,0,460
+2014,regular,7,ap,24,Utah,Pac-12,0,206
+2014,regular,7,ap,20,Arizona State,Pac-12,0,325
+2014,regular,7,ap,10,Arizona,Pac-12,0,951
+2014,regular,7,ap,7,Alabama,SEC,0,1060
+2014,regular,7,ap,3,Ole Miss,SEC,0,1320
+2014,regular,7,ap,3,Mississippi State,SEC,2,1320
+2014,regular,7,ap,23,Missouri,SEC,0,212
+2014,regular,7,ap,14,Texas A&M,SEC,0,731
+2014,regular,7,ap,15,Ohio State,Big Ten,0,534
+2014,regular,7,ap,8,Michigan State,Big Ten,0,981
+2014,regular,7,ap,21,Nebraska,Big Ten,0,283
+2014,regular,7,ap,11,Oklahoma,Big 12,0,904
+2014,regular,7,ap,6,Notre Dame,FBS Independents,0,1186
+2014,regular,7,ap,1,Florida State,ACC,35,1461
+2014,regular,7,ap,22,Georgia Tech,ACC,0,235
+2014,regular,6,ap,22,East Carolina,American Athletic,0,237
+2014,regular,6,ap,13,Georgia,SEC,0,788
+2014,regular,6,ap,21,Oklahoma State,Big 12,0,246
+2014,regular,6,ap,23,Kansas State,Big 12,0,216
+2014,regular,6,ap,7,Baylor,Big 12,0,1149
+2014,regular,6,ap,25,TCU,Big 12,0,109
+2014,regular,6,ap,2,Oregon,Pac-12,13,1405
+2014,regular,6,ap,14,Stanford,Pac-12,0,643
+2014,regular,6,ap,16,USC,Pac-12,0,560
+2014,regular,6,ap,18,BYU,FBS Independents,0,450
+2014,regular,6,ap,5,Auburn,SEC,0,1272
+2014,regular,6,ap,15,LSU,SEC,0,636
+2014,regular,6,ap,8,UCLA,Pac-12,0,975
+2014,regular,6,ap,3,Alabama,SEC,13,1387
+2014,regular,6,ap,11,Ole Miss,SEC,0,906
+2014,regular,6,ap,12,Mississippi State,SEC,0,848
+2014,regular,6,ap,24,Missouri,SEC,0,145
+2014,regular,6,ap,6,Texas A&M,SEC,0,1206
+2014,regular,6,ap,20,Ohio State,Big Ten,0,298
+2014,regular,6,ap,10,Michigan State,Big Ten,0,944
+2014,regular,6,ap,17,Wisconsin,Big Ten,0,502
+2014,regular,6,ap,19,Nebraska,Big Ten,0,445
+2014,regular,6,ap,4,Oklahoma,Big 12,7,1357
+2014,regular,6,ap,9,Notre Dame,FBS Independents,0,972
+2014,regular,6,ap,1,Florida State,ACC,27,1416
+2014,regular,5,ap,23,East Carolina,American Athletic,0,180
+2014,regular,5,ap,12,Georgia,SEC,0,789
+2014,regular,5,ap,13,South Carolina,SEC,0,764
+2014,regular,5,ap,24,Oklahoma State,Big 12,0,132
+2014,regular,5,ap,25,Kansas State,Big 12,0,131
+2014,regular,5,ap,7,Baylor,Big 12,0,1143
+2014,regular,5,ap,2,Oregon,Pac-12,12,1400
+2014,regular,5,ap,16,Stanford,Pac-12,0,564
+2014,regular,5,ap,18,USC,Pac-12,0,459
+2014,regular,5,ap,20,BYU,FBS Independents,0,376
+2014,regular,5,ap,5,Auburn,SEC,0,1268
+2014,regular,5,ap,17,LSU,SEC,0,541
+2014,regular,5,ap,11,UCLA,Pac-12,0,806
+2014,regular,5,ap,15,Arizona State,Pac-12,0,702
+2014,regular,5,ap,3,Alabama,SEC,6,1377
+2014,regular,5,ap,10,Ole Miss,SEC,0,889
+2014,regular,5,ap,14,Mississippi State,SEC,0,706
+2014,regular,5,ap,6,Texas A&M,SEC,4,1232
+2014,regular,5,ap,22,Ohio State,Big Ten,0,196
+2014,regular,5,ap,9,Michigan State,Big Ten,0,905
+2014,regular,5,ap,19,Wisconsin,Big Ten,0,451
+2014,regular,5,ap,21,Nebraska,Big Ten,0,296
+2014,regular,5,ap,4,Oklahoma,Big 12,4,1343
+2014,regular,5,ap,8,Notre Dame,FBS Independents,0,967
+2014,regular,5,ap,1,Florida State,ACC,34,1439
+2014,regular,16,ap,13,Georgia,SEC,0,745
+2014,regular,16,ap,11,Kansas State,Big 12,0,875
+2014,regular,16,ap,4,Baylor,Big 12,0,1265
+2014,regular,16,ap,6,TCU,Big 12,0,1257
+2014,regular,16,ap,3,Oregon,Pac-12,8,1426
+2014,regular,16,ap,24,USC,Pac-12,0,112
+2014,regular,16,ap,19,Auburn,SEC,0,450
+2014,regular,16,ap,22,LSU,SEC,0,221
+2014,regular,16,ap,14,UCLA,Pac-12,0,663
+2014,regular,16,ap,23,Utah,Pac-12,0,134
+2014,regular,16,ap,15,Arizona State,Pac-12,0,602
+2014,regular,16,ap,12,Arizona,Pac-12,0,819
+2014,regular,16,ap,1,Alabama,SEC,27,1452
+2014,regular,16,ap,9,Ole Miss,SEC,0,976
+2014,regular,16,ap,8,Mississippi State,SEC,0,1070
+2014,regular,16,ap,16,Missouri,SEC,0,599
+2014,regular,16,ap,5,Ohio State,Big Ten,0,1262
+2014,regular,16,ap,7,Michigan State,Big Ten,0,1105
+2014,regular,16,ap,17,Wisconsin,Big Ten,0,542
+2014,regular,16,ap,25,Nebraska,Big Ten,0,79
+2014,regular,16,ap,2,Florida State,ACC,25,1436
+2014,regular,16,ap,18,Clemson,ACC,0,509
+2014,regular,16,ap,10,Georgia Tech,ACC,0,876
+2014,regular,16,ap,20,Louisville,ACC,0,406
+2014,regular,16,ap,21,Boise State,Mountain West,0,368
+2014,regular,16,cfp,13,Georgia,SEC,0,0
+2014,regular,16,cfp,11,Kansas State,Big 12,0,0
+2014,regular,16,cfp,5,Baylor,Big 12,0,0
+2014,regular,16,cfp,6,TCU,Big 12,0,0
+2014,regular,16,cfp,2,Oregon,Pac-12,0,0
+2014,regular,16,cfp,24,USC,Pac-12,0,0
+2014,regular,16,cfp,19,Auburn,SEC,0,0
+2014,regular,16,cfp,23,LSU,SEC,0,0
+2014,regular,16,cfp,14,UCLA,Pac-12,0,0
+2014,regular,16,cfp,22,Utah,Pac-12,0,0
+2014,regular,16,cfp,15,Arizona State,Pac-12,0,0
+2014,regular,16,cfp,10,Arizona,Pac-12,0,0
+2014,regular,16,cfp,1,Alabama,SEC,0,0
+2014,regular,16,cfp,9,Ole Miss,SEC,0,0
+2014,regular,16,cfp,7,Mississippi State,SEC,0,0
+2014,regular,16,cfp,16,Missouri,SEC,0,0
+2014,regular,16,cfp,4,Ohio State,Big Ten,0,0
+2014,regular,16,cfp,8,Michigan State,Big Ten,0,0
+2014,regular,16,cfp,18,Wisconsin,Big Ten,0,0
+2014,regular,16,cfp,25,Minnesota,Big Ten,0,0
+2014,regular,16,cfp,3,Florida State,ACC,0,0
+2014,regular,16,cfp,17,Clemson,ACC,0,0
+2014,regular,16,cfp,12,Georgia Tech,ACC,0,0
+2014,regular,16,cfp,21,Louisville,ACC,0,0
+2014,regular,16,cfp,20,Boise State,Mountain West,0,0
+2014,regular,15,ap,15,Georgia,SEC,0,606
+2014,regular,15,ap,9,Kansas State,Big 12,0,995
+2014,regular,15,ap,5,Baylor,Big 12,0,1243
+2014,regular,15,ap,4,TCU,Big 12,0,1274
+2014,regular,15,ap,3,Oregon,Pac-12,5,1391
+2014,regular,15,ap,20,Auburn,SEC,0,358
+2014,regular,15,ap,23,LSU,SEC,0,145
+2014,regular,15,ap,16,UCLA,Pac-12,0,512
+2014,regular,15,ap,24,Utah,Pac-12,0,79
+2014,regular,15,ap,17,Arizona State,Pac-12,0,495
+2014,regular,15,ap,8,Arizona,Pac-12,0,1027
+2014,regular,15,ap,1,Alabama,SEC,25,1426
+2014,regular,15,ap,13,Ole Miss,SEC,0,753
+2014,regular,15,ap,10,Mississippi State,SEC,0,944
+2014,regular,15,ap,14,Missouri,SEC,0,740
+2014,regular,15,ap,6,Ohio State,Big Ten,0,1192
+2014,regular,15,ap,7,Michigan State,Big Ten,0,1048
+2014,regular,15,ap,11,Wisconsin,Big Ten,0,910
+2014,regular,15,ap,25,Nebraska,Big Ten,0,64
+2014,regular,15,ap,18,Oklahoma,Big 12,0,485
+2014,regular,15,ap,2,Florida State,ACC,29,1423
+2014,regular,15,ap,19,Clemson,ACC,0,418
+2014,regular,15,ap,12,Georgia Tech,ACC,0,823
+2014,regular,15,ap,21,Louisville,ACC,0,346
+2014,regular,15,ap,22,Boise State,Mountain West,0,265
+2014,regular,15,cfp,14,Georgia,SEC,0,0
+2014,regular,15,cfp,9,Kansas State,Big 12,0,0
+2014,regular,15,cfp,6,Baylor,Big 12,0,0
+2014,regular,15,cfp,3,TCU,Big 12,0,0
+2014,regular,15,cfp,2,Oregon,Pac-12,0,0
+2014,regular,15,cfp,25,USC,Pac-12,0,0
+2014,regular,15,cfp,19,Auburn,SEC,0,0
+2014,regular,15,cfp,24,LSU,SEC,0,0
+2014,regular,15,cfp,15,UCLA,Pac-12,0,0
+2014,regular,15,cfp,23,Utah,Pac-12,0,0
+2014,regular,15,cfp,17,Arizona State,Pac-12,0,0
+2014,regular,15,cfp,7,Arizona,Pac-12,0,0
+2014,regular,15,cfp,1,Alabama,SEC,0,0
+2014,regular,15,cfp,12,Ole Miss,SEC,0,0
+2014,regular,15,cfp,10,Mississippi State,SEC,0,0
+2014,regular,15,cfp,16,Missouri,SEC,0,0
+2014,regular,15,cfp,5,Ohio State,Big Ten,0,0
+2014,regular,15,cfp,8,Michigan State,Big Ten,0,0
+2014,regular,15,cfp,13,Wisconsin,Big Ten,0,0
+2014,regular,15,cfp,20,Oklahoma,Big 12,0,0
+2014,regular,15,cfp,4,Florida State,ACC,0,0
+2014,regular,15,cfp,18,Clemson,ACC,0,0
+2014,regular,15,cfp,11,Georgia Tech,ACC,0,0
+2014,regular,15,cfp,21,Louisville,ACC,0,0
+2014,regular,15,cfp,22,Boise State,Mountain West,0,0
+2014,regular,14,ap,8,Georgia,SEC,0,1002
+2014,regular,14,ap,11,Kansas State,Big 12,0,898
+2014,regular,14,ap,5,Baylor,Big 12,0,1234
+2014,regular,14,ap,6,TCU,Big 12,0,1233
+2014,regular,14,ap,3,Oregon,Pac-12,2,1393
+2014,regular,14,ap,15,Auburn,SEC,0,597
+2014,regular,14,ap,9,UCLA,Pac-12,0,998
+2014,regular,14,ap,13,Arizona State,Pac-12,0,790
+2014,regular,14,ap,12,Arizona,Pac-12,0,807
+2014,regular,14,ap,2,Alabama,SEC,21,1445
+2014,regular,14,ap,18,Ole Miss,SEC,0,398
+2014,regular,14,ap,4,Mississippi State,SEC,0,1301
+2014,regular,14,ap,19,Marshall,Conference USA,0,384
+2014,regular,14,ap,17,Missouri,SEC,0,525
+2014,regular,14,ap,7,Ohio State,Big Ten,0,1163
+2014,regular,14,ap,10,Michigan State,Big Ten,0,971
+2014,regular,14,ap,14,Wisconsin,Big Ten,0,764
+2014,regular,14,ap,22,Minnesota,Big Ten,0,232
+2014,regular,14,ap,20,Oklahoma,Big 12,0,363
+2014,regular,14,ap,1,Florida State,ACC,37,1458
+2014,regular,14,ap,23,Clemson,ACC,0,198
+2014,regular,14,ap,16,Georgia Tech,ACC,0,581
+2014,regular,14,ap,24,Louisville,ACC,0,191
+2014,regular,14,ap,25,Boise State,Mountain West,0,96
+2014,regular,14,ap,21,Colorado State,Mountain West,0,346
+2014,regular,14,cfp,9,Georgia,SEC,0,0
+2014,regular,14,cfp,12,Kansas State,Big 12,0,0
+2014,regular,14,cfp,7,Baylor,Big 12,0,0
+2014,regular,14,cfp,5,TCU,Big 12,0,0
+2014,regular,14,cfp,2,Oregon,Pac-12,0,0
+2014,regular,14,cfp,15,Auburn,SEC,0,0
+2014,regular,14,cfp,8,UCLA,Pac-12,0,0
+2014,regular,14,cfp,25,Utah,Pac-12,0,0
+2014,regular,14,cfp,13,Arizona State,Pac-12,0,0
+2014,regular,14,cfp,11,Arizona,Pac-12,0,0
+2014,regular,14,cfp,1,Alabama,SEC,0,0
+2014,regular,14,cfp,19,Ole Miss,SEC,0,0
+2014,regular,14,cfp,4,Mississippi State,SEC,0,0
+2014,regular,14,cfp,24,Marshall,Conference USA,0,0
+2014,regular,14,cfp,17,Missouri,SEC,0,0
+2014,regular,14,cfp,6,Ohio State,Big Ten,0,0
+2014,regular,14,cfp,10,Michigan State,Big Ten,0,0
+2014,regular,14,cfp,14,Wisconsin,Big Ten,0,0
+2014,regular,14,cfp,18,Minnesota,Big Ten,0,0
+2014,regular,14,cfp,20,Oklahoma,Big 12,0,0
+2014,regular,14,cfp,3,Florida State,ACC,0,0
+2014,regular,14,cfp,21,Clemson,ACC,0,0
+2014,regular,14,cfp,16,Georgia Tech,ACC,0,0
+2014,regular,14,cfp,22,Louisville,ACC,0,0
+2014,regular,14,cfp,23,Boise State,Mountain West,0,0
+2014,regular,13,ap,9,Georgia,SEC,0,948
+2014,regular,13,ap,12,Kansas State,Big 12,0,868
+2014,regular,13,ap,6,Baylor,Big 12,0,1232
+2014,regular,13,ap,5,TCU,Big 12,0,1237
+2014,regular,13,ap,3,Oregon,Pac-12,1,1385
+2014,regular,13,ap,24,USC,Pac-12,0,195
+2014,regular,13,ap,16,Auburn,SEC,0,531
+2014,regular,13,ap,11,UCLA,Pac-12,0,876
+2014,regular,13,ap,20,Utah,Pac-12,0,349
+2014,regular,13,ap,13,Arizona State,Pac-12,0,720
+2014,regular,13,ap,15,Arizona,Pac-12,0,695
+2014,regular,13,ap,2,Alabama,SEC,16,1439
+2014,regular,13,ap,8,Ole Miss,SEC,0,1064
+2014,regular,13,ap,4,Mississippi State,SEC,0,1289
+2014,regular,13,ap,18,Marshall,Conference USA,0,383
+2014,regular,13,ap,19,Missouri,SEC,0,376
+2014,regular,13,ap,7,Ohio State,Big Ten,0,1167
+2014,regular,13,ap,10,Michigan State,Big Ten,0,941
+2014,regular,13,ap,14,Wisconsin,Big Ten,0,707
+2014,regular,13,ap,21,Nebraska,Big Ten,0,291
+2014,regular,13,ap,23,Oklahoma,Big 12,0,206
+2014,regular,13,ap,1,Florida State,ACC,43,1476
+2014,regular,13,ap,17,Georgia Tech,ACC,0,523
+2014,regular,13,ap,25,Duke,ACC,0,85
+2014,regular,13,ap,22,Colorado State,Mountain West,0,281
+2014,regular,13,cfp,10,Georgia,SEC,0,0
+2014,regular,13,cfp,12,Kansas State,Big 12,0,0
+2014,regular,13,cfp,7,Baylor,Big 12,0,0
+2014,regular,13,cfp,5,TCU,Big 12,0,0
+2014,regular,13,cfp,2,Oregon,Pac-12,0,0
+2014,regular,13,cfp,19,USC,Pac-12,0,0
+2014,regular,13,cfp,14,Auburn,SEC,0,0
+2014,regular,13,cfp,9,UCLA,Pac-12,0,0
+2014,regular,13,cfp,17,Utah,Pac-12,0,0
+2014,regular,13,cfp,13,Arizona State,Pac-12,0,0
+2014,regular,13,cfp,15,Arizona,Pac-12,0,0
+2014,regular,13,cfp,1,Alabama,SEC,0,0
+2014,regular,13,cfp,8,Ole Miss,SEC,0,0
+2014,regular,13,cfp,4,Mississippi State,SEC,0,0
+2014,regular,13,cfp,20,Missouri,SEC,0,0
+2014,regular,13,cfp,6,Ohio State,Big Ten,0,0
+2014,regular,13,cfp,11,Michigan State,Big Ten,0,0
+2014,regular,13,cfp,16,Wisconsin,Big Ten,0,0
+2014,regular,13,cfp,25,Minnesota,Big Ten,0,0
+2014,regular,13,cfp,23,Nebraska,Big Ten,0,0
+2014,regular,13,cfp,21,Oklahoma,Big 12,0,0
+2014,regular,13,cfp,3,Florida State,ACC,0,0
+2014,regular,13,cfp,22,Clemson,ACC,0,0
+2014,regular,13,cfp,18,Georgia Tech,ACC,0,0
+2014,regular,13,cfp,24,Louisville,ACC,0,0
+2014,regular,12,ap,16,Georgia,SEC,0,622
+2014,regular,12,ap,13,Kansas State,Big 12,0,742
+2014,regular,12,ap,6,Baylor,Big 12,0,1193
+2014,regular,12,ap,5,TCU,Big 12,0,1273
+2014,regular,12,ap,3,Oregon,Pac-12,0,1334
+2014,regular,12,ap,9,Auburn,SEC,0,981
+2014,regular,12,ap,20,LSU,SEC,0,429
+2014,regular,12,ap,14,UCLA,Pac-12,0,691
+2014,regular,12,ap,25,Utah,Pac-12,0,87
+2014,regular,12,ap,7,Arizona State,Pac-12,0,1142
+2014,regular,12,ap,17,Arizona,Pac-12,0,471
+2014,regular,12,ap,4,Alabama,SEC,0,1326
+2014,regular,12,ap,10,Ole Miss,SEC,0,948
+2014,regular,12,ap,1,Mississippi State,SEC,48,1488
+2014,regular,12,ap,21,Marshall,Conference USA,0,297
+2014,regular,12,ap,8,Ohio State,Big Ten,0,1086
+2014,regular,12,ap,12,Michigan State,Big Ten,0,782
+2014,regular,12,ap,22,Wisconsin,Big Ten,0,225
+2014,regular,12,ap,11,Nebraska,Big Ten,0,830
+2014,regular,12,ap,15,Notre Dame,FBS Independents,0,630
+2014,regular,12,ap,2,Florida State,ACC,12,1446
+2014,regular,12,ap,18,Clemson,ACC,0,457
+2014,regular,12,ap,24,Georgia Tech,ACC,0,127
+2014,regular,12,ap,19,Duke,ACC,0,431
+2014,regular,12,ap,23,Colorado State,Mountain West,0,128
+2014,regular,12,cfp,15,Georgia,SEC,0,0
+2014,regular,12,cfp,13,Kansas State,Big 12,0,0
+2014,regular,12,cfp,7,Baylor,Big 12,0,0
+2014,regular,12,cfp,4,TCU,Big 12,0,0
+2014,regular,12,cfp,2,Oregon,Pac-12,0,0
+2014,regular,12,cfp,9,Auburn,SEC,0,0
+2014,regular,12,cfp,17,LSU,SEC,0,0
+2014,regular,12,cfp,11,UCLA,Pac-12,0,0
+2014,regular,12,cfp,23,Utah,Pac-12,0,0
+2014,regular,12,cfp,6,Arizona State,Pac-12,0,0
+2014,regular,12,cfp,14,Arizona,Pac-12,0,0
+2014,regular,12,cfp,5,Alabama,SEC,0,0
+2014,regular,12,cfp,10,Ole Miss,SEC,0,0
+2014,regular,12,cfp,1,Mississippi State,SEC,0,0
+2014,regular,12,cfp,24,Texas A&M,SEC,0,0
+2014,regular,12,cfp,8,Ohio State,Big Ten,0,0
+2014,regular,12,cfp,12,Michigan State,Big Ten,0,0
+2014,regular,12,cfp,20,Wisconsin,Big Ten,0,0
+2014,regular,12,cfp,25,Minnesota,Big Ten,0,0
+2014,regular,12,cfp,16,Nebraska,Big Ten,0,0
+2014,regular,12,cfp,18,Notre Dame,FBS Independents,0,0
+2014,regular,12,cfp,3,Florida State,ACC,0,0
+2014,regular,12,cfp,19,Clemson,ACC,0,0
+2014,regular,12,cfp,22,Georgia Tech,ACC,0,0
+2014,regular,12,cfp,21,Duke,ACC,0,0
+2014,regular,11,ap,17,Georgia,SEC,0,465
+2014,regular,11,ap,9,Kansas State,Big 12,0,1049
+2014,regular,11,ap,10,Baylor,Big 12,0,961
+2014,regular,11,ap,6,TCU,Big 12,0,1148
+2014,regular,11,ap,24,West Virginia,Big 12,0,159
+2014,regular,11,ap,5,Oregon,Pac-12,0,1275
+2014,regular,11,ap,3,Auburn,SEC,0,1345
+2014,regular,11,ap,14,LSU,SEC,0,717
+2014,regular,11,ap,18,UCLA,Pac-12,0,464
+2014,regular,11,ap,20,Utah,Pac-12,0,327
+2014,regular,11,ap,11,Arizona State,Pac-12,0,831
+2014,regular,11,ap,21,Arizona,Pac-12,0,325
+2014,regular,11,ap,4,Alabama,SEC,0,1281
+2014,regular,11,ap,12,Ole Miss,SEC,0,828
+2014,regular,11,ap,1,Mississippi State,SEC,45,1484
+2014,regular,11,ap,23,Marshall,Conference USA,0,238
+2014,regular,11,ap,13,Ohio State,Big Ten,0,780
+2014,regular,11,ap,7,Michigan State,Big Ten,0,1120
+2014,regular,11,ap,25,Wisconsin,Big Ten,0,83
+2014,regular,11,ap,15,Nebraska,Big Ten,0,680
+2014,regular,11,ap,16,Oklahoma,Big 12,0,574
+2014,regular,11,ap,8,Notre Dame,FBS Independents,0,1096
+2014,regular,11,ap,2,Florida State,ACC,15,1452
+2014,regular,11,ap,19,Clemson,ACC,0,341
+2014,regular,11,ap,22,Duke,ACC,0,288
+2014,regular,11,cfp,20,Georgia,SEC,0,0
+2014,regular,11,cfp,7,Kansas State,Big 12,0,0
+2014,regular,11,cfp,12,Baylor,Big 12,0,0
+2014,regular,11,cfp,6,TCU,Big 12,0,0
+2014,regular,11,cfp,23,West Virginia,Big 12,0,0
+2014,regular,11,cfp,4,Oregon,Pac-12,0,0
+2014,regular,11,cfp,3,Auburn,SEC,0,0
+2014,regular,11,cfp,16,LSU,SEC,0,0
+2014,regular,11,cfp,18,UCLA,Pac-12,0,0
+2014,regular,11,cfp,17,Utah,Pac-12,0,0
+2014,regular,11,cfp,9,Arizona State,Pac-12,0,0
+2014,regular,11,cfp,19,Arizona,Pac-12,0,0
+2014,regular,11,cfp,5,Alabama,SEC,0,0
+2014,regular,11,cfp,11,Ole Miss,SEC,0,0
+2014,regular,11,cfp,1,Mississippi State,SEC,0,0
+2014,regular,11,cfp,14,Ohio State,Big Ten,0,0
+2014,regular,11,cfp,8,Michigan State,Big Ten,0,0
+2014,regular,11,cfp,25,Wisconsin,Big Ten,0,0
+2014,regular,11,cfp,13,Nebraska,Big Ten,0,0
+2014,regular,11,cfp,15,Oklahoma,Big 12,0,0
+2014,regular,11,cfp,10,Notre Dame,FBS Independents,0,0
+2014,regular,11,cfp,2,Florida State,ACC,0,0
+2014,regular,11,cfp,21,Clemson,ACC,0,0
+2014,regular,11,cfp,24,Georgia Tech,ACC,0,0
+2014,regular,11,cfp,22,Duke,ACC,0,0
+2014,regular,4,ap,13,Georgia,SEC,0,729
+2014,regular,4,ap,14,South Carolina,SEC,0,718
+2014,regular,4,ap,25,Oklahoma State,Big 12,0,126
+2014,regular,4,ap,20,Kansas State,Big 12,0,326
+2014,regular,4,ap,7,Baylor,Big 12,0,1134
+2014,regular,4,ap,2,Oregon,Pac-12,17,1424
+2014,regular,4,ap,16,Stanford,Pac-12,0,560
+2014,regular,4,ap,17,USC,Pac-12,0,459
+2014,regular,4,ap,21,BYU,FBS Independents,0,246
+2014,regular,4,ap,5,Auburn,SEC,0,1252
+2014,regular,4,ap,8,LSU,SEC,0,1114
+2014,regular,4,ap,12,UCLA,Pac-12,0,807
+2014,regular,4,ap,15,Arizona State,Pac-12,0,680
+2014,regular,4,ap,3,Alabama,SEC,1,1346
+2014,regular,4,ap,10,Ole Miss,SEC,0,840
+2014,regular,4,ap,18,Missouri,SEC,0,446
+2014,regular,4,ap,6,Texas A&M,SEC,3,1195
+2014,regular,4,ap,23,Ohio State,Big Ten,0,204
+2014,regular,4,ap,11,Michigan State,Big Ten,0,832
+2014,regular,4,ap,19,Wisconsin,Big Ten,0,414
+2014,regular,4,ap,24,Nebraska,Big Ten,0,172
+2014,regular,4,ap,4,Oklahoma,Big 12,2,1325
+2014,regular,4,ap,9,Notre Dame,FBS Independents,0,917
+2014,regular,4,ap,1,Florida State,ACC,37,1466
+2014,regular,4,ap,22,Clemson,ACC,0,209
+2014,regular,3,ap,6,Georgia,SEC,1,1201
+2014,regular,3,ap,24,South Carolina,SEC,0,199
+2014,regular,3,ap,19,Kansas State,Big 12,0,285
+2014,regular,3,ap,8,Baylor,Big 12,0,1043
+2014,regular,3,ap,2,Oregon,Pac-12,16,1415
+2014,regular,3,ap,15,Stanford,Pac-12,0,592
+2014,regular,3,ap,9,USC,Pac-12,0,1039
+2014,regular,3,ap,25,BYU,FBS Independents,0,179
+2014,regular,3,ap,5,Auburn,SEC,0,1236
+2014,regular,3,ap,10,LSU,SEC,0,1029
+2014,regular,3,ap,12,UCLA,Pac-12,0,779
+2014,regular,3,ap,16,Arizona State,Pac-12,0,570
+2014,regular,3,ap,3,Alabama,SEC,1,1334
+2014,regular,3,ap,14,Ole Miss,SEC,0,703
+2014,regular,3,ap,20,Missouri,SEC,0,237
+2014,regular,3,ap,7,Texas A&M,SEC,2,1101
+2014,regular,3,ap,22,Ohio State,Big Ten,0,222
+2014,regular,3,ap,13,Michigan State,Big Ten,0,751
+2014,regular,3,ap,18,Wisconsin,Big Ten,0,391
+2014,regular,3,ap,4,Oklahoma,Big 12,2,1303
+2014,regular,3,ap,11,Notre Dame,FBS Independents,0,815
+2014,regular,3,ap,1,Florida State,ACC,38,1463
+2014,regular,3,ap,23,Clemson,ACC,0,206
+2014,regular,3,ap,17,Virginia Tech,ACC,0,532
+2014,regular,3,ap,21,Louisville,ACC,0,234
+2014,regular,2,ap,6,Georgia,SEC,2,1114
+2014,regular,2,ap,21,South Carolina,SEC,0,196
+2014,regular,2,ap,20,Kansas State,Big 12,0,325
+2014,regular,2,ap,10,Baylor,Big 12,0,962
+2014,regular,2,ap,3,Oregon,Pac-12,5,1314
+2014,regular,2,ap,13,Stanford,Pac-12,0,886
+2014,regular,2,ap,14,USC,Pac-12,0,729
+2014,regular,2,ap,5,Auburn,SEC,0,1186
+2014,regular,2,ap,12,LSU,SEC,1,926
+2014,regular,2,ap,11,UCLA,Pac-12,0,944
+2014,regular,2,ap,17,Arizona State,Pac-12,0,431
+2014,regular,2,ap,2,Alabama,SEC,1,1317
+2014,regular,2,ap,15,Ole Miss,SEC,0,525
+2014,regular,2,ap,24,Missouri,SEC,0,147
+2014,regular,2,ap,9,Texas A&M,SEC,2,978
+2014,regular,2,ap,8,Ohio State,Big Ten,0,982
+2014,regular,2,ap,7,Michigan State,Big Ten,0,1093
+2014,regular,2,ap,18,Wisconsin,Big Ten,0,364
+2014,regular,2,ap,19,Nebraska,Big Ten,0,352
+2014,regular,2,ap,4,Oklahoma,Big 12,2,1283
+2014,regular,2,ap,16,Notre Dame,FBS Independents,0,519
+2014,regular,2,ap,1,Florida State,ACC,49,1456
+2014,regular,2,ap,23,Clemson,ACC,0,164
+2014,regular,2,ap,21,North Carolina,ACC,0,196
+2014,regular,2,ap,25,Louisville,ACC,0,141
+2014,regular,1,ap,12,Georgia,SEC,0,843
+2014,regular,1,ap,9,South Carolina,SEC,0,1015
+2014,regular,1,ap,20,Kansas State,Big 12,0,242
+2014,regular,1,ap,10,Baylor,Big 12,0,966
+2014,regular,1,ap,3,Oregon,Pac-12,1,1334
+2014,regular,1,ap,11,Stanford,Pac-12,0,885
+2014,regular,1,ap,25,Washington,Pac-12,0,130
+2014,regular,1,ap,15,USC,Pac-12,0,626
+2014,regular,1,ap,6,Auburn,SEC,0,1198
+2014,regular,1,ap,13,LSU,SEC,0,776
+2014,regular,1,ap,7,UCLA,Pac-12,0,1106
+2014,regular,1,ap,19,Arizona State,Pac-12,0,357
+2014,regular,1,ap,2,Alabama,SEC,1,1361
+2014,regular,1,ap,18,Ole Miss,SEC,0,424
+2014,regular,1,ap,24,Missouri,SEC,0,134
+2014,regular,1,ap,21,Texas A&M,SEC,0,238
+2014,regular,1,ap,5,Ohio State,Big Ten,0,1207
+2014,regular,1,ap,8,Michigan State,Big Ten,0,1080
+2014,regular,1,ap,14,Wisconsin,Big Ten,0,637
+2014,regular,1,ap,22,Nebraska,Big Ten,0,226
+2014,regular,1,ap,4,Oklahoma,Big 12,1,1324
+2014,regular,1,ap,17,Notre Dame,FBS Independents,0,445
+2014,regular,1,ap,1,Florida State,ACC,57,1496
+2014,regular,1,ap,16,Clemson,ACC,0,536
+2014,regular,1,ap,23,North Carolina,ACC,0,194
+2014,postseason,1,cfp,1,Alabama,SEC,0,0
+2014,postseason,1,cfp,2,Oregon,Pac-12,0,0
+2014,postseason,1,cfp,3,Florida State,ACC,0,0
+2014,postseason,1,cfp,4,Ohio State,Big Ten,0,0
+2014,postseason,1,cfp,5,Baylor,Big 12,0,0
+2014,postseason,1,cfp,6,TCU,Big 12,0,0
+2014,postseason,1,cfp,7,Mississippi State,SEC,0,0
+2014,postseason,1,cfp,8,Michigan State,Big Ten,0,0
+2014,postseason,1,cfp,9,Ole Miss,SEC,0,0
+2014,postseason,1,cfp,10,Arizona,Pac-12,0,0
+2014,postseason,1,cfp,11,Kansas State,Big 12,0,0
+2014,postseason,1,cfp,12,Georgia Tech,ACC,0,0
+2014,postseason,1,cfp,13,Georgia,SEC,0,0
+2014,postseason,1,cfp,14,UCLA,Pac-12,0,0
+2014,postseason,1,cfp,15,Arizona State,Pac-12,0,0
+2014,postseason,1,cfp,16,Missouri,SEC,0,0
+2014,postseason,1,cfp,17,Clemson,ACC,0,0
+2014,postseason,1,cfp,18,Wisconsin,Big Ten,0,0
+2014,postseason,1,cfp,19,Auburn,SEC,0,0
+2014,postseason,1,cfp,20,Boise State,Mountain West,0,0
+2014,postseason,1,cfp,21,Louisville,ACC,0,0
+2014,postseason,1,cfp,22,Utah,Pac-12,0,0
+2014,postseason,1,cfp,23,LSU,SEC,0,0
+2014,postseason,1,cfp,24,USC,Pac-12,0,0
+2014,postseason,1,cfp,25,Minnesota,Big Ten,0,0
+2014,postseason,1,ap,1,Ohio State,Big Ten,59,1475
+2014,postseason,1,ap,2,Oregon,Pac-12,0,1402
+2014,postseason,1,ap,3,TCU,Big 12,0,1349
+2014,postseason,1,ap,4,Alabama,SEC,0,1297
+2014,postseason,1,ap,5,Michigan State,Big Ten,0,1212
+2014,postseason,1,ap,5,Florida State,ACC,0,1212
+2014,postseason,1,ap,7,Baylor,Big 12,0,1098
+2014,postseason,1,ap,8,Georgia Tech,ACC,0,1071
+2014,postseason,1,ap,9,Georgia,SEC,0,925
+2014,postseason,1,ap,10,UCLA,Pac-12,0,908
+2014,postseason,1,ap,11,Mississippi State,SEC,0,767
+2014,postseason,1,ap,12,Arizona State,Pac-12,0,756
+2014,postseason,1,ap,13,Wisconsin,Big Ten,0,724
+2014,postseason,1,ap,14,Missouri,SEC,0,710
+2014,postseason,1,ap,15,Clemson,ACC,0,683
+2014,postseason,1,ap,16,Boise State,Mountain West,0,653
+2014,postseason,1,ap,17,Ole Miss,SEC,0,543
+2014,postseason,1,ap,18,Kansas State,Big 12,0,509
+2014,postseason,1,ap,19,Arizona,Pac-12,0,499
+2014,postseason,1,ap,20,USC,Pac-12,0,315
+2014,postseason,1,ap,21,Utah,Pac-12,0,302
+2014,postseason,1,ap,22,Auburn,SEC,0,216
+2014,postseason,1,ap,23,Marshall,Conference USA,0,161
+2014,postseason,1,ap,24,Louisville,ACC,0,116
+2014,postseason,1,ap,25,Memphis,American Athletic,0,94
