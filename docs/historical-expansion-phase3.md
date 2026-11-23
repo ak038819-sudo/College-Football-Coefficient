@@ -252,12 +252,109 @@ have shown several hundred a season instead.
 `production_promotion_allowed` is `false` in every report. This gate says
 which team-seasons *could* be rated, not that anything may be.
 
+## Preservation
+
+`scripts/audit_historical_preservation.py`, run by
+`.github/workflows/historical-preservation.yml`, answers the question the
+other gates assume: do the staged **columns** still say what the provider
+said?
+
+The importer keeps each game's whole response body in `source_payload_json`
+with a sha256 beside it, and copies a dozen fields out into columns. Every
+other gate — reconciliation, identity, eligibility — reads the columns. So
+the columns are load-bearing, and nothing had ever checked them against the
+payload they came from.
+
+It does three things, read-only, on the staging chain alone:
+
+1. **Re-digests every payload.** A body that no longer matches its own
+   sha256 is reported and then not read, because it is no longer evidence.
+2. **Re-derives every column from the payload** and reports each one that
+   disagrees, as a `loss` (the column is empty where the payload speaks),
+   an `invention` (the column speaks where the payload is silent) or a
+   `mismatch` (both speak, differently). The field mapping is **written out
+   a second time** rather than imported from the importer: reading the
+   payload back with the function that wrote the row would only prove that
+   function is deterministic. The game id and the season are checked too,
+   because every later gate credits a game to a team-season by the *stored*
+   season, so a season that drifted would move evidence between years
+   without touching a score.
+3. **Counts what the provider left uncertain** — ties, missing scores,
+   missing dates, missing venues, unknown classification per side, and
+   neutral site as three values rather than two. The census is counted
+   **from the payloads, not from the columns**: the columns are what is
+   under audit, and letting a drifted one answer a question about the
+   source would hand the corruption the last word. A stored 7-6 over a
+   payload's 7-7 would otherwise report no tie. Rows whose payload failed
+   its digest are left out of the census entirely and counted separately.
+
+Season and season type are the two columns the importer takes from the
+*request* rather than the response: it writes the year and season type it
+asked for, so a payload silent about either cannot contradict the column.
+A payload that names a different one still does.
+
+Nothing is repaired. Rule 1 of the plan is that source records are kept as
+they came, so a drifted column is a finding for a person, not something a
+script quietly corrects.
+
+### Result, 1946–1979 (2026-11-18)
+
+Run [44230188544](https://github.com/ak038819-sudo/College-Football-Coefficient/actions/runs/44230188544),
+over the full range, on the staged archive:
+
+| | |
+| --- | --- |
+| games | 22,706 across 34 seasons |
+| payloads verified against their digest | 22,706 |
+| payloads corrupt or unreadable | 0 |
+| **columns that no longer match their payload** | **0** |
+
+Nothing has drifted. Every column of every staged game still says what the
+response body it came from says, and every body still matches the sha256
+recorded beside it.
+
+What the provider left uncertain, counted from those payloads:
+
+| | games |
+| --- | --- |
+| ties | 680 |
+| missing score | 0 |
+| missing date | 0 |
+| **missing venue** | **22,706** |
+| home classification unknown | 350 |
+| away classification unknown | 832 |
+| neutral site: true | 339 |
+| neutral site: false | 22,367 |
+| neutral site: unknown | 0 |
+
+Two of those are findings rather than reassurance.
+
+**The provider has no venue for a single game in this period.** Not one of
+the 22,706 carries a venue name. The field exists and is nullable in the
+provider's schema, and it is null throughout; this is absence, not a
+mapping error, and it is the same `venue` key the importer reads.
+
+**Neutral site is two-valued here, not three.** The provider never says it
+does not know, so all 22,367 `false` values are its assertion that a game
+was not at a neutral site. Its own schema settles why: `neutralSite` is a
+required non-nullable boolean, so there is no value it could use to
+express doubt. Taken with the line above, nothing in this archive can
+corroborate a neutral-site flag — there is no venue to check it against.
+That is worth carrying into Phase 5, where home advantage is a parameter:
+339 neutral games in 34 seasons is a claim resting entirely on the
+provider.
+
+The requirement this gate answers is "preserve neutral-site uncertainty".
+The honest answer for 1946–1979 is that the source expresses none, and the
+archive has faithfully preserved that — which is not the same as the
+uncertainty not existing.
+
 ## Review before promotion
 
 - Reconcile source counts with independent historical references for each season, especially empty or unexpectedly sparse years. (The provider's own records feed is now reconciled by `historical-reconcile.yml`; independent references are still outstanding.)
 - Create a reviewed canonical historical school identity map including renamed, merged, discontinued, and similarly named programs. (`.github/workflows/historical-identity.yml` builds the **candidates**; the verdicts are a person's.)
 - Create season-specific major-college / division eligibility mapping; do not infer historical membership from present-day FBS. (`scripts/build_historical_eligibility.py`, run beside the identity map.)
-- Preserve ties, neutral-site uncertainty, missing scores/dates, and unknown classifications.
+- Preserve ties, neutral-site uncertainty, missing scores/dates, and unknown classifications. (Audited by `scripts/audit_historical_preservation.py`, which checks every column against the payload it came from and counts what the provider left uncertain.)
 - Report all unresolved ambiguities; never silently discard records to satisfy modern FBS constraints.
 - Freeze pre-promotion Elo/Merits fingerprints; compare outputs before and after promotion and require explicit approval.
 

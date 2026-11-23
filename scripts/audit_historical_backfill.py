@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only 1946–1979 historical backfill readiness report.
+"""Read-only historical backfill readiness report, 1869–1979.
 
 Consumes the isolated archive_games/archive_fetches schema from Phase 2.
 Never modifies production league.db or generates Elo/Merits.
@@ -11,12 +11,14 @@ import sqlite3
 from collections import defaultdict
 from pathlib import Path
 
-FIRST, LAST = 1946, 1979
+# The whole staged archive. 1869 is the first season anyone played; 1980
+# onward is the production pipeline's, not this staging chain's.
+FIRST, LAST = 1869, 1979
 
 
 def audit(db, first=FIRST, last=LAST):
     if first < FIRST or last > LAST or last < first:
-        raise ValueError("Phase 3 range must be within 1946–1979")
+        raise ValueError(f"Historical range must be within {FIRST}–{LAST}")
     results = []
     for year in range(first, last + 1):
         for kind in ("regular", "postseason"):

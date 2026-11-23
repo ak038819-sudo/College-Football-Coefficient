@@ -1340,6 +1340,13 @@
   .stats-leaders { display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px; }
   .stats-leaders li { padding:8px 0; }
   .stats-categories,.table-pagination {display:flex;gap:16px;flex-wrap:wrap;margin:16px 0;}
+  /* The download sits under its own table, quiet enough to be ignored by a
+     reader who only wants to look, and right-aligned so a column of them down
+     a long page reads as one edge rather than as a list of links. */
+  .table-download {display:flex;justify-content:flex-end;margin:6px 0 0;}
+  .download-button {appearance:none;background:none;border:0;padding:2px 0;font:inherit;
+    font-size:12px;color:var(--ink-dim);cursor:pointer;border-bottom:1px solid transparent;}
+  .download-button:hover,.download-button:focus-visible {color:var(--ink);border-bottom-color:currentColor;}
   .stats-categories [aria-current] {color:var(--amber);text-decoration:underline;}
   .sort-button {background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:10px 4px;white-space:nowrap;}
   .sort-button:focus-visible {outline:2px solid var(--amber);}
@@ -3901,6 +3908,8 @@ function renderTeamPage(param) {
     body = loading('tp-schedule', 'Schedule');
   } else if (tab === 'roster') {
     body = loading('tp-roster', 'Roster');
+  } else if (tab === 'recruiting') {
+    body = loading('tp-recruiting', 'Recruiting');
   } else if (tab === 'stats' || tab === 'leaders') {
     body = loading('tp-statistics', tab === 'stats' ? 'Team statistics' : 'Team leaders');
   } else if (tab === 'history') {
@@ -4237,7 +4246,7 @@ function fillModernScouting(team) {
 // The tab lives in the URL (see ui/navigation.js), so every tab is a shareable
 // address and Back moves between tabs like any other navigation.
 const TEAM_TAB_LABELS = { overview: 'Overview', week: 'This Week', schedule: 'Schedule', roster: 'Roster',
-  stats: 'Stats', leaders: 'Leaders', history: 'History', analytics: 'Analytics' };
+  recruiting: 'Recruiting', stats: 'Stats', leaders: 'Leaders', history: 'History', analytics: 'Analytics' };
 const CONF_TAB_LABELS = { overview: 'Overview', members: 'Members', history: 'History', external: 'External' };
 
 function activeTab(kind) {
@@ -4261,7 +4270,7 @@ function loading(id, title) {
 // the first time a team page opens. It's a <script> (not fetch) so it also
 // works when dashboard.html is opened straight from disk. Every number shown
 // here was computed in Python; this code only indexes, filters and draws.
-let teamPageState = { teamId: null, chartSeason: 'all', season: null, rosterSeason: null };
+let teamPageState = { teamId: null, chartSeason: 'all', season: null, rosterSeason: null, recruitSeason: null };
 
 // `raw` is one scope's rows (one team, or one season); `core` is the small
 // league-wide file. They are separate arguments because the second is shared
@@ -5301,12 +5310,14 @@ function hydrateTeamPage() {
   if (!team) return;
   if (teamPageState.teamId !== team.id) {
     teamPageState = { teamId: team.id, chartSeason: 'all', season: null, schedSeason: null,
-                      ledgerSeason: null, rosterSeason: null };
+                      ledgerSeason: null, rosterSeason: null, recruitSeason: null };
   }
   // The roster is in the people exports, a different file from the team shard, so
   // it fills on its own: a missing roster must not blank the Elo panel, and a
   // missing team history must not blank the roster.
   fillRosterPanel(team);
+  // Recruiting lives in its own two files as well, for the same reason.
+  fillRecruitingPanel(team);
   fillTeamStatistics(team);
   loadTeamPages({team: team.id}).then(tp => {
     const cur = resolveTeam(state.teamParam);
@@ -5885,7 +5896,10 @@ function renderNavigation() {
     if (selected) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
-  const statsNav = [['overview', 'Overview'], ['teams', 'Teams'], ['players', 'Players'], ['adjusted', 'Adjusted'], ['awards', 'Awards'], ['matchup', 'Matchup'], ['playoff', 'Playoff']];
+  // 'Recruiting' and 'Returning' both sit beside the other descriptive boards
+  // and NOT among the ratings, which is the point of where they were put: each
+  // describes a roster and no rating reads either.
+  const statsNav = [['overview', 'Overview'], ['teams', 'Teams'], ['players', 'Players'], ['adjusted', 'Adjusted'], ['recruiting', 'Recruiting'], ['returning', 'Returning'], ['awards', 'Awards'], ['matchup', 'Matchup'], ['playoff', 'Playoff']];
   const inStats = ['stats', 'matchups', 'playoff'].includes(state.section);
   const items = inStats ? statsNav : state.view === 'team' || state.section === 'teams' ? [] : SUBVIEWS[state.section] || [];
   // A section whose views are chosen from a selector rather than tabs puts it
@@ -8212,6 +8226,276 @@ function hydratePeopleBoards(version) {
   });
 }
 
+// ---------------- Recruiting (Stats > Recruiting, and a team tab) ----------------
+//
+// 81,262 signees and 4,577 team classes had been in the database since 2000
+// and reached the browser only as a hometown heat map on a COACH page. Nothing
+// said what a TEAM signed, nothing ranked the classes, and a signee's name was
+// not a link to the player he became -- although recruits.athlete_id is that
+// join and has been stored all along.
+//
+// TWO FILES, read differently. recruiting_classes.js is every attributable
+// class in one 68 KB load, which serves both the board and a team's whole
+// history; a season's signees are their own file and load only when someone
+// opens a class.
+//
+// A CLASS RANK IS NATIONAL. 1,148 classes belong to schools this database does
+// not carry, so a board of 25 teams can run to rank 30, and the payload brings
+// the count so the page can say why instead of looking broken.
+
+let _recruitClasses = null;              // the one file, parsed once
+const _signees = new Map();              // season -> Map(team_id -> rows)
+
+function recruitingEntry() { return STATIC_MANIFEST.recruiting || null; }
+function signeeEntry(season) {
+  return (recruitingEntry()?.seasons || {})[String(season)] || null;
+}
+
+function loadRecruitingClasses() {
+  if (_recruitClasses) return Promise.resolve(_recruitClasses);
+  const src = recruitingEntry()?.classes;
+  if (!src) return Promise.reject(new Error('no recruiting archive'));
+  return loadDataScript(src).then(() => {
+    const raw = window.__CFB_RECRUITING__;
+    if (!raw || !raw.fields) throw new Error('the recruiting archive was empty');
+    const idx = Object.fromEntries(raw.fields.map((f, i) => [f, i]));
+    const bySeason = new Map();
+    for (const row of raw.classes || []) {
+      const season = row[idx.season_year];
+      if (!bySeason.has(season)) bySeason.set(season, []);
+      bySeason.get(season).push({ team_id: row[idx.team_id], season_year: season,
+        class_rank: row[idx.class_rank], points: row[idx.points] });
+    }
+    _recruitClasses = { bySeason, unplaced: raw.unplaced || {} };
+    return _recruitClasses;
+  });
+}
+
+function loadSignees(season) {
+  season = Number(season);
+  if (_signees.has(season)) return Promise.resolve(_signees.get(season));
+  const src = signeeEntry(season);
+  if (!src) return Promise.reject(new Error('no signees for ' + season));
+  return loadDataScript(src).then(() => {
+    const raw = (window.__CFB_SIGNEES__ || {})[season];
+    if (!raw || !raw.fields) throw new Error('the ' + season + ' signees were empty');
+    const teams = new Map();
+    for (const [team, rows] of Object.entries(raw.teams || {})) {
+      teams.set(Number(team), rows.map(r => Object.fromEntries(raw.fields.map((f, i) => [f, r[i]]))));
+    }
+    _signees.set(season, teams);
+    return teams;
+  });
+}
+
+// A hometown, from whichever of the two parts the source has. Both missing is
+// a real gap and prints as one, never as a stray comma.
+function recruitHometown(row) {
+  return [row.city, row.state_province].filter(Boolean).join(', ');
+}
+
+// Stars as a number, because the glyphs would sort as text and read badly to a
+// screen reader. An unrated signee is a gap, not a nought-star recruit.
+function recruitStars(stars) {
+  return stars == null ? '&mdash;' : esc(String(stars));
+}
+
+function signeeTableHtml(rows) {
+  if (!rows || !rows.length) return '';
+  const cell = v => (v == null || v === '') ? '&mdash;' : esc(String(v));
+  const head = '<tr><th scope="col">Signee</th><th scope="col">Pos</th>' +
+    '<th scope="col" title="The recruiting service’s star rating, 2 to 5.">Stars</th>' +
+    '<th scope="col" title="The service’s own composite rating.">Rating</th>' +
+    '<th scope="col" title="Rank among every recruit in the country that year.">Nat. rank</th>' +
+    '<th scope="col">Hometown</th><th scope="col">High school</th></tr>';
+  const body = rows.map(r => {
+    // athlete_id is only present when the player page it names exists -- the
+    // exporter drops the rest -- so this link can never go nowhere.
+    const name = r.athlete_id
+      ? '<a href="' + esc(playerHref(r.athlete_id)) + '">' + esc(r.name || '') + '</a>'
+      : esc(r.name || '');
+    return '<tr><td>' + (name || '&mdash;') + '</td><td>' + cell(r.position) + '</td>' +
+      '<td class="num" data-sort="' + (r.stars == null ? '' : r.stars) + '">' + recruitStars(r.stars) + '</td>' +
+      '<td class="num" data-sort="' + (r.rating == null ? '' : r.rating) + '">' +
+      (r.rating == null ? '&mdash;' : Number(r.rating).toFixed(4)) + '</td>' +
+      '<td class="num" data-sort="' + (r.national_rank == null ? '' : r.national_rank) + '">' +
+      cell(r.national_rank) + '</td>' +
+      '<td>' + (recruitHometown(r) ? esc(recruitHometown(r)) : '&mdash;') + '</td>' +
+      '<td>' + cell(r.high_school) + '</td></tr>';
+  }).join('');
+  return '<table class="data-table"><thead>' + head +
+    '</thead><tbody>' + body + '</tbody></table>';
+}
+
+/* ---- the board: Stats > Recruiting ---- */
+
+// Averages are over the signees the payload HAS. A class whose signees are all
+// unrated reports no average rather than a zero, which would rank it last on a
+// scale it was never measured on.
+function classBoardRow(cls, signees) {
+  const rows = signees ? (signees.get(cls.team_id) || []) : [];
+  const rated = rows.map(r => r.rating).filter(v => v != null).map(Number);
+  const starred = rows.map(r => r.stars).filter(v => v != null).map(Number);
+  return {
+    ...cls,
+    signees: signees ? rows.length : null,
+    avg_rating: rated.length ? rated.reduce((a, b) => a + b, 0) / rated.length : null,
+    avg_stars: starred.length ? starred.reduce((a, b) => a + b, 0) / starred.length : null
+  };
+}
+
+function recruitingBoardHtml(classes, signees, unplaced) {
+  const rows = classes.slice().sort((a, b) =>
+    (a.class_rank ?? Infinity) - (b.class_rank ?? Infinity) || a.team_id - b.team_id)
+    .map(c => classBoardRow(c, signees));
+  if (!rows.length) return '<p class="empty-note">No classes for this season.</p>';
+  const num = (v, dp) => v == null ? '<td class="num">&mdash;</td>'
+    : '<td class="num" data-sort="' + v + '">' + Number(v).toFixed(dp) + '</td>';
+  const head = '<tr><th scope="col" class="rank-col" title="Rank among every class in the country.">#</th>' +
+    '<th scope="col">Team</th>' +
+    '<th scope="col" title="The service’s class point total.">Points</th>' +
+    '<th scope="col">Signees</th>' +
+    '<th scope="col" title="Mean star rating of this class’s rated signees.">Avg stars</th>' +
+    '<th scope="col" title="Mean composite rating of this class’s rated signees.">Avg rating</th></tr>';
+  const body = rows.map(r => {
+    const team = TEAM_BY_ID.get(String(r.team_id));
+    return '<tr><td class="num rank-col" data-sort="' + (r.class_rank ?? '') + '">' +
+      (r.class_rank == null ? '&mdash;' : r.class_rank) + '</td>' +
+      '<td>' + (team ? teamLink(team.name, 'xs') : '&mdash;') + '</td>' +
+      num(r.points, 2) +
+      '<td class="num" data-sort="' + (r.signees == null ? '' : r.signees) + '">' +
+      (r.signees == null ? '&mdash;' : r.signees) + '</td>' +
+      num(r.avg_stars, 2) + num(r.avg_rating, 4) + '</tr>';
+  }).join('');
+  const note = unplaced
+    ? '<p class="section-note">' + rows.length + ' of these classes belong to teams this site ' +
+      'carries. ' + unplaced + ' more in ' + esc(String(classes[0]?.season_year ?? '')) +
+      ' went to schools it does not, which is why the ranks above skip numbers: the rank is ' +
+      'national and counts them.</p>'
+    : '';
+  return '<table class="rank-table"><thead>' + head + '</thead><tbody>' +
+    body + '</tbody></table>' + note;
+}
+
+function renderRecruiting() {
+  if (!recruitingEntry()) {
+    return '<div class="panel"><h2 class="view-title">Stats · Recruiting</h2>' +
+      '<div class="empty-note">The recruiting archive has not been loaded.</div></div>';
+  }
+  const seasons = Object.keys(recruitingEntry().seasons || {}).map(Number).sort((a, b) => a - b);
+  return '<div class="panel"><h2 class="view-title">Stats · Recruiting</h2>' +
+    '<p class="section-note">What each team signed for ' + state.year +
+    ', ranked by the recruiting service’s own class rank. Source: ' +
+    'CollegeFootballData.com' + (seasons.length ? ', ' + seasons[0] + '–' +
+      seasons[seasons.length - 1] : '') + '.</p>' +
+    '<div id="recruiting-body" aria-live="polite">Loading ' + state.year + ' classes…</div>' +
+    '<p class="section-note">A class rank describes what a team signed, not how it played. ' +
+    '<b>No rating on this site reads any of it</b>: Elo and Merits are built from results ' +
+    'alone.</p></div>';
+}
+
+function hydrateRecruiting(version) {
+  const body = document.getElementById('recruiting-body');
+  if (!body) return;
+  const season = state.year;
+  Promise.all([loadRecruitingClasses(), loadSignees(season).catch(() => null)])
+    .then(([archive, signees]) => {
+      if (version !== renderVersion) return;
+      const target = document.getElementById('recruiting-body');
+      if (!target) return;
+      const classes = archive.bySeason.get(season) || [];
+      target.innerHTML = classes.length
+        ? recruitingBoardHtml(classes, signees, archive.unplaced[String(season)] || 0)
+        : '<p class="empty-note">No recruiting classes for ' + season + '.</p>';
+      wrapWideTables();
+    }).catch(() => {
+      if (version !== renderVersion) return;
+      const target = document.getElementById('recruiting-body');
+      if (target) target.innerHTML = '<div class="empty-note">Recruiting could not be loaded.</div>';
+    });
+}
+
+/* ---- the team tab ---- */
+
+function fillRecruitingPanel(team) {
+  const el = document.getElementById('tp-recruiting');
+  if (!el) return;                                  // another tab is open
+  if (!recruitingEntry()) {
+    el.innerHTML = '<h2 class="section-title">Recruiting</h2>' +
+      '<p class="empty-note">The recruiting archive has not been loaded.</p>';
+    return;
+  }
+  const seasons = Object.keys(recruitingEntry().seasons || {}).map(Number)
+    .filter(Number.isInteger).sort((a, b) => b - a);
+  const season = seasons.includes(teamPageState.recruitSeason) ? teamPageState.recruitSeason
+    : seasons[0];
+  teamPageState.recruitSeason = season;
+  const select = seasons.length > 1
+    ? seasonSelect('tp-recruit-season', seasons.slice().sort((a, b) => a - b), season, false) : '';
+  const head = panelHead('Recruiting', select);
+  Promise.all([loadRecruitingClasses(), loadSignees(season).catch(() => null)])
+    .then(([archive, signees]) => {
+      if (state.view !== 'team' || teamPageState.teamId !== team.id) return;
+      const target = document.getElementById('tp-recruiting');
+      if (!target || teamPageState.recruitSeason !== season) return;
+      target.innerHTML = head + teamRecruitingBody(team, season, archive, signees);
+      wrapWideTables();
+      const sel = document.getElementById('tp-recruit-season');
+      if (sel) sel.addEventListener('change', () => {
+        teamPageState.recruitSeason = Number(sel.value);
+        fillRecruitingPanel(team);
+      });
+    }).catch(err => {
+      const target = document.getElementById('tp-recruiting');
+      if (target) target.innerHTML = head + '<p class="empty-note">Could not load recruiting (' +
+        esc(err.message) + ').</p>';
+    });
+}
+
+function teamRecruitingBody(team, season, archive, signees) {
+  const cls = (archive.bySeason.get(season) || []).find(c => c.team_id === team.id) || null;
+  const rows = signees ? (signees.get(team.id) || []) : [];
+  // Absent and empty are different facts, and the page says which. A season
+  // with no file is not a team that signed nobody, and a team with no class in
+  // a season the archive HAS is a team the service did not rank.
+  const headline = cls
+    ? '<p class="section-note"><b>' + (cls.class_rank == null ? 'Unranked' : 'Class rank #' +
+        cls.class_rank) + '</b> nationally in ' + season +
+      (cls.points == null ? '' : ', with ' + Number(cls.points).toFixed(2) + ' class points') +
+      (rows.length ? ' · ' + rows.length + ' signees' : '') + '.</p>'
+    : '<p class="empty-note">' + esc(team.name) + ' has no ranked ' + season + ' class in this ' +
+      'archive.</p>';
+  const table = !signees
+    ? '<p class="empty-note">The ' + season + ' signees have not been published.</p>'
+    : rows.length ? signeeTableHtml(rows)
+      : '<p class="empty-note">No ' + season + ' signees are attributed to ' + esc(team.name) +
+        ' in this archive.</p>';
+  return headline + table + teamClassHistory(team, archive) +
+    '<p class="section-note">A class rank describes what the program signed, not how it played. ' +
+    '<b>No rating on this site reads it.</b> A signee’s name links to his player page where ' +
+    'this database carries one.</p>';
+}
+
+function teamClassHistory(team, archive) {
+  const rows = [];
+  for (const [season, classes] of archive.bySeason) {
+    const c = classes.find(x => x.team_id === team.id);
+    if (c) rows.push(c);
+  }
+  if (rows.length < 2) return '';
+  rows.sort((a, b) => b.season_year - a.season_year);
+  const body = rows.map(c =>
+    '<tr><td class="num" data-sort="' + c.season_year + '">' + c.season_year + '</td>' +
+    '<td class="num" data-sort="' + (c.class_rank ?? '') + '">' +
+    (c.class_rank == null ? '&mdash;' : '#' + c.class_rank) + '</td>' +
+    '<td class="num" data-sort="' + (c.points ?? '') + '">' +
+    (c.points == null ? '&mdash;' : Number(c.points).toFixed(2)) + '</td></tr>').join('');
+  return '<h3 class="section-title">Class by class</h3>' +
+    '<table class="rank-table"><thead><tr><th scope="col">Season</th>' +
+    '<th scope="col">National rank</th><th scope="col">Points</th></tr></thead><tbody>' +
+    body + '</tbody></table>';
+}
+
 // ---------------- Awards (Stats > Awards) ----------------
 // One season at a time, on the season picker the stats views already carry, so
 // the view adds no control of its own. A season is what a reader holds in mind
@@ -8321,6 +8605,120 @@ document.addEventListener('change', e => {
   document.getElementById('adj-body').innerHTML = adjustedStatsHtml(adjustedStatsData);
   wrapWideTables();
 });
+
+// ---------------- Returning production ----------------
+//
+// Of everything a team produced last season, how much is still on the roster.
+// Thirteen seasons of it sat in data/raw and in no table at all; the only
+// thing that had ever read it was the calibration that REJECTED it as an Elo
+// preseason adjustment, because it did not beat the flat 0.8 regression
+// already in the configuration.
+//
+// So this board is the measurement standing on its own, which is what the
+// rejection decided it should be. It describes a roster, not a forecast, and
+// the note under it says so: nothing here moved a rating, and a team
+// returning everything from a bad season is still a bad team.
+
+const _returning = new Map();
+
+function returningEntry(season) {
+  return (STATIC_MANIFEST.returning || {})[String(season)] || null;
+}
+
+function loadReturningProduction(season) {
+  season = Number(season);
+  if (_returning.has(season)) return Promise.resolve(_returning.get(season));
+  const src = returningEntry(season);
+  if (!src) return Promise.reject(new Error('no returning production for ' + season));
+  return loadDataScript(src).then(() => {
+    const raw = (window.__CFB_RETURNING__ || {})[season];
+    if (!raw || !raw.fields) throw new Error('returning production for ' + season + ' was empty');
+    const rows = (raw.teams || []).map(row =>
+      Object.fromEntries(raw.fields.map((f, i) => [f, row[i]])));
+    _returning.set(season, rows);
+    return rows;
+  });
+}
+
+// A share as a percentage. `== null` BEFORE coercing, because Number(null) is
+// 0 and a team the provider reported nothing for is not a team that returned
+// nothing -- that is a real 0 and has to stay one.
+function returningPct(value) {
+  if (value == null) return '—';
+  const n = Number(value);
+  return Number.isFinite(n) ? (n * 100).toFixed(1) + '%' : '—';
+}
+
+const RETURNING_COLUMNS = [
+  ['percent_ppa', 'Overall', 'Share of last season’s predicted points added still on the roster.'],
+  ['percent_passing_ppa', 'Passing', 'The same, from passing plays alone.'],
+  ['percent_rushing_ppa', 'Rushing', 'The same, from rushing plays alone.'],
+  ['percent_receiving_ppa', 'Receiving', 'The same, from receiving plays alone.'],
+  ['usage', 'Usage', 'Share of last season’s plays taken by the players who returned.']
+];
+
+function returningTableHtml(rows) {
+  if (!rows || !rows.length) return '<p class="empty-note">No returning production for this season.</p>';
+  const sorted = rows.filter(r => r.percent_ppa != null)
+    .sort((a, b) => b.percent_ppa - a.percent_ppa);
+  if (!sorted.length) return '<p class="empty-note">No returning production for this season.</p>';
+  const head = '<tr><th scope="col" class="rank-col">#</th><th scope="col">Team</th>' +
+    RETURNING_COLUMNS.map(([, label, tip]) =>
+      '<th scope="col" title="' + esc(tip) + '">' + esc(label) + '</th>').join('') +
+    '<th scope="col" title="Predicted points added by the returning players, in absolute terms.">Returning PPA</th></tr>';
+  const body = sorted.map((row, index) => {
+    const team = TEAM_BY_ID.get(String(row.team_id));
+    return '<tr><td class="num rank-col">' + (index + 1) + '</td>' +
+      '<td>' + (team ? teamLink(team.name, 'xs') : '—') + '</td>' +
+      RETURNING_COLUMNS.map(([key]) =>
+        '<td class="num" data-sort="' + (row[key] == null ? '' : row[key]) + '">' +
+        returningPct(row[key]) + '</td>').join('') +
+      '<td class="num" data-sort="' + (row.total_ppa == null ? '' : row.total_ppa) + '">' +
+      (row.total_ppa == null ? '—' : Number(row.total_ppa).toFixed(1)) + '</td></tr>';
+  }).join('');
+  return '<table class="rank-table"><thead>' + head + '</thead><tbody>' + body + '</tbody></table>';
+}
+
+function renderReturning() {
+  const seasons = Object.keys(STATIC_MANIFEST.returning || {}).map(Number).sort((a, b) => a - b);
+  if (!seasons.length) {
+    return '<div class="panel"><h2 class="view-title">Stats · Returning production</h2>' +
+      '<div class="empty-note">The returning-production archive has not been loaded.</div></div>';
+  }
+  if (!returningEntry(state.year)) {
+    return '<div class="panel"><h2 class="view-title">Stats · Returning production</h2>' +
+      '<div class="empty-note">Returning production begins in ' + seasons[0] +
+      '; ' + state.year + ' has none.</div></div>';
+  }
+  return '<div class="panel"><h2 class="view-title">Stats · Returning production</h2>' +
+    '<p class="section-note">Of everything a team produced in ' + (state.year - 1) +
+    ', how much is still on the roster for ' + state.year +
+    '. Source: CollegeFootballData.com.</p>' +
+    '<p class="section-note">A share can read above 100%. Each one is measured against ' +
+    (state.year - 1) + '\u2019s total for that category alone, and predicted points added ' +
+    'can be negative, so a team whose ' + (state.year - 1) + ' rushing added up to almost ' +
+    'nothing divides by almost nothing. The numbers are shown as the provider serves them, ' +
+    'uncapped, because capping them would hide which teams they are.</p>' +
+    '<div id="returning-body" aria-live="polite">Loading ' + state.year + ' rosters…</div>' +
+    '<p class="section-note">This is a description of a roster, not a forecast. It was ' +
+    'measured as a preseason Elo adjustment and did not beat the flat regression the model ' +
+    'already applies, so <b>no rating on this site reads it</b> — it is kept because it ' +
+    'is worth knowing on its own. A team returning everything from a poor season is still a ' +
+    'poor team.</p></div>';
+}
+
+function hydrateReturning(version) {
+  const body = document.getElementById('returning-body');
+  if (!body) return;                      // the no-data note is already drawn
+  loadReturningProduction(state.year).then(rows => {
+    if (version !== renderVersion) return;
+    body.innerHTML = returningTableHtml(rows);
+    wrapWideTables();
+  }).catch(() => {
+    if (version !== renderVersion) return;
+    body.innerHTML = '<div class="empty-note">Returning production could not be loaded.</div>';
+  });
+}
 
 function renderCoverage() {
   const dims = COVERAGE.dimensions || [];
@@ -9987,6 +10385,145 @@ function loadPlayerArchive(season, gameId) {
   if (!wanted.length) return Promise.resolve(archive());
   return Promise.all(wanted.map(loadDataScript)).then(archive);
 }
+// ---------------- The betting market, for one game ----------------
+//
+// game_lines has held eleven providers' numbers since 2013 and reached a
+// reader only as one aggregate on the Track Record page. This is that archive
+// on the game it describes.
+//
+// NOTHING HERE IS A RATING INPUT, and the panel says so. The value of a
+// benchmark the model cannot see is exactly that it cannot see it.
+
+function marketLineEntry(season) {
+  const file = (STATIC_MANIFEST.lines || {})[String(season)];
+  return file || null;
+}
+
+function loadMarketLine(season, gameId) {
+  const file = marketLineEntry(season);
+  if (!file) return Promise.resolve(null);
+  return loadDataScript(file).then(() => {
+    const payload = (window.__CFB_LINES__ || {})[season];
+    if (!payload || !payload.fields) return null;
+    const row = (payload.games || []).find(line => Number(line[0]) === Number(gameId));
+    return row ? Object.fromEntries(payload.fields.map((f, i) => [f, row[i]])) : null;
+  });
+}
+
+// "Home by 7" as the side and the number a reader recognises. A margin of 0 is
+// a pick'em, which is a real line and not a missing one.
+function marketSpreadText(margin, awayName, homeName) {
+  if (margin == null) return null;
+  const value = Number(margin);
+  if (!Number.isFinite(value)) return null;
+  if (value === 0) return 'Pick’em';
+  const side = value > 0 ? homeName : awayName;
+  return side + ' by ' + Math.abs(value).toFixed(1).replace(/\.0$/, '');
+}
+
+// Fill the slot the game page left for a line, or take the slot away.
+//
+// BOTH callbacks are guarded on `version`. Without the guard on the FAILURE
+// side, a reader who moves to a game in another season while the first
+// season's request is still in flight loses the new page's slot when the old
+// request fails -- and the new request, even when it succeeds, then finds no
+// slot and the panel never appears at all.
+function hydrateMarketLine(season, id, game, awayName, homeName, version) {
+  return loadMarketLine(season, id).then(line => {
+    if (version !== renderVersion) return;
+    const slot = document.getElementById('gp-market-slot');
+    if (slot) slot.outerHTML = gameMarketPanel(line, game, awayName, homeName);
+  }).catch(() => {
+    if (version !== renderVersion) return;
+    document.getElementById('gp-market-slot')?.remove();
+  });
+}
+
+function gameMarketPanel(line, game, awayName, homeName) {
+  if (!line || line.market_home_margin == null) return '';
+  const margin = Number(line.market_home_margin);
+  const spread = marketSpreadText(margin, awayName, homeName);
+  if (!spread) return '';
+  const closing = Number(line.closing) === 1;
+  const facts = [['Spread', spread]];
+  if (line.over_under != null) facts.push(['Total', String(Number(line.over_under))]);
+
+  // Against the result. `== null` BEFORE any coercion: Number(null) is 0, and
+  // a game with no score would otherwise be scored as a 0-0 push.
+  const hs = game.home_score, as = game.away_score;
+  if (game.completed && hs != null && as != null) {
+    const actual = Number(hs) - Number(as);
+    const against = actual - margin;                    // + = home beat the line
+    const covered = against > 0 ? homeName : against < 0 ? awayName : null;
+    facts.push(['Against the spread', covered == null ? 'Push'
+      : covered + ' covered by ' + Math.abs(against).toFixed(1).replace(/\.0$/, '')]);
+    if (line.over_under != null) {
+      const total = Number(hs) + Number(as), diff = total - Number(line.over_under);
+      facts.push(['Against the total', total + ' points, ' +
+        (diff > 0 ? Math.abs(diff).toFixed(1).replace(/\.0$/, '') + ' over'
+          : diff < 0 ? Math.abs(diff).toFixed(1).replace(/\.0$/, '') + ' under' : 'exactly the number')]);
+    }
+  }
+
+  const provider = line.provider ? esc(String(line.provider)) : 'a single book';
+  return '<div class="panel" id="gp-market"><h2 class="section-title">The market</h2>' +
+    '<div class="gp-facts">' + facts.map(([label, value]) =>
+      '<div class="gp-fact"><b>' + esc(label) + '</b>' + esc(value) + '</div>').join('') +
+    '</div>' +
+    '<p class="section-note">' +
+    (closing ? 'The <b>closing</b> line from ' : 'The line from ') + provider +
+    (closing ? '' : ', captured before this game ended and so not a closing number') +
+    ', as recorded by CollegeFootballData.com. The spread is the market’s expected ' +
+    'margin for the home team, which is the direction every margin on this site runs.</p>' +
+    '<p class="section-note">No rating on this site reads this number. That is the point of ' +
+    'it: a forecast the model cannot see is the only one worth being measured against, and ' +
+    'over ' + (((STATIC_MANIFEST.market || {}).overall || {}).games || 0).toLocaleString() +
+    ' games the market has been the better forecaster. ' +
+    '<a href="#section=accuracy">Track Record →</a></p></div>';
+}
+
+// CFBD's per-game efficiency for one game, as a column group for the Matchup
+// table, or null when the game has none (coverage begins in 2001).
+//
+// This is the PROVIDER'S measurement of what each offence did, and it is kept
+// apart from the xSRDiff layer the Elo engine derives from it: Success Rate
+// moved here, beside the two numbers it was always meant to be read with, and
+// SRDiff / xSRDiff / SR+ stay in a group of their own named for the model.
+//
+// Each side carries its OWN OFFENCE only. In all 22,500 games of the archive a
+// team's defensive columns are its opponent's offensive columns exactly, so a
+// second set would print the same numbers twice; what a defence gave up is the
+// other row of the same table.
+function gameEfficiencyGroup(detail) {
+  const d = detail;
+  if (!d) return null;
+  // Two decimals and not one: PPA runs from about -0.5 to 1.5 a play, so a
+  // single decimal would round two very different offences onto one number.
+  // The real minus sign, as every other negative in this table uses -- an
+  // ASCII hyphen beside the next column's '−15.0%' reads as a typo.
+  const n2 = v => Number(v).toFixed(2).replace('-', '−');
+  const metrics = [
+    ['plays', 'Plays', 'This team’s offensive plays, garbage time excluded. The sample the averages beside it rest on.',
+      v => Number(v).toLocaleString()],
+    ['success_rate', 'Success Rate', 'Share of this team’s plays that gained enough for the down and distance.',
+      v => (v * 100).toFixed(1) + '%'],
+    ['ppa', 'PPA', 'Predicted points added per play: how much this offence moved its own scoring expectation, on average.', n2],
+    ['explosiveness', 'Explosiveness', 'Average predicted points added on the plays that succeeded.', n2]
+  ];
+  // A column exists only when at least one side has it, on the rule the whole
+  // group already follows: a game the provider never measured must not widen
+  // this table with columns of 'N/A'. 'N/A' is kept for the case it describes
+  // -- one side measured and the other not, in a game otherwise covered.
+  const shown = metrics.filter(([key]) =>
+    d['home_' + key] != null || d['away_' + key] != null);
+  if (!shown.length) return null;
+  const cells = side => shown.map(([key, , , format]) => {
+    const value = d[side + '_' + key];
+    return value == null ? 'N/A' : format(value);
+  });
+  return ['Efficiency', shown.map(([, label, tip]) => [label, tip]), cells];
+}
+
 // Drive-by-drive records for one game: the scoring summary, and the drive list
 // behind it. Sharded on the game id exactly as the box scores are, so a game
 // page asks for one drive shard and one box-score shard and nothing else.
@@ -10377,6 +10914,7 @@ function hydrateGamePage(version) {
       const pct1 = v => v == null ? 'N/A' : (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v * 100).toFixed(1) + '%';
       const hasCoe = !!(g.completed && d);
       const hasSr = !!(d && (d.home_sr_diff != null || d.away_sr_diff != null));
+      const effGroup = gameEfficiencyGroup(d);
 
       // side = 'away' | 'home'. Each entry is [label, value-for-this-side].
       const eloCells = side => {
@@ -10394,7 +10932,6 @@ function hydrateGamePage(version) {
           coe == null ? '—' : coe.toFixed(3)];
       };
       const srCells = side => [
-        d[side + '_success_rate'] == null ? 'N/A' : (d[side + '_success_rate'] * 100).toFixed(1) + '%',
         pct1(d[side + '_sr_diff']), pct1(d[side + '_xsr_diff']), pct1(d[side + '_sr_plus'])];
 
       const groups = [['Elo', g.completed
@@ -10409,9 +10946,9 @@ function hydrateGamePage(version) {
          ['Hybrid', 'Pregame Elo blended with the frozen five-season Legacy Merits.'],
          ['P', 'The win expectation those hybrid ratings imply.'],
          ['Game Merits', 'What the result earned. A tougher win earns more.']], coeCells]);
-      if (hasSr) groups.push(['Efficiency',
-        [['Success Rate', 'Share of this team’s plays that gained enough for the down and distance.'],
-         ['SRDiff', 'How much better this team performed by Success Rate than its opponent.'],
+      if (effGroup) groups.push(effGroup);
+      if (hasSr) groups.push(['xSRDiff layer',
+        [['SRDiff', 'How much better this team performed by Success Rate than its opponent.'],
          ['xSRDiff', 'What the matchup implied before kickoff, from pregame Elo and venue.'],
          ['SR+', 'SRDiff minus xSRDiff: how far the team beat the expectation.']], srCells]);
 
@@ -10444,8 +10981,17 @@ function hydrateGamePage(version) {
           (d.performance_model === 'xsrdiff'
             ? 'The winner’s SR+ set the Elo multiplier for this game.'
             : 'This game’s Elo used the <code>' + esc(d.performance_model || 'mov') + '</code> multiplier instead, so ' +
-              'these numbers are shown for context and did not move the rating.') +
-          ' Success Rate coverage begins in 2001; earlier games have none.</p>'
+              'these numbers are shown for context and did not move the rating.') + '</p>'
+        : '';
+      // Each side's Efficiency row is its OWN offence. What a defence gave up is
+      // the other row, which is why there are no def_ columns: in every game of
+      // the archive a team's defensive numbers are its opponent's offensive ones
+      // exactly, so a second set of columns would repeat the first.
+      const effHelp = effGroup
+        ? '<p class="section-note">Efficiency describes each team’s own <b>offence</b>; what it gave up is the ' +
+          'other row. Garbage time is excluded by the provider, so <b>Plays</b> is below the game’s real ' +
+          'play count and is the sample the three averages rest on — a short one makes them noisy. ' +
+          'Coverage begins in 2001; earlier games have none.</p>'
         : '';
 
       // Team column plus every metric column across the groups this game has.
@@ -10459,7 +11005,7 @@ function hydrateGamePage(version) {
         '<p class="section-note">' + (g.completed ? 'Recorded before kickoff and never recomputed. ' : 'Current ratings; they will change as games are played. ') +
         'Win chance includes home field exactly as the Elo model applies it.' +
         (g.away_provisional || g.home_provisional ? ' * No games yet this season: starting rating.' : '') + '</p>' +
-        coeMissing + srHelp + coeHelp + '</div>';
+        coeMissing + effHelp + srHelp + coeHelp + '</div>';
 
       const q = encodeURIComponent(an + ' vs ' + hn + ' ' + season + ' highlights');
       const more = '<div class="panel"><h2 class="section-title">More</h2>' +
@@ -10474,7 +11020,12 @@ function hydrateGamePage(version) {
         gameStory(g, d, season, an, hn) + gameVenuePanel(g, hn) +
         (g.completed && driveArchiveEntry(season) ? '<div id="gp-drives" class="panel"><h2 class="section-title">Scoring summary</h2><p class="empty-note">Loading drives…</p></div>' : '') +
         (g.completed ? '<div id="gp-players" class="panel"><h2 class="section-title">Player box score</h2><p class="empty-note">Loading player stats…</p></div>' : '') +
+        // No placeholder: only fourteen seasons have a line at all, and a
+        // panel saying "loading" that then vanishes on every pre-2013 game
+        // is worse than one that simply appears when there is something.
+        (marketLineEntry(season) ? '<div id="gp-market-slot"></div>' : '') +
         '<div class="panel" id="gp-series"><h2 class="section-title">Series history</h2><p class="empty-note">Loading meetings…</p></div>' + more;
+      if (marketLineEntry(season)) hydrateMarketLine(season, id, g, an, hn, version);
       if (!g.completed) hydrateGameScouting(g, season, an, hn, version);
       if (g.completed) Promise.all([loadPlayerArchive(season, id), loadRoster(season).catch(() => null)])
         .then(([archive, rosterData]) => {
@@ -11278,16 +11829,99 @@ document.getElementById('content').addEventListener('submit', e => {
 function wrapWideTables() {
   document.querySelectorAll('#content table').forEach(table => {
     CfbStats.enhanceTable(table);
-    if (table.parentElement?.classList.contains('table-scroll')) return;
-    const wrapper = document.createElement('div');
-    wrapper.className = 'table-scroll';
-    wrapper.tabIndex = 0;
-    wrapper.setAttribute('role', 'region');
-    wrapper.setAttribute('aria-label', 'Scrollable ' + SECTION_LABELS[state.section] + ' table');
-    table.replaceWith(wrapper);
-    wrapper.appendChild(table);
+    if (!table.parentElement?.classList.contains('table-scroll')) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'table-scroll';
+      wrapper.tabIndex = 0;
+      wrapper.setAttribute('role', 'region');
+      wrapper.setAttribute('aria-label', 'Scrollable ' + SECTION_LABELS[state.section] + ' table');
+      table.replaceWith(wrapper);
+      wrapper.appendChild(table);
+    }
+    addTableDownload(table);
   });
 }
+
+// ---------------- Taking a table away with you ----------------
+//
+// Every board on this site is a table inside a .table-scroll, and this
+// function runs over all of them, so one control reaches the whole site
+// rather than each view learning to export itself. What downloads is exactly
+// what is on screen: the reader's season, filters and sort, no more.
+//
+// A table of one row is read, not analysed, so it gets no control -- the point
+// is to keep this from becoming a link under every two-cell fact table.
+const DOWNLOAD_MIN_ROWS = 2;
+
+// A name the file keeps once it leaves the browser. Built from where the
+// reader is, because "table.csv" in a downloads folder is anonymous.
+const DOWNLOAD_PAGE_ID = { team: 'teamParam', conference: 'conferenceParam',
+  game: 'gameParam', player: 'playerParam', coach: 'coachParam' };
+
+function downloadFileName() {
+  // A detail page is named for the thing it is about, not for its kind: eight
+  // files all called 'elocast-team-roster-2026.csv' help nobody.
+  const idKey = DOWNLOAD_PAGE_ID[state.view];
+  const parts = ['elocast'];
+  if (idKey) {
+    parts.push(state.view, String(state[idKey] ?? ''));
+    const tab = activeTab(state.view);
+    if (tab) parts.push(tab);
+  } else {
+    if (state.section) parts.push(state.section);
+    if (state.subview) parts.push(state.subview);
+  }
+  if (state.year) parts.push(String(state.year));
+  return parts.filter(Boolean).join('-')
+    .replace(/[^a-z0-9-]+/gi, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+    .toLowerCase() + '.csv';
+}
+
+function addTableDownload(table) {
+  const wrapper = table.parentElement;
+  if (!wrapper || !wrapper.classList.contains('table-scroll')) return;
+  if (wrapper.nextElementSibling?.classList.contains('table-download')) return;
+  if (!table.tBodies.length || table.tBodies[0].rows.length < DOWNLOAD_MIN_ROWS) return;
+  // No header row means no column names, so CfbStats.tableCsv refuses the
+  // table -- and a control that does nothing is worse than no control. The
+  // movers panels, the conference races and the CoE 2.0 breakdown are read
+  // down the page rather than analysed, and have no <thead> on purpose.
+  if (!table.tHead || !table.tHead.rows.length) return;
+  // A paginated board holds 50 rows of a longer list, and a file that silently
+  // contained one page of it would be worse than no file at all. Say so.
+  const paged = wrapper.nextElementSibling?.classList.contains('table-pagination')
+    || wrapper.parentElement?.querySelector('.table-pagination');
+  const bar = document.createElement('p');
+  bar.className = 'table-download';
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'download-button';
+  button.dataset.downloadCsv = 'true';
+  button.textContent = paged ? 'Download this page (CSV)' : 'Download CSV';
+  bar.appendChild(button);
+  wrapper.after(bar);
+}
+
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-download-csv]');
+  if (!button) return;
+  const table = button.closest('.table-download')?.previousElementSibling?.querySelector('table');
+  const csv = table ? CfbStats.tableCsv(table) : '';
+  if (!csv) return;
+  // A BOM, so a spreadsheet opening this file reads it as UTF-8 and does not
+  // turn a team name's accent into mojibake.
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = downloadFileName();
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  // Revoked on the next frame, not immediately: a click handler that frees the
+  // object URL in the same tick races the download in some browsers.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+});
 
 // Statistics hub: cached season aggregation; filtering and paging never refetch data.
 const statsCache = new Map();
@@ -11487,6 +12121,10 @@ function render() {
     if (state.subview === 'adjusted') { content.innerHTML = renderAdjustedStats(); hydrateAdjustedStats(version); }
     // Awards read one small file and nothing else either.
     else if (state.subview === 'awards') { content.innerHTML = renderAwards(); hydrateAwards(version); }
+    // Recruiting reads one 68 KB archive plus one season of signees, and none
+    // of the game data the other stats views need.
+    else if (state.subview === 'recruiting') { content.innerHTML = renderRecruiting(); hydrateRecruiting(version); }
+    else if (state.subview === 'returning') { content.innerHTML = renderReturning(); hydrateReturning(version); }
     else { content.innerHTML = renderStats(); hydrateStats(version); }
   }
   else if (state.section === 'people') { content.innerHTML = renderPeople(); hydratePeople(version); hydratePeopleBoards(version); }
