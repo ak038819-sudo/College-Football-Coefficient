@@ -1545,7 +1545,7 @@
 </script>
 <script src="geography.js?v=4017799eb6cf"></script>
 <script src="stats.js?v=0ff45953ade3"></script>
-<script src="navigation.js?v=9bff38dbb310"></script>
+<script src="navigation.js?v=8d13f3e09036"></script>
 <script src="live_teams.js?v=839a9d9c16b6"></script>
 <script src="search.js?v=3a1460ff4b97"></script>
 <script src="favorites.js?v=f60a9b0ee68c"></script>
@@ -5892,7 +5892,10 @@ function renderNavigation() {
     if (selected) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
-  const statsNav = [['overview', 'Overview'], ['teams', 'Teams'], ['players', 'Players'], ['adjusted', 'Adjusted'], ['awards', 'Awards'], ['matchup', 'Matchup'], ['playoff', 'Playoff']];
+  // 'Returning' sits beside the other descriptive boards and NOT among the
+  // ratings, which is the whole point of where it was put: it describes a
+  // roster and no rating reads it.
+  const statsNav = [['overview', 'Overview'], ['teams', 'Teams'], ['players', 'Players'], ['adjusted', 'Adjusted'], ['returning', 'Returning'], ['awards', 'Awards'], ['matchup', 'Matchup'], ['playoff', 'Playoff']];
   const inStats = ['stats', 'matchups', 'playoff'].includes(state.section);
   const items = inStats ? statsNav : state.view === 'team' || state.section === 'teams' ? [] : SUBVIEWS[state.section] || [];
   // A section whose views are chosen from a selector rather than tabs puts it
@@ -8170,6 +8173,120 @@ document.addEventListener('change', e => {
   document.getElementById('adj-body').innerHTML = adjustedStatsHtml(adjustedStatsData);
   wrapWideTables();
 });
+
+// ---------------- Returning production ----------------
+//
+// Of everything a team produced last season, how much is still on the roster.
+// Thirteen seasons of it sat in data/raw and in no table at all; the only
+// thing that had ever read it was the calibration that REJECTED it as an Elo
+// preseason adjustment, because it did not beat the flat 0.8 regression
+// already in the configuration.
+//
+// So this board is the measurement standing on its own, which is what the
+// rejection decided it should be. It describes a roster, not a forecast, and
+// the note under it says so: nothing here moved a rating, and a team
+// returning everything from a bad season is still a bad team.
+
+const _returning = new Map();
+
+function returningEntry(season) {
+  return (STATIC_MANIFEST.returning || {})[String(season)] || null;
+}
+
+function loadReturningProduction(season) {
+  season = Number(season);
+  if (_returning.has(season)) return Promise.resolve(_returning.get(season));
+  const src = returningEntry(season);
+  if (!src) return Promise.reject(new Error('no returning production for ' + season));
+  return loadDataScript(src).then(() => {
+    const raw = (window.__CFB_RETURNING__ || {})[season];
+    if (!raw || !raw.fields) throw new Error('returning production for ' + season + ' was empty');
+    const rows = (raw.teams || []).map(row =>
+      Object.fromEntries(raw.fields.map((f, i) => [f, row[i]])));
+    _returning.set(season, rows);
+    return rows;
+  });
+}
+
+// A share as a percentage. `== null` BEFORE coercing, because Number(null) is
+// 0 and a team the provider reported nothing for is not a team that returned
+// nothing -- that is a real 0 and has to stay one.
+function returningPct(value) {
+  if (value == null) return '—';
+  const n = Number(value);
+  return Number.isFinite(n) ? (n * 100).toFixed(1) + '%' : '—';
+}
+
+const RETURNING_COLUMNS = [
+  ['percent_ppa', 'Overall', 'Share of last season’s predicted points added still on the roster.'],
+  ['percent_passing_ppa', 'Passing', 'The same, from passing plays alone.'],
+  ['percent_rushing_ppa', 'Rushing', 'The same, from rushing plays alone.'],
+  ['percent_receiving_ppa', 'Receiving', 'The same, from receiving plays alone.'],
+  ['usage', 'Usage', 'Share of last season’s plays taken by the players who returned.']
+];
+
+function returningTableHtml(rows) {
+  if (!rows || !rows.length) return '<p class="empty-note">No returning production for this season.</p>';
+  const sorted = rows.filter(r => r.percent_ppa != null)
+    .sort((a, b) => b.percent_ppa - a.percent_ppa);
+  if (!sorted.length) return '<p class="empty-note">No returning production for this season.</p>';
+  const head = '<tr><th scope="col" class="rank-col">#</th><th scope="col">Team</th>' +
+    RETURNING_COLUMNS.map(([, label, tip]) =>
+      '<th scope="col" title="' + esc(tip) + '">' + esc(label) + '</th>').join('') +
+    '<th scope="col" title="Predicted points added by the returning players, in absolute terms.">Returning PPA</th></tr>';
+  const body = sorted.map((row, index) => {
+    const team = TEAM_BY_ID.get(String(row.team_id));
+    return '<tr><td class="num rank-col">' + (index + 1) + '</td>' +
+      '<td>' + (team ? teamLink(team.name, 'xs') : '—') + '</td>' +
+      RETURNING_COLUMNS.map(([key]) =>
+        '<td class="num" data-sort="' + (row[key] == null ? '' : row[key]) + '">' +
+        returningPct(row[key]) + '</td>').join('') +
+      '<td class="num" data-sort="' + (row.total_ppa == null ? '' : row.total_ppa) + '">' +
+      (row.total_ppa == null ? '—' : Number(row.total_ppa).toFixed(1)) + '</td></tr>';
+  }).join('');
+  return '<table class="rank-table"><thead>' + head + '</thead><tbody>' + body + '</tbody></table>';
+}
+
+function renderReturning() {
+  const seasons = Object.keys(STATIC_MANIFEST.returning || {}).map(Number).sort((a, b) => a - b);
+  if (!seasons.length) {
+    return '<div class="panel"><h2 class="view-title">Stats · Returning production</h2>' +
+      '<div class="empty-note">The returning-production archive has not been loaded.</div></div>';
+  }
+  if (!returningEntry(state.year)) {
+    return '<div class="panel"><h2 class="view-title">Stats · Returning production</h2>' +
+      '<div class="empty-note">Returning production begins in ' + seasons[0] +
+      '; ' + state.year + ' has none.</div></div>';
+  }
+  return '<div class="panel"><h2 class="view-title">Stats · Returning production</h2>' +
+    '<p class="section-note">Of everything a team produced in ' + (state.year - 1) +
+    ', how much is still on the roster for ' + state.year +
+    '. Source: CollegeFootballData.com.</p>' +
+    '<p class="section-note">A share can read above 100%. Each one is measured against ' +
+    (state.year - 1) + '\u2019s total for that category alone, and predicted points added ' +
+    'can be negative, so a team whose ' + (state.year - 1) + ' rushing added up to almost ' +
+    'nothing divides by almost nothing. The numbers are shown as the provider serves them, ' +
+    'uncapped, because capping them would hide which teams they are.</p>' +
+    '<div id="returning-body" aria-live="polite">Loading ' + state.year + ' rosters…</div>' +
+    '<p class="section-note">This is a description of a roster, not a forecast. It was ' +
+    'measured as a preseason Elo adjustment and did not beat the flat regression the model ' +
+    'already applies, so <b>no rating on this site reads it</b> — it is kept because it ' +
+    'is worth knowing on its own. A team returning everything from a poor season is still a ' +
+    'poor team.</p></div>';
+}
+
+function hydrateReturning(version) {
+  const body = document.getElementById('returning-body');
+  if (!body) return;                      // the no-data note is already drawn
+  loadReturningProduction(state.year).then(rows => {
+    if (version !== renderVersion) return;
+    body.innerHTML = returningTableHtml(rows);
+    wrapWideTables();
+  }).catch(() => {
+    if (version !== renderVersion) return;
+    body.innerHTML = '<div class="empty-note">Returning production could not be loaded.</div>';
+  });
+}
 
 function renderCoverage() {
   const dims = COVERAGE.dimensions || [];
@@ -11572,6 +11689,7 @@ function render() {
     if (state.subview === 'adjusted') { content.innerHTML = renderAdjustedStats(); hydrateAdjustedStats(version); }
     // Awards read one small file and nothing else either.
     else if (state.subview === 'awards') { content.innerHTML = renderAwards(); hydrateAwards(version); }
+    else if (state.subview === 'returning') { content.innerHTML = renderReturning(); hydrateReturning(version); }
     else { content.innerHTML = renderStats(); hydrateStats(version); }
   }
   else if (state.section === 'people') { content.innerHTML = renderPeople(); hydratePeople(version); }
