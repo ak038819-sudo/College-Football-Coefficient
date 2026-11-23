@@ -1,0 +1,526 @@
+season_year,season_type,week,poll,rank,school,conference,first_place_votes,points
+2020,regular,16,cfp,8,Georgia,SEC,,
+2020,regular,16,cfp,7,Florida,SEC,,
+2020,regular,16,cfp,21,Oklahoma State,Big 12,,
+2020,regular,16,cfp,6,Iowa State,Big 12,,
+2020,regular,16,cfp,13,USC,Pac-12,,
+2020,regular,16,cfp,17,BYU,FBS Independents,,
+2020,regular,16,cfp,25,Colorado,Pac-12,,
+2020,regular,16,cfp,1,Alabama,SEC,,
+2020,regular,16,cfp,5,Texas A&M,SEC,,
+2020,regular,16,cfp,4,Ohio State,Big Ten,,
+2020,regular,16,cfp,11,Indiana,Big Ten,,
+2020,regular,16,cfp,16,Iowa,Big Ten,,
+2020,regular,16,cfp,14,Northwestern,Big Ten,,
+2020,regular,16,cfp,20,Texas,Big 12,,
+2020,regular,16,cfp,10,Oklahoma,Big 12,,
+2020,regular,16,cfp,2,Notre Dame,ACC,,
+2020,regular,16,cfp,19,Louisiana,Sun Belt,,
+2020,regular,16,cfp,12,Coastal Carolina,Sun Belt,,
+2020,regular,16,cfp,23,Tulsa,American Athletic,,
+2020,regular,16,cfp,9,Cincinnati,American Athletic,,
+2020,regular,16,cfp,3,Clemson,ACC,,
+2020,regular,16,cfp,22,NC State,ACC,,
+2020,regular,16,cfp,18,Miami,ACC,,
+2020,regular,16,cfp,15,North Carolina,ACC,,
+2020,regular,16,cfp,24,San José State,Mountain West,,
+2020,regular,16,ap,10,Georgia,SEC,0,968
+2020,regular,16,ap,11,Florida,SEC,0,940
+2020,regular,16,ap,8,Iowa State,Big 12,0,1059
+2020,regular,16,ap,13,USC,Pac-12,0,774
+2020,regular,16,ap,14,BYU,FBS Independents,0,724
+2020,regular,16,ap,22,Liberty,FBS Independents,0,184
+2020,regular,16,ap,1,Alabama,SEC,62,1550
+2020,regular,16,ap,23,Buffalo,Mid-American,0,183
+2020,regular,16,ap,5,Texas A&M,SEC,0,1286
+2020,regular,16,ap,3,Ohio State,Big Ten,0,1405
+2020,regular,16,ap,7,Indiana,Big Ten,0,1140
+2020,regular,16,ap,18,Iowa,Big Ten,0,502
+2020,regular,16,ap,15,Northwestern,Big Ten,0,691
+2020,regular,16,ap,21,Texas,Big 12,0,227
+2020,regular,16,ap,12,Oklahoma,Big 12,0,902
+2020,regular,16,ap,2,Notre Dame,ACC,0,1482
+2020,regular,16,ap,17,Louisiana,Sun Belt,0,566
+2020,regular,16,ap,9,Coastal Carolina,Sun Belt,0,994
+2020,regular,16,ap,20,Tulsa,American Athletic,0,408
+2020,regular,16,ap,6,Cincinnati,American Athletic,0,1248
+2020,regular,16,ap,4,Clemson,ACC,0,1388
+2020,regular,16,ap,24,NC State,ACC,0,137
+2020,regular,16,ap,19,Miami,ACC,0,454
+2020,regular,16,ap,16,North Carolina,ACC,0,631
+2020,regular,16,ap,25,San José State,Mountain West,0,124
+2020,regular,15,cfp,9,Georgia,SEC,0,0
+2020,regular,15,cfp,6,Florida,SEC,0,0
+2020,regular,15,cfp,22,Oklahoma State,Big 12,0,0
+2020,regular,15,cfp,7,Iowa State,Big 12,0,0
+2020,regular,15,cfp,15,USC,Pac-12,0,0
+2020,regular,15,cfp,18,BYU,FBS Independents,0,0
+2020,regular,15,cfp,21,Colorado,Pac-12,0,0
+2020,regular,15,cfp,1,Alabama,SEC,0,0
+2020,regular,15,cfp,25,Missouri,SEC,0,0
+2020,regular,15,cfp,5,Texas A&M,SEC,0,0
+2020,regular,15,cfp,4,Ohio State,Big Ten,0,0
+2020,regular,15,cfp,12,Indiana,Big Ten,0,0
+2020,regular,15,cfp,16,Iowa,Big Ten,0,0
+2020,regular,15,cfp,14,Northwestern,Big Ten,0,0
+2020,regular,15,cfp,20,Texas,Big 12,0,0
+2020,regular,15,cfp,11,Oklahoma,Big 12,0,0
+2020,regular,15,cfp,2,Notre Dame,ACC,0,0
+2020,regular,15,cfp,19,Louisiana,Sun Belt,0,0
+2020,regular,15,cfp,13,Coastal Carolina,Sun Belt,0,0
+2020,regular,15,cfp,24,Tulsa,American Athletic,0,0
+2020,regular,15,cfp,8,Cincinnati,American Athletic,0,0
+2020,regular,15,cfp,3,Clemson,ACC,0,0
+2020,regular,15,cfp,23,NC State,ACC,0,0
+2020,regular,15,cfp,10,Miami,ACC,0,0
+2020,regular,15,cfp,17,North Carolina,ACC,0,0
+2020,regular,15,ap,12,Georgia,SEC,0,914
+2020,regular,15,ap,6,Florida,SEC,0,1233
+2020,regular,15,ap,10,Iowa State,Big 12,0,947
+2020,regular,15,ap,16,USC,Pac-12,0,624
+2020,regular,15,ap,14,BYU,FBS Independents,0,713
+2020,regular,15,ap,22,Liberty,FBS Independents,0,191
+2020,regular,15,ap,21,Colorado,Pac-12,0,253
+2020,regular,15,ap,1,Alabama,SEC,62,1550
+2020,regular,15,ap,24,Buffalo,Mid-American,0,145
+2020,regular,15,ap,5,Texas A&M,SEC,0,1274
+2020,regular,15,ap,3,Ohio State,Big Ten,0,1407
+2020,regular,15,ap,8,Indiana,Big Ten,0,1047
+2020,regular,15,ap,25,Wisconsin,Big Ten,0,115
+2020,regular,15,ap,19,Iowa,Big Ten,0,424
+2020,regular,15,ap,15,Northwestern,Big Ten,0,647
+2020,regular,15,ap,23,Texas,Big 12,0,164
+2020,regular,15,ap,13,Oklahoma,Big 12,0,837
+2020,regular,15,ap,2,Notre Dame,ACC,0,1482
+2020,regular,15,ap,17,Louisiana,Sun Belt,0,560
+2020,regular,15,ap,11,Coastal Carolina,Sun Belt,0,923
+2020,regular,15,ap,18,Tulsa,American Athletic,0,444
+2020,regular,15,ap,7,Cincinnati,American Athletic,0,1204
+2020,regular,15,ap,4,Clemson,ACC,0,1387
+2020,regular,15,ap,9,Miami,ACC,0,1039
+2020,regular,15,ap,20,North Carolina,ACC,0,306
+2020,regular,14,cfp,8,Georgia,SEC,0,0
+2020,regular,14,cfp,6,Florida,SEC,0,0
+2020,regular,14,cfp,15,Oklahoma State,Big 12,0,0
+2020,regular,14,cfp,9,Iowa State,Big 12,0,0
+2020,regular,14,cfp,23,Oregon,Pac-12,0,0
+2020,regular,14,cfp,22,Washington,Pac-12,0,0
+2020,regular,14,cfp,20,USC,Pac-12,0,0
+2020,regular,14,cfp,13,BYU,FBS Independents,0,0
+2020,regular,14,cfp,1,Alabama,SEC,0,0
+2020,regular,14,cfp,21,Marshall,Conference USA,0,0
+2020,regular,14,cfp,5,Texas A&M,SEC,0,0
+2020,regular,14,cfp,4,Ohio State,Big Ten,0,0
+2020,regular,14,cfp,12,Indiana,Big Ten,0,0
+2020,regular,14,cfp,16,Wisconsin,Big Ten,0,0
+2020,regular,14,cfp,19,Iowa,Big Ten,0,0
+2020,regular,14,cfp,14,Northwestern,Big Ten,0,0
+2020,regular,14,cfp,11,Oklahoma,Big 12,0,0
+2020,regular,14,cfp,2,Notre Dame,ACC,0,0
+2020,regular,14,cfp,25,Louisiana,Sun Belt,0,0
+2020,regular,14,cfp,18,Coastal Carolina,Sun Belt,0,0
+2020,regular,14,cfp,24,Tulsa,American Athletic,0,0
+2020,regular,14,cfp,7,Cincinnati,American Athletic,0,0
+2020,regular,14,cfp,3,Clemson,ACC,0,0
+2020,regular,14,cfp,10,Miami,ACC,0,0
+2020,regular,14,cfp,17,North Carolina,ACC,0,0
+2020,regular,14,ap,11,Georgia,SEC,0,919
+2020,regular,14,ap,6,Florida,SEC,0,1226
+2020,regular,14,ap,19,Oklahoma State,Big 12,0,426
+2020,regular,14,ap,12,Iowa State,Big 12,0,873
+2020,regular,14,ap,21,Oregon,Pac-12,0,326
+2020,regular,14,ap,23,Washington,Pac-12,0,218
+2020,regular,14,ap,17,USC,Pac-12,0,540
+2020,regular,14,ap,8,BYU,FBS Independents,0,1113
+2020,regular,14,ap,25,Liberty,FBS Independents,0,67
+2020,regular,14,ap,1,Alabama,SEC,62,1550
+2020,regular,14,ap,15,Marshall,Conference USA,0,600
+2020,regular,14,ap,5,Texas A&M,SEC,0,1262
+2020,regular,14,ap,3,Ohio State,Big Ten,0,1403
+2020,regular,14,ap,10,Indiana,Big Ten,0,984
+2020,regular,14,ap,18,Wisconsin,Big Ten,0,531
+2020,regular,14,ap,24,Iowa,Big Ten,0,119
+2020,regular,14,ap,16,Northwestern,Big Ten,0,577
+2020,regular,14,ap,13,Oklahoma,Big 12,0,815
+2020,regular,14,ap,2,Notre Dame,ACC,0,1481
+2020,regular,14,ap,20,Louisiana,Sun Belt,0,352
+2020,regular,14,ap,14,Coastal Carolina,Sun Belt,0,694
+2020,regular,14,ap,22,Tulsa,American Athletic,0,244
+2020,regular,14,ap,7,Cincinnati,American Athletic,0,1204
+2020,regular,14,ap,4,Clemson,ACC,0,1392
+2020,regular,14,ap,9,Miami,ACC,0,991
+2020,regular,13,cfp,9,Georgia,SEC,0,0
+2020,regular,13,cfp,6,Florida,SEC,0,0
+2020,regular,13,cfp,23,Oklahoma State,Big 12,0,0
+2020,regular,13,cfp,13,Iowa State,Big 12,0,0
+2020,regular,13,cfp,15,Oregon,Pac-12,0,0
+2020,regular,13,cfp,18,USC,Pac-12,0,0
+2020,regular,13,cfp,14,BYU,FBS Independents,0,0
+2020,regular,13,cfp,22,Auburn,SEC,0,0
+2020,regular,13,cfp,1,Alabama,SEC,0,0
+2020,regular,13,cfp,21,Marshall,Conference USA,0,0
+2020,regular,13,cfp,5,Texas A&M,SEC,0,0
+2020,regular,13,cfp,4,Ohio State,Big Ten,0,0
+2020,regular,13,cfp,12,Indiana,Big Ten,0,0
+2020,regular,13,cfp,16,Wisconsin,Big Ten,0,0
+2020,regular,13,cfp,24,Iowa,Big Ten,0,0
+2020,regular,13,cfp,8,Northwestern,Big Ten,0,0
+2020,regular,13,cfp,17,Texas,Big 12,0,0
+2020,regular,13,cfp,11,Oklahoma,Big 12,0,0
+2020,regular,13,cfp,2,Notre Dame,ACC,0,0
+2020,regular,13,cfp,20,Coastal Carolina,Sun Belt,0,0
+2020,regular,13,cfp,25,Tulsa,American Athletic,0,0
+2020,regular,13,cfp,7,Cincinnati,American Athletic,0,0
+2020,regular,13,cfp,3,Clemson,ACC,0,0
+2020,regular,13,cfp,10,Miami,ACC,0,0
+2020,regular,13,cfp,19,North Carolina,ACC,0,0
+2020,regular,13,ap,13,Georgia,SEC,0,828
+2020,regular,13,ap,6,Florida,SEC,0,1223
+2020,regular,13,ap,21,Oklahoma State,Big 12,0,289
+2020,regular,13,ap,15,Iowa State,Big 12,0,658
+2020,regular,13,ap,9,Oregon,Pac-12,0,951
+2020,regular,13,ap,19,USC,Pac-12,0,461
+2020,regular,13,ap,8,BYU,FBS Independents,0,1109
+2020,regular,13,ap,22,Auburn,SEC,0,259
+2020,regular,13,ap,1,Alabama,SEC,62,1550
+2020,regular,13,ap,17,Marshall,Conference USA,0,542
+2020,regular,13,ap,5,Texas A&M,SEC,0,1249
+2020,regular,13,ap,3,Ohio State,Big Ten,0,1440
+2020,regular,13,ap,12,Indiana,Big Ten,0,899
+2020,regular,13,ap,18,Wisconsin,Big Ten,0,540
+2020,regular,13,ap,11,Northwestern,Big Ten,0,922
+2020,regular,13,ap,20,Texas,Big 12,0,321
+2020,regular,13,ap,14,Oklahoma,Big 12,0,693
+2020,regular,13,ap,2,Notre Dame,ACC,0,1471
+2020,regular,13,ap,23,Louisiana,Sun Belt,0,218
+2020,regular,13,ap,16,Coastal Carolina,Sun Belt,0,622
+2020,regular,13,ap,24,Tulsa,American Athletic,0,164
+2020,regular,13,ap,7,Cincinnati,American Athletic,0,1201
+2020,regular,13,ap,4,Clemson,ACC,0,1358
+2020,regular,13,ap,10,Miami,ACC,0,936
+2020,regular,13,ap,25,North Carolina,ACC,0,108
+2020,regular,12,ap,13,Georgia,SEC,0,824
+2020,regular,12,ap,6,Florida,SEC,0,1222
+2020,regular,12,ap,14,Oklahoma State,Big 12,0,750
+2020,regular,12,ap,17,Iowa State,Big 12,0,498
+2020,regular,12,ap,11,Oregon,Pac-12,0,949
+2020,regular,12,ap,20,USC,Pac-12,0,377
+2020,regular,12,ap,8,BYU,FBS Independents,0,1094
+2020,regular,12,ap,21,Liberty,FBS Independents,0,307
+2020,regular,12,ap,23,Auburn,SEC,0,187
+2020,regular,12,ap,1,Alabama,SEC,60,1548
+2020,regular,12,ap,15,Marshall,Conference USA,0,557
+2020,regular,12,ap,5,Texas A&M,SEC,0,1240
+2020,regular,12,ap,3,Ohio State,Big Ten,1,1445
+2020,regular,12,ap,9,Indiana,Big Ten,0,997
+2020,regular,12,ap,10,Wisconsin,Big Ten,0,950
+2020,regular,12,ap,19,Northwestern,Big Ten,0,378
+2020,regular,12,ap,22,Texas,Big 12,0,296
+2020,regular,12,ap,18,Oklahoma,Big 12,0,497
+2020,regular,12,ap,2,Notre Dame,ACC,1,1467
+2020,regular,12,ap,24,Louisiana,Sun Belt,0,177
+2020,regular,12,ap,15,Coastal Carolina,Sun Belt,0,557
+2020,regular,12,ap,25,Tulsa,American Athletic,0,155
+2020,regular,12,ap,7,Cincinnati,American Athletic,0,1198
+2020,regular,12,ap,4,Clemson,ACC,0,1355
+2020,regular,12,ap,12,Miami,ACC,0,940
+2020,regular,11,ap,12,Georgia,SEC,0,861
+2020,regular,11,ap,6,Florida,SEC,0,1213
+2020,regular,11,ap,14,Oklahoma State,Big 12,0,762
+2020,regular,11,ap,17,Iowa State,Big 12,0,491
+2020,regular,11,ap,11,Oregon,Pac-12,0,948
+2020,regular,11,ap,20,USC,Pac-12,0,395
+2020,regular,11,ap,8,BYU,FBS Independents,0,1101
+2020,regular,11,ap,22,Liberty,FBS Independents,0,260
+2020,regular,11,ap,24,Auburn,SEC,0,184
+2020,regular,11,ap,1,Alabama,SEC,59,1547
+2020,regular,11,ap,16,Marshall,Conference USA,0,534
+2020,regular,11,ap,5,Texas A&M,SEC,0,1223
+2020,regular,11,ap,3,Ohio State,Big Ten,1,1449
+2020,regular,11,ap,10,Indiana,Big Ten,0,956
+2020,regular,11,ap,13,Wisconsin,Big Ten,0,852
+2020,regular,11,ap,23,Northwestern,Big Ten,0,250
+2020,regular,11,ap,21,Texas,Big 12,0,265
+2020,regular,11,ap,18,Oklahoma,Big 12,0,467
+2020,regular,11,ap,2,Notre Dame,ACC,2,1464
+2020,regular,11,ap,25,Louisiana,Sun Belt,0,118
+2020,regular,11,ap,15,Coastal Carolina,Sun Belt,0,551
+2020,regular,11,ap,7,Cincinnati,American Athletic,0,1208
+2020,regular,11,ap,19,SMU,American Athletic,0,456
+2020,regular,11,ap,4,Clemson,ACC,0,1355
+2020,regular,11,ap,9,Miami,ACC,0,958
+2020,regular,10,ap,5,Georgia,SEC,0,1289
+2020,regular,10,ap,8,Florida,SEC,0,1066
+2020,regular,10,ap,14,Oklahoma State,Big 12,0,760
+2020,regular,10,ap,17,Iowa State,Big 12,0,427
+2020,regular,10,ap,12,Oregon,Pac-12,0,831
+2020,regular,10,ap,20,USC,Pac-12,0,354
+2020,regular,10,ap,9,BYU,FBS Independents,0,1014
+2020,regular,10,ap,25,Liberty,FBS Independents,0,118
+2020,regular,10,ap,24,Auburn,SEC,0,144
+2020,regular,10,ap,2,Alabama,SEC,29,1513
+2020,regular,10,ap,16,Marshall,Conference USA,0,523
+2020,regular,10,ap,7,Texas A&M,SEC,0,1156
+2020,regular,10,ap,3,Ohio State,Big Ten,0,1430
+2020,regular,10,ap,23,Michigan,Big Ten,0,151
+2020,regular,10,ap,13,Indiana,Big Ten,0,765
+2020,regular,10,ap,10,Wisconsin,Big Ten,0,985
+2020,regular,10,ap,22,Texas,Big 12,0,190
+2020,regular,10,ap,19,Oklahoma,Big 12,0,405
+2020,regular,10,ap,4,Notre Dame,ACC,0,1351
+2020,regular,10,ap,15,Coastal Carolina,Sun Belt,0,527
+2020,regular,10,ap,6,Cincinnati,American Athletic,0,1199
+2020,regular,10,ap,18,SMU,American Athletic,0,420
+2020,regular,10,ap,1,Clemson,ACC,33,1515
+2020,regular,10,ap,11,Miami,ACC,0,946
+2020,regular,10,ap,21,Boise State,Mountain West,0,336
+2020,regular,9,ap,5,Georgia,SEC,0,1292
+2020,regular,9,ap,10,Florida,SEC,0,933
+2020,regular,9,ap,6,Oklahoma State,Big 12,0,1201
+2020,regular,9,ap,16,Kansas State,Big 12,0,562
+2020,regular,9,ap,23,Iowa State,Big 12,0,205
+2020,regular,9,ap,14,Oregon,Pac-12,0,784
+2020,regular,9,ap,21,USC,Pac-12,0,243
+2020,regular,9,ap,11,BYU,FBS Independents,0,906
+2020,regular,9,ap,2,Alabama,SEC,10,1494
+2020,regular,9,ap,19,Marshall,Conference USA,0,379
+2020,regular,9,ap,8,Texas A&M,SEC,0,1094
+2020,regular,9,ap,3,Ohio State,Big Ten,0,1402
+2020,regular,9,ap,13,Michigan,Big Ten,0,839
+2020,regular,9,ap,18,Penn State,Big Ten,0,443
+2020,regular,9,ap,17,Indiana,Big Ten,0,466
+2020,regular,9,ap,9,Wisconsin,Big Ten,0,950
+2020,regular,9,ap,24,Oklahoma,Big 12,0,155
+2020,regular,9,ap,4,Notre Dame,ACC,0,1353
+2020,regular,9,ap,20,Coastal Carolina,Sun Belt,0,282
+2020,regular,9,ap,7,Cincinnati,American Athletic,0,1100
+2020,regular,9,ap,22,SMU,American Athletic,0,208
+2020,regular,9,ap,1,Clemson,ACC,52,1539
+2020,regular,9,ap,12,Miami,ACC,0,888
+2020,regular,9,ap,15,North Carolina,ACC,0,758
+2020,regular,9,ap,25,Boise State,Mountain West,0,113
+2020,regular,8,ap,4,Georgia,SEC,0,1300
+2020,regular,8,ap,10,Florida,SEC,0,942
+2020,regular,8,ap,6,Oklahoma State,Big 12,0,1137
+2020,regular,8,ap,20,Kansas State,Big 12,0,399
+2020,regular,8,ap,17,Iowa State,Big 12,0,511
+2020,regular,8,ap,13,Oregon,Pac-12,0,841
+2020,regular,8,ap,24,USC,Pac-12,0,192
+2020,regular,8,ap,12,BYU,FBS Independents,0,875
+2020,regular,8,ap,2,Alabama,SEC,8,1494
+2020,regular,8,ap,22,Marshall,Conference USA,0,227
+2020,regular,8,ap,7,Texas A&M,SEC,0,1054
+2020,regular,8,ap,5,Ohio State,Big Ten,0,1223
+2020,regular,8,ap,18,Michigan,Big Ten,0,489
+2020,regular,8,ap,8,Penn State,Big Ten,0,1033
+2020,regular,8,ap,14,Wisconsin,Big Ten,0,677
+2020,regular,8,ap,21,Minnesota,Big Ten,0,234
+2020,regular,8,ap,3,Notre Dame,ACC,0,1337
+2020,regular,8,ap,25,Coastal Carolina,Sun Belt,0,185
+2020,regular,8,ap,9,Cincinnati,American Athletic,0,1028
+2020,regular,8,ap,16,SMU,American Athletic,0,638
+2020,regular,8,ap,1,Clemson,ACC,54,1542
+2020,regular,8,ap,23,NC State,ACC,0,199
+2020,regular,8,ap,19,Virginia Tech,ACC,0,411
+2020,regular,8,ap,11,Miami,ACC,0,887
+2020,regular,8,ap,14,North Carolina,ACC,0,677
+2020,regular,7,ap,3,Georgia,SEC,1,1430
+2020,regular,7,ap,10,Florida,SEC,0,904
+2020,regular,7,ap,18,Tennessee,SEC,0,463
+2020,regular,7,ap,7,Oklahoma State,Big 12,0,1069
+2020,regular,7,ap,22,Kansas State,Big 12,0,302
+2020,regular,7,ap,20,Iowa State,Big 12,0,405
+2020,regular,7,ap,12,Oregon,Pac-12,0,817
+2020,regular,7,ap,25,USC,Pac-12,0,124
+2020,regular,7,ap,15,BYU,FBS Independents,0,693
+2020,regular,7,ap,14,Auburn,SEC,0,703
+2020,regular,7,ap,2,Alabama,SEC,2,1463
+2020,regular,7,ap,11,Texas A&M,SEC,0,883
+2020,regular,7,ap,6,Ohio State,Big Ten,0,1152
+2020,regular,7,ap,19,Michigan,Big Ten,0,417
+2020,regular,7,ap,9,Penn State,Big Ten,0,970
+2020,regular,7,ap,16,Wisconsin,Big Ten,0,633
+2020,regular,7,ap,24,Minnesota,Big Ten,0,177
+2020,regular,7,ap,4,Notre Dame,ACC,0,1317
+2020,regular,7,ap,21,Louisiana,Sun Belt,0,342
+2020,regular,7,ap,8,Cincinnati,American Athletic,0,971
+2020,regular,7,ap,17,SMU,American Athletic,0,522
+2020,regular,7,ap,1,Clemson,ACC,59,1546
+2020,regular,7,ap,23,Virginia Tech,ACC,0,199
+2020,regular,7,ap,13,Miami,ACC,0,790
+2020,regular,7,ap,5,North Carolina,ACC,0,1190
+2020,regular,6,ap,3,Georgia,SEC,0,1380
+2020,regular,6,ap,4,Florida,SEC,0,1340
+2020,regular,6,ap,14,Tennessee,SEC,0,717
+2020,regular,6,ap,10,Oklahoma State,Big 12,0,919
+2020,regular,6,ap,24,Iowa State,Big 12,0,215
+2020,regular,6,ap,12,Oregon,Pac-12,0,786
+2020,regular,6,ap,15,BYU,FBS Independents,0,661
+2020,regular,6,ap,13,Auburn,SEC,0,731
+2020,regular,6,ap,17,LSU,SEC,0,478
+2020,regular,6,ap,2,Alabama,SEC,8,1488
+2020,regular,6,ap,21,Texas A&M,SEC,0,330
+2020,regular,6,ap,6,Ohio State,Big Ten,2,1165
+2020,regular,6,ap,20,Michigan,Big Ten,0,350
+2020,regular,6,ap,9,Penn State,Big Ten,0,935
+2020,regular,6,ap,16,Wisconsin,Big Ten,0,619
+2020,regular,6,ap,25,Minnesota,Big Ten,0,145
+2020,regular,6,ap,22,Texas,Big 12,0,228
+2020,regular,6,ap,5,Notre Dame,ACC,0,1239
+2020,regular,6,ap,23,Louisiana,Sun Belt,0,216
+2020,regular,6,ap,11,Cincinnati,American Athletic,0,895
+2020,regular,6,ap,18,SMU,American Athletic,0,393
+2020,regular,6,ap,1,Clemson,ACC,52,1536
+2020,regular,6,ap,19,Virginia Tech,ACC,0,391
+2020,regular,6,ap,7,Miami,ACC,0,1148
+2020,regular,6,ap,8,North Carolina,ACC,0,944
+2020,regular,5,ap,4,Georgia,SEC,0,1310
+2020,regular,5,ap,3,Florida,SEC,0,1324
+2020,regular,5,ap,21,Tennessee,SEC,0,377
+2020,regular,5,ap,17,Oklahoma State,Big 12,0,555
+2020,regular,5,ap,14,Oregon,Pac-12,0,651
+2020,regular,5,ap,22,BYU,FBS Independents,0,295
+2020,regular,5,ap,7,Auburn,SEC,0,1133
+2020,regular,5,ap,20,LSU,SEC,0,401
+2020,regular,5,ap,2,Alabama,SEC,3,1473
+2020,regular,5,ap,16,Mississippi State,SEC,0,590
+2020,regular,5,ap,13,Texas A&M,SEC,0,705
+2020,regular,5,ap,6,Ohio State,Big Ten,4,1169
+2020,regular,5,ap,23,Michigan,Big Ten,0,277
+2020,regular,5,ap,10,Penn State,Big Ten,0,840
+2020,regular,5,ap,19,Wisconsin,Big Ten,0,510
+2020,regular,5,ap,9,Texas,Big 12,0,862
+2020,regular,5,ap,18,Oklahoma,Big 12,0,535
+2020,regular,5,ap,5,Notre Dame,ACC,0,1231
+2020,regular,5,ap,25,Memphis,American Athletic,0,196
+2020,regular,5,ap,11,UCF,American Athletic,0,743
+2020,regular,5,ap,15,Cincinnati,American Athletic,0,646
+2020,regular,5,ap,1,Clemson,ACC,55,1542
+2020,regular,5,ap,8,Miami,ACC,0,1045
+2020,regular,5,ap,12,North Carolina,ACC,0,734
+2020,regular,5,ap,24,Pittsburgh,ACC,0,248
+2020,regular,4,ap,4,Georgia,SEC,0,1320
+2020,regular,4,ap,5,Florida,SEC,0,1239
+2020,regular,4,ap,16,Tennessee,SEC,0,529
+2020,regular,4,ap,23,Kentucky,SEC,0,230
+2020,regular,4,ap,15,Oklahoma State,Big 12,0,693
+2020,regular,4,ap,18,BYU,FBS Independents,0,405
+2020,regular,4,ap,8,Auburn,SEC,0,1037
+2020,regular,4,ap,6,LSU,SEC,1,1221
+2020,regular,4,ap,2,Alabama,SEC,1,1458
+2020,regular,4,ap,25,Marshall,Conference USA,0,108
+2020,regular,4,ap,10,Texas A&M,SEC,0,972
+2020,regular,4,ap,22,Army,FBS Independents,0,296
+2020,regular,4,ap,8,Texas,Big 12,0,1037
+2020,regular,4,ap,3,Oklahoma,Big 12,0,1368
+2020,regular,4,ap,7,Notre Dame,ACC,0,1200
+2020,regular,4,ap,19,Louisiana,Sun Belt,0,374
+2020,regular,4,ap,17,Memphis,American Athletic,0,510
+2020,regular,4,ap,13,UCF,American Athletic,0,771
+2020,regular,4,ap,14,Cincinnati,American Athletic,0,720
+2020,regular,4,ap,1,Clemson,ACC,59,1523
+2020,regular,4,ap,20,Virginia Tech,ACC,0,350
+2020,regular,4,ap,12,Miami,ACC,0,816
+2020,regular,4,ap,11,North Carolina,ACC,0,883
+2020,regular,4,ap,21,Pittsburgh,ACC,0,315
+2020,regular,4,ap,24,Louisville,ACC,0,115
+2020,regular,3,ap,4,Georgia,SEC,0,1324
+2020,regular,3,ap,5,Florida,SEC,0,1237
+2020,regular,3,ap,15,Tennessee,SEC,0,528
+2020,regular,3,ap,23,Kentucky,SEC,0,238
+2020,regular,3,ap,11,Oklahoma State,Big 12,0,927
+2020,regular,3,ap,21,BYU,FBS Independents,0,357
+2020,regular,3,ap,8,Auburn,SEC,0,1055
+2020,regular,3,ap,6,LSU,SEC,1,1236
+2020,regular,3,ap,2,Alabama,SEC,0,1456
+2020,regular,3,ap,10,Texas A&M,SEC,0,983
+2020,regular,3,ap,22,Army,FBS Independents,0,243
+2020,regular,3,ap,9,Texas,Big 12,0,1033
+2020,regular,3,ap,3,Oklahoma,Big 12,0,1361
+2020,regular,3,ap,7,Notre Dame,ACC,0,1155
+2020,regular,3,ap,19,Louisiana,Sun Belt,0,377
+2020,regular,3,ap,24,App State,Sun Belt,0,237
+2020,regular,3,ap,16,Memphis,American Athletic,0,495
+2020,regular,3,ap,14,UCF,American Athletic,0,632
+2020,regular,3,ap,13,Cincinnati,American Athletic,0,647
+2020,regular,3,ap,1,Clemson,ACC,60,1524
+2020,regular,3,ap,20,Virginia Tech,ACC,0,368
+2020,regular,3,ap,17,Miami,ACC,0,463
+2020,regular,3,ap,12,North Carolina,ACC,0,892
+2020,regular,3,ap,25,Pittsburgh,ACC,0,157
+2020,regular,3,ap,18,Louisville,ACC,0,387
+2020,regular,1,ap,4,Georgia,SEC,0,1270
+2020,regular,1,ap,8,Florida,SEC,0,1125
+2020,regular,1,ap,25,Tennessee,SEC,0,133
+2020,regular,1,ap,15,Oklahoma State,Big 12,0,672
+2020,regular,1,ap,23,Iowa State,Big 12,0,199
+2020,regular,1,ap,9,Oregon,Pac-12,0,1119
+2020,regular,1,ap,17,USC,Pac-12,0,534
+2020,regular,1,ap,11,Auburn,SEC,0,852
+2020,regular,1,ap,6,LSU,SEC,1,1186
+2020,regular,1,ap,22,Utah,Pac-12,0,211
+2020,regular,1,ap,3,Alabama,SEC,2,1422
+2020,regular,1,ap,13,Texas A&M,SEC,0,764
+2020,regular,1,ap,2,Ohio State,Big Ten,21,1504
+2020,regular,1,ap,16,Michigan,Big Ten,0,611
+2020,regular,1,ap,7,Penn State,Big Ten,0,1147
+2020,regular,1,ap,12,Wisconsin,Big Ten,0,840
+2020,regular,1,ap,19,Minnesota,Big Ten,0,451
+2020,regular,1,ap,24,Iowa,Big Ten,0,134
+2020,regular,1,ap,14,Texas,Big 12,0,703
+2020,regular,1,ap,5,Oklahoma,Big 12,0,1269
+2020,regular,1,ap,10,Notre Dame,ACC,0,995
+2020,regular,1,ap,21,UCF,American Athletic,0,229
+2020,regular,1,ap,20,Cincinnati,American Athletic,0,234
+2020,regular,1,ap,1,Clemson,ACC,38,1520
+2020,regular,1,ap,18,North Carolina,ACC,0,496
+2020,postseason,1,cfp,1,Alabama,SEC,0,0
+2020,postseason,1,cfp,2,Clemson,ACC,0,0
+2020,postseason,1,cfp,3,Ohio State,Big Ten,0,0
+2020,postseason,1,cfp,4,Notre Dame,ACC,0,0
+2020,postseason,1,cfp,5,Texas A&M,SEC,0,0
+2020,postseason,1,cfp,6,Oklahoma,Big 12,0,0
+2020,postseason,1,cfp,7,Florida,SEC,0,0
+2020,postseason,1,cfp,8,Cincinnati,American Athletic,0,0
+2020,postseason,1,cfp,9,Georgia,SEC,0,0
+2020,postseason,1,cfp,10,Iowa State,Big 12,0,0
+2020,postseason,1,cfp,11,Indiana,Big Ten,0,0
+2020,postseason,1,cfp,12,Coastal Carolina,Sun Belt,0,0
+2020,postseason,1,cfp,13,North Carolina,ACC,0,0
+2020,postseason,1,cfp,14,Northwestern,Big Ten,0,0
+2020,postseason,1,cfp,15,Iowa,Big Ten,0,0
+2020,postseason,1,cfp,16,BYU,FBS Independents,0,0
+2020,postseason,1,cfp,17,USC,Pac-12,0,0
+2020,postseason,1,cfp,18,Miami,ACC,0,0
+2020,postseason,1,cfp,19,Louisiana,Sun Belt,0,0
+2020,postseason,1,cfp,20,Texas,Big 12,0,0
+2020,postseason,1,cfp,21,Oklahoma State,Big 12,0,0
+2020,postseason,1,cfp,22,San José State,Mountain West,0,0
+2020,postseason,1,cfp,23,NC State,ACC,0,0
+2020,postseason,1,cfp,24,Tulsa,American Athletic,0,0
+2020,postseason,1,cfp,25,Oregon,Pac-12,0,0
+2020,postseason,1,ap,1,Alabama,SEC,61,1525
+2020,postseason,1,ap,2,Ohio State,Big Ten,0,1463
+2020,postseason,1,ap,3,Clemson,ACC,0,1378
+2020,postseason,1,ap,4,Texas A&M,SEC,0,1324
+2020,postseason,1,ap,5,Notre Dame,ACC,0,1279
+2020,postseason,1,ap,6,Oklahoma,Big 12,0,1243
+2020,postseason,1,ap,7,Georgia,SEC,0,1144
+2020,postseason,1,ap,8,Cincinnati,American Athletic,0,1074
+2020,postseason,1,ap,9,Iowa State,Big 12,0,1035
+2020,postseason,1,ap,10,Northwestern,Big Ten,0,893
+2020,postseason,1,ap,11,BYU,FBS Independents,0,862
+2020,postseason,1,ap,12,Indiana,Big Ten,0,773
+2020,postseason,1,ap,13,Florida,SEC,0,764
+2020,postseason,1,ap,14,Coastal Carolina,Sun Belt,0,725
+2020,postseason,1,ap,15,Louisiana,Sun Belt,0,664
+2020,postseason,1,ap,16,Iowa,Big Ten,0,581
+2020,postseason,1,ap,17,Liberty,FBS Independents,0,576
+2020,postseason,1,ap,18,North Carolina,ACC,0,532
+2020,postseason,1,ap,19,Texas,Big 12,0,485
+2020,postseason,1,ap,20,Oklahoma State,Big 12,0,417
+2020,postseason,1,ap,21,USC,Pac-12,0,306
+2020,postseason,1,ap,22,Miami,ACC,0,284
+2020,postseason,1,ap,23,Ball State,Mid-American,0,183
+2020,postseason,1,ap,24,San José State,Mountain West,0,80
+2020,postseason,1,ap,25,Buffalo,Mid-American,0,51
