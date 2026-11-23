@@ -1,0 +1,401 @@
+season_year,season_type,week,poll,rank,school,conference,first_place_votes,points
+2009,regular,15,ap,24,Wisconsin,Big Ten,0,0
+2009,regular,15,ap,10,Iowa,Big Ten,0,0
+2009,regular,15,ap,8,Ohio State,Big Ten,0,0
+2009,regular,15,ap,19,Stanford,Pac-10,0,0
+2009,regular,15,ap,22,Arizona,Pac-10,0,0
+2009,regular,15,ap,16,Oregon State,Pac-10,0,0
+2009,regular,15,ap,7,Oregon,Pac-10,0,0
+2009,regular,15,ap,17,Pittsburgh,Big East,0,0
+2009,regular,15,ap,18,West Virginia,Big East,0,0
+2009,regular,15,ap,11,Penn State,Big Ten,0,0
+2009,regular,15,ap,20,Nebraska,Big 12,0,0
+2009,regular,15,ap,2,Texas,Big 12,2,0
+2009,regular,15,ap,21,Oklahoma State,Big 12,0,0
+2009,regular,15,ap,23,Utah,Mountain West,0,0
+2009,regular,15,ap,15,BYU,Mountain West,0,0
+2009,regular,15,ap,4,Cincinnati,Big East,0,0
+2009,regular,15,ap,3,TCU,Mountain West,0,0
+2009,regular,15,ap,6,Boise State,Western Athletic,0,0
+2009,regular,15,ap,5,Florida,SEC,0,0
+2009,regular,15,ap,13,LSU,SEC,0,0
+2009,regular,15,ap,1,Alabama,SEC,58,0
+2009,regular,15,ap,25,Central Michigan,Mid-American,0,0
+2009,regular,15,ap,12,Virginia Tech,ACC,0,0
+2009,regular,15,ap,14,Miami,ACC,0,0
+2009,regular,15,ap,9,Georgia Tech,ACC,0,0
+2009,regular,12,ap,17,Wisconsin,Big Ten,0,0
+2009,regular,12,ap,15,Iowa,Big Ten,0,0
+2009,regular,12,ap,9,Ohio State,Big Ten,0,0
+2009,regular,12,ap,22,USC,Pac-10,0,0
+2009,regular,12,ap,14,Stanford,Pac-10,0,0
+2009,regular,12,ap,20,Oregon State,Pac-10,0,0
+2009,regular,12,ap,11,Oregon,Pac-10,0,0
+2009,regular,12,ap,8,Pittsburgh,Big East,0,0
+2009,regular,12,ap,25,Rutgers,Big East,0,0
+2009,regular,12,ap,13,Penn State,Big Ten,0,0
+2009,regular,12,ap,3,Texas,Big 12,10,0
+2009,regular,12,ap,12,Oklahoma State,Big 12,0,0
+2009,regular,12,ap,23,Utah,Mountain West,0,0
+2009,regular,12,ap,19,BYU,Mountain West,0,0
+2009,regular,12,ap,5,Cincinnati,Big East,0,0
+2009,regular,12,ap,24,Houston,Conference USA,0,0
+2009,regular,12,ap,4,TCU,Mountain West,0,0
+2009,regular,12,ap,6,Boise State,Western Athletic,0,0
+2009,regular,12,ap,1,Florida,SEC,36,0
+2009,regular,12,ap,10,LSU,SEC,0,0
+2009,regular,12,ap,2,Alabama,SEC,14,0
+2009,regular,12,ap,18,Clemson,ACC,0,0
+2009,regular,12,ap,16,Virginia Tech,ACC,0,0
+2009,regular,12,ap,21,Miami,ACC,0,0
+2009,regular,12,ap,7,Georgia Tech,ACC,0,0
+2009,regular,11,ap,21,Wisconsin,Big Ten,0,0
+2009,regular,11,ap,15,Iowa,Big Ten,0,0
+2009,regular,11,ap,10,Ohio State,Big Ten,0,0
+2009,regular,11,ap,11,USC,Pac-10,0,0
+2009,regular,11,ap,25,Stanford,Pac-10,0,0
+2009,regular,11,ap,18,Arizona,Pac-10,0,0
+2009,regular,11,ap,14,Oregon,Pac-10,0,0
+2009,regular,11,ap,8,Pittsburgh,Big East,0,0
+2009,regular,11,ap,19,Penn State,Big Ten,0,0
+2009,regular,11,ap,2,Texas,Big 12,10,0
+2009,regular,11,ap,17,Oklahoma State,Big 12,0,0
+2009,regular,11,ap,16,Utah,Mountain West,0,0
+2009,regular,11,ap,22,BYU,Mountain West,0,0
+2009,regular,11,ap,23,South Florida,Big East,0,0
+2009,regular,11,ap,5,Cincinnati,Big East,0,0
+2009,regular,11,ap,13,Houston,Conference USA,0,0
+2009,regular,11,ap,4,TCU,Mountain West,0,0
+2009,regular,11,ap,6,Boise State,Western Athletic,0,0
+2009,regular,11,ap,1,Florida,SEC,39,0
+2009,regular,11,ap,9,LSU,SEC,0,0
+2009,regular,11,ap,3,Alabama,SEC,11,0
+2009,regular,11,ap,24,Clemson,ACC,0,0
+2009,regular,11,ap,20,Virginia Tech,ACC,0,0
+2009,regular,11,ap,12,Miami,ACC,0,0
+2009,regular,11,ap,7,Georgia Tech,ACC,0,0
+2009,regular,10,ap,24,Wisconsin,Big Ten,0,0
+2009,regular,10,ap,8,Iowa,Big Ten,0,0
+2009,regular,10,ap,15,Ohio State,Big Ten,0,0
+2009,regular,10,ap,12,USC,Pac-10,0,0
+2009,regular,10,ap,23,California,Pac-10,0,0
+2009,regular,10,ap,21,Arizona,Pac-10,0,0
+2009,regular,10,ap,7,Oregon,Pac-10,0,0
+2009,regular,10,ap,14,Pittsburgh,Big East,0,0
+2009,regular,10,ap,11,Penn State,Big Ten,0,0
+2009,regular,10,ap,2,Texas,Big 12,13,0
+2009,regular,10,ap,20,Oklahoma,Big 12,0,0
+2009,regular,10,ap,18,Oklahoma State,Big 12,0,0
+2009,regular,10,ap,17,Utah,Mountain West,0,0
+2009,regular,10,ap,25,BYU,Mountain West,0,0
+2009,regular,10,ap,4,Cincinnati,Big East,0,0
+2009,regular,10,ap,13,Houston,Conference USA,0,0
+2009,regular,10,ap,6,TCU,Mountain West,0,0
+2009,regular,10,ap,5,Boise State,Western Athletic,0,0
+2009,regular,10,ap,1,Florida,SEC,38,0
+2009,regular,10,ap,9,LSU,SEC,0,0
+2009,regular,10,ap,3,Alabama,SEC,8,0
+2009,regular,10,ap,19,Notre Dame,FBS Independents,0,0
+2009,regular,10,ap,22,Virginia Tech,ACC,0,0
+2009,regular,10,ap,16,Miami,ACC,0,0
+2009,regular,10,ap,10,Georgia Tech,ACC,0,0
+2009,regular,8,ap,7,Iowa,Big Ten,0,0
+2009,regular,8,ap,18,Ohio State,Big Ten,0,0
+2009,regular,8,ap,4,USC,Pac-10,0,0
+2009,regular,8,ap,12,Oregon,Pac-10,0,0
+2009,regular,8,ap,20,Pittsburgh,Big East,0,0
+2009,regular,8,ap,22,West Virginia,Big East,0,0
+2009,regular,8,ap,13,Penn State,Big Ten,0,0
+2009,regular,8,ap,24,Kansas,Big 12,0,0
+2009,regular,8,ap,3,Texas,Big 12,0,0
+2009,regular,8,ap,21,Texas Tech,Big 12,0,0
+2009,regular,8,ap,25,Oklahoma,Big 12,0,0
+2009,regular,8,ap,14,Oklahoma State,Big 12,0,0
+2009,regular,8,ap,19,Utah,Mountain West,0,0
+2009,regular,8,ap,16,BYU,Mountain West,0,0
+2009,regular,8,ap,5,Cincinnati,Big East,0,0
+2009,regular,8,ap,17,Houston,Conference USA,0,0
+2009,regular,8,ap,10,TCU,Mountain West,0,0
+2009,regular,8,ap,6,Boise State,Western Athletic,0,0
+2009,regular,8,ap,2,Florida,SEC,20,0
+2009,regular,8,ap,23,South Carolina,SEC,0,0
+2009,regular,8,ap,9,LSU,SEC,0,0
+2009,regular,8,ap,1,Alabama,SEC,39,0
+2009,regular,8,ap,15,Virginia Tech,ACC,0,0
+2009,regular,8,ap,8,Miami,ACC,0,0
+2009,regular,8,ap,11,Georgia Tech,ACC,0,0
+2009,regular,6,ap,12,Iowa,Big Ten,0,0
+2009,regular,6,ap,9,Ohio State,Big Ten,0,0
+2009,regular,6,ap,7,USC,Pac-10,0,0
+2009,regular,6,ap,13,Oregon,Pac-10,0,0
+2009,regular,6,ap,14,Penn State,Big Ten,0,0
+2009,regular,6,ap,21,Nebraska,Big 12,0,0
+2009,regular,6,ap,24,Missouri,Big 12,0,0
+2009,regular,6,ap,16,Kansas,Big 12,0,0
+2009,regular,6,ap,2,Texas,Big 12,1,0
+2009,regular,6,ap,19,Oklahoma,Big 12,0,0
+2009,regular,6,ap,15,Oklahoma State,Big 12,0,0
+2009,regular,6,ap,18,BYU,Mountain West,0,0
+2009,regular,6,ap,23,South Florida,Big East,0,0
+2009,regular,6,ap,8,Cincinnati,Big East,0,0
+2009,regular,6,ap,10,TCU,Mountain West,0,0
+2009,regular,6,ap,6,Boise State,Western Athletic,0,0
+2009,regular,6,ap,1,Florida,SEC,54,0
+2009,regular,6,ap,25,South Carolina,SEC,0,0
+2009,regular,6,ap,17,Auburn,SEC,0,0
+2009,regular,6,ap,4,LSU,SEC,0,0
+2009,regular,6,ap,3,Alabama,SEC,5,0
+2009,regular,6,ap,20,Ole Miss,SEC,0,0
+2009,regular,6,ap,5,Virginia Tech,ACC,0,0
+2009,regular,6,ap,11,Miami,ACC,0,0
+2009,regular,6,ap,22,Georgia Tech,ACC,0,0
+2009,regular,14,ap,9,Iowa,Big Ten,0,0
+2009,regular,14,ap,8,Ohio State,Big Ten,0,0
+2009,regular,14,ap,20,USC,Pac-10,0,0
+2009,regular,14,ap,23,Stanford,Pac-10,0,0
+2009,regular,14,ap,19,California,Pac-10,0,0
+2009,regular,14,ap,13,Oregon State,Pac-10,0,0
+2009,regular,14,ap,7,Oregon,Pac-10,0,0
+2009,regular,14,ap,14,Pittsburgh,Big East,0,0
+2009,regular,14,ap,24,West Virginia,Big East,0,0
+2009,regular,14,ap,10,Penn State,Big Ten,0,0
+2009,regular,14,ap,21,Nebraska,Big 12,0,0
+2009,regular,14,ap,3,Texas,Big 12,7,0
+2009,regular,14,ap,22,Oklahoma State,Big 12,0,0
+2009,regular,14,ap,16,BYU,Mountain West,0,0
+2009,regular,14,ap,5,Cincinnati,Big East,0,0
+2009,regular,14,ap,18,Houston,Conference USA,0,0
+2009,regular,14,ap,4,TCU,Mountain West,0,0
+2009,regular,14,ap,6,Boise State,Western Athletic,0,0
+2009,regular,14,ap,1,Florida,SEC,46,0
+2009,regular,14,ap,15,LSU,SEC,0,0
+2009,regular,14,ap,2,Alabama,SEC,7,0
+2009,regular,14,ap,25,Clemson,ACC,0,0
+2009,regular,14,ap,11,Virginia Tech,ACC,0,0
+2009,regular,14,ap,17,Miami,ACC,0,0
+2009,regular,14,ap,12,Georgia Tech,ACC,0,0
+2009,regular,13,ap,13,Iowa,Big Ten,0,0
+2009,regular,13,ap,9,Ohio State,Big Ten,0,0
+2009,regular,13,ap,24,USC,Pac-10,0,0
+2009,regular,13,ap,21,California,Pac-10,0,0
+2009,regular,13,ap,16,Oregon State,Pac-10,0,0
+2009,regular,13,ap,10,Oregon,Pac-10,0,0
+2009,regular,13,ap,8,Pittsburgh,Big East,0,0
+2009,regular,13,ap,12,Penn State,Big Ten,0,0
+2009,regular,13,ap,3,Texas,Big 12,11,0
+2009,regular,13,ap,11,Oklahoma State,Big 12,0,0
+2009,regular,13,ap,22,Utah,Mountain West,0,0
+2009,regular,13,ap,18,BYU,Mountain West,0,0
+2009,regular,13,ap,5,Cincinnati,Big East,0,0
+2009,regular,13,ap,25,Houston,Conference USA,0,0
+2009,regular,13,ap,4,TCU,Mountain West,0,0
+2009,regular,13,ap,6,Boise State,Western Athletic,0,0
+2009,regular,13,ap,1,Florida,SEC,36,0
+2009,regular,13,ap,17,LSU,SEC,0,0
+2009,regular,13,ap,2,Alabama,SEC,13,0
+2009,regular,13,ap,20,Ole Miss,SEC,0,0
+2009,regular,13,ap,15,Clemson,ACC,0,0
+2009,regular,13,ap,14,Virginia Tech,ACC,0,0
+2009,regular,13,ap,19,Miami,ACC,0,0
+2009,regular,13,ap,7,Georgia Tech,ACC,0,0
+2009,regular,13,ap,23,North Carolina,ACC,0,0
+2009,regular,9,ap,7,Iowa,Big Ten,0,0
+2009,regular,9,ap,17,Ohio State,Big Ten,0,0
+2009,regular,9,ap,4,USC,Pac-10,0,0
+2009,regular,9,ap,23,Arizona,Pac-10,0,0
+2009,regular,9,ap,10,Oregon,Pac-10,0,0
+2009,regular,9,ap,16,Pittsburgh,Big East,0,0
+2009,regular,9,ap,20,West Virginia,Big East,0,0
+2009,regular,9,ap,12,Penn State,Big Ten,0,0
+2009,regular,9,ap,3,Texas,Big 12,7,0
+2009,regular,9,ap,22,Oklahoma,Big 12,0,0
+2009,regular,9,ap,13,Oklahoma State,Big 12,0,0
+2009,regular,9,ap,19,Utah,Mountain West,0,0
+2009,regular,9,ap,5,Cincinnati,Big East,0,0
+2009,regular,9,ap,15,Houston,Conference USA,0,0
+2009,regular,9,ap,8,TCU,Mountain West,0,0
+2009,regular,9,ap,6,Boise State,Western Athletic,0,0
+2009,regular,9,ap,1,Florida,SEC,30,0
+2009,regular,9,ap,21,South Carolina,SEC,0,0
+2009,regular,9,ap,9,LSU,SEC,0,0
+2009,regular,9,ap,2,Alabama,SEC,23,0
+2009,regular,9,ap,24,Ole Miss,SEC,0,0
+2009,regular,9,ap,25,Notre Dame,FBS Independents,0,0
+2009,regular,9,ap,14,Virginia Tech,ACC,0,0
+2009,regular,9,ap,18,Miami,ACC,0,0
+2009,regular,9,ap,11,Georgia Tech,ACC,0,0
+2009,regular,7,ap,11,Iowa,Big Ten,0,0
+2009,regular,7,ap,7,Ohio State,Big Ten,0,0
+2009,regular,7,ap,6,USC,Pac-10,0,0
+2009,regular,7,ap,13,Oregon,Pac-10,0,0
+2009,regular,7,ap,14,Penn State,Big Ten,0,0
+2009,regular,7,ap,15,Nebraska,Big 12,0,0
+2009,regular,7,ap,17,Kansas,Big 12,0,0
+2009,regular,7,ap,3,Texas,Big 12,0,0
+2009,regular,7,ap,20,Oklahoma,Big 12,0,0
+2009,regular,7,ap,16,Oklahoma State,Big 12,0,0
+2009,regular,7,ap,24,Utah,Mountain West,0,0
+2009,regular,7,ap,18,BYU,Mountain West,0,0
+2009,regular,7,ap,21,South Florida,Big East,0,0
+2009,regular,7,ap,8,Cincinnati,Big East,0,0
+2009,regular,7,ap,23,Houston,Conference USA,0,0
+2009,regular,7,ap,12,TCU,Mountain West,0,0
+2009,regular,7,ap,5,Boise State,Western Athletic,0,0
+2009,regular,7,ap,1,Florida,SEC,50,0
+2009,regular,7,ap,22,South Carolina,SEC,0,0
+2009,regular,7,ap,10,LSU,SEC,0,0
+2009,regular,7,ap,2,Alabama,SEC,10,0
+2009,regular,7,ap,25,Notre Dame,FBS Independents,0,0
+2009,regular,7,ap,4,Virginia Tech,ACC,0,0
+2009,regular,7,ap,9,Miami,ACC,0,0
+2009,regular,7,ap,19,Georgia Tech,ACC,0,0
+2009,regular,5,ap,13,Iowa,Big Ten,0,0
+2009,regular,5,ap,22,Michigan,Big Ten,0,0
+2009,regular,5,ap,9,Ohio State,Big Ten,0,0
+2009,regular,5,ap,7,USC,Pac-10,0,0
+2009,regular,5,ap,24,California,Pac-10,0,0
+2009,regular,5,ap,16,Oregon,Pac-10,0,0
+2009,regular,5,ap,15,Penn State,Big Ten,0,0
+2009,regular,5,ap,23,Nebraska,Big 12,0,0
+2009,regular,5,ap,18,Kansas,Big 12,0,0
+2009,regular,5,ap,2,Texas,Big 12,1,0
+2009,regular,5,ap,8,Oklahoma,Big 12,0,0
+2009,regular,5,ap,14,Oklahoma State,Big 12,0,0
+2009,regular,5,ap,20,BYU,Mountain West,0,0
+2009,regular,5,ap,10,Cincinnati,Big East,0,0
+2009,regular,5,ap,12,Houston,Conference USA,0,0
+2009,regular,5,ap,11,TCU,Mountain West,0,0
+2009,regular,5,ap,5,Boise State,Western Athletic,0,0
+2009,regular,5,ap,18,Georgia,SEC,0,0
+2009,regular,5,ap,1,Florida,SEC,55,0
+2009,regular,5,ap,4,LSU,SEC,0,0
+2009,regular,5,ap,3,Alabama,SEC,4,0
+2009,regular,5,ap,21,Ole Miss,SEC,0,0
+2009,regular,5,ap,6,Virginia Tech,ACC,0,0
+2009,regular,5,ap,17,Miami,ACC,0,0
+2009,regular,5,ap,25,Georgia Tech,ACC,0,0
+2009,regular,1,ap,22,Iowa,Big Ten,0,0
+2009,regular,1,ap,6,Ohio State,Big Ten,0,0
+2009,regular,1,ap,4,USC,Pac-10,0,0
+2009,regular,1,ap,12,California,Pac-10,0,0
+2009,regular,1,ap,16,Oregon,Pac-10,0,0
+2009,regular,1,ap,9,Penn State,Big Ten,0,0
+2009,regular,1,ap,24,Nebraska,Big 12,0,0
+2009,regular,1,ap,25,Kansas,Big 12,0,0
+2009,regular,1,ap,2,Texas,Big 12,2,0
+2009,regular,1,ap,3,Oklahoma,Big 12,0,0
+2009,regular,1,ap,9,Oklahoma State,Big 12,0,0
+2009,regular,1,ap,19,Utah,Mountain West,0,0
+2009,regular,1,ap,20,BYU,Mountain West,0,0
+2009,regular,1,ap,17,TCU,Mountain West,0,0
+2009,regular,1,ap,14,Boise State,Western Athletic,0,0
+2009,regular,1,ap,13,Georgia,SEC,0,0
+2009,regular,1,ap,1,Florida,SEC,58,0
+2009,regular,1,ap,11,LSU,SEC,0,0
+2009,regular,1,ap,5,Alabama,SEC,0,0
+2009,regular,1,ap,8,Ole Miss,SEC,0,0
+2009,regular,1,ap,23,Notre Dame,FBS Independents,0,0
+2009,regular,1,ap,18,Florida State,ACC,0,0
+2009,regular,1,ap,7,Virginia Tech,ACC,0,0
+2009,regular,1,ap,15,Georgia Tech,ACC,0,0
+2009,regular,1,ap,21,North Carolina,ACC,0,0
+2009,regular,4,ap,23,Michigan,Big Ten,0,0
+2009,regular,4,ap,13,Ohio State,Big Ten,0,0
+2009,regular,4,ap,12,USC,Pac-10,0,0
+2009,regular,4,ap,24,Washington,Pac-10,0,0
+2009,regular,4,ap,6,California,Pac-10,0,0
+2009,regular,4,ap,5,Penn State,Big Ten,0,0
+2009,regular,4,ap,25,Nebraska,Big 12,0,0
+2009,regular,4,ap,20,Kansas,Big 12,0,0
+2009,regular,4,ap,2,Texas,Big 12,2,0
+2009,regular,4,ap,10,Oklahoma,Big 12,0,0
+2009,regular,4,ap,16,Oklahoma State,Big 12,0,0
+2009,regular,4,ap,19,BYU,Mountain West,0,0
+2009,regular,4,ap,14,Cincinnati,Big East,0,0
+2009,regular,4,ap,17,Houston,Conference USA,0,0
+2009,regular,4,ap,15,TCU,Mountain West,0,0
+2009,regular,4,ap,8,Boise State,Western Athletic,0,0
+2009,regular,4,ap,21,Georgia,SEC,0,0
+2009,regular,4,ap,1,Florida,SEC,55,0
+2009,regular,4,ap,7,LSU,SEC,0,0
+2009,regular,4,ap,3,Alabama,SEC,3,0
+2009,regular,4,ap,4,Ole Miss,SEC,0,0
+2009,regular,4,ap,18,Florida State,ACC,0,0
+2009,regular,4,ap,11,Virginia Tech,ACC,0,0
+2009,regular,4,ap,9,Miami,ACC,0,0
+2009,regular,4,ap,22,North Carolina,ACC,0,0
+2009,regular,3,ap,25,Michigan,Big Ten,0,0
+2009,regular,3,ap,11,Ohio State,Big Ten,0,0
+2009,regular,3,ap,3,USC,Pac-10,1,0
+2009,regular,3,ap,8,California,Pac-10,0,0
+2009,regular,3,ap,5,Penn State,Big Ten,0,0
+2009,regular,3,ap,19,Nebraska,Big 12,0,0
+2009,regular,3,ap,22,Kansas,Big 12,0,0
+2009,regular,3,ap,2,Texas,Big 12,1,0
+2009,regular,3,ap,12,Oklahoma,Big 12,0,0
+2009,regular,3,ap,16,Oklahoma State,Big 12,0,0
+2009,regular,3,ap,18,Utah,Mountain West,0,0
+2009,regular,3,ap,7,BYU,Mountain West,0,0
+2009,regular,3,ap,17,Cincinnati,Big East,0,0
+2009,regular,3,ap,21,Houston,Conference USA,0,0
+2009,regular,3,ap,15,TCU,Mountain West,0,0
+2009,regular,3,ap,10,Boise State,Western Athletic,0,0
+2009,regular,3,ap,23,Georgia,SEC,0,0
+2009,regular,3,ap,1,Florida,SEC,56,0
+2009,regular,3,ap,9,LSU,SEC,0,0
+2009,regular,3,ap,4,Alabama,SEC,2,0
+2009,regular,3,ap,5,Ole Miss,SEC,0,0
+2009,regular,3,ap,13,Virginia Tech,ACC,0,0
+2009,regular,3,ap,20,Miami,ACC,0,0
+2009,regular,3,ap,14,Georgia Tech,ACC,0,0
+2009,regular,3,ap,24,North Carolina,ACC,0,0
+2009,regular,2,ap,8,Ohio State,Big Ten,0,0
+2009,regular,2,ap,3,USC,Pac-10,0,0
+2009,regular,2,ap,10,California,Pac-10,0,0
+2009,regular,2,ap,7,Penn State,Big Ten,0,0
+2009,regular,2,ap,22,Nebraska,Big 12,0,0
+2009,regular,2,ap,25,Missouri,Big 12,0,0
+2009,regular,2,ap,24,Kansas,Big 12,0,0
+2009,regular,2,ap,2,Texas,Big 12,2,0
+2009,regular,2,ap,13,Oklahoma,Big 12,0,0
+2009,regular,2,ap,5,Oklahoma State,Big 12,0,0
+2009,regular,2,ap,17,Utah,Mountain West,0,0
+2009,regular,2,ap,9,BYU,Mountain West,0,0
+2009,regular,2,ap,23,Cincinnati,Big East,0,0
+2009,regular,2,ap,16,TCU,Mountain West,0,0
+2009,regular,2,ap,12,Boise State,Western Athletic,0,0
+2009,regular,2,ap,21,Georgia,SEC,0,0
+2009,regular,2,ap,1,Florida,SEC,56,0
+2009,regular,2,ap,11,LSU,SEC,0,0
+2009,regular,2,ap,4,Alabama,SEC,2,0
+2009,regular,2,ap,6,Ole Miss,SEC,0,0
+2009,regular,2,ap,18,Notre Dame,FBS Independents,0,0
+2009,regular,2,ap,14,Virginia Tech,ACC,0,0
+2009,regular,2,ap,20,Miami,ACC,0,0
+2009,regular,2,ap,15,Georgia Tech,ACC,0,0
+2009,regular,2,ap,19,North Carolina,ACC,0,0
+2009,postseason,1,ap,1,Alabama,SEC,60,0
+2009,postseason,1,ap,2,Texas,Big 12,0,0
+2009,postseason,1,ap,3,Florida,SEC,0,0
+2009,postseason,1,ap,4,Boise State,Western Athletic,0,0
+2009,postseason,1,ap,5,Ohio State,Big Ten,0,0
+2009,postseason,1,ap,6,TCU,Mountain West,0,0
+2009,postseason,1,ap,7,Iowa,Big Ten,0,0
+2009,postseason,1,ap,8,Cincinnati,Big East,0,0
+2009,postseason,1,ap,9,Penn State,Big Ten,0,0
+2009,postseason,1,ap,10,Virginia Tech,ACC,0,0
+2009,postseason,1,ap,11,Oregon,Pac-10,0,0
+2009,postseason,1,ap,12,BYU,Mountain West,0,0
+2009,postseason,1,ap,13,Georgia Tech,ACC,0,0
+2009,postseason,1,ap,14,Nebraska,Big 12,0,0
+2009,postseason,1,ap,15,Pittsburgh,Big East,0,0
+2009,postseason,1,ap,16,Wisconsin,Big Ten,0,0
+2009,postseason,1,ap,17,LSU,SEC,0,0
+2009,postseason,1,ap,18,Utah,Mountain West,0,0
+2009,postseason,1,ap,19,Miami,ACC,0,0
+2009,postseason,1,ap,20,Ole Miss,SEC,0,0
+2009,postseason,1,ap,21,Texas Tech,Big 12,0,0
+2009,postseason,1,ap,22,USC,Pac-10,0,0
+2009,postseason,1,ap,23,Central Michigan,Mid-American,0,0
+2009,postseason,1,ap,24,Clemson,ACC,0,0
+2009,postseason,1,ap,25,West Virginia,Big East,0,0
