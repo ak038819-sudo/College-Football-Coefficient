@@ -12,17 +12,17 @@
 # fill. Renaming, merging or dropping a school is not something a script
 # does here. No production table is opened, no rating is built, `ui/` is
 # untouched, so no deploy follows.
-name: Historical identity and eligibility (1946-1979)
+name: Historical identity and eligibility (1869-1979)
 
 on:
   workflow_dispatch:
     inputs:
       start:
-        description: "First season (1946-1979)."
+        description: "First season (1869-1979)."
         type: string
-        default: "1946"
+        default: "1869"
       end:
-        description: "Last season (1946-1979)."
+        description: "Last season (1869-1979)."
         type: string
         default: "1979"
 
@@ -64,9 +64,9 @@ jobs:
               first, last = int(start), int(end)
           except ValueError:
               sys.exit(f'::error::start and end must be years: {start}, {end}')
-          if not 1946 <= first <= last <= 1979:
-              sys.exit('::error::Phase 3 is 1946-1979, and start must not be '
-                       f'after end: got {first}-{last}')
+          if not 1869 <= first <= last <= 1979:
+              sys.exit('::error::The historical archive is 1869-1979, and start '
+                       f'must not be after end: got {first}-{last}')
           print(f'Mapping {first}-{last}')
           PY
         env:

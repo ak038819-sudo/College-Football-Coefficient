@@ -1,4 +1,4 @@
-"""The 1946-1979 source reconciliation, driven rather than read.
+"""The 1869-1979 source reconciliation, driven rather than read.
 
 What this script is for is catching a season that looks complete because
 every partition answered and is missing games the provider itself believes
@@ -391,13 +391,13 @@ class TestItTouchesNothingItShouldNot:
             "SELECT name FROM sqlite_master WHERE type='table'")}
         assert 'archive_team_records' not in tables
 
-    def test_the_range_is_phase_three_and_nothing_wider(self, archive,
+    def test_the_range_is_the_archive_and_nothing_wider(self, archive,
                                                         tmp_path):
         records = sqlite3.connect(tmp_path / 'records.db')
         reconciler.setup(records)
         with sqlite3.connect(f'file:{archive}?mode=ro', uri=True) as db:
-            for first, last in ((1945, 1950), (1950, 1980), (1960, 1950)):
-                with pytest.raises(ValueError, match='1946-1979'):
+            for first, last in ((1868, 1950), (1950, 1980), (1960, 1950)):
+                with pytest.raises(ValueError, match='1869-1979'):
                     reconciler.reconcile(db, records, first, last)
         records.close()
 
@@ -512,6 +512,36 @@ class TestTheEntryPoint:
         with pytest.raises(SystemExit):
             reconciler.main()
 
+    def test_online_it_fetches_through_the_module_attribute(
+            self, archive, tmp_path, monkeypatch, capsys):
+        """The only test that drives main() ONLINE, and the reason collect's
+        fetcher default is resolved inside the function. With
+        `fetcher=fetch` in the signature the default bound at def time, so
+        replacing the module attribute did nothing and this test would reach
+        the provider for real.
+        """
+        game(archive, 1, 'Army', 'Navy', 21, 0)
+        asked = []
+
+        def fake(year, key):
+            asked.append((year, key))
+            return [record('Army', regular=(1, 1, 0, 0)),
+                    record('Navy', regular=(1, 0, 1, 0))]
+
+        monkeypatch.setattr(reconciler, 'fetch', fake)
+        monkeypatch.setenv('CFBD_API_KEY', 'test-key')
+        out = tmp_path / 'report'
+        monkeypatch.setattr(sys, 'argv', [
+            'reconcile_historical_sources.py', '--staging', str(archive),
+            '--db', str(tmp_path / 'records.db'), '--out', str(out),
+            '--start', '1950', '--end', '1950', '--pause', '0'])
+        reconciler.main()
+        assert asked == [(1950, 'test-key')]
+        rows = list(csv.DictReader((out / 'source_reconciliation.csv').open()))
+        assert {row['team_raw'] for row in rows} == {'Army', 'Navy'}
+        assert all(row['findings'] == '' for row in rows)
+        assert capsys.readouterr().out.count('OK 1950') == 1
+
     def test_without_offline_it_requires_the_key(self, archive, tmp_path,
                                                  monkeypatch):
         monkeypatch.delenv('CFBD_API_KEY', raising=False)
@@ -615,7 +645,7 @@ class TestTheWorkflowThatRunsIt:
         check = next(i for i, name in enumerate(names) if 'range' in name)
         work = next(i for i, name in enumerate(names) if 'reconcile the' in name)
         assert check < work
-        assert '1946 <= first <= last <= 1979' in self.body(
+        assert '1869 <= first <= last <= 1979' in self.body(
             text, 'Check the credential and the range')
 
     def test_it_calls_the_script_with_the_arguments_it_takes(self, text):

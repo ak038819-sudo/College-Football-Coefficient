@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Candidate identity map for the schools in the 1946-1979 archive.
+"""Candidate identity map for the schools in the 1869-1979 archive.
 
 The archive stores the names the provider gave, verbatim. Before any of it
 can be rated, each name has to be tied to a school -- including the ones
@@ -30,7 +30,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-FIRST, LAST = 1946, 1979
+FIRST, LAST = 1869, 1979
 # Below this, a resemblance is noise. It is a reading aid either way: no
 # status depends on it.
 SUGGESTION_FLOOR = 0.82
@@ -120,7 +120,7 @@ def suggestion(name, known, floor=SUGGESTION_FLOOR):
 
 def build(archive, records, first=FIRST, last=LAST):
     if first < FIRST or last > LAST or last < first:
-        raise ValueError("Phase 3 range must be within 1946-1979")
+        raise ValueError("Historical range must be within 1869-1979")
     staged = appearances(archive, first, last)
     carried = record_lines(records, first, last)
     known = registry_names()

@@ -426,8 +426,8 @@ class TestTheSummaryCountsHonestly:
         assert summary['production_promotion_allowed'] is False
 
 
-class TestTheRangeIsPhaseThrees:
-    @pytest.mark.parametrize('start,end', [(1945, 1979), (1946, 1980),
+class TestTheRangeIsTheWholeArchive:
+    @pytest.mark.parametrize('start,end', [(1868, 1979), (1869, 1980),
                                            (1960, 1950)])
     def test_outside_the_range_is_refused(self, tmp_path, start, end):
         path = staged(tmp_path, [game('1')])

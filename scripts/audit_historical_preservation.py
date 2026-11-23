@@ -42,7 +42,7 @@ import sqlite3
 from collections import Counter
 from pathlib import Path
 
-FIRST, LAST = 1946, 1979
+FIRST, LAST = 1869, 1979
 
 # The provider's field names, written out again rather than imported. Each
 # column names the keys it may come from; snake_case and camelCase are both
@@ -167,7 +167,7 @@ def census(payload):
 
 def audit(archive, first=FIRST, last=LAST):
     if first < FIRST or last > LAST or last < first:
-        raise ValueError('Phase 3 range must be within 1946-1979')
+        raise ValueError('Historical range must be within 1869-1979')
     archive.row_factory = sqlite3.Row
     rows = archive.execute(
         'SELECT * FROM archive_games WHERE season BETWEEN ? AND ?'

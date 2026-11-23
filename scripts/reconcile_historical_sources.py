@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reconcile the staged 1946-1979 archive against the provider's own records.
+"""Reconcile the staged 1869-1979 archive against the provider's own records.
 
 The games feed is a list of fixtures; the records feed is a list of season
 won-lost-tied lines, derived by the provider separately. Comparing them
@@ -35,7 +35,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 API = "https://api.collegefootballdata.com/records"
-FIRST, LAST = 1946, 1979
+FIRST, LAST = 1869, 1979
 SEASON_TYPES = ("regular", "postseason")
 # Columns of archive_team_records, which normalized() fills positionally.
 COLUMNS = 21
@@ -157,8 +157,13 @@ def store(db, year, payload):
             (year, datetime.now(timezone.utc).isoformat(), len(rows)))
 
 
-def collect(db, start, end, key, force=False, pause=0.5, fetcher=fetch):
+def collect(db, start, end, key, force=False, pause=0.5, fetcher=None):
     """Fetch and checkpoint the records feed, one season a request."""
+    # Resolved HERE, not in the signature: a default argument binds at def
+    # time, so `fetcher=fetch` would make the module attribute impossible to
+    # replace and any test of main() would quietly hit the network.
+    if fetcher is None:
+        fetcher = fetch
     setup(db)
     for year in range(start, end + 1):
         previous = db.execute(
@@ -239,7 +244,7 @@ def difference(staged_count, reference_count):
 
 def reconcile(archive, records, first=FIRST, last=LAST):
     if first < FIRST or last > LAST or last < first:
-        raise ValueError("Phase 3 range must be within 1946-1979")
+        raise ValueError("Historical range must be within 1869-1979")
     results = []
     for year in range(first, last + 1):
         checkpoint = records.execute(

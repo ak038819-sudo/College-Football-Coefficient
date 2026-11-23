@@ -201,3 +201,63 @@ It settles that Phase 4 does not need a second provider to exist. It does
 not settle accuracy, identity or eligibility: 1,214 school names is three
 times Phase 3's 405, and every one of them will need the same treatment.
 Nothing is staged, and `production_promotion_allowed` is `false`.
+
+## Widening the gates, 1869–1979
+
+Staging the early archive left the four Phase 3 gates still answering only
+for 1946–1979. That is the shape of mistake worth naming: each gate filters
+by season, so a gate left at its old range does not fail on the early
+period — it returns a clean report about a third of the archive, and a
+clean report is exactly what nobody re-reads.
+
+So the range is now one range. Reconciliation, identity, eligibility and
+preservation all take **1869–1979**, as the backfill and its audit already
+do, and each one's workflow offers 1869 as its default rather than 1946.
+
+### One range, named in nine places
+
+A gate has to carry the range twice over — once in the script, which must
+refuse an out-of-range request on its own, and once in the workflow, which
+cannot import a Python constant. Across the five scripts and four
+workflows that is nine copies of one number, and nine copies is how a
+widening goes half-done.
+
+`tests/test_historical_range.py` holds the range once and asserts every
+copy matches it: the `FIRST, LAST` line in each gate, the guard in each
+workflow, and the absence of any lingering `default: "1946"`. It is a test
+about numbers rather than behaviour — each gate's own file tests the
+behaviour — and it is the thing that fails first the next time the archive
+widens.
+
+It also pins the one range that is deliberately *different*:
+`probe_early_football_coverage.py` stays at 1869–1945, because widening the
+probe would re-ask the provider for seasons already staged.
+
+### The order the gates have to run in
+
+They are not independent. Identity and eligibility both read the records
+database that reconciliation fills from CFBD's `/records` feed, so:
+
+1. **Reconciliation** — the only one that needs the network, and the only
+   one that needs `CFBD_API_KEY`. It checkpoints per season exactly as the
+   backfill does, so a 1869–1945 run adds to the records chain and reports
+   `SKIP` for the 34 seasons already collected.
+2. **Identity** and **eligibility**, which read those records beside the
+   staged games.
+3. **Preservation**, which needs neither: it reads the staged payloads.
+
+Nothing here runs a gate. Widening is a source change, and what each gate
+then says about 1869–1945 is a result to be recorded when it is measured —
+not predicted here. Identity in particular faces 1,214 school names
+against Phase 3's 405, and every unresolved one needs a verdict from a
+person.
+
+### A trap closed on the way past
+
+`collect()` in `reconcile_historical_sources.py` carried `fetcher=fetch` in
+its signature. A default argument binds at def time, so the module
+attribute could not be replaced and any test that drove `main()` would
+have reached the provider for real — the same trap the probe hit, now
+caught a second time. The default is resolved inside the function, and
+there is a test that drives `main()` online through a replaced `fetch`;
+reverting the signature makes that test try to open a socket.
