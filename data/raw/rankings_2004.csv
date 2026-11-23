@@ -1,0 +1,376 @@
+season_year,season_type,week,poll,rank,school,conference,first_place_votes,points
+2004,regular,7,ap,23,Maryland,ACC,0,0
+2004,regular,7,ap,15,Wisconsin,Big Ten,0,0
+2004,regular,7,ap,14,Michigan,Big Ten,0,0
+2004,regular,7,ap,18,Ohio State,Big Ten,0,0
+2004,regular,7,ap,13,Minnesota,Big Ten,0,0
+2004,regular,7,ap,9,Purdue,Big Ten,0,0
+2004,regular,7,ap,10,Virginia,ACC,0,0
+2004,regular,7,ap,1,USC,Pac-10,48,0
+2004,regular,7,ap,19,Arizona State,Pac-10,0,0
+2004,regular,7,ap,7,California,Pac-10,0,0
+2004,regular,7,ap,16,West Virginia,Big East,0,0
+2004,regular,7,ap,8,Florida State,ACC,0,0
+2004,regular,7,ap,5,Texas,Big 12,0,0
+2004,regular,7,ap,2,Oklahoma,Big 12,15,0
+2004,regular,7,ap,22,Oklahoma State,Big 12,0,0
+2004,regular,7,ap,20,Louisville,Conference USA,0,0
+2004,regular,7,ap,11,Utah,Mountain West,0,0
+2004,regular,7,ap,4,Miami,ACC,0,0
+2004,regular,7,ap,21,Boise State,Western Athletic,0,0
+2004,regular,7,ap,3,Georgia,SEC,2,0
+2004,regular,7,ap,12,Florida,SEC,0,0
+2004,regular,7,ap,17,Tennessee,SEC,0,0
+2004,regular,7,ap,25,South Carolina,SEC,0,0
+2004,regular,7,ap,6,Auburn,SEC,0,0
+2004,regular,7,ap,24,LSU,SEC,0,0
+2004,regular,6,ap,24,Maryland,ACC,0,0
+2004,regular,6,ap,20,Wisconsin,Big Ten,0,0
+2004,regular,6,ap,19,Michigan,Big Ten,0,0
+2004,regular,6,ap,7,Ohio State,Big Ten,0,0
+2004,regular,6,ap,18,Minnesota,Big Ten,0,0
+2004,regular,6,ap,15,Purdue,Big Ten,0,0
+2004,regular,6,ap,12,Virginia,ACC,0,0
+2004,regular,6,ap,1,USC,Pac-10,46,0
+2004,regular,6,ap,21,Arizona State,Pac-10,0,0
+2004,regular,6,ap,10,California,Pac-10,0,0
+2004,regular,6,ap,6,West Virginia,Big East,0,0
+2004,regular,6,ap,9,Florida State,ACC,0,0
+2004,regular,6,ap,5,Texas,Big 12,0,0
+2004,regular,6,ap,2,Oklahoma,Big 12,18,0
+2004,regular,6,ap,25,Oklahoma State,Big 12,0,0
+2004,regular,6,ap,22,Louisville,Conference USA,0,0
+2004,regular,6,ap,14,Utah,Mountain West,0,0
+2004,regular,6,ap,4,Miami,ACC,0,0
+2004,regular,6,ap,23,Boise State,Western Athletic,0,0
+2004,regular,6,ap,3,Georgia,SEC,1,0
+2004,regular,6,ap,16,Florida,SEC,0,0
+2004,regular,6,ap,10,Tennessee,SEC,0,0
+2004,regular,6,ap,17,Fresno State,Western Athletic,0,0
+2004,regular,6,ap,8,Auburn,SEC,0,0
+2004,regular,6,ap,13,LSU,SEC,0,0
+2004,regular,5,ap,23,Maryland,ACC,0,0
+2004,regular,5,ap,20,Wisconsin,Big Ten,0,0
+2004,regular,5,ap,18,Michigan,Big Ten,0,0
+2004,regular,5,ap,7,Ohio State,Big Ten,0,0
+2004,regular,5,ap,19,Minnesota,Big Ten,0,0
+2004,regular,5,ap,15,Purdue,Big Ten,0,0
+2004,regular,5,ap,12,Virginia,ACC,0,0
+2004,regular,5,ap,1,USC,Pac-10,54,0
+2004,regular,5,ap,22,Arizona State,Pac-10,0,0
+2004,regular,5,ap,10,California,Pac-10,0,0
+2004,regular,5,ap,6,West Virginia,Big East,0,0
+2004,regular,5,ap,8,Florida State,ACC,0,0
+2004,regular,5,ap,5,Texas,Big 12,0,0
+2004,regular,5,ap,2,Oklahoma,Big 12,10,0
+2004,regular,5,ap,25,Oklahoma State,Big 12,0,0
+2004,regular,5,ap,24,Louisville,Conference USA,0,0
+2004,regular,5,ap,14,Utah,Mountain West,0,0
+2004,regular,5,ap,4,Miami,ACC,0,0
+2004,regular,5,ap,21,Boise State,Western Athletic,0,0
+2004,regular,5,ap,3,Georgia,SEC,1,0
+2004,regular,5,ap,16,Florida,SEC,0,0
+2004,regular,5,ap,11,Tennessee,SEC,0,0
+2004,regular,5,ap,17,Fresno State,Western Athletic,0,0
+2004,regular,5,ap,9,Auburn,SEC,0,0
+2004,regular,5,ap,13,LSU,SEC,0,0
+2004,regular,4,ap,21,Maryland,ACC,0,0
+2004,regular,4,ap,20,Wisconsin,Big Ten,0,0
+2004,regular,4,ap,16,Iowa,Big Ten,0,0
+2004,regular,4,ap,17,Michigan,Big Ten,0,0
+2004,regular,4,ap,9,Ohio State,Big Ten,0,0
+2004,regular,4,ap,22,Minnesota,Big Ten,0,0
+2004,regular,4,ap,18,Purdue,Big Ten,0,0
+2004,regular,4,ap,12,Virginia,ACC,0,0
+2004,regular,4,ap,1,USC,Pac-10,52,0
+2004,regular,4,ap,10,California,Pac-10,0,0
+2004,regular,4,ap,7,West Virginia,Big East,0,0
+2004,regular,4,ap,8,Florida State,ACC,0,0
+2004,regular,4,ap,6,Texas,Big 12,0,0
+2004,regular,4,ap,2,Oklahoma,Big 12,10,0
+2004,regular,4,ap,24,Louisville,Conference USA,0,0
+2004,regular,4,ap,25,Memphis,Conference USA,0,0
+2004,regular,4,ap,15,Utah,Mountain West,0,0
+2004,regular,4,ap,4,Miami,ACC,0,0
+2004,regular,4,ap,23,Boise State,Western Athletic,0,0
+2004,regular,4,ap,3,Georgia,SEC,3,0
+2004,regular,4,ap,11,Florida,SEC,0,0
+2004,regular,4,ap,13,Tennessee,SEC,0,0
+2004,regular,4,ap,19,Fresno State,Western Athletic,0,0
+2004,regular,4,ap,14,Auburn,SEC,0,0
+2004,regular,4,ap,5,LSU,SEC,0,0
+2004,regular,3,ap,23,Maryland,ACC,0,0
+2004,regular,3,ap,20,Clemson,ACC,0,0
+2004,regular,3,ap,21,Wisconsin,Big Ten,0,0
+2004,regular,3,ap,16,Iowa,Big Ten,0,0
+2004,regular,3,ap,8,Michigan,Big Ten,0,0
+2004,regular,3,ap,9,Ohio State,Big Ten,0,0
+2004,regular,3,ap,22,Minnesota,Big Ten,0,0
+2004,regular,3,ap,25,Purdue,Big Ten,0,0
+2004,regular,3,ap,15,Virginia,ACC,0,0
+2004,regular,3,ap,1,USC,Pac-10,51,0
+2004,regular,3,ap,12,California,Pac-10,0,0
+2004,regular,3,ap,24,Oregon,Pac-10,0,0
+2004,regular,3,ap,10,West Virginia,Big East,0,0
+2004,regular,3,ap,4,Florida State,ACC,0,0
+2004,regular,3,ap,13,Kansas State,Big 12,0,0
+2004,regular,3,ap,19,Missouri,Big 12,0,0
+2004,regular,3,ap,7,Texas,Big 12,0,0
+2004,regular,3,ap,2,Oklahoma,Big 12,10,0
+2004,regular,3,ap,17,Utah,Mountain West,0,0
+2004,regular,3,ap,5,Miami,ACC,0,0
+2004,regular,3,ap,3,Georgia,SEC,4,0
+2004,regular,3,ap,11,Florida,SEC,0,0
+2004,regular,3,ap,14,Tennessee,SEC,0,0
+2004,regular,3,ap,18,Auburn,SEC,0,0
+2004,regular,3,ap,6,LSU,SEC,0,0
+2004,regular,1,ap,22,Maryland,ACC,0,0
+2004,regular,1,ap,15,Clemson,ACC,0,0
+2004,regular,1,ap,21,Wisconsin,Big Ten,0,0
+2004,regular,1,ap,19,Iowa,Big Ten,0,0
+2004,regular,1,ap,8,Michigan,Big Ten,0,0
+2004,regular,1,ap,9,Ohio State,Big Ten,0,0
+2004,regular,1,ap,25,Minnesota,Big Ten,0,0
+2004,regular,1,ap,24,Purdue,Big Ten,0,0
+2004,regular,1,ap,16,Virginia,ACC,0,0
+2004,regular,1,ap,1,USC,Pac-10,48,0
+2004,regular,1,ap,13,California,Pac-10,0,0
+2004,regular,1,ap,23,Oregon,Pac-10,0,0
+2004,regular,1,ap,10,West Virginia,Big East,0,0
+2004,regular,1,ap,5,Florida State,ACC,0,0
+2004,regular,1,ap,12,Kansas State,Big 12,0,0
+2004,regular,1,ap,18,Missouri,Big 12,0,0
+2004,regular,1,ap,7,Texas,Big 12,0,0
+2004,regular,1,ap,2,Oklahoma,Big 12,11,0
+2004,regular,1,ap,20,Utah,Mountain West,0,0
+2004,regular,1,ap,6,Miami,ACC,0,0
+2004,regular,1,ap,3,Georgia,SEC,5,0
+2004,regular,1,ap,11,Florida,SEC,0,0
+2004,regular,1,ap,14,Tennessee,SEC,0,0
+2004,regular,1,ap,17,Auburn,SEC,0,0
+2004,regular,1,ap,4,LSU,SEC,1,0
+2004,regular,15,ap,17,Wisconsin,Big Ten,0,0
+2004,regular,15,ap,12,Iowa,Big Ten,0,0
+2004,regular,15,ap,14,Michigan,Big Ten,0,0
+2004,regular,15,ap,25,Ohio State,Big Ten,0,0
+2004,regular,15,ap,18,Virginia,ACC,0,0
+2004,regular,15,ap,1,USC,Pac-10,52,0
+2004,regular,15,ap,21,Arizona State,Pac-10,0,0
+2004,regular,15,ap,4,California,Pac-10,0,0
+2004,regular,15,ap,19,Pittsburgh,Big East,0,0
+2004,regular,15,ap,23,Boston College,Big East,0,0
+2004,regular,15,ap,16,Florida State,ACC,0,0
+2004,regular,15,ap,6,Texas,Big 12,0,0
+2004,regular,15,ap,24,Texas Tech,Big 12,0,0
+2004,regular,15,ap,22,Texas A&M,Big 12,0,0
+2004,regular,15,ap,2,Oklahoma,Big 12,7,0
+2004,regular,15,ap,7,Louisville,Conference USA,0,0
+2004,regular,15,ap,5,Utah,Mountain West,0,0
+2004,regular,15,ap,10,Virginia Tech,ACC,0,0
+2004,regular,15,ap,9,Miami,ACC,0,0
+2004,regular,15,ap,11,Boise State,Western Athletic,0,0
+2004,regular,15,ap,8,Georgia,SEC,0,0
+2004,regular,15,ap,20,Florida,SEC,0,0
+2004,regular,15,ap,15,Tennessee,SEC,0,0
+2004,regular,15,ap,3,Auburn,SEC,6,0
+2004,regular,15,ap,13,LSU,SEC,0,0
+2004,regular,14,ap,20,Wisconsin,Big Ten,0,0
+2004,regular,14,ap,12,Iowa,Big Ten,0,0
+2004,regular,14,ap,13,Michigan,Big Ten,0,0
+2004,regular,14,ap,16,Virginia,ACC,0,0
+2004,regular,14,ap,1,USC,Pac-10,48,0
+2004,regular,14,ap,18,Arizona State,Pac-10,0,0
+2004,regular,14,ap,4,California,Pac-10,0,0
+2004,regular,14,ap,21,West Virginia,Big East,0,0
+2004,regular,14,ap,17,Boston College,Big East,0,0
+2004,regular,14,ap,19,Florida State,ACC,0,0
+2004,regular,14,ap,6,Texas,Big 12,0,0
+2004,regular,14,ap,22,Texas A&M,Big 12,0,0
+2004,regular,14,ap,2,Oklahoma,Big 12,9,0
+2004,regular,14,ap,23,Oklahoma State,Big 12,0,0
+2004,regular,14,ap,7,Louisville,Conference USA,0,0
+2004,regular,14,ap,5,Utah,Mountain West,0,0
+2004,regular,14,ap,11,Virginia Tech,ACC,0,0
+2004,regular,14,ap,9,Miami,ACC,0,0
+2004,regular,14,ap,10,Boise State,Western Athletic,0,0
+2004,regular,14,ap,8,Georgia,SEC,0,0
+2004,regular,14,ap,25,Florida,SEC,0,0
+2004,regular,14,ap,15,Tennessee,SEC,0,0
+2004,regular,14,ap,3,Auburn,SEC,8,0
+2004,regular,14,ap,14,LSU,SEC,0,0
+2004,regular,14,ap,24,UTEP,Western Athletic,0,0
+2004,regular,13,ap,9,Wisconsin,Big Ten,0,0
+2004,regular,13,ap,17,Iowa,Big Ten,0,0
+2004,regular,13,ap,7,Michigan,Big Ten,0,0
+2004,regular,13,ap,18,Virginia,ACC,0,0
+2004,regular,13,ap,1,USC,Pac-10,51,0
+2004,regular,13,ap,20,Arizona State,Pac-10,0,0
+2004,regular,13,ap,4,California,Pac-10,0,0
+2004,regular,13,ap,21,West Virginia,Big East,0,0
+2004,regular,13,ap,19,Boston College,Big East,0,0
+2004,regular,13,ap,10,Florida State,ACC,0,0
+2004,regular,13,ap,6,Texas,Big 12,0,0
+2004,regular,13,ap,22,Texas A&M,Big 12,0,0
+2004,regular,13,ap,2,Oklahoma,Big 12,8,0
+2004,regular,13,ap,23,Oklahoma State,Big 12,0,0
+2004,regular,13,ap,8,Louisville,Conference USA,0,0
+2004,regular,13,ap,5,Utah,Mountain West,0,0
+2004,regular,13,ap,25,Bowling Green,Mid-American,0,0
+2004,regular,13,ap,15,Virginia Tech,ACC,0,0
+2004,regular,13,ap,12,Miami,ACC,0,0
+2004,regular,13,ap,13,Boise State,Western Athletic,0,0
+2004,regular,13,ap,11,Georgia,SEC,0,0
+2004,regular,13,ap,15,Tennessee,SEC,0,0
+2004,regular,13,ap,2,Auburn,SEC,6,0
+2004,regular,13,ap,14,LSU,SEC,0,0
+2004,regular,13,ap,24,UTEP,Western Athletic,0,0
+2004,regular,12,ap,4,Wisconsin,Big Ten,0,0
+2004,regular,12,ap,19,Iowa,Big Ten,0,0
+2004,regular,12,ap,9,Michigan,Big Ten,0,0
+2004,regular,12,ap,10,Virginia,ACC,0,0
+2004,regular,12,ap,1,USC,Pac-10,52,0
+2004,regular,12,ap,20,Arizona State,Pac-10,0,0
+2004,regular,12,ap,5,California,Pac-10,0,0
+2004,regular,12,ap,13,West Virginia,Big East,0,0
+2004,regular,12,ap,21,Boston College,Big East,0,0
+2004,regular,12,ap,11,Florida State,ACC,0,0
+2004,regular,12,ap,6,Texas,Big 12,0,0
+2004,regular,12,ap,22,Texas A&M,Big 12,0,0
+2004,regular,12,ap,2,Oklahoma,Big 12,10,0
+2004,regular,12,ap,25,Oklahoma State,Big 12,0,0
+2004,regular,12,ap,12,Louisville,Conference USA,0,0
+2004,regular,12,ap,7,Utah,Mountain West,0,0
+2004,regular,12,ap,16,Virginia Tech,ACC,0,0
+2004,regular,12,ap,18,Miami,ACC,0,0
+2004,regular,12,ap,14,Boise State,Western Athletic,0,0
+2004,regular,12,ap,8,Georgia,SEC,0,0
+2004,regular,12,ap,15,Tennessee,SEC,0,0
+2004,regular,12,ap,3,Auburn,SEC,3,0
+2004,regular,12,ap,17,LSU,SEC,0,0
+2004,regular,12,ap,23,UTEP,Western Athletic,0,0
+2004,regular,12,ap,24,Notre Dame,FBS Independents,0,0
+2004,regular,11,ap,5,Wisconsin,Big Ten,0,0
+2004,regular,11,ap,20,Iowa,Big Ten,0,0
+2004,regular,11,ap,10,Michigan,Big Ten,0,0
+2004,regular,11,ap,12,Virginia,ACC,0,0
+2004,regular,11,ap,1,USC,Pac-10,56,0
+2004,regular,11,ap,23,Arizona State,Pac-10,0,0
+2004,regular,11,ap,4,California,Pac-10,0,0
+2004,regular,11,ap,15,West Virginia,Big East,0,0
+2004,regular,11,ap,24,Boston College,Big East,0,0
+2004,regular,11,ap,13,Florida State,ACC,0,0
+2004,regular,11,ap,6,Texas,Big 12,0,0
+2004,regular,11,ap,22,Texas A&M,Big 12,0,0
+2004,regular,11,ap,2,Oklahoma,Big 12,8,0
+2004,regular,11,ap,19,Oklahoma State,Big 12,0,0
+2004,regular,11,ap,21,Southern Miss,Conference USA,0,0
+2004,regular,11,ap,14,Louisville,Conference USA,0,0
+2004,regular,11,ap,7,Utah,Mountain West,0,0
+2004,regular,11,ap,18,Virginia Tech,ACC,0,0
+2004,regular,11,ap,11,Miami,ACC,0,0
+2004,regular,11,ap,16,Boise State,Western Athletic,0,0
+2004,regular,11,ap,8,Georgia,SEC,0,0
+2004,regular,11,ap,9,Tennessee,SEC,0,0
+2004,regular,11,ap,3,Auburn,SEC,1,0
+2004,regular,11,ap,17,LSU,SEC,0,0
+2004,regular,11,ap,25,UTEP,Western Athletic,0,0
+2004,regular,10,ap,6,Wisconsin,Big Ten,0,0
+2004,regular,10,ap,23,Iowa,Big Ten,0,0
+2004,regular,10,ap,12,Michigan,Big Ten,0,0
+2004,regular,10,ap,24,Minnesota,Big Ten,0,0
+2004,regular,10,ap,17,Purdue,Big Ten,0,0
+2004,regular,10,ap,13,Virginia,ACC,0,0
+2004,regular,10,ap,1,USC,Pac-10,50,0
+2004,regular,10,ap,20,Arizona State,Pac-10,0,0
+2004,regular,10,ap,7,California,Pac-10,0,0
+2004,regular,10,ap,15,West Virginia,Big East,0,0
+2004,regular,10,ap,5,Florida State,ACC,0,0
+2004,regular,10,ap,8,Texas,Big 12,0,0
+2004,regular,10,ap,16,Texas A&M,Big 12,0,0
+2004,regular,10,ap,2,Oklahoma,Big 12,13,0
+2004,regular,10,ap,20,Oklahoma State,Big 12,0,0
+2004,regular,10,ap,25,Southern Miss,Conference USA,0,0
+2004,regular,10,ap,14,Louisville,Conference USA,0,0
+2004,regular,10,ap,9,Utah,Mountain West,0,0
+2004,regular,10,ap,22,Virginia Tech,ACC,0,0
+2004,regular,10,ap,4,Miami,ACC,0,0
+2004,regular,10,ap,18,Boise State,Western Athletic,0,0
+2004,regular,10,ap,10,Georgia,SEC,0,0
+2004,regular,10,ap,11,Tennessee,SEC,0,0
+2004,regular,10,ap,3,Auburn,SEC,2,0
+2004,regular,10,ap,19,LSU,SEC,0,0
+2004,regular,9,ap,6,Wisconsin,Big Ten,0,0
+2004,regular,9,ap,25,Iowa,Big Ten,0,0
+2004,regular,9,ap,13,Michigan,Big Ten,0,0
+2004,regular,9,ap,12,Purdue,Big Ten,0,0
+2004,regular,9,ap,14,Virginia,ACC,0,0
+2004,regular,9,ap,1,USC,Pac-10,50,0
+2004,regular,9,ap,21,Arizona State,Pac-10,0,0
+2004,regular,9,ap,7,California,Pac-10,0,0
+2004,regular,9,ap,15,West Virginia,Big East,0,0
+2004,regular,9,ap,5,Florida State,ACC,0,0
+2004,regular,9,ap,8,Texas,Big 12,0,0
+2004,regular,9,ap,17,Texas A&M,Big 12,0,0
+2004,regular,9,ap,2,Oklahoma,Big 12,13,0
+2004,regular,9,ap,22,Oklahoma State,Big 12,0,0
+2004,regular,9,ap,15,Louisville,Conference USA,0,0
+2004,regular,9,ap,9,Utah,Mountain West,0,0
+2004,regular,9,ap,23,Virginia Tech,ACC,0,0
+2004,regular,9,ap,4,Miami,ACC,0,0
+2004,regular,9,ap,19,Boise State,Western Athletic,0,0
+2004,regular,9,ap,10,Georgia,SEC,0,0
+2004,regular,9,ap,20,Florida,SEC,0,0
+2004,regular,9,ap,11,Tennessee,SEC,0,0
+2004,regular,9,ap,3,Auburn,SEC,2,0
+2004,regular,9,ap,18,LSU,SEC,0,0
+2004,regular,9,ap,24,Notre Dame,FBS Independents,0,0
+2004,regular,8,ap,10,Wisconsin,Big Ten,0,0
+2004,regular,8,ap,14,Michigan,Big Ten,0,0
+2004,regular,8,ap,25,Ohio State,Big Ten,0,0
+2004,regular,8,ap,19,Minnesota,Big Ten,0,0
+2004,regular,8,ap,5,Purdue,Big Ten,0,0
+2004,regular,8,ap,6,Virginia,ACC,0,0
+2004,regular,8,ap,1,USC,Pac-10,41,0
+2004,regular,8,ap,15,Arizona State,Pac-10,0,0
+2004,regular,8,ap,8,California,Pac-10,0,0
+2004,regular,8,ap,17,West Virginia,Big East,0,0
+2004,regular,8,ap,7,Florida State,ACC,0,0
+2004,regular,8,ap,9,Texas,Big 12,0,0
+2004,regular,8,ap,23,Texas A&M,Big 12,0,0
+2004,regular,8,ap,2,Oklahoma,Big 12,23,0
+2004,regular,8,ap,16,Oklahoma State,Big 12,0,0
+2004,regular,8,ap,24,Southern Miss,Conference USA,0,0
+2004,regular,8,ap,18,Louisville,Conference USA,0,0
+2004,regular,8,ap,11,Utah,Mountain West,0,0
+2004,regular,8,ap,3,Miami,ACC,0,0
+2004,regular,8,ap,21,Boise State,Western Athletic,0,0
+2004,regular,8,ap,12,Georgia,SEC,0,0
+2004,regular,8,ap,22,Florida,SEC,0,0
+2004,regular,8,ap,13,Tennessee,SEC,0,0
+2004,regular,8,ap,4,Auburn,SEC,0,0
+2004,regular,8,ap,20,LSU,SEC,0,0
+2004,postseason,1,ap,1,USC,Pac-10,62,0
+2004,postseason,1,ap,2,Auburn,SEC,3,0
+2004,postseason,1,ap,3,Oklahoma,Big 12,0,0
+2004,postseason,1,ap,4,Utah,Mountain West,0,0
+2004,postseason,1,ap,5,Texas,Big 12,0,0
+2004,postseason,1,ap,6,Louisville,Conference USA,0,0
+2004,postseason,1,ap,7,Georgia,SEC,0,0
+2004,postseason,1,ap,8,Iowa,Big Ten,0,0
+2004,postseason,1,ap,9,California,Pac-10,0,0
+2004,postseason,1,ap,10,Virginia Tech,ACC,0,0
+2004,postseason,1,ap,11,Miami,ACC,0,0
+2004,postseason,1,ap,12,Boise State,Western Athletic,0,0
+2004,postseason,1,ap,13,Tennessee,SEC,0,0
+2004,postseason,1,ap,14,Michigan,Big Ten,0,0
+2004,postseason,1,ap,15,Florida State,ACC,0,0
+2004,postseason,1,ap,16,LSU,SEC,0,0
+2004,postseason,1,ap,17,Wisconsin,Big Ten,0,0
+2004,postseason,1,ap,18,Texas Tech,Big 12,0,0
+2004,postseason,1,ap,19,Arizona State,Pac-10,0,0
+2004,postseason,1,ap,20,Ohio State,Big Ten,0,0
+2004,postseason,1,ap,21,Boston College,Big East,0,0
+2004,postseason,1,ap,22,Fresno State,Western Athletic,0,0
+2004,postseason,1,ap,23,Virginia,ACC,0,0
+2004,postseason,1,ap,24,Navy,FBS Independents,0,0
+2004,postseason,1,ap,25,Pittsburgh,Big East,0,0
