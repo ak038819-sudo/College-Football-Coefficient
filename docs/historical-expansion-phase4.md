@@ -261,3 +261,132 @@ have reached the provider for real — the same trap the probe hit, now
 caught a second time. The default is resolved inside the function, and
 there is a test that drives `main()` online through a replaced `fetch`;
 reverting the signature makes that test try to open a socket.
+
+## The gates over the whole archive, 2026-11-23
+
+All four, run in the order they depend on each other, over 1869–1979 in one
+pass each. Every run green.
+
+### Reconciliation
+
+Run [45147630470](https://github.com/ak038819-sudo/College-Football-Coefficient/actions/runs/45147630470).
+77 new seasons of the `/records` feed collected, the 34 already collected
+reported `SKIP`.
+
+| | |
+| --- | --- |
+| team-seasons compared | **23,439** |
+| agreeing with the records feed | 16,927 |
+| with findings | 6,512 |
+| of those, `no_reference_line` | 6,510 |
+| of those, **`regular_result_mismatch`** | **2** |
+| all-zero reference lines beside nothing staged | 5,479 |
+| staged names the records feed never carries | 1,105 |
+
+`no_reference_line` is the identity map's work list, not a disagreement:
+the records feed carries lines for the programs it knows of, and in the
+1890s it does not know of most of them. An all-zero line beside nothing
+staged is the two feeds agreeing that a team did not play.
+
+### The two mismatches, and what they are
+
+Phase 3's 1946–1979 run had **zero** mismatches. The early period has two,
+and both are in 1929:
+
+| 1929 | staged (games feed) | records feed |
+| --- | --- | --- |
+| Boston College | 4 games, 1-2-**1** | 4 games, 1-2-**0** |
+| Villanova | 8 games, 6-1-**1** | 8 games, 6-1-**0** |
+
+Neither is an import fault, and the arithmetic is what says so: **the
+records feed's line does not sum to its own game count.** It claims four
+games for Boston College and gives three results, eight for Villanova and
+gives seven. The staged line sums correctly in both cases. So the
+disagreement is inside the provider's *derived* records feed, and the games
+feed — the one that was staged — is the internally consistent one.
+
+Both lines are short exactly one tie in the same season, which invites the
+guess that one shared game was counted in neither column. That is a guess:
+nothing here confirms Boston College and Villanova met in 1929, and the
+gate does not claim it.
+
+This is also why the gate now **names** its mismatches rather than only
+counting them. Two counted mismatches sent me to a rendered run page and a
+report artifact, and the artifact store is not reachable from everywhere
+this is read. The summary carries up to 25 of them with both feeds'
+games-wins-losses-ties.
+
+### Identity
+
+| | |
+| --- | --- |
+| distinct school names, 1869–1979 | **1,308** |
+| matched to a records-feed team | 326 |
+| **unresolved, needing a verdict** | **982** |
+| games played by unresolved names | 6,919 |
+
+1,308 rather than 1,619 because 311 names appear in both eras — the 1,214
+of 1869–1945 and the 405 of 1946–1979 overlap by exactly that much, which
+is the two measurements agreeing.
+
+The 982 are a long tail, not 982 equal problems: **481 appear in a single
+season** and 139 in two, while the heaviest are small colleges that played
+for decades — Trinity (Texas) in 51 seasons, Gettysburg 50, Randolph Macon
+48. Only 27 carry a resemblance to a known name, and a suggestion is a
+lead, never a resolution.
+
+`data/identity/historical_schools.csv` is **not** regenerated here. Every
+unresolved name in it has a verdict, and 982 new ones do not; ruling on
+them is its own piece of work.
+
+### Eligibility
+
+| | |
+| --- | --- |
+| team-seasons classified | 23,439 |
+| major-college | 10,375 |
+| lower-division | 6,554 |
+| unknown | 6,510 |
+| **conflicts** | **0** |
+
+Zero conflicts over the whole archive: nowhere does a game row's
+classification contradict the same team's record line for that season.
+
+The 6,510 unknown is the same number as reconciliation's 6,510
+`no_reference_line` findings. That is **agreement in size, not a proven
+identity** — the two reports were not cross-checked row by row, and equal
+counts are not the same set. The mechanism makes the coincidence
+unsurprising: a team-season with no record line has no second source to
+classify it from.
+
+### Preservation
+
+| | |
+| --- | --- |
+| games audited | **49,692** |
+| payloads verified against their sha256 | 49,692 |
+| corrupt or unreadable | 0 |
+| **columns that drifted from their payload** | **0** |
+| missing scores / missing dates | 0 / 0 |
+| ties | 2,349 |
+| **games with a venue** | **0 of 49,692** |
+| neutral site: true / false / unknown | 425 / 49,267 / **0** |
+
+110 seasons present, which is 1869–1979 less 1871.
+
+Two findings from Phase 3 are now measured over the whole archive rather
+than inferred: **the provider has no venue for any of the 49,692 games**,
+and **neutral site is two-valued everywhere** — 425 true, 49,267 false, not
+one unknown, because `neutralSite` is a required non-nullable boolean in
+the provider's schema. A neutral-site flag is uncorroborable anywhere in
+this archive, which Phase 5 has to take as given when it fits a home
+advantage.
+
+### Where that leaves it
+
+The archive is staged, faithful to the provider column by column, and
+reconciled against the provider's own records with two disagreements, both
+explained and both the provider's. What it is **not** is identified: 982
+school names have no verdict, and 6,510 team-seasons cannot be classified
+on this evidence. Nothing is promoted; `production_promotion_allowed` is
+`false` in every one of these reports.
