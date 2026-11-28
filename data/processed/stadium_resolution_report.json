@@ -5,11 +5,11 @@
   "catalog_linked": 110,
   "catalog_created": 43,
   "catalog_ambiguous": 2,
-  "games_backfilled": 708,
-  "scheduled_backfilled": 61,
+  "games_backfilled": 711,
+  "scheduled_backfilled": 59,
   "games_unresolved": 30079,
   "scheduled_unresolved": 0,
-  "explicitly_neutral": 1657,
+  "explicitly_neutral": 1658,
   "ambiguous": [],
   "unresolved_examples": [
     {
