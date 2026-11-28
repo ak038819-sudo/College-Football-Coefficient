@@ -102,6 +102,48 @@ def check_validation(payload, target='the configuration'):
     return validation
 
 
+def check_report(report, elo, *, target='the fit report'):
+    """Refuse a fit report that measured parameters other than these.
+
+    `--report` exists so a FIT can hand its own measurement straight to the
+    replay without a round trip through the committed configuration. It used
+    to be taken on trust, which meant an older report attached its held-out
+    score to whatever parameters happened to be in the committed file:
+    replaying one k with a report whose `chosen.k` is another produced an
+    export claiming a score those parameters never earned, and the gate
+    passed it, because the gate reads the claim rather than re-measuring it.
+
+    The configuration path has had this guard since it was written
+    (`measured_on_elo_sha256`). This is the same guard on the other path,
+    and the two use one digest function so they cannot drift. Found and
+    fixed on the NBA's copy of this module first, and ported here because
+    all three leagues' fits write the same report shape.
+    """
+    chosen = report.get('chosen')
+    if not isinstance(chosen, dict):
+        raise ValueError(
+            f'{target} does not say which parameters it measured, so its '
+            'held-out score cannot be attached to these ones. Re-run the fit '
+            'with a current src/nfl/fit_elo.py.')
+    # Only the keys the replay actually uses. The fit's report repeats the
+    # search parameters alongside the derived ones, and a key the elo block
+    # does not carry is the fit's own bookkeeping, not a difference.
+    measured = {key: chosen[key] for key in elo if key in chosen}
+    missing = sorted(set(elo) - set(measured))
+    if missing:
+        raise ValueError(
+            f'{target} measured no value for {missing}, so it cannot speak '
+            'for the configuration being replayed')
+    if elo_digest(measured) != elo_digest(elo):
+        differs = sorted(key for key in elo if measured[key] != elo[key])
+        raise ValueError(
+            f'{target} was measured on different parameters: {differs} '
+            f'differ from the configuration being replayed. Re-fit and '
+            're-score, or the published rating would claim a score these '
+            'parameters never earned.')
+    return report
+
+
 def report_from_config(payload):
     """The committed validation in the shape `build()` wants a report in."""
     validation = check_validation(payload)
@@ -135,6 +177,8 @@ def build(connection, config, *, model_name=MODEL_NAME, report=None,
     # and the committed validation is the only honest source for the score.
     if report is None:
         report = report_from_config(config)
+    else:
+        check_report(report, elo)
     rows, final = replay(games, elo)
     model_id = record_rating_model(
         connection, model_name, elo,
